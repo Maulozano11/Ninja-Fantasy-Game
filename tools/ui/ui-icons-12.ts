@@ -24,9 +24,10 @@
 // hand-fixes.
 //
 // What is different from sheets 2 to 7: his windows on this sheet are wider than tall (144x115,
-// 128x115 and 135x115 of his pixels) and bigger than 88. The crop script takes the square of his
-// full height that holds his whole subject (115x115; the columns left out are listed there and in
-// the manifest), so his proportions stay as he drew them. 115 is too many of his pixels for the 88
+// 128x115 and 135x115 of his pixels) and bigger than 88. The crop script takes a square of his
+// full height (115x115), so his proportions stay as he drew them, placed where it keeps his whole
+// subject and leaves out the fewest of his bright pixels (counted for every placement; the columns
+// and bright pixels left out are listed there and in the manifest). 115 is too many of his pixels for the 88
 // to keep them one to one: dropping 27 of every 115 columns and rows breaks his one-pixel
 // lightning, quills and crescent edges every fourth pixel and loses a quarter of his specks. So
 // the 88 is made the way the 44 is (step 3 below): the area mean of his pixels, with his thin lines
@@ -46,7 +47,10 @@
 //     its own colour instead of the mean, so the line stays one clean pixel wide instead of fading
 //     into its ground. Only lines of several of his pixels count (and his strongest specks), so his
 //     texture is not turned into noise; at 44 they are fewer and may be blended with the mean, as a
-//     line one pixel wide there is three of his. Then (when an icon asks for it; none does now) a
+//     line one pixel wide there is three of his. A mark that covers only part of its pixel can be
+//     blended with the mean in proportion (`cover`), and at 88 his marks' own pixels can be left
+//     out of the mean of the pixels beside them (`own88`), so a line's light is not counted twice
+//     and the icon keeps his overall tone. Then (when an icon asks for it; none does now) a
 //     light edge-preserving smoothing of the rest, nearest palette entry, and the clean-up: a 1- or
 //     2-pixel area of one colour joins the neighbouring colour nearest to the picture, except where
 //     the picture there stands out from its ring (his mark) or it is one of his kept specks.
@@ -56,7 +60,9 @@
 //     drawn details, left over from the reduction), the colour difference to his box reduction after
 //     both are blurred (sigma size/30), and how close each icon is to his picture: the structural
 //     similarity (SSIM, lightness, sigma 1.5) of ours (the 44 shown 2x) and of his own box reduction
-//     (to 44, shown 2x), both against his picture box-reduced to 88.
+//     (to 44, shown 2x), both against his picture box-reduced to 88; and (sheet 12) the colour and
+//     lightness difference of every block of size/11 pixels to his pixels box-reduced to that size,
+//     and the 1- or 2-pixel bright spots, each beside the same for his box reduction on our palette.
 
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -613,12 +619,20 @@ interface MarkRule {
   ink?: string;
   /** (Sheet 12) Only his pixels within `r` of one of his pixels at least as light as `minL` count (the gaps between the barbs inside his white feathers, not the haze). */
   near?: { minL: number; r: number };
+  /**
+   * (Sheet 12) The pixel takes the marks' colour in full only where his marks cover at least this
+   * share of it; below that it is blended with the box mean in proportion (share / cover, times
+   * `mix`), so a line that is a fraction of a pixel wide here stays that light, not full white.
+   */
+  cover?: number;
 }
 
 interface Reduced {
   /** The 44 picture: box mean, with his marks in their own colour. */
   img: F;
   box: F;
+  /** The box mean the rest of the picture is made from: `box`, or with `own` the mean of his pixels that are not a kept mark. */
+  base: F;
   /** Per 44 pixel: which rule (index + 1) put his mark there, 0 none; and whether the mark is a lone speck. */
   mark: Int8Array;
   speck: Uint8Array;
@@ -626,7 +640,7 @@ interface Reduced {
   masks: Uint8Array[];
 }
 
-function reduceKeep(W: F, N: number, rules: MarkRule[]): Reduced {
+function reduceKeep(W: F, N: number, rules: MarkRule[], own = false): Reduced {
   const box = areaResize(W, N, N);
   const out = box.clone();
   const mark = new Int8Array(N * N), speck = new Uint8Array(N * N);
@@ -682,7 +696,8 @@ function reduceKeep(W: F, N: number, rules: MarkRule[]): Reduced {
     const x = c % N, y = (c - x) / N;
     const pick = rules.findIndex((rule, s) => share[s][c] >= rule.share && (!rule.where || rule.where(x, y)));
     if (pick < 0) continue;
-    const mix = rules[pick].mix ?? 1;
+    const cover = rules[pick].cover;
+    const mix = (rules[pick].mix ?? 1) * (cover ? Math.min(1, share[pick][c] / cover) : 1);
     const peak = rules[pick].pick === 'peak';
     for (let k = 0; k < 3; k++) {
       const col = peak ? W.d[peakI[pick][c] * 3 + k] : colour[pick][c * 3 + k] / strength[pick][c];
@@ -691,7 +706,38 @@ function reduceKeep(W: F, N: number, rules: MarkRule[]): Reduced {
     mark[c] = pick + 1;
     speck[c] = lone[pick][c];
   }
-  return { img: out, box, mark, speck, masks };
+  // (Sheet 12, `own`) His mark pixels belong to the pixel that shows them: the pixels beside it are
+  // the area mean of his other pixels only, so his line's light is not counted twice (once as the
+  // line, once spread into its neighbours by the box).
+  const base = box.clone();
+  if (own) {
+    const taken = new Uint8Array(w * h);
+    for (let i = 0; i < w * h; i++) {
+      const m = mark[cell(i)];
+      if (m && masks[m - 1][i]) taken[i] = 1;
+    }
+    for (let y = 0; y < N; y++) {
+      const y0 = y * sy, y1 = (y + 1) * sy;
+      for (let x = 0; x < N; x++) {
+        if (mark[y * N + x]) continue;
+        const x0 = x * sx, x1 = (x + 1) * sx;
+        const acc = [0, 0, 0];
+        let wt = 0;
+        for (let yy = Math.floor(y0); yy < Math.ceil(y1); yy++) {
+          const cy = Math.min(y1, yy + 1) - Math.max(y0, yy);
+          for (let xx = Math.floor(x0); xx < Math.ceil(x1); xx++) {
+            const j = Math.min(h - 1, yy) * w + Math.min(w - 1, xx);
+            if (taken[j]) continue;
+            const cv = (Math.min(x1, xx + 1) - Math.max(x0, xx)) * cy;
+            for (let k = 0; k < 3; k++) acc[k] += W.d[j * 3 + k] * cv;
+            wt += cv;
+          }
+        }
+        if (wt > 0) for (let k = 0; k < 3; k++) out.d[(y * N + x) * 3 + k] = base.d[(y * N + x) * 3 + k] = acc[k] / wt;
+      }
+    }
+  }
+  return { img: out, box, base, mark, speck, masks };
 }
 
 // --- drawing the details (as tools/ui/ui-icons.ts) ---------------------------------------------------
@@ -736,6 +782,8 @@ class Paint {
   readonly drawn = new Set<number>();
   /** His own marks kept as they are (his specks at 44), for the checks. */
   readonly his = new Set<number>();
+  /** (Sheet 12) The hand-fixes as drawn, for the manifest: what each puts back, and per pixel his colour asked for. */
+  readonly fixes: { what: string; px: { x: number; y: number; his: string }[] }[] = [];
   private ramp: number[];
   constructor(readonly q: Ix, readonly p: Pal) {
     this.ramp = p.rgb.map((_, i) => i).filter((i) => !p.spare[i]);
@@ -758,6 +806,11 @@ class Paint {
     if (x < 0 || y < 0 || x >= this.q.w || y >= this.q.h) return;
     this.q.set(x, y, typeof col === 'number' ? col : this.c(col));
     this.drawn.add(y * this.q.w + x);
+  }
+  /** A hand-fix: his colours at the given pixels (each put on the palette entry nearest to it), listed in the manifest under `what`. */
+  fix(what: string, pts: [number, number, string][]): void {
+    this.fixes.push({ what, px: pts.map(([x, y, his]) => ({ x, y, his })) });
+    for (const [x, y, his] of pts) this.px(x, y, his);
   }
   dots(pts: [number, number][], col: string): void {
     for (const [x, y] of pts) this.px(x, y, col);
@@ -810,6 +863,21 @@ interface Checks {
   /** Mean OKLab difference (x100) to his box reduction, both blurred (sigma N/30): ours and his box on our palette. */
   lowFreq: number;
   lowFreqBoxOnPalette: number;
+  /**
+   * (Sheet 12) The colour of each block of size/11 pixels (8x8 at 88, 4x4 at 44), as the mean OKLab
+   * of its pixels, against the same block of his pixels box-reduced to this size: the mean
+   * difference (x100), ours and his box reduction put on our palette; and the mean lightness
+   * difference (OKLab L x100, positive = ours lighter).
+   */
+  blockDiff: number;
+  blockDiffBoxOnPalette: number;
+  lightBias: number;
+  lightBiasBoxOnPalette: number;
+  /** Small clusters (as `small`) of his box reduction put on our palette, for comparison. */
+  smallBoxOnPalette: number;
+  /** Bright spots (1- or 2-pixel areas lighter than the pixels around them by 0.1 OKLab L or more): ours and his box reduction on our palette. */
+  brightSpots: number;
+  brightSpotsBoxOnPalette: number;
   /** Structural similarity (lightness, sigma 1.5 at 88) to his picture box-reduced to 88: ours, and (at 44) his own box reduction to 44; both shown 2x. */
   ssim: number;
   ssimBox: number;
@@ -854,6 +922,48 @@ function lowFreqDiff(a: F, b: F): number {
   let t = 0;
   for (let i = 0; i < a.w * a.h; i++) t += Math.hypot(A[0][i] - B[0][i], A[1][i] - B[1][i], A[2][i] - B[2][i]);
   return (t / (a.w * a.h)) * 100;
+}
+/** Bright spots: 8-connected areas of one colour of 1 or 2 pixels lighter than the mean of the pixels around them by 0.1 (OKLab L) or more. */
+function brightSpots(q: Ix, p: Pal): number {
+  const { lab, size } = components(q);
+  const seen = new Set<number>();
+  let n = 0;
+  for (let i = 0; i < q.w * q.h; i++) {
+    const id = lab[i];
+    if (size[id] > 2 || seen.has(id)) continue;
+    seen.add(id);
+    const px: number[] = [];
+    for (let j = i; j < Math.min(q.w * q.h, i + 2 * q.w + 2); j++) if (lab[j] === id) px.push(j);
+    let ring = 0, nr = 0;
+    for (const j of px) {
+      const x = j % q.w, y = (j - x) / q.w;
+      for (const [dx, dy] of N8) {
+        const v = q.get(x + dx, y + dy);
+        if (v < 0 || lab[(y + dy) * q.w + x + dx] === id) continue;
+        ring += p.lab[v][0];
+        nr++;
+      }
+    }
+    if (nr && p.lab[q.d[i]][0] - ring / nr >= 0.1) n++;
+  }
+  return n;
+}
+/** Mean OKLab difference (x100) of the block means (blocks of k x k) of two pictures of one size, and the mean lightness difference (a - b, x100). */
+function blockDiff(a: F, b: F, k: number): { diff: number; light: number } {
+  const n = Math.floor(a.w / k);
+  let t = 0, tl = 0;
+  for (let by = 0; by < n; by++)
+    for (let bx = 0; bx < n; bx++) {
+      const A: Lab = [0, 0, 0], B: Lab = [0, 0, 0];
+      for (let y = by * k; y < (by + 1) * k; y++)
+        for (let x = bx * k; x < (bx + 1) * k; x++) {
+          const p = a.lab(y * a.w + x), q = b.lab(y * b.w + x);
+          for (let c = 0; c < 3; c++) (A[c] += p[c] / (k * k)), (B[c] += q[c] / (k * k));
+        }
+      t += Math.hypot(A[0] - B[0], A[1] - B[1], A[2] - B[2]);
+      tl += A[0] - B[0];
+    }
+  return { diff: (t / (n * n)) * 100, light: (tl / (n * n)) * 100 };
 }
 function medianHue(f: F): number {
   const hs: number[] = [];
@@ -915,6 +1025,8 @@ interface IconSpec {
   /** His thin marks kept at 88 and at 44 (see MarkRule). */
   marks88?: MarkRule[];
   marks44?: MarkRule[];
+  /** At 88: his kept marks' pixels belong to the pixel that shows them (see reduceKeep's `own`). */
+  own88?: boolean;
   /** Bilateral smoothing of the box mean: [sigma space (px), sigma colour (OKLab)]; [0, 0] = none. */
   bil88?: [number, number];
   bil44: [number, number];
@@ -923,16 +1035,17 @@ interface IconSpec {
   /** How far (OKLab) the picture must stand out from its ring for a 1- or 2-pixel area to stay as his mark: at 88, and at 44 when given. */
   mark88: number;
   mark44?: number;
-  /** The hand-fixes, at either size, and what they put back (for the manifest). */
+  /** The hand-fixes, at either size (drawn with Paint.fix, so the manifest lists them as they are in the files). */
   art?: (pt: Paint, ctx: Ctx) => void;
-  fixes?: string[];
 }
 
 interface Built {
   spec: IconSpec;
   pal: Pal;
-  out: Record<number, { q: Ix; img: Img; box: F; base: Ix; ref: F; red: Reduced; checks: Checks }>;
+  out: Record<number, { q: Ix; img: Img; box: F; base: Ix; ref: F; red: Reduced; checks: Checks; fixes: string[] }>;
   W: F;
+  /** The extra palette entries as sampled (what, and his colour). */
+  sampled: string[];
 }
 
 function loadRef(name: string): Img {
@@ -948,8 +1061,10 @@ function buildIcon(spec: IconSpec): Built {
   const hc = hisColours(W);
   const base = makePalette(W, hc, spec.colors, spec.flat, spec.chroma);
   const rgb = [...base.rgb], spare = [...base.spare];
+  const sampled: string[] = [];
   for (const e of spec.extra ?? []) {
     const c = sampleAt(W, hc, e.box, e.lo, e.hi, e.by, e.only);
+    sampled.push(`${e.why}: ${toHex(c)}`);
     if (!rgb.some((u) => u[0] === c[0] && u[1] === c[1] && u[2] === c[2])) rgb.push(c), spare.push(e.spare);
   }
   const pal = palOf(rgb, spare);
@@ -958,9 +1073,9 @@ function buildIcon(spec: IconSpec): Built {
   const out: Built['out'] = {};
   for (const N of [44, 88]) {
     const box = areaResize(sheetCrop, N, N);
-    const red = reduceKeep(W, N, process.env.UI_NOMARKS ? [] : (N === 88 ? spec.marks88 : spec.marks44) ?? []);
+    const red = reduceKeep(W, N, process.env.UI_NOMARKS ? [] : (N === 88 ? spec.marks88 : spec.marks44) ?? [], N === 88 && !!spec.own88);
     const [ss, sr] = N === 88 ? spec.bil88 ?? [0, 0] : spec.bil44;
-    const ref = sr > 0 ? bilateral(red.box, ss, sr, 2) : red.box.clone();
+    const ref = sr > 0 ? bilateral(red.base, ss, sr, 2) : red.base.clone();
     // His marks keep their own colour (the smoothing is for the rest).
     for (let i = 0; i < N * N; i++) if (red.mark[i]) for (let k = 0; k < 3; k++) ref.d[i * 3 + k] = red.img.d[i * 3 + k];
     const prot = new Set<number>();
@@ -986,6 +1101,8 @@ function buildIcon(spec: IconSpec): Built {
     }
     const ours = ixToF(q, pal);
     const sm = smallClusters(q, hisSet, pt.drawn);
+    const plain = quantize(red.box, pal);
+    const bd = blockDiff(ours, red.box, N / 11), bdBox = blockDiff(ixToF(plain, pal), red.box, N / 11);
     out[N] = {
       q,
       img: q.toImg(pal),
@@ -993,6 +1110,18 @@ function buildIcon(spec: IconSpec): Built {
       base: q0,
       ref,
       red,
+      // Each hand-fix as it is in the file: the colour of every pixel it drew (the palette entry
+      // nearest to his colour asked for, which is given beside it when it differs).
+      fixes: pt.fixes.map(
+        (f) =>
+          `${N}: ${f.what}: ` +
+          f.px
+            .map((p) => {
+              const got = toHex(pal.rgb[q.get(p.x, p.y)]);
+              return `${got} at ${p.x},${p.y}` + (got === p.his.toLowerCase() ? '' : ` (his ${p.his.toLowerCase()})`);
+            })
+            .join(', '),
+      ),
       checks: {
         small: sm.all,
         smallHis: sm.his,
@@ -1000,6 +1129,13 @@ function buildIcon(spec: IconSpec): Built {
         smallOther: sm.other,
         lowFreq: +lowFreqDiff(ours, box).toFixed(2),
         lowFreqBoxOnPalette: +lowFreqDiff(ixToF(quantize(box, pal), pal), box).toFixed(2),
+        blockDiff: +bd.diff.toFixed(2),
+        blockDiffBoxOnPalette: +bdBox.diff.toFixed(2),
+        lightBias: +bd.light.toFixed(2),
+        lightBiasBoxOnPalette: +bdBox.light.toFixed(2),
+        smallBoxOnPalette: smallClusters(plain, new Set(), new Set()).all,
+        brightSpots: brightSpots(q, pal),
+        brightSpotsBoxOnPalette: brightSpots(plain, pal),
         ssim: +ssim(N === 44 ? up2(ours) : ours, hisPic88).toFixed(3),
         ssimBox: +ssim(N === 44 ? up2(box) : box, hisPic88).toFixed(3),
         hue: Math.round(medianHue(ours)),
@@ -1009,7 +1145,7 @@ function buildIcon(spec: IconSpec): Built {
       },
     };
   }
-  return { spec, pal, out, W };
+  return { spec, pal, out, W, sampled };
 }
 
 // --- the details, per icon ---------------------------------------------------------------------------
@@ -1017,17 +1153,28 @@ function buildIcon(spec: IconSpec): Built {
 // Traced on his pixels (his square shown under the icon's grid), in the icon's own pixels.
 // Colours are his (each goes to the nearest entry of the icon's palette).
 
-// His Sabueso rayo. The base is his box reduction with the white cores of his lightning kept (at
-// 88 also his thinner cyan strands; at 44 the dark navy inside the wolf, so his open mouth and the
-// shade under the eye stay dark). What the 44 still loses: his eye. It is a white slit of his
-// (his pixels 91..95, 47..49) between the bright streak of his brow and the cyan outline of the
-// snout, with his blue in between; the box mean spreads it into that cyan. Put back at its place:
-// his white on the cell that holds the slit, his blue on the cell between it and the outline.
-// (At 88 his eye is there as he drew it.)
+// His Sabueso rayo. The base is his box reduction with the main white lines of his lightning kept
+// (at 44 also the dark navy inside the wolf, so his open mouth and the shade under the eye stay
+// dark); his navy jaw line comes out in his navy by itself (the navy entry, hue weighed up). What
+// the 44 still loses (his square's columns 25..139 of his window; coordinates in the 44):
+//  - his eye: a white slit of his (his pixels 95..98, 47..48 of the square) at the end of the
+//    light cyan streak of his brow (his 85..94) and before the cyan outline of the snout, with his
+//    blue in between (his 99..100, 47..48); the white lines kept at 44 and the box mean run brow
+//    and slit together into one white bar and his blue into sky blue. Put back at its place: his
+//    cyan of the brow's end (35,18 and 36,18), his white on the cell that holds the slit (37,18),
+//    his blue on the cell between it and the outline (38,18).
+//  - his tongue: his royal blue (his 99..103, 60..62) is one pixel at 44 (38,23) and the clean-up
+//    merges it into the sky blue beside it. Put back in his royal blue.
+// (At 88 both are there as he drew them.)
 function hound(pt: Paint): void {
   if (pt.N !== 44) return;
-  pt.px(35, 18, '#f3fffe');
-  pt.px(36, 18, '#1c88e6');
+  pt.fix('his eye: the light cyan end of the streak of his brow, the white slit, then his blue before the cyan outline of the snout', [
+    [35, 18, '#74e4fe'],
+    [36, 18, '#a0f4f8'],
+    [37, 18, '#f3fcfd'],
+    [38, 18, '#1c88e6'],
+  ]);
+  pt.fix("his royal blue tongue in the wolf's open mouth", [[38, 23, '#3061ec']]);
 }
 
 const ICONS: IconSpec[] = [
@@ -1038,10 +1185,24 @@ const ICONS: IconSpec[] = [
     colors: 22,
     flat: 0.5,
     chroma: 1.1,
-    marks88: [
-      { kind: 'bright', what: "the white cores of his lightning and the wolf's outline", r: 1, thr: 0.05, minL: 0.86, minPx: 6, speck: 0.12, share: 0.3 },
-      { kind: 'bright', what: 'his thinner cyan strands', r: 1, thr: 0.08, minL: 0.6, maxL: 0.86, minPx: 5, share: 0.35, mix: 0.8 },
+    // The k-means gives his dark blues as a violet navy (#303683, hue 275) and his blues as sky
+    // blues; the navy of the wolf's jaws and mouth (#203387 #243d99 #1c3688, hue 267) and the royal
+    // blue of his tongue (#3061ec #3a58e2, much more saturated) are taken from those places, and
+    // hue is weighed up when his pixels are put on the palette, so his navy (hue 267) does not go
+    // to the sky's violet (#3f3b90, hue 281) as it did.
+    qChroma: 1.6,
+    extra: [
+      { box: [84, 52, 101, 57], lo: 0.25, hi: 0.75, spare: false, by: 'L', only: { hue: [262, 272], maxL: 0.42 }, why: "the navy of the wolf's jaw line and open mouth" },
+      { box: [99, 59, 104, 63], lo: 0.5, hi: 1, spare: false, by: 'chroma', only: { hue: [260, 270], minL: 0.5, maxL: 0.58 }, why: "the royal blue of the wolf's tongue" },
     ],
+    // At 88 only his main white lines (12 or more of his pixels), in full white only where they
+    // cover three quarters of the pixel (less: blended with the box mean in proportion), and their
+    // light counted once (own88). Kept all, with his thinner cyan strands and lone sparks, in full
+    // white, they made the whole 88 lighter than his picture (blocks of 8x8 +1.9 OKLab L x100 on
+    // average, block colour difference 2.32 against 1.14 for his box reduction on the palette; now
+    // +0.4, and 1.22 against 1.09).
+    marks88: [{ kind: 'bright', what: 'the main white lines of his lightning and of the wolf', r: 1, thr: 0.05, minL: 0.9, minPx: 12, share: 0.3, cover: 0.75 }],
+    own88: true,
     // At 44 only his longest white cores, softened: kept all and in full, they turned the wolf into
     // a white web (one of his pixels is a third of a pixel here).
     marks44: [
@@ -1051,7 +1212,6 @@ const ICONS: IconSpec[] = [
     bil44: [0, 0],
     mark88: 0.06,
     art: hound,
-    fixes: ['44: his eye, the white slit between his brow streak and the cyan outline of the snout (his pixels 91..95, 47..49): his white #f3fffe at 35,18 and his blue #1c88e6 at 36,18'],
   },
   {
     id: 'crescent_moon_dance',
@@ -1060,12 +1220,16 @@ const ICONS: IconSpec[] = [
     colors: 22,
     flat: 0.5,
     chroma: 1.1,
+    // A dot or sparkle that covers less than 0.6 of its pixel is blended with the mean in
+    // proportion (cover), at both sizes: with the square at columns 4..118 more of his dots fall on
+    // the edges of our pixels, and kept all in full they made the icon lighter than his picture
+    // (block colour difference 1.18 at 88 and 1.71 at 44, against 1.13 and 1.52 now).
     marks88: [
-      { kind: 'bright', what: "his golden dots, sparkles and the ninjas' eyes", r: 1, thr: 0.08, minL: 0.5, minPx: 3, speck: 0.1, share: 0.3 },
+      { kind: 'bright', what: "his golden dots, sparkles and the ninjas' eyes", r: 1, thr: 0.08, minL: 0.5, minPx: 3, speck: 0.1, share: 0.3, cover: 0.6 },
       { kind: 'dark', what: 'the dark silhouettes of his ninjas', r: 1, thr: 0.03, maxL: 0.3, minPx: 6, share: 0.4 },
     ],
     marks44: [
-      { kind: 'bright', what: 'his golden dots and sparkles', r: 1, thr: 0.1, minL: 0.55, minPx: 3, speck: 0.15, share: 0.3, mix: 0.8 },
+      { kind: 'bright', what: 'his golden dots and sparkles', r: 1, thr: 0.1, minL: 0.55, minPx: 3, speck: 0.15, share: 0.3, mix: 0.8, cover: 0.6 },
       { kind: 'dark', what: 'the dark silhouettes of his ninjas', r: 1, thr: 0.04, maxL: 0.3, minPx: 8, share: 0.4, mix: 0.8 },
     ],
     bil44: [0, 0],
@@ -1095,7 +1259,9 @@ const ICONS: IconSpec[] = [
       { kind: 'dark', what: 'the light blue gaps between the barbs of his feathers', r: 1, thr: 0.02, minL: 0.7, maxL: 0.95, minPx: 2, share: 0.35, near: { minL: 0.96, r: 1 } },
     ],
     marks44: [
-      { kind: 'bright', what: 'his sparkles and specks', r: 1, thr: 0.12, minL: 0.8, minPx: 3, speck: 0.15, share: 0.3, mix: 0.85 },
+      // (cover: a sparkle covering less than 0.6 of its pixel is blended in proportion; in full, the
+      // 44 came out lighter than his picture with the square at columns 11..125.)
+      { kind: 'bright', what: 'his sparkles and specks', r: 1, thr: 0.12, minL: 0.8, minPx: 3, speck: 0.15, share: 0.3, mix: 0.85, cover: 0.6 },
       { kind: 'bright', what: 'the white quills of his feathers', r: 1, thr: 0.025, minL: 0.97, minPx: 6, share: 0.35 },
       { kind: 'dark', what: 'the light blue gaps between the barbs of his feathers', r: 1, thr: 0.03, minL: 0.7, maxL: 0.94, minPx: 2, share: 0.25, mix: 0.8, near: { minL: 0.96, r: 1 } },
     ],
@@ -1121,7 +1287,17 @@ const frameActive = loadFrame('skill_slot_steel_active.png');
 // --- build, write, check ------------------------------------------------------------------------------
 
 const only = process.env.UI_ONLY ? new Set(process.env.UI_ONLY.split(',')) : null;
-const crops = JSON.parse(readFileSync(join(REF, 'crops.json'), 'utf8')) as { icons: Record<string, { window: number[]; windowSize: number[]; square: number[]; squareInWindow: number[]; cutColumns: number[]; cornerTipsFilled: number[][] }> };
+interface Placement {
+  rule: string;
+  subject: number[];
+  subjectIs: string;
+  brightTotal: number;
+  brightLost: number;
+  brightLostPixels: number[][];
+  every: { first: number; columns: number[]; keepsSubject: boolean; brightLost: number; lightLost: number }[];
+  widerSources: { columns: number[]; width: number; narrower: number; brightLost: number; brightLostShare: number }[];
+}
+const crops = JSON.parse(readFileSync(join(REF, 'crops.json'), 'utf8')) as { icons: Record<string, { window: number[]; windowSize: number[]; square: number[]; squareInWindow: number[]; cutColumns: number[]; cornerTipsFilled: number[][]; placement: Placement }> };
 const TUNE = process.env.UI_TUNE ? (JSON.parse(process.env.UI_TUNE) as Record<string, Partial<IconSpec>>) : {};
 const built = ICONS.filter((s) => !only || only.has(s.id)).map((s) => buildIcon({ ...s, ...(TUNE[s.id] ?? {}) }));
 for (const b of built) {
@@ -1191,7 +1367,7 @@ for (const b of built) {
 const manifest = {
   kit: 'ui_icons_12',
   references: ['docs/reference/icons-owner-reference-12.jpg'],
-  round: 1,
+  round: 2,
   screen: [1600, 900],
   pixel: 'one art pixel per screen pixel (as ui_icons, sheet 1): draw at 1x on a 1600x900 screen, @2x on a 2x screen, always with image-rendering: pixelated',
   frame: {
@@ -1199,9 +1375,9 @@ const manifest = {
     window: { x: RING, y: RING, w: SLOT - 2 * RING, h: SLOT - 2 * RING },
   },
   method:
-    'his sheet is pixel art (480x268 scaled 4.1667x and saved as JPEG); his pixels are taken back first (tools/refs/icons-from-ref-12.py, with the grid of icons-from-ref-23.py). His windows are wider than tall (144x115, 128x115, 135x115 of his pixels): each icon is the square of his full height (115x115) that holds his whole subject, so his proportions stay as he drew them (the columns left out are listed per icon). 88 and 44: area mean of his pixels, except his thin lines and strongest specks (and, per icon, his dark silhouettes and the gaps between his feather barbs), which keep their own colour one pixel wide (115 of his pixels are too many for the 88 to keep them one to one: dropping 27 columns and rows breaks his one-pixel lines); palette sampled from his pixels; nearest palette entry, 1-2 pixel areas merged where the picture does not stand out there; then hand-fixes only where that still loses his picture (listed per icon; see tools/ui/ui-icons-12.ts)',
+    'his sheet is pixel art (480x268 scaled 4.1667x and saved as JPEG); his pixels are taken back first (tools/refs/icons-from-ref-12.py, with the grid of icons-from-ref-23.py). His windows are wider than tall (144x115, 128x115, 135x115 of his pixels): each icon is a square of his full height (115x115), so his proportions stay as he drew them, placed where it keeps his whole subject and leaves out the fewest of his bright pixels (square.placement: the count for every placement, and the bright pixels still left out). 88 and 44: area mean of his pixels, except his thin lines and strongest specks (and, per icon, his dark silhouettes and the gaps between his feather barbs), which keep their own colour one pixel wide (115 of his pixels are too many for the 88 to keep them one to one: dropping 27 columns and rows breaks his one-pixel lines); for the wolf at 88 only his main white lines, in full only where they cover most of their pixel and with their light counted once, so the icon keeps his tone; palette sampled from his pixels; nearest palette entry, 1-2 pixel areas merged where the picture does not stand out there; then hand-fixes only where that still loses his picture (listed per icon; see tools/ui/ui-icons-12.ts)',
   checks:
-    'small = 8-connected areas of one colour of 1 or 2 pixels: smallHis are his own marks (the picture stands out there, or one of his kept specks), smallDrawn hold a hand-fixed detail, smallOther are left over from the reduction; lowFreq = mean OKLab difference x100 to his box reduction after both are blurred (sigma size/30), lowFreqBoxOnPalette = the same for his box reduction put on our palette; ssim = structural similarity of the lightness (Gaussian window sigma 1.5) to his picture box-reduced to 88, ours (the 44 shown 2x) against ssimBox, his own box reduction to 44 shown 2x; hue = OKLab median hue in degrees (hueHis: his box reduction); thinRun = the longest straight run of one colour one pixel thick [length, row or col, index]',
+    'small = 8-connected areas of one colour of 1 or 2 pixels: smallHis are his own marks (the picture stands out there, or one of his kept specks), smallDrawn hold a hand-fixed detail, smallOther are left over from the reduction; lowFreq = mean OKLab difference x100 to his box reduction after both are blurred (sigma size/30), lowFreqBoxOnPalette = the same for his box reduction put on our palette; ssim = structural similarity of the lightness (Gaussian window sigma 1.5) to his picture box-reduced to 88, ours (the 44 shown 2x) against ssimBox, his own box reduction to 44 shown 2x; hue = OKLab median hue in degrees (hueHis: his box reduction); thinRun = the longest straight run of one colour one pixel thick [length, row or col, index]; blockDiff = mean OKLab difference x100 of the colour of every block of size/11 pixels (8x8 at 88, 4x4 at 44) to the same block of his pixels box-reduced to this size, lightBias = the mean lightness difference of those blocks (OKLab L x100, positive = ours lighter), each beside the same for his box reduction on our palette (BoxOnPalette); brightSpots = 1- or 2-pixel areas lighter than the pixels around them by 0.1 OKLab L or more (brightSpotsBoxOnPalette: the same in his box reduction on our palette), smallBoxOnPalette = small for his box reduction on our palette',
   icons: Object.fromEntries(
     built.map((b) => {
       const c = crops.icons[b.spec.id];
@@ -1217,7 +1393,22 @@ const manifest = {
           size2x: [88, 88],
           hisWindow: c.windowSize,
           hisWindowBox: c.window,
-          square: { box: c.square, columnsInWindow: [c.squareInWindow[0], c.squareInWindow[2] - 1], cutColumns: c.cutColumns, cornerTipsFilled: c.cornerTipsFilled },
+          square: {
+            box: c.square,
+            columnsInWindow: [c.squareInWindow[0], c.squareInWindow[2] - 1],
+            cutColumns: c.cutColumns,
+            cornerTipsFilled: c.cornerTipsFilled,
+            placement: {
+              rule: c.placement.rule,
+              subject: c.placement.subject,
+              subjectIs: c.placement.subjectIs,
+              brightTotal: c.placement.brightTotal,
+              brightLost: c.placement.brightLost,
+              brightLostPixels: c.placement.brightLostPixels,
+              perPlacement: c.placement.every.map((r) => `${r.columns[0]}..${r.columns[1]}: ${r.brightLost} lost${r.keepsSubject ? '' : ' (cuts his subject)'}`),
+              widerSourcesSqueezed: c.placement.widerSources.map((w) => `${w.columns[0]}..${w.columns[1]} (${w.width} wide, ${(w.narrower * 100).toFixed(1)}% narrower): ${w.brightLost} lost`),
+            },
+          },
           reduced88: `area mean of his ${SIDE}x${SIDE} pixels to 88, his marks kept`,
           marks: {
             '88': (b.spec.marks88 ?? []).map((r) => r.what),
@@ -1225,8 +1416,8 @@ const manifest = {
           },
           palette: b.pal.rgb.map(toHex),
           paletteDetailOnly: b.pal.rgb.filter((_, i) => b.pal.spare[i]).map(toHex),
-          sampled: (b.spec.extra ?? []).map((e) => e.why),
-          handFixes: b.spec.fixes ?? [],
+          sampled: b.sampled,
+          handFixes: [...b.out[44].fixes, ...b.out[88].fixes],
           checks: { '44': b.out[44].checks, '88': b.out[88].checks },
           use: 'Hotbar skill icon: fills the 44x44 window of skill_slot_steel (ui_icons), at 6,6.',
         },

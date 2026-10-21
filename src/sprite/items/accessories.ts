@@ -4,9 +4,10 @@
 
 import { armJoints, DrawCtx, ItemDef, legPoint, Side } from '../ctx';
 import { add, capsule, ellipse, F_NO_OUTLINE, fine, GRID, Layer, len, lerp, line, norm, partIndex, Pen, perp, poly, px, RES, scale, seam, sub, UNITS, v, Vec } from '../raster';
-import type { RampKind } from '../color';
+import { retintHex, type RampKind } from '../color';
 import { hd } from './hairkit';
 import { CRYSTAL_SWORD, drawPaintedWeapon, drawWeapon, ICE_CRYSTAL_SWORD, KUNAI } from './weapons';
+import { FLAME_LONGSWORD, FLAME_SWORD_FLAME, FLAME_SWORD_GOLD } from './flameSwordArt';
 import { KATANA_PARTS, katanaHipColors, katanaTemplate } from './katana';
 import { chakraHex } from '../chakraInfo';
 import { gripPoint, handsBusy, handsLimp, poleAngle, swordAngle } from '../grip';
@@ -282,6 +283,12 @@ function droppedGrip(g: DrawCtx, at: number, off = 1.2): Vec {
   return v(x, lerp(r.pelvis, r.ankleN, at).y);
 }
 
+/** The flame longsword's colours: its blade and jewels turned from his flame red, its gold from his gold. */
+const flameSwordTint =
+  (flame: string, gold: string) =>
+  (ch: string, hex: string): string =>
+    FLAME_LONGSWORD.flame.includes(ch) ? retintHex(hex, FLAME_SWORD_FLAME, flame) : FLAME_LONGSWORD.gold.includes(ch) ? retintHex(hex, FLAME_SWORD_GOLD, gold) : hex;
+
 export const HELD_ITEMS: ItemDef[] = [
   {
     id: 'held_none',
@@ -333,6 +340,21 @@ export const HELD_ITEMS: ItemDef[] = [
       if (handsBusy(g)) drawPaintedWeapon(g, 'backGear', ICE_CRYSTAL_SWORD, backGrip(g, 48), 48, tint);
       else if (handsLimp(g)) drawPaintedWeapon(g, 'nearArm.held', ICE_CRYSTAL_SWORD, droppedGrip(g, 0.7), -86, tint);
       else drawPaintedWeapon(g, 'nearArm.held', ICE_CRYSTAL_SWORD, gripPoint(g), swordAngle(g), tint);
+    },
+  },
+  {
+    id: 'held_flame_sword',
+    slot: 'held',
+    name: 'Flame Longsword',
+    desc: 'A long blade burning red, orange and yellow under a gold cross-guard, a red jewel in its pommel: the owner painted it for Aiden.',
+    colors: [col('blade', 'Flame', FLAME_SWORD_FLAME, 'glow'), col('guard', 'Guard', FLAME_SWORD_GOLD, 'metal')],
+    draw: (g, [flame, gold]) => {
+      const tint = flameSwordTint(flame, gold);
+      if (handsBusy(g)) drawPaintedWeapon(g, 'backGear', FLAME_LONGSWORD, backGrip(g, 48), 48, tint);
+      else if (handsLimp(g)) drawPaintedWeapon(g, 'nearArm.held', FLAME_LONGSWORD, droppedGrip(g, 0.7), -86, tint);
+      // His grip crosses his fist at the hand joint (higher in the fist than our other blades' grip
+      // point): held there, at rest every pixel is his and his gauntlet's place is our fist's.
+      else drawPaintedWeapon(g, 'nearArm.held', FLAME_LONGSWORD, g.rig.handN, swordAngle(g), tint);
     },
   },
   {

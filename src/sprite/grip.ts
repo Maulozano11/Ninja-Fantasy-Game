@@ -3,6 +3,7 @@
 // drawn wrapped around the handle exactly where the weapon sits.
 
 import type { DrawCtx } from './ctx';
+import { FLAME_LONGSWORD } from './items/flameSwordArt';
 import { add, norm, scale, sub, Vec } from './raster';
 
 /** Screen angle of a hand-held blade per pose/frame (degrees, 0 = facing right, + = clockwise/down). */
@@ -36,8 +37,9 @@ export function swordAngle(g: DrawCtx): number {
     case 'train':
       return [-38, -165, 30, 64, 145, 12, -40, -42][f % 8];
     default:
-      // Matches the reference: blade hangs across the legs at about 50 degrees.
-      return 52;
+      // Matches the reference: blade hangs across the legs at about 50 degrees. The owner's flame
+      // longsword hangs at the angle he painted it (35), so at rest it is every pixel his.
+      return g.has('held', 'held_flame_sword') ? FLAME_LONGSWORD.angle : 52;
   }
 }
 
@@ -88,7 +90,7 @@ export const handsBusy = (g: DrawCtx): boolean => BUSY.has(g.rig.pose) || !!g.lo
 export function gripAngle(g: DrawCtx): number | null {
   if (handsBusy(g) || handsLimp(g)) return null;
   if (g.has('held', 'held_naginata')) return poleAngle(g);
-  if (g.has('held', 'held_katana') || g.has('held', 'held_crystal') || g.has('held', 'held_ice_crystal') || g.has('held', 'held_kunai')) return swordAngle(g);
+  if (g.has('held', 'held_katana') || g.has('held', 'held_crystal') || g.has('held', 'held_ice_crystal') || g.has('held', 'held_flame_sword') || g.has('held', 'held_kunai')) return swordAngle(g);
   return null;
 }
 

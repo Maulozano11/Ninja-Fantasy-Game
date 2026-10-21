@@ -25,7 +25,7 @@ import type { SpriteAppearance, SpritePose } from '../../sprite/types';
 import { PHASE_ADD, PHASE_RAMP, phaseHue } from '../../sprite/phase';
 import { edgeFoe, leavesNodes, nodeUnder, WARP, warpLanding } from '../../battle/clans';
 import { GRID } from '../../sprite/raster';
-import { drawAuraBack, drawLinger, drawVfxSprite, drawWallSprite, wallTint } from './vfxSprites';
+import { drawAuraBack, drawLinger, drawScreenBlood, drawVfxSprite, drawWallSprite, wallTint } from './vfxSprites';
 import { isTintElement, vfxTintColors } from '../../sprite/vfxTint';
 
 export interface Camera {
@@ -223,6 +223,8 @@ export function drawBattle(ctx: CanvasRenderingContext2D, sc: Scene): void {
   // Screen-space marks: bars, names, numbers.
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   drawMarks(ctx, sc);
+  // Blood on the screen itself, over the battle and under the HTML panels.
+  drawScreenBlood(ctx, sc);
 }
 
 // --- ground overlays -----------------------------------------------------------------------

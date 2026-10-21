@@ -12,6 +12,7 @@ import type { JutsuSpec, VfxElement, VfxRole } from '../../battle/jutsu';
 import { POSE_FPS, TACKLE_IMPACT_FRAME } from '../../sprite/rig';
 import { FAN_MS, FAN_ROLL, blastMs, impactMs, signatureMs, skySignature } from './vfxSprites';
 import { jutsuTint, unitTint } from './vfxTintPlan';
+import { DRIP_MS, SCREEN_MS, SPRAY_DELAY, SPRAY_LANDED, SPRAY_MS, bleedingStarts, isBleedTick } from './bloodPlan';
 import { dist } from '../../battle/map';
 import { closestPoint } from '../../battle/structures';
 import { midpoint } from '../../battle/combat';
@@ -105,6 +106,11 @@ export interface Fx {
   alpha?: number;
   /** The effect set when not its element's: 'neutral', the white cut of a sword art with no element. */
   set?: 'neutral';
+  /**
+   * Blood (vfx_blood, never in a chakra colour): the Bleeding Cut's spray thrown out of the target
+   * toward where the cut goes (from → to), or the drip of a ninja that bleeds.
+   */
+  blood?: 'spray' | 'drip';
   /** A cone drawn as one joined fan from the hand (the Spark Fan), reaching these points. */
   joined?: Pt[];
   /**
@@ -323,6 +329,14 @@ export class Playback {
   private hitAt = 0;
   /** The skip button never plays a roll before this (the jutsu it answers has not hit yet). */
   private diceFloor = 0;
+  /**
+   * Blood drops on the screen itself (the owner: "las gotas de sangre manchan la pantalla cuando
+   * exitosamente se consigue el sangrado"): when they landed and toward which side the cut went.
+   * Drawn over the battle in screen pixels (vfxSprites.ts, drawScreenBlood); nothing waits for them.
+   */
+  screenBlood: { t0: number; side: 1 | -1; seed: number }[] = [];
+  /** The way the last cut that draws blood went (1 right, -1 left), for the drops on the screen. */
+  private cutSide: 1 | -1 = 1;
 
   constructor(state: BattleState, private hooks: PlaybackHooks) {
     this.sync(state, 0);
@@ -508,6 +522,7 @@ export class Playback {
     this.fx = this.fx.filter((f) => now < f.t0 + f.dur);
     this.banners = this.banners.filter((b) => now < b.t0 + b.dur);
     this.fallen = this.fallen.filter((f) => now < f.t0 + FALL_MS / this.speed);
+    this.screenBlood = this.screenBlood.filter((b) => now < b.t0 + (SCREEN_MS + 300) / this.speed);
     // The last jutsu's effects play out whole first (the movement overlay and the next order wait for them).
     if (!this.settling || this.queue.length || now < this.busyUntil || now < this.lingerUntil) return false;
     for (const v of this.views.values()) if (v.walk || v.phase || v.warp || (v.poseUntil && now < v.poseUntil)) return false;
@@ -695,6 +710,13 @@ export class Playback {
       if (this.missedNext(ev.unit)) return strike;
       this.fx.push({ ...base, kind: 'slash', set: 'neutral', from, to: ev.at, t0: at(strike), dur: 480, lift: [58, 58] });
       linger(strike + 480);
+      if (seq.blood) {
+        // The blood bursts out of the target as the crescent crosses it, thrown the way the cut goes
+        // (from → to), and the next turn waits until its drops are down. Never in a chakra colour.
+        this.cutSide = ev.at.x < from.x - 0.01 ? -1 : 1;
+        this.fx.push({ ...base, tint: undefined, kind: 'burst', blood: 'spray', from, to: ev.at, t0: at(strike + SPRAY_DELAY), dur: SPRAY_MS });
+        linger(strike + SPRAY_DELAY + SPRAY_LANDED);
+      }
       return strike + 120;
     }
 
@@ -1111,6 +1133,11 @@ export class Playback {
         const v = this.view(ev.unit);
         if (!v) return 0;
         v.hp = ev.hp;
+        if (isBleedTick(ev, state.units[ev.unit]) && !v.hidden) {
+          // Bleeding hurts at the start of its turn: a few drops fall from the wound.
+          const p = this.posOf(ev.unit, now);
+          this.fx.push({ kind: 'burst', blood: 'drip', element: 'chakra', from: { x: p.x - v.facing * 0.05, z: p.z }, to: p, t0: now, dur: DRIP_MS });
+        }
         v.hurtUntil = now + 260 / this.speed;
         if (!v.walk && !v.down) this.setPose(v, 'hurt', now, 300);
         const hit = state.units[ev.unit];
@@ -1188,6 +1215,8 @@ export class Playback {
         return label ? 200 : 0;
       }
       case 'effect': {
+        // The cut has left Bleeding: drops splash onto the screen, on the side the cut went.
+        if (bleedingStarts(ev)) this.screenBlood.push({ t0: now, side: this.cutSide, seed: [...ev.unit].reduce((n, c) => n + c.charCodeAt(0), this.round) });
         if (label) this.float(label, ev.on ? '#e879f9' : '#a1a1aa', this.posOf(ev.unit, now), now, { rise: 124 });
         return 0;
       }

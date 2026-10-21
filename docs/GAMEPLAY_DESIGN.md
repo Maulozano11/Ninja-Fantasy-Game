@@ -1490,3 +1490,26 @@ of a unit by depth (P6). The battle engine is not touched, only each jutsu's
 data for the screen (`JutsuSeq.stage`) and the Leaf Hurricane stowing the
 weapon, which is a rule: with the free interaction spent and a weapon in hand it
 waits, like a jutsu with seals.
+
+### The Chidori becomes an activated state (decided 2026-10-21; the rules are open)
+
+The owner, after sending his silver-haired paint-over (a tactical vest shown with
+and without the long coat, and lightning crackling in the near hand): *"quiero que
+copies el sprite de la mano de rayo para ponersela al efecto de chidori porque
+chidori sera una habilidad que actives y que mientras esta activada tiene tu
+personaje el chido y efectos vfx (aura , algunos sprites alredor de rayos
+alrededor y cuando camina el personaje se va rompiendo el piso )"*.
+
+- The Chidori (`chidori_lightning_blade`) is no longer a one-shot thrust: the
+  ninja activates it, and while it is active the lightning is held in the hand.
+- The lightning in the hand is his sprite from that paint-over, copied 1:1 (his
+  pixels, in the caster's chakra colour like the other lightning).
+- While active: an aura, small lightning sprites crackling around the ninja, and
+  the ground cracks under his steps as he walks.
+- How it plays (cost, how long it lasts, what each blow does while it is on) is
+  proposed to him and not decided yet.
+
+The vest and coat in the same picture are not a new character: *"el chaleco no es
+de jonin parece mas como tactico militar solo cambiale los colores y no lo hagas
+personaje es parte de los sets"*. They become clothing pieces in the sets, with
+new colours.

@@ -129,3 +129,11 @@ folders.
       npx tsx tools/refs/heroine-idle.mts <out>
       python3 -I tools/refs/heroine-study.py <out> <out>/female-idle.png --write
       python3 -I tools/refs/heroine-proportions.py <out> <out>/female-idle.png
+
+- `elise-eyes-from-ref.py`: Elise's eyes as the `azure` eye shape (`src/sprite/eliseEyeArt.ts`):
+  each cell of ours takes the colour of the pixel of hers it stands for, at about two thirds of her
+  head (her eye a lash and three rows, a row taller than ours, upward), with her brow, the lash's
+  brown inner end and the far socket past the template's eye cells, and the lowered and shut lids
+  made of her pixels.
+
+      python3 -I tools/refs/elise-eyes-from-ref.py docs/reference/elise-owner-reference.jpg <out> src/sprite/eliseEyeArt.ts

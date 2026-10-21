@@ -7,6 +7,7 @@
 
 import { hexToRgb, hslToHex, makeRamp, mixHex, retintHex, rgbToHsl } from './color';
 import { armPoint, armRadius, armSpan, DrawCtx, fillTorso, FOOT_BARE, footDraw, handDraw, legSpan, Side, torsoPoly } from './ctx';
+import { AZURE_BROW_HAIR, AZURE_EYE_AT, AZURE_EYE_COLORS, AZURE_EYES, AZURE_IRIS, AZURE_SKIN, type AzureEyes } from './eliseEyeArt';
 import { type PaintedEye, VALIANT_BROW_HAIR, VALIANT_EYE_COLORS, VALIANT_EYES, VALIANT_IRIS } from './eyeArt';
 import { VALIANT_HEAD, VALIANT_SKIN } from './headArt';
 import { stampPiece } from './painted';
@@ -336,11 +337,12 @@ function drawValiantHead(g: DrawCtx): void {
  * from the skin he painted it in, as retintHex turns his cloth, but the lightness scaled so that his
  * skin lands exactly on the character's (the rest of the body is drawn in that skin), his shadows
  * and black line staying as far below it and his lights as far above. In his own skin, his colour.
+ * (`from` is the skin a painted piece was drawn on: Aiden's for his head, Elise's for her eyes.)
  */
-function skinTone(hex: string, skin: string): string {
-  if (skin.toLowerCase() === VALIANT_SKIN) return hex;
+function skinTone(hex: string, skin: string, from = VALIANT_SKIN): string {
+  if (skin.toLowerCase() === from) return hex;
   const [h, s, l] = rgbToHsl(...hexToRgb(hex));
-  const [h0, s0, l0] = rgbToHsl(...hexToRgb(VALIANT_SKIN));
+  const [h0, s0, l0] = rgbToHsl(...hexToRgb(from));
   const [h1, s1, l1] = rgbToHsl(...hexToRgb(skin));
   const lt = l <= l0 ? (l * l1) / l0 : l1 + ((l - l0) * (1 - l1)) / (1 - l0);
   return hslToHex(h + (h1 - h0), Math.min(1, (s * s1) / s0), lt);
@@ -427,7 +429,24 @@ const EYE_ROWS: Record<string, { near: string[]; far: string[] }> = {
   // The owner's eyes (src/sprite/eyeArt.ts), a row lower than ours and heavy-lidded: his brow (B) on
   // the row above the lash line, a single row of white and red iris under it. Drawn in his pixels.
   valiant: { near: VALIANT_EYES.open.near.letters, far: VALIANT_EYES.open.far.letters },
+  // The owner's Elise's eyes (src/sprite/eliseEyeArt.ts) on these cells: her white and blue iris in
+  // three rows under the lash line. Her eye is a row taller than ours, upward: her lash is a row above
+  // ours, and her brow, the lash's inner end and the far socket lie past these cells (azureCells).
+  azure: AZURE_EYES.open.template,
 };
+
+/** Every cell of the owner's Elise's eyes in one lid state, with its letter, from AZURE_EYE_AT. */
+function azureCells(eyes: AzureEyes, ex: number, fx: number, ny: number): { x: number; y: number; ch: string; px: string; near: boolean }[] {
+  const out: { x: number; y: number; ch: string; px: string; near: boolean }[] = [];
+  for (const [name, x0] of [['near', ex], ['far', fx]] as const) {
+    const [dx, dy] = AZURE_EYE_AT[name];
+    const eye = eyes[name];
+    eye.letters.forEach((row, r) => {
+      for (let c = 0; c < row.length; c++) if (row[c] !== '.') out.push({ x: x0 + dx + c, y: ny + dy + r, ch: row[c], px: eye.rows[r][c], near: name === 'near' });
+    });
+  }
+  return out;
+}
 
 /** Closed eyes (knocked out): each eye a dark lid line across its middle row. */
 const CLOSED_EYES = { near: ['bbbbb', 'LLLLb', 'sbbbl'], far: ['bbo', 'LLL', 'bbo'] };
@@ -446,6 +465,8 @@ function eyeRow(row: string, r: number, eyes: { near: string[]; far: string[] })
  */
 export function eyeCells(g: DrawCtx): { x: number; y: number; ch: string; near: boolean }[] {
   const { ex, fx, ny } = faceAnchor(g);
+  // Elise's eyes reach past the template's cells (her lash a row above ours): all of her cells.
+  if (g.look.eyeShape === 'azure') return azureCells(AZURE_EYES.open, ex, fx, ny);
   const eyes = EYE_ROWS[g.look.eyeShape || 'standard'] || EYE_ROWS.standard;
   const out: { x: number; y: number; ch: string; near: boolean }[] = [];
   eyes.near.forEach((row, r) => [...row].forEach((ch, c) => out.push({ x: ex + c, y: ny + r, ch, near: true })));
@@ -469,6 +490,8 @@ export function faceCells(g: DrawCtx, skipBack = 0): Set<number> {
   const add = (x: number, y: number) => {
     if (x >= 0 && y >= 0 && x < GRID && y < GRID) out.add(y * GRID + x);
   };
+  // Elise's lash is a row above the lash row: it is kept clear too (her brows, as ours, are not).
+  if (shape === 'azure') for (const c of eyeCells(g)) if (c.ch !== 'B') add(c.x, c.y);
   if (g.look.faceShape === 'valiant') {
     // The owner's head from the lash row down, from the column the other shapes' near side starts at.
     const ox = nx - VALIANT_HEAD.pivot[0];
@@ -537,7 +560,9 @@ function drawFace(g: DrawCtx): void {
   const lowered = g.rig.pose === 'read';
   // The owner's eyes ('valiant'): his pixels in each lid state, laid on the template's eye cells.
   const his = shape === 'valiant' ? VALIANT_EYES[closed ? 'closed' : lowered ? 'lowered' : 'open'] : undefined;
-  const eyes = his ? { near: his.near.letters, far: his.far.letters } : closed ? CLOSED_EYES : lowered ? EYE_ROWS.calm : EYE_ROWS[shape] || EYE_ROWS.standard;
+  // The owner's Elise's eyes ('azure'): her pixels in each lid state, on and past the template's eye cells.
+  const azure = shape === 'azure' ? AZURE_EYES[closed ? 'closed' : lowered ? 'lowered' : 'open'] : undefined;
+  const eyes = his ? { near: his.near.letters, far: his.far.letters } : azure ? azure.template : closed ? CLOSED_EYES : lowered ? EYE_ROWS.calm : EYE_ROWS[shape] || EYE_ROWS.standard;
   const main = (FACE_MAIN[isFemaleBody(g.rig.body) ? 'female' : g.rig.body] || FACE_MAIN.male).map((row, r) => eyeRow(row, r, eyes));
 
   const put = (x: number, y: number, ch: string) => {
@@ -582,16 +607,32 @@ function drawFace(g: DrawCtx): void {
     stamp(his.near, ex);
     stamp(his.far, fx);
   }
+  if (azure) {
+    // Her pixels from AZURE_EYE_AT, past the template's cells too (her brow, her lash a row above ours,
+    // its inner end, the far socket and the lash's tip past the face's edge), on every face shape: her
+    // iris moves the way the eye colour (or the clan's special eyes) moves her blue, her brows the way
+    // the hair colour moves her hair's yellow, her skin's shades round the eyes the way the skin tone
+    // moves her skin; her lashes, whites and glints stay as he drew them. Pale special eyes take the
+    // pale tones ours take, so they read blank as ours do.
+    const hair = hairChoice?.colors[0];
+    const tone = (letter: string, hex: string) => {
+      if (letter === 'd' || letter === 'i') return pale ? ir[letter === 'd' ? 3 : 4] : retintHex(hex, AZURE_IRIS, iris);
+      if (letter === 'B') return hair ? retintHex(hex, AZURE_BROW_HAIR, hair) : hex;
+      return letter in skinShade ? skinTone(hex, g.look.skin, AZURE_SKIN) : hex;
+    };
+    for (const c of azureCells(azure, ex, fx, ny)) if (c.px !== '.') L.set(c.x, c.y, flat(tone(c.ch, AZURE_EYE_COLORS[c.px])), 3, 'head', F_NO_OUTLINE);
+  }
 
   // Overlays drawn on the face layer (no outline, above the skin). His eyes open a row lower than
   // ours (his lash line is the template's second row): what sits on the open eye follows them.
   const set = (x: number, y: number, hex: string) => F.set(x, y, g.m(hex, 'flat'), 3, 'head', F_NO_OUTLINE);
-  const lash = his ? ny + 1 : ny;
-  if (female && (closed || lowered)) {
+  const lash = his ? ny + 1 : azure ? ny - 1 : ny;
+  // (Elise's lash brings its own ends: out past the outer corner and down round it, past the face's edge.)
+  if (female && !azure && (closed || lowered)) {
     // the lashes of the closed or lowered lids
     set(ex - 1, ny + 1, EYELINE);
     set(ex - 1, ny + 2, EYELINE);
-  } else if (female) {
+  } else if (female && !azure) {
     // longer lashes at the outer corners
     set(ex - 1, lash - 1, EYELINE);
     set(ex - 1, lash, EYELINE);
@@ -615,25 +656,28 @@ function drawFace(g: DrawCtx): void {
     for (const [x, y] of [
       [ex - 1, lash + 1],
       [ex - 2, lash],
-      [ex + 5, lash],
+      // (beside Elise's inner corner, her lash's inner end being past the template's near eye)
+      azure ? [ex + 6, ny] : [ex + 5, lash],
       [fx - 1, lash + 1],
     ])
       set(x, y, sk[1]);
   }
   if (sp === 'sage') {
     // the pigment on the lids, right above the lash line (his: over his brows, and only out to the
-    // far eye's last column, the face's edge on that row)
+    // far eye's last column, the face's edge on that row; Elise's: a row higher, where the face's edge
+    // is a column further in)
     for (let x = -1; x <= 4; x++) set(ex + x, lash - 1, '#c2410c');
-    for (let x = 0; x <= (his ? 2 : 3); x++) set(fx + x, lash - 1, '#c2410c');
+    for (let x = 0; x <= (his ? 2 : azure ? 1 : 3); x++) set(fx + x, lash - 1, '#c2410c');
     if (!closed && !lowered) {
-      // the bar pupil (on his two-pixel iris only its dark half, so the gold still shows)
-      set(ex + 2, ny + 2, '#120c18');
-      if (!his) set(ex + 3, ny + 2, '#120c18');
+      // the bar pupil (on his two-pixel iris only its dark half, so the gold still shows; on Elise's
+      // across the middle row of her iris, her lower row being white at its outer end)
+      set(ex + 2, azure ? ny + 1 : ny + 2, '#120c18');
+      if (!his) set(ex + 3, azure ? ny + 1 : ny + 2, '#120c18');
     }
   }
 
-  // Brows (hair-colored), two rows above the lash; most bangs cover them. His eyes bring their own.
-  if (his) return;
+  // Brows (hair-colored), two rows above the lash; most bangs cover them. His eyes and Elise's bring their own.
+  if (his || azure) return;
   const br = makeRamp(hairChoice?.colors[0] || '#2a2230', 'hair');
   // Sharp and fierce eyes get brows angled down toward the nose.
   const sharp = shape === 'sharp' || shape === 'fierce';

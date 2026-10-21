@@ -5,10 +5,11 @@
 
 import { retintHex } from '../color';
 import { DrawCtx, FootArt, footDraw, ItemDef, legDepth, legJoints, legPoint, Side } from '../ctx';
-import { segAngle, stampPiece } from '../painted';
+import type { BodyType } from '../types';
+import { continuedTo, limbOnly, type PaintedPiece, segAngle, stampPiece } from '../painted';
 import { add, along, ellipse, GRID, norm, partIndex, Pen, RES, seam, sub, v } from '../raster';
 import { across, crease, fpx, limb, limbR, stitch, stud, tube, wrapStripes } from './clothes';
-import { founderLegOut } from './founderOut';
+import { founderLegLen, founderLegOut, founderLegsStill } from './founderOut';
 import { FOUNDER_SANDAL_FOOT_F, FOUNDER_SANDAL_FOOT_N, FOUNDER_SANDAL_KIND, FOUNDER_SANDAL_LEATHER, FOUNDER_SANDAL_SHIN_F, FOUNDER_SANDAL_SHIN_N, FOUNDER_SANDAL_SKIN } from './founderSandalsArt';
 import { ROMAN_KIT_KIND, SANDAL_FOOT_F, SANDAL_FOOT_N, SANDAL_LEATHER, SANDAL_SHIN_F, SANDAL_SHIN_N, SANDAL_SKIN } from './bracersSandalsArt';
 import { BOOT_STEEL, BOOT_TRIM, crimsonKind, SABATON_FOOT_F, SABATON_FOOT_N, SABATON_SHIFT, SABATON_SHIN_F, SABATON_SHIN_N } from './sabatonsGauntletsArt';
@@ -292,6 +293,24 @@ export function sandalPieces(paint: string | undefined) {
   };
 }
 
+/** Rows across his laced shin that make one turn of its lacing (continuedTo). */
+const LACE_PERIOD = 2;
+
+const SHIN_MOVING = new Map<string, PaintedPiece>();
+
+/** His Solen's laced shin on a moving leg: only the shin (limbOnly), its lacing continued up to the knee. */
+function sandalShinMoving(body: BodyType, s: Side): PaintedPiece {
+  const key = body + s;
+  let p = SHIN_MOVING.get(key);
+  if (!p) {
+    const shin = s === 'N' ? FOUNDER_SANDAL_SHIN_N : FOUNDER_SANDAL_SHIN_F;
+    const line = (hex: string) => FOUNDER_SANDAL_KIND[hex] === 'line';
+    const kneeRow = shin.pivot[1] - founderLegLen(body, s, 'shin') * Math.sin((shin.angle * Math.PI) / 180);
+    SHIN_MOVING.set(key, (p = continuedTo(limbOnly(shin, line), kneeRow, 3, line, (hex) => !line(hex), LACE_PERIOD)));
+  }
+  return p;
+}
+
 export const FEET_ITEMS: ItemDef[] = [
   {
     id: 'feet_leather',
@@ -503,10 +522,13 @@ export const FEET_ITEMS: ItemDef[] = [
         if (k === 'line') return hex;
         return k === 'skin' ? retintHex(hex, pieces.skin, g.look.skin) : retintHex(hex, pieces.leather, lc);
       };
+      // Moving, his Solen's laced shin goes alone (not what was lifted beside it) and laced on up to the knee
+      // (his far one is drawn short: at rest his trouser leg and the sword hide the rest).
+      const moving = parts.paint !== 'roman' && !founderLegsStill(g);
       for (const s of SIDES) {
         const { knee, ankle } = legJoints(g.rig, s);
         bareFootOff(g, s);
-        const shin = pieces[s].shin;
+        const shin = moving ? sandalShinMoving(g.rig.body, s) : pieces[s].shin;
         const foot = pieces[s].foot;
         const at = add(ankle, founderLegOut(g, s).out);
         stampPiece(g, legDepth(s, 'feet'), shin, at, segAngle(knee, ankle), `shin${s}`, tint);

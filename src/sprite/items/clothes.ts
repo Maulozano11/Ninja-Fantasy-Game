@@ -6,13 +6,13 @@
 
 import { hexToRgb, retintHex } from '../color';
 import { armDepth, armJoints, armPoint, armSpan, type Depth, DrawCtx, fillTorso, handDraw, handPose, ItemDef, legDepth, legJoints, legPoint, Side, torsoPoly } from '../ctx';
-import { PaintedPiece, segAngle, stampPiece } from '../painted';
+import { continuedTo, limbOnly, PaintedPiece, PieceJoint, segAngle, stampBent, stampPiece } from '../painted';
 import { add, along, ellipse, F_NO_EDGE, F_NO_OUTLINE, F_NO_TEXTURE, GRID, Layer, lerp, norm, PAD, PartId, partIndex, PARTS, Pen, perp, poly, RES, scale, seam, ShadeFn, sub, v, Vec } from '../raster';
 import { stampTemplate, TemplatePalette } from '../rotsprite';
 import { crimsonKind, GAUNTLET_F, GAUNTLET_N, GLOVE_LEATHER, GLOVE_STEEL, GLOVE_TONES, GLOVE_TRIM } from './sabatonsGauntletsArt';
 import { BRACER_BRONZE, BRACER_F, BRACER_N, ROMAN_KIT_KIND } from './bracersSandalsArt';
 import { sandalPieces } from './feet';
-import { clipParts, founderArmStill, founderFarOut, founderLegOut, moveParts } from './founderOut';
+import { clearParts, clipParts, founderArmAtRest, founderArmBends, founderFarOut, founderLegBends, founderLegLen, founderLegOut, moveParts } from './founderOut';
 import { FOUNDER_ARM_F, FOUNDER_ARM_N, FOUNDER_ARM_SKIN, FOUNDER_HAND_F, FOUNDER_HAND_N, FOUNDER_SLEEVE_N, FOUNDER_TUNIC, FOUNDER_TUNIC_KIND } from './founderTunicArt';
 import { FOUNDER_THIGH_F, FOUNDER_THIGH_N, FOUNDER_TROUSERS, FOUNDER_TROUSERS_KIND, FOUNDER_TROUSERS_STUD } from './founderTrousersArt';
 import { STEEL_BRACER, STEEL_BRACER_F, STEEL_BRACER_KIND, STEEL_BRACER_N } from './steelBracersArt';
@@ -868,11 +868,13 @@ function piecesShape(pieces: [PaintedPiece, Vec, number, Record<string, string>]
   return shape;
 }
 
-/** A fist he painted on the wrist (moved `out`), as paintedFist does it. */
-function founderFist(g: DrawCtx, s: Side, out: Vec, depth: Depth, color: (ch: string, hex: string) => string): void {
+/** His tunic's black line (the colours tools/refs/solen_ref.py sorts as line). */
+const tunicLine = (hex: string) => FOUNDER_TUNIC_KIND[hex] === 'line';
+
+/** A fist he painted (`p`) on the wrist (moved `out`), as paintedFist does it. */
+function founderFist(g: DrawCtx, s: Side, p: PaintedPiece, out: Vec, depth: Depth, color: (ch: string, hex: string) => string): void {
   const j = armJoints(g.rig, s);
   const { flipX } = handPose(g, s);
-  const p = s === 'N' ? FOUNDER_HAND_N : FOUNDER_HAND_F;
   const drawn = flipX ? 180 - p.angle : p.angle;
   const turn = ((segAngle(j.wrist, j.hand) - drawn + 540) % 360) - 180;
   const pal: TemplatePalette = {};
@@ -880,73 +882,128 @@ function founderFist(g: DrawCtx, s: Side, out: Vec, depth: Depth, color: (ch: st
   stampTemplate(g.L(depth), p, add(j.wrist, out), Math.abs(turn) <= 30 ? 0 : turn, pal, prt('hand', s), { flipX, flags: F_NO_TEXTURE | F_NO_OUTLINE });
 }
 
+/**
+ * His far upper arm reaching up to the shoulder. At rest the cuirass hides it above his piece (he drew none
+ * of it there); as the arm reaches out from behind the body, his strip of skin between its two lines goes
+ * on up to the shoulder (continuedTo).
+ */
+const farArmToShoulder = (): PaintedPiece => continuedTo(limbOnly(FOUNDER_ARM_F, tunicLine), FOUNDER_ARM_F.pivot[1], 2, tunicLine, (h) => FOUNDER_TUNIC_KIND[h] === 'skin');
+
 const FAR_ARM: PartId[] = ['upperArmF', 'forearmF', 'handF'];
 
 /**
- * His far arm: our far arm moved under his pieces (founderFarOut); his bare upper arm and, closed, his fist.
- * Hanging as at rest (w = 1) our far arm is cut to his pieces (his upper arm, his bracer's place, his fist;
- * inside their black line, so its own outline falls on his), so at rest every pixel of the far arm is his.
+ * His pieces of each arm: the bare upper arm (the near one under his sleeve), the steel bracer and the fist;
+ * FOUNDER_ARM_MOVING, what of them goes along when the arm leaves the way he drew it (limbOnly, the far
+ * upper arm continued up to the shoulder).
  */
-function founderFarArm(g: DrawCtx, color: (ch: string, hex: string) => string): void {
-  const r = g.rig;
-  const { out, w } = founderFarOut(g);
-  const { kind } = handPose(g, 'F');
-  const fist = kind === 'fist' || kind === 'grip';
-  if (fist) bareHandOff(g, 'F');
-  for (const d of ['farArm.body', 'farArm.cloth'] as Depth[]) moveParts(g.L(d), FAR_ARM, out);
-  if (w === 1) {
-    const shape = piecesShape([
-      [FOUNDER_ARM_F, add(r.shoulderF, out), segAngle(r.shoulderF, r.elbowF), FOUNDER_TUNIC_KIND],
-      [STEEL_BRACER_F, add(r.elbowF, out), segAngle(r.elbowF, r.wristF), STEEL_BRACER_KIND],
-      ...(fist ? [[FOUNDER_HAND_F, add(r.wristF, out), FOUNDER_HAND_F.angle, FOUNDER_TUNIC_KIND] as [PaintedPiece, Vec, number, Record<string, string>]] : []),
-    ]);
-    for (const d of ['farArm.body', 'farArm.cloth'] as Depth[]) clipParts(g.L(d), FAR_ARM, shape);
-  }
-  stampPiece(g, 'farArm.body', FOUNDER_ARM_F, add(r.shoulderF, out), segAngle(r.shoulderF, r.elbowF), 'upperArmF', color);
-  // Hanging at rest his fist is in front of the skirt's edge and the far thigh, as he drew it.
-  if (fist) founderFist(g, 'F', out, w === 1 ? 'farHand.front' : 'farArm.body', color);
-}
+const FOUNDER_ARM = {
+  N: { arm: FOUNDER_ARM_N, sleeve: FOUNDER_SLEEVE_N as PaintedPiece | null, bracer: STEEL_BRACER_N, fist: FOUNDER_HAND_N },
+  F: { arm: FOUNDER_ARM_F, sleeve: null as PaintedPiece | null, bracer: STEEL_BRACER_F, fist: FOUNDER_HAND_F },
+};
+const FOUNDER_ARM_MOVING = {
+  N: { arm: limbOnly(FOUNDER_ARM_N, tunicLine), sleeve: limbOnly(FOUNDER_SLEEVE_N, tunicLine) as PaintedPiece | null, bracer: limbOnly(STEEL_BRACER_N, (h) => STEEL_BRACER_KIND[h] === 'line'), fist: limbOnly(FOUNDER_HAND_N, tunicLine) },
+  F: { arm: farArmToShoulder(), sleeve: null as PaintedPiece | null, bracer: limbOnly(STEEL_BRACER_F, (h) => STEEL_BRACER_KIND[h] === 'line'), fist: limbOnly(FOUNDER_HAND_F, tunicLine) },
+};
 
-const NEAR_ARM: PartId[] = ['upperArmN', 'forearmN', 'handN'];
+/** His steel bracer on an arm, whole at rest, else only the bracer (for hands_steel_bracers). */
+export const founderBracer = (g: DrawCtx, s: Side): PaintedPiece => (founderArmAtRest(g, s) ? FOUNDER_ARM : FOUNDER_ARM_MOVING)[s].bracer;
+
+/** How near a joint (fine pixels) his cells turn with it when it bends (stampBent): about half his arm's width. */
+const FOUNDER_JOINT_R = 4;
 
 /**
- * His near arm: his sleeve and bare upper arm and, closed round a grip (or empty), his fist over the
- * weapon's grip. Hanging as at rest our near arm is cut to his pieces (his upper arm under the sleeve,
- * his bracer's place, his fist), so at rest every pixel of it is his.
+ * One of his arms, his pieces turned rigidly about our joints in every pose (the owner on Ren, built the
+ * same way: "en la mayoria tiene los brazos diferentes al diseño en las poses como en lanzar jutsu, herido,
+ * cargar"): his bare upper arm (under his navy sleeve on the near side) about the shoulder, his steel
+ * bracer about the elbow (the hands item, hands_steel_bracers), his fist on the wrist. Our arm is taken
+ * away wherever his pieces are the arm: always the upper arm, the forearm under his bracer, and the
+ * hand, which is his fist (he drew no other: a grip, a hand sign, a hand flung out or held up to cast are
+ * his fist too; only a pointing finger and a hand cradling a book stay our hand pictures). Where his
+ * shoulder and elbow bend past the way he drew them, his own cells next to the joint fill the bend
+ * (stampBent), so no other arm shows through. At rest every pixel of both arms is his, his pieces whole;
+ * moving, each takes only the limb along (limbOnly: not the skirt's red or the strap beside his far fist).
+ * The far arm hangs where he drew it while it hangs as at rest (founderFarOut), and on our far joints as
+ * it reaches out, so his hands meet where ours do.
  */
-function founderNearArm(g: DrawCtx, color: (ch: string, hex: string) => string): void {
-  const r = g.rig;
-  const near = handPose(g, 'N').kind;
-  const fist = near === 'grip' || near === 'fist';
-  if (fist) bareHandOff(g, 'N');
-  const upper = segAngle(r.shoulderN, r.elbowN);
-  if (founderArmStill(g, 'N') === 1) {
-    const shape = piecesShape([
-      [FOUNDER_ARM_N, r.shoulderN, upper, FOUNDER_TUNIC_KIND],
-      [FOUNDER_SLEEVE_N, r.shoulderN, upper, FOUNDER_TUNIC_KIND],
-      [STEEL_BRACER_N, r.elbowN, segAngle(r.elbowN, r.wristN), STEEL_BRACER_KIND],
-      ...(fist ? [[FOUNDER_HAND_N, r.wristN, FOUNDER_HAND_N.angle, FOUNDER_TUNIC_KIND] as [PaintedPiece, Vec, number, Record<string, string>]] : []),
-    ]);
-    for (const d of ['nearArm.body', 'nearArm.cloth'] as Depth[]) clipParts(g.L(d), NEAR_ARM, shape);
+function founderArm(g: DrawCtx, s: Side, color: (ch: string, hex: string) => string): void {
+  const j = armJoints(g.rig, s);
+  const P = (founderArmAtRest(g, s) ? FOUNDER_ARM : FOUNDER_ARM_MOVING)[s];
+  const { out, w } = s === 'F' ? founderFarOut(g) : { out: v(0, 0), w: 1 };
+  const kind = handPose(g, s).kind;
+  const fist = kind !== 'point' && kind !== 'cradle';
+  const bracer = g.has('hands', 'hands_steel_bracers');
+  // Without his bracer our bare forearm stays (moved under his far arm), its wrist under his fist.
+  if (fist && !bracer) bareHandOff(g, s);
+  const body = armDepth(s, 'body');
+  const ours: PartId[] = [prt('upperArm', s), ...(bracer ? [prt('forearm', s)] : []), ...(fist ? [prt('hand', s)] : [])];
+  for (const d of [body, armDepth(s, 'cloth')]) {
+    if (s === 'F') moveParts(g.L(d), FAR_ARM, out);
+    clearParts(g.L(d), ours);
   }
-  if (fist) founderFist(g, 'N', v(0, 0), 'nearArm.body', color);
-  stampPiece(g, 'nearArm.body', FOUNDER_ARM_N, r.shoulderN, upper, 'upperArmN', color);
-  stampPiece(g, 'nearArm.cloth', FOUNDER_SLEEVE_N, r.shoulderN, upper, 'upperArmN', color);
+  const shoulder = add(j.shoulder, out);
+  const elbow = add(j.elbow, out);
+  const upper = segAngle(j.shoulder, j.elbow);
+  const fore = segAngle(j.elbow, j.wrist);
+  const bend = founderArmBends(g, s);
+  // What is drawn over his upper arm (his bracer, his sleeve): a bend's copies end there without a line.
+  const over = piecesShape([
+    ...(bracer ? [[P.bracer, elbow, fore, STEEL_BRACER_KIND] as PieceAt] : []),
+    ...(P.sleeve ? [[P.sleeve, shoulder, upper, FOUNDER_TUNIC_KIND] as PieceAt] : []),
+  ]);
+  const covered = (x: number, y: number) => over.mat[y * GRID + x] >= 0;
+  // His fist first: hanging at rest his far fist is in front of the skirt's edge and the far thigh, as he drew it.
+  if (fist) founderFist(g, s, P.fist, out, s === 'F' && w === 1 ? 'farHand.front' : body, color);
+  const joints: PieceJoint[] = [{ about: elbow, r: FOUNDER_JOINT_R, bend: bend.elbow, carry: true }];
+  // The far shoulder is his bare arm's own top; the near one his sleeve's.
+  if (!P.sleeve) joints.push({ about: shoulder, r: FOUNDER_JOINT_R, bend: bend.shoulder });
+  stampBent(g, body, P.arm, shoulder, upper, prt('upperArm', s), joints, tunicLine, color, covered);
+  if (P.sleeve) stampBent(g, armDepth(s, 'cloth'), P.sleeve, shoulder, upper, prt('upperArm', s), [{ about: shoulder, r: FOUNDER_JOINT_R, bend: bend.shoulder }], tunicLine, color);
+}
+
+type PieceAt = [PaintedPiece, Vec, number, Record<string, string>];
+
+/** His trousers' black line, and the plain navy of a trouser leg (no gold stud). */
+const trousersLine = (hex: string) => FOUNDER_TROUSERS_KIND[hex] === 'line';
+const trousersPlain = (hex: string) => FOUNDER_TROUSERS_KIND[hex] === 'navy';
+
+/** How many cells inside his line a row across his trouser leg has where it is whole (continuedTo). */
+const THIGH_ACROSS = 7;
+
+const THIGH_MOVING = new Map<string, PaintedPiece>();
+
+/**
+ * His trouser leg as it moves: only the leg (limbOnly), continued up to the hip where the skirt hides it at
+ * rest (he drew none of it there), so a leg kicked or stepped out from under the skirt is his navy all the
+ * way up.
+ */
+function thighMoving(g: DrawCtx, s: Side): PaintedPiece {
+  const key = `${g.rig.body}${s}`;
+  let p = THIGH_MOVING.get(key);
+  if (!p) {
+    const thigh = s === 'N' ? FOUNDER_THIGH_N : FOUNDER_THIGH_F;
+    const hipRow = thigh.pivot[1] - founderLegLen(g.rig.body, s, 'thigh') * Math.sin((thigh.angle * Math.PI) / 180);
+    THIGH_MOVING.set(key, (p = continuedTo(limbOnly(thigh, trousersLine), hipRow, THIGH_ACROSS, trousersLine, trousersPlain)));
+  }
+  return p;
 }
 
 /**
- * His legs: each of our legs moved under his trouser leg and his sandal (founderLegOut), his trouser leg
- * stamped about our knee moved as far. Standing as at rest our leg is cut to his trouser leg and sandal
- * (inside their black line), so at rest every pixel of the legs is his.
+ * His legs. Standing as at rest: each of our legs moved under his trouser leg and his sandal
+ * (founderLegOut), his trouser leg stamped about our knee moved as far, our leg cut to his trouser leg and
+ * sandal (inside their black line), so every pixel of the legs is his. Moving (walking, running, kicking,
+ * kneeling, sitting): his trouser leg turned rigidly about our knee, our trouser leg (and our shin, under
+ * his sandal) taken away so no other leg shows beside his; what his knee covers below it rides the shin,
+ * and his own cells fill the knee and the hip as they bend (stampBent).
  */
 function founderLegs(g: DrawCtx, color: (ch: string, hex: string) => string): void {
   for (const s of SIDES) {
     const { hip, knee, ankle } = legJoints(g.rig, s);
     const { out, w } = founderLegOut(g, s);
     const leg: PartId[] = [prt('thigh', s), prt('shin', s), prt('foot', s)];
-    for (const d of [legDepth(s, 'body'), legDepth(s, 'cloth')]) moveParts(g.L(d), leg, out);
+    const layers = [legDepth(s, 'body'), legDepth(s, 'cloth')];
     const thigh = s === 'N' ? FOUNDER_THIGH_N : FOUNDER_THIGH_F;
     if (w === 1) {
+      for (const d of layers) moveParts(g.L(d), leg, out);
       const sandal = add(ankle, out);
       const pieces = sandalPieces(g.look.slots.feet?.parts?.paint);
       const shape = piecesShape([
@@ -954,11 +1011,19 @@ function founderLegs(g: DrawCtx, color: (ch: string, hex: string) => string): vo
         [pieces[s].shin, sandal, segAngle(knee, ankle), pieces.kind],
         [pieces[s].foot, sandal, pieces[s].foot.angle, pieces.kind],
       ]);
-      for (const d of [legDepth(s, 'body'), legDepth(s, 'cloth')]) clipParts(g.L(d), leg, shape);
+      for (const d of layers) clipParts(g.L(d), leg, shape);
+      // Over the leg's footwear (its armour layer): his trouser leg ends on his sandal's strap band below the knee, over
+      // whatever a boot or sandal shows above it.
+      stampPiece(g, legDepth(s, 'armor'), thigh, add(knee, out), segAngle(hip, knee), prt('thigh', s), color);
+      continue;
     }
-    // Over the leg's footwear (its armour layer): his trouser leg ends on his sandal's strap band below the knee, over
-    // whatever a boot or sandal shows above it.
-    stampPiece(g, legDepth(s, 'armor'), thigh, add(knee, out), segAngle(hip, knee), prt('thigh', s), color);
+    const sandals = g.has('feet', 'feet_gladiator_sandals');
+    for (const d of layers) clearParts(g.L(d), sandals ? [prt('thigh', s), prt('shin', s)] : [prt('thigh', s)]);
+    const bend = founderLegBends(g, s);
+    stampBent(g, legDepth(s, 'armor'), thighMoving(g, s), knee, segAngle(hip, knee), prt('thigh', s), [
+      { about: knee, r: 5, bend: bend.knee, carry: true },
+      { about: hip, r: 5, bend: bend.hip },
+    ], trousersLine, color);
   }
 }
 
@@ -1386,9 +1451,8 @@ export const TOP_ITEMS: ItemDef[] = liftMain([
         if (k === 'line') return hex;
         return k === 'navy' ? retintHex(hex, FOUNDER_TUNIC, c) : retintHex(hex, FOUNDER_ARM_SKIN, g.look.skin);
       };
-      const r = g.rig;
-      founderFarArm(g, tint);
-      founderNearArm(g, tint);
+      founderArm(g, 'F', tint);
+      founderArm(g, 'N', tint);
     },
   },
 ]);
@@ -2064,12 +2128,13 @@ export const HAND_ITEMS: ItemDef[] = liftMain([
       // The owner's steel bracers, his pixels from his Solen picture (2026-10-21; tools/refs/
       // solen-bracers-from-ref.py): his Roman bracers repainted in steel, riding the forearms about the
       // elbows as those do. His steel follows the slot; his black line stays.
-      // The far one hangs where he drew it while his tunic dresses the far arm (founderFarOut).
+      // The far one hangs where he drew it while his tunic dresses the far arm (founderFarOut). Away from
+      // the way he drew the arm, only the bracer goes with it (founderBracer: not the cape lifted beside it).
       const tint = (_ch: string, hex: string) => (STEEL_BRACER_KIND[hex] === 'line' ? hex : retintHex(hex, STEEL_BRACER, steel));
       const { out } = founderFarOut(g);
       for (const s of SIDES) {
         const j = armJoints(g.rig, s);
-        stampPiece(g, armDepth(s, 'armor'), s === 'N' ? STEEL_BRACER_N : STEEL_BRACER_F, s === 'F' ? add(j.elbow, out) : j.elbow, segAngle(j.elbow, j.wrist), prt('forearm', s), tint);
+        stampPiece(g, armDepth(s, 'armor'), founderBracer(g, s), s === 'F' ? add(j.elbow, out) : j.elbow, segAngle(j.elbow, j.wrist), prt('forearm', s), tint);
       }
     },
   },

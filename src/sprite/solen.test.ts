@@ -17,8 +17,8 @@ import * as tunic from './items/founderTunicArt';
 import * as sword from './items/iceSwordArt';
 import * as bracers from './items/steelBracersArt';
 import { dojutsuToEye, getAppearance } from './legacy';
-import type { PaintedPiece } from './painted';
-import { GRID, RES } from './raster';
+import { continuedTo, limbOnly, type PaintedPiece } from './painted';
+import { GRID, MaterialTable, partIndex, RES } from './raster';
 import type { DrawCtx } from './ctx';
 import { founderFarOut, founderLegOut } from './items/founderOut';
 import { buildRig, frameCount, rigPoseFor } from './rig';
@@ -171,5 +171,61 @@ describe("the owner's Solen", () => {
     let n = 0;
     for (let i = 0; i < GRID * GRID; i++) if (opaque(f.rgba, i)) n++;
     assert.ok(n > 1500);
+  });
+
+  it('draws his arms and legs in every pose and frame, never ours beside or instead of them', () => {
+    const l = look();
+    // Our arm's skin and our trouser leg, as the body and the trousers under his pieces would show them.
+    const mats = new MaterialTable();
+    const ramp = (h: string, kind: 'skin' | 'cloth') => mats.ramps[mats.get(h, kind)].slice(1).map((c) => c.toLowerCase());
+    const ours = new Set([...ramp(l.skin, 'skin'), ...ramp(trousers.FOUNDER_TROUSERS, 'cloth')]);
+    const limbs = (['upperArmN', 'upperArmF', 'forearmN', 'forearmF', 'thighN', 'thighF', 'shinN', 'shinF'] as const).map((p) => partIndex(p));
+    for (const body of ['male', 'bulky'] as BodyType[]) {
+      const lb = { ...l, body };
+      for (const pose of POSES) {
+        const rp = rigPoseFor(pose, lb.cast?.style, lb.slots.held?.id);
+        for (let f = 0; f < frameCount(rp); f++) {
+          const fr = render(lb, pose, f);
+          const r = buildRig(body, rp, f);
+          // His fist closes every hand but a pointing one and one cradling a book (our hand pictures).
+          const his = (s: 'N' | 'F') => !['point', 'cradle'].includes((s === 'N' ? r.shapeN : r.shapeF) ?? '');
+          const mine = new Set([...limbs, ...(his('N') ? [partIndex('handN')] : []), ...(his('F') ? [partIndex('handF')] : [])]);
+          let n = 0;
+          for (let i = 0; i < GRID * GRID; i++) if (opaque(fr.rgba, i) && mine.has(fr.part[i]) && ours.has(hex(fr.rgba, i))) n++;
+          assert.equal(n, 0, `${body} ${pose} ${f}: ${n} pixels of our arm or trouser leg`);
+        }
+      }
+    }
+  });
+
+  it('closes his fists where our hands meet in the hand signs', () => {
+    for (const body of ['male', 'bulky'] as BodyType[]) {
+      for (let f = 0; f < frameCount('handsigns'); f++) {
+        const fr = render(look(body), 'handsigns', f);
+        const at = (p: number) => [...fr.part.keys()].filter((i) => fr.part[i] === p && opaque(fr.rgba, i)).map((i) => [i % GRID, Math.floor(i / GRID)]);
+        const near = at(partIndex('handN'));
+        const far = at(partIndex('handF'));
+        // (the far fist mostly behind the near one)
+        assert.ok(near.length > 20 && far.length > 0, `${body} ${f}: both fists drawn`);
+        // They touch: at most his black line between them.
+        const gap = Math.min(...near.map(([x, y]) => Math.min(...far.map(([u, w]) => Math.hypot(x - u, y - w)))));
+        assert.ok(gap < 3, `${body} ${f}: fists ${gap.toFixed(1)} px apart`);
+      }
+    }
+  });
+
+  it('takes only the limb along as it moves, his far arm continued up to the shoulder', () => {
+    const line = (h: string) => tunic.FOUNDER_TUNIC_KIND[h] === 'line';
+    // His far upper arm was lifted with the skirt's red beside it.
+    const arm = limbOnly(tunic.FOUNDER_ARM_F, line);
+    const red = Object.keys(tunic.FOUNDER_ARM_F.colors).filter((ch) => tunic.FOUNDER_TUNIC_KIND[tunic.FOUNDER_ARM_F.colors[ch]] === 'red');
+    assert.ok(red.length > 0 && arm.rows.every((row) => red.every((ch) => !row.includes(ch))));
+    // Every cell kept is his, where he put it.
+    arm.rows.forEach((row, y) => [...row].forEach((ch, x) => ch !== '.' && assert.equal(ch, tunic.FOUNDER_ARM_F.rows[y][x])));
+    // Continued up to the shoulder (the pivot), closed there by his line; below the row it continues, his rows.
+    const up = continuedTo(arm, tunic.FOUNDER_ARM_F.pivot[1], 2, line, (h) => tunic.FOUNDER_TUNIC_KIND[h] === 'skin');
+    assert.equal(up.pivot[1], 0);
+    assert.ok([...up.rows[0]].every((ch) => ch === '.' || line(up.colors[ch])));
+    assert.deepEqual(up.rows.slice(-4), arm.rows.slice(-4).map((r) => '.'.repeat(up.pivot[0] - arm.pivot[0]) + r));
   });
 });

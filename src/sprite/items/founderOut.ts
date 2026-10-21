@@ -53,8 +53,85 @@ export function founderArmStill(g: DrawCtx, s: Side): number {
   return Math.max(0, Math.min(1, (45 - Math.max(du, df)) / 15));
 }
 
+/**
+ * How far an arm bends past the way he drew it (degrees, the torso's turn taken off): `shoulder` turns its
+ * upper arm back to where it hangs at rest, `elbow` turns its upper arm on about the elbow until the elbow
+ * is bent as at rest. What fills his shoulder and elbow when they bend (see stampBent).
+ */
+export function founderArmBends(g: DrawCtx, s: Side): { shoulder: number; elbow: number } {
+  const r = g.rig;
+  const idle = idleRig(r.body);
+  const t = segAngle(r.pelvis, r.neck) - segAngle(idle.pelvis, idle.neck);
+  const [sh, el, wr] = s === 'N' ? [r.shoulderN, r.elbowN, r.wristN] : [r.shoulderF, r.elbowF, r.wristF];
+  const [sh0, el0, wr0] = s === 'N' ? [idle.shoulderN, idle.elbowN, idle.wristN] : [idle.shoulderF, idle.elbowF, idle.wristF];
+  const upper = segAngle(sh, el);
+  const upper0 = segAngle(sh0, el0);
+  return {
+    shoulder: wrap180(upper0 + t - upper),
+    elbow: wrap180(segAngle(el, wr) - upper - (segAngle(el0, wr0) - upper0)),
+  };
+}
+
+/** Within this many degrees of the way he drew it (shoulder and elbow), an arm is at rest. */
+const ARM_REST = 3;
+
+/**
+ * Whether an arm hangs as he drew it (its shoulder and elbow within ARM_REST degrees; the far one where he
+ * drew it, founderFarOut): then his pieces land whole on what they were cut from, else only the limb moves
+ * (limbOnly).
+ */
+export function founderArmAtRest(g: DrawCtx, s: Side): boolean {
+  const b = founderArmBends(g, s);
+  return Math.abs(b.shoulder) < ARM_REST && Math.abs(b.elbow) < ARM_REST && (s === 'N' || founderFarOut(g).w === 1 || !g.has('top', 'top_founder'));
+}
+
+/**
+ * How far a leg bends past the way he drew it (degrees): `hip` turns its thigh back to where it stands at
+ * rest, `knee` turns its thigh on about the knee until the knee is bent as at rest (see stampBent).
+ */
+export function founderLegBends(g: DrawCtx, s: Side): { hip: number; knee: number } {
+  const r = g.rig;
+  const idle = idleRig(r.body);
+  const [hip, knee, ankle] = s === 'N' ? [r.hipN, r.kneeN, r.ankleN] : [r.hipF, r.kneeF, r.ankleF];
+  const [hip0, knee0, ankle0] = s === 'N' ? [idle.hipN, idle.kneeN, idle.ankleN] : [idle.hipF, idle.kneeF, idle.ankleF];
+  const thigh = segAngle(hip, knee);
+  const thigh0 = segAngle(hip0, knee0);
+  return { hip: wrap180(thigh0 - thigh), knee: wrap180(segAngle(knee, ankle) - thigh - (segAngle(knee0, ankle0) - thigh0)) };
+}
+
+/** A body's thigh (hip to knee) or shin (knee to ankle), in fine pixels. */
+export const founderLegLen = (body: BodyType, s: Side, seg: 'thigh' | 'shin'): number => {
+  const r = idleRig(body);
+  const [a, b] = seg === 'thigh' ? (s === 'N' ? [r.hipN, r.kneeN] : [r.hipF, r.kneeF]) : s === 'N' ? [r.kneeN, r.ankleN] : [r.kneeF, r.ankleF];
+  return Math.hypot(b.x - a.x, b.y - a.y) * RES;
+};
+
+/** Takes the pixels of these parts out of a layer. */
+export function clearParts(L: Layer, parts: PartId[]): void {
+  if (!L.used) return;
+  const ids = new Set(parts.map((p) => partIndex(p)));
+  for (let i = 0; i < GRID * GRID; i++) if (L.mat[i] >= 0 && ids.has(L.part[i])) L.mat[i] = -1;
+}
+
 /** Within this many degrees of its idle angles, a leg stands as at rest. */
 const LEG_STILL = 6;
+
+/**
+ * Whether both legs stand as at rest (each thigh and shin within LEG_STILL degrees of their idle angles), or
+ * neither does (a kick passing through the stance moves no leg).
+ */
+export function founderLegsStill(g: DrawCtx): boolean {
+  const r = g.rig;
+  const idle = idleRig(r.body);
+  const turn = (a: Vec, b: Vec, a0: Vec, b0: Vec) => Math.abs(wrap180(segAngle(a, b) - segAngle(a0, b0)));
+  const d = Math.max(
+    turn(r.hipN, r.kneeN, idle.hipN, idle.kneeN),
+    turn(r.kneeN, r.ankleN, idle.kneeN, idle.ankleN),
+    turn(r.hipF, r.kneeF, idle.hipF, idle.kneeF),
+    turn(r.kneeF, r.ankleF, idle.kneeF, idle.ankleF),
+  );
+  return d <= LEG_STILL;
+}
 
 /**
  * How far his leg stands from ours (rig units), while his trousers and his sandals dress it: FOUNDER_LEG_OUT while our legs
@@ -63,19 +140,9 @@ const LEG_STILL = 6;
  * half of it. `w` is 1 or 0.
  */
 export function founderLegOut(g: DrawCtx, s: Side): { out: Vec; w: number } {
-  const r = g.rig;
   // Only on his sandals: any other footwear is drawn on our legs where they are.
   if (!g.has('bottom', 'bottom_founder') || !g.has('feet', 'feet_gladiator_sandals')) return { out: v(0, 0), w: 0 };
-  const idle = idleRig(r.body);
-  // Both legs stand as at rest, or neither is moved (a kick passing through the stance moves no leg).
-  const turn = (a: Vec, b: Vec, a0: Vec, b0: Vec) => Math.abs(wrap180(segAngle(a, b) - segAngle(a0, b0)));
-  const d = Math.max(
-    turn(r.hipN, r.kneeN, idle.hipN, idle.kneeN),
-    turn(r.kneeN, r.ankleN, idle.kneeN, idle.ankleN),
-    turn(r.hipF, r.kneeF, idle.hipF, idle.kneeF),
-    turn(r.kneeF, r.ankleF, idle.kneeF, idle.ankleF),
-  );
-  if (d > LEG_STILL) return { out: v(0, 0), w: 0 };
+  if (!founderLegsStill(g)) return { out: v(0, 0), w: 0 };
   const [dx, dy] = FOUNDER_LEG_OUT[s];
   return { out: v(dx / RES, dy / RES), w: 1 };
 }

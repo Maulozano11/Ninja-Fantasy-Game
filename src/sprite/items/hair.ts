@@ -13,6 +13,10 @@
 //   hairBack  — behind the head AND the torso/arms
 //   hairFront — over the head (cap, bangs, side locks)
 
+// The owner's Trunks hair (tools/refs/trunks-drifter-hair-from-ref.py, trunks-surge-hair-from-ref.py).
+import { DRIFTER_HAIR_BACK, DRIFTER_HAIR_BASE, DRIFTER_HAIR_FRONT, DRIFTER_HAIR_LINE } from './drifterHairArt';
+import { SURGE_HAIR_BACK, SURGE_HAIR_BASE, SURGE_HAIR_FRONT, SURGE_HAIR_LINE } from './surgeHairArt';
+
 import { faceAnchor } from '../body';
 import { retintHex } from '../color';
 import type { DrawCtx, ItemDef } from '../ctx';
@@ -20,8 +24,6 @@ import { ellipse, F_NO_OUTLINE, F_NO_TEXTURE, GRID, Layer, Pen, poly, v, Vec } f
 import type { PaintedPart } from './capeArt';
 import { braid, BraidArt, hairTemplate, hd, hlock, lock, LockOpts } from './hairkit';
 import { VALIANT_HAIR_BACK, VALIANT_HAIR_BASE, VALIANT_HAIR_FRONT, VALIANT_HAIR_LINE } from './valiantHairArt';
-import { DRIFTER_HAIR_BACK, DRIFTER_HAIR_BASE, DRIFTER_HAIR_FRONT, DRIFTER_HAIR_LINE } from './drifterHairArt';
-import { SURGE_HAIR_BACK, SURGE_HAIR_BASE, SURGE_HAIR_FRONT, SURGE_HAIR_LINE } from './surgeHairArt';
 
 const hairColor = (def: string) => [{ key: 'hair', label: 'Hair', default: def, kind: 'hair' as const }];
 

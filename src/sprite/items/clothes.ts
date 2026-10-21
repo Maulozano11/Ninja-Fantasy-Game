@@ -4,6 +4,16 @@
 // parameters); primitives rasterize at the fine 128x128 resolution, so seams,
 // stitching and buttons can be a single fine pixel.
 
+// The owner's Trunks 2 and 3 garments (tools/refs/trunks-*-from-ref.py).
+import { BELT, BELT_BUCKLE, BELT_LEATHER, BELT_SLOT } from './beltArt';
+import { BOMBER_BLUE, BOMBER_BODY, BOMBER_FIST_F, BOMBER_FIST_N, BOMBER_SHIRT, BOMBER_SLEEVE_FORE_F, BOMBER_SLEEVE_FORE_N, BOMBER_SLEEVE_UP_F, BOMBER_SLEEVE_UP_N, BOMBER_SLOT } from './bomberJacketArt';
+import { CARGO_GREEN, CARGO_SEAT, CARGO_SHIN_F, CARGO_SHIN_N, CARGO_SLOT, CARGO_THIGH_F, CARGO_THIGH_N } from './cargoPantsArt';
+import { LEGGINGS_CREST, LEGGINGS_PURPLE, LEGGINGS_SEAT, LEGGINGS_SHIN_F, LEGGINGS_SHIN_N, LEGGINGS_SLOT, LEGGINGS_THIGH_F, LEGGINGS_THIGH_N } from './leggingsArt';
+import { SHIRT_ARM_FORE_F, SHIRT_ARM_FORE_N, SHIRT_ARM_UP_F, SHIRT_ARM_UP_N, SHIRT_BLUE, SHIRT_BODY, SHIRT_SLEEVE_F, SHIRT_SLEEVE_N, SHIRT_SLOT, SHIRT_TRIM } from './shortSleeveShirtArt';
+import { TRAVELER_GLOVE_BLACK, TRAVELER_GLOVE_F, TRAVELER_GLOVE_N, TRAVELER_GLOVE_SLOT, TRAVELER_GLOVE_TONES } from './travelerGlovesArt';
+import { partsOff, savedAsHis, slotTint, stretchedPiece } from './trunksKit';
+import { isFemaleBody as femaleBody } from '../types';
+
 import { hexToRgb, retintHex } from '../color';
 import { armDepth, armJoints, armPoint, armSpan, DrawCtx, fillTorso, handDraw, handPose, ItemDef, legDepth, legJoints, legPoint, Side, torsoPoly } from '../ctx';
 import { PaintedPiece, segAngle, stampPiece } from '../painted';
@@ -11,45 +21,6 @@ import { add, along, ellipse, F_NO_EDGE, F_NO_OUTLINE, F_NO_TEXTURE, GRID, Layer
 import { stampTemplate, TemplatePalette } from '../rotsprite';
 import { crimsonKind, GAUNTLET_F, GAUNTLET_N, GLOVE_LEATHER, GLOVE_STEEL, GLOVE_TONES, GLOVE_TRIM } from './sabatonsGauntletsArt';
 import { BRACER_BRONZE, BRACER_F, BRACER_N, ROMAN_KIT_KIND } from './bracersSandalsArt';
-import { CARGO_GREEN, CARGO_SEAT, CARGO_SHIN_F, CARGO_SHIN_N, CARGO_SLOT, CARGO_THIGH_F, CARGO_THIGH_N } from './cargoPantsArt';
-import { partsOff, savedAsHis, slotTint, stretchedPiece } from './trunksKit';
-import { TRAVELER_GLOVE_BLACK, TRAVELER_GLOVE_F, TRAVELER_GLOVE_N, TRAVELER_GLOVE_SLOT, TRAVELER_GLOVE_TONES } from './travelerGlovesArt';
-import { BELT, BELT_BUCKLE, BELT_LEATHER, BELT_SLOT } from './beltArt';
-import {
-  SHIRT_ARM_FORE_F,
-  SHIRT_ARM_FORE_N,
-  SHIRT_ARM_UP_F,
-  SHIRT_ARM_UP_N,
-  SHIRT_BLUE,
-  SHIRT_BODY,
-  SHIRT_SLEEVE_F,
-  SHIRT_SLEEVE_N,
-  SHIRT_SLOT,
-  SHIRT_TRIM,
-} from './shortSleeveShirtArt';
-import {
-  BOMBER_BLUE,
-  BOMBER_BODY,
-  BOMBER_FIST_F,
-  BOMBER_FIST_N,
-  BOMBER_SHIRT,
-  BOMBER_SLEEVE_FORE_F,
-  BOMBER_SLEEVE_FORE_N,
-  BOMBER_SLEEVE_UP_F,
-  BOMBER_SLEEVE_UP_N,
-  BOMBER_SLOT,
-} from './bomberJacketArt';
-import {
-  LEGGINGS_CREST,
-  LEGGINGS_PURPLE,
-  LEGGINGS_SEAT,
-  LEGGINGS_SHIN_F,
-  LEGGINGS_SHIN_N,
-  LEGGINGS_SLOT,
-  LEGGINGS_THIGH_F,
-  LEGGINGS_THIGH_N,
-} from './leggingsArt';
-import { isFemaleBody } from '../types';
 
 type Kind = 'cloth' | 'leather' | 'metal';
 const col = (key: string, label: string, def: string, kind: Kind = 'cloth') => ({ key, label, default: def, kind });
@@ -927,7 +898,7 @@ export const TOP_ITEMS: ItemDef[] = liftMain([
       // female bodies keep the drawn shirt (his is a man's chest).
       const c = savedAsHis(c0, '#1e2a4a', SHIRT_BLUE);
       const t = savedAsHis(t0, '#e5e7eb', SHIRT_TRIM);
-      if (!isFemaleBody(g.rig.body)) {
+      if (!femaleBody(g.rig.body)) {
         drawShortShirt(g, c, t);
         return;
       }
@@ -1264,7 +1235,7 @@ export const TOP_ITEMS: ItemDef[] = liftMain([
       // The female bodies keep the drawn jacket (his is a man's chest and arms).
       const c = savedAsHis(c0, '#1f4f8f', BOMBER_BLUE);
       const u = savedAsHis(u0, '#2b2a33', BOMBER_SHIRT);
-      if (!isFemaleBody(g.rig.body)) {
+      if (!femaleBody(g.rig.body)) {
         drawBomber(g, c, u);
         return;
       }
@@ -1459,6 +1430,17 @@ function drawShortShirt(g: DrawCtx, blue: string, trim: string): void {
   stampPiece(g, 'torso.top', big ? stretchedPiece(SHIRT_BODY, 4, 5, 1) : SHIRT_BODY, r.neck, segAngle(r.pelvis, r.neck), 'torso', tint);
 }
 
+/** Our hand picture for the pose (open, pointing, relaxed, cradling) in these tones, by its shades. */
+function toneHand(g: DrawCtx, s: Side, tones: readonly string[]): void {
+  const tmp = new Layer();
+  handDraw(g, tmp, s, { mat: 0, part: prt('hand', s) });
+  const mats = tones.map((t) => g.m(t, 'flat'));
+  const L = g.L(armDepth(s, 'armor'));
+  for (let i = 0; i < GRID * GRID; i++) {
+    if (tmp.mat[i] >= 0) L.set(i % GRID, (i / GRID) | 0, mats[Math.min(tmp.shade[i], mats.length - 1)], 3, prt('hand', s), F_NO_TEXTURE | F_NO_OUTLINE);
+  }
+}
+
 export const BOTTOM_ITEMS: ItemDef[] = liftMain([
   {
     id: 'bottom_shinobi',
@@ -1540,7 +1522,7 @@ export const BOTTOM_ITEMS: ItemDef[] = liftMain([
     draw: (g, [c, p]) => {
       // The owner's trousers from his Trunks 2 picture (2026-10-21; tools/refs/trunks-cargo-from-ref.py).
       // The female bodies keep the drawn trousers with the thigh pouch (his are a man's legs).
-      if (!isFemaleBody(g.rig.body)) {
+      if (!femaleBody(g.rig.body)) {
         drawCargo(g, savedAsHis(c, '#55603f', CARGO_GREEN));
         return;
       }
@@ -1593,7 +1575,7 @@ export const BOTTOM_ITEMS: ItemDef[] = liftMain([
       // the drawn leggings (his are a man's legs). The old default colours mean his.
       const c = savedAsHis(c0, '#2a2433', LEGGINGS_PURPLE);
       const sc = savedAsHis(sc0, '#7a68a0', LEGGINGS_CREST);
-      if (!isFemaleBody(g.rig.body)) {
+      if (!femaleBody(g.rig.body)) {
         const tint = slotTint(g, LEGGINGS_SLOT, { main: LEGGINGS_PURPLE, seam: LEGGINGS_CREST }, { main: c, seam: sc });
         paintedTrousers(g, { seat: LEGGINGS_SEAT, thighN: LEGGINGS_THIGH_N, shinN: LEGGINGS_SHIN_N, thighF: LEGGINGS_THIGH_F, shinF: LEGGINGS_SHIN_F }, tint, LEGGINGS_HEM);
         return;
@@ -1698,7 +1680,7 @@ export const WAIST_ITEMS: ItemDef[] = liftMain([
       // broadened; the female bodies keep the drawn belt (his is cut for a man's waist).
       const c = savedAsHis(c0, '#4a3122', BELT_LEATHER);
       const bk = savedAsHis(bk0, '#c9b27a', BELT_BUCKLE);
-      if (!isFemaleBody(g.rig.body)) {
+      if (!femaleBody(g.rig.body)) {
         const r = g.rig;
         const tint = slotTint(g, BELT_SLOT, { main: BELT_LEATHER, buckle: BELT_BUCKLE }, { main: c, buckle: bk });
         stampPiece(g, 'waist', r.body === 'bulky' ? stretchedPiece(BELT, 3, 4, 0) : BELT, r.pelvis, segAngle(r.pelvis, r.neck), 'torso', tint);
@@ -1935,17 +1917,6 @@ function leatherHand(g: DrawCtx, s: Side, color: (ch: string, hex: string) => st
   const L = g.L(armDepth(s, 'armor'));
   for (let i = 0; i < GRID * GRID; i++) {
     if (tmp.mat[i] >= 0) L.set(i % GRID, (i / GRID) | 0, tones[Math.min(tmp.shade[i], tones.length - 1)], 3, prt('hand', s), F_NO_TEXTURE | F_NO_OUTLINE);
-  }
-}
-
-/** Our hand picture for the pose (open, pointing, relaxed, cradling) in these tones, by its shades. */
-function toneHand(g: DrawCtx, s: Side, tones: readonly string[]): void {
-  const tmp = new Layer();
-  handDraw(g, tmp, s, { mat: 0, part: prt('hand', s) });
-  const mats = tones.map((t) => g.m(t, 'flat'));
-  const L = g.L(armDepth(s, 'armor'));
-  for (let i = 0; i < GRID * GRID; i++) {
-    if (tmp.mat[i] >= 0) L.set(i % GRID, (i / GRID) | 0, mats[Math.min(tmp.shade[i], mats.length - 1)], 3, prt('hand', s), F_NO_TEXTURE | F_NO_OUTLINE);
   }
 }
 

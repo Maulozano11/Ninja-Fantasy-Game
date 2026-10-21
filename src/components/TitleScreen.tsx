@@ -237,7 +237,7 @@ export function TitleScreen({ hero, onStart, onNewGame, onPickNinja, onPractice 
       <div className="absolute inset-0 pointer-events-none bg-[linear-gradient(90deg,rgba(6,3,2,0.86)_0%,rgba(6,3,2,0.55)_30%,rgba(6,3,2,0)_58%)]" />
       <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_at_60%_45%,rgba(0,0,0,0)_45%,rgba(0,0,0,0.55)_100%)]" />
 
-      <div className="relative z-10 flex h-full flex-col px-6 sm:px-12 lg:px-20 py-8 sm:py-12">
+      <div className="relative z-10 flex h-full flex-col overflow-y-auto px-6 sm:px-12 lg:px-20 py-8 sm:py-12">
         <header>
           <h1 style={{ ...serif, textShadow: '0 3px 0 #000, 0 0 30px rgba(0,0,0,0.8)' }} className="leading-[0.95]">
             <span className="block text-[2.6rem] sm:text-[3.6rem] font-extrabold tracking-wide text-[#f2c46d]">{T('title1')}</span>
@@ -247,10 +247,10 @@ export function TitleScreen({ hero, onStart, onNewGame, onPickNinja, onPractice 
         </header>
 
         {/* The menu holds its place when a panel opens beside it (nothing jumps under the pointer). */}
-        <div className="flex-1 min-h-0 flex flex-col lg:flex-row items-start gap-8 pt-[10vh]">
+        <div className="flex-1 flex flex-col lg:flex-row items-start gap-8 pt-[10vh] pb-6">
           <nav className="flex flex-col gap-2.5 shrink-0" aria-label="Menu">
             <MenuItem label={T('start')} sub={startSub} onClick={() => (run || hero ? onStart() : onNewGame())} />
-            <MenuItem label={T('newGame')} sub={T('newGameSub')} active={panel === 'sure'} onClick={() => (run ? setPanel('sure') : onNewGame())} />
+            <MenuItem label={T('newGame')} sub={T('newGameSub')} active={panel === 'sure'} onClick={() => (run && runHero ? setPanel('sure') : onNewGame())} />
             <MenuItem label={T('load')} sub={T('loadSub')} active={panel === 'load'} onClick={() => setPanel(panel === 'load' ? 'none' : 'load')} />
             <MenuItem label={T('practice')} sub={T('practiceSub')} active={panel === 'practice'} onClick={() => setPanel(panel === 'practice' ? 'none' : 'practice')} />
             {panel === 'practice' && (
@@ -274,21 +274,6 @@ export function TitleScreen({ hero, onStart, onNewGame, onPickNinja, onPractice 
           </nav>
 
           {panel === 'load' && <LoadPanel onClose={() => setPanel('none')} onStart={onStart} onPickNinja={onPickNinja} />}
-          {panel === 'sure' && runHero && (
-            <div className="max-w-md rounded-sm border border-[#8a6a3a] bg-[#0e0a07]/90 p-1 shadow-2xl shadow-black">
-              <div className="border border-[#3d2e1b] px-5 py-4">
-                <p className="text-sm leading-relaxed text-[#efe3c4]">{T('sureNew', { name: runHero.name })}</p>
-                <div className="mt-3 flex gap-2">
-                  <button type="button" className={loud} onClick={onNewGame}>
-                    {T('sureYes')}
-                  </button>
-                  <button type="button" className={quiet} onClick={() => setPanel('none')}>
-                    {T('sureNo')}
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
 
         <footer className="flex items-end justify-between gap-4">
@@ -296,6 +281,26 @@ export function TitleScreen({ hero, onStart, onNewGame, onPickNinja, onPractice 
           <span className="text-[11px] text-[#8f8068] [text-shadow:0_1px_0_#000]">Shinobi 5e Chronicles</span>
         </footer>
       </div>
+
+      {/* Asked over the whole screen, so it shows whatever the window's size (beside or under the
+          menu it could fall off a short screen, and the click looked like it did nothing). */}
+      {panel === 'sure' && runHero && (
+        <div className="fixed inset-0 z-30 flex items-center justify-center bg-black/60 px-4" onClick={() => setPanel('none')}>
+          <div className="w-full max-w-md rounded-sm border border-[#8a6a3a] bg-[#0e0a07]/95 p-1 shadow-2xl shadow-black" onClick={(e) => e.stopPropagation()}>
+            <div className="border border-[#3d2e1b] px-5 py-4">
+              <p className="text-sm leading-relaxed text-[#efe3c4]">{T('sureNew', { name: runHero.name })}</p>
+              <div className="mt-3 flex gap-2">
+                <button type="button" className={loud} onClick={onNewGame}>
+                  {T('sureYes')}
+                </button>
+                <button type="button" className={quiet} onClick={() => setPanel('none')}>
+                  {T('sureNo')}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

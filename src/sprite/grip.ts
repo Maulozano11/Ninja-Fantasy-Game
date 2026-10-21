@@ -4,6 +4,7 @@
 
 import type { DrawCtx } from './ctx';
 import { FLAME_LONGSWORD } from './items/flameSwordArt';
+import { SAYA_SABER } from './items/sayaSwordArt';
 import { add, norm, scale, sub, Vec } from './raster';
 
 /** Screen angle of a hand-held blade per pose/frame (degrees, 0 = facing right, + = clockwise/down). */
@@ -39,7 +40,8 @@ export function swordAngle(g: DrawCtx): number {
     default:
       // Matches the reference: blade hangs across the legs at about 50 degrees. The owner's flame
       // longsword hangs at the angle he painted it (35), so at rest it is every pixel his.
-      return g.has('held', 'held_flame_sword') ? FLAME_LONGSWORD.angle : 52;
+      // Saya's saber hangs at the angle it is drawn at (45) for the same reason.
+      return g.has('held', 'held_flame_sword') ? FLAME_LONGSWORD.angle : g.has('held', 'held_shade_saber') ? SAYA_SABER.angle : 52;
   }
 }
 
@@ -90,7 +92,7 @@ export const handsBusy = (g: DrawCtx): boolean => BUSY.has(g.rig.pose) || !!g.lo
 export function gripAngle(g: DrawCtx): number | null {
   if (handsBusy(g) || handsLimp(g)) return null;
   if (g.has('held', 'held_naginata')) return poleAngle(g);
-  if (g.has('held', 'held_katana') || g.has('held', 'held_crystal') || g.has('held', 'held_ice_crystal') || g.has('held', 'held_flame_sword') || g.has('held', 'held_kunai')) return swordAngle(g);
+  if (g.has('held', 'held_katana') || g.has('held', 'held_crystal') || g.has('held', 'held_ice_crystal') || g.has('held', 'held_flame_sword') || g.has('held', 'held_shade_saber') || g.has('held', 'held_kunai')) return swordAngle(g);
   return null;
 }
 

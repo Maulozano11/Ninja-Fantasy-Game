@@ -225,6 +225,9 @@ const ES: Record<string, string> = {
   'Two brown leather belts slung across the hips with steel buckles, a pouch on the hip, and a black scabbard with gold fittings hanging behind the leg. Women only.': 'Dos cinturones de cuero marrón cruzados sobre las caderas con hebillas de acero, una bolsa en la cadera y una vaina negra con herrajes de oro colgando detrás de la pierna. Solo mujeres.',
   // Saya's leggings (feet_shade_wraps)
   'Thigh-high navy leggings wound with red bands, round knee pads rimmed in red, and armoured navy shoes with red trim.': 'Medias altas azul marino hasta el muslo envueltas en bandas rojas, rodilleras redondas con borde rojo y zapatos acorazados azul marino con ribete rojo.',
+  // Saya's sword
+  'Shade Saber': 'Sable de la Sombra',
+  'A straight steel blade with gold dots down its middle under a gold swept hilt, gold sparkles round it: the owner painted it for Saya.': 'Una hoja recta de acero con puntos de oro por el centro bajo una guarda de lazo de oro, con destellos de oro alrededor: el dueño la pintó para Saya.',
 };
 
 /** An editor label in the screen's language. */

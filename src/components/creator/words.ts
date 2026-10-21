@@ -47,6 +47,9 @@ const ES: Record<string, string> = {
   Bright: 'Brillantes',
   Piercing: 'Penetrantes',
   "Aiden's eyes": 'Los ojos de Aiden',
+  // the owner's eyes from his golden-haired paint-over (provisional name)
+  Glint: 'Destello',
+  'Lit red iris': 'Iris rojo con brillo',
   None: 'Ninguno',
   Forehead: 'Frente',
   Arm: 'Brazo',

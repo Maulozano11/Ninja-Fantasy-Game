@@ -142,6 +142,7 @@ const EYE_SHAPES: { id: EyeShape; label: string; sub?: string }[] = [
   { id: 'bright', label: 'Bright' },
   { id: 'piercing', label: 'Piercing' },
   { id: 'valiant', label: 'Valiant', sub: "Aiden's eyes" },
+  { id: 'glint', label: 'Glint', sub: 'Lit red iris' },
 ];
 
 const HEADBAND_POSITIONS: { id: HeadbandPosition; label: string }[] = [

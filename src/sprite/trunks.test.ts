@@ -19,6 +19,7 @@ import * as bomber from './items/bomberJacketArt';
 import * as leggings from './items/leggingsArt';
 import * as openBoots from './items/openToeBootsArt';
 import { PAINTED_SKIN } from './items/trunksKit';
+import { GLINT_EYE_COLORS, GLINT_EYES, GLINT_FAR_FROM } from './glintEyeArt';
 import { frameCount, rigPoseFor } from './rig';
 import { PARTS } from './raster';
 
@@ -140,6 +141,39 @@ describe("the owner's Trunks clothes", () => {
           }
         }
       }
+    }
+  });
+
+  it('draw his Trunks 3 eyes (glint) in his pixels at rest, his iris following the eye colour', () => {
+    // Our face anchor (the near eye's lash start) at male idle frame 0, where his eyes start.
+    const [nx, ny] = [123, 139];
+    const eyesAt = (l: SpriteAppearance, pose: SpritePose = 'idle') => {
+      const f = renderSprite(l, pose, 0);
+      return (eye: 'near' | 'far', r: number, c: number) => hex(f.rgba, (ny + r) * GRID + nx + (eye === 'near' ? 0 : GLINT_FAR_FROM) + c);
+    };
+    const l = painted({ hair: 'hair_surge' });
+    l.eyeShape = 'glint';
+    l.eyeColor = '#d81b2a';
+    const at = eyesAt(l);
+    for (const eye of ['near', 'far'] as const) {
+      GLINT_EYES.open[eye].rows.forEach((row, r) => {
+        for (let c = 0; c < row.length; c++) {
+          if (row[c] === '.') continue;
+          // (his lock of hair over the near eye's lash end is the hair's)
+          assert.equal(at(eye, r, c), GLINT_EYE_COLORS[row[c]], `${eye} eye ${r},${c}`);
+        }
+      });
+    }
+    // Another eye colour moves his reds, not his lashes nor his whites.
+    const blue = { ...l, eyeColor: '#2563eb' };
+    const bt = eyesAt(blue);
+    assert.notEqual(bt('near', 1, 3), at('near', 1, 3));
+    assert.equal(bt('near', 1, 0), at('near', 1, 0));
+    assert.equal(bt('near', 2, 1), at('near', 2, 1));
+    // Reading (his lids lowered) and knocked out (shut) draw too.
+    for (const pose of ['read', 'downed'] as SpritePose[]) {
+      const f = renderSprite(l, pose, 0);
+      assert.ok(f.rgba.length > 0, pose);
     }
   });
 

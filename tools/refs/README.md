@@ -154,3 +154,10 @@ folders.
       python3 -I tools/refs/trunks-bomber-from-ref.py src/sprite/items/bomberJacketArt.ts [study]
       python3 -I tools/refs/trunks-leggings-from-ref.py src/sprite/items/leggingsArt.ts [study]
       python3 -I tools/refs/trunks-cowboy-from-ref.py src/sprite/items/openToeBootsArt.ts [study]
+      python3 -I tools/refs/trunks-eyes-from-ref.py src/sprite/glintEyeArt.ts [study]
+
+  `trunks-eyes-from-ref.py` lifts his Trunks 3 eyes (no existing eye shape matched them) as the `glint` eye shape (a
+  provisional name), cell by cell over our face template's eye cells as `aiden-eyes-from-ref.py` does for `valiant`: his
+  far eye starts at the template's column 8, and his lit flecks of lid follow the character's skin. In poses, a limb's
+  two pieces overlap at the joint and boots' shafts reach under their feet, so a bent joint opens no notch; open hands
+  are our hand pictures in his skin's tones (`BOMBER_FIST_TONES`).

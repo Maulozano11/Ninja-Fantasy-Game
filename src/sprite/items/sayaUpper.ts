@@ -2,6 +2,7 @@
 // scale (2026-10-21: his heroines set the standard for women; tools/refs/saya-upper-from-ref.py and the
 // pieces it writes, sayaUpperArt.ts).
 
+import { SHOULDER_TURN } from '../body';
 import { retintHex } from '../color';
 import { armDepth, armJoints, Depth, DrawCtx, handDraw, handPose, ItemDef, Side } from '../ctx';
 import { PaintedPiece, segAngle, stampPiece } from '../painted';
@@ -111,6 +112,15 @@ function moveFarHand(L: Layer, out: Vec): void {
  * then the far upper guard over its top; the top over the torso, its part on the hips first (under a
  * skirt or a belt, which go over its hem); the near forearm guard, her bare near shoulder, then the near upper guard over their tops, so a bent elbow
  * shows the forearm guard under the elbow band and never the skin.
+ *
+ * Her bare near shoulder is the round of a hanging arm. Turned all the way with the upper arm (flung up
+ * and back to throw, raised in victory, swung across to thrust) its round came off the shoulder: a ball
+ * of skin in its own line on her back or chest, beside the raised guard. So it turns with the arm only
+ * as far as SHOULDER_TURN (the female body's own shoulder does no more, body.ts drawArm): further, it
+ * stays on the shoulder, a round cap under the raised guard that closes her back's line. Turned that
+ * far her top no longer covers the body's bandeau there either; she wears her top, not the bandeau, so
+ * it is taken away (offBandeau) and her bare side shows. Within SHOULDER_TURN (standing, walking, at
+ * rest) nothing changes: every pixel at rest is his.
  */
 function drawShadeArmor(g: DrawCtx, cloth: string, trim: string, plate: string): void {
   const r = g.rig;
@@ -129,10 +139,32 @@ function drawShadeArmor(g: DrawCtx, cloth: string, trim: string, plate: string):
   // forearm is shorter than he drew hers, so bent, its elbow end runs on past our elbow (over the end
   // of the upper arm below her upper guard) and its cuff stays above the hand
   put('nearArm.armor', SAYA_FORE_N, r.wristN, segAngle(r.elbowN, r.wristN), 'forearmN');
-  // her bare near shoulder (light skin in her line), then the upper guard over its foot
-  put('nearArm.armor', SAYA_SHOULDER_N, r.shoulderN, segAngle(r.shoulderN, r.elbowN), 'upperArmN');
-  put('nearArm.armor', SAYA_UPPER_N, r.shoulderN, segAngle(r.shoulderN, r.elbowN), 'upperArmN');
+  // her bare near shoulder (light skin in her line), turned with the arm no further than SHOULDER_TURN,
+  // then the upper guard over its foot
+  const upperN = segAngle(r.shoulderN, r.elbowN);
+  const turnN = wrapDeg(upperN - SAYA_SHOULDER_N.angle);
+  const capped = Math.max(-SHOULDER_TURN, Math.min(SHOULDER_TURN, turnN));
+  put('nearArm.armor', SAYA_SHOULDER_N, r.shoulderN, capped === turnN ? upperN : SAYA_SHOULDER_N.angle + capped, 'upperArmN');
+  put('nearArm.armor', SAYA_UPPER_N, r.shoulderN, upperN, 'upperArmN');
   paintBodySkin(g, cloth, out.x !== 0 || out.y !== 0);
+  if (capped !== turnN) offBandeau(g);
+}
+
+/**
+ * Takes away the body's bandeau (its undergarment above the shorts, torso.under): under her top it does
+ * not show; where her top leaves the torso bare (a raised arm's shoulder and side) the body's skin does.
+ */
+function offBandeau(g: DrawCtx): void {
+  const r = g.rig;
+  const U = g.L('torso.under');
+  if (!U.used) return;
+  for (let i = 0; i < GRID * GRID; i++) {
+    if (U.mat[i] < 0) continue;
+    // up from the pelvis along the torso (rig units): the shorts reach 2.2 (body.ts), the bandeau is the bust's
+    const dx = ((i % GRID) + 0.5) / RES - r.pelvis.x;
+    const dy = (((i / GRID) | 0) + 0.5) / RES - r.pelvis.y;
+    if (dx * r.up.x + dy * r.up.y > 3) U.mat[i] = -1;
+  }
 }
 
 /** Our body's layers that hold its own skin. */

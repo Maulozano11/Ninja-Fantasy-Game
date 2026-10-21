@@ -7,10 +7,10 @@ import { renderSprite } from './compose';
 import { retintHex } from './color';
 import { FEMALE_SKIN } from './femaleBodyArt';
 import { frameCount, rigPoseFor } from './rig';
-import { SAYA_GLOVE_N, SAYA_HAND_F, SAYA_FORE_F, SAYA_FORE_N, SAYA_PLATE, SAYA_TOP, SAYA_TOP_LOW, SAYA_UPPER_F, SAYA_UPPER_N } from './items/sayaUpperArt';
+import { SAYA_GLOVE_N, SAYA_HAND_F, SAYA_FORE_F, SAYA_FORE_N, SAYA_PLATE, SAYA_SHOULDER_N, SAYA_TOP, SAYA_TOP_LOW, SAYA_UPPER_F, SAYA_UPPER_N } from './items/sayaUpperArt';
 import { SAYA_SWORD_GUARD } from './items/sayaSwordArt';
 import { segAngle } from './painted';
-import { GRID, partIndex, RES } from './raster';
+import { GRID, MaterialTable, partIndex, RES } from './raster';
 import { CAMP_POSES, MOVE_POSES, SPRITE_POSES } from './types';
 import type { BodyType, SlotId, SpriteAppearance, SpritePose } from './types';
 
@@ -155,6 +155,34 @@ describe("Saya's top, arm guards and gloves", () => {
             }
           }
         }
+      }
+    }
+  });
+
+  it('keeps her bare near shoulder on the shoulder with the arm raised, and never shows the bandeau there', () => {
+    // Flung up to throw, raised in victory, swung across to thrust: her shoulder's round turned all the
+    // way with the arm came off the shoulder (a ball of skin in its own line on her back), and the
+    // body's bandeau (body.ts, '#3b3a46') showed beside her top under it.
+    const mats = new MaterialTable();
+    const ramp = mats.ramps[mats.get('#3b3a46', 'cloth')];
+    const skin = retintHex(SAYA_SHOULDER_N.colors.H, SAYA_SHOULDER_N.colors.H, '#f6c7a6');
+    const raised: [SpritePose, number][] = [['throw', 2], ['throw', 3], ['throw', 4], ['victory', 0], ['victory', 1], ['attack', 1], ['pierce', 2], ['pierce', 3]];
+    for (const body of ['female', 'slender'] as BodyType[]) {
+      for (const [pose, fr] of raised) {
+        const { rgba, rig } = renderSprite(look(body, SAYA), pose, fr);
+        const sx = Math.floor(rig.shoulderN.x * RES);
+        const sy = Math.floor(rig.shoulderN.y * RES);
+        let bandeau = 0;
+        let bare = 0;
+        for (let y = sy - 14; y <= sy + 14; y++) {
+          for (let x = sx - 14; x <= sx + 14; x++) {
+            const c = hexAt(rgba, x, y);
+            if (ramp.slice(1).includes(c)) bandeau++;
+            if (c === skin && Math.hypot(x - sx, y - sy) <= 5) bare++;
+          }
+        }
+        assert.equal(bandeau, 0, `${body} ${pose} ${fr}: bandeau beside her top`);
+        assert.ok(bare >= 6, `${body} ${pose} ${fr}: her bare shoulder on the shoulder joint (${bare})`);
       }
     }
   });

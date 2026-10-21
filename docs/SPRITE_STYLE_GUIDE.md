@@ -61,6 +61,8 @@ The face is a template copied pixel by pixel from the reference (`FACE_MAIN` and
   - The bulky body takes the same pieces widened by repeating his own columns, spread across the limb (never redrawn), as much wider as its limbs are (`widenPiece`).
 - **Feet** are pixel templates in 3/4 front view (`FootArt`, `footDraw` in `ctx.ts`). The near foot faces the viewer with the toes at the bottom; the far foot points right and is authored a shade darker. Each footwear item supplies its own `FootArt` (legend: `0-5` main, `a-f` sole/straps, `p-u` skin, `v-z` metal or stitching); shafts stay procedural.
 
+**The far (left) shoulder and arm** (the owner, 2026-10-21: "no te olvides de el hombro y brazo izquierdo de el diseño de los personajes masculinos", after the same fix on the heroines). In the 3/4 view facing right the character's left shoulder and arm are the far ones. When copying his picture, read that side cell by cell (bare shoulder, sleeve, bracer, fist): at rest every pixel is his and where he drew it, pinned with an offset that follows the far-arm joints when our joint sits elsewhere (`FAR_OUT`, tools/refs/saya-upper-from-ref.py). Nothing on that side may be cut off or hidden behind the torso in any pose; check throw-prepare, throw-release, cast and handsigns in particular, and report the pixels that still differ.
+
 ## 6. Hair
 
 - Hair is a pixel template anchored on the face (`hairTemplate` in `hairkit.ts`). The near-eye iris is at `(nx + 2, ny + 1)` from `faceAnchor`.

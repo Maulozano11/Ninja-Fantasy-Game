@@ -11,7 +11,7 @@ import { chargeLanding, handsBlocker, jutsuCost, needsSeals } from '../../battle
 import { aiAction, aiToAct } from '../../battle/ai';
 import { current } from '../../battle/turns';
 import { AURA_RADIUS, attackPreview, sovereign } from '../../battle/combat';
-import { JUTSU, areaOf, enhanced as enhancedSpec, fannedBy } from '../../battle/jutsu';
+import { JUTSU, areaOf, enhanced as enhancedSpec, fanDice, fannedBy } from '../../battle/jutsu';
 import type { JutsuSpec } from '../../battle/jutsu';
 import { cellCenter, cellOf, dist, fullCoverBetween, getMap, gridFor, idx, lineOfSight, sameCell } from '../../battle/map';
 import { canStop, occupancy, pathCost, pathTo, reachable } from '../../battle/nav';
@@ -547,7 +547,10 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
           sub = sub ? `${line} · ${sub}` : line;
         }
         // A fire aimed through a gale on the ground burns harder (the Gale Curtain).
-        if (fannedBy(spec, actor.pos, at, s.zones ?? [])) sub = sub ? `${sub} · ${T('aimFanned')}` : T('aimFanned');
+        if (fannedBy(spec, actor.pos, at, s.zones ?? [])) {
+          const fan = T(fanDice(spec) > 1 ? 'aimFanned2' : 'aimFanned');
+          sub = sub ? `${sub} · ${fan}` : fan;
+        }
         if (!self && dist(actor.pos, at) > spec.range + 0.1 + (hu?.bulk ?? 0) + (hu?.kind === 'hydra_head' ? 2.5 : 0)) label = T('aimNoReach');
         // Then sight, as the engine refuses it: a jutsu at one target needs to see it (a strike, no
         // metal wall between); an area or a point needs to see where it goes.

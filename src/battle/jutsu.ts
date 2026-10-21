@@ -575,10 +575,12 @@ export function areaTouchesCircle(area: AreaShape, center: Pt, radius: number): 
 export function fannedBy(spec: JutsuSpec, from: Pt, at: Pt, zones: readonly { id: string; center: Pt; radius: number }[]): { zone: string; at: Pt } | null {
   if (spec.dmgType !== 'Fire' || spec.special || !zones.length) return null;
   const area = areaOf(spec, from, at);
+  // Its flight: from the caster to where it lands. A cone or a line runs from the caster to its own
+  // end, wherever the point was aimed (a cone aimed past its length stops at its length).
+  const end = area && area.kind !== 'circle' ? areaEnd(area) : area?.kind === 'circle' ? area.center : at;
   let best: { zone: string; at: Pt; t: number } | null = null;
   for (const z of zones) {
-    // Its flight: from the caster to where it lands (the cones and lines start at the caster).
-    const n = nearSegment(from, area?.kind === 'circle' ? area.center : at, z.center);
+    const n = nearSegment(from, end, z.center);
     if (n.d <= z.radius) {
       if (!best || n.t < best.t) best = { zone: z.id, at: n.at, t: n.t };
       continue;
@@ -588,8 +590,17 @@ export function fannedBy(spec: JutsuSpec, from: Pt, at: Pt, zones: readonly { id
   return best && { zone: best.zone, at: best.at };
 }
 
+/** The far end of a cone's or a line's middle (the screen draws a beam to it, not to the point aimed at). */
+export function areaEnd(area: Extract<AreaShape, { kind: 'cone' | 'line' }>): Pt {
+  const a = (area.dir * Math.PI) / 180;
+  return { x: area.origin.x + Math.cos(a) * area.length, z: area.origin.z + Math.sin(a) * area.length };
+}
+
+/** How many damage dice a gale adds to a fire jutsu: one, two for a rank S. */
+export const fanDice = (spec: Pick<JutsuSpec, 'rank'>): number => (spec.rank === 'S' ? 2 : 1);
+
 /** A fanned fire burns harder: one more damage die (two for rank S), the area as it was aimed. */
 export function fanned(spec: JutsuSpec): JutsuSpec {
-  const more = spec.rank === 'S' ? 2 : 1;
+  const more = fanDice(spec);
   return { ...spec, dice: spec.dice?.replace(/^(\d+)d/, (_, n) => `${Number(n) + more}d`) };
 }

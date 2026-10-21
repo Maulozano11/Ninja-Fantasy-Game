@@ -11,11 +11,11 @@ import type { ShinobiCharacter } from '../types/shinobi';
 import type { BattleEvent, BattleState, GaleZone, Pt } from './types';
 import { applyAction, createBattle } from './engine';
 import type { BattleSetup } from './engine';
-import { cellBlocked, cellCenter, cellOf, dist, waterAtPt } from './map';
+import { cellBlocked, cellCenter, cellOf, dist, levelAtPt, waterAtPt } from './map';
 import { canStop } from './nav';
 import { endTurn } from './turns';
 import { offensive } from './intent';
-import { JUTSU, areaOf, enhanced, fanned, fannedBy } from './jutsu';
+import { JUTSU, areaEnd, areaOf, enhanced, fanDice, fanned, fannedBy } from './jutsu';
 import { addEffect } from '../rules/effects';
 import { floatLabel, logLine } from '../components/battle/battleLog';
 
@@ -190,6 +190,25 @@ describe('the Devouring Tide (Water, rank S)', () => {
     assert.equal(r.cond.prone, true, 'still knocked down');
   });
 
+  it('swept off a ledge it falls (1d6 a level); swept into the river it ends up in the water', () => {
+    // A rise on the river forest map: level 1 at x 37.75, level 0 at 36.25.
+    const s = duel('water_devouring_tide', { x: 37.75, z: 1.25 });
+    place(s, 'a', { x: 41.75, z: 1.25 });
+    const top = levelAtPt(s, s.units.rogue_0.pos);
+    const out = seeded(s, (t) => cast(t, 'water_devouring_tide', t.units.rogue_0.pos), (o) => failed(o, 'rogue_0') && !o.state.units.rogue_0.down);
+    const p = pushedOf(out.events, 'rogue_0')!;
+    assert.ok(p.fall >= 1, `it fell: ${p.fall}`);
+    assert.ok(levelAtPt(out.state, out.state.units.rogue_0.pos) < top);
+    assert.equal(out.events.filter((e) => e.t === 'damage' && e.unit === 'rogue_0').length, 2, 'the wave, then the fall');
+    // The river's bank: dry at x 26.25, the water from 27.75.
+    const r = duel('water_devouring_tide', { x: 26.25, z: 2.25 });
+    place(r, 'a', { x: 22.25, z: 2.25 });
+    assert.equal(waterAtPt(r, r.units.rogue_0.pos), 0);
+    const wet = seeded(r, (t) => cast(t, 'water_devouring_tide', t.units.rogue_0.pos), (o) => failed(o, 'rogue_0') && !o.state.units.rogue_0.down);
+    assert.ok(pushedOf(wet.events, 'rogue_0'));
+    assert.ok(waterAtPt(wet.state, wet.state.units.rogue_0.pos) > 0, 'in the river');
+  });
+
   it('big creatures stand firm: the hydra is neither swept nor knocked down', () => {
     const s = turnOf(createBattle(setup({ enemies: [{ kind: 'hydra', pos: { x: 17, z: 10 } }] })).state, 'a');
     s.units.a.jutsus = ['water_devouring_tide'];
@@ -216,6 +235,28 @@ describe('the Whirlwind Tower (Wind, rank A)', () => {
     assert.equal(r.cond.prone, true);
     // The pushed event names the jutsu, for the log.
     assert.equal(pushedOf(out.events, 'rogue_0')!.what, 'wind_whirlwind_tower');
+  });
+
+  it('the ones it drags don\'t land on top of each other: one stops at least 1.2 m from another', () => {
+    const s = duel('wind_whirlwind_tower', { x: 14, z: 10 }, { enemies: [{ kind: 'rogue', pos: { x: 14, z: 10 } }, { kind: 'rogue', pos: { x: 18, z: 10 } }] });
+    for (const u of Object.values(s.units)) u.jutsus = u.id === 'a' ? ['wind_whirlwind_tower'] : [];
+    place(s, 'rogue_0', { x: 14.5, z: 10 });
+    place(s, 'rogue_1', { x: 18.25, z: 10 });
+    const centre = { x: 16, z: 10 };
+    const out = seeded(s, (t) => cast(t, 'wind_whirlwind_tower', centre), (o) => failed(o, 'rogue_0') && failed(o, 'rogue_1') && !o.state.units.rogue_0.down && !o.state.units.rogue_1.down);
+    const [r0, r1] = [out.state.units.rogue_0, out.state.units.rogue_1];
+    assert.ok(r0.cond.prone && r1.cond.prone);
+    assert.ok(dist(r0.pos, r1.pos) >= 1.2, `apart: ${dist(r0.pos, r1.pos)}`);
+    assert.ok(r1.pos.x < s.units.rogue_1.pos.x, 'the second still dragged in, as far as it can');
+  });
+
+  it('one already in its middle stays there (knocked down, not moved)', () => {
+    const s = duel('wind_whirlwind_tower', { x: 15, z: 10 });
+    const centre = { ...s.units.rogue_0.pos };
+    const out = seeded(s, (t) => cast(t, 'wind_whirlwind_tower', centre), (o) => failed(o, 'rogue_0') && !o.state.units.rogue_0.down);
+    assert.equal(pushedOf(out.events, 'rogue_0'), undefined);
+    assert.deepEqual(out.state.units.rogue_0.pos, centre);
+    assert.equal(out.state.units.rogue_0.cond.prone, true);
   });
 
   it('not past 9 m; saved, half and on its feet', () => {
@@ -277,6 +318,42 @@ describe('the Gale Curtain (Wind, rank C): a gale on the ground that fans fire',
     assert.ok(dist(hit.at, z[0].center) <= 2.25 + 1e-6);
   });
 
+  it('enhanced, the gale is 3.4 m round', () => {
+    const s = duel('wind_gale_curtain');
+    const out = ok(cast(s, 'wind_gale_curtain', { x: 12, z: 10 }, { enhanced: true }));
+    assert.equal(out.state.zones![0].radius, 3.375);
+  });
+
+  it('fanned and enhanced add up: the enhanced die and the gale\'s (two for a rank S)', () => {
+    assert.deepEqual([fanDice(JUTSU.fireball_goukakyu), fanDice(JUTSU.great_fire_annihilation)], [1, 2]);
+    assert.equal(fanned(enhanced(JUTSU.fireball_goukakyu)).dice, '5d8');
+    assert.equal(fanned(enhanced(JUTSU.great_fire_annihilation)).dice, '11d12');
+  });
+
+  it('a cone aimed past its length meets only the gales it reaches', () => {
+    const cone = JUTSU.dragon_fire_bomb;
+    const from = { x: 8, z: 10 };
+    const L = cone.length!;
+    const aim = { x: from.x + L + 1.5, z: 10 };
+    // Its far edge 0.25 m past the cone's end: not reached, though the point aimed at is inside it.
+    assert.equal(fannedBy(cone, from, aim, [{ id: 'g', center: { x: from.x + L + 2.5, z: 10 }, radius: 2.25 }]), null);
+    // Its near edge 0.75 m inside the cone: reached.
+    assert.ok(fannedBy(cone, from, aim, [{ id: 'g', center: { x: from.x + L + 1.5, z: 10 }, radius: 2.25 }]));
+    // A line, aimed short: it runs its whole length, and so through a gale past the point.
+    assert.ok(fannedBy(JUTSU.dragon_fire_stream, from, { x: 9.5, z: 10 }, [{ id: 'g', center: { x: 14, z: 10 }, radius: 1 }]));
+  });
+
+  it('a rank S fire through it: two more dice, and the log and the aim say two', () => {
+    const s = duel('great_fire_annihilation', { x: 15, z: 10 });
+    s.zones = [{ id: 'g1', center: { x: 12, z: 10 }, radius: 2.25, owner: 'a', rounds: 3 }];
+    const out = ok(cast(s, 'great_fire_annihilation', s.units.rogue_0.pos));
+    const note = out.events.find((e) => e.t === 'note' && e.key.startsWith('fanned'))!;
+    assert.equal(note.t === 'note' && note.key, 'fanned2');
+    assert.equal(logLine(note, out.state, 'es')!.text, 'El vendaval aviva el fuego de Aki: dos dados de daño más');
+    assert.equal(logLine(note, out.state, 'en')!.text, 'The gale fans Aki’s fire: two more damage dice');
+    assert.equal(floatLabel(note, out.state, 'es'), '¡Avivado!');
+  });
+
   it('in battle: the fire cast through it says so (the event and the log) and deals at least as much as without it', () => {
     const plain = duel('fireball_goukakyu', { x: 15, z: 10 });
     plain.units.a.jutsus = ['fireball_goukakyu', 'wind_gale_curtain'];
@@ -326,6 +403,16 @@ describe('the Thunder Beam (Lightning, rank C) and the Rubble Gust (Earth, rank 
     assert.deepEqual(who, ['rogue_0', 'rogue_1']);
   });
 
+  it('Thunder Beam: the beam the screen draws ends where the line ends, wherever it was aimed', () => {
+    const from = { x: 8, z: 10 };
+    for (const aim of [{ x: 10.5, z: 10 }, { x: 18, z: 10 }, { x: 11, z: 14 }]) {
+      const line = areaOf(JUTSU.lightning_thunder_beam, from, aim)!;
+      assert.equal(line.kind, 'line');
+      if (line.kind !== 'line') continue;
+      assert.ok(Math.abs(dist(from, areaEnd(line)) - 9) < 1e-9, JSON.stringify(aim));
+    }
+  });
+
   it('Rubble Gust: a 4.5 m cone, a DEX save; failed, 2d6 and knocked down; saved, nothing at all', () => {
     const s = duel('earth_rubble_gust', { x: 11, z: 10 });
     const fail = seeded(s, (t) => cast(t, 'earth_rubble_gust', t.units.rogue_0.pos), (o) => failed(o, 'rogue_0') && !o.state.units.rogue_0.down);
@@ -350,6 +437,10 @@ describe('the gaps\' jutsu in the log', () => {
     const swept = pushedOf(out.events, 'rogue_0')!;
     assert.match(logLine(swept, st, 'es')!.text, /es arrastrad[oa] \(Técnica de Agua: Ola devoradora\)/);
     assert.match(logLine(swept, st, 'en')!.text, /is swept away \(Water Technique: Devouring Tide\)/);
+    // A tornado drags inward, it doesn't sweep away.
+    const dragged: BattleEvent = { ...swept, what: 'wind_whirlwind_tower' };
+    assert.match(logLine(dragged, st, 'en')!.text, /is dragged in \(Wind Technique: Whirlwind Tower\)/);
+    assert.match(logLine(dragged, st, 'es')!.text, /es arrastrad[oa] al centro \(Técnica de Viento: Torre del torbellino\)/);
     const down = out.events.find((e) => e.t === 'note' && e.key === 'knockedDown')!;
     assert.match(logLine(down, st, 'es')!.text, /cae derribad[oa]/);
     assert.match(floatLabel(down, st, 'es')!, /^Derribad[oa]$/);

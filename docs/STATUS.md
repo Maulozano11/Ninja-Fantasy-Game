@@ -161,7 +161,12 @@ Merge checks (`git merge-tree` on the origin tips, nothing changed):
   gale's numbers (2.25 m round, the rest of the round and two more, +1 damage die to fire through
   it). **Still his** (`docs/GAMEPLAY_DESIGN.md`, "Open questions on the gaps"): two per gap or two in
   all; the Tide without a 水 kanji; the gaps left (Earth A, Water D, a third Fire D/C); keep the name
-  "Cortina" for an area; only ninjas knocked down and swept.
+  "Cortina" for an area; only ninjas knocked down and swept; a caster inside a gale fans its fire
+  any way it fires; bludgeoning (Taijutsu Masters take half); earth dust in a chakra colour; the
+  shared "potenciado" log line. Review fixes on the branch: the beam drawn the line's whole length,
+  "+2 dados" for a rank S, a cone fans only the gales it reaches, the wave sweeps each one as its
+  crest goes over them, the gale drawn behind the ninjas in it, the dust in front of the caster and
+  across the cone, swept ninjas stop 1.2 m from others, the fanned Fireball's blast its own size.
 - **The elemental beasts are summons** (his rule, 2026-10-21: *"todos los elementales seran
   invocaciones que te ayudaran en el combate no ataques"*): the summon itself is to design (what it
   does, how long, its cost, who calls it). Jutsu that still show a beast as their attack: the Water

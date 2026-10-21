@@ -4,10 +4,10 @@
 
 import type { AreaShape, BattleEvent, BattleState, Down, GaleZone, Pt, Unit, Wall, WeaponNode } from '../../battle/types';
 import type { SpritePose } from '../../sprite/types';
-import { JUTSU, nearSegment } from '../../battle/jutsu';
+import { JUTSU, areaEnd, nearSegment } from '../../battle/jutsu';
 import type { JutsuSpec, VfxElement, VfxRole } from '../../battle/jutsu';
 import { POSE_FPS, TACKLE_IMPACT_FRAME } from '../../sprite/rig';
-import { FAN_MS, FAN_ROLL, TOWER_MS, TOWER_RISE, WAVE_CREST, blastMs, impactMs, signatureMs, skySignature } from './vfxSprites';
+import { FAN_MS, FAN_ROLL, TOWER_MS, TOWER_RISE, WAVE_CREST, WAVE_HOLD, blastMs, impactMs, signatureMs, skySignature } from './vfxSprites';
 import { jutsuTint, unitTint } from './vfxTintPlan';
 import { dist } from '../../battle/map';
 import { closestPoint } from '../../battle/structures';
@@ -103,6 +103,8 @@ export interface Fx {
    * brighter, and a Fireball grows into the Great Fireball.
    */
   fan?: number;
+  /** A cone's breaths spread across its width, not only along it (the Rubble Gust). */
+  spread?: boolean;
   /** A wave's rows of columns (the Devouring Tide); a tower's small whirlwinds (the Whirlwind Tower). */
   rows?: number;
   minis?: number;
@@ -166,6 +168,11 @@ export class Playback {
   fled = new Map<number, number>();
   /** When each jutsu wall was raised, so it plays its rise before standing. */
   wallBorn = new Map<string, number>();
+  /**
+   * When a wave's crest gets to each one it reaches (the Devouring Tide): that one's own events (its
+   * save, its damage, its sweep and fall) wait for it, so they play as the water goes over them.
+   */
+  due = new Map<string, number>();
   /** When each gale on the ground started turning, and the ones dying down (from when their event played). */
   zoneBorn = new Map<string, number>();
   zoneGone: { zone: GaleZone; t0: number }[] = [];
@@ -249,6 +256,16 @@ export class Playback {
     while (this.queue.length && now >= this.busyUntil) {
       const next = this.queue[0].t;
       if ((next === 'turn' || next === 'round' || next === 'end') && now < this.lingerUntil) break;
+      if (next === 'turn') this.due.clear();
+      const who = unitOfEvent(this.queue[0]);
+      const due = who === undefined ? undefined : this.due.get(who);
+      if (due !== undefined) {
+        this.due.delete(who!);
+        if (now < due) {
+          this.busyUntil = due;
+          break;
+        }
+      }
       const ev = this.queue.shift()!;
       const d = this.apply(ev, now, state);
       this.busyUntil = now + d / this.speed;
@@ -569,20 +586,22 @@ export class Playback {
       this.fx.push({ ...base, kind: 'aura', from, to: from, t0: now, dur: gather + 400, unit: ev.unit });
       const cone = ev.shape;
       const run = seq.wave.ms;
-      this.fx.push({ ...base, kind: 'wave', from: cone.origin, to: ev.at, area: cone, t0: at(gather), dur: run, rows: seq.wave.rows });
-      const who = this.reached(ev.unit);
+      // The water stays a moment at the end of its run (WAVE_HOLD), while the last ones are swept.
+      this.fx.push({ ...base, kind: 'wave', from: cone.origin, to: ev.at, area: cone, t0: at(gather), dur: run + WAVE_HOLD, rows: seq.wave.rows });
       const hitMs = impactMs(el, 'hit', 900);
-      let last = gather;
+      // Nearest first: each one's save, damage, sweep and fall play as the crest goes over them.
+      const crest = (id: string) => gather + run * WAVE_CREST(dist(cone.origin, this.posOf(id, now)), cone.length);
+      const who = this.reached(ev.unit).sort((p, q) => crest(p) - crest(q));
+      this.groupByUnit(who);
+      this.due.clear();
       who.forEach((id) => {
-        const p = this.posOf(id, now);
-        const t0 = gather + run * WAVE_CREST(dist(cone.origin, p), cone.length);
-        this.fx.push({ ...base, kind: 'burst', from, to: p, t0: at(t0), dur: hitMs, lift: [50, 50], role: 'hit' });
-        last = Math.max(last, t0);
+        const t0 = crest(id);
+        this.fx.push({ ...base, kind: 'burst', from, to: this.posOf(id, now), t0: at(t0), dur: hitMs, lift: [50, 50], role: 'hit' });
+        this.due.set(id, at(t0 + 80));
       });
       this.shakeAt(now, gather + run * 0.9, (seq.shake ?? 6) + (ev.enhanced ? 1 : 0));
-      linger(gather + run + 200);
-      // The rolls, the damage and the sweeps follow once the crest has gone over the last one.
-      return last + 250;
+      linger(gather + run + WAVE_HOLD);
+      return gather;
     }
 
     if (seq.tower && ev.shape?.kind === 'circle') {
@@ -609,7 +628,8 @@ export class Playback {
       announce();
       this.setPose(a, 'cast', now, 900);
       const LINE = 1300;
-      this.fx.push({ ...base, kind: 'line', from, to: ev.at, area: ev.shape, t0: at(CAST), dur: LINE, lift: [HAND_LIFT, 50] });
+      // The beam runs the whole line, wherever the point was aimed (the engine hits everyone in it).
+      this.fx.push({ ...base, kind: 'line', from, to: areaEnd(ev.shape), area: ev.shape, t0: at(CAST), dur: LINE, lift: [HAND_LIFT, 50] });
       const who = this.reached(ev.unit);
       const hitMs = impactMs(el, 'hit', 900);
       const len = ev.shape.length;
@@ -632,7 +652,7 @@ export class Playback {
       this.setPose(a, 'cast', now, 900);
       const gather = seq.castAura ?? CAST;
       this.fx.push({ ...base, kind: 'aura', from, to: from, t0: now, dur: gather + 300, unit: ev.unit });
-      this.fx.push({ ...base, kind: 'cone', from, to: ev.at, area: ev.shape, t0: at(gather), dur: seq.breathMs, lift: [70, 30] });
+      this.fx.push({ ...base, kind: 'cone', from, to: ev.at, area: ev.shape, t0: at(gather), dur: seq.breathMs, lift: [70, 30], spread: true });
       const who = this.reached(ev.unit);
       const hitMs = impactMs(el, 'hit', 900);
       const len = ev.shape.length;
@@ -754,7 +774,7 @@ export class Playback {
       return castDelay + long.hit;
     }
     if (ev.shape?.kind === 'line') {
-      this.fx.push({ ...base, kind: 'line', from, to: ev.at, area: ev.shape, dur: 1300, lift: [head ? 120 : 70, 50] });
+      this.fx.push({ ...base, kind: 'line', from, to: areaEnd(ev.shape), area: ev.shape, dur: 1300, lift: [head ? 120 : 70, 50] });
       linger(1300);
       return castDelay + 900;
     }
@@ -811,6 +831,30 @@ export class Playback {
     this.fx.push({ kind: 'swirl', element: 'wind', from: f.at, to: f.at, t0: meet - 120 / this.speed, dur: 900, lift: [56, 56], tint });
     const text = this.hooks.label({ t: 'note', key: 'fanned', params: {} });
     if (text) this.float(text, '#fdba74', f.at, now, { t0: meet, rise: 112, dur: 1300 / this.speed });
+  }
+
+  /**
+   * Puts together the events of each one the jutsu just played reaches (as reached() reads them),
+   * in `order`: a wave's rolls and falls then play one after another as it goes over them. Notes go
+   * with the event before them; what concerns nobody in `order` stays first.
+   */
+  private groupByUnit(order: string[]): void {
+    let end = 0;
+    while (end < this.queue.length) {
+      const t = this.queue[end].t;
+      if (t === 'jutsu' || t === 'turn' || t === 'round' || t === 'move' || t === 'end') break;
+      end++;
+    }
+    const rest: BattleEvent[] = [];
+    const of = new Map<string, BattleEvent[]>(order.map((id) => [id, []]));
+    let owner: string | undefined;
+    for (const e of this.queue.slice(0, end)) {
+      const u = unitOfEvent(e);
+      if (u !== undefined || e.t !== 'note') owner = u;
+      const list = owner === undefined ? undefined : of.get(owner);
+      (list ?? rest).push(e);
+    }
+    this.queue.splice(0, end, ...rest, ...order.flatMap((id) => of.get(id)!));
   }
 
   /** Who the jutsu just played heals (its heal event, if it comes before anything else happens). */
@@ -930,7 +974,8 @@ export class Playback {
         v.pos = { ...ev.from };
         this.setPose(v, 'hurt', now, 300);
         if (ev.fall) h.shake(3);
-        return 280;
+        // Swept by a jutsu: the fall follows at once, while it still slides.
+        return ev.what ? 120 : 280;
       }
       case 'attack': {
         const a = this.view(ev.unit);
@@ -1209,7 +1254,7 @@ export class Playback {
         return 600;
       case 'note': {
         // A fanned fire's word floats where the fire meets the wind (fan), not over its caster.
-        if (ev.key === 'fanned') return 0;
+        if (ev.key === 'fanned' || ev.key === 'fanned2') return 0;
         const u = Object.values(state.units).find((x) => x.name === ev.params?.name);
         if (u && label) this.float(label, '#e5e7eb', this.posOf(u.id, now), now, { rise: 130, dur: 1500 });
         return label ? 250 : 0;
@@ -1243,6 +1288,11 @@ export const VOLLEY: Record<VolleyPath, { pace: number; lands: number }> = {
 };
 
 /** Where a projectile that misses comes down: on past the target, each path to its own side. */
+/** The unit an event is about (its save, its damage, its fall…), if it is about one. */
+function unitOfEvent(e: BattleEvent): string | undefined {
+  return 'unit' in e && typeof e.unit === 'string' ? e.unit : undefined;
+}
+
 function pastTarget(from: Pt, to: Pt, path: VolleyPath): Pt {
   const d = Math.max(0.01, dist(from, to));
   const ux = (to.x - from.x) / d;

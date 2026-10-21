@@ -1081,8 +1081,10 @@ Curtain (C) and the Whirlwind Tower (A), Lightning and Earth a third rank C.
 - **Swept or dragged on a failed save** (the Tide 3 m away from the caster, the
   Tower 1.5 m toward its middle): it moves 1.5 m at a time and stops where
   something stands in the way (a wall, a tree, a structure, another unit, the
-  edge of the map), staying where it hits (a shove that is blocked doesn't move
-  at all). Off a ledge it falls (1d6 a level, and prone); into water its
+  edge of the map), going as far as it can (half a metre less at a time) and
+  staying where it hits (a shove that is blocked doesn't move at all). **It
+  stops at least 1.2 m from any other unit, standing or lying**, so two ninjas
+  swept or dragged together don't end up on top of each other. Off a ledge it falls (1d6 a level, and prone); into water its
   flames go out; into a river the usual water rules apply. **Only ninjas
   move**: big creatures don't. The move happens after the damage, then the fall.
 - **Water puts out the flames**: the Tide takes *Burning* off everyone it
@@ -1105,7 +1107,9 @@ Curtain (C) and the Whirlwind Tower (A), Lightning and Earth a third rank C.
     point goes through the gale (Three Embers, Pursuing Flame, a Fireball on
     its way), or its area reaches into it (a Fireball bursting over it, the
     Dragon Fire Stream's line, a cone like the Dragon Fire Bomb or the Great
-    Fire Annihilation), or its caster stands in it. Two gales fan it once.
+    Fire Annihilation), or its caster stands in it. A cone or a line counts
+    only as far as it reaches: aimed past its length, a gale beyond its end is
+    not fanned. Two gales fan it once.
   - **Whoever casts the fire**, friend or foe of the gale's maker: the wind
     doesn't choose. A Wind ninja can set it up for a Fire friend, and an enemy
     Fire ninja can use the party's gale too.
@@ -1118,7 +1122,9 @@ Curtain (C) and the Whirlwind Tower (A), Lightning and Earth a third rank C.
 
 Each plays in its caster's chakra colour, like every elemental jutsu.
 - **Devouring Tide**: the water aura round the caster, then the wave runs out
-  along the cone: a row of his water columns (`wall_depth`, his water wall seen
+  along the cone (it holds 0.7 s at the end of the cone as it fades; each one
+  it reaches is rolled for, hurt, swept and knocked down as the crest goes over
+  them, nearest first): a row of his water columns (`wall_depth`, his water wall seen
   from the front) across the cone at its crest, spreading as the cone opens, two
   fainter rows behind it and his spray (`breath`) before it; a splash on each
   one as the crest goes over them, and a heavy shake (6) as it breaks at the
@@ -1130,22 +1136,28 @@ Each plays in its caster's chakra colour, like every elemental jutsu.
   (`multi`) circle it, two behind and two in front; his leaf X on each one
   reached, a light shake (2), and the column fades.
 - **Gale Curtain**: his low wind wall (`wall`, the one running across the
-  screen) laid on the ground as two faint bands (55 %), one at the back and
+  screen) laid on the ground as two faint bands (42 %), one at the back and
   one at the front of the circle, rising when it starts and fading when it
-  dies down, with a faint dashed ring showing its reach.
+  dies down, with a faint dashed ring showing its reach. It is drawn behind
+  whoever stands in the circle or in front of it, so the ninjas in the wind
+  stay in sight.
 - **The fanned fire** ("que se vea como efecto"): from where the fire meets the
   wind it **burns brighter** (his frames drawn again over themselves as light),
-  **a Fireball grows into his Great Fireball** there, **his wind vortex**
-  (wind `bolt`) swirls round the fire at that spot in the gale's colour, and
-  "¡Avivado!" floats over it; the log says "El vendaval aviva el fuego de …: un
-  dado de daño más". Aiming a fire through a gale says so before casting.
+  **a flying Fireball grows into his Great Fireball** there (its blast stays
+  the Fireball's, only brighter: the area is the one aimed), **his wind
+  vortex** (wind `bolt`) swirls round the fire at that spot in the gale's
+  colour, and "¡Avivado!" floats over it; the log says "El vendaval aviva el
+  fuego de …: un dado de daño más" ("dos dados" for a rank S). Aiming a fire
+  through a gale says so before casting ("+1 dado", "+2 dados").
 - **Thunder Beam**: his lightning beam (`stream` + `stream_head`) runs along
-  the line, and a spark (`hit`) bursts on each one as the beam's head gets there.
+  the whole line (9 m, wherever the point was aimed: the beam drawn is the area
+  that hits; the Dragon Fire Stream's line too), and a spark (`hit`) bursts on
+  each one as the beam's head gets there.
 - **Rubble Gust**: the earth aura rises while the ninja casts, his dust and
-  stones (earth `breath`) roll out along the cone and a rock impact (`hit`)
-  falls on each one reached. His earth breath is anchored at its left end (the
-  others near the middle), so it is drawn back by the difference: the dust
-  ends where the cone ends (the proposal had it about 1 m long).
+  stones (earth `breath`) roll out across the cone (one near the caster, then
+  rows across it as it opens, each whole inside the cone: the dust starts in
+  front of the caster's hand and ends where the cone ends) and a rock impact
+  (`hit`) falls on each one reached.
 
 ### Open questions on the gaps
 
@@ -1162,3 +1174,17 @@ Each plays in its caster's chakra colour, like every elemental jutsu.
 5. The gale's numbers (2.25 m round, the rest of the round and two more, +1
    die to the fire that passes through, 2 chakra): confirm or change.
 6. Knocking down and sweeping only ninjas (big creatures stand firm): confirm.
+7. A caster standing in a gale fans its fire whichever way it fires (as
+   written above, "or its caster stands in it"): keep, or only fire that
+   flies through the wind?
+8. The Tide, the Tower and the Rubble Gust deal bludgeoning damage, so a
+   Taijutsu Master takes half (in a test battle the raider took 20 where the
+   others took 40). Keep, or give them no resistance?
+9. With a green chakra colour, the Rubble Gust's aura turns green but his
+   earth dust stays mostly brown with green specks: that is how the shared
+   chakra-colour recolour treats every earth sheet (not this branch). Fine,
+   or should earth dust take the colour more?
+10. The Spanish log says "¡… lanza Técnica de Agua: Ola devoradora
+    potenciado!" for every enhanced jutsu (a shared line, pinned by tests on
+    the integration branch): change it to "potenciada" (agreeing with
+    "Técnica") for all of them?

@@ -31,7 +31,7 @@ import { cellBlocked, cellCenter, cellOf, clearRun, coverBetween, dist, fullCove
 import { canStop, freeSpot, occupancy, pathTo, pathTouchesDeep, reachable, stepCost } from './nav';
 import type { AttackPreview } from './combat';
 import { attackPreview, check, damage, heal, hostileAura, passivePerception, reveal, revealOutOfHiding, rollDiceExpr, skillMod } from './combat';
-import { JUTSU, MIN_AIM, areaOf, enhanced, fanned, fannedBy } from './jutsu';
+import { JUTSU, MIN_AIM, areaOf, enhanced, fanDice, fanned, fannedBy } from './jutsu';
 import type { JutsuSpec } from './jutsu';
 import { KUNAI, enemyNameOf, enemyUnit, handsFree, unitFrom, wielded } from './units';
 import type { EnemyKind } from './units';
@@ -663,11 +663,20 @@ function landHit(s: BattleState, t: Unit, h: Hit, ev: BattleEvent[]): void {
   }
 }
 
+/** A swept unit stops short of another one (m), so two knocked down don't land on top of each other. */
+const SWEEP_GAP = 1.2;
+
+/** Some other unit on the map (standing or lying) would be nearer than SWEEP_GAP to `to`, and nearer than it is to `from`. */
+function sweptInto(s: BattleState, t: Unit, from: Pt, to: Pt): boolean {
+  return Object.values(s.units).some((o) => o.id !== t.id && o.down !== 'fled' && o.kind !== 'hydra_head' && !o.bulk && dist(o.pos, to) < SWEEP_GAP && dist(o.pos, to) < dist(o.pos, from));
+}
+
 /**
  * A jutsu moves a unit that failed its save (the Devouring Tide, the Whirlwind Tower): 1.5 m at a
  * time, away from `push.from` or toward it (never past it), until it has gone `push.m` or something
- * stops it (a wall, a tree, a structure, another unit, the edge of the map): it stays where it hits.
- * Swept off a ledge it falls (1d6 a level, and prone); swept into water its flames go out.
+ * stops it (a wall, a tree, a structure, another unit or coming within 1.2 m of one, the edge of the
+ * map): it stays where it hits. Swept off a ledge it falls (1d6 a level, and prone); swept into
+ * water its flames go out.
  */
 function sweep(s: BattleState, t: Unit, h: Hit, ev: BattleEvent[]): void {
   const p = h.push!;
@@ -676,13 +685,18 @@ function sweep(s: BattleState, t: Unit, h: Hit, ev: BattleEvent[]): void {
   while (left > 0.05) {
     const d = dist(t.pos, p.from);
     if (d < 0.05) break;
-    const step = Math.min(1.5, left, p.toward ? d : 1.5);
-    const k = (p.toward ? step : -step) / d;
-    const dest = { x: t.pos.x + (p.from.x - t.pos.x) * k, z: t.pos.z + (p.from.z - t.pos.z) * k };
-    const c = cellOf(dest);
-    if (!inGrid(gridFor(s.mapId), c) || sameCell(c, cellOf(t.pos)) || !pushClear(s, t.pos, cellCenter(c)) || !canStop(s, t, c)) break;
-    t.pos = cellCenter(c);
-    left -= step;
+    const full = Math.min(1.5, left, p.toward ? d : 1.5);
+    // A step that would run into something goes as far as it can (a cell less at a time), then stops.
+    let moved = 0;
+    for (let step = full; step > 0.25 && !moved; step -= 0.5) {
+      const k = (p.toward ? step : -step) / d;
+      const c = cellOf({ x: t.pos.x + (p.from.x - t.pos.x) * k, z: t.pos.z + (p.from.z - t.pos.z) * k });
+      if (!inGrid(gridFor(s.mapId), c) || sameCell(c, cellOf(t.pos)) || !pushClear(s, t.pos, cellCenter(c)) || !canStop(s, t, c) || sweptInto(s, t, t.pos, cellCenter(c))) continue;
+      t.pos = cellCenter(c);
+      moved = step;
+    }
+    if (moved < full) break;
+    left -= full;
   }
   if (sameCell(cellOf(from), cellOf(t.pos))) {
     t.pos = from;
@@ -874,7 +888,8 @@ function doJutsu(s: BattleState, u: Unit, id: string, atIn: Pt, targetId: string
   // A fire jutsu through a gale on the ground burns harder (the Gale Curtain).
   const fan = fannedBy(spec, u.pos, at, s.zones ?? []);
   ev.push({ t: 'jutsu', unit: u.id, jutsu: id, at, shape: area, enhanced: enh, ...(fan ? { fanned: fan } : {}) });
-  if (fan) ev.push({ t: 'note', key: 'fanned', params: { name: u.name } });
+  // The log says how many dice: one, two for a rank S (fanDice).
+  if (fan) ev.push({ t: 'note', key: fanDice(spec) > 1 ? 'fanned2' : 'fanned', params: { name: u.name } });
   const hits: Hit[] = [];
   switch (spec.special) {
     case 'heal':

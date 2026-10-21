@@ -646,8 +646,8 @@ export const JUTSUS_DATA: JutsuDefinition[] = [
     aoeRadius: 1.5,
     enhancementChakraCost: 2,
     enhancementEffect: 'The gale covers a 3.4 m radius.',
-    description: 'A gale starts turning on the ground and keeps turning. It hurts no one, but any fire jutsu that passes through it is fanned and burns harder: one more damage die, whoever cast it.',
-    descriptionEs: 'Un vendaval empieza a girar sobre el suelo y no se detiene. No hiere a nadie, pero todo jutsu de fuego que pasa por él se aviva y quema más: un dado de daño más, lo lance quien lo lance.',
+    description: 'A gale starts turning on the ground and keeps turning. It hurts no one, but any fire jutsu that passes through it is fanned and burns harder: one more damage die (two for a rank S), whoever cast it.',
+    descriptionEs: 'Un vendaval empieza a girar sobre el suelo y no se detiene. No hiere a nadie, pero todo jutsu de fuego que pasa por él se aviva y quema más: un dado de daño más (dos si es de rango S), lo lance quien lo lance.',
   },
   {
     id: 'wind_whirlwind_tower',

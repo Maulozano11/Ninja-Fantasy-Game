@@ -141,7 +141,7 @@ export function groundEffects(s: BattleState, area: AreaShape, type: DamageType 
 export function electrify(s: BattleState, points: Pt[], amount: number, dc: number, source: string, already: string[], ev: BattleEvent[]): Hit[] {
   const wet = points.filter((p) => waterAtPt(s, p) > 0);
   if (!wet.length || amount <= 0) return [];
-  for (const p of wet) ev.push({ t: 'electrified', at: p, radius: ELECTRIFY_RADIUS });
+  for (const p of wet) ev.push({ t: 'electrified', at: p, radius: ELECTRIFY_RADIUS, source });
   const hits: Hit[] = [];
   for (const u of onMapUnits(s)) {
     if (already.includes(u.id) || waterAtPt(s, u.pos) === 0) continue;

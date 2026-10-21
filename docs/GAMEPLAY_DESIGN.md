@@ -606,6 +606,60 @@ without them has its type alone); the ranks it opens are `rankOpen(j, clan,
 rankUp)` in `progression.ts`, and `fitToGrowth` swaps the jutsu a new choice no
 longer opens.
 
+### The chakra colour colours the elemental jutsu (decided 2026-10-21)
+
+The owner asked for it (*"que del color que pongas tu elemento de chakra [...]
+haga que tus habilidades o jutsus sean de ese tono de color"*), wanted only the
+elemental ones (*"solo los elementales tendrian este cambio"*), saw the sample
+and approved it: *"me encanto el color nuevo y aura de los jutsus que me
+enseñaste ejecuta el cambio de color para todos las habilidades elementales y
+para las bestias elementales"*.
+
+**Decided by the owner:**
+
+- Every **elemental** jutsu (fire, water, wind, lightning, earth) plays in its
+  caster's chakra colour (`appearance.chakra.tint`): projectiles, hits, blasts,
+  breaths, streams, spheres, walls, the signatures (Fireball and Great Fireball,
+  the Great Fire Annihilation, Kirin) and the **elemental beasts**.
+- Genjutsu, poison and chakra effects and their beasts (crows, cobra, griffin)
+  keep their colours.
+- With no colour picked (Natural), or the effect's own colour, his pixels play
+  exactly as he drew them. Recolouring never redraws: alpha, his dark line,
+  smoke, dust, rock debris, moss and the stone drake's eyes stay his.
+
+**As built** (the builder's reading, not his decisions):
+
+- What a jutsu throws keeps its caster's colour (a projectile in flight, an
+  earth or water wall that stays on the map). Enemies use their own chakra
+  colour if their look has one; today's enemy templates have none, so theirs
+  are his colours.
+- The beasts a jutsu summons today are the water dragon (Water Dragon), the
+  raiju (Lightning Hound) and the stone drake (Wood Dragon); they take the
+  colour. The phoenix and the crane have sheets and would take it too, but no
+  jutsu summons them yet.
+- "Elemental" is the jutsu's nature: a sword art that borrows the wind's slash
+  (Crescent Moon Dance, Kenjutsu) and the Adamantine Chains (Water, drawn as
+  chakra) keep their colours; Pursuing Flame (Mirai, a Katon jutsu) takes it.
+  Mystical Palm (Water, drawn as a green heal) and the explosive tag (Fire,
+  drawn as a paper tag and its blast) have nothing drawn in their element, so
+  they keep their colours too. **Open question for the owner:** should a heal
+  of an elemental nature glow in the chakra colour?
+- The flare when fire or lightning seals a hydra stump and the lightning that
+  runs through water take the caster's colour too.
+- White is a cool silver on water, wind, lightning and earth, a faint gold on
+  fire. Outlines that are not black in his sheets (the raiju's brown, the
+  crane's teal, the lightning's blue ring) stay his.
+- In the code: `src/sprite/vfxTint.ts` recolours (pure); the battle recolours
+  each sheet once per colour, frame by frame, in workers while the battle opens
+  and for any ninja who joins later (`src/components/battle/vfxTintCache.ts`,
+  `vfxTintPlan.ts`). A frame never gets made on the screen's own thread while it
+  plays: if it is not ready the effect holds its last ready frame a moment, and
+  before its first frames are ready its drawn stand-in plays in the colour. At
+  most about 200 MB of recoloured frames are kept (sheets unused for a while go
+  and are made again when cast); everything, workers included, goes when the
+  battle ends. In a browser without workers the big signatures (Annihilation,
+  Kirin) play in his colours instead of stuttering.
+
 ## Language, sound and tips
 
 - Battle, missions, camp, the title screen and the character creator in

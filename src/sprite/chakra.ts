@@ -81,9 +81,9 @@ const PALS: Record<ChakraColorId, Pal> = {
 /**
  * The 5-tone palette for a tint: one of the chakra colors (hand-tuned
  * palette) or any '#rrggbb' (generated: dark edge, dark, the color itself,
- * bright, near-white core).
+ * bright, near-white core). The jutsu effects use it too (vfxTint.ts), so they match the aura.
  */
-function tintPal(tint: string): Pal {
+export function tintPal(tint: string): Pal {
   if (Object.prototype.hasOwnProperty.call(PALS, tint)) return PALS[tint as ChakraColorId];
   const [r, g, b] = hexToRgb(tint);
   const [h, s, l] = rgbToHsl(r, g, b);

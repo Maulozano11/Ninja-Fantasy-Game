@@ -21,7 +21,8 @@ import type { SpriteAppearance, SpritePose } from '../../sprite/types';
 import { PHASE_ADD, PHASE_RAMP, phaseHue } from '../../sprite/phase';
 import { leavesNodes, nodeUnder } from '../../battle/clans';
 import { GRID } from '../../sprite/raster';
-import { drawAuraBack, drawVfxSprite, drawWallSprite } from './vfxSprites';
+import { drawAuraBack, drawVfxSprite, drawWallSprite, wallTint } from './vfxSprites';
+import { isTintElement, vfxTintColors } from '../../sprite/vfxTint';
 
 export interface Camera {
   /** World pixel at the screen's top-left. */
@@ -141,6 +142,13 @@ export const ELEMENT_COLORS: Record<string, [string, string, string, string]> = 
   chakra: ['#e0f2fe', '#8fdcff', '#38bdf8', '#0369a1'],
   poison: ['#f3ffd6', '#b5ef4a', '#65a30d', '#365314'],
 };
+
+/**
+ * An elemental effect's drawn colours (as ELEMENT_COLORS) in a chakra colour, from the same tones
+ * its sheets take; undefined when it keeps its own (Natural, its own colour, not elemental).
+ */
+export const tintColors = (element: string, tint: string | undefined): readonly [string, string, string, string] | undefined =>
+  tint && isTintElement(element) ? vfxTintColors(element, tint) : undefined;
 
 // --- the frame -----------------------------------------------------------------------------
 
@@ -593,6 +601,8 @@ function drawWallShape(ctx: CanvasRenderingContext2D, sc: Scene, w: Wall): void 
   const pa = project(map, a);
   const pb = project(map, b);
   const h = WALL_H[kind];
+  // In the chakra colour of whoever raised it (8-digit hex: the colour and its see-through).
+  const col = tintColors(kind, wallTint(sc, w));
   ctx.save();
   ctx.beginPath();
   ctx.moveTo(pa.X, pa.Y);
@@ -602,8 +612,8 @@ function drawWallShape(ctx: CanvasRenderingContext2D, sc: Scene, w: Wall): void 
   ctx.closePath();
   if (kind === 'earth') {
     const g = ctx.createLinearGradient(0, pa.Y - h, 0, pa.Y);
-    g.addColorStop(0, '#b08a5a');
-    g.addColorStop(1, '#5b3d22');
+    g.addColorStop(0, col ? col[1] : '#b08a5a');
+    g.addColorStop(1, col ? col[3] : '#5b3d22');
     ctx.fillStyle = g;
     ctx.fill();
     ctx.strokeStyle = '#2c1d10';
@@ -612,12 +622,12 @@ function drawWallShape(ctx: CanvasRenderingContext2D, sc: Scene, w: Wall): void 
   } else {
     const t = sc.now / 300;
     const g = ctx.createLinearGradient(0, pa.Y - h, 0, pa.Y);
-    g.addColorStop(0, 'rgba(186, 236, 255, 0.55)');
-    g.addColorStop(0.5 + 0.1 * Math.sin(t), 'rgba(76, 170, 230, 0.45)');
-    g.addColorStop(1, 'rgba(30, 100, 180, 0.55)');
+    g.addColorStop(0, col ? `${col[1]}8c` : 'rgba(186, 236, 255, 0.55)');
+    g.addColorStop(0.5 + 0.1 * Math.sin(t), col ? `${col[2]}73` : 'rgba(76, 170, 230, 0.45)');
+    g.addColorStop(1, col ? `${col[3]}8c` : 'rgba(30, 100, 180, 0.55)');
     ctx.fillStyle = g;
     ctx.fill();
-    ctx.strokeStyle = 'rgba(220, 245, 255, 0.8)';
+    ctx.strokeStyle = col ? `${col[0]}cc` : 'rgba(220, 245, 255, 0.8)';
     ctx.lineWidth = 1.5;
     ctx.stroke();
   }
@@ -1287,7 +1297,9 @@ function drawFx(ctx: CanvasRenderingContext2D, sc: Scene, f: Fx): void {
   const { map, now } = sc;
   const t = (now - f.t0) / (f.dur / sc.pb.speed);
   if (t < 0 || t > 1) return;
-  const col = ELEMENT_COLORS[f.element] ?? ELEMENT_COLORS.chakra;
+  // An elemental jutsu's stand-in plays in its caster's chakra colour, as its sheets would.
+  const tinted = tintColors(f.element, f.tint);
+  const col = tinted ?? ELEMENT_COLORS[f.element] ?? ELEMENT_COLORS.chakra;
   const big = f.enhanced ? 1.6 : 1;
   ctx.save();
   switch (f.kind) {
@@ -1502,7 +1514,7 @@ function drawFx(ctx: CanvasRenderingContext2D, sc: Scene, f: Fx): void {
     case 'wall': {
       const p = project(map, f.from);
       ctx.globalAlpha = 1 - t;
-      ctx.fillStyle = f.sig === 'debris' ? '#9aa3ad' : f.element === 'water' ? '#bae6fd' : '#c4a27a';
+      ctx.fillStyle = f.sig === 'debris' ? '#9aa3ad' : tinted ? col[1] : f.element === 'water' ? '#bae6fd' : '#c4a27a';
       for (let i = 0; i < 12; i++) {
         const x = p.X + (((i * 41) % 120) - 60);
         const y = p.Y - t * 40 - ((i * 17) % 30);

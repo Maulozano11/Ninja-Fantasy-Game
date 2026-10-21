@@ -45,6 +45,12 @@ export interface JutsuSpec {
   vfx: VfxRole;
   /** A signature effect of its own (vfx_<element>/<sig>, and <sig>_great or <sig>_enh enhanced). */
   sig?: string;
+  /**
+   * A fire, water, wind, lightning or earth jutsu (by its nature, and its effects are that
+   * element's): the screen plays its effects, its beast and its wall in the caster's chakra colour
+   * (the owner, 2026-10-21). A sword art that borrows the wind's slash is not one.
+   */
+  elemental?: boolean;
   /** Taijutsu and kenjutsu strikes are delivered in person (the caster dashes in). */
   melee: boolean;
   /** Loud: casting it in the stealth phase starts the battle. */
@@ -78,12 +84,15 @@ const ELEMENT: Record<string, VfxElement> = {
   Taijutsu: 'chakra',
   Kenjutsu: 'wind',
 };
+const ELEMENTAL_NATURES = ['Fire', 'Water', 'Wind', 'Lightning', 'Earth'];
 
 /** Per-jutsu touches the data can't say (the screen's effect, special behavior). */
 const OVERRIDE: Record<string, Partial<JutsuSpec>> = {
   shadow_clone: { shape: 'self', special: 'clone', vfx: 'aura', loud: false },
   body_flicker: { shape: 'point', special: 'flicker', vfx: 'aura', loud: false },
-  mystical_palm: { shape: 'ally', special: 'heal', vfx: 'aura', range: 1.6, loud: false },
+  // Water by nature, but drawn as the green glow of a heal: nothing of it is drawn in the element,
+  // so the chakra colour has nothing to colour.
+  mystical_palm: { shape: 'ally', special: 'heal', vfx: 'aura', range: 1.6, loud: false, elemental: false },
   substitution_kawarimi: { shape: 'self', special: 'kawarimi', cast: 'reaction', vfx: 'hit', loud: false },
   fireball_goukakyu: { vfx: 'sphere', effect: 'burning', sig: 'fireball' },
   dragon_fire_stream: { vfx: 'stream', effect: 'burning' },
@@ -142,7 +151,11 @@ function specOf(j: JutsuDefinition): JutsuSpec {
     loud: true,
     env: j.environmentalEffect === 'Ignites Wood' ? 'ignite' : j.environmentalEffect === 'Electrifies Water' ? 'electrify' : j.environmentalEffect === 'Clears Foliage' ? 'clearFoliage' : undefined,
   };
-  return { ...base, ...OVERRIDE[j.id] };
+  const spec = { ...base, ...OVERRIDE[j.id] };
+  // Elemental by nature, and still drawn as that element (the Adamantine Chains are Water but chakra;
+  // an override can say no, for the ones drawn as something else).
+  if (spec.elemental === undefined && ELEMENTAL_NATURES.includes(j.nature) && spec.element === ELEMENT[j.nature]) spec.elemental = true;
+  return spec;
 }
 
 /** The hydra heads' own attacks (not in the jutsu list a ninja learns from). */
@@ -231,6 +244,7 @@ const CLAN_SPECS: JutsuSpec[] = [
     saveHalf: true,
     saveAdv: 'disadvantage',
     vfx: 'bolt',
+    elemental: true,
     melee: false,
     loud: true,
   },

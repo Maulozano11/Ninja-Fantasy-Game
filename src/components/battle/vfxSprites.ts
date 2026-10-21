@@ -2,21 +2,41 @@
 // streams, breaths, blasts, hits, walls and auras, plus signature effects of single jutsu (the
 // Great Fireball, the Great Fire Annihilation) with their enhanced versions. When an element's
 // sheets aren't in the game yet, the renderer falls back to its drawn effects.
+// An elemental jutsu's effects, its beast and its wall play in the caster's chakra colour (the
+// owner, 2026-10-21): the effect's `tint` (a wall's, its owner's) picks a recoloured copy of the
+// sheet (vfxTintCache.ts); Natural, or the sheet's own colour, plays his sheet itself.
 
 import type { Wall } from '../../battle/types';
+import { isTintElement } from '../../sprite/vfxTint';
 import { worldSprite } from '../world/WorldSpriteView';
 import type { Fx } from './playback';
 import type { Scene } from './renderer';
 import { auraDx, fxPos, project } from './renderer';
+import { WAIT, hurryVfxSheets, tintedSheet } from './vfxTintCache';
+import type { TintedSheet } from './vfxTintCache';
+import { unitTint, wallElement } from './vfxTintPlan';
 
-type Sheet = NonNullable<ReturnType<typeof worldSprite>>;
+/** A sheet, and its copy in a chakra colour when it plays in one. */
+type Sheet = NonNullable<ReturnType<typeof worldSprite>> & { tinted?: TintedSheet };
 
 const ready = (s: Sheet) => s.img.complete && s.img.naturalWidth > 0;
 
-function sheet(element: string, name: string): Sheet | undefined {
-  const s = worldSprite(`vfx_${element}`, name);
-  return s && ready(s) ? s : undefined;
+/** The sheet as it plays in `tint` (an elemental one's recoloured copy), or his. */
+function inTint(s: Sheet, element: string, name: string, tint: string | undefined, beast = false): Sheet {
+  if (!tint || !isTintElement(element)) return s;
+  return tintedSheet(s, element, tint, beast, name)?.view ?? s;
 }
+
+/** The effects whose colour's frames were already moved to the front of the queue. */
+const hurried = new WeakSet<Fx>();
+
+function sheet(element: string, name: string, tint?: string): Sheet | undefined {
+  const s = worldSprite(`vfx_${element}`, name);
+  return s && ready(s) ? inTint(s, element, name, tint) : undefined;
+}
+
+/** A recoloured sheet had nothing ready for the frame just drawn (see blit). */
+let waiting = false;
 
 /** Draws one frame of a sheet's animation with its anchor at (x, y); mirrored to face left. */
 function blit(ctx: CanvasRenderingContext2D, s: Sheet, anim: string, frame: number, x: number, y: number, mirror: boolean, alpha = 1): void {
@@ -24,15 +44,24 @@ function blit(ctx: CanvasRenderingContext2D, s: Sheet, anim: string, frame: numb
   if (!a) return;
   const f = Math.max(0, Math.min(a.frames - 1, frame));
   const [ax, ay] = s.spec.anchor;
+  // In a chakra colour: the frame's recoloured copy, cut to its pixels (null: nothing in it).
+  const tf = s.tinted?.frame(a.row, f);
+  if (tf === null) return;
+  // Nothing of it made yet: the effect's drawn stand-in plays in the colour instead.
+  if (tf === WAIT) {
+    waiting = true;
+    return;
+  }
   ctx.save();
   ctx.globalAlpha = alpha;
   if (mirror) {
     ctx.translate(Math.round(x), 0);
     ctx.scale(-1, 1);
-    ctx.drawImage(s.img, f * s.spec.frameW, a.row * s.spec.frameH, s.spec.frameW, s.spec.frameH, -ax, Math.round(y - ay), s.spec.frameW, s.spec.frameH);
-  } else {
-    ctx.drawImage(s.img, f * s.spec.frameW, a.row * s.spec.frameH, s.spec.frameW, s.spec.frameH, Math.round(x - ax), Math.round(y - ay), s.spec.frameW, s.spec.frameH);
   }
+  const X = mirror ? -ax : Math.round(x - ax);
+  const Y = Math.round(y - ay);
+  if (tf) ctx.drawImage(tf.img, X + tf.x, Y + tf.y);
+  else ctx.drawImage(s.img, f * s.spec.frameW, a.row * s.spec.frameH, s.spec.frameW, s.spec.frameH, X, Y, s.spec.frameW, s.spec.frameH);
   ctx.restore();
 }
 
@@ -64,7 +93,7 @@ function flight(sc: Scene, f: Fx, t: number): { x: number; y: number } {
  */
 export function drawAuraBack(ctx: CanvasRenderingContext2D, sc: Scene, f: Fx): void {
   if (f.kind !== 'aura' || f.sig === 'eyes') return;
-  const s = sheet(f.element, 'aura_back');
+  const s = sheet(f.element, 'aura_back', f.tint);
   if (!s) return;
   const ms = (sc.now - f.t0) * sc.pb.speed;
   const t = ms / f.dur;
@@ -73,21 +102,72 @@ export function drawAuraBack(ctx: CanvasRenderingContext2D, sc: Scene, f: Fx): v
   blit(ctx, s, 'idle', frameAt(s, 'idle', ms), p.X + auraDx(sc, f.unit), p.Y, false, t > 0.7 ? (1 - t) / 0.3 : 1);
 }
 
-/** Draws an effect from its sheets. Returns false when the sheets aren't available. */
+/**
+ * Draws an effect from its sheets. Returns false when the sheets aren't available, or when its
+ * recoloured frames are not made yet: the renderer's drawn stand-in plays (in the colour) instead.
+ */
 export function drawVfxSprite(ctx: CanvasRenderingContext2D, sc: Scene, f: Fx): boolean {
+  waiting = false;
+  return drawFromSheets(ctx, sc, f) && !waiting;
+}
+
+/**
+ * The sheets an effect plays (vfx_<element>/<name>, or its element's beast), the main one first,
+ * as drawFromSheets picks them: the ones to hurry when it is about to play in a colour.
+ */
+function sheetsOf(f: Fx): { name: string; beast: boolean }[] {
+  const el = f.element;
+  const sig = f.sig && f.sig !== 'eyes' && f.sig !== 'tag' && f.sig !== 'log' ? sigSheetName(el, f.sig, !!f.enhanced) : undefined;
+  const named = (...n: string[]) => n.map((name) => ({ name, beast: false }));
+  if (sig) return named(sig, 'blast', 'bolt');
+  switch (f.kind) {
+    case 'projectile':
+      return f.role === 'beast' ? [{ name: el, beast: true }, ...named('bolt')] : named(f.role ?? 'bolt', 'bolt');
+    case 'area':
+      return named('blast');
+    case 'cone':
+      return named('breath');
+    case 'line':
+      return named('stream', 'stream_head');
+    case 'burst':
+      return named(...(f.role === 'multi' ? ['multi_hit'] : []), 'hit');
+    case 'aura':
+      return named('aura', 'aura_back');
+    default:
+      return [];
+  }
+}
+
+function drawFromSheets(ctx: CanvasRenderingContext2D, sc: Scene, f: Fx): boolean {
   const el = f.element;
   const ms = (sc.now - f.t0) * sc.pb.speed;
   const t = ms / f.dur;
-  if (t < 0 || t > 1) return true;
+  if (t < 0) {
+    // About to play (the cast's beat): the frames of the sheets it plays in its colour are made
+    // first, in their order (once per effect).
+    if (f.tint && isTintElement(el) && !hurried.has(f)) {
+      hurried.add(f);
+      const list = [];
+      for (const { name, beast } of sheetsOf(f)) {
+        const src = worldSprite(beast ? 'vfx_beasts' : `vfx_${el}`, name);
+        if (src) list.push({ src, element: el, color: f.tint, beast, name });
+      }
+      hurryVfxSheets(list);
+    }
+    return true;
+  }
+  if (t > 1) return true;
   const left = f.to.x < f.from.x - 0.01;
   const sig = f.sig && f.sig !== 'eyes' && f.sig !== 'tag' && f.sig !== 'log' ? sigSheetName(el, f.sig, !!f.enhanced) : undefined;
   switch (f.kind) {
     case 'projectile': {
       // Summoned beasts come from their own sheet (vfx_beasts/<element>) when it's in the game.
       // A role whose sheet doesn't fly (a blast, a hit) travels as the element's bolt.
+      // The one it plays takes the caster's colour (the others aren't recoloured for nothing).
       const beast = f.role === 'beast' && !sig ? worldSprite('vfx_beasts', el) : undefined;
-      const own = sheet(el, sig ?? f.role ?? 'bolt');
-      const s = (beast && ready(beast) ? beast : undefined) ?? (own?.spec.anims.fly ? own : undefined) ?? sheet(el, 'bolt');
+      const name = sig ?? f.role ?? 'bolt';
+      const own = sheet(el, name);
+      const s = beast && ready(beast) ? inTint(beast, el, el, f.tint, true) : own?.spec.anims.fly ? inTint(own, el, name, f.tint) : sheet(el, 'bolt', f.tint);
       if (!s) return false;
       const p = flight(sc, f, t);
       blit(ctx, s, 'fly', frameAt(s, 'fly', ms), p.x, p.y, left);
@@ -95,8 +175,8 @@ export function drawVfxSprite(ctx: CanvasRenderingContext2D, sc: Scene, f: Fx): 
     }
     case 'area': {
       // A signature without its own sheet in the game yet plays the element's blast.
-      const sigSheet = sig ? sheet(el, sig) : undefined;
-      const s = sigSheet ?? sheet(el, 'blast');
+      const sigSheet = sig ? sheet(el, sig, f.tint) : undefined;
+      const s = sigSheet ?? sheet(el, 'blast', f.tint);
       if (!s) return false;
       const c = f.area?.kind === 'circle' ? f.area.center : f.from;
       const p = project(sc.map, c);
@@ -123,7 +203,7 @@ export function drawVfxSprite(ctx: CanvasRenderingContext2D, sc: Scene, f: Fx): 
       const dir = f.area && f.area.kind === 'cone' ? f.area.dir : 0;
       const mirror = Math.cos((dir * Math.PI) / 180) < 0;
       if (sig) {
-        const s = sheet(el, sig);
+        const s = sheet(el, sig, f.tint);
         if (!s) return false;
         // The wave rolls out (its surge may be split over several rows), burns, then dies back.
         const surge = surgeMs(s);
@@ -142,7 +222,7 @@ export function drawVfxSprite(ctx: CanvasRenderingContext2D, sc: Scene, f: Fx): 
         else blit(ctx, s, 'fade', frameAt(s, 'fade', ms - (f.dur - fade)), o.X, o.Y, mirror);
         return true;
       }
-      const s = sheet(el, 'breath');
+      const s = sheet(el, 'breath', f.tint);
       if (!s || !f.area || f.area.kind !== 'cone') return false;
       // Breaths rolled out along the cone, one after another.
       const len = f.area.length;
@@ -157,8 +237,8 @@ export function drawVfxSprite(ctx: CanvasRenderingContext2D, sc: Scene, f: Fx): 
       return true;
     }
     case 'line': {
-      const tile = sheet(el, 'stream');
-      const head = sheet(el, 'stream_head');
+      const tile = sheet(el, 'stream', f.tint);
+      const head = sheet(el, 'stream_head', f.tint);
       if (!tile || !head) return false;
       const a = project(sc.map, f.from);
       const b = project(sc.map, f.to);
@@ -194,8 +274,8 @@ export function drawVfxSprite(ctx: CanvasRenderingContext2D, sc: Scene, f: Fx): 
     }
     case 'burst': {
       // Rock bullets and the like can have their own impact, which sprays away from the caster.
-      const own = f.role === 'multi' ? sheet(el, 'multi_hit') : undefined;
-      const s = own ?? sheet(el, 'hit');
+      const own = f.role === 'multi' ? sheet(el, 'multi_hit', f.tint) : undefined;
+      const s = own ?? sheet(el, 'hit', f.tint);
       if (!s) return false;
       const p = project(sc.map, f.to);
       const anim = Object.keys(s.spec.anims)[0];
@@ -204,7 +284,7 @@ export function drawVfxSprite(ctx: CanvasRenderingContext2D, sc: Scene, f: Fx): 
     }
     case 'aura': {
       if (f.sig === 'eyes') return false;
-      const s = sheet(el, 'aura');
+      const s = sheet(el, 'aura', f.tint);
       if (!s) return false;
       const p = project(sc.map, fxPos(sc, f));
       blit(ctx, s, 'idle', frameAt(s, 'idle', ms), p.X + auraDx(sc, f.unit), p.Y, false, t > 0.7 ? (1 - t) / 0.3 : 1);
@@ -222,14 +302,15 @@ export function drawVfxSprite(ctx: CanvasRenderingContext2D, sc: Scene, f: Fx): 
 /**
  * A standing jutsu wall from its element's sheets, turned to match the ground: `wall` runs across
  * the screen, `wall_diag` at 45° (mirrored for the other diagonal) and `wall_depth` straight into
- * the depth. It rises when raised, then idles. Returns false when the sheets aren't in the game.
+ * the depth. It rises when raised, then idles, in the chakra colour of whoever raised it. Returns
+ * false when the sheets aren't in the game.
  */
 export function drawWallSprite(ctx: CanvasRenderingContext2D, sc: Scene, w: Wall): boolean {
   const el = w.kind;
   const angle = (Math.atan2(Math.abs(w.b.z - w.a.z), Math.abs(w.b.x - w.a.x)) * 180) / Math.PI;
   const name = angle < 22.5 ? 'wall' : angle > 67.5 ? 'wall_depth' : 'wall_diag';
   // Without the turned sheet, the drawn wall (which follows any angle) stands in.
-  const s = sheet(el, name);
+  const s = sheet(el, name, wallTint(sc, w));
   if (!s) return false;
   // The diagonal sheet runs from a near-left end to a far-right end ("/"); mirror it for "\".
   const [left, right] = w.a.x <= w.b.x ? [w.a, w.b] : [w.b, w.a];
@@ -238,10 +319,15 @@ export function drawWallSprite(ctx: CanvasRenderingContext2D, sc: Scene, w: Wall
   const born = sc.pb.wallBorn.get(w.id);
   const ms = born === undefined ? Infinity : (sc.now - born) * sc.pb.speed;
   const rise = s.spec.anims.rise ? animMs(s, 'rise') : 0;
+  waiting = false;
   if (ms < rise) blit(ctx, s, 'rise', frameAt(s, 'rise', ms), p.X, p.Y, mirror);
   else blit(ctx, s, 'idle', frameAt(s, 'idle', Number.isFinite(ms) ? ms - rise : sc.now), p.X, p.Y, mirror);
-  return true;
+  // Its colour not made yet: the drawn wall stands in, in the colour.
+  return !waiting;
 }
+
+/** The chakra colour an earth or water wall stands in: its raiser's (undefined: his colours). */
+export const wallTint = (sc: Scene, w: Wall): string | undefined => (wallElement(w.kind) && w.owner ? unitTint(sc.state.units[w.owner]) : undefined);
 
 /** The phases a sky signature plays in order; empty for other sheets. */
 // 'sustain' holds the strike on the target a while (about a second) before it fades, for drama.

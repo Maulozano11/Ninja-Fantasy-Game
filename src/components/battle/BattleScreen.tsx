@@ -42,6 +42,8 @@ import { ActionDock, MiniRing, PartyDock, TopPlaque, plaqueUnit } from './hudKit
 import { Anchor, Piece, kitText, useHudScale } from './kit';
 import { appNavigate } from '../../appNav';
 import { preloadWorldGroups } from '../world/WorldSpriteView';
+import { prepareVfxTints, releaseVfxTints, tintStats } from './vfxTintCache';
+import { unitTint, unitTintSheets } from './vfxTintPlan';
 
 type Mode =
   | { k: 'move' }
@@ -248,8 +250,24 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
     };
   }, []);
 
-  // The jutsu effects' sheets load now, so the first cast already plays from its sheet.
-  useEffect(() => preloadWorldGroups('vfx_'), []);
+  // The jutsu effects' sheets load now, so the first cast already plays from its sheet. The
+  // elemental ones its ninjas can cast are recoloured in their chakra colours in the background
+  // (vfxTintCache.ts), and let go when the battle ends.
+  useEffect(() => {
+    preloadWorldGroups('vfx_');
+    return releaseVfxTints;
+  }, []);
+  // What to recolour: each ninja's colour and jutsu, so one who joins later (or whose colour
+  // changes) is prepared too. It starts a moment after the battle opens, when its own art is up.
+  const tintKey = Object.values(state.units)
+    .map((u) => `${u.id}:${unitTint(u) ?? ''}:${u.jutsus.join(',')}`)
+    .join('|');
+  const openedAt = useRef(performance.now());
+  useEffect(() => {
+    const go = () => prepareVfxTints(Object.values(stateRef.current.units).flatMap((u) => unitTintSheets(u, (id) => JUTSU[id])));
+    const t = window.setTimeout(go, Math.max(0, 800 - (performance.now() - openedAt.current)));
+    return () => window.clearTimeout(t);
+  }, [tintKey]);
 
   useEffect(() => {
     // Start centred on the party.
@@ -359,6 +377,8 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
       state: () => stateRef.current,
       act,
       busy: () => pbRef.current?.busy,
+      /** How the jutsu frames in chakra colours were made (vfxTintCache.ts). */
+      tints: () => ({ ...tintStats }),
       /** Where a unit is drawn right now (it trails the state while its walk plays). */
       shownAt: (id: string) => pbRef.current?.posOf(id, performance.now()),
       /** After a check edits the state in place: the screen takes it up and the views snap to it. */

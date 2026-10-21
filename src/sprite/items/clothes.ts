@@ -1688,7 +1688,8 @@ function glove(g: DrawCtx, s: Side, pen: Pen, grow: number, cut: boolean): void 
   const tmp = new Layer();
   handDraw(g, tmp, s, pen, grow);
   const { j, dir, R } = handFrame(g, s);
-  const lim: Record<string, number> = { fist: 0.42, grip: 0.42, open: 0.5, sign: 0.15, relaxed: 0.45 };
+  // (a fist turned up under the chin shows its bare fingers and knuckles on top)
+  const lim: Record<string, number> = { fist: 0.42, grip: 0.42, open: 0.5, sign: 0.15, relaxed: 0.45, chin: 0.05 };
   const k = lim[j.shape] ?? 0.45;
   stamp(L, tmp, (x, y) => {
     if (!cut) return true;

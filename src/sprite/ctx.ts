@@ -439,6 +439,27 @@ const HAND_CRADLE: PixelTemplate = {
     '..obbbo..',
   ],
 };
+/**
+ * Both hands clasped in front, fingers interlaced, after the owner's picture
+ * (the "sentado" in docs/reference/camp-poses-owner-reference.webp): the near
+ * hand's back on the left, the far hand's on the right, their fingers
+ * alternating along the bottom. The pivot is the near wrist; the far wrist
+ * comes in at the top right, CLASP_SPAN to the right of it (rig.ts).
+ */
+const HAND_CLASP: PixelTemplate = {
+  pivot: [3, 1],
+  rows: [
+    '..ooo...ooo..',
+    '.olbbo.osbso.',
+    'olbbbbobbbDo.',
+    'obbbbbbbbbsDo',
+    'osbbbbbbbbsso',
+    'obDbDbDbDbDso',
+    'oDsDsDsDsDsDo',
+    '.oDoDoDoDoDo.',
+    '..o.o.o.o.o..',
+  ],
+};
 /** Small relaxed hand, fingers loosely curled. */
 const HAND_RELAXED: PixelTemplate = {
   pivot: [4, 0],
@@ -490,10 +511,23 @@ export function handDraw(g: DrawCtx, L: Layer, s: Side, pen: Pen, grow = 0): voi
     stampTemplate(L, HAND_CRADLE, j.wrist, 0, pal, pen.part, { flags });
     return;
   }
-  if (j.shape === 'side') {
-    // The cradle turned a quarter: the near hand's fingers point right over the
-    // left edge, the far hand's left over the right edge (exact 90-degree turns).
-    stampTemplate(L, HAND_CRADLE, j.wrist, s === 'N' ? 90 : -90, pal, pen.part, { flags });
+  if (j.shape === 'chin') {
+    // The approved fist turned up at the wrist (flipped, so every pixel stays
+    // as drawn and the light stays upper left): the curled fingers on top,
+    // under the chin.
+    stampTemplate(L, HAND_FIST, j.wrist, 0, pal, pen.part, { flipY: true, flags });
+    return;
+  }
+  if (j.shape === 'clasp') {
+    if (s === 'N') stampTemplate(L, HAND_CLASP, j.wrist, 0, pal, pen.part, { flags });
+    return;
+  }
+  if (j.shape === 'book') {
+    // The cradle hand up the back of a held book, fingers spread over its
+    // cover. It lies in front of the book (campfx.ts), so even the far hand is
+    // drawn in the light.
+    const lit: TemplatePalette = { ...pal, D: [pen.mat, 1], x: [pen.mat, 1], s: [pen.mat, 2], b: [pen.mat, 3], l: [pen.mat, 4] };
+    stampTemplate(L, HAND_CRADLE, j.wrist, 0, lit, pen.part, { flags });
     return;
   }
   const t =

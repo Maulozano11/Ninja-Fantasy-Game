@@ -358,9 +358,9 @@ each is in Open questions). In the creator's Jutsu step:
   Lightning, Earth) in the **Element I, Element II and S-rank** slots is
   offered only to a ninja of that element.
 - **Not gated:** the jutsu with no element in those slots (taijutsu,
-  kenjutsu, genjutsu); everything in the **Utility** slot (including the
-  explosive tag, a Fire tool, and the mystical palm, Water healing); the **clan
-  secret**, whatever its element (it comes with the clan).
+  kenjutsu, genjutsu); everything in the **Utility** slot (the mystical palm,
+  Water healing, is a utility jutsu open to every nature: his answer 3 below);
+  the **clan secret**, whatever its element (it comes with the clan).
 - **Light and Void** (and a ninja that still has Shadow or Spirit) are offered
   no elemental jutsu: only the ones with no element, until their own exist.
 - **Changing the type** swaps each chosen jutsu of another element for one of
@@ -378,13 +378,69 @@ each is in Open questions). In the creator's Jutsu step:
   Fireball, Raiga's Earth Wall), an older sheet or an imported one keep their
   jutsu; the Jutsu step marks such a jutsu "no es de tu naturaleza", and it
   stays until the player changes that slot or the type. Saves are not changed.
-- **The random ninja** picks jutsu of its own nature (Element I and the S-rank
-  of its element when there is one) and its clan's secret.
+- **The random ninja** picks jutsu of its own nature at a new ninja's ranks
+  (Element I of its element when there is one) and its clan's secret; its
+  S-rank slot stays empty (his answer 1 below).
 - **Enemies and battles** are not touched: the gate is the creator's.
-- **Not built yet:** "a new ninja starts with low-rank ones only". No rank cap
-  is written down, and the creator's S-rank slot is part of the approved
-  layout, so which ranks a new ninja may take is a question for the owner
-  (Open questions).
+
+**His answers on the jutsu** (2026-10-21, later still), to four questions (which
+ranks a new ninja may pick; the gaps; the explosive tag and the healing palm;
+the swap on a type change): *"1 d y c y los de su clan 2 propuestas 3 sello
+explosivo es un item o herramienta consumible palma curativa es un jutsu de
+utilidad 4 si pero no se puede cambiar de tipo lo que se va poder es tener 2ndo
+elemento en nivel mas alto y 3 elementos si tienes el feat especial para eso"*.
+
+1. **A new ninja learns rank D and C jutsu, and its clan's** ("d y c y los de
+   su clan"). In the creator every slot offers only jutsu of rank D or C (of
+   the ninja's nature where the slot is gated), plus the jutsu of its own clan
+   whatever their rank (the clan secrets are all rank A). The creator's sheet
+   for a new ninja (a new game, a copy made from a legend, the random ninja)
+   is fitted to that: a jutsu above C is swapped for one it may learn, lowest
+   rank first. **The S-rank slot** has nothing to offer a new ninja, so it is
+   shown **locked, in its place** ("Se desbloquea más adelante · Rango S · no
+   es para un ninja nuevo", with a lock), and the slot is empty on the sheet
+   (in battle the ninja simply has no S-rank jutsu). *As built (the builder's
+   choice):* locked rather than removed, so the approved Jutsu layout keeps its
+   five rows and the slot is there when it opens. A line at the top of the
+   Jutsu step says the rule. **The legends keep their sheets** (they are
+   presets, not creator picks): their jutsu above C stay, marked "rango S: se
+   queda en su hoja"; so do a made ninja's from before this rule. When the
+   S-rank slot opens (a level, a mission) is not decided (Open questions).
+2. **The gaps** (Water has no S-rank jutsu, Wind one Element jutsu): he wants
+   **proposals** ("propuestas"). A separate job.
+3. **The explosive tag is an item** ("sello explosivo es un item o herramienta
+   consumible"), **the healing palm a utility jutsu** ("palma curativa es un
+   jutsu de utilidad"). The jutsu "Explosive Tag Ambush" (`trap_setter_tag`) is
+   gone from the jutsu lists; the tag is a consumable tool like the soldier
+   pill, in the party's backpack (`supplies.explosiveTags`: 2 per mission, 2 in
+   practice battles). In battle the item slots have two buttons for it:
+   **Sello explosivo** throws one up to 9 m (it blows up where it lands, as
+   before) and **Esconder sello** hides one on the ground up to 4.5 m (it blows
+   up when an enemy steps on it, or when fire or lightning reaches it: the
+   jutsu's old effect, 3d6 fire in 1.5 m, DEX save DC 13 for half; quiet, so it
+   doesn't give the ninja away while sneaking). Each use takes the action and
+   one tag. The creator's Jutsu step shows it under **Herramientas** as
+   "Objeto consumible · no es un jutsu". *Old saves:* a sheet that had the jutsu
+   gets the starting sheet's jutsu in that slot (Utility: Shunshin) and **2
+   tags in its own pouch** (`pouch.explosiveTags`), once (`migrateCharacter`);
+   the pouch joins the backpack at the start of every mission and practice
+   battle. (The 2 tags and the starting jutsu in its place are the builder's
+   choice.) The palm stays in the Utility slot, open to every nature.
+4. **The swap on a type change in the creator is fine** ("si"), **but the type
+   can't be changed afterwards** ("pero no se puede cambiar de tipo"): once a
+   ninja is made (the creator's Accept; every ninja saved on the device or
+   imported counts as made, also those saved before this rule) its chakra type
+   is fixed. Editing a saved ninja (title screen > a saved ninja > edit, which
+   opens the creator) shows Appearance > Chakra with the other types greyed out
+   and locked, and a note: "Tu tipo de chakra quedó fijo al crear a este ninja:
+   ya no puede cambiar. Un segundo elemento llegará a un nivel más alto." The
+   burst and the colour within the type can still change (the colour is only a
+   look), and "Ninja al azar" keeps the type. A new ninja and a legend picked as a
+   starting point can still change it.
+   **Future rule (his decision, not built):** a ninja gets a **second element
+   at a higher level** ("tener 2ndo elemento en nivel mas alto"), and a **third
+   element only with a special feat** ("3 elementos si tienes el feat especial
+   para eso"). The level and the feat are open questions.
 
 **In the code** there is one source: the look's burst
 (`appearance.chakra.color`, an id named after the colour the bursts were first
@@ -401,6 +457,12 @@ the creator and the random ninja offer. The saved copies are moved by
 mission load and imports all do it), from `LEGEND_BURST_CHANGE` (old and new
 burst per id; a test keeps it equal to the presets). The jutsu gate is
 `src/rules/jutsuNature.ts` (`jutsuChoices`, `fitLoadout`, `offNatureJutsus`).
+The ranks a new ninja may take and the fixed type are `src/rules/progression.ts`
+(`NEW_NINJA_RANKS`, `rankOpen`, `creatorChoices`, `fitNewNinja`, `aboveRank`,
+`typeFixed`, `asMade`; a made ninja has `created: true`); the explosive tag's
+move to the pouch is `src/rules/pouch.ts` (`tagJutsuToItem`, `withPouches`); in
+battle the `item` action takes `tag` (throw) or `tagTrap` (hide,
+`plantTag` in `src/battle/hazards.ts`).
 
 ## Language, sound and tips
 
@@ -531,8 +593,8 @@ folder (`WORLD_OUT`) until then. Approved so far: the river bridge.
 - The jutsu gate as built ("The nature decides the elemental jutsu" above),
   each the builder's choice:
   - the **S-rank** slot is gated like the Element slots;
-  - the **Utility** slot is not gated, so the explosive tag (Fire) and the
-    mystical palm (Water) are open to every nature;
+  - the **Utility** slot is not gated (settled for the palm by his answer 3:
+    "palma curativa es un jutsu de utilidad");
   - the **clan secret** is not gated (it comes with the clan, whatever its
     element);
   - **changing the type swaps** the jutsu of another element for ones of the
@@ -540,15 +602,36 @@ folder (`WORLD_OUT`) until then. Approved so far: the river bridge.
     them);
   - **Light and Void** (and a ninja still on Shadow or Spirit) learn only the
     jutsu with no element until their own exist;
-  - **the random ninja** takes Element I and the S-rank from its own element
-    when there is one, and its clan's secret.
-- "A new ninja starts with low-rank ones only": which ranks may a new ninja
-  take (D and C? up to B?), and what happens to the creator's S-rank slot, the
-  A-rank picks (Chidori, Temple of Nirvana) and the clan secrets (all A)? Not
-  built: today the nature gates the element, not the rank.
+  - **the random ninja** takes Element I from its own element when there is
+    one, and its clan's secret.
+- The ranks a new ninja may take (his answer 1, built): the S-rank slot is
+  shown locked in its place ("Se desbloquea más adelante") rather than
+  removed. Confirm. **When does it open** (a level, a mission, a teacher)? And
+  when may a ninja learn rank B and A jutsu?
+- The explosive tag as an item (his answer 3, built): a sheet that had the
+  jutsu gets 2 tags in its own pouch and Shunshin in its Utility slot; the
+  backpack carries 2 per mission. Confirm the numbers. Should tags be bought
+  or found later (a shop, loot)?
+- **The second element** (his rule: "2ndo elemento en nivel mas alto"): at
+  which level? *Proposal:* **level 5**, the start of the second tier of play,
+  where the clan abilities already grow (CLANS_DESIGN: Command "from level 5").
+  The player picks the second element then (any of the other four), and its
+  Element jutsu open to the Element slots.
+- **The third element** (his rule: "3 elementos si tienes el feat especial
+  para eso"): which feat? *Proposal:* a feat **"Tres naturalezas" / "Triple
+  Nature"**: prerequisite level 9 and a second element; you gain a third
+  element (its jutsu open to your Element slots), and once per long rest a
+  jutsu of one of your elements costs 1 chakra less when the previous jutsu
+  you cast that battle was of another of your elements (rewarding mixing).
+  Name and effect are a proposal.
 - Legends with a jutsu of a second element (Kaien's Fireball, Raiga's Earth
-  Wall): kept as they are (a legend is a preset, not a creator pick; the Jutsu
-  step marks the jutsu "no es de tu naturaleza"). Keep, or change them?
+  Wall): kept as they are (the Jutsu step marks the jutsu "no es de tu
+  naturaleza"). *Proposal* (not applied), with his second-element rule: give
+  them a formal **second nature**, **Kaien: Rayo + Fuego** (for Bola de fuego)
+  and **Raiga: Fuego + Tierra** (for Muro de tierra), so their sheets stop
+  showing the mark. Kaien is level 4 and Raiga level 5: under a level-5 rule
+  Raiga qualifies and Kaien would be an exception (a legend is a hand-made
+  preset, not a creator pick).
 - Gaps the gate shows: Water has no S-rank jutsu (a Water ninja's S-rank slot
   offers only Yasaka no Magatama and Night Guy); Wind has one Element jutsu
   (Great Breakthrough Blade), so its second Element slot takes a jutsu with no

@@ -56,12 +56,17 @@ Counter cycle Mirai > Northstar > Ryusei > Kōton > Mirai. Enemy ranks Minion, C
 Boss. Paths of Mastery: designed, not built.
 
 **Jutsu**
-- 27 creator jutsu (`JUTSUS_DATA`); 5 slots: Utility, Element I, Element II, Clan secret (fixed),
+- 26 creator jutsu (`JUTSUS_DATA`; the explosive tag is an item since `chakra/progression`); 5 slots: Utility, Element I, Element II, Clan secret (fixed),
   S-rank. Battle-only: 8 clan abilities and the hydra's Venom spit and Roar.
 - The nature gates the elemental jutsu in the creator (`chakra/decisions`, 2026-10-21): the Element
   and S-rank slots offer only the ninja's own element plus the jutsu with no element; Utility and
   the clan secret are free; Light and Void get no elemental jutsu yet (`src/rules/jutsuNature.ts`).
   How it gates is the builder's proposal, waiting for the owner's approval (section 3).
+- His jutsu answers (2026-10-21, on `chakra/progression`): a new ninja picks rank D and C jutsu and
+  its clan's (the S-rank slot shows locked, "Se desbloquea más adelante"; legends keep theirs); the
+  explosive tag is a consumable item (battle item slots: throw, or hide on the ground; old sheets
+  with the jutsu get 2 tags in their pouch); the chakra type is fixed once the ninja is made
+  (`src/rules/progression.ts`, `src/rules/pouch.ts`).
 - VFX for 8 elements (fire, water, wind, lightning, earth, genjutsu, chakra, poison), all from the
   owner's v3 sheets: full effect set, walls in 3 orientations, a beast each. Signature effects:
   Fireball / Great Fireball, Great Fire Annihilation (normal and enhanced), Kirin.
@@ -109,6 +114,7 @@ screens (`CampaignMode.tsx`, `ArenaSandbox.tsx`) are English only.
 | `icons/sheets-8-11` | `e413f5f` | His sheets 8–11 (14 icons): adamantine chains, dragon fire bomb, dragon fire stream, Kōton block and wall, Mirai evasion, Northstar Command and Submission, Ryusei swap and warp, shadow clone, 64 palms, water dragon, wood dragon | **WIP**: fixes, plus phase-style ninjas in Intercambio / Golpe Warp |
 | `scarlet/study` | `3b5dfe9` | His new character picture (`scarlet-owner-reference.jpg`) and study scripts `tools/refs/scarlet*`; nothing in `src` | **WIP**. Provisional name "Valen, the Scarlet Duke", no cape: **the owner must choose the name** |
 | `chakra/decisions` | not pushed (local) | The owner's four answers on the chakra types (saved legends updated, Shadow and Spirit pending, Cinder Nova kept) and the nature gating the elemental jutsu in the creator | **For review** |
+| `chakra/progression` | not pushed (local) | His jutsu answers: D/C + clan for a new ninja (S-rank slot locked), the explosive tag as an item (throw / hide, save migration), the chakra type fixed once made; second and third element written as his future rule | **For review** |
 | `worktree-*` | not on origin (local `6e2e8dc`) | Agent worktree leftovers | Stale |
 
 The tips are the pushed ones; fetch to see the latest. At this snapshot the owner's checkout had
@@ -139,8 +145,16 @@ Merge checks (`git merge-tree` on the origin tips, nothing changed):
   the Light and Void bursts); saved legend copies are moved only while they carry the legend's own
   jutsu (so a player's own Ren as Water stays); the jutsu gate itself (S-rank gated, Utility and
   clan secret not, the type change swaps the jutsu, Light and Void only jutsu with no element, the
-  random ninja's picks); which ranks a new ninja may take ("low-rank ones only", not built); Kaien's
-  Fireball and Raiga's Earth Wall (kept); Water has no S-rank jutsu and Wind one Element jutsu.
+  random ninja's picks); Kaien's Fireball and Raiga's Earth Wall (kept; proposed: a formal second
+  nature, Kaien Rayo + Fuego, Raiga Fuego + Tierra).
+- Decided 2026-10-21 (later still), his jutsu answers: *"1 d y c y los de su clan 2 propuestas 3
+  sello explosivo es un item o herramienta consumible palma curativa es un jutsu de utilidad 4 si
+  pero no se puede cambiar de tipo lo que se va poder es tener 2ndo elemento en nivel mas alto y 3
+  elementos si tienes el feat especial para eso"*. Built on `chakra/progression` (1, 3, 4); 2 (jutsu
+  proposals for the Water S-rank and Wind gaps) is a separate job. **Still his**: the S-rank slot
+  shown locked rather than removed, and when it opens; 2 tags in the pouch for an old sheet with the
+  tag jutsu; the second element's level (proposed: 5) and the third element's feat (proposed:
+  "Tres naturalezas"); see `docs/GAMEPLAY_DESIGN.md` Open questions.
 - Decided 2026-10-21 (later): **a new female standard** from the owner's four heroine pictures. He said our base bodies look "muy feos" next to his pictures: "sube la calidad de nuestro sprite para que se vea mas parecido aun a la referencia". The new female body (proportions, hands, feet, skin from his pixels) is being built on `body/female-v2` for his approval. He also said: "las piezas de armadura y ropa femeninas no las rehagas porque muy problablemente las borremos por no estar al nuevo stadard" - the existing female armour and clothing are NOT refitted to the new body; they will probably be deleted. Hairstyles, heads, eyes, weapons, capes and the heroines' parts do follow it. The male body stays (approved through the Aiden paint-over).
 - Decided 2026-10-21 (later): Warp Strike is renamed **"Shooting-Star Thrust"** (Spanish **"Estocada Fugaz"**; the owner first said "Shooting Star", then chose these), after the clan's name (Ryusei = shooting star) and to stay clear of other games' "Warp Strike". The id `ryusei_warp` stays. To apply once `icons/sheets-8-11` is merged (it touches the same strings): names, hotbar label, help text, log, clan texts, D24.
 - Decided 2026-10-21: the Spanish names are **"Golpe Warp"** and **"Comando"** (the owner: "los dos"); `icons/sheets-8-11` brings them and updates D24 in `docs/CLANS_DESIGN.md`.
@@ -225,8 +239,9 @@ kenjutsu, genjutsu); Utility and the clan secret are not gated; Light and Void g
 jutsu until their own exist. Changing the type swaps the jutsu of another element (lowest rank of
 the new element first) and says which; a sheet's own off-nature jutsu (Kaien's Fireball, Raiga's
 Earth Wall, older or imported sheets) stay, marked. The random ninja picks jutsu of its nature.
-Enemies and battles are untouched. Left: the rank cap for a new ninja ("low-rank ones only"; the
-owner decides which ranks), the jutsu of Light and Void (and later Shadow and Spirit), a Water
+Enemies and battles are untouched. The rank cap (D, C and the clan's) and the fixed type are built
+on `chakra/progression`. Left: when the S-rank slot opens, the second element (a higher level) and
+the third (a special feat), the jutsu of Light and Void (and later Shadow and Spirit), a Water
 S-rank, a second Wind jutsu.
 
 ### 4d. Missions (not built)

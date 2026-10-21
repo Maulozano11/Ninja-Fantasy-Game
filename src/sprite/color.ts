@@ -195,3 +195,19 @@ export function retintHex(hex: string, from: string, to: string): string {
   if (s0 < 0.15) return hslToHex(h1, s1, lt);
   return hslToHex(h + (h1 - h0), s0 > 0.02 ? (s * s1) / s0 : s1, lt);
 }
+
+/**
+ * A colour of the owner's skin (a painted head or limb) in the character's skin: the hue turned and the
+ * saturation scaled from the skin he painted it in (`from`), as retintHex turns his cloth, but the
+ * lightness scaled so that his skin lands exactly on the character's (the rest of the body is drawn in
+ * that skin), his shadows and black line staying as far below it and his lights as far above. In his own
+ * skin, his colour.
+ */
+export function retintSkin(hex: string, from: string, to: string): string {
+  if (to.toLowerCase() === from.toLowerCase()) return hex;
+  const [h, s, l] = rgbToHsl(...hexToRgb(hex));
+  const [h0, s0, l0] = rgbToHsl(...hexToRgb(from));
+  const [h1, s1, l1] = rgbToHsl(...hexToRgb(to));
+  const lt = l <= l0 ? (l * l1) / l0 : l1 + ((l - l0) * (1 - l1)) / (1 - l0);
+  return hslToHex(h + (h1 - h0), Math.min(1, (s * s1) / s0), lt);
+}

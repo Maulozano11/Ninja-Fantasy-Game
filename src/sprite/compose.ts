@@ -10,6 +10,7 @@ import { add, F_NO_OUTLINE, GRID, Layer, MaterialTable, norm, PAD, PartId, partI
 import { drawRig, Lay, layRig, Rig, rigPoseFor, turnPoint, turnRig } from './rig';
 import { drawCampFx } from './campfx';
 import { drawCastFx } from './castfx';
+import { maleSkinRamp, paintMaleSkin } from './maleSkin';
 import { applyTexture, frayHair } from './texture';
 import type { EyeSpecial, PixelEdit, SlotId, SpriteAppearance, SpritePose } from './types';
 
@@ -292,6 +293,7 @@ export function renderSprite(
     if (def && choice && !look.stowed) def.draw(g, resolveColors(def, choice.colors), resolveParts(def, choice.parts));
     drawThrowKunai(g);
   } else {
+    maleSkinRamp(g);
     drawBody(g);
     for (const slot of SLOT_ORDER) {
       const def = equipped.get(slot);
@@ -318,6 +320,7 @@ export function renderSprite(
     drawCampFx(g);
     if (rig.farHandFront) farHandToFront(layers, g);
     guardFace(g, layers);
+    paintMaleSkin(g, layers);
   }
 
   // Outline and flatten

@@ -57,6 +57,9 @@ JOINTS = {
     'ankleN': (44.42, 87.59),
     'ankleF': (61.94, 83.08),
 }
+# The skin of the sprite he painted over (Solen's, the default sheet's): our male in it is what he painted
+# on, so a character in this skin shows his skin pixels exactly; other skins move them as far.
+PAINTED_SKIN = '#f3c39c'
 # His ankles (the middle of each sandal where the shin meets the foot), read off his picture.
 HIS_ANKLES = {'N': (38.5, 91.0), 'F': (59.5, 89.5)}
 # Our feet's soles at idle frame 0 (the last row of each foot), in his pixels: his far foot is drawn 6 px

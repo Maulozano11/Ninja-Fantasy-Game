@@ -1305,8 +1305,8 @@ function warpNeeds(sc: Scene, u: Unit, look: SpriteAppearance): (() => boolean)[
  * frames and its flying weapon), a little per screen frame (one sprite frame, or a few small
  * weapon angles, within WARM_MS) and at quiet moments, so neither waits for them when it plays:
  * for phases and Warp Strikes already queued or playing; then, while nothing plays, for the
- * Ryusei whose turn it is and whoever stands on its Nodes (a Spatial Swap takes them along), and
- * for every Ryusei on the field.
+ * Ryusei whose turn it is and whoever stands on its Nodes (a Spatial Swap takes them along), for
+ * every Ryusei on the field, and last a Warp Strike with each Ryusei's weapon put away or drawn.
  */
 const WARM_MS = 4;
 const warpsReady = new WeakMap<BattleState, Set<string>>();
@@ -1322,7 +1322,8 @@ function warmPhases(sc: Scene): void {
   const turn = sc.pb.turnUnit ? sc.state.units[sc.pb.turnUnit] : undefined;
   // Every Ryusei, Nodes or not: what a Warp Strike needs wherever it goes is made before its first
   // Node is placed, so a Warp Strike cast right after leaves only its weapon's angles to make.
-  if (!ids.length && !warps.length && !sc.pb.busy) {
+  const quiet = !ids.length && !warps.length && !sc.pb.busy;
+  if (quiet) {
     if (turn && leavesNodes(turn) && !turn.down) {
       ids.push(turn.id);
       warps.push(turn.id);
@@ -1339,19 +1340,24 @@ function warmPhases(sc: Scene): void {
   // at again until the state changes.)
   let done = warpsReady.get(sc.state);
   if (!done) warpsReady.set(sc.state, (done = new Set()));
-  for (const id of warps) {
-    const u = sc.state.units[id];
-    const v = sc.pb.views.get(id);
-    const look = u && v ? lookOf({ ...u, armed: v.armed }) : undefined;
-    const key = `${id}|${v?.armed}|${!!v?.warp}`;
-    if (!u || !v || !look || done.has(key)) continue;
+  /** Makes some of what a unit's Warp Strike needs with its weapon drawn or not; false once out of time. */
+  const warmWarp = (u: Unit, armed: boolean, warping: boolean): boolean => {
+    const look = lookOf({ ...u, armed });
+    const key = `${u.id}|${armed}|${warping}`;
+    if (!look || done.has(key)) return true;
     let made = false;
     for (const need of warpNeeds(sc, u, look))
       if (need()) {
         made = true;
-        if (performance.now() - t0 > WARM_MS) return;
+        if (performance.now() - t0 > WARM_MS) return false;
       }
     if (!made) done.add(key);
+    return true;
+  };
+  for (const id of warps) {
+    const u = sc.state.units[id];
+    const v = sc.pb.views.get(id);
+    if (u && v && !warmWarp(u, v.armed, !!v.warp)) return;
   }
   if (performance.now() - t0 > WARM_MS) return;
   for (const id of ids) {
@@ -1365,6 +1371,15 @@ function warmPhases(sc: Scene): void {
       return;
     }
   }
+  // Last, still while nothing plays: each Ryusei's other look, its weapon put away or drawn again.
+  // Seals stow the weapon, and a Warp Strike is a bonus action: cast right after a jutsu (the AI
+  // casts it 260 ms after), it would otherwise make its frames as it plays.
+  if (quiet)
+    for (const id of warps) {
+      const u = sc.state.units[id];
+      const v = sc.pb.views.get(id);
+      if (u && v && u.weapon.held && !warmWarp(u, !v.armed, false)) return;
+    }
 }
 
 // --- the hydra ------------------------------------------------------------------------------

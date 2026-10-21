@@ -52,7 +52,27 @@ export interface Flight {
   hCatch: number;
   /** The angles the weapon is drawn at, facing right (whole degrees), for each: the ones to have made beforehand. */
   angles: number[];
+  /** A short throw: the weapon hangs in the air where it was first drawn and drifts into the hand (see HANG_AHEAD). */
+  hang: boolean;
+  /**
+   * Caught for a thrust the way it was thrown (the foe ahead, or none): that way (0 or 180 degrees),
+   * which its point keeps to. A curve that swings back toward the thrower (a warp toward or away
+   * from the camera starts its weapon ahead of the catch) carries it point first that way all the
+   * same, not turned round to fly point last and turn again in the hand.
+   */
+  fore?: number;
 }
+
+/**
+ * A throw whose catch is less than HANG_AHEAD pixels ahead of where the weapon is first drawn (and
+ * less than HANG_SIDE off its line) is too short to fly out and back: a warp of a metre or so lands
+ * the catching hand under the place the release pose leans its head into, so the weapon, first drawn
+ * clear of that head, is already there or past it. Flown, it would go on and come back point last,
+ * flipping in the hand; instead it hangs in the air point first, drifting into the hand as the ninja
+ * warps to it.
+ */
+const HANG_AHEAD = 32;
+const HANG_SIDE = 40;
 
 /**
  * The flight of a Warp Strike's weapon. `clear`: how far ahead of the fist it is first drawn
@@ -90,15 +110,13 @@ export function warpFlightOf(look: SpriteAppearance, clear: number, from: XY, to
   const d1 = dirOf(hEnd);
   // It leaves level (as it left the hand) and drops into the catch from a little above.
   const lift = Math.min(24, span * 0.06);
-  const f: Flight = {
-    S,
-    E,
-    P1: { x: S.x + d0.x * L, y: S.y + d0.y * L },
-    P2: { x: E.x - d1.x * L, y: E.y - d1.y * L - lift },
-    h0,
-    hCatch,
-    angles: [],
-  };
+  const ahead = (E.x - S.x) * d0.x + (E.y - S.y) * d0.y;
+  const hang = ahead < HANG_AHEAD && Math.abs((E.y - S.y) * d0.x - (E.x - S.x) * d0.y) < HANG_SIDE;
+  const f: Flight = hang
+    ? // Hanging, it rises a few pixels and settles into the hand.
+      { S, E, P1: { x: S.x, y: S.y - 6 }, P2: { x: E.x, y: E.y - 6 }, h0, hCatch, angles: [], hang }
+    : { S, E, P1: { x: S.x + d0.x * L, y: S.y + d0.y * L }, P2: { x: E.x - d1.x * L, y: E.y - d1.y * L - lift }, h0, hCatch, angles: [], hang };
+  if (land === face) f.fore = face > 0 ? 0 : 180;
   const set = new Set<number>();
   for (let i = 0; i <= 96; i++) set.add(canvasAngle(f, headingAlong(f, i / 96)).angle);
   // Settling into the hand from the way it came in.
@@ -126,10 +144,13 @@ function tangent(f: Flight, t: number): XY {
   };
 }
 
-/** The curve's heading at t (degrees): the way the point faces, point first. */
+/** The curve's heading at t (degrees): the way the point faces, point first (hanging, it turns from the throw's to the catch's). */
 function headingAlong(f: Flight, t: number): number {
+  if (f.hang) return f.h0 + wrap(f.hCatch - f.h0) * t * t * (3 - 2 * t);
   const d = tangent(f, t);
-  return Math.hypot(d.x, d.y) < 1e-6 ? f.h0 : (Math.atan2(d.y, d.x) * 180) / Math.PI;
+  const h = Math.hypot(d.x, d.y) < 1e-6 ? f.h0 : (Math.atan2(d.y, d.x) * 180) / Math.PI;
+  // Going back toward the thrower, it keeps its point forward (Flight.fore): mirrored, as level as it is steep.
+  return f.fore !== undefined && Math.abs(wrap(h - f.fore)) > 90 ? wrap(180 - h) : h;
 }
 
 /**
@@ -329,11 +350,12 @@ function glint(ctx: CanvasRenderingContext2D, x: number, y: number, r: number, a
 
 /**
  * The trail behind the flying weapon, `ms` into the Warp Strike: a comet streak of light on the way
- * the weapon's back end just went (three pixels wide at the weapon, white at its heart, thinning to
+ * the weapon's back end just went (five pixels wide at the weapon, white at its heart, thinning to
  * one and fading through the phase's blues; long enough to bridge the weapon's jump between screen
  * frames), the glittering sparkles it sheds as it goes (1 and 2 px specks and four-pointed glints,
  * white when new and fading through the blues, twinkling as they drift back and settle), a glint at
- * the hand as it leaves and one where it stops.
+ * its point as it is flung and one where it stops. The streak and the sparkles leave the thrower's
+ * face alone (releaseOff).
  */
 export function drawTrail(ctx: CanvasRenderingContext2D, f: Flight, t: WarpTimes, ms: number, alpha: number, reach: WeaponReach): void {
   if (ms < t.rel || ms > t.caught + TRAIL_AFTER) return;
@@ -342,8 +364,9 @@ export function drawTrail(ctx: CanvasRenderingContext2D, f: Flight, t: WarpTimes
   const off = releaseOff(f, back);
   ctx.save();
 
-  // The comet streak: walked back along the curve from the weapon's back end, a pixel at a time.
-  if (ms < t.caught + STREAK_OUT) {
+  // The comet streak: walked back along the curve from the weapon's back end, a pixel at a time
+  // (none for a weapon that hangs in the air: it is not going anywhere).
+  if (!f.hang && ms < t.caught + STREAK_OUT) {
     const head = Math.min(ms, t.caught);
     const wh = warpFlight(head, t);
     // As long as the way the weapon went in the last 45 ms (so the streak bridges a frame's jump),
@@ -359,7 +382,8 @@ export function drawTrail(ctx: CanvasRenderingContext2D, f: Flight, t: WarpTimes
       const p = bezier(f, w);
       const tg = tangent(f, w);
       const m = Math.max(1e-3, Math.hypot(tg.x, tg.y));
-      const d = { x: tg.x / m, y: tg.y / m };
+      // Behind the weapon's back end as it is drawn (its point kept forward: Flight.fore).
+      const d = dirOf(headingAlong(f, w));
       const x = p.x - d.x * back;
       const y = p.y - d.y * back;
       const key = `${Math.round(x)},${Math.round(y)}`;

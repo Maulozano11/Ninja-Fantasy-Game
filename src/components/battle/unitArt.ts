@@ -196,7 +196,8 @@ export interface ThrownCanvas {
 }
 
 const thrown = new Map<string, ThrownCanvas>();
-const THROWN_MAX = 240;
+// Room for every Ryusei's flights with its weapon drawn and stowed (renderer.ts warmPhases makes both).
+const THROWN_MAX = 480;
 const thrownKey = (look: SpriteAppearance, angle: number): string => `${idOf(look)}|${thrownItem(look)}|${Math.round(angle)}`;
 
 /**

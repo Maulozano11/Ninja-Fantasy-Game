@@ -215,6 +215,16 @@ export const ROMAN_KIT_KIND: Record<string, 'line' | 'skin' | 'red' | 'stud' | '
   '#f5be98': 'skin',
 };
 
+/** Where each piece lands in our male idle frame 0, unturned: the fine pixel of its first row's first cell. */
+export const ROMAN_KIT_REST: Record<string, [number, number]> = {
+  BRACER_N: [104, 163],
+  BRACER_F: [138, 165],
+  SANDAL_SHIN_N: [116, 197],
+  SANDAL_FOOT_N: [114, 212],
+  SANDAL_SHIN_F: [132, 191],
+  SANDAL_FOOT_F: [132, 204],
+};
+
 /** The near bronze bracer, elbow to wrist: it rides the forearm about the elbow. */
 export const BRACER_N: PaintedPiece = {
   pivot: [6, 1],
@@ -274,7 +284,7 @@ export const BRACER_N: PaintedPiece = {
 
 /** The far bronze bracer, dark with a bronze edge: it rides the forearm about the elbow. */
 export const BRACER_F: PaintedPiece = {
-  pivot: [2, -1],
+  pivot: [-1, -1],
   angle: 60.43,
   rows: [
     '.aabc..',

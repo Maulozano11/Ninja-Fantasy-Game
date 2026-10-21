@@ -6,7 +6,9 @@ one fine pixel of our sprites). This script lifts out of it, every pixel in his 
 
   the bracers   the bronze bracer on each forearm, from below the elbow to the wrist (the near one
                 broad and lit, the far one dark with a bronze edge). Each rides its forearm about the
-                elbow; his arms stand where ours do, so at rest each is where he drew it.
+                elbow. His near arm stands where ours does, so at rest the near bracer is where he drew
+                it; he tucked the far arm in (3 px nearer the body than ours), so the far bracer is
+                moved out onto our far forearm.
   the sandals   on each leg, the laced shin (a dark strap band under the knee, then the laces crossing
                 over his skin down to the ankle), which turns with the shin about the ankle, and the
                 sandal with its straps over the toes and its brown sole, which stays flat on the ground
@@ -48,6 +50,9 @@ def main():
         sole = int(np.nonzero(masks['foot_' + s.lower()].any(axis=1))[0].max())
         return (R.HIS_ANKLES[s][0], sole - (R.OUR_SOLES[s] - J['ankle' + s][1]))
 
+    # He drew the far arm tucked in, its forearm FAR_ARM_IN px nearer the body than ours: the far bracer's
+    # pivot is his elbow, so it lands on our forearm (moved that far out) and turns about our elbow.
+    far_elbow = (J['elbowF'][0] - R.FAR_ARM_IN, J['elbowF'][1])
     bases = {
         'BRACER_BRONZE': R.middle(a, masks, cols, ['bracer_n', 'bracer_f'], ('bronze',)),
         'SANDAL_LEATHER': R.middle(a, masks, cols, ['shin_n', 'shin_f', 'foot_n', 'foot_f'], ('leather',)),
@@ -57,11 +62,11 @@ def main():
     }
     consts = [
         ('BRACER_N', 'bracer_n', 'The near bronze bracer, elbow to wrist: it rides the forearm about the elbow.', J['elbowN'], R.angle('elbowN', 'wristN')),
-        ('BRACER_F', 'bracer_f', 'The far bronze bracer, dark with a bronze edge: it rides the forearm about the elbow.', J['elbowF'], R.angle('elbowF', 'wristF')),
-        ('SANDAL_SHIN_N', 'shin_n', 'The near laced shin, from the strap band under the knee to the ankle: it turns with the shin about the ankle.', sandal_pivot('N'), R.angle('kneeN', 'ankleN')),
-        ('SANDAL_FOOT_N', 'foot_n', 'The near sandal, seen from the front: straps over the toes, the brown sole.', sandal_pivot('N'), R.angle('kneeN', 'ankleN')),
-        ('SANDAL_SHIN_F', 'shin_f', 'The far laced shin: it turns with the shin about the ankle.', sandal_pivot('F'), R.angle('kneeF', 'ankleF')),
-        ('SANDAL_FOOT_F', 'foot_f', 'The far sandal pointing right: straps over the instep and toes, the brown sole.', sandal_pivot('F'), R.angle('kneeF', 'ankleF')),
+        ('BRACER_F', 'bracer_f', 'The far bronze bracer, dark with a bronze edge: it rides the forearm about the elbow.', far_elbow, R.angle('elbowF', 'wristF'), J['elbowF']),
+        ('SANDAL_SHIN_N', 'shin_n', 'The near laced shin, from the strap band under the knee to the ankle: it turns with the shin about the ankle.', sandal_pivot('N'), R.angle('kneeN', 'ankleN'), J['ankleN']),
+        ('SANDAL_FOOT_N', 'foot_n', 'The near sandal, seen from the front: straps over the toes, the brown sole.', sandal_pivot('N'), R.angle('kneeN', 'ankleN'), J['ankleN']),
+        ('SANDAL_SHIN_F', 'shin_f', 'The far laced shin: it turns with the shin about the ankle.', sandal_pivot('F'), R.angle('kneeF', 'ankleF'), J['ankleF']),
+        ('SANDAL_FOOT_F', 'foot_f', 'The far sandal pointing right: straps over the instep and toes, the brown sole.', sandal_pivot('F'), R.angle('kneeF', 'ankleF'), J['ankleF']),
     ]
     text = R.module(a, masks, cols, DOC, consts, bases, 'ROMAN_KIT')
     if out_ts:

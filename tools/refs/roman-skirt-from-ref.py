@@ -41,7 +41,8 @@ def main():
     J = R.JOINTS
     torso = R.angle('pelvis', 'neck')
     bases = {
-        'PTERUGES_TUNIC': R.middle(a, masks, cols, ['front', 'drape'], ('red',)),
+        # His lit red (three quarters of his reds are darker), the red a player picks for a red tunic.
+        'PTERUGES_TUNIC': R.middle(a, masks, cols, ['front', 'drape'], ('red',), 0.75),
         'PTERUGES_LEATHER': R.middle(a, masks, cols, ['front'], ('leather', 'bronze')),
         'PTERUGES_STUD': R.middle(a, masks, cols, ['front'], ('stud',)),
     }

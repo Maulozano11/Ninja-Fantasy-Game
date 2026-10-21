@@ -8,13 +8,15 @@ a pixel of his at (x, y) sits at (x + OFFSET[0], y + OFFSET[1]) of our 256 x 256
 male rig's joints at that frame, in his pixels.
 
 His figure stands wider than ours: his near leg is about 6 px further back and his far foot 6 px lower.
-His arms, chest and hips are where ours are, so the cuirass, its shoulder guards, the bracers and the
-skirt hang from our joints exactly where he drew them; the sandals are moved onto our legs and feet.
+His chest, near arm and hips are where ours are, so the cuirass, its shoulder guards, the near bracer and
+the skirt hang from our joints exactly where he drew them. He tucked the far arm in (FAR_ARM_IN), so the
+far bracer is moved out onto our far forearm, and the sandals are moved onto our legs and feet.
 
 PIECES cuts his figure into the pieces the items stamp (src/sprite/painted.ts): each is a region of his
 picture (a polygon in his pixel corners) less what other pieces or his skin own there, keeping only the
 black line that bounds its own colours. Where a piece is hidden in his picture (the chest under the near
-shoulder guard, the long drape behind his legs) it is filled by continuing his pixels.
+shoulder guard, the long drape behind his legs, which shows behind our legs) it is filled by continuing
+his pixels.
 
 Scripts import this with sys.path.insert(0, os.path.dirname(__file__)) and run with python3 -I.
 """
@@ -60,6 +62,9 @@ HIS_ANKLES = {'N': (38.5, 91.0), 'F': (59.5, 89.5)}
 # Our feet's soles at idle frame 0 (the last row of each foot), in his pixels: his far foot is drawn 6 px
 # lower than ours.
 OUR_SOLES = {'N': 98, 'F': 90}
+# How far nearer the body than ours he drew the far forearm (his bracer's edges against our forearm's,
+# rows 45 to 52): the far bracer is moved this far out onto ours.
+FAR_ARM_IN = 3
 
 
 def native(path=REF):
@@ -152,7 +157,7 @@ REGIONS = {
     'guard_f': [(59.6, 25), (65, 25), (65, 38), (59.6, 38)],
     'bracer_n': [(30, 43), (40, 43), (40, 54), (30, 54)],
     'bracer_f': [(60.6, 44.6), (69.5, 44.6), (69.5, 53), (60.6, 53)],
-    'chest': [(42.6, 25), (48, 25), (48, 24), (61, 24), (61, 52), (53, 52), (53, 51), (50, 51), (50, 50), (49, 50), (49, 49), (42.6, 49)],
+    'chest': [(42.6, 26), (61, 26), (61, 52), (53, 52), (53, 51), (50, 51), (50, 50), (49, 50), (49, 49), (42.6, 49)],
     'front': [(39.6, 48), (66, 48), (66, 52), (64.6, 52), (64.6, 62), (66, 62), (66, 69), (39.6, 69)],
     'shin_n': [(35.6, 77.5), (46, 77.5), (46, 80), (42.6, 80), (42.6, 92), (35.6, 92)],
     'foot_n': [(33, 92), (44, 92), (44, 99), (33, 99)],
@@ -222,32 +227,105 @@ def pieces(a):
             below = [q for q in range(y + 1, H) if solid[q, x]]
             c[y, x] = a[below[0], x] if below else a[y, first]
 
-    # The drape behind his legs: where a leg covers it and it shows on both sides of the leg in that row,
-    # each pixel takes the colour of his nearest drape pixel in the row; a black line closes it below.
-    # His outlines of the legs are the legs', not the drape's.
-    m, c = masks['drape'], cols['drape']
-    skin = K == 'skin'
-    m &= ~((K == 'line') & near8(skin) & (np.arange(H)[:, None] >= DRAPE_FILL_FROM))
-    solid = m & (K != 'line')
-    bound = solid | (masks['front'] & (K != 'line'))
-    fill = np.zeros((H, W), bool)
-    for y in range(DRAPE_FILL_FROM, H):
-        xs = np.nonzero(solid[y])[0]
-        bs = np.nonzero(bound[y])[0]
-        for x in range(W):
-            if m[y, x] or bg[y, x] or (masks['front'][y, x] and K[y, x] != 'line'):
-                continue
-            if not ((bs < x) & (bs >= x - 14)).any() or not ((bs > x) & (bs <= x + 14)).any() or not len(xs):
-                continue
-            src = xs[np.argmin(np.abs(xs - x) + 0.1 * (xs > x))]
-            c[y, x] = a[y, src]
-            fill[y, x] = True
-    for y in range(H):
-        for x in range(W):
-            if fill[y, x] and (y + 1 >= H or not (fill[y + 1, x] or m[y + 1, x])):
-                c[y, x] = black
-    masks['drape'] = m | fill
+    masks['drape'], cols['drape'] = drape_behind_legs(a, K, bg, masks, black)
     return masks, cols
+
+
+def near4(m):
+    g = m.copy()
+    g[1:] |= m[:-1]
+    g[:-1] |= m[1:]
+    g[:, 1:] |= m[:, :-1]
+    g[:, :-1] |= m[:, 1:]
+    return g
+
+
+def drape_behind_legs(a, K, bg, masks, black):
+    """The drape with what his legs hide continued (our legs stand elsewhere, so it shows there).
+
+    His legs (their skin, the sandals and the black line round them) are not the drape's: the drape keeps
+    its red and only his black that bounds the red and touches no leg. Behind each leg the cloth is the
+    shadowed inside of the drape, so each hidden patch is cloned whole from the visible inside next to it
+    (one shift for the whole patch, his folds running down unbroken), and closed below by his black line
+    on a hem drawn straight from the drape's hem on one side of the leg to the other.
+    """
+    H, W, _ = a.shape
+    rows = np.arange(H)[:, None]
+    region = inside(REGIONS['drape'], H, W)
+    low = rows >= DRAPE_FILL_FROM
+    solid = masks['drape'] & (K != 'line')
+    leg = (K == 'skin') & low
+    for n in ('shin_n', 'shin_f', 'foot_n', 'foot_f'):
+        leg |= masks[n] & (K != 'line')
+    leg_line = (K == 'line') & near8(leg) & low & ~bg
+    edge = (K == 'line') & region & near8(solid) & ~leg_line & ~bg
+    # A black pixel is the drape's only where it touches the red side on (not just at a corner).
+    edge &= near4(solid)
+    outside = background(a)
+    cloth = solid | edge
+    # Behind the legs: what is neither the drape's cloth nor the strips nor the white round him.
+    behind = region & low & ~cloth & ~masks['front'] & ~outside
+    hidden = behind & (leg | leg_line)
+
+    # Each leg's patch (connected), its columns those of the leg's upper part (the thigh behind which the
+    # cloth hangs), down to the hem.
+    lab = np.zeros((H, W), int)
+    n_lab = 0
+    for y, x in zip(*np.nonzero(hidden)):
+        if lab[y, x]:
+            continue
+        n_lab += 1
+        stack = [(y, x)]
+        while stack:
+            q, p = stack.pop()
+            if 0 <= q < H and 0 <= p < W and hidden[q, p] and not lab[q, p]:
+                lab[q, p] = n_lab
+                stack += [(q + 1, p), (q - 1, p), (q, p + 1), (q, p - 1)]
+    bottom = lambda x: int(np.nonzero(cloth[:, x])[0].max())
+    has = lambda x: 0 <= x < W and cloth[DRAPE_FILL_FROM:, x].any()
+    middle_x = np.nonzero(solid & low)[1].mean()
+    src_ok = solid & ~hidden
+    m = cloth.copy()
+    c = a.copy()
+    filled = np.zeros((H, W), bool)
+    for k in range(1, n_lab + 1):
+        ys, xs = np.nonzero(lab == k)
+        if len(ys) < 20:
+            continue
+        top = ys.min()
+        upper = xs[ys < top + 10]
+        x0, x1 = int(upper.min()), int(upper.max())
+        left = next(x for x in range(x0 - 1, -1, -1) if has(x))
+        right = next(x for x in range(x1 + 1, W) if has(x))
+        bl, br = bottom(left), bottom(right)
+        hem = {x: int(round(bl + (br - bl) * (x - left) / (right - left))) for x in range(left + 1, right)}
+        P = np.zeros((H, W), bool)
+        for x in range(left + 1, right):
+            P[top:hem[x], x] = behind[top:hem[x], x]
+        # One shift for the whole patch, toward the middle of the drape (its shadowed inside), the one
+        # that finds the most of the patch in his visible red; the nearest of equals.
+        way = 1 if (x0 + x1) / 2 < middle_x else -1
+        pts = list(zip(*np.nonzero(P)))
+        d = max(range(1, 17), key=lambda t: (sum(1 for y, x in pts if 0 <= x + way * t < W and src_ok[y, x + way * t]), -t)) * way
+        for y, x in pts:
+            sx = x + d
+            if not src_ok[y, sx]:
+                # Past his own hem there: his nearest red up or down that column, else in the row.
+                cand = [q for q in range(H) if src_ok[q, sx]]
+                if cand:
+                    y_src = min(cand, key=lambda q: (abs(q - y), q))
+                    c[y, x] = a[y_src, sx]
+                else:
+                    xr = np.nonzero(src_ok[y])[0]
+                    c[y, x] = a[y, xr[np.argmin(np.abs(xr - x))]]
+            else:
+                c[y, x] = a[y, sx]
+            filled[y, x] = True
+        for x in range(left + 1, right):
+            if not cloth[hem[x], x]:
+                c[hem[x], x] = black
+                filled[hem[x], x] = True
+    return m | filled, c
 
 
 # His pictures here are JPEGs with many near colours, more than aiden_ref.pack's alphabet: this one goes
@@ -273,11 +351,12 @@ def hexc(c):
 
 def middle(a, masks, cols, names, kinds, q=0.5):
     """His colour of middle lightness among the pixels of these kinds in these pieces (half of them are
-    lighter, half darker; with `q`, that fraction of them darker): the base a colour slot recolours from."""
+    lighter, half darker; with `q`, that fraction of them darker): the base a colour slot recolours from.
+    Only his own pixels count, not those continued where the piece is hidden."""
     found = []
     for n in names:
         for y, x in zip(*np.nonzero(masks[n])):
-            if kind(cols[n][y, x]) in kinds:
+            if (cols[n][y, x] == a[y, x]).all() and kind(cols[n][y, x]) in kinds:
                 found.append((float(luma(cols[n][y, x])), hexc(cols[n][y, x])))
     found.sort()
     return found[int(len(found) * q)][1]
@@ -285,8 +364,9 @@ def middle(a, masks, cols, names, kinds, q=0.5):
 
 def module(a, masks, cols, doc, consts, bases, kind_name=None):
     """A generated TypeScript module: his colours each slot recolours from (`bases`, name -> hex), what
-    each of his colours is (`<PREFIX>_KIND`, hex -> kind) and the pieces (`consts`: (CONST, piece,
-    doc, pivot in his pixels, angle))."""
+    each of his colours is (`<PREFIX>_KIND`, hex -> kind), the pieces (`consts`: (CONST, piece, doc,
+    pivot in his pixels, angle[, joint in his pixels when the pivot is not on our joint])) and where each
+    piece lands in our idle frame 0 (`<PREFIX>_REST`: the fine pixel of its first row's first cell)."""
     out = [doc, "import type { PaintedPiece } from '../painted';", '']
     out.append('/** His colours the colour slots recolour from (at these, every pixel is his). */')
     for k, v in bases.items():
@@ -294,16 +374,24 @@ def module(a, masks, cols, doc, consts, bases, kind_name=None):
     out.append('')
     kinds = {}
     body = []
-    for const, n, pdoc, pivot, ang in consts:
+    rest = []
+    for const, n, pdoc, pivot, ang, *joint in consts:
         rows, origin, palette = pack(cols[n], masks[n])
         for h in palette.values():
             kinds[h] = kind([int(h[1:3], 16), int(h[3:5], 16), int(h[5:7], 16)])
         body.append(ts_piece(const, pdoc, rows, origin, palette, pivot, ang))
+        j = joint[0] if joint else pivot
+        rest.append((const, [origin[i] + OFFSET[i] + int(np.floor(j[i])) - int(np.floor(pivot[i])) for i in (0, 1)]))
     prefix = kind_name or consts[0][0].split('_')[0]
     out.append("/** What each of his colours is, as the script sorts them: his black line, skin, red cloth, a grey stud, bronze or leather. */")
     out.append(f"export const {prefix}_KIND: Record<string, 'line' | 'skin' | 'red' | 'stud' | 'bronze' | 'leather' | 'hair'> = {{")
     for h in sorted(kinds):
         out.append(f"  '{h}': '{kinds[h]}',")
+    out += ['};', '']
+    out.append("/** Where each piece lands in our male idle frame 0, unturned: the fine pixel of its first row's first cell. */")
+    out.append(f'export const {prefix}_REST: Record<string, [number, number]> = {{')
+    for const, (x, y) in rest:
+        out.append(f'  {const}: [{x}, {y}],')
     out += ['};', '']
     out += body
     return '\n'.join(out)

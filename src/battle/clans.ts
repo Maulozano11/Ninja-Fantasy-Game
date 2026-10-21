@@ -188,6 +188,8 @@ export function warpStrike(s: BattleState, u: Unit, to: Pt, ev: BattleEvent[]): 
   revealOutOfHiding(s, u, ev);
   const foe = edgeFoe(s, u);
   if (!foe) return;
+  // It lands facing the foe, thrusting at it (the screen plays the landing as a thrust).
+  if (foe.pos.x !== u.pos.x) u.facing = foe.pos.x > u.pos.x ? 1 : -1;
   u.cond.warpEdge = true;
   ev.push({ t: 'note', key: 'warpEdge', params: { name: u.name, foe: foe.name } });
 }

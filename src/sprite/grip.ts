@@ -28,6 +28,7 @@ const PIERCE_POLE = [-26, -4, -1, -1, -20];
 
 /** Screen angle of a hand-held blade per pose/frame (degrees, 0 = facing right, + = clockwise/down). */
 export function swordAngle(g: DrawCtx): number {
+  if (g.rig.aim !== undefined) return g.rig.aim;
   const f = g.rig.frame;
   switch (g.rig.pose) {
     case 'handsigns':
@@ -69,6 +70,7 @@ export function swordAngle(g: DrawCtx): number {
 
 /** Polearm angle: upright at rest, thrust forward in attacks. */
 export function poleAngle(g: DrawCtx): number {
+  if (g.rig.aim !== undefined) return g.rig.aim;
   const f = g.rig.frame;
   switch (g.rig.pose) {
     case 'handsigns':
@@ -185,4 +187,18 @@ export function throwRelease(body: BodyType, held?: string): ThrowRelease {
     weaponAngle: (pole ? THROW_POLE : THROW_BLADE)[THROW_RELEASE_FRAME - 1],
     thrown: held && held !== 'held_none' ? held : 'held_kunai',
   };
+}
+
+/**
+ * Where the held weapon sits in a frame of a weapon technique ('throw' before the release, or
+ * 'pierce'): the point its art is anchored at (fine pixels of the frame, facing right; the art's
+ * pixels start at the floor of it) and its angle. A weapon caught out of the air is drawn there
+ * (the battle's Warp Strike lands its thrown weapon in the hand of the thrust).
+ */
+export function heldAt(body: BodyType, pose: 'throw' | 'pierce', frame: number, held?: string): { at: Vec; angle: number } {
+  const r = drawRig(body, pose, frame);
+  const pole = held === 'held_naginata';
+  const table = pose === 'throw' ? (pole ? THROW_POLE : THROW_BLADE) : pole ? PIERCE_POLE : PIERCE_BLADE;
+  const fist = add(r.handN, scale(norm(sub(r.handN, r.wristN)), 0.9));
+  return { at: scale(held === 'held_flame_sword' ? r.handN : fist, RES), angle: table[((frame % table.length) + table.length) % table.length] };
 }

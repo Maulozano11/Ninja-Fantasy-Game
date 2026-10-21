@@ -10,6 +10,7 @@ import { blastMs, impactMs, signatureMs, skySignature } from './vfxSprites';
 import { dist } from '../../battle/map';
 import { closestPoint } from '../../battle/structures';
 import { midpoint } from '../../battle/combat';
+import { edgeFoe } from '../../battle/clans';
 
 export interface UnitView {
   pos: Pt;
@@ -43,6 +44,15 @@ export interface UnitView {
    * draws it).
    */
   phase?: { from: Pt; to: Pt; t0: number };
+  /**
+   * A Ryusei's Warp Strike (the owner, 2026-10-21): the ninja throws its weapon at the Node and
+   * turns to blue light in the release pose as it leaves the hand; the weapon flies there with a
+   * trail of sparkles, the light body follows it and turns solid where it lands, already in the
+   * thrust ('pierce') and catching the weapon, and thrusts at the foe beside it (`foe`) or ahead.
+   * `face` is the way it throws and dashes, `land` the way it faces on landing, `fly` how long the
+   * weapon flies (ms at speed 1; warpTimes gives the rest; renderer.ts draws it).
+   */
+  warp?: { from: Pt; to: Pt; t0: number; face: 1 | -1; land: 1 | -1; foe?: string; fly: number };
 }
 
 export interface Floater {
@@ -120,6 +130,57 @@ export const phaseDash = (ms: number): number => {
   return 1 - (1 - t) ** 2.2;
 };
 
+/**
+ * A Warp Strike (UnitView.warp), ms at speed 1. The throw's wind-up plays a frame each WARP_FRAME
+ * ('throw' 0 carga, 1 armado, 2 the throw), so the weapon leaves the hand at WARP_REL, in the
+ * release pose (the owner's reference), where the ninja turns to light over WARP_LIGHT. The weapon
+ * flies for `fly` (longer the farther it goes); the light body dashes after it and lands WARP_LAG
+ * after it, turns solid over WARP_SOLID in the thrust's chamber (catching it), then thrusts
+ * ('pierce' 2 estocada, 3 impacto, 4 retroceso, WARP_THRUST each) and stands. About a second in all.
+ */
+export const WARP_FRAME = 110;
+export const WARP_REL = 3 * WARP_FRAME;
+export const WARP_LIGHT = 110;
+export const WARP_LAG = 50;
+export const WARP_SOLID = 100;
+export const WARP_THRUST = [90, 100, 100] as const;
+/** How long a Warp Strike's weapon flies over `metres`. */
+export const warpFly = (metres: number): number => Math.round(Math.min(420, Math.max(250, 200 + 12 * metres)));
+
+export interface WarpTimes {
+  /** The weapon leaves the hand; the ninja starts turning to light. */
+  rel: number;
+  /** The light body sets off after the weapon. */
+  dash: number;
+  /** The weapon reaches the catch. */
+  caught: number;
+  /** The light body lands; it turns solid, catching the weapon. */
+  land: number;
+  /** Solid, in the thrust's chamber: the thrust plays. */
+  solid: number;
+  /** Standing again: the Warp Strike is over. */
+  end: number;
+}
+
+export function warpTimes(fly: number): WarpTimes {
+  const caught = WARP_REL + fly;
+  const land = caught + WARP_LAG;
+  const solid = land + WARP_SOLID;
+  return { rel: WARP_REL, dash: WARP_REL + WARP_LIGHT, caught, land, solid, end: solid + WARP_THRUST[0] + WARP_THRUST[1] + WARP_THRUST[2] };
+}
+
+/** How far the light body is along a Warp Strike's dash (0..1) `ms` into it: quick off the mark, easing into the landing, like a phase. */
+export const warpDash = (ms: number, t: WarpTimes): number => {
+  const k = Math.min(1, Math.max(0, (ms - t.dash) / (t.land - t.dash)));
+  return 1 - (1 - k) ** 2.2;
+};
+
+/** How far the thrown weapon is along its flight (0..1) `ms` into the Warp Strike: flung hard, slowing a little as it arrives. */
+export const warpFlight = (ms: number, t: WarpTimes): number => {
+  const k = Math.min(1, Math.max(0, (ms - t.rel) / (t.caught - t.rel)));
+  return 1 - (1 - k) ** 1.5;
+};
+
 export class Playback {
   views = new Map<string, UnitView>();
   floaters: Floater[] = [];
@@ -144,6 +205,8 @@ export class Playback {
   /** A big signature still playing: the next turn waits for it to finish. */
   lingerUntil = 0;
   speed = 1;
+  /** Sounds due later in something already playing (a Warp Strike's throw and catch). */
+  private cues: { at: number; name: SoundName }[] = [];
 
   constructor(state: BattleState, private hooks: PlaybackHooks) {
     this.sync(state, 0);
@@ -203,6 +266,10 @@ export class Playback {
       this.busyUntil = now + d / this.speed;
       if (!this.queue.length) this.settling = true;
     }
+    if (this.cues.length) {
+      for (const c of this.cues) if (now >= c.at) this.hooks.sound(c.name);
+      this.cues = this.cues.filter((c) => now < c.at);
+    }
     // One-shot poses fall back to rest.
     for (const [id, v] of this.views) {
       if (v.poseUntil && now >= v.poseUntil) {
@@ -215,6 +282,13 @@ export class Playback {
         v.phase = undefined;
         const u = state.units[id];
         if (u) v.facing = u.facing;
+      }
+      if (v.warp && now >= v.warp.t0 + warpTimes(v.warp.fly).end / this.speed) {
+        v.facing = v.warp.land;
+        v.warp = undefined;
+        const u = state.units[id];
+        v.pose = u ? restPoseView(u, v) : 'idle';
+        v.poseT0 = now;
       }
       if (v.walk && now >= v.walk.t0 + (v.walk.total / v.walk.speed) * 1000 / this.speed) {
         v.pos = { ...v.walk.path[v.walk.path.length - 1] };
@@ -229,7 +303,7 @@ export class Playback {
     this.banners = this.banners.filter((b) => now < b.t0 + b.dur);
     this.fallen = this.fallen.filter((f) => now < f.t0 + FALL_MS / this.speed);
     if (!this.settling || this.queue.length || now < this.busyUntil) return false;
-    for (const v of this.views.values()) if (v.walk || v.phase || (v.poseUntil && now < v.poseUntil)) return false;
+    for (const v of this.views.values()) if (v.walk || v.phase || v.warp || (v.poseUntil && now < v.poseUntil)) return false;
     this.settling = false;
     return true;
   }
@@ -241,6 +315,11 @@ export class Playback {
     if (v.phase) {
       const { from, to, t0 } = v.phase;
       const k = phaseDash((now - t0) * this.speed);
+      return { x: from.x + (to.x - from.x) * k, z: from.z + (to.z - from.z) * k };
+    }
+    if (v.warp) {
+      const { from, to, t0, fly } = v.warp;
+      const k = warpDash((now - t0) * this.speed, warpTimes(fly));
       return { x: from.x + (to.x - from.x) * k, z: from.z + (to.z - from.z) * k };
     }
     const w = v.walk;
@@ -363,8 +442,15 @@ export class Playback {
         if (!v) return 0;
         // A Spatial Swap's two jumps happen at once.
         const together = this.queue[0]?.t === 'teleport';
+        if (ev.how === 'phase' && v.warp) {
+          // A Warp Strike's crossing, already under way since its jutsu played (the throw): the
+          // events after it wait until the ninja stands solid where it lands.
+          v.pos = { ...ev.to };
+          v.walk = undefined;
+          return Math.max(0, (v.warp.t0 + warpTimes(v.warp.fly).solid / this.speed - now) * this.speed);
+        }
         if (ev.how === 'phase') {
-          // A Ryusei's Warp Strike or Spatial Swap: no smoke, the ninja crosses as blue light.
+          // A Ryusei's Spatial Swap: no smoke, the ninja crosses as blue light.
           v.phase = { from: { ...ev.from }, to: { ...ev.to }, t0: now };
           v.pos = { ...ev.to };
           v.walk = undefined;
@@ -477,6 +563,26 @@ export class Playback {
         if (Math.abs(ev.at.x - from.x) > 0.05) a.facing = ev.at.x > from.x ? 1 : -1;
         const caster = state.units[ev.unit];
         const head = caster?.kind === 'hydra_head';
+        const cross = spec?.special === 'warp' ? this.queue.find((e) => e.t === 'teleport' && e.how === 'phase' && e.unit === ev.unit) : undefined;
+        if (cross?.t === 'teleport' && this.phaseFollows(ev.unit)) {
+          // A Warp Strike that goes through: its name, and the throw starts at once (UnitView.warp).
+          // The crossing's own event comes at the release; the thrust faces the foe it lands beside
+          // (the engine's edgeFoe), if any.
+          const face: 1 | -1 = Math.abs(cross.to.x - cross.from.x) > 0.05 ? (cross.to.x > cross.from.x ? 1 : -1) : a.facing;
+          const foe = caster ? edgeFoe(state, caster, cross.to) : undefined;
+          const land: 1 | -1 = foe && foe.pos.x !== cross.to.x ? (foe.pos.x > cross.to.x ? 1 : -1) : caster ? caster.facing : face;
+          const fly = warpFly(dist(cross.from, cross.to));
+          a.warp = { from: { ...cross.from }, to: { ...cross.to }, t0: now, face, land, foe: foe?.id, fly };
+          a.facing = face;
+          a.walk = undefined;
+          a.lunge = undefined;
+          a.poseUntil = undefined;
+          h.sound('jutsu', 'chakra');
+          if (label) this.float(label, '#fde68a', from, now, { rise: 128, dur: 1400 });
+          // A whoosh as the arm whips the weapon away, a ring as the hand closes on it again.
+          this.cues.push({ at: now + (2 * WARP_FRAME) / this.speed, name: 'swing' }, { at: now + warpTimes(fly).land / this.speed, name: 'draw' });
+          return WARP_REL;
+        }
         if ((spec?.special === 'warp' || spec?.special === 'swap') && this.phaseFollows(ev.unit)) {
           // A Warp Strike or a Spatial Swap that goes through: its name and a beat, then the phase
           // itself plays (no cast pose, no chakra flare: the ninja turns to light at once).

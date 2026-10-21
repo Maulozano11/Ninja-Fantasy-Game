@@ -248,9 +248,10 @@ export function renderSprite(
   pose: SpritePose,
   frame: number,
   eyeSpecial: EyeSpecial = 'none',
-  opts: { skipEdits?: boolean } = {},
+  opts: { skipEdits?: boolean; heldOnly?: Rig } = {},
 ): SpriteFrame {
-  const rig = drawRig(look.body, rigPoseFor(pose, look.cast?.style, look.stowed ? undefined : look.slots.held?.id), frame);
+  // heldOnly: just the held item (or the kunai bare hands throw) on that rig, no body (sprite/thrown.ts).
+  const rig = opts.heldOnly ?? drawRig(look.body, rigPoseFor(pose, look.cast?.style, look.stowed ? undefined : look.slots.held?.id), frame);
   const mats = new MaterialTable();
   const layers = new Map<Depth, Layer>();
   const equipped = new Map<SlotId, ItemDef>();
@@ -285,32 +286,39 @@ export function renderSprite(
     },
   };
 
-  drawBody(g);
-  for (const slot of SLOT_ORDER) {
-    const def = equipped.get(slot);
-    if (!def) continue;
-    if (slot === 'hair' && hideHair) continue;
-    const choice = look.slots[slot]!;
-    const colors = resolveColors(def, choice.colors);
-    const parts = resolveParts(def, choice.parts);
-    if (slot === 'cape' && rig.streamBack) drawPitchedCape(g, layers, (gg) => def.draw(gg, colors, parts));
-    else def.draw(g, colors, parts);
+  if (opts.heldOnly) {
+    const def = equipped.get('held');
+    const choice = look.slots.held;
+    if (def && choice && !look.stowed) def.draw(g, resolveColors(def, choice.colors), resolveParts(def, choice.parts));
+    drawThrowKunai(g);
+  } else {
+    drawBody(g);
+    for (const slot of SLOT_ORDER) {
+      const def = equipped.get(slot);
+      if (!def) continue;
+      if (slot === 'hair' && hideHair) continue;
+      const choice = look.slots[slot]!;
+      const colors = resolveColors(def, choice.colors);
+      const parts = resolveParts(def, choice.parts);
+      if (slot === 'cape' && rig.streamBack) drawPitchedCape(g, layers, (gg) => def.draw(gg, colors, parts));
+      else def.draw(g, colors, parts);
+    }
+    for (const acc of look.accessories) {
+      const def = getItem(acc.id);
+      if (def && def.slot === 'accessory') def.draw(g, resolveColors(def, acc.colors), resolveParts(def, acc.parts));
+    }
+    drawHeadband(g);
+    drawThrowKunai(g);
+    // clothes over a female torso follow the bust (fitted armors shape their own plates)
+    for (const d of ['torso.top', 'torso.over'] as const) {
+      const L = layers.get(d);
+      if (L) sculptClothes(g, L);
+    }
+    drawCastFx(g);
+    drawCampFx(g);
+    if (rig.farHandFront) farHandToFront(layers, g);
+    guardFace(g, layers);
   }
-  for (const acc of look.accessories) {
-    const def = getItem(acc.id);
-    if (def && def.slot === 'accessory') def.draw(g, resolveColors(def, acc.colors), resolveParts(def, acc.parts));
-  }
-  drawHeadband(g);
-  drawThrowKunai(g);
-  // clothes over a female torso follow the bust (fitted armors shape their own plates)
-  for (const d of ['torso.top', 'torso.over'] as const) {
-    const L = layers.get(d);
-    if (L) sculptClothes(g, L);
-  }
-  drawCastFx(g);
-  drawCampFx(g);
-  if (rig.farHandFront) farHandToFront(layers, g);
-  guardFace(g, layers);
 
   // Outline and flatten
   const rgba = new Uint8ClampedArray(GRID * GRID * 4);
@@ -361,7 +369,7 @@ export function renderSprite(
   const hair = new Uint8Array(N >> 3);
   for (let i = 0; i < N; i++) if (top[i] === HAIR_BACK || top[i] === HAIR_FRONT) hair[i >> 3] |= 1 << (i & 7);
 
-  if (!opts.skipEdits && look.pixelEdits?.length) applyEdits(look.pixelEdits, rig, rgba, part);
+  if (!opts.skipEdits && !opts.heldOnly && look.pixelEdits?.length) applyEdits(look.pixelEdits, rig, rgba, part);
   if (rig.lay) return { ...layFrame(rgba, part, hair, rig.lay), rig: layRig(rig) };
   return { rgba, part, hair, rig };
 }

@@ -13,13 +13,17 @@ import { lookOf as guardLook, VISION } from '../../battle/stealth';
 import { worldSprite } from '../world/WorldSpriteView';
 import type { MapArt } from './mapArt';
 import type { Fx, Playback, UnitView } from './playback';
-import { FALL_MS, PHASE_DASH, PHASE_IN, PHASE_OUT, phaseDash, RISE_MS } from './playback';
+import type { WarpTimes } from './playback';
+import { FALL_MS, PHASE_DASH, PHASE_IN, PHASE_OUT, phaseDash, RISE_MS, WARP_FRAME, WARP_THRUST, warpDash, warpTimes } from './playback';
 import type { Lang } from '../../i18n';
 import { unitName } from './battleLog';
-import { bodyCenterDx, FEET, fpsOf, framesOf, hasPhaseFrame, lookOf, phaseFrameOf, STRIDE, unitFrame } from './unitArt';
+import { bodyCenterDx, catchLookOf, FEET, fpsOf, framesOf, hasPhaseFrame, hasThrownFrame, hasUnitFrame, lookOf, phaseFrameOf, STRIDE, thrownFrame, unitFrame } from './unitArt';
+import { drawThrown, drawTrail, flightNow, warpFlightOf } from './warpFlight';
+import type { Flight, XY } from './warpFlight';
+import { THROW_RELEASE_FRAME } from '../../sprite/rig';
 import type { SpriteAppearance, SpritePose } from '../../sprite/types';
 import { PHASE_ADD, PHASE_RAMP, phaseHue } from '../../sprite/phase';
-import { leavesNodes, nodeUnder } from '../../battle/clans';
+import { edgeFoe, leavesNodes, nodeUnder, WARP, warpLanding } from '../../battle/clans';
 import { GRID } from '../../sprite/raster';
 import { drawAuraBack, drawVfxSprite, drawWallSprite } from './vfxSprites';
 
@@ -197,6 +201,7 @@ export function drawBattle(ctx: CanvasRenderingContext2D, sc: Scene): void {
   for (const it of items) it.draw();
   // Aiming a Ryusei ability: the Nodes it can use, and where it lands, show over walls and units.
   if (sc.overlay.nodes) drawNodesOnTop(ctx, sc);
+  drawWarpFlights(ctx, sc);
 
   for (const fx of sc.pb.fx) if (!onGround(fx) && !drawVfxSprite(ctx, sc, fx)) drawFx(ctx, sc, fx);
 
@@ -768,27 +773,34 @@ function drawProp(ctx: CanvasRenderingContext2D, sc: Scene, p: PropDef, index: n
   ctx.restore();
 }
 
+/** How opaque a unit is drawn: fading out as it flees, fainter while hidden (more so to the other side) or dead. */
+function unitAlpha(sc: Scene, u: Unit, v: UnitView): number {
+  let alpha = 1;
+  if (v.fade) alpha = Math.max(0, 1 - (sc.now - v.fade.t0) / v.fade.dur);
+  if (v.hidden) alpha *= u.team === sc.team ? 0.55 : 0.35;
+  if (v.down === 'dead' && u.team === 'enemy') alpha *= 0.75;
+  return alpha;
+}
+
+type FrameCanvas = { canvas: HTMLCanvasElement; ox: number; oy: number };
+
 function drawUnit(ctx: CanvasRenderingContext2D, sc: Scene, u: Unit, pos: Pt): void {
   const v = sc.pb.views.get(u.id)!;
   const { map, now } = sc;
   const lvl = map.levelAt(pos.x, pos.z);
   const s = project(map, pos, lvl);
-  let alpha = 1;
-  if (v.fade) {
-    alpha = Math.max(0, 1 - (now - v.fade.t0) / v.fade.dur);
-    if (alpha <= 0) return;
-  }
-  if (v.hidden) alpha *= u.team === sc.team ? 0.55 : 0.35;
-  if (v.down === 'dead' && u.team === 'enemy') alpha *= 0.75;
+  const alpha = unitAlpha(sc, u, v);
+  if (alpha <= 0) return;
   const water = map.waterAt(pos.x, pos.z);
   const swimming = water === 'deep' && !u.cond.waterWalk && !v.walk ? true : water === 'deep' && !u.cond.waterWalk;
 
-  // A Ryusei's phase: the body turns to light, so its shadow fades while it does.
+  // A Ryusei's phase or Warp Strike: the body turns to light, so its shadow fades while it does.
   const phase = v.phase ? phaseNow(sc, v) : undefined;
+  const lit = phase ? phase.light : v.warp ? warpLight(warpNow(sc, v).ms, warpNow(sc, v).t) : 0;
 
   // Shadow, and the ring of the selected or acting ninja.
   ctx.save();
-  ctx.globalAlpha = alpha * 0.35 * (phase ? 1 - 0.75 * phase.light : 1);
+  ctx.globalAlpha = alpha * 0.35 * (1 - 0.75 * lit);
   ctx.fillStyle = '#000';
   ctx.beginPath();
   ctx.ellipse(Math.round(s.X), Math.round(s.Y) - 1, v.pose === 'downed' ? 30 : 20, 5, 0, 0, Math.PI * 2);
@@ -844,8 +856,8 @@ function drawUnit(ctx: CanvasRenderingContext2D, sc: Scene, u: Unit, pos: Pt): v
   const hurt = now < v.hurtUntil;
   const x0 = Math.round(s.X + lx);
   const y0 = Math.round(s.Y + ly - FEET.y);
-  /** The solid sprite, `k` of its own alpha (a phase fades it out and back in). */
-  const solid = (k: number, facing: 1 | -1 = v.facing): void => {
+  /** The solid sprite (or another frame of it), `k` of its own alpha (a phase fades it out and back in). */
+  const solid = (k: number, facing: 1 | -1 = v.facing, img: FrameCanvas = fr): void => {
     if (k <= 0) return;
     ctx.save();
     ctx.globalAlpha = alpha * k * (hurt && Math.floor(now / 60) % 2 ? 0.55 : 1);
@@ -856,12 +868,14 @@ function drawUnit(ctx: CanvasRenderingContext2D, sc: Scene, u: Unit, pos: Pt): v
       ctx.rect(x0 - half, y0 - 20, 2 * half, FEET.y + 20 - (swimming ? 38 : 8));
       ctx.clip();
     }
-    blitFrame(ctx, fr, x0, y0, facing);
+    blitFrame(ctx, img, x0, y0, facing);
     ctx.restore();
   };
-  if (phase) drawPhase(ctx, sc, u, v, look, phase, alpha, solid);
+  if (v.warp) drawWarp(ctx, sc, u, v, look, alpha, solid);
+  else if (phase) drawPhase(ctx, sc, u, v, look, phase, alpha, solid);
   else solid(1);
-  if (water !== 'none' && v.pose !== 'downed' && phase?.stage !== 'dash') {
+  const leaping = phase?.stage === 'dash' || (v.warp && lit >= 1);
+  if (water !== 'none' && v.pose !== 'downed' && !leaping) {
     // Ripples where the body meets the water.
     ctx.save();
     ctx.globalAlpha = 0.6 * alpha;
@@ -915,6 +929,104 @@ function phaseLeap(v: UnitView, dashK: number): { pose: SpritePose; frame: numbe
   return { pose: 'run', frame: dashK < 0.35 ? 1 : 2 };
 }
 
+/** What a light body is drawn with (drawPhase, drawWarp): see phaseKit. */
+interface PhaseKit {
+  /**
+   * The light body at strength `k` (1 = all light), feet over the ground spot (X, Y) of map point
+   * `pt`, `lift` pixels up: the ground under it takes its blue at `hue`, then it is laid over and
+   * added as light (sprite/phase.ts, PHASE_ADD).
+   */
+  light(pose: SpritePose, frame: number, pt: Pt, X: number, Y: number, lift: number, facing: 1 | -1, k: number, hue?: number): void;
+  /** A flare: the light body added once more as light, at `k`. */
+  flare(pose: SpritePose, frame: number, pt: Pt, X: number, Y: number, facing: 1 | -1, k: number): void;
+  ring(X: number, Y: number, r: number, k: number, step: number): void;
+  /** Little squares of light rising round a point, seeded so they don't flicker. */
+  sparks(X: number, Y: number, t: number, k: number, seed: number): void;
+}
+
+/** The light bodies of a unit drawn in `look`, `alpha` of their usual opacity (a hidden ninja is fainter). */
+function phaseKit(ctx: CanvasRenderingContext2D, sc: Scene, u: Unit, look: SpriteAppearance, alpha: number): PhaseKit {
+  const { map } = sc;
+  /**
+   * In the river the light body sinks as the solid one does (deep water hides the legs, shallow
+   * water the feet): clipped at the waterline over `pt`, which a leap rises out of.
+   */
+  const clipWater = (pt: Pt, pose: SpritePose, X: number, Y: number, lift: number): void => {
+    const water = map.waterAt(pt.x, pt.z);
+    if (water === 'none' || pose === 'downed') return;
+    const cut = water === 'deep' && !u.cond.waterWalk ? 38 : 8;
+    const half = Math.max(FEET.x, GRID - FEET.x) + 6;
+    ctx.beginPath();
+    ctx.rect(Math.round(X) - half, Math.round(Y - lift) - FEET.y - 20, 2 * half, Math.round(lift) + FEET.y + 20 - cut);
+    ctx.clip();
+  };
+  return {
+    light(pose, frame, pt, X, Y, lift, facing, k, hue = phaseHue(k)) {
+      if (k <= 0.01) return;
+      const fr = phaseFrameOf(u, look, pose, frame);
+      const x0 = Math.round(X);
+      const y0 = Math.round(Y - lift - FEET.y);
+      ctx.save();
+      clipWater(pt, pose, X, Y, lift);
+      ctx.globalCompositeOperation = 'color';
+      ctx.globalAlpha = Math.min(1, alpha * hue);
+      blitFrame(ctx, fr, x0, y0, facing);
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.globalAlpha = Math.min(1, alpha * k);
+      blitFrame(ctx, fr, x0, y0, facing);
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = Math.min(1, alpha * k * PHASE_ADD);
+      blitFrame(ctx, fr, x0, y0, facing);
+      ctx.restore();
+    },
+    flare(pose, frame, pt, X, Y, facing, k) {
+      if (k <= 0.01) return;
+      const fr = phaseFrameOf(u, look, pose, frame);
+      ctx.save();
+      clipWater(pt, pose, X, Y, 0);
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = Math.min(1, alpha * k);
+      blitFrame(ctx, fr, Math.round(X), Math.round(Y - FEET.y), facing);
+      ctx.restore();
+    },
+    ring(X, Y, r, k, step) {
+      if (k <= 0) return;
+      ctx.save();
+      ctx.globalAlpha = alpha * k;
+      ctx.strokeStyle = phaseRgb(step);
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.ellipse(Math.round(X), Math.round(Y) - 1, r, r * 0.3, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    },
+    sparks(X, Y, t, k, seed) {
+      if (k <= 0) return;
+      ctx.save();
+      for (let i = 0; i < 7; i++) {
+        const dx = ((seed * 31 + i * 17) % 23) - 11;
+        const up = 8 + ((seed * 7 + i * 29) % 40) + t * 26;
+        const big = i % 3 === 0;
+        ctx.globalAlpha = alpha * k * (1 - t) * (i % 2 ? 0.9 : 0.6);
+        ctx.fillStyle = phaseRgb(big ? 8 : 6);
+        ctx.fillRect(Math.round(X + dx * 1.6), Math.round(Y - up), big ? 2 : 1, big ? 2 : 1);
+      }
+      ctx.restore();
+    },
+  };
+}
+
+/** A faint pool of blue light on the ground under a leaping light body. */
+function phasePool(ctx: CanvasRenderingContext2D, X: number, Y: number, alpha: number): void {
+  ctx.save();
+  ctx.globalAlpha = alpha * 0.35;
+  ctx.fillStyle = phaseRgb(4);
+  ctx.beginPath();
+  ctx.ellipse(Math.round(X), Math.round(Y) - 1, 16, 4, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
 /**
  * A Ryusei's phase (the owner's picture, docs/reference/ryusei-phase-owner-reference.jpg): the
  * ninja turns to blue light where it stands with a brief flare, leaps across as light to where it
@@ -939,78 +1051,7 @@ function drawPhase(ctx: CanvasRenderingContext2D, sc: Scene, u: Unit, v: UnitVie
     const q = project(map, pt);
     return { pt, X: q.X, Y: q.Y, lift: Math.sin(Math.PI * k) * hop, dashK: Math.min(1, Math.max(0, (ms - PHASE_IN) / PHASE_DASH)) };
   };
-  /**
-   * In the river the light body sinks as the solid one does (deep water hides the legs, shallow
-   * water the feet): clipped at the waterline over `pt`, which a leap rises out of.
-   */
-  const clipWater = (pt: Pt, pose: SpritePose, X: number, Y: number, lift: number): void => {
-    const water = map.waterAt(pt.x, pt.z);
-    if (water === 'none' || pose === 'downed') return;
-    const cut = water === 'deep' && !u.cond.waterWalk ? 38 : 8;
-    const half = Math.max(FEET.x, GRID - FEET.x) + 6;
-    ctx.beginPath();
-    ctx.rect(Math.round(X) - half, Math.round(Y - lift) - FEET.y - 20, 2 * half, Math.round(lift) + FEET.y + 20 - cut);
-    ctx.clip();
-  };
-  /**
-   * The light body at strength `k` (1 = all light), feet over the ground spot (X, Y) of map point
-   * `pt`, `lift` pixels up: the ground under it takes its blue at `hue`, then it is laid over and
-   * added as light (sprite/phase.ts, PHASE_ADD).
-   */
-  const light = (pose: SpritePose, frame: number, pt: Pt, X: number, Y: number, lift: number, facing: 1 | -1, k: number, hue = phaseHue(k)): void => {
-    if (k <= 0.01) return;
-    const fr = phaseFrameOf(u, look, pose, frame);
-    const x0 = Math.round(X);
-    const y0 = Math.round(Y - lift - FEET.y);
-    ctx.save();
-    clipWater(pt, pose, X, Y, lift);
-    ctx.globalCompositeOperation = 'color';
-    ctx.globalAlpha = Math.min(1, alpha * hue);
-    blitFrame(ctx, fr, x0, y0, facing);
-    ctx.globalCompositeOperation = 'source-over';
-    ctx.globalAlpha = Math.min(1, alpha * k);
-    blitFrame(ctx, fr, x0, y0, facing);
-    ctx.globalCompositeOperation = 'lighter';
-    ctx.globalAlpha = Math.min(1, alpha * k * PHASE_ADD);
-    blitFrame(ctx, fr, x0, y0, facing);
-    ctx.restore();
-  };
-  /** A flare: the light body added once more as light, at `k`. */
-  const flare = (pose: SpritePose, frame: number, pt: Pt, X: number, Y: number, facing: 1 | -1, k: number): void => {
-    if (k <= 0.01) return;
-    const fr = phaseFrameOf(u, look, pose, frame);
-    ctx.save();
-    clipWater(pt, pose, X, Y, 0);
-    ctx.globalCompositeOperation = 'lighter';
-    ctx.globalAlpha = Math.min(1, alpha * k);
-    blitFrame(ctx, fr, Math.round(X), Math.round(Y - FEET.y), facing);
-    ctx.restore();
-  };
-  const ring = (X: number, Y: number, r: number, k: number, step: number): void => {
-    if (k <= 0) return;
-    ctx.save();
-    ctx.globalAlpha = alpha * k;
-    ctx.strokeStyle = phaseRgb(step);
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.ellipse(Math.round(X), Math.round(Y) - 1, r, r * 0.3, 0, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.restore();
-  };
-  /** Little squares of light rising round a point, seeded so they don't flicker. */
-  const sparks = (X: number, Y: number, t: number, k: number, seed: number): void => {
-    if (k <= 0) return;
-    ctx.save();
-    for (let i = 0; i < 7; i++) {
-      const dx = ((seed * 31 + i * 17) % 23) - 11;
-      const up = 8 + ((seed * 7 + i * 29) % 40) + t * 26;
-      const big = i % 3 === 0;
-      ctx.globalAlpha = alpha * k * (1 - t) * (i % 2 ? 0.9 : 0.6);
-      ctx.fillStyle = phaseRgb(big ? 8 : 6);
-      ctx.fillRect(Math.round(X + dx * 1.6), Math.round(Y - up), big ? 2 : 1, big ? 2 : 1);
-    }
-    ctx.restore();
-  };
+  const { light, flare, ring, sparks } = phaseKit(ctx, sc, u, look, alpha);
   const rest = v.pose;
 
   if (ph.stage === 'in') {
@@ -1038,14 +1079,7 @@ function drawPhase(ctx: CanvasRenderingContext2D, sc: Scene, u: Unit, v: UnitVie
   if (ph.stage === 'dash') {
     const p = at(ph.ms);
     const leap = phaseLeap(v, ph.k);
-    // A faint pool of blue light on the ground under the leap.
-    ctx.save();
-    ctx.globalAlpha = alpha * 0.35;
-    ctx.fillStyle = phaseRgb(4);
-    ctx.beginPath();
-    ctx.ellipse(Math.round(p.X), Math.round(p.Y) - 1, 16, 4, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
+    phasePool(ctx, p.X, p.Y, alpha);
     light(leap.pose, leap.frame, p.pt, p.X, p.Y, p.lift, dashFace, 1);
     sparks((a.X + p.X) / 2, (a.Y + p.Y) / 2, ph.k, 0.8, 11);
     return;
@@ -1065,23 +1099,240 @@ function phaseFrames(v: UnitView): { pose: SpritePose; frame: number }[] {
   return [{ pose: v.pose, frame: 0 }, phaseLeap(v, 0), phaseLeap(v, 1)];
 }
 
+// --- the Ryusei's Warp Strike: the throw, the flight, the catch and the thrust ---------------
+
+/** Playback ms into a unit's Warp Strike (at speed 1) and its timeline. */
+function warpNow(sc: Scene, v: UnitView): { ms: number; t: WarpTimes } {
+  return { ms: Math.max(0, (sc.now - v.warp!.t0) * sc.pb.speed), t: warpTimes(v.warp!.fly) };
+}
+
+/** How much of a Warp Striker's body is light at `ms` (0 solid, 1 all light): its shadow fades as much. */
+function warpLight(ms: number, t: WarpTimes): number {
+  if (ms < t.rel) return 0;
+  if (ms < t.dash) return (ms - t.rel) / (t.dash - t.rel);
+  if (ms < t.land) return 1;
+  return Math.max(0, 1 - (ms - t.land) / (t.solid - t.land));
+}
+
+/** The leaping frame of the dash: the throw's follow-through, carried on into the leap with both feet off the ground. */
+const WARP_LEAP = 4;
+
 /**
- * Makes the light bodies a phase will need before it plays, at most one frame per screen frame and
- * at quiet moments, so the phase itself never waits for them: for phases already queued; then,
- * while nothing plays, for the Ryusei whose turn it is and whoever stands on its Nodes (a Spatial
- * Swap takes them along), and for every Ryusei on the field.
+ * A Ryusei's Warp Strike (the owner, 2026-10-21; UnitView.warp): the ninja faces the Node and
+ * throws ('throw' wind-up and the throw); as the weapon leaves the hand it turns to blue light in
+ * the release pose, his reference, with a flare; it leaps after the weapon as light (the throw's
+ * follow-through, with fading after-images), and lands where the weapon stops, turning solid
+ * already in the thrust's chamber ('pierce' 1) with the weapon in its hand, then thrusts at the foe
+ * beside it (or ahead) and stands. The weapon's flight and its sparkles are drawn over everything
+ * (drawWarpFlights).
  */
+function drawWarp(ctx: CanvasRenderingContext2D, sc: Scene, u: Unit, v: UnitView, look: SpriteAppearance, alpha: number, solid: (k: number, facing?: 1 | -1, fr?: FrameCanvas) => void): void {
+  const { map } = sc;
+  const w = v.warp!;
+  const { ms, t } = warpNow(sc, v);
+  const { from, to, face, land } = w;
+  const caught = catchLookOf(look);
+  if (ms < t.rel) {
+    // The wind-up and the throw: a frame each WARP_FRAME.
+    solid(1, face, unitFrame(u, look, 'throw', Math.min(THROW_RELEASE_FRAME - 1, Math.floor(ms / WARP_FRAME))));
+    return;
+  }
+  const a = project(map, from);
+  const b = project(map, to);
+  const kit = phaseKit(ctx, sc, u, look, alpha);
+  if (ms < t.dash) {
+    // The weapon has left the hand: the ninja turns to light in the release pose, where it stands.
+    const k = (ms - t.rel) / (t.dash - t.rel);
+    solid(1 - k, face, unitFrame(u, look, 'throw', THROW_RELEASE_FRAME));
+    kit.light('throw', THROW_RELEASE_FRAME, from, a.X, a.Y, 0, face, k, k);
+    kit.flare('throw', THROW_RELEASE_FRAME, from, a.X, a.Y, face, Math.sin(Math.PI * k) * 0.55);
+    kit.ring(a.X, a.Y, 10 + k * 14, 0.9 - k * 0.4, 6);
+    kit.sparks(a.X, a.Y, k, 1, 3);
+    return;
+  }
+  const along = Math.hypot(b.X - a.X, b.Y - a.Y);
+  const hop = Math.min(28, 8 + along * 0.07);
+  const at = (tm: number): { pt: Pt; X: number; Y: number; lift: number } => {
+    const k = warpDash(tm, t);
+    const pt = { x: from.x + (to.x - from.x) * k, z: from.z + (to.z - from.z) * k };
+    const q = project(map, pt);
+    return { pt, X: q.X, Y: q.Y, lift: Math.sin(Math.PI * k) * hop };
+  };
+  // After-images along the way, each a little behind the last and fainter; they catch up and go as
+  // it lands.
+  const out = ms < t.land ? 0 : Math.min(1, (ms - t.land) / (t.solid - t.land));
+  if (ms < t.solid)
+    for (let i = 3; i >= 1; i--) {
+      const tm = ms - i * 48;
+      if (tm < t.dash || tm >= t.land) continue;
+      const p = at(tm);
+      kit.light('throw', WARP_LEAP, p.pt, p.X, p.Y, p.lift, face, (0.84 - i * 0.19) * (1 - out));
+    }
+  // Where it set off, a ring of light fades.
+  const since = Math.min(1, (ms - t.dash) / (t.solid - t.dash));
+  kit.ring(a.X, a.Y, 24 + since * 6, 0.5 * (1 - since), 5);
+  if (ms < t.land) {
+    const p = at(ms);
+    phasePool(ctx, p.X, p.Y, alpha);
+    kit.light('throw', WARP_LEAP, p.pt, p.X, p.Y, p.lift, face, 1);
+    kit.sparks((a.X + p.X) / 2, (a.Y + p.Y) / 2, (ms - t.dash) / (t.land - t.dash), 0.8, 11);
+    return;
+  }
+  if (ms < t.solid) {
+    // Landing where the weapon stopped: solid again in the thrust's chamber, catching it, with a flash.
+    const ck = phaseKit(ctx, sc, u, caught, alpha);
+    solid(out, land, unitFrame(u, caught, 'pierce', 1));
+    ck.light('pierce', 1, to, b.X, b.Y, 0, land, 1 - out, 1 - out);
+    ck.flare('pierce', 1, to, b.X, b.Y, land, (1 - out) ** 2 * 0.6);
+    kit.ring(b.X, b.Y, 12 + out * 18, 1 - out, 7);
+    kit.ring(b.X, b.Y, 6 + out * 10, (1 - out) * 0.7, 4);
+    kit.sparks(b.X, b.Y, out, 1, 7);
+    return;
+  }
+  // The thrust: estocada, impacto, retroceso.
+  const into = ms - t.solid;
+  const f = into < WARP_THRUST[0] ? 2 : into < WARP_THRUST[0] + WARP_THRUST[1] ? 3 : 4;
+  solid(1, land, unitFrame(u, caught, 'pierce', f));
+}
+
+/** The flight of a unit's Warp Strike weapon (warpFlight.ts), worked out once per strike. */
+const flights = new WeakMap<NonNullable<UnitView['warp']>, Flight>();
+
+function flightOf(sc: Scene, u: Unit, look: SpriteAppearance, w: NonNullable<UnitView['warp']>): Flight {
+  let f = flights.get(w);
+  if (!f) {
+    const foe = w.foe ? sc.state.units[w.foe] : undefined;
+    const p = (pt: Pt): XY => {
+      const q = project(sc.map, pt);
+      return { x: q.X, y: q.Y };
+    };
+    f = warpFlightOf(look, p(w.from), p(w.to), w.face, w.land, foe ? p(sc.pb.posOf(foe.id, sc.now)) : undefined);
+    flights.set(w, f);
+  }
+  return f;
+}
+
+/** The weapons thrown by Warp Strikes, with their trails of sparkles: over everything, as they fly. */
+function drawWarpFlights(ctx: CanvasRenderingContext2D, sc: Scene): void {
+  for (const u of Object.values(sc.state.units)) {
+    const v = sc.pb.views.get(u.id);
+    if (!v?.warp) continue;
+    const look = lookOf({ ...u, armed: v.armed });
+    if (!look) continue;
+    const { ms, t } = warpNow(sc, v);
+    const f = flightOf(sc, u, look, v.warp);
+    const alpha = unitAlpha(sc, u, v);
+    if (alpha <= 0) continue;
+    drawTrail(ctx, f, t, ms, alpha);
+    const now = flightNow(f, t, ms);
+    if (now) drawThrown(ctx, look, f, now, alpha);
+  }
+}
+
+/**
+ * What a Ryusei's Warp Strike will need made beforehand (the slow part is making sprite frames):
+ * the throw, the light bodies of its release and its leap, the thrust it lands in (holding a kunai,
+ * if it throws one from bare hands), and its weapon at every angle of the flight to each of its
+ * Nodes.
+ */
+function warpNeeds(sc: Scene, u: Unit, look: SpriteAppearance): (() => boolean)[] {
+  const caught = catchLookOf(look);
+  const needs: (() => boolean)[] = [];
+  const solidOf = (l: SpriteAppearance, pose: SpritePose, f: number) => () => {
+    if (hasUnitFrame(u, l, pose, f)) return false;
+    unitFrame(u, l, pose, f);
+    return true;
+  };
+  const lightOf = (l: SpriteAppearance, pose: SpritePose, f: number) => () => {
+    if (hasPhaseFrame(u, l, pose, f)) return false;
+    phaseFrameOf(u, l, pose, f);
+    return true;
+  };
+  for (let f = 0; f <= THROW_RELEASE_FRAME; f++) needs.push(solidOf(look, 'throw', f));
+  needs.push(lightOf(look, 'throw', THROW_RELEASE_FRAME), lightOf(look, 'throw', WARP_LEAP));
+  const v = sc.pb.views.get(u.id);
+  const plans: Flight[] = [];
+  if (v?.warp) plans.push(flightOf(sc, u, look, v.warp));
+  else
+    for (const n of sc.state.nodes) {
+      if (n.owner !== u.id) continue;
+      const to = warpLanding(sc.state, u, n);
+      if (!to) continue;
+      const foe = edgeFoe(sc.state, u, to);
+      const face: 1 | -1 = Math.abs(to.x - u.pos.x) > 0.05 ? (to.x > u.pos.x ? 1 : -1) : u.facing;
+      const land: 1 | -1 = foe && foe.pos.x !== to.x ? (foe.pos.x > to.x ? 1 : -1) : face;
+      const p = (pt: Pt): XY => {
+        const q = project(sc.map, pt);
+        return { x: q.X, y: q.Y };
+      };
+      plans.push(warpFlightOf(look, p(u.pos), p(to), face, land, foe ? p(foe.pos) : undefined));
+    }
+  for (const plan of plans)
+    for (const angle of plan.angles)
+      needs.push(() => {
+        if (hasThrownFrame(look, angle)) return false;
+        thrownFrame(look, angle);
+        return true;
+      });
+  needs.push(solidOf(caught, 'pierce', 1), lightOf(caught, 'pierce', 1));
+  for (let f = 2; f <= 4; f++) needs.push(solidOf(caught, 'pierce', f));
+  return needs;
+}
+
+/**
+ * Makes the light bodies a phase will need before it plays, and what a Warp Strike will need (its
+ * frames and its flying weapon), a little per screen frame (one sprite frame, or a few small
+ * weapon angles, within WARM_MS) and at quiet moments, so neither waits for them when it plays:
+ * for phases and Warp Strikes already queued or playing; then, while nothing plays, for the
+ * Ryusei whose turn it is and whoever stands on its Nodes (a Spatial Swap takes them along), and
+ * for every Ryusei on the field.
+ */
+const WARM_MS = 4;
+const warpsReady = new WeakMap<BattleState, Set<string>>();
+
 function warmPhases(sc: Scene): void {
   const ids: string[] = [];
-  for (const e of sc.pb.queue) if (e.t === 'teleport' && e.how === 'phase') ids.push(e.unit);
+  const warps: string[] = [];
+  for (const e of sc.pb.queue) {
+    if (e.t === 'teleport' && e.how === 'phase') ids.push(e.unit);
+    if (e.t === 'jutsu' && e.jutsu === WARP) warps.push(e.unit);
+  }
+  for (const [id, v] of sc.pb.views) if (v.warp) warps.push(id);
   const turn = sc.pb.turnUnit ? sc.state.units[sc.pb.turnUnit] : undefined;
-  if (!ids.length && !sc.pb.busy) {
+  // Only a Ryusei with a Node of its own can Warp Strike.
+  const canWarp = (o: Unit): boolean => sc.state.nodes.some((n) => n.owner === o.id);
+  if (!ids.length && !warps.length && !sc.pb.busy) {
     if (turn && leavesNodes(turn) && !turn.down) {
       ids.push(turn.id);
+      if (canWarp(turn)) warps.push(turn.id);
       for (const o of Object.values(sc.state.units)) if (o.id !== turn.id && o.kind === 'ninja' && !o.down && nodeUnder(sc.state, turn, o)) ids.push(o.id);
     }
-    for (const o of Object.values(sc.state.units)) if (o.kind === 'ninja' && !o.down && leavesNodes(o)) ids.push(o.id);
+    for (const o of Object.values(sc.state.units))
+      if (o.kind === 'ninja' && !o.down && leavesNodes(o)) {
+        ids.push(o.id);
+        if (canWarp(o)) warps.push(o.id);
+      }
   }
+  const t0 = performance.now();
+  // A Warp Strike about to play comes first: it needs the most. (A unit found ready is not looked
+  // at again until the state changes.)
+  let done = warpsReady.get(sc.state);
+  if (!done) warpsReady.set(sc.state, (done = new Set()));
+  for (const id of warps) {
+    const u = sc.state.units[id];
+    const v = sc.pb.views.get(id);
+    const look = u && v ? lookOf({ ...u, armed: v.armed }) : undefined;
+    const key = `${id}|${v?.armed}|${!!v?.warp}`;
+    if (!u || !v || !look || done.has(key)) continue;
+    let made = false;
+    for (const need of warpNeeds(sc, u, look))
+      if (need()) {
+        made = true;
+        if (performance.now() - t0 > WARM_MS) return;
+      }
+    if (!made) done.add(key);
+  }
+  if (performance.now() - t0 > WARM_MS) return;
   for (const id of ids) {
     const u = sc.state.units[id];
     const v = sc.pb.views.get(id);

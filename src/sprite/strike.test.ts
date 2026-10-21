@@ -6,7 +6,7 @@ import { renderSprite } from './compose';
 import { throwRelease } from './grip';
 import { defaultAppearance } from './legacy';
 import { GRID, partIndex, RES } from './raster';
-import { drawRig, frameCount, POSE_FPS, rigPoseFor, THROW_RELEASE_FRAME } from './rig';
+import { BODY_PARAMS, drawRig, frameCount, POSE_FPS, rigPoseFor, THROW_RELEASE_FRAME } from './rig';
 import { SPRITE_POSES, type BodyType, type SpriteAppearance } from './types';
 
 const BODIES: BodyType[] = ['male', 'female', 'bulky', 'slender'];
@@ -75,7 +75,10 @@ describe('throw and pierce poses', () => {
         const a = drawRig(body, 'throw', f - 1);
         const b = drawRig(body, 'throw', f);
         assert.ok(Math.abs(b.lean - a.lean) <= 12, `${body} ${f}: lean ${a.lean} -> ${b.lean}`);
-        assert.ok(Math.hypot(b.head.x - a.head.x, b.head.y - a.head.y) <= 10, `${body} ${f}: the head moves (${a.head.x},${a.head.y}) -> (${b.head.x},${b.head.y})`);
+        // The same pitch carries the head further on a longer torso (the female bodies, the owner's
+        // heroines at our scale), so the step allowed grows with it.
+        const most = 10 * Math.max(1, BODY_PARAMS[body].torsoLen / BODY_PARAMS.male.torsoLen);
+        assert.ok(Math.hypot(b.head.x - a.head.x, b.head.y - a.head.y) <= most, `${body} ${f}: the head moves (${a.head.x},${a.head.y}) -> (${b.head.x},${b.head.y})`);
       }
     }
   });

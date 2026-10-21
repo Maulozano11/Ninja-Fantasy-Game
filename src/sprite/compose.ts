@@ -11,7 +11,7 @@ import { drawRig, Lay, layRig, Rig, rigPoseFor, turnPoint, turnRig } from './rig
 import { drawCampFx } from './campfx';
 import { drawCastFx } from './castfx';
 import { applyTexture, frayHair } from './texture';
-import type { EyeSpecial, PixelEdit, SlotId, SpriteAppearance, SpritePose } from './types';
+import { isFemaleBody, type EyeSpecial, type PixelEdit, type SlotId, type SpriteAppearance, type SpritePose } from './types';
 
 export interface SpriteFrame {
   rgba: Uint8ClampedArray;
@@ -278,7 +278,7 @@ export function renderSprite(
     },
     m: (hex, kind = 'cloth') => mats.get(hex, kind),
     pen: (hex, kind, part, bias = 0, flags = 0) => ({ mat: mats.get(hex, kind), part, bias, flags }),
-    skin: mats.get(look.skin, 'skin'),
+    skin: mats.get(look.skin, isFemaleBody(look.body) ? 'skinF' : 'skin'),
     has: (slot, id) => {
       const d = equipped.get(slot);
       return !!d && (id === undefined || d.id === id);

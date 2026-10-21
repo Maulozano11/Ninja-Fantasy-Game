@@ -652,7 +652,7 @@ function backX(g: DrawCtx, y: number): number {
     [
       [-0.8, -b.hipHalf * 0.9 - 0.4],
       [1.6, -b.hipHalf * 0.98 - 0.6],
-      [5.4, -b.waistHalf * 0.86],
+      [b.waistY ?? 5.4, -b.waistHalf * 0.86],
       [b.torsoLen - 5, -b.chestHalf * 0.86],
       [b.torsoLen - 1.2, -b.shoulderHalf * 0.86],
     ],

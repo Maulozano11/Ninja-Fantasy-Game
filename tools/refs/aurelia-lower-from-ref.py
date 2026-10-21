@@ -6,24 +6,25 @@ fine pixel of ours). It is the reference ("perfectas"): her skirt and sash are h
 colours (KEY: the medians of his cells, each cell the nearest of them). The big picture
 (aurelia-owner-reference.jpg) only helped to read them.
 
-Where it sits. His pixel (x, y) is ours (x + DX, y + DY) at our female's idle frame 0, the same place
-as her hair and eyes (tools/refs/aurelia-hair-from-ref.py: his near lash on our face anchor). There
-his waist, his belt and his front panel fall on our waist and between our legs as on his. His legs
-are longer than ours and stand wider (his near foot six columns further out, his far foot eleven rows
-lower), so the side panels and the lining are fitted to our legs, keeping his pixels:
+Where it sits. His pixel (x, y) is ours (x + DX, y + DY) at our female's idle frame 0 (the second
+female body), the same place as her bodice (tools/refs/aurelia_rig.py: his collar under our chin), so
+his sash follows on under his bodice as he drew it and falls on our waist, his belt and front panel
+on our hips and between our legs. From his collar to his soles he is three rows taller than our body
+and his legs stand wider (his near foot six columns further out, his far foot six rows lower), so the
+side panels and the lining are fitted to our legs, keeping his pixels:
 
   front    his front panel (the gold border, the lattice under the belt, the white with its grey
-           stripe, the tree over the point). Five of his rows are left out, each one the same as the
+           stripe, the tree over the point). Three of his rows are left out, each one the same as the
            row above it (FRONT_DROP), so its point ends above our ankles as his does above his.
   near     his near side panel, flaring back from the hip behind the near leg, with the bit of skirt
-           under the pouch. Four rows of its slanting stretch are left out (NEAR_DROP) and the rows
+           under the pouch. Three rows of its slanting stretch are left out (NEAR_DROP) and the rows
            below each move one column toward the leg, so its outer edge keeps his steps and its hem
            comes up and in to our shorter leg, which stands further in than his.
   far      his far side panel, the white strip with its gold trim beside the far leg, from its gold
            edge under the belt (beside the front panel, over the top of the far thigh) down. Its top
            stays where he drew it; below, each row past a FAR_SHIFT row moves one column further out,
            FAR_DX in all, so it stands behind our far leg as his does behind his (our far leg slants
-           out more than his). Six rows are left out that are each the same as the row above
+           out more than his). Four rows are left out that are each the same as the row above
            (FAR_DROP). Its top FAR_FRONT rows are also drawn over the far hip and thigh: there his
            panel hangs over it, and our thigh is wider than his. Behind his far hand the panel is
            continued from his rows under the hand (FAR_HIDDEN), as our far hand hangs further out.
@@ -85,8 +86,11 @@ KEY = {
 LINE = 'k'
 SKIN = 'jsv'
 
-# His pixel (x, y) is ours (x + DX, y + DY): as his hair (his lash's first cell on our face anchor).
-DX, DY = 72, 125
+# His pixel (x, y) is ours (x + DX, y + DY): as his bodice (tools/refs/aurelia_rig.py), so his sash
+# follows on under it as he drew it and falls on our waist.
+from aurelia_rig import AT  # noqa: E402
+
+DX, DY = AT['bodice']
 
 # What each colour is, for the item's colour slots (his line and the charm's red keep his).
 _GOLD = {c: 'gold' for c in 'pPOogGYyzZx'}
@@ -116,9 +120,9 @@ SEEDS = {
 }
 # His rows left out, each the same as the one above it (front, far) or as it moved one column
 # outward (near: the rows below then move one column in).
-FRONT_DROP = [59, 60, 62, 65, 67]
-NEAR_DROP = [60, 61, 67, 70]
-FAR_DROP = [65, 69, 73, 77, 81, 85]
+FRONT_DROP = [60, 62, 65]
+NEAR_DROP = [60, 67, 70]
+FAR_DROP = [69, 77, 81, 85]
 # The far panel stands this many columns further out than his at its hem (our far leg stands so):
 # one more column below each of these rows of his, so its top stays where he drew it.
 FAR_DX = 5

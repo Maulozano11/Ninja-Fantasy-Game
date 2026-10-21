@@ -24,12 +24,12 @@ export const AURELIA_LINE = '#030518';
  * [near side from, far side from, to]: from under his near armhole (the shoulder above stays bare),
  * from beside his collar on the far side, to the waist's lower edge.
  */
-export const AURELIA_TORSO_SPAN: [number, number, number] = [9.16, 1.16, 28.16];
+export const AURELIA_TORSO_SPAN: [number, number, number] = [12.77, 4.77, 31.77];
 
 /** The collar, the gem and the bodice to the sash's line (pivot: the base of the neck). */
 export const AURELIA_BODICE: PaintedPiece = {
-  pivot: [10, 3],
-  angle: -89.50,
+  pivot: [9, 0],
+  angle: -90.10,
   rows: [
     '....kkkk..........',
     '..kkEEEEkkkk......',
@@ -74,8 +74,8 @@ export const AURELIA_BODICE: PaintedPiece = {
 
 /** The bodice on under the sash to the hips (pivot: the base of the neck). */
 export const AURELIA_WAIST: PaintedPiece = {
-  pivot: [10, -16],
-  angle: -89.50,
+  pivot: [9, -19],
+  angle: -90.10,
   rows: [
     '....kbaaDaaaDDak....',
     '....kbaaDaaaDDak....',
@@ -101,23 +101,20 @@ export const AURELIA_WAIST: PaintedPiece = {
 
 /** The near sleeve to the elbow: its gold band (pivot: the shoulder). */
 export const AURELIA_SLEEVE_UPPER_N: PaintedPiece = {
-  pivot: [8, 1],
-  angle: 107.97,
+  pivot: [8, -2],
+  angle: 107.95,
   rows: [
-    '....kk....',
-    '....kD....',
-    '....kDk...',
-    '...kHDCkkk',
-    '...kDDCCHk',
-    '..kDDnnnnk',
-    '..kkkaabk.',
-    '..kbaaaek.',
-    '.kbaabak..',
-    'keaaaabk..',
-    'kbaDDabk..',
-    'baDkDaek..',
-    '...kDak...',
-    '......k...',
+    '...kk....',
+    '...kD....',
+    '...kDk...',
+    '..kHDCkkk',
+    '..kDDCCHk',
+    '.kDDnnnnk',
+    '.kkkaabk.',
+    'kbaabak..',
+    'keaaaabk.',
+    '..aDDabk.',
+    '.....aek.',
   ],
   colors: {
     k: '#030518',
@@ -133,24 +130,23 @@ export const AURELIA_SLEEVE_UPPER_N: PaintedPiece = {
 
 /** The near sleeve from the elbow to its gold cuff (pivot: the elbow). */
 export const AURELIA_SLEEVE_FORE_N: PaintedPiece = {
-  pivot: [10, 4],
+  pivot: [7, 3],
   angle: 103.11,
   rows: [
-    '........kk...',
-    '.......kkkkkk',
-    '.....k.kk.kk.',
-    '....kbaDk.kk.',
-    '...kkaDkbkDb.',
-    '...kaHkbakDbk',
-    '..kDlkbaakDk.',
-    '.kFjekaabkDk.',
-    '.kFhkbaaekDk.',
-    'kHhhkaabkhDk.',
-    'kHhkbaaekhDk.',
-    'kHhkaaDkhHk..',
-    'kHkdDDkkHk...',
-    '.kkDkk.kk....',
-    '..kk.........',
+    '.....kkkk...',
+    '....kkaak...',
+    '...kbkkkkk..',
+    '..kbaDkDkk..',
+    '..kbaDkkDak.',
+    '.kkaDkbkDbk.',
+    '.kDlkbaakDk.',
+    'kFhkbaaekDk.',
+    'kHhhkaabkhDk',
+    'kHhkbaaekhDk',
+    'kHhkaaDkhHk.',
+    'kHkdDDkkHk..',
+    '.kkDkk.kk...',
+    '..kk........',
   ],
   colors: {
     k: '#030518',
@@ -159,7 +155,6 @@ export const AURELIA_SLEEVE_FORE_N: PaintedPiece = {
     d: '#b29e90',
     e: '#99837c',
     h: '#88736d',
-    j: '#5d4f4e',
     l: '#4f4441',
     D: '#f5bc47',
     F: '#d69c33',
@@ -169,26 +164,23 @@ export const AURELIA_SLEEVE_FORE_N: PaintedPiece = {
 
 /** The near sleeve along its arm: under its band on the upper arm (0 shoulder, 1 elbow) and its
  * lower edge on the forearm (0 elbow, 1 wrist). */
-export const AURELIA_SLEEVE_SPAN_N: [number, number] = [0.425, 1.198];
+export const AURELIA_SLEEVE_SPAN_N: [number, number] = [0.662, 1.100];
 
 /** The far sleeve to the elbow: its gold band (pivot: the shoulder). */
 export const AURELIA_SLEEVE_UPPER_F: PaintedPiece = {
-  pivot: [3, 0],
-  angle: 77.78,
+  pivot: [2, -3],
+  angle: 79.34,
   rows: [
-    'kkkkk...',
-    'kDDCk...',
-    'kHDHk...',
-    'kDDnkk..',
-    'kkkkek..',
-    'kbbbkk..',
-    'kbbbek..',
-    'kbbbbk..',
-    'kbbbbbk.',
-    'kbbbbbk.',
-    'kbbbbHbk',
-    'kbbbbHHk',
-    'kbb.....',
+    'kkkkk..',
+    'kDDCk..',
+    'kHDHk..',
+    'kDDnkk.',
+    'kkkkek.',
+    'kbbbkk.',
+    'kbbbek.',
+    'kbbbbbk',
+    'kbbbbbk',
+    'kbb....',
   ],
   colors: {
     k: '#030518',
@@ -203,22 +195,22 @@ export const AURELIA_SLEEVE_UPPER_F: PaintedPiece = {
 
 /** The far sleeve from the elbow to its gold cuff (pivot: the elbow). */
 export const AURELIA_SLEEVE_FORE_F: PaintedPiece = {
-  pivot: [6, 2],
-  angle: 59.54,
+  pivot: [4, 3],
+  angle: 57.69,
   rows: [
-    '...kkk......',
-    '.kkbbk......',
-    '.kbkkkk.....',
-    '.kbbkHiFk...',
-    'kbbbbHdiFk..',
-    'kbbbbHkdiFk.',
-    'kbbbbdkkbHk.',
-    'kbbbbdkmkHk.',
-    'kbbbbdkmkfk.',
-    'kbbbbdkkbek.',
-    '...kHkkdHHFk',
-    '...kk.kHkkkk',
-    '.......k....',
+    '...kk........',
+    '.kkbk........',
+    '.kbbkk.......',
+    '.kkbbHHk.....',
+    'kbbbkHiFk....',
+    '.kbbbbHdiFk..',
+    '.kbbbbdkkbHk.',
+    '.kbbbbdkmkHk.',
+    '.kbbbbdkmkfk.',
+    '.kbbbbdkkbek.',
+    '....kHkkdHHFk',
+    '....kk.kHkkkk',
+    '........k....',
   ],
   colors: {
     k: '#030518',
@@ -235,4 +227,4 @@ export const AURELIA_SLEEVE_FORE_F: PaintedPiece = {
 
 /** The far sleeve along its arm: under its band on the upper arm (0 shoulder, 1 elbow) and its
  * lower edge on the forearm (0 elbow, 1 wrist). */
-export const AURELIA_SLEEVE_SPAN_F: [number, number] = [-0.025, 0.910];
+export const AURELIA_SLEEVE_SPAN_F: [number, number] = [0.206, 0.985];

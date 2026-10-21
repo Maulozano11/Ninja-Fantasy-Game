@@ -13,11 +13,13 @@ import {
   DAWN_FOOT_N,
   DAWN_SHIN_F,
   DAWN_SHIN_N,
+  DAWN_THIGH_F,
   DAWN_THIGH_N,
 } from './items/aureliaBootsArt';
-import type { PaintedPiece } from './painted';
+import { type PaintedPiece, segAngle } from './painted';
 import { GRID, RES, Vec } from './raster';
 import { buildRig } from './rig';
+import { rotateTemplate } from './rotsprite';
 import type { SpriteAppearance } from './types';
 
 const hexAt = (rgba: Uint8ClampedArray | Uint8Array, x: number, y: number) => {
@@ -52,13 +54,16 @@ describe('Dawn Boots', () => {
   it('stands at rest exactly as laid: every pixel of the near boot and the far shin and shoe is his', () => {
     const f = renderSprite(look(), 'idle', 0);
     const r = buildRig('female', 'idle', 0);
+    const farThigh = new Set(
+      rotateTemplate(DAWN_THIGH_F, segAngle(r.hipF, r.kneeF) - DAWN_THIGH_F.angle).map((p) => `${Math.floor(r.kneeF.x * RES) + p.dx},${Math.floor(r.kneeF.y * RES) + p.dy}`),
+    );
     const pixels = [
       ...laid(DAWN_THIGH_N, r.kneeN),
       ...laid(DAWN_SHIN_N, r.ankleN),
       ...laid(DAWN_FOOT_N, r.ankleN),
       ...laid(DAWN_FOOT_F, r.ankleF),
       // the far thigh's piece (his near lace top, turned with our far thigh) covers the far shin's top
-      ...laid(DAWN_SHIN_F, r.ankleF, (_x, y) => y >= 191),
+      ...laid(DAWN_SHIN_F, r.ankleF, (x, y) => !farThigh.has(`${x},${y}`)),
     ];
     assert.ok(pixels.length > 400);
     for (const [x, y, hex] of pixels) assert.equal(hexAt(f.rgba, x, y), hex, `pixel ${x},${y}`);

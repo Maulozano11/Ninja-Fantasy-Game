@@ -76,7 +76,7 @@ const UNDER_SLEEVE = (s: Side): Depth[] => [armDepth(s, 'body'), armDepth(s, 'cl
  * armhole on the near side and from beside his collar on the far side. Our torso is wider than hers
  * (our bust stands out past her bodice's far side), so the figure's edge there is her bodice's, with
  * her far sleeve and the gap by her near arm beside it, as he drew her. Above that our shoulders stay
- * bare, as hers are.
+ * bare, as hers are: of our undergarment nothing shows there (its strap over the near shoulder goes).
  */
 function clearTorso(g: DrawCtx, bodice: Uint8Array): void {
   const r = g.rig;
@@ -93,7 +93,9 @@ function clearTorso(g: DrawCtx, bodice: Uint8Array): void {
       const below = -(dx * r.up.x + dy * r.up.y) * RES;
       // the far side: toward the way she faces, along the shoulder line
       const far = dx * r.right.x + dy * r.right.y > 0;
-      if (below >= (far ? farFrom : nearFrom) && below < to) L.mat[i] = -1;
+      // our undergarment's straps go from the neck down: her shoulders are bare, so there our skin shows
+      const from = d === 'torso.under' ? 0 : far ? farFrom : nearFrom;
+      if (below >= from && below < to) L.mat[i] = -1;
     }
   }
 }

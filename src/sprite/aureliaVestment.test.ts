@@ -84,7 +84,8 @@ describe("Aurelia's vestment", () => {
       const f = renderSprite(look('female', [], skin), 'idle', 0);
       const cells = laid(AURELIA_BODICE, f.rig.neck).filter(([x, y]) => {
         const ch = AURELIA_BODICE.rows[y - (Math.floor(f.rig.neck.y * RES) - AURELIA_BODICE.pivot[1])][x - (Math.floor(f.rig.neck.x * RES) - AURELIA_BODICE.pivot[0])];
-        return AURELIA_SKIN_SHADES[ch] === 3 && y < f.rig.neck.y * RES + 6;
+        // the keyhole is beside the neck's middle; his other skin (the armpit) is by the near arm
+        return AURELIA_SKIN_SHADES[ch] === 3 && x >= Math.floor(f.rig.neck.x * RES);
       });
       assert.ok(cells.length > 0);
       return cells.map(([x, y]) => hexAt(f.rgba, x, y)).join();

@@ -13,9 +13,10 @@ shade falls on it), lit cream again at the ankle, and gold shoes: the near one s
 gold toe cap on a brown sole), the far one in profile with its brown heel.
 
 His legs are longer than ours and stand wider, so his pixels are laid on our female at idle frame 0
-with as little moved as possible:
-  - near boot: his rows 62-98 at his x + 74 (one column right of his hair and dress, so the lace top
-    sits on our thigh); the knee and the lace top at his y + 123 like the rest of her, and three of the
+(the second female body; its joints in tools/refs/aurelia_rig.py) with as little moved as possible:
+  - near boot: his rows 62-98 at his x + 75 (two columns right of his dress, so the lace top sits on
+    our thigh, which stands further in than his); the knee and the lace top at his y + 123 like the
+    rest of her, and three of the
     shin's rows that repeat the row above (DROP) left out so his sole lands on our near sole (our row
     218). Every pixel is his.
   - far boot: his shin from where it shows past her front panel (his row 79) and his shoe at his
@@ -55,7 +56,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import numpy as np  # noqa: E402
 from PIL import Image  # noqa: E402
 
-from heroine_ref import OUR_JOINTS as J  # noqa: E402
+from aurelia_rig import JOINTS as J  # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 PICTURE = os.path.join(ROOT, 'docs', 'reference', 'aurelia-escala-juego-owner-reference.jpg')
@@ -78,7 +79,7 @@ NEAR_ROWS = {
 }
 # Shin rows that repeat the row above (the same line, seam and outline columns), left out.
 DROP = (78, 82, 87)
-NEAR_DX = 74
+NEAR_DX = 75
 # How far up each stretch of his near boot is laid (his y + this = our row): the lace top and knee at
 # her own offset (123), and a row less below each dropped row.
 def near_dy(y):
@@ -110,10 +111,12 @@ FAR_SHADE = {(244, 237, 220): (205, 188, 171)}
 NEAR_FOOT_FROM, FAR_FOOT_FROM = 90, 89
 # How far the shin's piece reaches on under the thigh's and the shoe's (fine pixels).
 UNDER = 3
-# How far it reaches up under the thigh's piece past the knee: the far thigh's piece (his near boot's top)
-# comes down to the knee itself, and more of the far shin would stand out past the far thigh when the
-# knee bends hard (crouching, running).
-UNDER_KNEE = {'N': 3, 'F': 1}
+# How far it reaches up under the thigh's piece past the knee. On our female's far leg the thigh slants
+# out hard (about 50 degrees at rest), so the far thigh's piece (his near boot's top, turned that far)
+# leaves a gap above the knee unless the far shin reaches as far up as the near one; less, and the gap
+# is closed in his line at rest (a seam across the far boot). In a deep crouch a pixel or two of it shows
+# past the far thigh.
+UNDER_KNEE = {'N': 3, 'F': 3}
 
 
 def native():

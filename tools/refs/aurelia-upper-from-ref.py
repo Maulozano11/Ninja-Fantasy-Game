@@ -7,8 +7,11 @@ He drew Aurelia again at our scale ("aqui tienes tus referencias perfectas del m
 picture's corner; every cell is flat but for the JPEG's few levels of noise), and one of his pixels is
 one of ours. So nothing is reduced or redrawn: each of his pixels is the middle of its cell (its
 median), cells he drew in one colour are one colour (cells linked by steps closer than NEAR take
-their mean), and they are laid on our female at idle frame 0 one for one, his pixel (x, y) at
-(x + OFFSET[0], y + OFFSET[1]) of our 256 x 256 frame (his eyes on our eyes, his near hand on ours).
+their mean), and they are laid on our female at idle frame 0 (the second female body, fitted to his
+heroines at our scale) one for one: the collar and bodice at (x + OFFSET[0], y + OFFSET[1]) of our
+256 x 256 frame (his collar just under our chin), the sleeves from our shoulders (SLEEVE_AT: his bare
+near shoulder is the body's own), a few of their repeated rows left out and their lower rows moved a
+column at a time so his cuffs close round our wrists (tools/refs/aurelia_rig.py has the measures).
 
 His Aurelia wears a white sleeveless dress: a high collar edged in gold round the neck with a blue gem
 on a dark cord at the throat and a small keyhole of skin under it, bare shoulders, a bodice
@@ -53,15 +56,25 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import numpy as np  # noqa: E402
 from PIL import Image  # noqa: E402
 
-from heroine_ref import OUR_JOINTS as J  # noqa: E402
+from aurelia_rig import AT, JOINTS as J  # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 PICTURE = os.path.join(ROOT, 'docs', 'reference', 'aurelia-escala-juego-owner-reference.jpg')
 # One of his pixels in picture pixels; his grid starts at the picture's corner.
 PITCH = 19.32
-# His pixel (x, y) lies at (x + OFFSET[0], y + OFFSET[1]) of our frame (female, idle frame 0): his near
-# eye's cells (51-54, 16-18) on ours, his near fist (33-37, 52-57) on our near hand.
-OFFSET = (73, 123)
+# His pixel (x, y) lies at (x + OFFSET[0], y + OFFSET[1]) of our frame (female, idle frame 0): his collar
+# just under our chin (tools/refs/aurelia_rig.py).
+OFFSET = AT['bodice']
+# The sleeves hang from our shoulders: his bare near shoulder is our female's (his cell (44, 29) on our
+# near shoulder joint), so his bands sit on our upper arms at SLEEVE_AT. Our arms are shorter than his
+# and hang closer in (our near wrist three rows higher and four columns further in than his, the far one
+# three rows higher and one column further out), so below the band a few of his rows that repeat the
+# row above are left out (SLEEVE_DROP) and below each of SLEEVE_SHIFT's rows the sleeve moves a column
+# (toward our wrist): his cuffs then close round our wrists, where our hands (his hands, the female
+# body's) come out, as his do. Every row is one of his.
+SLEEVE_AT = AT['sleeves']
+SLEEVE_DROP = {'near': (37, 44, 46), 'far': (38, 41, 45)}
+SLEEVE_SHIFT = {'near': ((38, 1), (41, 1), (44, 1), (47, 1)), 'far': ((43, 1),)}
 # Cells linked by steps closer than this (RGB distance) are one colour of his: the JPEG moves a cell
 # by up to 8; his three golds lie 20 and more apart.
 NEAR = 9
@@ -126,6 +139,14 @@ WAIST_TOP, WAIST_BOTTOM = 42, 54
 SKIN_SHADES = {3: (245, 199, 166), 2: (226, 151, 127), 1: (194, 119, 104)}
 # How far each sleeve piece reaches on under the one drawn over it at the elbow (fine pixels).
 UNDER = 3
+
+
+def sleeve_at(piece, x, y):
+    """Where his sleeve cell (x, y) lies on our frame: SLEEVE_AT, less his rows left out above it, moved by
+    the columns of the shifts above it."""
+    dx = sum(d for r, d in SLEEVE_SHIFT[piece] if y > r)
+    dy = sum(1 for r in SLEEVE_DROP[piece] if y > r)
+    return (x + SLEEVE_AT[0] + dx, y + SLEEVE_AT[1] - dy)
 
 
 def native():
@@ -270,9 +291,12 @@ def main():
     def to_ours(piece):
         return {(x + OFFSET[0], y + OFFSET[1]): ch((x, y), piece) for (x, y) in pieces[piece]}
 
+    def sleeve_ours(piece):
+        return {sleeve_at(piece, x, y): ch((x, y), piece) for (x, y) in pieces[piece] if y not in SLEEVE_DROP[piece]}
+
     B = to_ours('bodice')
-    NS = to_ours('near')
-    FS = to_ours('far')
+    NS = sleeve_ours('near')
+    FS = sleeve_ours('far')
 
     # the waist: his row 40 run down under the sash to the hips
     row40 = [ch((x, 40), 'bodice') for x in range(48, 60)]
@@ -405,7 +429,7 @@ def main():
         # what of our arm the sleeve stands for: on the upper arm below its band (his row 36) on the near
         # side, below its band's top (his row 31) on the far side (our far shoulder stands out past her
         # bust where his is hidden), down to its cuff's lower edge on the forearm
-        yb = band_row + OFFSET[1]
+        yb = sleeve_at(what, 0, band_row)[1]
         row = [x + 0.5 for (x, y) in cs if y == yb]
         t_band = along((sum(row) / len(row), yb), sh, el)
         bot = max(y for _, y in cs)

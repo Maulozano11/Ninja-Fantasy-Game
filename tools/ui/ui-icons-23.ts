@@ -1702,13 +1702,18 @@ interface PhaseSpec {
   lineL: number;
   lineDrop: number;
   lineMin: number;
-  /** His greys from fillLo to fillHi (lightness) go on the ramp's blues, steps fillSteps[0] to fillSteps[1]; a step lighter just inside the rim. */
+  /** His greys from fillLo to fillHi (lightness) go on the ramp's blues, steps fillSteps[0] to fillSteps[1]. */
   fillLo: number;
   fillHi: number;
   fillSteps: [number, number];
   /** How much of the phase colour covers his ground (the rest shows through): the body, his after-image. */
   alpha: number;
   smearAlpha: number;
+  /** The ramp steps of the rim: where it faces his light (up, left), and elsewhere. */
+  rimLit: number;
+  rimShade: number;
+  /** The ramp step of the glow, laid on his ground as light is (screen: it only ever lightens). */
+  glowStep: number;
 }
 
 const PH_NONE = 0, PH_BODY = 1, PH_SMEAR = 2, PH_SKIN = 3, PH_EYE = 4, PH_GAP = 5;
@@ -1853,7 +1858,7 @@ function phaseEdit(id: string, s: PhaseSpec): (W: F) => string {
       const v = m[i] === PH_BODY ? L[i] : meanBody(i, 1);
       const t = Math.max(0, Math.min(1, ((Number.isNaN(v) ? s.fillLo : v) - s.fillLo) / (s.fillHi - s.fillLo)));
       const [a, b] = s.fillSteps;
-      return Math.min(b + 1, a + Math.round((b - a) * t) + (dOut[i] === 2 ? 1 : 0));
+      return a + Math.round((b - a) * t);
     };
     // The rim runs where the figure meets his ground, not where it dissolves into his after-image.
     const rimAt = (i: number): boolean => {
@@ -1876,16 +1881,19 @@ function phaseEdit(id: string, s: PhaseSpec): (W: F) => string {
       if (m[i] === PH_SMEAR) (mixTo(i, his, R[6], s.smearAlpha), count.smear++);
       else if (m[i] === PH_EYE) (mixTo(i, his, R[s.eyeStep], 1), count.eye++);
       else if (dOut[i] === 1 && rimAt(i)) {
-        // The rim: his reference's whitest where it faces his light (up, left), the next step elsewhere.
+        // The rim: his reference's pale blue where it faces his light (up, left), a lit blue elsewhere.
         const lit = (y > 0 && !fig(i - w)) || (x > 0 && !fig(i - 1));
-        mixTo(i, his, R[lit ? 10 : 9], 1);
+        mixTo(i, his, R[lit ? s.rimLit : s.rimShade], 1);
         count.rim++;
       } else if (m[i] === PH_SKIN) (mixTo(i, his, R[L[i] < 0.45 ? 7 : L[i] < 0.6 ? 8 : 9], 1), count.skin++);
       else if (lineM[i]) (mixTo(i, his, R[s.lineStep], 1), count.line++);
       else if (m[i] === PH_GAP) (mixTo(i, his, R[fillStep(i)], s.alpha), count.gap++);
       else (mixTo(i, bg, R[fillStep(i)], s.alpha), count.fill++);
     }
-    // The glow round him: his ground outside the figure blends toward the ramp's blue, less with distance.
+    // The glow round him: his ground outside the figure takes the ramp's blue as light (screen), less
+    // with distance: it lightens his ground, never darkens it (on Swap's cyan a darker blue mix read as
+    // a dark outline).
+    const G = R[s.glowStep];
     const near = (x: number, y: number): number => {
       let best = Infinity;
       for (let dy = -3; dy <= 3; dy++)
@@ -1902,7 +1910,10 @@ function phaseEdit(id: string, s: PhaseSpec): (W: F) => string {
       const d = near(x, y);
       if (d > 3) continue;
       const a = d <= 1 ? 0.5 : d <= 1.5 ? 0.4 : d <= 2 ? 0.25 : d <= 2.9 ? 0.12 : 0.06;
-      for (let c = 0; c < 3; c++) W.d[i * 3 + c] = W.d[i * 3 + c] * (1 - a) + R[5][c] * a;
+      for (let c = 0; c < 3; c++) {
+        const v = W.d[i * 3 + c];
+        W.d[i * 3 + c] = v * (1 - a) + (255 - ((255 - v) * (255 - G[c])) / 255) * a;
+      }
       count.glow++;
     }
     return (
@@ -1939,19 +1950,23 @@ const SWAP_PHASE: PhaseSpec = {
   trail: [[[36, 38], [67, 38], [67, 112], [36, 112], [36, 80], [43, 80], [43, 66], [36, 66]]],
   skinHue: [15, 95],
   skinC: 0.035,
-  eyes: [],
-  eyeStep: 2,
-  lineStep: 8,
+  // His eyes: the dark pixel in the left ninja's skin band, the two in the right one's.
+  eyes: [[20, 38], [118, 38], [120, 37]],
+  eyeStep: 1,
+  lineStep: 7,
   minPiece: 12,
   maxHole: 6,
   lineL: 0.225,
   lineDrop: 0.07,
   lineMin: 3,
-  fillLo: 0.24,
-  fillHi: 0.46,
-  fillSteps: [3, 7],
-  alpha: 0.82,
+  fillLo: 0.2,
+  fillHi: 0.4,
+  fillSteps: [1, 4],
+  alpha: 0.92,
   smearAlpha: 0.6,
+  rimLit: 9,
+  rimShade: 6,
+  glowStep: 7,
 };
 
 // Warp Strike (his window, 98x96): his ninja bursting out of the portal, his right arm thrown
@@ -1966,17 +1981,20 @@ const WARP_PHASE: PhaseSpec = {
   // His eyes: the two dark red pixels in his face's skin band; they stay dark in the light band.
   eyes: [[66, 29], [67, 29]],
   eyeStep: 1,
-  lineStep: 8,
+  lineStep: 7,
   minPiece: 12,
   maxHole: 6,
   lineL: 0.225,
   lineDrop: 0.07,
   lineMin: 3,
-  fillLo: 0.24,
-  fillHi: 0.46,
-  fillSteps: [3, 7],
-  alpha: 0.82,
+  fillLo: 0.16,
+  fillHi: 0.34,
+  fillSteps: [1, 4],
+  alpha: 0.92,
   smearAlpha: 0.6,
+  rimLit: 9,
+  rimShade: 6,
+  glowStep: 7,
 };
 
 /**
@@ -1986,41 +2004,42 @@ const WARP_PHASE: PhaseSpec = {
  * step elsewhere; the pixels just outside take the glow's blue at `glow`. The reduction alone
  * spread his one-pixel rim into the ground and the figures went soft.
  */
-function phaseArt(id: string, cover: Record<number, number>, glow: number): (pt: Paint, ctx: Ctx) => void {
+function phaseArt(id: string, s: PhaseSpec, at: Record<number, { cover: number; rim: number }>): (pt: Paint, ctx: Ctx) => void {
   return (pt: Paint, ctx: Ctx): void => {
     const m = PHASE_MASK.get(id);
     if (!m) return;
-    const N = pt.N, W = ctx.W;
+    const N = pt.N, W = ctx.W, o = at[N];
     const hit = new Float32Array(N * N), all = new Float32Array(N * N), smear = new Float32Array(N * N);
+    const figSum = new Float32Array(N * N * 3), restSum = new Float32Array(N * N * 3);
+    const eye = new Uint8Array(N * N);
     for (let y = 0; y < W.h; y++)
       for (let x = 0; x < W.w; x++) {
         const [u, v] = ctx.map(x + 0.5, y + 0.5);
         const cx = Math.min(N - 1, Math.floor(u)), cy = Math.min(N - 1, Math.floor(v));
         if (cx < 0 || cy < 0) continue;
-        const k = m[y * W.w + x];
-        all[cy * N + cx]++;
-        if (k === PH_BODY || k === PH_SKIN || k === PH_EYE || k === PH_GAP) hit[cy * N + cx]++;
-        if (k === PH_SMEAR) smear[cy * N + cx]++;
+        const i = y * W.w + x, c = cy * N + cx, k = m[i];
+        all[c]++;
+        const isFig = k === PH_BODY || k === PH_SKIN || k === PH_EYE || k === PH_GAP;
+        if (isFig) hit[c]++;
+        if (k === PH_SMEAR) smear[c]++;
+        if (k === PH_EYE) eye[c] = 1;
+        const sum = isFig ? figSum : restSum;
+        for (let j = 0; j < 3; j++) sum[c * 3 + j] += W.d[i * 3 + j];
       }
-    const fig = (x: number, y: number): boolean => x >= 0 && y >= 0 && x < N && y < N && all[y * N + x] > 0 && hit[y * N + x] / all[y * N + x] >= cover[N];
+    const fig = (x: number, y: number): boolean => x >= 0 && y >= 0 && x < N && y < N && all[y * N + x] > 0 && hit[y * N + x] / all[y * N + x] >= o.cover;
     // His ground (not his after-image, into which the figure dissolves without a rim).
     const out = (x: number, y: number): boolean => x >= 0 && y >= 0 && x < N && y < N && !fig(x, y) && smear[y * N + x] / all[y * N + x] < 0.3;
-    const R = PHASE_RAMP;
-    const glowAt: [number, number][] = [];
+    const mean = (sum: Float32Array, c: number, k: number): string => toHex([0, 1, 2].map((j) => Math.round(sum[c * 3 + j] / k)).concat(255) as RGBA);
     for (let y = 0; y < N; y++)
       for (let x = 0; x < N; x++) {
-        if (!fig(x, y)) {
-          if (glow > 0 && (fig(x + 1, y) || fig(x - 1, y) || fig(x, y + 1) || fig(x, y - 1))) glowAt.push([x, y]);
-          continue;
-        }
-        if (!(out(x + 1, y) || out(x - 1, y) || out(x, y + 1) || out(x, y - 1))) continue;
-        pt.px(x, y, out(x, y - 1) || out(x - 1, y) ? R[10] : R[9]);
+        const c = y * N + x;
+        if (fig(x, y)) {
+          // The figure: his eyes dark; the rim where it faces his light; else the mean of the figure's own pixels here (not his ground's).
+          if (eye[c]) pt.px(x, y, PHASE_RAMP[s.eyeStep]);
+          else if (o.rim >= 0 && (out(x, y - 1) || out(x - 1, y))) pt.px(x, y, PHASE_RAMP[o.rim]);
+          else pt.px(x, y, mean(figSum, c, hit[c]));
+        } else if (hit[c] > 0 && all[c] > hit[c]) pt.px(x, y, mean(restSum, c, all[c] - hit[c]));
       }
-    const g = hex(R[5]);
-    for (const [x, y] of glowAt) {
-      const c = pt.p.rgb[pt.at(x, y)];
-      pt.px(x, y, toHex([0, 1, 2].map((k) => Math.round(c[k] * (1 - glow) + g[k] * glow)).concat(255) as RGBA));
-    }
   };
 }
 
@@ -2455,7 +2474,7 @@ const ICONS: IconSpec[] = [
     label: 'INTERCAMBIO',
     sheet: '8',
     edit: phaseEdit('ryusei_swap', SWAP_PHASE),
-    art: phaseArt('ryusei_swap', { 44: 0.5, 88: 0.5 }, 0.4),
+    art: phaseArt('ryusei_swap', SWAP_PHASE, { 44: { cover: 0.5, rim: 8 }, 88: { cover: 0.5, rim: 9 } }),
     editArt: "at each size the phase figures' rim drawn again crisp (the reduction spread his one-pixel rim into his ground): a pixel is the figure's when at least half of his pixels in it are, the figure's pixels next to his ground (not his after-image) are the rim, his reference's whitest (#e4ffff) where it faces up or left and #c4e3ff elsewhere, the pixels just outside 40% toward the glow's blue (#415fdc)",
     asked: PHASE_ASKED,
     inks: [{ hex: PHASE_RAMP, why: "his reference picture's blues, for his phase ninjas" }],
@@ -2586,7 +2605,7 @@ const ICONS: IconSpec[] = [
     label: 'GOLPE WARP',
     sheet: '9',
     edit: phaseEdit('ryusei_warp', WARP_PHASE),
-    art: phaseArt('ryusei_warp', { 44: 0.5, 88: 0.5 }, 0.4),
+    art: phaseArt('ryusei_warp', WARP_PHASE, { 44: { cover: 0.5, rim: 8 }, 88: { cover: 0.5, rim: 9 } }),
     editArt: "at each size the phase figure's rim drawn again crisp (at 88 through his kept columns and rows, at 44 the reduction spread his one-pixel rim into his ground): a pixel is the figure's when at least half of his pixels in it are, the figure's pixels next to his ground are the rim, his reference's whitest (#e4ffff) where it faces up or left and #c4e3ff elsewhere, the pixels just outside 40% toward the glow's blue (#415fdc)",
     asked: PHASE_ASKED,
     inks: [{ hex: PHASE_RAMP, why: "his reference picture's blues, for his phase ninja" }],

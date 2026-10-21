@@ -298,6 +298,33 @@ export function addLegendNatures(c: ShinobiCharacter): ShinobiCharacter {
   };
 }
 
+/** The pieces Ren wore before the owner's new standard (2026-10-21), slot by slot. */
+const OLD_REN_PIECES: Record<string, string> = {
+  hair: 'hair_midnight',
+  top: 'top_royalcoat',
+  bottom: 'bottom_shinobi',
+  feet: 'feet_leather',
+  hands: 'hands_fingerless',
+  held: 'held_katana',
+};
+
+/**
+ * A copy of Ren saved before the owner's new standard (the owner, 2026-10-21: "pasa a nuevo aspecto")
+ * wears his new look: the preset's look of today, with the copy's own chakra and cast settings. Only a
+ * copy of the preset (its id) that still wears exactly the old Ren's pieces, slot for slot (in any
+ * colours: the preset's colours changed over time); a hero whose player changed a piece, or any other
+ * hero wearing some of the same pieces, keeps the look it has.
+ */
+export function withRensNewLook(c: ShinobiCharacter): ShinobiCharacter {
+  if (c.id !== 'preset_night') return c;
+  const look = getAppearance(c);
+  const worn = Object.entries(look.slots).filter(([, v]) => v);
+  const old = worn.length === Object.keys(OLD_REN_PIECES).length && worn.every(([slot, v]) => OLD_REN_PIECES[slot] === v!.id);
+  const ren = LEGENDARY_PRESETS.find((p) => p.character.id === 'preset_night')?.character.appearance;
+  if (!old || !ren) return c;
+  return { ...c, appearance: { ...structuredClone(ren), chakra: look.chakra, ...(look.cast ? { cast: look.cast } : {}) } };
+}
+
 /**
  * A sheet from an older save or an import, as today's rules read it:
  * - the explosive tag, a jutsu no more, swapped for the starting sheet's Utility jutsu and two tags
@@ -309,12 +336,13 @@ export function addLegendNatures(c: ShinobiCharacter): ShinobiCharacter {
  *   the creator's formula (its AC and jutsu DC and attack still match it) and its old clan built a
  *   bonus into them, its max HP and chakra are worked out again without it, and what it has left is
  *   kept under the new maxima;
- * - the clan's ability bonus counted in its numbers, once (countClanBonus).
+ * - the clan's ability bonus counted in its numbers, once (countClanBonus);
+ * - a copy of Ren in his old look given the owner's new Ren (withRensNewLook).
  * Hand-made numbers (the presets) keep their hand-made part; the other jutsu stay as they are, and of
- * the look only that old burst changes. A sheet that is already today's comes back as it is.
+ * the look only that old burst and the old Ren change. A sheet that is already today's comes back as it is.
  */
 export function migrateCharacter(saved: ShinobiCharacter): ShinobiCharacter {
-  const c = addLegendNatures(updateLegendChakra(tagJutsuToItem(saved)));
+  const c = addLegendNatures(updateLegendChakra(tagJutsuToItem(withRensNewLook(saved))));
   const clan = migrateClan(c.clan) ?? DEFAULT_CHARACTER.clan;
   const before = (c.sheetVersion ?? 1) < SHEET_VERSION;
   if (clan === c.clan && !before) return c;

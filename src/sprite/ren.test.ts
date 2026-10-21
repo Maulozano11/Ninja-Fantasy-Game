@@ -323,6 +323,18 @@ describe("the owner's Ren", () => {
       const l = getAppearance(c);
       for (const s of Object.values(l.slots)) assert.ok(getItem(s!.id), s!.id);
       for (const pose of ['idle', 'attack'] as SpritePose[]) assert.ok(loose(renderSprite(l, pose, 1).rgba) <= 3);
+      // the old Ren comes back in his new look (the owner: "pasa a nuevo aspecto"), his own chakra kept
+      assert.deepEqual({ ...l, chakra: REN.appearance!.chakra }, REN.appearance, 'the new look');
+      assert.deepEqual(l.chakra, saved.appearance!.chakra);
     }
+    // in the old look's pieces but other colours (the preset's colours changed over time): the new look
+    const recoloured = structuredClone(before);
+    recoloured.appearance!.slots.top = { id: 'top_royalcoat', colors: ['#7a1c1c', '#9aa3b2', '#0d0e14'] };
+    assert.deepEqual(getAppearance(migrateCharacter(recoloured)).slots, REN.appearance!.slots);
+    // a Ren whose player changed a piece, and another hero in the old Ren's pieces, keep their looks
+    const changed = structuredClone(before);
+    changed.appearance!.slots.hair = { id: 'hair_raven', colors: ['#2a3448'] };
+    const other = { ...structuredClone(before), id: 'hero_ren_fan', name: 'Kuro' } as ShinobiCharacter;
+    for (const c of [changed, other]) assert.deepEqual(migrateCharacter(structuredClone(c)).appearance, c.appearance, c.id);
   });
 });

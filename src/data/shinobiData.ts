@@ -1218,7 +1218,7 @@ export const LEGENDARY_PRESETS: { name: string; tag: string; nameEs?: string; ta
           held: it('held_lightning'),
         },
         headband: { position: 'forehead', slashed: true, tails: false, emblem: 'bolt', cloth: '#1e293b', plate: '#cbd5e1' },
-        chakra: { color: 'violet', onCharge: true, onCast: true, onVictory: false },
+        chakra: { color: 'yellow', tint: 'violet', onCharge: true, onCast: true, onVictory: false }, // Lightning like his jutsu, in his violet
       }),
     },
   },
@@ -1283,7 +1283,7 @@ export const LEGENDARY_PRESETS: { name: string; tag: string; nameEs?: string; ta
         },
         accessories: [it('acc_kunai_leg')],
         headband: { position: 'forehead', slashed: false, tails: true, emblem: 'spiral', cloth: '#1e3a8a', plate: '#cbd5e1' },
-        chakra: { color: 'orange', onCharge: true, onCast: true, onVictory: true },
+        chakra: { color: 'green', tint: 'orange', onCharge: true, onCast: true, onVictory: true }, // Wind like his jutsu, in his orange
       }),
     },
   },
@@ -1346,7 +1346,7 @@ export const LEGENDARY_PRESETS: { name: string; tag: string; nameEs?: string; ta
           held: it('held_naginata'),
         },
         accessories: [it('acc_back_katana')],
-        chakra: { color: 'violet', onCharge: true, onCast: true, onVictory: true },
+        chakra: { color: 'red', tint: 'violet', onCharge: true, onCast: true, onVictory: true }, // Fire like his jutsu, in his violet
       }),
     },
   },
@@ -1471,7 +1471,7 @@ export const LEGENDARY_PRESETS: { name: string; tag: string; nameEs?: string; ta
           hands: it('hands_fingerless', '#1b1b22', '#9aa4b0'),
           held: { ...it('held_katana'), parts: { steel: 'c', blade: 'a', guard: 'c', hilt: 'a' } },
         },
-        chakra: { color: 'blue', onCharge: true, onCast: true, onVictory: true },
+        chakra: { color: 'yellow', tint: 'blue', onCharge: true, onCast: true, onVictory: true }, // Lightning like his jutsu, in his blue
       }),
     },
   },

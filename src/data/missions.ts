@@ -235,7 +235,7 @@ export const HANA: ShinobiCharacter = companion(presetById('preset_gentle'), {
       held: item('held_palm', '#7ef0b8'),
     },
     headband: { position: 'forehead', slashed: false, tails: true, emblem: 'wave', cloth: '#2f7d5b', plate: '#cbd5e1' },
-    chakra: { color: 'green', onCharge: true, onCast: true, onVictory: false },
+    chakra: { color: 'blue', tint: 'green', onCharge: true, onCast: true, onVictory: false }, // Water like her jutsu, in her green
   }),
 });
 
@@ -270,7 +270,7 @@ export const KENJI: ShinobiCharacter = companion(presetById('preset_storm'), {
       cape: item('cape_haori', '#6d4fa3', '#1c1830', '#c9a46c'),
     },
     headband: { position: 'arm', slashed: false, tails: false, emblem: 'spiral', cloth: '#3b2f5c', plate: '#cbd5e1' },
-    chakra: { color: 'violet', onCharge: true, onCast: true, onVictory: false },
+    chakra: { color: 'brown', tint: 'violet', onCharge: true, onCast: true, onVictory: false }, // Earth like his jutsu, in his violet
   }),
 });
 

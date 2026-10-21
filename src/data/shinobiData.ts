@@ -1296,9 +1296,9 @@ function spriteLook(o: Partial<SpriteAppearance>): SpriteAppearance {
 export const LEGENDARY_PRESETS: { name: string; tag: string; nameEs?: string; tagEs?: string; character: ShinobiCharacter }[] = [
   {
     name: 'Solen, the Founder King',
-    tag: 'Legion Plate · Crystal Greatsword',
+    tag: 'Legion Plate · Ice Crystal Sword',
     nameEs: 'Solen, el Rey Fundador',
-    tagEs: 'Placas de legión · Mandoble de cristal',
+    tagEs: 'Placas de legión · Espada de hielo',
     character: {
       id: 'preset_founder',
       name: 'Solen Valcaire',
@@ -1308,7 +1308,7 @@ export const LEGENDARY_PRESETS: { name: string; tag: string; nameEs?: string; ta
       shinobiClass: 'Bukijutsu Master',
       stats: { str: 18, dex: 14, con: 18, int: 14, wis: 16, cha: 16 },
       palette: {
-        skinTone: '#f3c39c',
+        skinTone: '#f1b792',
         hairColor: '#232a3d',
         eyeColor: '#d81b2a',
         armorPrimary: '#aeb7c2',
@@ -1344,21 +1344,24 @@ export const LEGENDARY_PRESETS: { name: string; tag: string; nameEs?: string; ta
       jutsuSaveDC: 18,
       jutsuAttackBonus: 10,
       appearance: spriteLook({
-        skin: '#f3c39c',
-        eyeShape: 'sharp',
-        eyeColor: '#d81b2a',
+        skin: '#f1b792',
+        eyeShape: 'standard',
+        faceShape: 'founder',
+        eyeColor: '#8b1f2e',
+        // The owner's Solen (docs/reference/solen-owner-reference.jpg, 2026-10-21: "es el nuevo estandar"):
+        // every piece his pixels, in his colours (each item's defaults are his).
         slots: {
-          hair: it('hair_midnight', '#2f3c54'),
-          top: it('top_royalcoat', '#1f2a4a', '#e2b04a', '#131a30'),
-          bottom: it('bottom_shinobi', '#1f2a4a', '#1f2a4a'),
-          armor: it('armor_legion', '#8e98a6', '#a51f29', '#c49a3a'),
-          // No red drapes behind his black cloak (the owner's Roman skirt has them on by default).
-          skirt: { ...it('skirt_imperial', '#b3202a', '#6b4226', '#d4a531'), parts: { drapes: 'off' } },
-          feet: it('feet_sandals', '#1f1e26', '#c9a46c'),
-          cape: it('cape_shadow', '#2e2d35', '#d9a93a'),
-          held: it('held_crystal'),
+          hair: it('hair_founder'),
+          top: it('top_founder'),
+          bottom: it('bottom_founder'),
+          armor: it('armor_founder'),
+          skirt: it('skirt_founder'),
+          feet: it('feet_gladiator_sandals'),
+          hands: it('hands_steel_bracers'),
+          cape: it('cape_founder'),
+          held: it('held_ice_crystal'),
         },
-        accessories: [it('acc_scarf', '#1f1e26'), it('acc_chest_strap')],
+        accessories: [it('acc_founder_cowl')],
         chakra: { color: 'red', onCharge: true, onCast: true, onVictory: true },
       }),
     },

@@ -6,9 +6,12 @@ import { armJoints, DrawCtx, ItemDef, legPoint, Side } from '../ctx';
 import { add, capsule, ellipse, F_NO_OUTLINE, fine, GRID, Layer, len, lerp, line, norm, partIndex, Pen, perp, poly, px, RES, scale, seam, sub, UNITS, v, Vec } from '../raster';
 import { retintHex, type RampKind } from '../color';
 import { hd } from './hairkit';
-import { CRYSTAL_SWORD, drawPaintedWeapon, drawWeapon, ICE_CRYSTAL_SWORD, KUNAI } from './weapons';
+import { CRYSTAL_SWORD, drawPaintedWeapon, drawWeapon, KUNAI } from './weapons';
 import { FLAME_LONGSWORD, FLAME_SWORD_FLAME, FLAME_SWORD_GOLD } from './flameSwordArt';
+import { ICE_SWORD, ICE_SWORD_BLADE, ICE_SWORD_KIND } from './iceSwordArt';
 import { KATANA_PARTS, katanaHipColors, katanaTemplate } from './katana';
+import { stampLeaning } from './armor';
+import { FOUNDER_COWL, FOUNDER_COWL_GOLD, FOUNDER_COWL_KIND, FOUNDER_COWL_NEAR, FOUNDER_COWL_NECK, FOUNDER_COWL_STUD, FOUNDER_COWL_STUD_F } from './founderCowlArt';
 import { chakraHex } from '../chakraInfo';
 import { gripPoint, handsBusy, handsLimp, handsReleased, poleAngle, swordAngle, throwsKunai } from '../grip';
 
@@ -350,13 +353,19 @@ export const HELD_ITEMS: ItemDef[] = [
     id: 'held_ice_crystal',
     slot: 'held',
     name: 'Ice Crystal Sword',
-    desc: 'A faceted blade of ice-blue crystal under a curved crystal guard, painted by the owner.',
-    colors: [col('blade', 'Crystal', '#74aac4', 'metal'), col('hilt', 'Grip', '#3e5f7f', 'leather')],
-    draw: (g, [blade, grip]) => {
-      const tint = { base: '#74aac4', blade, grip, gripBase: '#3e5f7f' };
-      if (handsBusy(g)) drawPaintedWeapon(g, 'backGear', ICE_CRYSTAL_SWORD, backGrip(g, 48), backAngle(g, 48), tint);
-      else if (handsLimp(g)) drawPaintedWeapon(g, 'nearArm.held', ICE_CRYSTAL_SWORD, droppedGrip(g, 0.7), -86, tint);
-      else if (!handsReleased(g)) drawPaintedWeapon(g, 'nearArm.held', ICE_CRYSTAL_SWORD, gripPoint(g), swordAngle(g), tint);
+    desc: 'A long ice-blue crystal blade with a near-white edge under a steel cross-guard, its grip wrapped in dark blue: painted by the owner, as his Solen holds it.',
+    colors: [col('blade', 'Crystal', ICE_SWORD_BLADE, 'metal')],
+    draw: (g, [c]) => {
+      // The owner's sword on his Solen, his pixels (the new standard, 2026-10-21; tools/refs/
+      // solen-sword-from-ref.py): his repaint of this sword, held as the flame longsword is, by its grip
+      // at the hand joint at his angle, so at rest every pixel is his. His black line stays; every other
+      // colour moves the way his crystal blue does. The crystal blue it had before his repaint, which
+      // saved characters carry, now means his.
+      const blade = c.toLowerCase() === '#74aac4' ? ICE_SWORD_BLADE : c;
+      const tint = (_ch: string, hex: string) => (ICE_SWORD_KIND[hex] === 'line' ? hex : retintHex(hex, ICE_SWORD_BLADE, blade));
+      if (handsBusy(g)) drawPaintedWeapon(g, 'backGear', ICE_SWORD, backGrip(g, 48), backAngle(g, 48), tint);
+      else if (handsLimp(g)) drawPaintedWeapon(g, 'nearArm.held', ICE_SWORD, droppedGrip(g, 0.7), -86, tint);
+      else if (!handsReleased(g)) drawPaintedWeapon(g, 'nearArm.held', ICE_SWORD, g.rig.handN, swordAngle(g), tint);
     },
   },
   {
@@ -1091,6 +1100,31 @@ export const ACCESSORY_ITEMS: ItemDef[] = [
         }
       }
       for (const i of edge) L.shade[i] = 0;
+    },
+  },
+  {
+    id: 'acc_founder_cowl',
+    slot: 'accessory',
+    name: "Founder's Cowl",
+    desc: 'Dark grey cloth wound round the neck and over both shoulders, pinned with gold studs, a white stud on the far shoulder: painted by the owner for Solen.',
+    colors: [col('main', 'Cowl', FOUNDER_COWL), col('studs', 'Studs', FOUNDER_COWL_GOLD, 'metal'), col('stud', 'Shoulder stud', FOUNDER_COWL_STUD, 'metal')],
+    draw: (g, [c, gold, stud]) => {
+      // The owner's cowl on his Solen, his pixels (the new standard, 2026-10-21; tools/refs/
+      // solen-cowl-from-ref.py): round the neck in front of the torso and under the chin, over the near
+      // shoulder in front of the sleeve, and the white stud on the far shoulder; each leans with the torso
+      // about its joint. His line stays; his greys follow Cowl, his gold Studs, his white Shoulder stud.
+      const r = g.rig;
+      const torso = (Math.atan2(r.neck.y - r.pelvis.y, r.neck.x - r.pelvis.x) * 180) / Math.PI;
+      const tint = (_ch: string, hex: string): string => {
+        const k = FOUNDER_COWL_KIND[hex];
+        if (k === 'line') return hex;
+        if (k === 'gold') return retintHex(hex, FOUNDER_COWL_GOLD, gold);
+        if (k === 'white' || k === 'stud' || k === 'steel') return retintHex(hex, FOUNDER_COWL_STUD, stud);
+        return retintHex(hex, FOUNDER_COWL, c);
+      };
+      stampLeaning(g, 'capeFront', FOUNDER_COWL_NECK, r.neck, torso, 'torso', tint);
+      stampLeaning(g, 'capeFront', FOUNDER_COWL_STUD_F, r.shoulderF, torso, 'upperArmF', tint);
+      stampLeaning(g, 'nearArm.over', FOUNDER_COWL_NEAR, r.shoulderN, torso, 'upperArmN', tint);
     },
   },
   {

@@ -112,7 +112,7 @@ export class MaterialTable {
       i = this.ramps.length;
       const ramp = [...makeRamp(hex, kind)] as Ramp;
       // (a skin the owner painted keeps his own line)
-      if (kind !== 'flat' && kind !== 'glow' && !(kind === 'skin' && paintedSkinRamp(hex))) ramp[0] = mixHex(ramp[0], INK, 0.7);
+      if (kind !== 'flat' && kind !== 'glow' && !((kind === 'skin' || kind === 'skinF') && paintedSkinRamp(hex))) ramp[0] = mixHex(ramp[0], INK, 0.7);
       this.ramps.push(ramp);
       this.kinds.push(kind);
       this.index.set(key, i);

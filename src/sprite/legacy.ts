@@ -152,7 +152,6 @@ export const DELETED_PIECES: Record<string, { to: string | null; colors?: (old: 
   hair_gravity: { to: 'hair_bristle', colors: hairOf('#c9ccd6') },
   hair_silver: { to: 'hair_long', colors: hairOf('#dfe3ee') },
   hair_founder: { to: 'hair_warlord', colors: hairOf('#191620') },
-  hair_youth: { to: 'hair_midnight', colors: hairOf('#33333d') },
   hair_gale: { to: 'hair_midnight', colors: hairOf('#23232f') },
   hair_storm2: { to: 'hair_surge', colors: hairOf('#e6c020') },
   hair_charlotte: { to: 'hair_ribbon', colors: hairOf('#f2cb52') },

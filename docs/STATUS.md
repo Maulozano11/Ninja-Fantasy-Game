@@ -138,7 +138,7 @@ screens (`CampaignMode.tsx`, `ArenaSandbox.tsx`) are English only.
 | `jutsu/gap-set` | on origin (merged into the integration branch) | The owner's answers on the gaps proposal: the Devouring Tide (Water S), the Whirlwind Tower (Wind A), the Gale Curtain made a gale on the ground that fans fire (+1 die to a fire jutsu through it, whoever casts it), the Thunder Beam and the Rubble Gust (Lightning and Earth C); knock-down, sweep and drag on a failed save (ninjas only), water puts out flames; their effects from his sheets (the running wave, the tornado tower, the gale on the ground, the fanned fire's glow and vortex); `docs/GAMEPLAY_DESIGN.md`, "Jutsu for the gaps", and his rule that the elemental beasts are summons | **Merged** (approved under his 24-hour delegation; his open questions stay below) |
 | `vfx/ideas-round1` | merged into the integration branch | The owner's first round of jutsu effect answers (`docs/GAMEPLAY_DESIGN.md`, "Jutsu effects, round 1"): Llama Dragón (his Annihilation dragon head over his flame wall, a fan of fireballs), Fuego del dragón (half head, the stream to the line's end), Cadenas selladoras (chain and seal circle), Dragón de agua (no beast: his dragon head in water on his stream, a varied path), Balas de tierra (three volleys of rock bullets on varied paths), Luna creciente (three chakra crescents), Templo del Nirvana (crows out of the vortex), Huracán de la hoja (weapon stowed, a new unarmed `combo` pose, wind crescents); new group `vfx_dragon` (`tools/world-sprites/vfx-round1.ts`); pieces P1–P6 in the battle screen; then the two new effects: Dragón de madera (his dragon out of his icon rising behind the target after a row of roots, `vfx_wood`) and Chidori (his lightning in the bare hand, then a thrust, `vfx_hand`; the weapon stowed), by `tools/refs/wood-dragon-from-ref.py` and `tools/world-sprites/vfx-new-r1.ts` | **Merged** (approved under his 24-hour delegation; his open questions stay below) |
 | `armor/roman-paintover` | merged into the integration branch | The owner's Roman paint-over (`roman-owner-reference.jpg`): `armor_bronze` and `skirt_imperial` now his pixels (same ids; drapes as a part, hanging from the hip and ending above the ground), new `hands_bronze_bracers` and `feet_gladiator_sandals`; the old default colours of the two items now mean his; the female bodies keep the fitted cuirass; Solen (`preset_founder`) wears the skirt without drapes; `tools/refs/roman*`; `src/sprite/roman.test.ts`. Touches `armor.ts`, `clothes.ts`, `feet.ts`, `words.ts`, `shinobiData.ts` (Solen's skirt) | **Merged** (the owner approved the cuirass, skirt, bracers and sandals, 2026-10-21) |
-| `cleanup/remove-pieces` | pushed | His answer to the clothes inventory (2026-10-21): the 23 pieces marked "borrar" deleted with their code (`hair.ts`, `armor.ts`, `accessories.ts`, `capes.ts`, `clothes.ts`, `feet.ts`, `weapons.ts`, `hairkit.ts`) and a save migration (`DELETED_PIECES` and `migrateAppearance` in `src/sprite/legacy.ts`, called by `migrateCharacter`); the headband taken off every character and out of the creator, the random ninja and the drawing (`items/headband.ts` deleted; the look keeps a `headband` field, always position none); Solen on the ice crystal sword and the Roman sandals; `src/sprite/deleted.test.ts` | **For review**: the before/after renders go to him first |
+| `cleanup/remove-pieces` | pushed | His answer to the clothes inventory (2026-10-21): the 22 pieces marked "borrar" deleted with their code (`hair.ts`, `armor.ts`, `accessories.ts`, `capes.ts`, `clothes.ts`, `feet.ts`, `weapons.ts`, `hairkit.ts`) and a save migration (`DELETED_PIECES` and `migrateAppearance` in `src/sprite/legacy.ts`, called by `migrateCharacter`); the headband taken off every character and out of the creator, the random ninja and the drawing (`items/headband.ts` deleted; the look keeps a `headband` field, always position none); Solen on the ice crystal sword and the Roman sandals; `src/sprite/deleted.test.ts` | **For review**: the before/after renders go to him first |
 | `worktree-*` | not on origin (local `6e2e8dc`) | Agent worktree leftovers | Stale |
 
 The tips are the pushed ones; fetch to see the latest. At this snapshot the owner's checkout had
@@ -159,17 +159,18 @@ Merge checks (`git merge-tree` on the origin tips, nothing changed):
 - Decided 2026-10-21 (night), his answer to the clothes inventory (the list of every creator piece
   against his new standard, five questions): *"1 borrar piezas marcadas 2 rediseño por mi 3 quitar
   bandanas 4 si 5 si"*.
-  1. **Delete the marked pieces.** Built on `cleanup/remove-pieces`: 23 pieces deleted, each old save
+  1. **Delete the marked pieces.** Built on `cleanup/remove-pieces`: 22 pieces deleted, each old save
      moved to a replacement on load: `hair_flash` → `hair_sunburst`, `hair_gravity` → `hair_bristle`,
-     `hair_silver` → `hair_long`, `hair_founder` → `hair_warlord`, `hair_youth` and `hair_gale` →
+     `hair_silver` → `hair_long`, `hair_founder` → `hair_warlord`, `hair_gale` →
      `hair_midnight`, `hair_storm2` → `hair_surge`, `hair_charlotte` → `hair_ribbon`
      (the hair keeps its colour); `face_beast`, `face_sage` → none; `armor_desert`, `armor_storm` →
      `armor_flak`; `armor_dread` → `armor_crimson_plate` in the dread plate's black steel and gold; the
      female armours `armor_oath`, `armor_rose`, `armor_lionheart`, `armor_seraph`, `armor_lioness` →
      none; `feet_greaves` → `feet_crimson_sabatons`; `hands_gauntlets` → `hands_crimson_gauntlets`;
-     `cape_knight` → `cape_crimson`; `cape_rose` → none; `held_crystal` → `held_ice_crystal`. Four marked
+     `cape_knight` → `cape_crimson`; `cape_rose` → none; `held_crystal` → `held_ice_crystal`. Five marked
      pieces stay because his new paint-overs redo them (`trunks/owner-standard`): `hair_drifter`,
-     `hair_surge`, `hair_ascended` ("Puntas ascendidas", to be repainted), `feet_cowboy`. Hiro loses
+     `hair_surge`, `hair_ascended` ("Puntas ascendidas", to be repainted),
+     `hair_youth` ("Joven salvaje", to be repainted), `feet_cowboy`. Hiro loses
      `face_beast`. A sheet that wore a deleted armour keeps its stored AC (`armorStyle`) until it is
      saved again from the creator.
   2. **Kaien, Hiro, Shiori and Raiga will be redesigned by him** ("rediseño por mi"), from paint-over

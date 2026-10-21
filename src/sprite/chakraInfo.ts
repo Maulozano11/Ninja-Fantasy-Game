@@ -30,6 +30,15 @@ export const CHAKRA_CHOICES: ChakraChoice[] = CHAKRA_COLORS.map((c) => ({
   desc: c.desc,
 }));
 
+/**
+ * A burst's entry. A burst the game does not know (a hand-edited or imported sheet) is drawn as the
+ * water burst (chakra.ts, renderChakra) and reads as Water (chakraNature.ts), so it is described as
+ * that one too.
+ */
+export function chakraChoice(id: string): ChakraChoice {
+  return CHAKRA_CHOICES.find((c) => c.id === id) ?? CHAKRA_CHOICES.find((c) => c.id === 'blue')!;
+}
+
 /** The color a character's chakra shows: its tint (a chakra color or any hex), else the burst's own color. */
 export function chakraHex(chakra: Pick<ChakraSetting, 'color' | 'tint'>): string {
   const t = chakra.tint;

@@ -277,41 +277,62 @@ eligen los jugadores [...] si es chakra tipo fuego no importa el color que
 eligan es naturaleza fuego si eligen el electrico entonces son naturaleza
 rayo"*.
 
+**Decided by the owner:**
+
 - **One choice.** In Appearance > Chakra the player picks the **chakra type**
   (Fuego, Agua, Viento, Rayo...). That type is the ninja's **elemental nature**
   in the rules: it will decide which elemental jutsu the ninja can learn
-  (backlog 4c). There is no other nature picker.
+  (backlog 4c, not built yet). There is no other nature picker.
 - **The colour is only a look.** Any type takes any colour (its natural one,
   another chakra colour or any hex): green fire is still Fire, black or blue
   lightning is still Lightning. The colour never changes the nature.
-- **The types are the bursts.** Each burst belongs to one type:
 
-| Type | Burst(s) | Natural colour |
-|---|---|---|
-| Fire (Fuego) | Pyre Crown (flames), Cinder Nova (embers and a fiery shockwave) | red, orange |
-| Water (Agua) | Rising Tide | blue |
-| Wind (Viento) | Leafwind Spiral | green |
-| Lightning (Rayo) | Storm Lash | yellow |
-| Earth (Tierra) | Shattered Earth (the ground cracks, stone spikes, rocks tear loose and float up); **new, waiting for the owner's approval** | brown |
-| Shadow (Sombra), no element | Nightveil Mist | indigo |
-| Spirit (Espíritu), no element | Spectral Guardian | violet |
-| Light (Luz), no element | Heaven Pillar | white |
-| Void (Vacío), no element | Abyss Orbit | black |
+**As built, proposed and waiting for the owner's approval** (the builder's
+choices, not his decisions; see Open questions):
 
-  Earth had no burst, so one was drawn for it (Shattered Earth, with an Earth
-  emblem, orb and word for the grimoire casts): it waits for the owner's
-  approval. The four types without an element are kept because their bursts
-  were approved; no jutsu has their nature (see Open questions).
-- **The legends follow their jutsu**, in the colour they always had: Kaien and
-  Ren are Lightning (violet, blue), Hiro is Wind (orange), Raiga is Fire
-  (violet); of the companions, Hana is Water (green) and Kenji Earth (violet).
-  Solen, Akira, Aiden and Shiori already matched.
-- **In the code** there is one source: the look's burst
-  (`appearance.chakra.color`, an id named after the colour the bursts were
-  first picked by) gives the nature through `BURST_NATURE`
-  (`src/sprite/chakraNature.ts`); the rules read it with `natureOf(character)`
-  (`src/rules/ninja.ts`). The colour is `appearance.chakra.tint`. Saves did not
-  change: an old ninja keeps the nature of the burst it has.
+- **The types are the bursts.** Each burst belongs to one type. Fire (the
+  flames) and Lightning (the electric burst) are his words; the rest of the
+  table is proposed:
+
+| Type | Burst(s) | Natural colour | State |
+|---|---|---|---|
+| Fire (Fuego) | Pyre Crown (flames), Cinder Nova (embers and a fiery shockwave) | red, orange | Pyre Crown: his rule. Cinder Nova as a second Fire burst: proposed |
+| Water (Agua) | Rising Tide | blue | Proposed |
+| Wind (Viento) | Leafwind Spiral | green | Proposed |
+| Lightning (Rayo) | Storm Lash | yellow | His rule |
+| Earth (Tierra) | Shattered Earth (the ground cracks, stone spikes, rocks tear loose and float up) | brown | **New art**, proposed |
+| Shadow (Sombra), no element | Nightveil Mist | indigo | Proposed |
+| Spirit (Espíritu), no element | Spectral Guardian | violet | Proposed |
+| Light (Luz), no element | Heaven Pillar | white | Proposed |
+| Void (Vacío), no element | Abyss Orbit | black | Proposed |
+
+- **Earth** had no burst, so one was drawn for it (Shattered Earth, with an
+  Earth emblem, orb and word for the grimoire casts). It is new art and waits
+  for his approval; without it Earth can't be picked.
+- **The four types without an element** (Shadow, Spirit, Light, Void) are kept
+  because their bursts were approved as bursts; whether they stay as natures,
+  and what they may learn, is his call. No jutsu has their nature.
+- **The legends' types follow their jutsu**, in the colour they always had:
+  Kaien and Ren Lightning (violet, blue), Hiro Wind (orange), Raiga Fire
+  (violet); of the companions, Hana Water (green) and Kenji Earth (violet).
+  Solen, Akira, Aiden and Shiori already matched. Proposed: Kaien, Raiga and
+  Kenji lose the ghost-warrior burst.
+- **Legends and companions saved before this change keep the burst they were
+  saved with**, so a saved copy of Kaien reads Spirit, Ren Water, Hiro Fire
+  (embers), Raiga Spirit, and Hana and Kenji inside a mission under way Wind and
+  Spirit, against their own jutsu and the new presets. Saves were not touched:
+  moving those copies to the new burst is a save change and needs his decision
+  (Open questions).
+
+**In the code** there is one source: the look's burst
+(`appearance.chakra.color`, an id named after the colour the bursts were first
+picked by) gives the nature through `BURST_NATURE`
+(`src/sprite/chakraNature.ts`); the rules read it with `natureOf(character)`
+(`src/rules/ninja.ts`). The colour is `appearance.chakra.tint`. A burst id the
+game does not know is drawn, cast and described as Rising Tide and reads as
+Water. A sheet older than the sprite look draws its burst from its old aura
+colour (`palette.chakraAuraColor`); the creator's clan change no longer writes
+that colour, so such a ninja's type only changes when the player picks one.
 
 ## Language, sound and tips
 
@@ -427,11 +448,20 @@ folder (`WORLD_OUT`) until then. Approved so far: the river bridge.
 
 ## Open questions
 
-- Approve or redo the Earth chakra burst (Shattered Earth), drawn because Earth
-  had none.
-- Chakra types without an element (Shadow, Spirit, Light, Void): which jutsu
-  may they learn once the nature gates the jutsu (all non-elemental ones only?
-  Shadow as Genjutsu, Spirit or Light as pure chakra?), or should they go?
+- Chakra types ("Chakra type" above): approve or change the burst-to-type
+  table (is Cinder Nova a second Fire burst?), and approve or redo the Earth
+  burst (Shattered Earth), drawn because Earth had none.
+- Chakra types without an element (Shadow, Spirit, Light, Void): keep them as
+  natures or not, and which jutsu may they learn once the nature gates the
+  jutsu (all non-elemental ones only? Shadow as Genjutsu, Spirit or Light as
+  pure chakra?).
+- The legends' new types (Kaien, Ren, Hiro, Raiga, Hana, Kenji follow their
+  jutsu): approve or keep their old bursts.
+- Legends and companions saved before the change keep their old burst (a saved
+  Kaien reads Spirit, Ren Water, Hiro Fire, Raiga Spirit; Hana and Kenji in a
+  mission under way Wind and Spirit). Once the nature gates the jutsu they would
+  lose their own jutsu. Move saved copies with a legend's id to the legend's new
+  type on load (a save change), or leave them as saved?
 - Legends with a jutsu of a second element (Kaien's Fireball, Raiga's Earth
   Wall): allowed as legends, or changed, once the nature gates the jutsu?
 

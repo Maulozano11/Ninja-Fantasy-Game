@@ -3,7 +3,7 @@ import { ChevronLeft, ChevronRight, Flame, Paintbrush, PersonStanding, ScanFace,
 import { fitsBody, itemsForSlot, getItem } from '../../sprite/catalog';
 import { resolveParts, type ItemDef } from '../../sprite/ctx';
 import { EMBLEMS } from '../../sprite/items/headband';
-import { CHAKRA_CHOICES, chakraHex } from '../../sprite/chakraInfo';
+import { CHAKRA_CHOICES, chakraChoice, chakraHex } from '../../sprite/chakraInfo';
 import { CHAKRA_TYPES, chakraNature, chakraType, withNature } from '../../sprite/chakraNature';
 import { CAST_STYLE_INFO, defaultCastStyle } from '../../sprite/castInfo';
 import { CAST_STYLES } from '../../sprite/types';
@@ -261,7 +261,7 @@ export const AppearanceEditor: React.FC<{
   const slotPart = SLOT_PARTS[part];
   /** The chakra's type (the ninja's nature) and the burst drawn for it. */
   const nature = chakraNature(look.chakra);
-  const burstInfo = CHAKRA_CHOICES.find((c) => c.id === look.chakra.color) ?? CHAKRA_CHOICES[0];
+  const burstInfo = chakraChoice(look.chakra.color);
 
   return (
     <div className="flex gap-3 min-h-full">
@@ -489,7 +489,7 @@ export const AppearanceEditor: React.FC<{
                   {L('Nature')}: <span style={serif} className="text-sm font-bold text-[#f2c46d]">{L(nature)}</span>
                 </div>
               </div>
-              <p className="text-[11px] text-slate-500 -mt-1 mb-2">{L('Your chakra type is your elemental nature: it decides your elemental jutsu.')}</p>
+              <p className="text-[11px] text-slate-500 -mt-1 mb-2">{L('Your chakra type is your elemental nature (soon it will decide your elemental jutsu).')}</p>
               {[true, false].map((elemental) => (
                 <div key={String(elemental)} className="mb-2">
                   <div className="text-[10px] uppercase tracking-wider text-slate-500 mb-1">{L(elemental ? 'Elements' : 'No element')}</div>

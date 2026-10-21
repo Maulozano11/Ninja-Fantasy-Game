@@ -367,7 +367,6 @@ export const CharacterCreator: React.FC<CharacterCreatorProps> = ({
     soundManager.playSelect();
     const clanInfo = CLANS_DATA[newClan];
     const newDojutsu = clanInfo.availableDojutsu[0];
-    const newAura = clanInfo.recommendedChakraColor;
     const newJutsus = { ...character.selectedJutsus, slot4Clan: clanInfo.signatureJutsuId };
 
     const derived = calculateDerived(
@@ -378,13 +377,15 @@ export const CharacterCreator: React.FC<CharacterCreatorProps> = ({
       character.selectedFeats
     );
 
+    // The clan leaves the chakra alone: its type is the ninja's nature, the player's own choice in
+    // Appearance > Chakra. A sheet older than the sprite look draws its burst from the aura colour,
+    // so writing the clan's colour there would change that ninja's nature.
     setCharacter({
       ...character,
       clan: newClan,
       dojutsu: newDojutsu,
       palette: {
         ...character.palette,
-        chakraAuraColor: newAura,
         eyeColor: newDojutsu.includes('Sharingan') ? '#ef4444' : newDojutsu.includes('Byakugan') ? '#e0e7ff' : character.palette.eyeColor,
       },
       selectedJutsus: newJutsus,
@@ -1081,7 +1082,21 @@ export const CharacterCreator: React.FC<CharacterCreatorProps> = ({
           <div className="absolute left-1/2 -translate-x-1/2" style={{ top: 132 }}>
             {nameplate}
           </div>
-          <div className="absolute left-1/2 -translate-x-1/2" style={{ top: Math.min(ground + 18, view.h - 140) }}>
+          {/* The pose bar stays between the side panels (it wraps when they leave too little room): it
+              must not cover the panel's options. The widths mirror the panels' classes above. */}
+          <div
+            className="absolute left-1/2 -translate-x-1/2"
+            style={{
+              top: Math.min(ground + 18, view.h - 140),
+              maxWidth:
+                2 *
+                  Math.min(
+                    view.w / 2 - 24 - (step === 'appearance' ? Math.min(view.w * 0.34, 560) : Math.min(view.w * 0.26, 400)),
+                    view.w / 2 - 24 - Math.min(view.w * 0.27, 420)
+                  ) -
+                24,
+            }}
+          >
             {stances}
           </div>
 

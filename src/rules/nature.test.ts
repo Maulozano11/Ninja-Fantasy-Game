@@ -8,7 +8,7 @@ import { DEFAULT_CHARACTER, JUTSUS_DATA, LEGENDARY_PRESETS } from '../data/shino
 import { HANA, KENJI } from '../data/missions';
 import { loadHero, loadRoster } from '../game/saves';
 import { CHAKRA_COLORS } from '../sprite/chakra';
-import { chakraHex } from '../sprite/chakraInfo';
+import { chakraChoice, chakraHex } from '../sprite/chakraInfo';
 import { BURST_NATURE, CHAKRA_TYPES, chakraNature, chakraType, withNature } from '../sprite/chakraNature';
 import type { ChakraChoice, ChakraColorId } from '../sprite/types';
 import type { ChakraNature, ShinobiCharacter } from '../types/shinobi';
@@ -77,8 +77,12 @@ describe('chakra types', () => {
     for (const t of CHAKRA_TYPES) assert.equal(chakraNature(withNature(chakra('white', '#123456'), t.nature)), t.nature, t.nature);
   });
 
-  it('a burst the game does not know reads as Water, as it is drawn', () => {
+  it('a burst the game does not know reads as Water, as it is drawn, and the creator describes it so', () => {
     assert.equal(chakraNature(chakra('teal')), 'Water');
+    const info = chakraChoice('teal');
+    assert.equal(info.id, 'blue', 'described as the water burst, not the first one');
+    assert.equal(info.nature, chakraNature(chakra('teal')));
+    for (const c of CHAKRA_COLORS) assert.equal(chakraChoice(c.id).id, c.id);
   });
 });
 

@@ -124,10 +124,13 @@ Merge checks (`git merge-tree` on the origin tips, nothing changed):
 - Approve or correct: `ryusei/phase`, `poses/throw-pierce`, the icons on `icons/sheets-8-11`, the
   camp poses once redone.
 - Name the Scarlet character (`scarlet/study`).
-- `chakra/nature` (2026-10-21): the chakra type is the nature (his rule, built). Approve or redo the
-  new Earth burst (Shattered Earth); check the legends whose burst now follows their jutsu (Kaien,
-  Ren, Hiro, Raiga, Kenji, Hana, each in the colour it had); decide what Shadow, Spirit, Light and Void
-  may learn (`docs/GAMEPLAY_DESIGN.md`, Open questions).
+- `chakra/nature` (2026-10-21): the chakra type is the nature (his rule, built). Proposed, for his
+  approval (`docs/GAMEPLAY_DESIGN.md`, "Chakra type" and Open questions): the burst-to-type table
+  (Cinder Nova as a second Fire burst); the new Earth burst (Shattered Earth); the legends whose burst
+  now follows their jutsu (Kaien, Ren, Hiro, Raiga, Kenji, Hana, each in the colour it had); whether
+  Shadow, Spirit, Light and Void stay as types and what they may learn. To decide: legends and
+  companions saved before the change keep their old burst (a saved Kaien reads Spirit): move them to
+  the new type on load (a save change) or leave them.
 - Decided 2026-10-21 (later): Warp Strike is renamed **"Shooting-Star Thrust"** (Spanish **"Estocada Fugaz"**; the owner first said "Shooting Star", then chose these), after the clan's name (Ryusei = shooting star) and to stay clear of other games' "Warp Strike". The id `ryusei_warp` stays. To apply once `icons/sheets-8-11` is merged (it touches the same strings): names, hotbar label, help text, log, clan texts, D24.
 - Decided 2026-10-21: the Spanish names are **"Golpe Warp"** and **"Comando"** (the owner: "los dos"); `icons/sheets-8-11` brings them and updates D24 in `docs/CLANS_DESIGN.md`.
 - Jutsu pacing (owner: too fast, "like a flashing star"): a first pass is merged (`8ef28a9`: 560 ms
@@ -209,7 +212,8 @@ Chakra, read with `natureOf` (`src/rules/ninja.ts`); the colour never changes it
 listed it as in progress: ask before starting). Goal: a ninja's nature decides which elemental
 jutsu they can learn; a new ninja starts with low ranks. Open: the new Earth burst waits for the
 owner's approval; what the types without element may learn; legends with a second element (Kaien,
-Raiga).
+Raiga); saved legends and companions with their old burst. Until the gating is built, the creator
+says the type "will soon" decide the elemental jutsu.
 
 ### 4d. Missions (not built)
 Branching road, road traps and curios, votes, cinematics and decisions, the AI choosing camp

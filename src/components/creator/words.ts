@@ -66,7 +66,7 @@ const ES: Record<string, string> = {
   // the chakra types (the ninja's nature) and their bursts
   'Chakra Type': 'Tipo de chakra',
   Nature: 'Naturaleza',
-  'Your chakra type is your elemental nature: it decides your elemental jutsu.': 'Tu tipo de chakra es tu naturaleza elemental: decide tus jutsus elementales.',
+  'Your chakra type is your elemental nature (soon it will decide your elemental jutsu).': 'Tu tipo de chakra es tu naturaleza elemental (pronto decidirá tus jutsus elementales).',
   Elements: 'Elementos',
   'No element': 'Sin elemento',
   Burst: 'Estallido',

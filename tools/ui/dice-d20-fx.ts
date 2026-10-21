@@ -324,14 +324,27 @@ function lay(img: Img, die: Rendered, cx: number, cy: number): void {
   img.draw(die.img, Math.round(cx - die.centre[0]), Math.round(cy - die.centre[1]));
 }
 
-/** A diagonal shine band over the die's own pixels: `pos` 0..1 from upper left to lower right. */
+/**
+ * A diagonal shine band over the die's own pixels: `pos` 0..1 from upper left to lower right. It
+ * passes behind the numbers: never over a digit, its groove or glow, nor the pixels round it (a
+ * white band across the 20 hid it at the very moment it matters).
+ */
 function shine(img: Img, die: Rendered, ox: number, oy: number, pos: number, width: number): void {
   const w = die.img.w, h = die.img.h;
   const span = w + h;
   const at = -0.15 * span + pos * span * 1.3;
+  const m = width > 4 ? 2 : 1;
+  const nearInk = (x: number, y: number) => {
+    for (let dy = -m; dy <= m; dy++)
+      for (let dx = -m; dx <= m; dx++) {
+        const X = x + dx, Y = y + dy;
+        if (X >= 0 && Y >= 0 && X < w && Y < h && die.inkAt[Y * w + X]) return true;
+      }
+    return false;
+  };
   for (let y = 0; y < h; y++)
     for (let x = 0; x < w; x++) {
-      if (die.faceAt[y * w + x] < 0) continue;
+      if (die.faceAt[y * w + x] < 0 || nearInk(x, y)) continue;
       const d = x + y - at;
       if (d < 0 || d >= width) continue;
       const c = img.get(ox + x, oy + y);
@@ -343,7 +356,9 @@ function shine(img: Img, die: Rendered, ox: number, oy: number, pos: number, wid
 
 /**
  * The natural 20: a white-gold flash, rays and sparkles bursting out, the die turned to gold with a
- * shine sweeping across it, then the die's own colours back with the 20 left in gold.
+ * shine sweeping across it. The small die then wipes back to its own colours with the 20 left in
+ * gold; the big one (the window) holds its gold to the end, so it is still gold while the banner
+ * says "¡CRÍTICO!".
  */
 export function nat20Frames(style: StyleId, size: Size): FxFrame[] {
   const z = SIZES[size], W = z.fx, c = W / 2, big = size === 'big';
@@ -359,10 +374,19 @@ export function nat20Frames(style: StyleId, size: Size): FxFrame[] {
     { look: 'gold', gold: 1, grow: 1, rays: 0.4, shine: 0.25, spark: 0.58, ms: 50, halo: 0.75 },
     { look: 'gold', gold: 1, grow: 1, rays: 0.28, shine: 0.5, spark: 0.7, ms: 50, halo: 0.7 },
     { look: 'gold', gold: 1, grow: 1, rays: 0.16, shine: 0.75, spark: 0.8, ms: 50, halo: 0.65 },
-    { look: 'gold', gold: 0.75, grow: 1, rays: 0, shine: 1, spark: 0.88, ms: 60, halo: 0.6 },
-    { look: 'gold', gold: 0.5, grow: 1, rays: 0, shine: null, spark: 0.95, ms: 70, halo: 0.45 },
-    { look: 'gold', gold: 0.25, grow: 1, rays: 0, shine: null, spark: 1, ms: 80, halo: 0.3 },
-    { look: 'normal', gold: 0, grow: 1, rays: 0, shine: null, spark: -1, ms: 0, halo: 0.2 },
+    ...(big
+      ? [
+          { look: 'gold' as Look, gold: 1, grow: 1, rays: 0, shine: 1, spark: 0.88, ms: 60, halo: 0.6 },
+          { look: 'gold' as Look, gold: 1, grow: 1, rays: 0, shine: null, spark: 0.95, ms: 70, halo: 0.55 },
+          { look: 'gold' as Look, gold: 1, grow: 1, rays: 0, shine: null, spark: 1, ms: 80, halo: 0.5 },
+          { look: 'gold' as Look, gold: 1, grow: 1, rays: 0, shine: null, spark: -1, ms: 0, halo: 0.45 },
+        ]
+      : [
+          { look: 'gold' as Look, gold: 0.75, grow: 1, rays: 0, shine: 1, spark: 0.88, ms: 60, halo: 0.6 },
+          { look: 'gold' as Look, gold: 0.5, grow: 1, rays: 0, shine: null, spark: 0.95, ms: 70, halo: 0.45 },
+          { look: 'gold' as Look, gold: 0.25, grow: 1, rays: 0, shine: null, spark: 1, ms: 80, halo: 0.3 },
+          { look: 'normal' as Look, gold: 0, grow: 1, rays: 0, shine: null, spark: -1, ms: 0, halo: 0.2 },
+        ]),
   ];
   steps.forEach((s, i) => {
     const img = new Img(W, W);

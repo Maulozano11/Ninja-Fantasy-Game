@@ -69,8 +69,14 @@ elements.
     advantage or disadvantage both dice land and the one not kept dims. A
     readout beside it says "17 + 5 = 22 ✓ CA 14". The action plays when the die
     clicks onto its face; everyone a blast reaches saves at once, and both sides
-    of a shove roll together. The battle speed (1×/2×/3×) speeds the dice too,
-    and a "Saltar dados" button (or Space) lands them at once. The big window
+    of a shove roll together. The saves against a jutsu are thrown while it
+    flies, so they land as it hits and the damage shows with the blast. Dice
+    thrown together spread out so none covers another or a head, a bar or a
+    mark; one moved off its ninja has a thin gold stem down to them, and each
+    readout goes on the side where it covers nothing. The battle speed
+    (1×/2×/3×) speeds the dice too, and a "Saltar dados" button (or Space) lands
+    them at once; a Space or Enter pressed within 0.7 s after the dice only
+    skips, so a late press never ends the turn. The big window
     opens for a natural 20 on an attack ("¡CRÍTICO!"), a natural 1 on a save
     ("¡FALLO CRÍTICO!") and a natural 20 on a save, a check or a death save
     ("¡20 NATURAL!"). Sounds: the throw (whoosh, bounces, the click on the face),

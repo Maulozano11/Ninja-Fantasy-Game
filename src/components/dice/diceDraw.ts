@@ -50,6 +50,19 @@ const hexRgb = (h: string): [number, number, number] => {
 const GEM_KEYS = (DICE.gem.keys as string[]).map(hexRgb);
 const keyIndex = new Map<number, number>(GEM_KEYS.map((c, i) => [(c[0] << 16) | (c[1] << 8) | c[2], i]));
 
+/** The key colour nearest (r, g, b), if every channel is within `tol`. */
+function nearestKey(r: number, g: number, b: number, tol: number): number | undefined {
+  let best: number | undefined, bd = Infinity;
+  GEM_KEYS.forEach((c, i) => {
+    const d = Math.max(Math.abs(c[0] - r), Math.abs(c[1] - g), Math.abs(c[2] - b));
+    if (d <= tol && d < bd) {
+      bd = d;
+      best = i;
+    }
+  });
+  return best;
+}
+
 /** Recoloured gem cells, by sheet, cell and tint (each made once). */
 const gemCells = new Map<string, HTMLCanvasElement>();
 function gemCell(img: HTMLImageElement, name: string, r: Rect, tint: string): HTMLCanvasElement | null {
@@ -68,7 +81,10 @@ function gemCell(img: HTMLImageElement, name: string, r: Rect, tint: string): HT
   const d = data.data;
   for (let i = 0; i < d.length; i += 4) {
     if (!d[i + 3]) continue;
-    const k = keyIndex.get((d[i] << 16) | (d[i + 1] << 8) | d[i + 2]);
+    let k = keyIndex.get((d[i] << 16) | (d[i + 1] << 8) | d[i + 2]);
+    // A see-through pixel (the halo) comes back from the canvas a little off its key colour (the
+    // canvas keeps colours premultiplied by alpha): take the nearest key within that rounding.
+    if (k === undefined && d[i + 3] < 255) k = nearestKey(d[i], d[i + 1], d[i + 2], Math.ceil(255 / d[i + 3]) + 1);
     if (k === undefined) continue;
     const t = ramp[k];
     d[i] = t[0];
@@ -175,9 +191,10 @@ export function drawDie(ctx: CanvasRenderingContext2D, d: DieDraw): void {
   if (d.dim) col = ds.dimColumn;
   else if (after < POP_MS) col = ds.popColumns[0] + frameAt(ds.popMs, after);
   if (!d.dim && after < 420) {
-    // A soft halo of the style's light under the die as it lands.
+    // A soft halo of the style's light under the die as it lands (a gem's in the roller's chakra
+    // colour: its halo is drawn in one of the gem's key colours, so it tints like the die).
     const hr = SHARED[d.size][`halo_${d.style}_${Math.min(3, Math.floor(after / 105))}`];
-    if (hr) blit(ctx, `dice_shared_${d.size}.png`, hr, d.x - (hr[2] * d.s) / 2, d.y - (hr[3] * d.s) / 2, d.s);
+    if (hr) blit(ctx, `dice_shared_${d.size}.png`, hr, d.x - (hr[2] * d.s) / 2, d.y - (hr[3] * d.s) / 2, d.s, tint);
   }
   blit(ctx, file, cellAt(col), d.x - (box * d.s) / 2, d.y - (box * d.s) / 2, d.s, tint);
 }

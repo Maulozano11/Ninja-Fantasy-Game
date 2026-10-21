@@ -207,8 +207,15 @@ export class Playback {
   private thrown = new WeakSet<BattleEvent>();
   /** Until when the queue waits for dice to land (the skip button cuts it short). */
   private diceWait = 0;
-  /** Dice sounds still to come (the click of each die, the natural's chime), at screen time. */
-  private sounds: { at: number; name: SoundName }[] = [];
+  /** Dice sounds still to come (the throw, the click of each die, the natural's chime), at screen time. */
+  private sounds: { at: number; name: SoundName; detail?: string }[] = [];
+  /**
+   * When the jutsu being played reaches its targets (screen time; 0 when not known): the saves
+   * against it are thrown so they land then, not after the blast has played out.
+   */
+  private hitAt = 0;
+  /** The skip button never plays a roll before this (the jutsu it answers has not hit yet). */
+  private diceFloor = 0;
 
   constructor(state: BattleState, private hooks: PlaybackHooks) {
     this.sync(state, 0);
@@ -261,7 +268,7 @@ export class Playback {
    * over the one who rolls it. Opens the big window for a critical or an important natural.
    * Returns how long (ms at speed 1) the queue waits before the roll's event plays.
    */
-  private throwDice(now: number): number {
+  private throwDice(now: number, real = now): number {
     const first = this.queue[0];
     const group: BattleEvent[] = [first];
     if (first.t === 'save' || first.t === 'check')
@@ -285,7 +292,9 @@ export class Playback {
       if (ev.roll.d20 === 1) fumble = true;
     }
     const click = now + CLICK_MS / this.speed;
-    this.hooks.sound('diceThrow', String(this.speed));
+    // Dice thrown ahead (while a jutsu flies) make their sound when they leave the hand.
+    if (now > real) this.sounds.push({ at: now, name: 'diceThrow', detail: String(this.speed) });
+    else this.hooks.sound('diceThrow', String(this.speed));
     if (windowed && kind) {
       this.diceWindow = { die: windowed, kind, t0: now + (CLICK_MS + WINDOW.open) / this.speed };
       this.sounds.push({ at: click, name: kind === 'fumble' ? 'diceNat1' : 'diceNat20' });
@@ -306,7 +315,7 @@ export class Playback {
     for (const d of this.dice) d.t0 = Math.min(d.t0, now - dieLife(natOf(d.roll)) / this.speed + 300 / this.speed);
     this.diceWindow = null;
     this.sounds = [];
-    if (this.busyUntil === this.diceWait && now < this.busyUntil) this.busyUntil = now;
+    if (this.busyUntil === this.diceWait && now < this.busyUntil) this.busyUntil = Math.max(now, this.diceFloor);
     this.diceWait = 0;
   }
 
@@ -324,8 +333,20 @@ export class Playback {
         continue;
       }
       const ev = this.queue.shift()!;
+      this.hitAt = 0;
       const d = this.apply(ev, now, state);
       this.busyUntil = now + d / this.speed;
+      this.diceFloor = 0;
+      // A jutsu its targets save against: their dice are thrown while it flies and land as it hits,
+      // and the saves (and the damage) play from there (thrown after the blast had played out, the
+      // damage came a second after the explosion).
+      const nx = this.queue[0];
+      if (this.diceOn && ev.t === 'jutsu' && nx?.t === 'save' && !this.thrown.has(nx)) {
+        const hit = Math.max(now, Math.min(this.hitAt || this.busyUntil, this.busyUntil));
+        const t0 = Math.max(now, hit - CLICK_MS / this.speed);
+        this.busyUntil = this.diceWait = Math.max(hit, t0 + this.throwDice(t0, now) / this.speed);
+        this.diceFloor = hit;
+      }
       if (!this.queue.length) this.settling = true;
     }
     // One-shot poses fall back to rest.
@@ -349,7 +370,7 @@ export class Playback {
         v.poseT0 = now;
       }
     }
-    for (const s of this.sounds) if (now >= s.at) this.hooks.sound(s.name);
+    for (const s of this.sounds) if (now >= s.at) this.hooks.sound(s.name, s.detail);
     this.sounds = this.sounds.filter((s) => now < s.at);
     this.dice = this.dice.filter((d) => now < d.t0 + dieLife(natOf(d.roll)) / this.speed + 260);
     if (this.diceWindow && now > this.diceWindow.t0 + (WINDOW.go - WINDOW.open + WINDOW.fade) / this.speed) this.diceWindow = null;
@@ -677,6 +698,7 @@ export class Playback {
           }
           h.shake(ev.enhanced ? 7 : 5);
           this.lingerUntil = Math.max(this.lingerUntil, t1 + long.total / this.speed);
+          this.hitAt = t1 + long.hit / this.speed;
           return castDelay + long.hit;
         }
         if (ev.shape?.kind === 'line') {
@@ -699,6 +721,7 @@ export class Playback {
           return castDelay + sky.hit / this.speed;
         }
         this.fx.push({ ...base, kind: 'projectile', from, to: ev.at, dur: fly, lift: [head ? 120 : 70, ev.shape ? 30 : 60] });
+        this.hitAt = t1 + fly / this.speed;
         if (ev.shape?.kind === 'circle') {
           const boom = blastMs(el, spec?.sig ? 1400 : 1200);
           this.fx.push({ ...base, kind: 'area', from: ev.at, to: ev.at, area: ev.shape, t0: t1 + fly / this.speed, dur: boom });

@@ -216,7 +216,7 @@ function main(): void {
     }
   manifest.fx = {
     file: 'dice_<style>_<size>_fx.png',
-    note: 'Row 0: the natural 20 (gold flash, rays, sparkles, shine; the last frame holds with the 20 in gold). Row 1: the natural 1 (dull red, crack, chips; dx is the shake). Cells are fx x fx with the die centred.',
+    note: 'Row 0: the natural 20 (gold flash, rays, sparkles, shine; the last frame holds: on the small die its own colours with the 20 in gold, on the big one, the window, still gold). Row 1: the natural 1 (dull red, crack, chips; dx is the shake). Cells are fx x fx with the die centred.',
     frames: fxMeta,
   };
   const shared: Record<string, unknown> = {};

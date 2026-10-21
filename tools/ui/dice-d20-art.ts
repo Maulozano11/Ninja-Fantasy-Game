@@ -401,6 +401,8 @@ export interface Rendered {
   img: Img;
   /** Which face covers each pixel (-1 none). */
   faceAt: Int8Array;
+  /** What part of a number each pixel is (0 none; see Ink). */
+  inkAt: Uint8Array;
   /** Screen corners of each face (projected), for effects. */
   proj: V3[];
   front: boolean[];
@@ -574,8 +576,8 @@ const isRune = (c: RGBA) => RUNE_SET.has((c[0] << 16) | (c[1] << 8) | c[2]);
 interface LookAt {
   /** Distance to the face's edge (pixels). */
   edge: number;
-  /** Part of a number (any face's). */
-  ink: boolean;
+  /** Part of a number (any face's): 0 none, 1 paint, 2 the groove's shadowed wall, 3 its lit wall, 4 the glow round it. */
+  ink: number;
   big: boolean;
 }
 
@@ -589,7 +591,7 @@ interface LookAt {
  *   flash one bright gold frame, the same for all (the moment of the 20)
  *   dim   the die advantage did not keep: in shadow, less colour (the obsidian lifted to slate)
  */
-function lookColour(st: StyleDef, look: Look, c: RGBA, goldness: number, b: number, at: LookAt = { edge: 99, ink: false, big: false }): RGBA {
+function lookColour(st: StyleDef, look: Look, c: RGBA, goldness: number, b: number, at: LookAt = { edge: 99, ink: 0, big: false }): RGBA {
   if (look === 'normal') return c;
   const ls = st.palette.map(lum);
   const lo = Math.min(...ls), hi = Math.max(...ls);
@@ -601,8 +603,12 @@ function lookColour(st: StyleDef, look: Look, c: RGBA, goldness: number, b: numb
     if (st.id === 'ivory') return mixc(c, GOLD20[gi], goldness * 0.85);
     // Gem and obsidian: the edges (and the obsidian's runes) take the gold; part-way by dither, so a
     // gem keeps its key colours for the screen's recolouring.
-    const lit = at.edge < edgeW || (st.id === 'obsidian' && (at.ink || isRune(c)));
+    const lit = at.edge < edgeW || (st.id === 'obsidian' && (at.ink > 0 || isRune(c)));
+    // `b` is the gold's wipe here (see renderDie): it drains away cleanly, never as a checkerboard.
     if (!lit || b >= goldness) return c;
+    // The obsidian's numbers keep their contrast in gold: bright paint, a dark gold glow round it
+    // (all of it one bright gold read as a blur on the faces around the 20).
+    if (st.id === 'obsidian' && at.ink) return at.ink === 4 ? GOLD20[1] : at.ink === 2 ? GOLD20[3] : at.ink === 3 ? GOLD20[8] : GOLD20[6];
     return GOLD20[clamp(Math.round(4 + t0 * 4), 4, 8)];
   }
   if (look === 'dull') {
@@ -611,9 +617,19 @@ function lookColour(st: StyleDef, look: Look, c: RGBA, goldness: number, b: numb
       const k = GEMK.findIndex((g) => same(g, c));
       return k > 0 ? GEMK[Math.max(1, Math.round(k * 0.55))] : same(c, WHITE) ? GEMK[6] : c;
     }
-    return at.ink || isRune(c) ? DULL1[clamp(Math.round(2 + t0 * 6), 2, 7)] : c;
+    // The obsidian's runes die to a dull red. The glow round the numbers goes out and their grooves
+    // go dark, so each number is a thin red stroke on the black glass (a red glow read as a blur).
+    if (at.ink) return at.ink === 4 ? OBSIDIAN[2] : at.ink === 2 ? DULL1[1] : at.ink === 3 ? DULL1[8] : DULL1[7];
+    return isRune(c) ? DULL1[clamp(Math.round(2 + t0 * 6), 2, 7)] : c;
   }
-  // dim: the same die in shadow, less colour (the die advantage did not keep).
+  // dim: the same die in shadow, less colour (the die advantage did not keep). The gem keeps to
+  // darker steps of its own keys, so the screen tints it a dark shade of the roller's chakra.
+  if (st.id === 'gem') {
+    // Its number stays readable over the darkened crystal.
+    if (at.ink === 1 || at.ink === 3) return GEMK[7];
+    const k = GEMK.findIndex((g) => same(g, c));
+    return k > 0 ? GEMK[Math.max(1, Math.round(k * 0.42))] : same(c, WHITE) ? GEMK[4] : c;
+  }
   const grey = lum(c);
   if (st.id === 'obsidian') return mixc(mixc(c, hex('#5d5a72'), 0.45), [grey, grey, grey, 255], 0.3);
   return [Math.round((c[0] * 0.35 + grey * 0.65) * 0.5), Math.round((c[1] * 0.35 + grey * 0.65) * 0.5), Math.round((c[2] * 0.35 + grey * 0.65) * 0.52), 255];
@@ -678,6 +694,9 @@ export function renderDie(s: DieSpec): Rendered {
   const smallBmp = (fi: number) => numberBitmap(NUMBERS[fi], s.upright !== fi);
   const faceAt = new Int8Array(s.w * s.h).fill(-1);
   const inkAt = new Uint8Array(s.w * s.h);
+  // The gold of a natural 20 drains away as a clean diagonal wipe toward the light (upper left):
+  // 0 there, 1 at the lower right. A dither would show as a checkerboard on the big die.
+  const wipe = (x: number, y: number) => clamp(0.5 + (x + 0.5 - cx + (y + 0.5 - cy)) / (3.4 * R), 0, 0.999);
   // Rounded edges on the big die only: on the small one a highlit edge reads as a stray line by the number.
   const bevel = big ? 2.6 : 0;
   const shade = SHADERS[s.style];
@@ -776,7 +795,7 @@ export function renderDie(s: DieSpec): Rendered {
           continue;
         }
       }
-      img.set(x, y, lookColour(st, look, c, s.goldness ?? 1, BAYER[(y & 3) * 4 + (x & 3)], { edge, ink: ink > 0, big }));
+      img.set(x, y, lookColour(st, look, c, s.goldness ?? 1, look === 'gold' ? wipe(x, y) : BAYER[(y & 3) * 4 + (x & 3)], { edge, ink, big }));
     }
   // The glint: where the lamp's reflection is strongest, but never on or beside a number (a star
   // crossing a digit looks pasted on).
@@ -807,7 +826,8 @@ export function renderDie(s: DieSpec): Rendered {
   }
   // The outline: every empty pixel touching the die (4-neighbours).
   const at = (x: number, y: number) => (x < 0 || y < 0 || x >= s.w || y >= s.h ? -1 : faceAt[y * s.w + x]);
-  const oc = look === 'flash' ? GOLD20[2] : look === 'gold' ? mixc(st.outline, GOLD20[0], s.goldness ?? 1) : look === 'dull' ? DULL1[0] : look === 'dim' ? lookColour(st, 'dim', st.outline, 1, 0) : st.outline;
+  // The gem's outline stays one of its key colours (or the gold's), so the screen can tint it.
+  const oc = look === 'flash' ? GOLD20[2] : look === 'gold' ? (st.id === 'ivory' ? mixc(st.outline, GOLD20[0], s.goldness ?? 1) : (s.goldness ?? 1) >= 0.5 ? GOLD20[0] : st.outline) : look === 'dull' ? DULL1[0] : look === 'dim' ? lookColour(st, 'dim', st.outline, 1, 0) : st.outline;
   for (let y = 0; y < s.h; y++)
     for (let x = 0; x < s.w; x++) {
       if (at(x, y) >= 0) continue;
@@ -827,9 +847,9 @@ export function renderDie(s: DieSpec): Rendered {
             const j = (y + dy) * s.w + x + dx;
             if (x + dx >= 0 && y + dy >= 0 && x + dx < s.w && y + dy < s.h && inkAt[j] && faceAt[j] === s.upright) near = true;
           }
-        if (near) img.set(x, y, s.numberRed ? ring : lookColour(st, look, ring, s.goldness ?? 1, BAYER[(y & 3) * 4 + (x & 3)]));
+        if (near) img.set(x, y, s.numberRed ? ring : lookColour(st, look, ring, s.goldness ?? 1, look === 'gold' ? wipe(x, y) : BAYER[(y & 3) * 4 + (x & 3)]));
       }
-  return { img, faceAt, proj, front, centre: [cx, cy] };
+  return { img, faceAt, inkAt, proj, front, centre: [cx, cy] };
 }
 
 /** The transpose of a rotation (its inverse). */

@@ -70,6 +70,8 @@ type TipKey = (typeof TIP_KEYS)[number];
 export const ZOOMS = [2, 1, 2 / 3, 1 / 2, 1 / 3] as const;
 
 /** Canvas pixels per map pixel: whole steps from 1 up (crisp pixel art), the plain fraction below. */
+/** How long after the dice (ms) Space and Enter only skip them and never end the turn. */
+const DICE_KEY_GRACE = 700;
 const camScale = (zoom: number, dpr: number): number => (zoom * dpr >= 1 ? Math.max(1, Math.round(zoom * dpr)) : zoom * dpr);
 
 function tipSeen(k: string): boolean {
@@ -134,6 +136,8 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
   /** Dice are in the air: the skip button shows. */
   const [diceRolling, setDiceRolling] = useState(false);
   const diceRollingRef = useRef(false);
+  /** When dice were last rolling or skipped (screen time): a late Space must not end the turn. */
+  const diceSeenRef = useRef(0);
   useEffect(() => preloadDice(getDiceStyle()), []);
   const [tip, setTip] = useState<TipKey | null>(null);
   const [speed, setSpeed] = useState<1 | 2 | 3>(() => {
@@ -655,6 +659,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
         style: getDiceStyle(),
       });
       const rolling = p.diceRolling(now);
+      if (rolling) diceSeenRef.current = now;
       if (rolling !== diceRollingRef.current) {
         diceRollingRef.current = rolling;
         setDiceRolling(rolling);
@@ -1099,6 +1104,13 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
       if ((key === ' ' || key === 'Enter') && pb.diceRolling(performance.now())) {
         e.preventDefault();
         pb.skipDice(performance.now());
+        diceSeenRef.current = performance.now();
+        return;
+      }
+      // Space is also End turn: a press meant for the dice that comes a moment late (they had just
+      // landed), or a held key repeating, must not end the turn too.
+      if ((key === ' ' || key === 'Enter') && (e.repeat || performance.now() - diceSeenRef.current < DICE_KEY_GRACE)) {
+        e.preventDefault();
         return;
       }
       if (key === 'Escape') setMode({ k: 'move' });

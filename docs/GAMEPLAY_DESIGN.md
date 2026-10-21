@@ -205,7 +205,7 @@ D21 and D24 there):
   plans again. Close enemies' marks don't stack, each walk ends in an
   arrowhead, and the enemy under the cursor has its plan drawn bright while
   the others dim.
-- **Warp Strike** to a Node someone stands on lands 1 to 1.5 m from them,
+- **Shooting-Star Thrust** (*Estocada Fugaz*, once Warp Strike) to a Node someone stands on lands 1 to 1.5 m from them,
   never on top of them.
 
 ## Party, missions and defeat
@@ -781,8 +781,10 @@ para las bestias elementales"*.
   Muro de agua*, *Técnica de Tierra: Muro de tierra*, *Técnica de Tierra:
   Balas de tierra*, *Técnica de Rayo: Kirin*). New jutsu follow the rule
   (*Técnica de Chakra: Rasengan*, *Técnica de Veneno: Venom Surge*, *Técnica
-  de Agua: Chorro de agua*). The clans' bloodline abilities are not jutsu:
-  Warp Strike and Command stay in English, as the owner wrote them.
+  de Agua: Chorro de agua*). The clans' bloodline abilities are not jutsu
+  and keep their own names: Command (*Comando*) and the Ryusei's
+  Shooting-Star Thrust (*Estocada Fugaz*; the owner, 2026-10-21, once Warp
+  Strike / *Golpe Warp*; CLANS_DESIGN D24).
 - **The action bar** (the owner's kit, 2026-10-20): the skill slots show his
   painted icons and no name; hovering a slot (or aiming its jutsu) opens a
   window with the full name, rank, action, chakra and reach, dice, area and

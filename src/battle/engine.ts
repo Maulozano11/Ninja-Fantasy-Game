@@ -793,7 +793,7 @@ function doJutsu(s: BattleState, u: Unit, id: string, atIn: Pt, targetId: string
       if (d < MIN_AIM) return 'needDirection';
       break;
     case 'node': {
-      // Warp Strike: one of the Ryusei's own Nodes, landing beside it if someone stands on it.
+      // Shooting-Star Thrust: one of the Ryusei's own Nodes, landing beside it if someone stands on it.
       const n = ownNodeAt(s, u, at);
       const why = warpBlocker(s, u, n);
       if (why) return why;

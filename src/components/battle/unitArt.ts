@@ -8,7 +8,9 @@ import { dojutsuToEye, getAppearance } from '../../sprite/legacy';
 import { FEET, frameCount, POSE_FPS, rigPoseFor } from '../../sprite/rig';
 import type { Rig } from '../../sprite/rig';
 import { GRID, opaqueBox, RES } from '../../sprite/raster';
-import { phaseFrame } from '../../sprite/phase';
+import { phaseBody, phaseFrame } from '../../sprite/phase';
+import { catchLook, releaseClear, renderThrown, thrownItem } from '../../sprite/thrown';
+import { throwRelease } from '../../sprite/grip';
 import type { SpriteAppearance, SpritePose } from '../../sprite/types';
 import type { Unit } from '../../battle/types';
 
@@ -165,6 +167,102 @@ export function hasPhaseFrame(u: Unit, look: SpriteAppearance, pose: SpritePose,
   const n = framesOf(look, pose);
   return phases.has(`${idOf(look)}|${dojutsuToEye(u.character?.dojutsu)}|${pose}|${((frame % n) + n) % n}`);
 }
+
+/** Whether a unit's plain frame (no aura) is made already: see hasPhaseFrame. */
+export function hasUnitFrame(u: Unit, look: SpriteAppearance, pose: SpritePose, frame: number): boolean {
+  const n = framesOf(look, pose);
+  return frames.has(`${idOf(look)}|${dojutsuToEye(u.character?.dojutsu)}|${pose}|${((frame % n) + n) % n}|`);
+}
+
+const catches = new WeakMap<SpriteAppearance, SpriteAppearance>();
+
+/** The look a Shooting-Star Thrust catches its thrown weapon with (sprite/thrown.ts catchLook), one object per look so its frames are kept. */
+export function catchLookOf(look: SpriteAppearance): SpriteAppearance {
+  let c = catches.get(look);
+  if (!c) catches.set(look, (c = catchLook(look)));
+  return c;
+}
+
+export interface ThrownCanvas {
+  canvas: HTMLCanvasElement;
+  /** The weapon's phase light round it (sprite/phase.ts), the same size: added as light, it glows blue. */
+  glow: HTMLCanvasElement;
+  /** The pixel of both canvases the weapon is anchored on (where the fist held it). */
+  gx: number;
+  gy: number;
+  /** How far the weapon reaches behind the anchor (its pommel) and ahead of it (its point), along its angle (pixels). */
+  back: number;
+  front: number;
+}
+
+const thrown = new Map<string, ThrownCanvas>();
+// Room for every Ryusei's flights with its weapon drawn and stowed (renderer.ts warmPhases makes both).
+const THROWN_MAX = 480;
+const thrownKey = (look: SpriteAppearance, angle: number): string => `${idOf(look)}|${thrownItem(look)}|${Math.round(angle)}`;
+
+/**
+ * A Shooting-Star Thrust's thrown weapon at a whole-degree angle (a figure facing right; mirror it for one
+ * facing left): the item's own art turned with RotSprite (sprite/thrown.ts), made once per look
+ * and angle.
+ */
+export function thrownFrame(look: SpriteAppearance, angle: number): ThrownCanvas {
+  const key = thrownKey(look, angle);
+  let c = thrown.get(key);
+  if (c) {
+    thrown.delete(key);
+    thrown.set(key, c);
+    return c;
+  }
+  const t = renderThrown(look, Math.round(angle));
+  const light = phaseBody(t.rgba, GRID, GRID);
+  // Both on the glow's box (it reaches past the weapon).
+  const box = opaqueBox(light) ?? { x: 0, y: 0, w: 1, h: 1 };
+  const cut = (rgba: Uint8ClampedArray): HTMLCanvasElement => {
+    const cv = document.createElement('canvas');
+    cv.width = box.w;
+    cv.height = box.h;
+    cv.getContext('2d')!.putImageData(new ImageData(new Uint8ClampedArray(rgba), GRID, GRID), -box.x, -box.y, box.x, box.y, box.w, box.h);
+    return cv;
+  };
+  // Its reach along its angle, from the anchor: where a trail starts behind it and a glint at its point.
+  const ux = Math.cos((Math.round(angle) * Math.PI) / 180);
+  const uy = Math.sin((Math.round(angle) * Math.PI) / 180);
+  let back = 0;
+  let front = 0;
+  for (let y = box.y; y < box.y + box.h; y++)
+    for (let x = box.x; x < box.x + box.w; x++) {
+      if (t.rgba[(y * GRID + x) * 4 + 3] < 128) continue;
+      const along = (x + 0.5 - t.grip.x) * ux + (y + 0.5 - t.grip.y) * uy;
+      if (-along > back) back = -along;
+      if (along > front) front = along;
+    }
+  c = { canvas: cut(t.rgba), glow: cut(light), gx: t.grip.x - box.x, gy: t.grip.y - box.y, back, front };
+  thrown.set(key, c);
+  if (thrown.size > THROWN_MAX) thrown.delete(thrown.keys().next().value as string);
+  return c;
+}
+
+export const hasThrownFrame = (look: SpriteAppearance, angle: number): boolean => thrown.has(thrownKey(look, angle));
+
+const clears = new Map<number, number>();
+
+/**
+ * How far ahead of the fist a unit's Shooting-Star Thrust weapon is first drawn in flight, clear of its
+ * release pose (sprite/thrown.ts releaseClear), worked out once per look (from the release frame
+ * the screen makes anyway, and the weapon at the angle it is flung at).
+ */
+export function releaseClearOf(u: Unit, look: SpriteAppearance): number {
+  const key = idOf(look);
+  let c = clears.get(key);
+  if (c === undefined) {
+    const rel = throwRelease(look.body, thrownItem(look));
+    const figure = renderSpriteCached(look, 'throw', rel.frame, dojutsuToEye(u.character?.dojutsu)).rgba;
+    clears.set(key, (c = releaseClear(figure, renderThrown(look, rel.weaponAngle), rel.lastHeld, rel.weaponAngle)));
+  }
+  return c;
+}
+
+export const hasReleaseClear = (look: SpriteAppearance): boolean => clears.has(idOf(look));
 
 const portraits = new Map<string, { src: object; sig: string; url: string }>();
 

@@ -372,9 +372,10 @@ const CLAN_SPECS: JutsuSpec[] = [
   },
   // Ryusei. Weapon Nodes are passive (clans.ts): kunai and missed blows leave them.
   {
+    // The owner's name (2026-10-21), after the clan (Ryusei, a shooting star); once Warp Strike / Golpe Warp. The id stays.
     id: 'ryusei_warp',
-    name: 'Warp Strike',
-    nameEs: 'Golpe Warp',
+    name: 'Shooting-Star Thrust',
+    nameEs: 'Estocada Fugaz',
     clan: 'Ryusei',
     ability: true,
     rank: '',

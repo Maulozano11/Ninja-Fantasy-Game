@@ -425,7 +425,7 @@ export interface RollInfo {
 export type BattleEvent =
   /** `jutsu`: the melee jutsu this run in belongs to (a flash-in, or a charge: JUTSU[jutsu].charge). */
   | { t: 'move'; unit: string; path: Pt[]; run: boolean; jutsu?: string }
-  /** `how`: 'phase' for a Ryusei's Warp Strike and Spatial Swap (the screen plays them as a body of blue light crossing over). */
+  /** `how`: 'phase' for a Ryusei's Shooting-Star Thrust and Spatial Swap (the screen plays them as a body of blue light crossing over). */
   | { t: 'teleport'; unit: string; from: Pt; to: Pt; log?: boolean; how?: 'phase' }
   | { t: 'pushed'; unit: string; from: Pt; to: Pt; fall: number }
   | { t: 'weapon'; unit: string; armed: boolean; cost: 'free' | 'bonus' }

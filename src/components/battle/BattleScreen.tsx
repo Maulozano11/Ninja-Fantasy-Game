@@ -476,7 +476,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
         sub = [structureName(hw, lang), T('ac', { n: STRUCTURE_AC }), ...adv].join(' · ');
       }
     } else if (mode.k === 'jutsu' && spec && spec.shape === 'node') {
-      // Warp Strike: the Nodes it can jump to light up; the one under the cursor shows where it lands.
+      // Shooting-Star Thrust: the Nodes it can jump to light up; the one under the cursor shows where it lands.
       o.range = { at: actor.pos, radius: spec.range };
       o.nodes = { valid: ownNodes(s, actor).filter((n) => !warpBlocker(s, actor, n)).map((n) => n.id) };
       const n = (hu && ownNodeAt(s, actor, hu.pos)) || (hover?.pt && ownNodeAt(s, actor, hover.pt)) || undefined;
@@ -1503,7 +1503,7 @@ const SHORT: Record<string, [string, string]> = {
   katon_pursuing_flame: ['Pursuing', 'Persigue'],
   koton_block: ['Block', 'Bloque'],
   koton_wall: ['Metal wall', 'Muro metal'],
-  ryusei_warp: ['Warp', 'Golpe Warp'],
+  ryusei_warp: ['Star thrust', 'Estocada Fugaz'],
   ryusei_swap: ['Swap', 'Cambio'],
   northstar_command: ['Command', 'Comando'],
   northstar_submission: ['Submit', 'Sumisión'],

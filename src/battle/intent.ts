@@ -43,7 +43,7 @@ export interface Option {
   value: number;
   /** A jutsu that reaches just one foe (the clan's own move can take its place). */
   single?: boolean;
-  /** A Ryusei's own move: a Warp Strike in beside the foe, or a kunai that leaves a Node near it. */
+  /** A Ryusei's own move: a Shooting-Star Thrust in beside the foe, or a kunai that leaves a Node near it. */
   way?: 'warp' | 'plant';
 }
 
@@ -82,7 +82,7 @@ export const WALL = 'koton_wall';
  * which he opens with (the owner, 2026-10-20).
  */
 const FLAME_FOR = 2.5;
-/** A blow from behind (Warp Strike): advantage, and nothing blocks it. Worth half again a plain blow. */
+/** A blow from behind (Shooting-Star Thrust): advantage, and nothing blocks it. Worth half again a plain blow. */
 const EDGE = 1.5;
 
 /** Chakra sealed: no jutsu, no clan ability. */
@@ -104,14 +104,14 @@ export function threat(u: Unit): number {
 }
 
 /**
- * A Ryusei can Warp Strike on its turn: it has the ability, its chakra isn't sealed, 2 chakra and,
+ * A Ryusei can make a Shooting-Star Thrust on its turn: it has the ability, its chakra isn't sealed, 2 chakra and,
  * planning the turn it is in, its bonus action left (`next`: planning its next turn, fresh).
  */
 export const canWarp = (u: Unit, next = false): boolean =>
   u.jutsus.includes(WARP) && !noJutsu(u) && u.chakra >= JUTSU[WARP].cost && (next || u.turn.bonus);
 
 /**
- * Where a Ryusei's Warp Strike lands to strike `t` from behind at once: the landing nearest `t` of
+ * Where a Ryusei's Shooting-Star Thrust lands to strike `t` from behind at once: the landing nearest `t` of
  * its own Nodes (within 18 m and in sight) that has `t` in reach with no metal wall between. Null
  * if none does (or it is in reach already: it just strikes).
  */

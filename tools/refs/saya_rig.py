@@ -9,7 +9,10 @@ laid on our 256 x 256 frame at AT, her soles on ours) it stands like this:
   thighs, knees and feet (our far ankle stands six rows higher than his, so her far leg, kept as long as
   he drew it, reaches six rows below it);
 - from the neck up it is three or four rows higher than his picture (the head two): the torso between
-  is longer than hers.
+  is longer than hers;
+- its arms are the female standard's (body/female-v2, where his game-scale heroines hang them): a long
+  upper arm and a short forearm, so our near elbow is where he drew hers and our near wrist and hand
+  four rows higher than his, and our far arm hangs about five pixels nearer the torso than hers.
 
 So her pieces from the neck up (scarf, top, arm guards, fists) are laid that much higher than he drew
 them (each on its joint as he drew it), her skirt, belts and legs where he drew them, and her top is
@@ -27,12 +30,12 @@ JOINTS = {
     'neck': (126.94, 146.23),
     'shoulderN': (117.54, 150.96),
     'shoulderF': (131.50, 150.48),
-    'elbowN': (113.84, 162.38),
-    'elbowF': (133.72, 162.27),
-    'wristN': (111.48, 172.51),
-    'wristF': (139.28, 171.06),
-    'handN': (110.91, 174.96),
-    'handF': (140.63, 173.19),
+    'elbowN': (110.84, 165.05),
+    'elbowF': (134.58, 165.77),
+    'wristN': (107.98, 172.74),
+    'wristF': (140.44, 174.12),
+    'handN': (107.10, 175.10),
+    'handF': (141.88, 176.18),
     'pelvis': (127.00, 182.25),
     'hipN': (120.58, 181.88),
     'hipF': (132.35, 178.47),

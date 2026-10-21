@@ -112,10 +112,16 @@ describe("Saya's top, arm guards and gloves", () => {
     assert.equal(hexAt(f, 145, 172), '#a73234'); // the forearm guard's red stripe, out where he drew it
   });
 
-  it('keeps her far arm on the body in every pose of both female bodies: no far-arm piece floats off', () => {
-    // Every patch of far upper arm and forearm that shows touches the rest of the figure (the far hand
-    // goes with them; a jutsu's glow drawn round the hand is the hand's part too, so it is not counted).
-    const arm = new Set([partIndex('upperArmF'), partIndex('forearmF')]);
+  it('keeps both arms on the body and the near hand in sight in every pose of both female bodies', () => {
+    // Every patch of upper arm and forearm that shows touches the rest of the figure (the hand goes
+    // with them; a jutsu's glow drawn round the hand is the hand's part too, so it is not counted).
+    // The near forearm guard is pinned at the wrist, so it never runs down over the near hand: at
+    // least 20 of its pixels show (a fist or an open hand is 24 or more).
+    const handN = partIndex('handN');
+    const arms: [string, Set<number>][] = [
+      ['far', new Set([partIndex('upperArmF'), partIndex('forearmF')])],
+      ['near', new Set([partIndex('upperArmN'), partIndex('forearmN')])],
+    ];
     const poses = [...new Set<SpritePose>([...SPRITE_POSES, ...MOVE_POSES, ...CAMP_POSES])];
     for (const body of ['female', 'slender'] as BodyType[]) {
       const a = look(body, SAYA);
@@ -123,25 +129,30 @@ describe("Saya's top, arm guards and gloves", () => {
         const n = frameCount(rigPoseFor(pose, 'runes', 'held_katana'));
         for (let fr = 0; fr < n; fr++) {
           const { rgba, part } = renderSprite(a, pose, fr);
-          const seen = new Uint8Array(GRID * GRID);
-          for (let i = 0; i < GRID * GRID; i++) {
-            if (seen[i] || !rgba[i * 4 + 3] || !arm.has(part[i])) continue;
-            let touches = false;
-            const stack = [i];
-            seen[i] = 1;
-            while (stack.length) {
-              const j = stack.pop()!;
-              const x = j % GRID;
-              for (const k of [j - 1, j + 1, j - GRID, j + GRID]) {
-                if (k < 0 || k >= GRID * GRID || Math.abs((k % GRID) - x) > 1 || !rgba[k * 4 + 3]) continue;
-                if (!arm.has(part[k])) touches = true;
-                else if (!seen[k]) {
-                  seen[k] = 1;
-                  stack.push(k);
+          let hand = 0;
+          for (let i = 0; i < GRID * GRID; i++) if (rgba[i * 4 + 3] && part[i] === handN) hand++;
+          assert.ok(hand >= 20, `${body} ${pose} ${fr}: only ${hand} pixels of the near hand show`);
+          for (const [side, arm] of arms) {
+            const seen = new Uint8Array(GRID * GRID);
+            for (let i = 0; i < GRID * GRID; i++) {
+              if (seen[i] || !rgba[i * 4 + 3] || !arm.has(part[i])) continue;
+              let touches = false;
+              const stack = [i];
+              seen[i] = 1;
+              while (stack.length) {
+                const j = stack.pop()!;
+                const x = j % GRID;
+                for (const k of [j - 1, j + 1, j - GRID, j + GRID]) {
+                  if (k < 0 || k >= GRID * GRID || Math.abs((k % GRID) - x) > 1 || !rgba[k * 4 + 3]) continue;
+                  if (!arm.has(part[k])) touches = true;
+                  else if (!seen[k]) {
+                    seen[k] = 1;
+                    stack.push(k);
+                  }
                 }
               }
+              assert.ok(touches, `${body} ${pose} ${fr}: ${side} arm at ${i % GRID},${(i / GRID) | 0} floats off the body`);
             }
-            assert.ok(touches, `${body} ${pose} ${fr}: far arm at ${i % GRID},${(i / GRID) | 0} floats off the body`);
           }
         }
       }

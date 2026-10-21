@@ -34,9 +34,14 @@ where our body is a pixel wider than hers.
                    player's skin (SAYA_SKIN).
                    SAYA_UPPER_N rides the upper arm about the shoulder: her guard's navy top, the red
                    band slanting round the arm, the red on its inner side and the red elbow band.
-                   SAYA_FORE_N rides the forearm about the elbow: the red at the elbow, the navy guard
+                   SAYA_FORE_N rides the forearm about the wrist: the red at the elbow, the navy guard
                    with its red stripe, the red cuff. All three are four rows higher than he drew them
-                   (NEAR_ARM), on our near arm.
+                   (NEAR_ARM), on our near arm. Our female's near arm (the standard from his heroines)
+                   has a longer upper arm and a shorter forearm than he drew on her: at rest his cuff
+                   lies on our wrist, while his elbow band is four rows above our elbow. So the
+                   forearm guard is pinned at the wrist, where both meet: bent, its elbow end reaches
+                   a few pixels past our elbow and covers the end of our upper arm below her upper
+                   guard, and its cuff stays on our wrist above the hand.
   the far arm      SAYA_UPPER_F rides the upper arm about the shoulder: her bare far shoulder (rows
                    155-158: her skin in its shadow, two pixels wide, in her black line, beside her
                    plate's edge), then her guard's navy top, the red band and the red elbow band.
@@ -48,7 +53,8 @@ where our body is a pixel wider than hers.
                    it (her forearm, two rows longer than ours, kept whole), and it turns as our far arm
                    turns (src/sprite/items/sayaUpper.ts sayaFarOut). Below her far forearm her top's
                    side shows as he drew it (SAYA_TOP_LOW, x 139-140).
-  the fists        her own fists, her pixels, on the female bodies, riding the forearm under its cuff:
+  the fists        her own fists, her pixels, on the female bodies, riding the forearm under its cuff
+                   (the near one about the wrist, as her near forearm guard; the far one about the elbow):
                    SAYA_GLOVE_N, her near glove (rows 178-183: the dark navy row under the cuff, three
                    navy rows, the red band over the knuckles, her line under it), the fist that holds
                    her sword (its grip passes through GRIP_N, tools/refs/saya_rig.py); SAYA_HAND_F,
@@ -116,10 +122,12 @@ FAR_ARM = (0, -UPPER)
 # our joints, and turns about them as our far arm turns. When our far elbow (saya_rig.JOINTS, moved as
 # her far arm is) is not where hers is, they turn about our joints moved FAR_OUT (fine pixels), so they
 # turn about her own elbow and shoulder; src/sprite/items/sayaUpper.ts (SAYA_FAR_OUT) hangs them there
-# and our far hand with them. On our female body of 2026-10-21 her far arm hangs about six pixels
-# further out than ours: FAR_OUT is (6, 1). Once our far arm hangs where hers does (the female body's
-# far arm laid where his heroines draw it), rerun tools/refs/heroine-idle.mts into saya_rig.JOINTS and
-# this script: FAR_OUT comes out (0, 0), and her pieces ride our far arm's joints as they are.
+# and our far hand with them. The female standard (body/female-v2: both arms where his game-scale
+# heroines hang them) lowered our far elbow 3.5 rows and moved it 0.9 out; his Saya holds her far arm
+# further from her torso than that standard does, so her far elbow, moved as her far arm is, is still
+# five pixels further out than ours and two rows higher: FAR_OUT is (5, -2) (it was (6, 1) on the
+# earlier female body). Rerun tools/refs/heroine-idle.mts into saya_rig.JOINTS and this script whenever
+# the female body changes: FAR_OUT follows.
 HER_ELBOW_F = (139.5, 166.5)
 FAR_OUT = tuple(int(round(h + m - j)) for h, m, j in zip(HER_ELBOW_F, FAR_ARM, JOINTS['elbowF']))
 FAR_PIECES = ('SAYA_UPPER_F', 'SAYA_FORE_F', 'SAYA_HAND_F')
@@ -197,7 +205,7 @@ PIECES = [
          '00iii0220..',  # 165
      ]),
     ('SAYA_FORE_N', 'The near forearm guard: the red at the elbow, navy with a red stripe, the red cuff.',
-     'elbowN', ('elbowN', 'wristN'), (106, 166), NEAR_ARM, (), [
+     'wristN', ('elbowN', 'wristN'), (106, 166), NEAR_ARM, (), [
          # x 106.....115
          '..0200ii00',  # 166
          '.0000c0b90',  # 167
@@ -244,7 +252,7 @@ PIECES = [
          '....0bb00620',  # 177
      ]),
     ('SAYA_GLOVE_N', 'Her near glove, the fist that holds her sword: dark navy under the cuff, navy, the red band over the knuckles.',
-     'elbowN', ('elbowN', 'wristN'), (105, 178), NEAR_ARM, (), [
+     'wristN', ('elbowN', 'wristN'), (105, 178), NEAR_ARM, (), [
          # x 105...112
          '.066c60.',  # 178 under her cuff
          '026ccc60',  # 179 x 111-112: the bugged grip, filled
@@ -473,7 +481,7 @@ def write_ts(path, key):
     mx, my = glove[5]
     lines += ['/**',
               " * Where her sword's grip passes through SAYA_GLOVE_N: the cell of the middle of her fist, from the",
-              " * piece's pivot (the near elbow's cell), at the piece's angle.",
+              " * piece's pivot (the near wrist's cell), at the piece's angle.",
               ' */',
               f'export const SAYA_GRIP_N: [number, number] = [{GRIP_N[0] - mx - x0 - gx}, {GRIP_N[1] - my - y0 - gy}];', '']
     text = '\n'.join(lines)

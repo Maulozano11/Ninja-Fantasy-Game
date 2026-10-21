@@ -54,15 +54,15 @@ const wrapDeg = (a: number) => ((a + 540) % 360) - 180;
 
 /**
  * How far her far arm hangs from ours (rig units). He drew her far arm further from the body than our
- * far arm hangs: her bare shoulder at her plate's edge, her elbow and fist about six pixels further
+ * far arm hangs: her bare shoulder at her plate's edge, her elbow and fist about five pixels further
  * out (SAYA_FAR_OUT). So while she wears her top and our far arm hangs about as hers does (standing,
  * walking, hurt, down: its upper arm and forearm within 30 degrees of how he drew them, the torso's
  * turn taken off), her far pieces and our far hand hang that much further out, turned with the
  * torso, and at rest every pixel of them is his. As the far arm reaches further from that (45
  * degrees) they come back onto our far arm's joints, where a far hand meets the other hand, a book
  * or a jutsu: moving in, they slide under her top, never off it. SAYA_FAR_OUT is how far our far arm
- * hangs from hers at rest (tools/refs/saya-upper-from-ref.py): once our female body's far arm hangs
- * where his heroines' does, it is zero and her pieces ride our far arm's joints as they are.
+ * hangs from hers at rest (tools/refs/saya-upper-from-ref.py). The female standard hangs the far arm
+ * where his Lyra and Aurelia do; his Saya holds hers further from the torso, so it stays.
  */
 export function sayaFarOut(g: DrawCtx): Vec {
   const r = g.rig;
@@ -125,7 +125,10 @@ function drawShadeArmor(g: DrawCtx, cloth: string, trim: string, plate: string):
   // waist (on the neck) over it; between them our longer torso shows more of her pipings
   put('torso.top', SAYA_TOP_LOW, r.pelvis, segAngle(r.pelvis, r.neck), 'torso');
   put('torso.top', SAYA_TOP, r.neck, segAngle(r.pelvis, r.neck), 'torso');
-  put('nearArm.armor', SAYA_FORE_N, r.elbowN, segAngle(r.elbowN, r.wristN), 'forearmN');
+  // the near forearm guard is pinned at the wrist, where his cuff and our wrist meet: our female's
+  // forearm is shorter than he drew hers, so bent, its elbow end runs on past our elbow (over the end
+  // of the upper arm below her upper guard) and its cuff stays above the hand
+  put('nearArm.armor', SAYA_FORE_N, r.wristN, segAngle(r.elbowN, r.wristN), 'forearmN');
   // her bare near shoulder (light skin in her line), then the upper guard over its foot
   put('nearArm.armor', SAYA_SHOULDER_N, r.shoulderN, segAngle(r.shoulderN, r.elbowN), 'upperArmN');
   put('nearArm.armor', SAYA_UPPER_N, r.shoulderN, segAngle(r.shoulderN, r.elbowN), 'upperArmN');
@@ -176,7 +179,9 @@ const GLOVES_ID = 'hands_shade_fingerless';
 
 /**
  * Her own fist on this hand, when the hand is a fist (holding her sword or not) on a female body: her
- * near glove or her far fist, his pixels, riding the forearm under its cuff as she drew them.
+ * near glove or her far fist, his pixels, riding the forearm under its cuff as she drew them (the
+ * near one pinned at the wrist, as her near forearm guard is; the far one at the elbow, as her far
+ * forearm guard).
  */
 function ownFist(g: DrawCtx, s: Side): PaintedPiece | null {
   if (!isFemaleBody(g.rig.body)) return null;
@@ -187,7 +192,8 @@ function ownFist(g: DrawCtx, s: Side): PaintedPiece | null {
 
 /**
  * Where her sword's grip passes through her near glove (rig units), when she wears her gloves on a
- * female body: the middle of her fist (SAYA_GRIP_N), turned with the forearm as the glove is, so the
+ * female body: the middle of her fist (SAYA_GRIP_N, from the wrist the glove is pinned at), turned
+ * with the forearm as the glove is, so the
  * fist closes round the grip with the pommel above it and the cup below. Null otherwise (the sword
  * then grips at the hand joint, as every weapon does).
  */
@@ -196,8 +202,8 @@ export function sayaGrip(g: DrawCtx): Vec | null {
   const { elbow, wrist } = armJoints(g.rig, 'N');
   const a = ((segAngle(elbow, wrist) - SAYA_GLOVE_N.angle) * Math.PI) / 180;
   const [dx, dy] = SAYA_GRIP_N;
-  const x = Math.floor(elbow.x * RES) + dx * Math.cos(a) - dy * Math.sin(a);
-  const y = Math.floor(elbow.y * RES) + dx * Math.sin(a) + dy * Math.cos(a);
+  const x = Math.floor(wrist.x * RES) + dx * Math.cos(a) - dy * Math.sin(a);
+  const y = Math.floor(wrist.y * RES) + dx * Math.sin(a) + dy * Math.cos(a);
   return v((Math.round(x) + 0.5) / RES, (Math.round(y) + 0.5) / RES);
 }
 
@@ -227,7 +233,7 @@ function drawShadeGloves(g: DrawCtx, glove: string, trim: string, skin: string):
       // Her far fist, hanging at rest, lies over her skirt's flare: it is drawn over it, whole, as she shows it.
       const deg = segAngle(elbow, wrist);
       const atRest = s === 'F' && handPose(g, s).rot === 0 && deg > 45 && deg < 135;
-      const at = s === 'F' ? add(elbow, sayaFarOut(g)) : elbow;
+      const at = s === 'F' ? add(elbow, sayaFarOut(g)) : wrist;
       stampPiece(g, atRest ? 'farHand.front' : armDepth(s, 'armor'), fist, at, deg, part, shadeColor(glove, trim, SAYA_PLATE, skin));
       continue;
     }

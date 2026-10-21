@@ -15,7 +15,7 @@ export const SAYA_SKIN_SHADOW = '#d28771';
 /** Her guards' darkest navy: what shows of our forearm beside her forearm guards is painted in it. */
 export const SAYA_SLEEVE = '#222338';
 /** How far her far arm hangs from ours at rest (fine pixels): her far pieces hang from our far arm's joints moved this far. */
-export const SAYA_FAR_OUT: [number, number] = [6, 1];
+export const SAYA_FAR_OUT: [number, number] = [5, -2];
 
 /** Which slot recolours each of her colours (her line, the gold-brown rim and the strap stay; her skin follows the skin). */
 export const SAYA_KIND: Record<string, 'cloth' | 'trim' | 'plate' | 'skin'> = {
@@ -121,7 +121,7 @@ export const SAYA_TOP_LOW: PaintedPiece = {
 /** The near shoulder, bare: her round light skin, its shadow down the far side, in her black line. */
 export const SAYA_SHOULDER_N: PaintedPiece = {
   pivot: [4, 2],
-  angle: 107.95,
+  angle: 115.43,
   rows: [
     '..000....',
     '00vHH00..',
@@ -141,7 +141,7 @@ export const SAYA_SHOULDER_N: PaintedPiece = {
 /** The near upper arm guard: navy, the red band slanting round it, red inside, the red elbow band. */
 export const SAYA_UPPER_N: PaintedPiece = {
   pivot: [9, -3],
-  angle: 107.95,
+  angle: 115.43,
   rows: [
     '....0200...',
     '....06cc00.',
@@ -166,8 +166,8 @@ export const SAYA_UPPER_N: PaintedPiece = {
 
 /** The near forearm guard: the red at the elbow, navy with a red stripe, the red cuff. */
 export const SAYA_FORE_N: PaintedPiece = {
-  pivot: [7, 0],
-  angle: 103.11,
+  pivot: [1, 10],
+  angle: 110.40,
   rows: [
     '..0200ii00',
     '.0000c0b90',
@@ -197,8 +197,8 @@ export const SAYA_FORE_N: PaintedPiece = {
 
 /** The far shoulder, bare, and the far upper arm guard: her skin in its shadow in her black line, then navy, the red band, the red elbow band. */
 export const SAYA_UPPER_F: PaintedPiece = {
-  pivot: [2, -1],
-  angle: 79.34,
+  pivot: [1, -4],
+  angle: 78.61,
   rows: [
     '....00..',
     '...vv0..',
@@ -225,7 +225,7 @@ export const SAYA_UPPER_F: PaintedPiece = {
 /** The far forearm guard: the red elbow band, navy with its red stripe outside, the red cuff. */
 export const SAYA_FORE_F: PaintedPiece = {
   pivot: [3, -1],
-  angle: 57.69,
+  angle: 54.94,
   rows: [
     '09bb0000....',
     '090022000...',
@@ -254,8 +254,8 @@ export const SAYA_FORE_F: PaintedPiece = {
 
 /** Her near glove, the fist that holds her sword: dark navy under the cuff, navy, the red band over the knuckles. */
 export const SAYA_GLOVE_N: PaintedPiece = {
-  pivot: [8, -12],
-  angle: 103.11,
+  pivot: [2, -2],
+  angle: 110.40,
   rows: [
     '.066c60.',
     '026ccc60',
@@ -276,7 +276,7 @@ export const SAYA_GLOVE_N: PaintedPiece = {
 /** Her far fist: the brown strap, then her bare fist in her skin, lit on its knuckles. */
 export const SAYA_HAND_F: PaintedPiece = {
   pivot: [-2, -12],
-  angle: 57.69,
+  angle: 54.94,
   rows: [
     '0055ec0.',
     '055g0c20',
@@ -326,6 +326,6 @@ export const SAYA_GLOVE_TONES = {
 
 /**
  * Where her sword's grip passes through SAYA_GLOVE_N: the cell of the middle of her fist, from the
- * piece's pivot (the near elbow's cell), at the piece's angle.
+ * piece's pivot (the near wrist's cell), at the piece's angle.
  */
-export const SAYA_GRIP_N: [number, number] = [-4, 15];
+export const SAYA_GRIP_N: [number, number] = [2, 5];

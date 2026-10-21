@@ -144,6 +144,11 @@ export interface ShinobiFeat {
   description: string;
   descriptionEs?: string;
   statBonus?: Partial<AbilityScores>;
+  /**
+   * What a ninja needs before it may take the feat (rules/feats.ts): a level, and a second element (the
+   * level-5 choice of one, or a legend's own). Missing: anyone may take it.
+   */
+  requires?: { level?: number; secondElement?: boolean };
 }
 
 export interface ShinobiCharacter {
@@ -232,6 +237,11 @@ export interface ShinobiCharacter {
    * own: Kaien Fire, Raiga Earth) and later a third (a special feat). Missing: none.
    */
   extraNatures?: ChakraNature[];
+  /**
+   * Triple Nature's chakra discount has been used since the last long rest (a camp's morning, or the
+   * end of the mission): rules/feats.ts. Missing: ready.
+   */
+  tripleNatureSpent?: boolean;
 }
 
 /** What a ninja chooses at level 5: a second element, or a higher rank of its main element. */

@@ -30,6 +30,7 @@ export function battleResult(s: BattleState): PartyBattleResult {
       died: u.down === 'dead',
       effects: u.effects,
       tension: u.stats2.tension,
+      ...(u.tripleNature ? { tripleNatureSpent: u.tripleNature.spent } : {}),
     }));
   const enemies = Object.values(s.units)
     .filter((u) => homeTeam(u) === 'enemy' && u.kind !== 'hydra_head')

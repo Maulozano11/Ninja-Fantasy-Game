@@ -538,6 +538,8 @@ export function morning(party: PartyState, camp: CampState, opts: { interrupted?
 
         const exp = morningAfter(ch.effects, camp.campNo);
         ch = { ...ch, effects: exp.effects, pillsSinceCamp: 0 };
+        // A long rest: Triple Nature's discount is ready again (rules/feats.ts).
+        if (ch.tripleNatureSpent) delete ch.tripleNatureSpent;
         ev.push(...exp.expired.map((e) => ({ type: 'effect' as const, who: c.id, effect: e, change: 'expired' as const, reason: 'Morning' })));
         return { character: ch, events: ev };
       },

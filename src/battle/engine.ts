@@ -9,6 +9,7 @@ import type { ClanType, ShinobiCharacter, WeatherType } from '../types/shinobi';
 import type { Difficulty } from '../types/mission';
 import { abilityMod, combineAdvantage } from '../rules/checks';
 import { addEffect, effectMods, hasEffect, removeEffect } from '../rules/effects';
+import { tripleNatureDiscount } from '../rules/feats';
 import type {
   Action,
   AfterHits,
@@ -653,6 +654,8 @@ function kawarimi(s: BattleState, t: Unit, h: Hit, ev: BattleEvent[]): void {
   const spec = JUTSU[KAWARIMI];
   t.chakra -= spec.cost;
   t.turn.reaction = false;
+  // A jutsu cast too: the one before the next (Triple Nature reads it).
+  t.lastNature = spec.nature ?? '';
   ev.push({ t: 'chakra', unit: t.id, delta: -spec.cost, chakra: t.chakra, reason: KAWARIMI });
   const from = { ...t.pos };
   const danger = h.source && s.units[h.source] ? s.units[h.source].pos : from;
@@ -714,10 +717,22 @@ function react(s: BattleState, unitId: string, take: boolean, ev: BattleEvent[])
 
 // --- jutsu ---------------------------------------------------------------------------------
 
-/** Chakra a jutsu costs this unit (enhanced, and Centered chakra's discount on the first jutsu). */
-export function jutsuCost(u: Unit, spec: JutsuSpec, enh: boolean): number {
+/**
+ * Chakra a jutsu costs this unit (enhanced, Centered chakra's discount on the first jutsu, and Triple
+ * Nature's on a jutsu of one of its elements right after one of another: rules/feats.ts), and whether
+ * Triple Nature's discount lowers it (it is spent only then).
+ */
+export function jutsuCostParts(u: Unit, spec: JutsuSpec, enh: boolean): { cost: number; woven: boolean } {
   const discount = !spec.ability && u.stats2.jutsuCast === 0 ? effectMods(u.effects).firstJutsuDiscount : 0;
-  return Math.max(0, spec.cost + (enh ? spec.enhCost : 0) - discount);
+  const cost = Math.max(0, spec.cost + (enh ? spec.enhCost : 0) - discount);
+  const t = u.tripleNature;
+  const weave = t && !spec.ability ? tripleNatureDiscount(t.natures, t.spent, u.lastNature, spec.nature) : 0;
+  return { cost: Math.max(0, cost - weave), woven: weave > 0 && cost > 0 };
+}
+
+/** Chakra a jutsu costs this unit (enhanced, and its discounts). */
+export function jutsuCost(u: Unit, spec: JutsuSpec, enh: boolean): number {
+  return jutsuCostParts(u, spec, enh).cost;
 }
 
 function doJutsu(s: BattleState, u: Unit, id: string, atIn: Pt, targetId: string | undefined, enh: boolean, ev: BattleEvent[], target2Id?: string): string | null {
@@ -727,7 +742,7 @@ function doJutsu(s: BattleState, u: Unit, id: string, atIn: Pt, targetId: string
   if (effectMods(u.effects).noJutsu) return 'chakraSealed';
   if (enh && !base.enhCost) return 'noEnhanced';
   const spec = enh ? enhanced(base) : base;
-  const cost = jutsuCost(u, base, enh);
+  const { cost, woven } = jutsuCostParts(u, base, enh);
   if (u.chakra < cost) return 'noChakra';
   if (base.cast === 'bonus' ? !u.turn.bonus : !u.turn.action) return base.cast === 'bonus' ? 'noBonus' : 'noAction';
   // Hand seals need both hands, and a tackle is thrown with empty ones: the weapon is stowed for
@@ -808,7 +823,14 @@ function doJutsu(s: BattleState, u: Unit, id: string, atIn: Pt, targetId: string
   // Pay, and spend the action.
   u.chakra -= cost;
   if (cost) ev.push({ t: 'chakra', unit: u.id, delta: -cost, chakra: u.chakra, reason: id });
-  if (!base.ability) u.stats2.jutsuCast += 1;
+  if (woven && u.tripleNature) {
+    u.tripleNature.spent = true;
+    ev.push({ t: 'note', key: 'tripleNature', params: { name: u.name } });
+  }
+  if (!base.ability) {
+    u.stats2.jutsuCast += 1;
+    u.lastNature = base.nature ?? '';
+  }
   if (base.cast === 'bonus') u.turn.bonus = false;
   else u.turn.action = false;
   if (spec.loud) reveal(u, ev);

@@ -76,7 +76,12 @@ Boss. Paths of Mastery: designed, not built.
   or a higher rank of its main element (its rank B jutsu), for good; every ninja is offered the
   ranks of its level; Kaien is Rayo + Fuego and Raiga Fuego + Tierra ("ok con kaien y raiga"),
   saved copies updated on load (`src/rules/natureGrowth.ts`). No level-up screen yet: the choice is
-  made in the creator; the third element's feat is proposed, not built.
+  made in the creator. The ladder (his answer "feat del tercer elemento opcion a nivel 5 esta bien al
+  subir al nivel 7 te un rango A y al 10 un rango S", on `chakra/progression-2`): rank A at level 7,
+  the S-rank slot at 10, for every ninja; the feat **Tres naturalezas** (level 9 and a second
+  element: a third element, and once per long rest 1 chakra off a jutsu of one of its elements cast
+  right after one of another), its requirements enforced in the creator and its discount tracked in
+  battle (`src/rules/feats.ts`).
 - VFX for 8 elements (fire, water, wind, lightning, earth, genjutsu, chakra, poison), all from the
   owner's v3 sheets: full effect set, walls in 3 orientations, a beast each. Signature effects:
   Fireball / Great Fireball, Great Fire Annihilation (normal and enhanced), Kirin.
@@ -123,10 +128,11 @@ screens (`CampaignMode.tsx`, `ArenaSandbox.tsx`) are English only.
 | `poses/throw-pierce` | `f722aee` | `throw` (4 frames, release copied from his Warp Strike picture) and `pierce` (5-frame lunge) poses, in the creator stance bar; `src/sprite/strike.test.ts` | **Waiting for approval**; `ryusei/phase` needs it |
 | `icons/sheets-8-11` | `e413f5f` | His sheets 8–11 (14 icons): adamantine chains, dragon fire bomb, dragon fire stream, Kōton block and wall, Mirai evasion, Northstar Command and Submission, Ryusei swap and warp, shadow clone, 64 palms, water dragon, wood dragon | **WIP**: fixes, plus phase-style ninjas in Intercambio / Golpe Warp |
 | `scarlet/study` | `3b5dfe9` | His new character picture (`scarlet-owner-reference.jpg`) and study scripts `tools/refs/scarlet*`; nothing in `src` | **WIP**. Provisional name "Valen, the Scarlet Duke", no cape: **the owner must choose the name** |
-| `chakra/jutsu-tint` | not pushed (local) | Elemental jutsu, their beasts and walls in the caster's chakra colour (`src/sprite/vfxTint.ts`, `src/components/battle/vfxTint*.ts`; `docs/GAMEPLAY_DESIGN.md`, "The chakra colour colours the elemental jutsu") | **The owner approved the colours** (2026-10-21); wired into the battle (checked in the browser), review fixes done (no recolouring on the screen's thread, memory capped); **open question**: should a heal of an elemental nature (Mystical Palm) glow in the chakra colour; not merged |
+| `chakra/jutsu-tint` | not pushed (local) | Elemental jutsu, their beasts and walls in the caster's chakra colour (`src/sprite/vfxTint.ts`, `src/components/battle/vfxTint*.ts`; `docs/GAMEPLAY_DESIGN.md`, "The chakra colour colours the elemental jutsu") | **The owner approved the colours** (2026-10-21); wired into the battle (checked in the browser), review fixes done (no recolouring on the screen's thread, memory capped); answered 2026-10-21: the black Kirin stays (pink and violet kanji), other colours stay as they look, "la curación siempre se verá verde" (the green heal is on `jutsu/d-c-set`); not merged |
 | `chakra/decisions` | not pushed (local) | The owner's four answers on the chakra types (saved legends updated, Shadow and Spirit pending, Cinder Nova kept) and the nature gating the elemental jutsu in the creator | **For review** |
 | `chakra/progression` | `51b44c0` on origin (WIP); the finished work is local, not pushed | His jutsu answers: D/C + clan for a new ninja (S-rank slot locked), the explosive tag as an item (throw / hide, save migration), the chakra type fixed once made; the taijutsu, kenjutsu and genjutsu jutsu gated by class; level 5: a second element or a higher rank, Kaien and Raiga's second natures | **For review** |
-| `jutsu/d-c-set` | not pushed yet (merged with the integration branch at `26371c4`) | 12 rank D and C jutsu (data, rules, AI, log; `docs/GAMEPLAY_DESIGN.md`, "Rank D and C jutsu"), then their effects (three projectile paths, the joined Spark Fan, the white Bleeding Cut, the Rush's tackle pose), in the caster's chakra colour; review fixes (sword arts need a blade, charges stop at deep water and cliffs); his answers 4–8 (Numb 2 rounds, silent Mirage and Bleeding Cut, the water aura on the Mystical Palm); healing always green (the Palm and the Dew never take the chakra colour) | **Waiting for approval** of the in-game captures. Every element gains D/C jutsu in the nature filter's and the class gate's offers (their tests updated) |
+| `jutsu/d-c-set` | not pushed yet (merged with the integration branch at `26371c4`) | 12 rank D and C jutsu (data, rules, AI, log; `docs/GAMEPLAY_DESIGN.md`, "Rank D and C jutsu"), then their effects (three projectile paths, the joined Spark Fan, the white Bleeding Cut, the Rush's tackle pose), in the caster's chakra colour; review fixes (sword arts need a blade, charges stop at deep water and cliffs); his answers 4–8 (Numb 2 rounds, silent Mirage and Bleeding Cut, the water aura on the Mystical Palm); healing always green (the Palm and the Dew never take the chakra colour) | **Merged** (the owner approved 11 of 12; the Bleeding Cut waits for its blood spray on `jutsu/bleeding-blood`). Every element gains D/C jutsu in the nature filter's and the class gate's offers (their tests updated) |
+| `chakra/progression-2` | on origin | His answer "feat del tercer elemento opcion a nivel 5 esta bien al subir al nivel 7 te un rango A y al 10 un rango S": rank A at level 7 and S at 10 for every ninja, the feat Tres naturalezas (requirements in the creator, third element pick, battle discount), kenjutsu and level 5 confirmed in the docs | **Merged** (his decisions) |
 | `worktree-*` | not on origin (local `6e2e8dc`) | Agent worktree leftovers | Stale |
 
 The tips are the pushed ones; fetch to see the latest. At this snapshot the owner's checkout had
@@ -177,17 +183,26 @@ Merge checks (`git merge-tree` on the origin tips, nothing changed):
   `docs/GAMEPLAY_DESIGN.md` Open questions. (The second element's level and Kaien and Raiga: his
   next answer, below.)
 - Decided 2026-10-21 (later still), who learns the genjutsu, kenjutsu and taijutsu jutsu: *"9 los
-  que elijan de clase genjutsu kenjutsu o taijutsu"*. Built on `chakra/progression`. **Still his**:
-  kenjutsu mapped to the Maestro de Bukijutsu (no kenjutsu class exists); Ninjutsu and Medical
-  learning none of the three; Hana (medic) keeping Yasaka no Magatama, marked.
+  que elijan de clase genjutsu kenjutsu o taijutsu"*. Built on `chakra/progression`. Kenjutsu to
+  the Maestro de Bukijutsu confirmed ("si bukijutsu sera kenjutsu"). **Still his**: Ninjutsu and
+  Medical learning none of the three; Hana (medic) keeping Yasaka no Magatama, marked.
 - Decided 2026-10-21 (later still), the second and third element: *"nivel 5 suena bien para segundo
   elemento o subir de rango tu elemento principal proponme el feat ok con kaien y raiga"*. Built on
   `chakra/progression`: at level 5 a second element or a higher rank of the main element; Kaien
-  Rayo + Fuego, Raiga Fuego + Tierra. **Still his**: what each choice opens (proposed: second
-  element D and C, higher rank the main element's B); a made ninja now held to its level's ranks; a
-  new ninja starting at its sheet's level (6) and so choosing at creation; Light and Void without
-  the choice; the third element's feat (three proposals, recommended "Tres naturalezas"); see
-  `docs/GAMEPLAY_DESIGN.md` Open questions.
+  Rayo + Fuego, Raiga Fuego + Tierra. Approved as built ("nivel 5 esta bien", below). **Still
+  his**: a new ninja starting at its sheet's level (6) and so choosing at creation; Light and Void
+  without the choice; see `docs/GAMEPLAY_DESIGN.md` Open questions.
+- Decided 2026-10-21 (later still), the ladder: *"si bukijutsu sera kenjutsu feat del tercer
+  elemento opcion a nivel 5 esta bien al subir al nivel 7 te un rango A y al 10 un rango S"*. Built
+  on `chakra/progression-2`: rank A at level 7, the S-rank slot at 10, for every ninja (a sheet's
+  own higher jutsu stay, marked; no save migration; enemies untouched); the feat Tres naturalezas
+  (option A). **Still his** (as built): rank A and S open for the class's kind and the second and
+  third elements too, with no count limit; rank B still only through the level-5 higher rank; the
+  third element fixed once made; the discount automatic, a Kawarimi counting as "the previous
+  jutsu"; see `docs/GAMEPLAY_DESIGN.md` "The ladder" and Open questions.
+- Decided 2026-10-21 (later still), the chakra colours: *"kirin negro dejar asi rosa y violeta y
+  como se vea en otros colores dejalo asi se ve muy bien la curacion siempre se vera verde"*: the
+  black Kirin stays, the other colours stay, a heal is always green (built on `jutsu/d-c-set`).
 - Decided 2026-10-21 (later): **a new female standard** from the owner's four heroine pictures. He said our base bodies look "muy feos" next to his pictures: "sube la calidad de nuestro sprite para que se vea mas parecido aun a la referencia". The new female body (proportions, hands, feet, skin from his pixels) is being built on `body/female-v2` for his approval. He also said: "las piezas de armadura y ropa femeninas no las rehagas porque muy problablemente las borremos por no estar al nuevo stadard" - the existing female armour and clothing are NOT refitted to the new body; they will probably be deleted. Hairstyles, heads, eyes, weapons, capes and the heroines' parts do follow it. The male body stays (approved through the Aiden paint-over).
 - Decided 2026-10-21 (evening): **every character is raised to the detail level of the owner's Roman paint-over** (bronze cuirass and Roman skirt): "vamos a cambiar a todos los personajes para que esten a este nivel de detalle entonces todas las ropas cabezas ropa y armaduras se tienen que ajustar a este nivel de detalle". Valen (`scarlet/*`) is included: "valen va necesitar rework como todos nuestros personajes". How (his paint-overs vs our rework) is still open.
 - Decided 2026-10-21 (later): Warp Strike is renamed **"Shooting-Star Thrust"** (Spanish **"Estocada Fugaz"**; the owner first said "Shooting Star", then chose these), after the clan's name (Ryusei = shooting star) and to stay clear of other games' "Warp Strike". The id `ryusei_warp` stays. To apply once `icons/sheets-8-11` is merged (it touches the same strings): names, hotbar label, help text, log, clan texts, D24.
@@ -275,10 +290,10 @@ the new element first) and says which; a sheet's own off-nature jutsu (Kaien's F
 Earth Wall, older or imported sheets) stay, marked. The random ninja picks jutsu of its nature.
 Enemies and battles are untouched. The rank cap (D, C and the clan's) and the fixed type are built
 on `chakra/progression`, and so are the class gate for the taijutsu, kenjutsu and genjutsu jutsu
-and the level-5 choice (a second element or a higher rank; Kaien and Raiga's second natures). Left:
-when the S-rank slot opens, a level-up screen (the choice is made in the creator for now), the
-third element's feat (proposed), the jutsu of Light and Void (and later Shadow and Spirit), a Water
-S-rank, a second Wind jutsu.
+and the level-5 choice (a second element or a higher rank; Kaien and Raiga's second natures). The
+ladder (rank A at 7, S at 10) and the feat Tres naturalezas are on `chakra/progression-2`. Left: a
+level-up screen (the choices are made in the creator for now), the jutsu of Light and Void (and
+later Shadow and Spirit), a Water S-rank, a second Wind jutsu.
 
 ### 4d. Missions (not built)
 Branching road, road traps and curios, votes, cinematics and decisions, the AI choosing camp

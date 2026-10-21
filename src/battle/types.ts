@@ -191,6 +191,13 @@ export interface Unit {
   creature?: 'beast' | 'summon';
   /** A beast or summon that joined the Northstar's side for the rest of the battle, and the side it left. */
   joined?: { by: string; team: Team };
+  /**
+   * Triple Nature (the feat, rules/feats.ts): the ninja's elements, and whether its once-per-long-rest
+   * discount is spent (it comes spent into a battle when it was used since the last camp).
+   */
+  tripleNature?: { natures: string[]; spent: boolean };
+  /** The nature of the last jutsu it cast this battle ('' for one with none): Triple Nature reads it. */
+  lastNature?: string;
   /** Battle bookkeeping for the mission result. */
   stats2: { critsTaken: number; critsLanded: number; pills: number; fell: boolean; fellToCrit: boolean; tension: number; jutsuCast: number };
   /** Skill proficiencies (Stealth, Perception, Medicine...). */

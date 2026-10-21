@@ -116,6 +116,8 @@ export interface BattleMemberResult {
   effects?: StatusEffect[];
   /** Tension gained in the battle itself (failed saves against fear, such as the hydra's roar). */
   tension?: number;
+  /** Triple Nature's discount is spent (used in this battle or before it, since the last camp). */
+  tripleNatureSpent?: boolean;
 }
 
 export interface BattleResult {
@@ -213,6 +215,8 @@ export function applyBattleResult(party: PartyState, result: BattleResult, battl
       let ch: ShinobiCharacter = { ...c, effects: r.effects ?? c.effects };
       if (r.effects) ev.push(...effectDiff(c.id, c.effects, r.effects));
       ch = { ...ch, currentHp: Math.max(0, Math.min(effectiveMaxHp(ch), r.hp)), currentChakra: Math.max(0, Math.min(ch.maxChakra, r.chakra)) };
+      // Triple Nature's discount, once per long rest: used in this battle, it waits for the next camp.
+      if (r.tripleNatureSpent) ch = { ...ch, tripleNatureSpent: true };
       if (ch.currentHp !== c.currentHp) ev.push({ type: 'hp', who: c.id, delta: ch.currentHp - c.currentHp, hp: ch.currentHp, reason: 'Battle' });
       if (ch.currentChakra !== c.currentChakra) ev.push({ type: 'chakra', who: c.id, delta: ch.currentChakra - c.currentChakra, chakra: ch.currentChakra, reason: 'Battle' });
       const step = (s: Step) => {

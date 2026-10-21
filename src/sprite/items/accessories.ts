@@ -13,7 +13,7 @@ import { KATANA_V2, KATANA_V2_BLADE, KATANA_V2_CHAKRA, KATANA_V2_GOLD, KATANA_V2
 import type { PartSlot, PartsPreview } from '../ctx';
 import type { SpriteAppearance } from '../types';
 import { chakraHex } from '../chakraInfo';
-import { gripPoint, handsBusy, handsLimp, handsReleased, poleAngle, swordAngle, throwsKunai } from '../grip';
+import { gripPoint, handsBusy, handsLimp, handsReleased, paintedGrip, poleAngle, swordAngle, throwsKunai } from '../grip';
 
 const col = (key: string, label: string, def: string, kind: RampKind = 'cloth') => ({ key, label, default: def, kind });
 
@@ -390,7 +390,8 @@ export const HELD_ITEMS: ItemDef[] = [
       const tint = katanaV2Tint(parts, chakraHex(g.look.chakra), colors);
       if (handsBusy(g)) stowKatanaAtHip(g, colors[2], colors[1]);
       else if (handsLimp(g)) drawPaintedWeapon(g, 'nearArm.held', KATANA_V2, droppedGrip(g, 0.55), -86, tint);
-      else if (!handsReleased(g)) drawPaintedWeapon(g, 'nearArm.held', KATANA_V2, g.rig.handN, swordAngle(g), tint);
+      // In his fist (his Fingerless Gloves) the grip goes through it where he drew it (grip.ts paintedGrip).
+      else if (!handsReleased(g)) drawPaintedWeapon(g, 'nearArm.held', KATANA_V2, paintedGrip(g)?.at ?? g.rig.handN, swordAngle(g), tint);
     },
   },
   {

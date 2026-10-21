@@ -139,7 +139,13 @@ folders.
   sword in front), gives his line to the pieces it bounds, and continues each piece where something in front of it hides
   it (`continue_along`): the skirt's panels and studs down their columns under the fist, guard and blade; the chest under
   the near sleeve and the belt; the grip in the fist along the sword; the forearms under the gloves; the trousers up each
-  leg under the skirt; only cells that something hides are filled, so where he shows white it stays white. His legs stand
+  leg under the skirt; only cells that something hides are filled, so where he shows white it stays white. The skin
+  (and his warm line) round the top of each glove, above the wrist, is the forearm's, so a fist turned at the wrist
+  leaves it on the arm. In the game every arm piece turns whole about our joints (`nightArmStamps` in
+  `src/sprite/items/night.ts`: his sleeve and the end of his upper arm with the upper arm, his forearm with the forearm,
+  his elbow swept through a bend; `nightFistStamps` in `items/clothes.ts`: his cuff with the forearm, his fist on the
+  wrist), and his skirt lies on the thighs to the knees in panels cut down his seams and hangs from there
+  (`nightSkirtStamps`). His legs stand
   wider than our rig's (`LEG_SHIFT`: near foot 5 px back, far foot 5 px lower): the leg pieces hang from our joints, and
   worn together his trousers and boots move the whole leg back by it (`NIGHT_LEG_SHIFT`, `src/sprite/items/night.ts`), so
   at rest every pixel of his figure is his, in his place (`src/sprite/ren.test.ts` pins it). The face (`MAP`: his skin

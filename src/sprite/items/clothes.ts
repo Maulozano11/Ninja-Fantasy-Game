@@ -9,6 +9,8 @@ import { armDepth, armJoints, armPoint, armSpan, type Depth, DrawCtx, fillTorso,
 import { PaintedPiece, segAngle, skinTone, stampPiece } from '../painted';
 import { add, along, ellipse, F_NO_EDGE, F_NO_OUTLINE, F_NO_TEXTURE, GRID, Layer, lerp, norm, PAD, PartId, partIndex, PARTS, Pen, perp, poly, RES, scale, seam, ShadeFn, sub, v, Vec } from '../raster';
 import { stampTemplate, TemplatePalette } from '../rotsprite';
+import { paintedGrip, type PaintedGrip } from '../grip';
+import type { Rig } from '../rig';
 import { crimsonKind, GAUNTLET_F, GAUNTLET_N, GLOVE_LEATHER, GLOVE_STEEL, GLOVE_TONES, GLOVE_TRIM } from './sabatonsGauntletsArt';
 import { BRACER_BRONZE, BRACER_F, BRACER_N, ROMAN_KIT_KIND } from './bracersSandalsArt';
 import { NIGHT_GLOVE, NIGHT_GLOVE_F, NIGHT_GLOVE_N, NIGHT_GLOVE_PLATE, NIGHT_KIT_KIND } from './nightBootsGlovesArt';
@@ -1755,6 +1757,75 @@ function paintedFist(g: DrawCtx, s: Side, piece: PaintedPiece, color: (ch: strin
   stampTemplate(g.L(depth), piece, j.wrist, Math.abs(turn) <= 30 ? 0 : turn, pal, prt('hand', s), { flipX, flags: F_NO_TEXTURE | F_NO_OUTLINE });
 }
 
+/** His glove cut at the wrist: the cuff above it, the fist from it down, and the cells round the wrist. */
+interface GloveParts {
+  cuff: PaintedPiece;
+  fist: PaintedPiece;
+  wrist: PaintedPiece;
+}
+const WRIST_R = 3;
+const GLOVE_PARTS = new Map<PaintedPiece, GloveParts>();
+function gloveParts(piece: PaintedPiece): GloveParts {
+  let p = GLOVE_PARTS.get(piece);
+  if (p) return p;
+  const [px, py] = piece.pivot;
+  const cut = (keep: (x: number, y: number) => boolean): PaintedPiece => ({ ...piece, rows: piece.rows.map((row, y) => [...row].map((ch, x) => (ch !== '.' && keep(x, y) ? ch : '.')).join('')) });
+  p = { cuff: cut((_x, y) => y < py), fist: cut((_x, y) => y >= py), wrist: cut((x, y) => Math.hypot(x - px, y - py) <= WRIST_R) };
+  GLOVE_PARTS.set(piece, p);
+  return p;
+}
+/** The open hand's cuff: his glove above the wrist. */
+const nightCuff = (piece: PaintedPiece): PaintedPiece => gloveParts(piece).cuff;
+
+/** One of his glove's pieces where a fist stamps it on the wrist: turned `turn` from his, mirrored or not. */
+export interface FistStamp {
+  piece: PaintedPiece;
+  turn: number;
+  mirror: boolean;
+  name: 'cuff' | 'fist' | 'wrist';
+}
+
+/**
+ * His fist on his Ren (the Fingerless Gloves), on the wrist, back to front: his cuff rides the forearm,
+ * turned whole with it, and his fist turns with it too, so the wrist never breaks. Round his Katana v2
+ * it sits as grip.ts paintedGrip says (`hold`: mirrored where the blade is carried back, the wrist bent
+ * toward the blade), his wrist swept through the angles between under the cuff.
+ */
+export function nightFistStamps(r: Rig, s: Side, hold: PaintedGrip | null): FistStamp[] {
+  const j = armJoints(r, s);
+  const piece = s === 'N' ? NIGHT_GLOVE_N : NIGHT_GLOVE_F;
+  const mirror = !!hold?.mirror;
+  const base = mirror ? 180 - piece.angle : piece.angle;
+  const fore = segAngle(j.wrist, j.hand);
+  const fist = hold ? hold.fist : fore;
+  const bend = ((((fist - fore + 180) % 360) + 360) % 360) - 180;
+  const parts = gloveParts(piece);
+  const n = Math.ceil(Math.abs(bend) / 10);
+  const out: FistStamp[] = [];
+  for (let k = 1; k < n; k++) out.push({ piece: parts.wrist, turn: fore + (bend * k) / n - base, mirror, name: 'wrist' });
+  out.push({ piece: parts.fist, turn: fist - base, mirror, name: 'fist' });
+  out.push({ piece: parts.cuff, turn: fore - base, mirror, name: 'cuff' });
+  return out;
+}
+
+function nightFist(g: DrawCtx, s: Side, color: (ch: string, hex: string) => string, hold: PaintedGrip | null, depth: Depth): void {
+  const j = armJoints(g.rig, s);
+  const piece = s === 'N' ? NIGHT_GLOVE_N : NIGHT_GLOVE_F;
+  const pal: TemplatePalette = {};
+  for (const [ch, hex] of Object.entries(piece.colors)) pal[ch] = [g.m(color(ch, hex), 'flat'), 3];
+  for (const t of nightFistStamps(g.rig, s, hold)) stampTemplate(g.L(depth), t.piece, j.wrist, t.turn, pal, prt('hand', s), { flipX: t.mirror, flags: F_NO_TEXTURE | F_NO_OUTLINE });
+}
+
+/**
+ * The hands he drew closed on his Ren stay his fists in every pose, except where the open hand is the
+ * pose: hand signs, a book cradled, the hand that points or opens to cast or to let a weapon fly.
+ */
+function nightPalm(g: DrawCtx, s: Side): boolean {
+  const shape = armJoints(g.rig, s).shape;
+  if (shape === 'sign' || shape === 'cradle' || shape === 'point') return true;
+  return shape === 'open' && (g.rig.pose === 'throw' || g.rig.pose.startsWith('cast'));
+}
+
 /** Our hand picture for the pose (open, pointing, relaxed, cradling), in the owner's leather tones. */
 function leatherHand(g: DrawCtx, s: Side, color: (ch: string, hex: string) => string): void {
   const tmp = new Layer();
@@ -1796,20 +1867,30 @@ export const HAND_ITEMS: ItemDef[] = liftMain([
         if (k === 'skin') return skinTone(hex, NIGHT_SKIN, g.look.skin);
         return k === 'silver' ? retintHex(hex, NIGHT_GLOVE_PLATE, pl) : retintHex(hex, NIGHT_GLOVE, c);
       };
+      const male = !isFemaleBody(g.rig.body);
       for (const s of SIDES) {
-        const { kind } = handPose(g, s);
-        if (!isFemaleBody(g.rig.body) && (kind === 'grip' || kind === 'fist')) {
+        const hold = s === 'N' && male ? paintedGrip(g) : null;
+        if (male && (hold || !nightPalm(g, s))) {
           // Under his jacket his bare forearm runs down to his glove: only our hand is taken away.
           if (g.has('top', 'top_night_jacket')) handOff(g, s);
           else bareHandOff(g, s);
-          paintedFist(g, s, s === 'N' ? NIGHT_GLOVE_N : NIGHT_GLOVE_F, tint, s === 'F' && farFistBeside(g, NIGHT_GLOVE_F) ? 'farHand.front' : armDepth(s, 'armor'));
+          nightFist(g, s, tint, hold, s === 'F' && farFistBeside(g, NIGHT_GLOVE_F) ? 'farHand.front' : armDepth(s, 'armor'));
           continue;
         }
         const L = g.L(armDepth(s, 'armor'));
-        const gp = clothPen(g, c, prt('forearm', s), sb(s));
-        limb(g, L, 'arm', s, 1.7, 2, 0.5, gp);
-        across(g, L, 'arm', s, 1.8, 0.5, 1);
-        glove(g, s, clothPen(g, c, prt('hand', s), sb(s)), 0.2, true);
+        if (male) {
+          // An open hand: his cuff on the wrist, turned with the forearm, the glove over the palm and
+          // the fingers bare.
+          const piece = s === 'N' ? NIGHT_GLOVE_N : NIGHT_GLOVE_F;
+          const j = armJoints(g.rig, s);
+          glove(g, s, clothPen(g, c, prt('hand', s), sb(s)), 0.2, true);
+          stampPiece(g, armDepth(s, 'armor'), nightCuff(piece), j.wrist, segAngle(j.wrist, j.hand), prt('hand', s), tint);
+        } else {
+          const gp = clothPen(g, c, prt('forearm', s), sb(s));
+          limb(g, L, 'arm', s, 1.7, 2, 0.5, gp);
+          across(g, L, 'arm', s, 1.8, 0.5, 1);
+          glove(g, s, clothPen(g, c, prt('hand', s), sb(s)), 0.2, true);
+        }
         const { at } = handFrame(g, s);
         const pm = clothPen(g, pl, prt('hand', s), sb(s), 'metal');
         tube(L, at(-0.55, -0.3), at(0.15, -0.3), 0.6, 0.6, pm, 4);

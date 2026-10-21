@@ -501,6 +501,19 @@ def pieces(a):
     """His figure cut into pieces, with what his picture hides of them continued: {name: (mask, colours)}."""
     H, W, _ = a.shape
     masks, K, bg = segment(a)
+    # Above the wrist the skin round the top of each glove (and the warm line beside it) is his
+    # forearm's: the forearm takes it, so a fist turned at the wrist leaves it on the arm.
+    ys, xs = np.mgrid[0:H, 0:W]
+    warm = (a[..., 0] > a[..., 1] + 8) & (a[..., 0] >= a[..., 2]) & (K == 'dark')
+    for s in ('N', 'F'):
+        e, w = JOINTS['elbow' + s], JOINTS['wrist' + s]
+        d = (w[0] - e[0], w[1] - e[1])
+        L = float(np.hypot(*d))
+        along = ((xs + 0.5 - e[0]) * d[0] + (ys + 0.5 - e[1]) * d[1]) / L
+        g = 'glove_' + s.lower()
+        arm = masks[g] & ((K == 'skin') | warm) & (along < L)
+        masks[g] = masks[g] & ~arm
+        masks['fore_' + s.lower()] = masks['fore_' + s.lower()] | arm
     black = his_line(a)
     line = K == 'line'
     rows = np.arange(H)[:, None]

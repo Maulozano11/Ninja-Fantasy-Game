@@ -9,6 +9,10 @@ import { migrateCharacter } from '../rules/ninja';
 import type { ShinobiCharacter } from '../types/shinobi';
 import { getItem } from './catalog';
 import { renderSprite } from './compose';
+import type { DrawCtx, Side } from './ctx';
+import { paintedGrip } from './grip';
+import { nightFistStamps } from './items/clothes';
+import { nightArmStamps, nightSkirtStamps } from './items/night';
 import * as kit from './items/nightBootsGlovesArt';
 import * as belt from './items/nightBeltArt';
 import * as hair from './items/nightHairArt';
@@ -20,8 +24,10 @@ import { dojutsuToEye, getAppearance } from './legacy';
 import { NIGHT_HEAD, NIGHT_SKIN } from './nightHeadArt';
 import { NIGHT_EYE_COLORS, NIGHT_EYES, NIGHT_IRIS } from './nightEyeArt';
 import type { PaintedPiece } from './painted';
-import { GRID } from './raster';
-import { CAMP_POSES, MOVE_POSES, SPRITE_POSES, type SpriteAppearance, type SpritePose } from './types';
+import { GRID, RES } from './raster';
+import { drawRig, frameCount, GROUND, rigPoseFor } from './rig';
+import { rotateTemplate } from './rotsprite';
+import { CAMP_POSES, MOVE_POSES, SPRITE_POSES, type BodyType, type SpriteAppearance, type SpritePose } from './types';
 
 const REN = LEGENDARY_PRESETS.find((p) => p.character.id === 'preset_night')!.character;
 const look = (): SpriteAppearance => structuredClone(getAppearance(REN));
@@ -71,6 +77,67 @@ function loose(rgba: Uint8ClampedArray): number {
   }
   const total = sizes.reduce((a, b) => a + b, 0);
   return total - Math.max(0, ...sizes);
+}
+
+/** The cells a piece has. */
+const cells = (p: PaintedPiece) => p.rows.join('').replace(/\./g, '').length;
+
+/** How many pieces (8 ways) a piece turned by `turn` falls into. */
+function parts(p: PaintedPiece, turn: number): number {
+  const at = new Set(rotateTemplate(p, turn).map(({ dx, dy }) => `${dx},${dy}`));
+  const seen = new Set<string>();
+  let n = 0;
+  for (const k0 of at) {
+    if (seen.has(k0)) continue;
+    n++;
+    seen.add(k0);
+    const stack = [k0.split(',').map(Number)];
+    while (stack.length) {
+      const [x, y] = stack.pop()!;
+      for (let dy = -1; dy <= 1; dy++)
+        for (let dx = -1; dx <= 1; dx++) {
+          const k = `${x + dx},${y + dy}`;
+          if (at.has(k) && !seen.has(k)) {
+            seen.add(k);
+            stack.push([x + dx, y + dy]);
+          }
+        }
+    }
+  }
+  return n;
+}
+
+/**
+ * Whether a piece turned by `turn` is whole: in no more pieces than he drew it in, and no smaller than
+ * 80% of his (a turned 1 px line is shorter across the diagonal; a cut-off piece loses far more).
+ */
+function whole(p: PaintedPiece, turn: number): string | null {
+  const n = rotateTemplate(p, turn).length;
+  if (parts(p, turn) > parts(p, 0)) return `in ${parts(p, turn)} pieces, his in ${parts(p, 0)}`;
+  return n >= 0.8 * cells(p) ? null : `${n} of ${cells(p)} cells`;
+}
+
+/** The mean width of a turned piece across its line (`deg`), from `a0` to `a1` fine pixels along it from the pivot. */
+function widthAcross(p: PaintedPiece, turn: number, deg: number, a0: number, a1: number): number {
+  const u = [Math.cos((deg * Math.PI) / 180), Math.sin((deg * Math.PI) / 180)];
+  const span = new Map<number, [number, number]>();
+  for (const { dx, dy } of rotateTemplate(p, turn)) {
+    const a = Math.round(dx * u[0] + dy * u[1]);
+    const w = -dx * u[1] + dy * u[0];
+    if (a < a0 || a > a1) continue;
+    const [lo, hi] = span.get(a) ?? [w, w];
+    span.set(a, [Math.min(lo, w), Math.max(hi, w)]);
+  }
+  const ws = [...span.values()].map(([lo, hi]) => hi - lo + 1);
+  return ws.reduce((x, y) => x + y, 0) / ws.length;
+}
+
+/** Every pose and frame of a body, with the rig the game draws it on. */
+function* everyFrame(body: BodyType) {
+  for (const pose of POSES) {
+    const rp = rigPoseFor(pose, REN.appearance!.cast?.style, 'held_katana_v2');
+    for (let f = 0; f < frameCount(rp); f++) yield { pose, f, rig: drawRig(body, rp, f) };
+  }
 }
 
 describe("the owner's Ren", () => {
@@ -143,12 +210,68 @@ describe("the owner's Ren", () => {
     }
   });
 
-  it('hangs his skirt no lower than at rest', () => {
-    const hem = skirt.NIGHT_SKIRT_REST.NIGHT_SKIRT[1] + skirt.NIGHT_SKIRT.rows.length - 1;
+  it('turns his arm pieces whole about our joints in every pose, the forearm as wide as at rest', () => {
+    const l = look();
+    for (const body of ['male', 'bulky'] as BodyType[]) {
+      for (const { pose, f, rig } of everyFrame(body)) {
+        for (const s of ['N', 'F'] as Side[]) {
+          const where = `${body} ${pose} ${f} ${s}`;
+          const stamps = nightArmStamps(rig, s);
+          const fore = stamps.find((t) => t.name === 'fore')!;
+          const upper = stamps.find((t) => t.name === 'upper')!;
+          const sleeve = stamps.find((t) => t.name === 'sleeve')!;
+          // his upper arm's end turns with his sleeve: one piece
+          assert.ok(Math.abs(upper.deg - upper.piece.angle - (sleeve.deg - sleeve.piece.angle)) < 1e-6, `${where}: the upper arm breaks from the sleeve`);
+          for (const t of stamps) {
+            if (t.name === 'elbow') continue;
+            const bad = whole(t.piece, t.deg - t.piece.angle);
+            assert.equal(bad, null, `${where} ${t.name}: ${bad}`);
+          }
+          const w0 = widthAcross(fore.piece, 0, fore.piece.angle, 2, 7);
+          const w = widthAcross(fore.piece, fore.deg - fore.piece.angle, fore.deg, 2, 7);
+          assert.ok(Math.abs(w - w0) <= 1, `${where}: the forearm is ${w.toFixed(1)} px wide, ${w0.toFixed(1)} at rest`);
+          // his glove: the cuff turns with the forearm, the fist whole
+          const g = { rig, look: l, has: (slot: string, id: string) => (l.slots as Record<string, { id: string } | undefined>)[slot]?.id === id } as unknown as DrawCtx;
+          const hold = s === 'N' ? paintedGrip(g) : null;
+          const fists = nightFistStamps(rig, s, hold);
+          const cuff = fists.find((t) => t.name === 'cuff')!;
+          const turn = (cuff.mirror ? 180 - cuff.piece.angle : cuff.piece.angle) + cuff.turn - fore.deg;
+          assert.ok(Math.abs(((turn % 360) + 540) % 360 - 180) < 1, `${where}: the cuff leaves the forearm`);
+          for (const t of fists) {
+            if (t.name === 'wrist') continue;
+            const bad = whole(t.piece, t.turn);
+            assert.equal(bad, null, `${where} glove ${t.name}: ${bad}`);
+          }
+        }
+      }
+    }
+  });
+
+  it('lays his skirt on the thighs to the knees, hanging from there, whole and never into the ground', () => {
     const colors = new Set(Object.values(skirt.NIGHT_SKIRT.colors).filter((h) => skirt.NIGHT_SKIRT_KIND[h] === 'silver'));
-    for (const pose of ['crouch', 'sit', 'sneak'] as SpritePose[]) {
-      const f = renderSprite(look(), pose, 0).rgba;
-      for (let i = (hem + 1) * GRID; i < GRID * GRID; i++) assert.ok(!(opaque(f, i) && colors.has(hex(f, i))), `${pose}: a stud below the hem`);
+    const none = { N: { x: 0, y: 0 }, F: { x: 0, y: 0 } };
+    for (const body of ['male', 'bulky'] as BodyType[]) {
+      const home = drawRig(body, 'idle', 0);
+      for (const { pose, f, rig } of everyFrame(body)) {
+        const where = `${body} ${pose} ${f}`;
+        const stamps = nightSkirtStamps(rig, none);
+        // the near panel turns with the near thigh swung forward (it lies on it)
+        const near = stamps.filter((t) => t.name === 'upper').at(-1)!;
+        const thigh = (r: typeof rig) => (Math.atan2(r.kneeN.y - r.hipN.y, r.kneeN.x - r.hipN.x) * 180) / Math.PI;
+        const forward = Math.min(0, thigh(rig) - thigh(home));
+        if (forward < -5) assert.ok(Math.abs(near.deg - skirt.NIGHT_SKIRT.angle - forward) < 1, `${where}: the near panel does not lie on the thigh`);
+        for (const t of stamps) {
+          const turn = t.deg - t.piece.angle;
+          const bad = whole(t.piece, Math.abs(turn) > 20 ? turn : 0);
+          assert.equal(bad, null, `${where} skirt ${t.name}: ${bad}`);
+        }
+      }
+    }
+    for (const pose of ['crouch', 'sit', 'sneak', 'run', 'attack'] as SpritePose[]) {
+      for (const frame of [0, 1]) {
+        const f = renderSprite(look(), pose, frame).rgba;
+        for (let i = GROUND * RES * GRID; i < GRID * GRID; i++) assert.ok(!(opaque(f, i) && colors.has(hex(f, i))), `${pose} ${frame}: a stud in the ground`);
+      }
     }
   });
 

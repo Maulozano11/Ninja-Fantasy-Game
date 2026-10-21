@@ -5,9 +5,10 @@
 import type { DrawCtx } from './ctx';
 import { FLAME_LONGSWORD } from './items/flameSwordArt';
 import { KATANA_V2 } from './items/katanaV2Art';
-import { add, norm, RES, scale, sub, Vec } from './raster';
+import { NIGHT_GLOVE_N } from './items/nightBootsGlovesArt';
+import { add, norm, RES, scale, sub, v, Vec } from './raster';
 import { drawRig, THROW_RELEASE_FRAME } from './rig';
-import type { BodyType } from './types';
+import { isFemaleBody, type BodyType } from './types';
 
 /**
  * Weapon angles through 'throw' (rig.ts THROW): coiled with the weapon drawn back low behind the
@@ -29,6 +30,11 @@ const PIERCE_POLE = [-26, -4, -1, -1, -20];
 
 /** Screen angle of a hand-held blade per pose/frame (degrees, 0 = facing right, + = clockwise/down). */
 export function swordAngle(g: DrawCtx): number {
+  return paintedGrip(g)?.sword ?? poseSwordAngle(g);
+}
+
+/** The pose's own blade angle (swordAngle without the owner's fist round his Katana v2). */
+function poseSwordAngle(g: DrawCtx): number {
   if (g.rig.aim !== undefined) return g.rig.aim;
   const f = g.rig.frame;
   switch (g.rig.pose) {
@@ -68,6 +74,52 @@ export function swordAngle(g: DrawCtx): number {
       // every pixel his.
       return g.has('held', 'held_flame_sword') ? FLAME_LONGSWORD.angle : g.has('held', 'held_katana_v2') ? KATANA_V2.angle : 52;
   }
+}
+
+/**
+ * The owner's fist round his Katana v2 (his Fingerless Gloves on his Ren, items/clothes.ts): how it
+ * sits on the wrist and where the sword goes through it. He drew the grip crossing his fist at a fixed
+ * angle to the forearm (KATANA_V2.angle - NIGHT_GLOVE_N.angle), so the sword goes through it that way
+ * in every pose: the fist turns with the forearm (or, where the blade is carried back, its mirror
+ * image, the grip crossing the other way), and the wrist bends it toward the pose's blade angle (his
+ * cuff stays on the forearm). In a strike (and when the battle aims the blade) the wrist bends as far
+ * as the blade needs; otherwise at most CARRY_BEND, and the blade goes where his fist points it.
+ */
+export interface PaintedGrip {
+  /** His fist drawn mirrored (the grip crossing the forearm the other way). */
+  mirror: boolean;
+  /** Where the fist points, wrist to knuckles (degrees, as swordAngle). */
+  fist: number;
+  /** The blade's angle. */
+  sword: number;
+  /** The point of the grip at the hand joint, where the sword is held (design units). */
+  at: Vec;
+}
+
+/** How far the wrist bends his fist off the forearm's line while the blade is carried (degrees). */
+export const CARRY_BEND = 40;
+/** The poses whose blade angle is the strike itself: there the fist follows the blade. */
+const STRIKES = new Set(['attack', 'throw', 'pierce', 'train']);
+const wrap = (a: number): number => ((((a + 180) % 360) + 360) % 360) - 180;
+
+export function paintedGrip(g: DrawCtx): PaintedGrip | null {
+  if (!g.has('held', 'held_katana_v2') || !g.has('hands', 'hands_fingerless') || isFemaleBody(g.rig.body)) return null;
+  if (throwsKunai(g) || handsBusy(g) || handsLimp(g) || handsReleased(g)) return null;
+  const r = g.rig;
+  const fo = (Math.atan2(r.handN.y - r.wristN.y, r.handN.x - r.wristN.x) * 180) / Math.PI;
+  const rel = KATANA_V2.angle - NIGHT_GLOVE_N.angle;
+  const want = poseSwordAngle(g);
+  const bendOf = (m: boolean) => wrap(want - (fo + (m ? -rel : rel)));
+  const mirror = Math.abs(bendOf(true)) < Math.abs(bendOf(false));
+  const full = bendOf(mirror);
+  const bend = STRIKES.has(r.pose) || r.aim !== undefined ? full : Math.max(-CARRY_BEND, Math.min(CARRY_BEND, full));
+  const fist = fo + bend;
+  // The hand joint turned about the wrist as far as the wrist bends (where he holds it, unbent).
+  const c = Math.cos((bend * Math.PI) / 180);
+  const s = Math.sin((bend * Math.PI) / 180);
+  const d = sub(r.handN, r.wristN);
+  const at = Math.abs(bend) < 0.5 ? r.handN : add(r.wristN, v(d.x * c - d.y * s, d.x * s + d.y * c));
+  return { mirror, fist, sword: Math.abs(full) < 0.5 || bend === full ? want : fist + (mirror ? -rel : rel), at };
 }
 
 /** Polearm angle: upright at rest, thrust forward in attacks. */

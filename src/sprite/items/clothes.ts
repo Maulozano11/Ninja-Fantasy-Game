@@ -11,6 +11,8 @@ import { add, along, ellipse, F_NO_EDGE, F_NO_OUTLINE, F_NO_TEXTURE, GRID, Layer
 import { stampTemplate, TemplatePalette } from '../rotsprite';
 import { crimsonKind, GAUNTLET_F, GAUNTLET_N, GLOVE_LEATHER, GLOVE_STEEL, GLOVE_TONES, GLOVE_TRIM } from './sabatonsGauntletsArt';
 import { BRACER_BRONZE, BRACER_F, BRACER_N, ROMAN_KIT_KIND } from './bracersSandalsArt';
+import { isFemaleBody } from '../types';
+import { TROUSERS_CLOTH, TROUSERS_KIND, TROUSERS_SHIN_F, TROUSERS_SHIN_N, TROUSERS_THIGH_F, TROUSERS_THIGH_N, TROUSERS_WAIST } from './hunterTrousersArt';
 
 type Kind = 'cloth' | 'leather' | 'metal';
 const col = (key: string, label: string, def: string, kind: Kind = 'cloth') => ({ key, label, default: def, kind });
@@ -1294,6 +1296,56 @@ function legFolds(g: DrawCtx, L: Layer, s: Side, inflate: number, ankle = 1.62):
   fold(L, along(a, b, 0.75, -r * 0.9), along(a, b, 1.0, r * 0.3));
 }
 
+/**
+ * The owner's black trousers on his Cazador 1, his pixels (2026-10-21; tools/refs/
+ * cazador1-trousers-from-ref.py), for the male bodies: the waist band under the vest about the pelvis,
+ * each leg's thigh about the hip and its shin about the knee, so at rest every pixel is his and where
+ * he drew it. Our legs under them are taken away (his legs stand a little apart from ours, and our bare
+ * leg would show beside his). His cloth follows Leggings (the item's old default colour now means his);
+ * his black line stays.
+ */
+function hunterTrousers(g: DrawCtx, c: string): void {
+  const cloth = c.toLowerCase() === '#2a2433' ? TROUSERS_CLOTH : c;
+  const tint = (_ch: string, hex: string) => (TROUSERS_KIND[hex] === 'line' ? hex : retintHex(hex, TROUSERS_CLOTH, cloth));
+  const r = g.rig;
+  for (const s of SIDES) {
+    const { hip, knee, ankle } = legJoints(r, s);
+    bareLegOff(g, s);
+    stampPiece(g, legDepth(s, 'cloth'), s === 'N' ? TROUSERS_THIGH_N : TROUSERS_THIGH_F, hip, segAngle(hip, knee), prt('thigh', s), tint);
+    stampPiece(g, legDepth(s, 'cloth'), s === 'N' ? TROUSERS_SHIN_N : TROUSERS_SHIN_F, knee, segAngle(knee, ankle), prt('shin', s), tint);
+  }
+  stampPiece(g, 'torso.bottom', TROUSERS_WAIST, r.pelvis, segAngle(r.pelvis, r.neck), 'pelvis', tint);
+  seatOff(g);
+}
+
+/**
+ * Our hips (the body's and its shorts, drawn over the legs) give way to his trouser legs below the
+ * waist: his seat is the top of his legs.
+ */
+function seatOff(g: DrawCtx): void {
+  const r = g.rig;
+  const legs = [g.L('nearLeg.cloth'), g.L('farLeg.cloth')];
+  for (const d of ['torso.body', 'torso.under'] as const) {
+    const L = g.L(d);
+    for (let i = 0; i < GRID * GRID; i++) {
+      if (L.mat[i] < 0 || !legs.some((l) => l.mat[i] >= 0)) continue;
+      const x = ((i % GRID) + 0.5) / RES - r.pelvis.x;
+      const y = (Math.floor(i / GRID) + 0.5) / RES - r.pelvis.y;
+      if (x * r.up.x + y * r.up.y < SEAT_TOP) L.mat[i] = -1;
+    }
+  }
+}
+/** How far above the pelvis (design units, along the torso) the seat gives way: the shorts' top. */
+const SEAT_TOP = 2.2;
+
+/** Takes our bare leg off above the foot (his trouser leg takes its place); the foot stays. */
+function bareLegOff(g: DrawCtx, s: Side): void {
+  const L = g.L(legDepth(s, 'body'));
+  const thigh = partIndex(prt('thigh', s));
+  const shin = partIndex(prt('shin', s));
+  for (let i = 0; i < GRID * GRID; i++) if (L.mat[i] >= 0 && (L.part[i] === thigh || L.part[i] === shin)) L.mat[i] = -1;
+}
+
 export const BOTTOM_ITEMS: ItemDef[] = liftMain([
   {
     id: 'bottom_shinobi',
@@ -1414,9 +1466,13 @@ export const BOTTOM_ITEMS: ItemDef[] = liftMain([
     id: 'bottom_leggings',
     slot: 'bottom',
     name: 'Fitted Leggings',
-    desc: 'Snug stretch leggings with a contrasting side seam.',
-    colors: [col('main', 'Leggings', '#2a2433'), col('seam', 'Side Seam', '#7a68a0')],
+    desc: 'Snug black trousers with soft folds (on the female bodies, stretch leggings with a contrasting side seam).',
+    colors: [col('main', 'Leggings', TROUSERS_CLOTH), col('seam', 'Side Seam', '#7a68a0')],
     draw: (g, [c, sc]) => {
+      if (!isFemaleBody(g.rig.body)) {
+        hunterTrousers(g, c);
+        return;
+      }
       trousers(g, c, 1.96, 0.18, 3.4);
       waistband(g, 3.4);
       for (const s of SIDES) {
@@ -1705,7 +1761,7 @@ function glove(g: DrawCtx, s: Side, pen: Pen, grow: number, cut: boolean): void 
  * Takes the bare hand off, for a glove painted in its own shape that replaces it: the forearm's last
  * span is drawn again under it, so the wrist the hand was drawn over stays.
  */
-function bareHandOff(g: DrawCtx, s: Side): void {
+export function bareHandOff(g: DrawCtx, s: Side): void {
   const L = g.L(armDepth(s, 'body'));
   const hand = partIndex(prt('hand', s));
   const fore = new Layer();
@@ -1724,7 +1780,7 @@ function bareHandOff(g: DrawCtx, s: Side): void {
  * of the way it did in his picture (as our hand pictures hang unturned), turned with RotSprite past
  * that, and mirrored when our hand pictures are (the thumb on the facing side).
  */
-function paintedFist(g: DrawCtx, s: Side, piece: PaintedPiece, color: (ch: string, hex: string) => string): void {
+export function paintedFist(g: DrawCtx, s: Side, piece: PaintedPiece, color: (ch: string, hex: string) => string): void {
   const j = armJoints(g.rig, s);
   const { flipX } = handPose(g, s);
   // Mirrored, his fist points the other way across the vertical.

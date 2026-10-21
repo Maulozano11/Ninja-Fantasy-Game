@@ -4,6 +4,7 @@
 
 import type { DrawCtx } from './ctx';
 import { FLAME_LONGSWORD } from './items/flameSwordArt';
+import { NAGINATA } from './items/naginataArt';
 import { add, norm, RES, scale, sub, Vec } from './raster';
 import { drawRig, THROW_RELEASE_FRAME } from './rig';
 import type { BodyType } from './types';
@@ -68,7 +69,7 @@ export function swordAngle(g: DrawCtx): number {
   }
 }
 
-/** Polearm angle: upright at rest, thrust forward in attacks. */
+/** Polearm angle: held low at rest, blade down across the legs as the owner holds it, thrust forward in attacks. */
 export function poleAngle(g: DrawCtx): number {
   if (g.rig.aim !== undefined) return g.rig.aim;
   const f = g.rig.frame;
@@ -101,7 +102,9 @@ export function poleAngle(g: DrawCtx): number {
     case 'trainPole':
       return [-28, -8, -34, -150, 30, 48, -70, -30][f % 8];
     default:
-      return -84;
+      // The owner's Cazador 1 holds it low, blade down across the legs: at the angle he painted it
+      // (items/naginataArt.ts), so at rest it is every pixel his.
+      return NAGINATA.angle;
   }
 }
 

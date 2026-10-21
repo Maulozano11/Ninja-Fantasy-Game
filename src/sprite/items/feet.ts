@@ -10,6 +10,7 @@ import { add, along, ellipse, GRID, norm, partIndex, Pen, RES, seam, sub, v } fr
 import { across, crease, fpx, limb, limbR, stitch, stud, tube, wrapStripes } from './clothes';
 import { ROMAN_KIT_KIND, SANDAL_FOOT_F, SANDAL_FOOT_N, SANDAL_LEATHER, SANDAL_SHIN_F, SANDAL_SHIN_N, SANDAL_SKIN } from './bracersSandalsArt';
 import { BOOT_STEEL, BOOT_TRIM, crimsonKind, SABATON_FOOT_F, SABATON_FOOT_N, SABATON_SHIFT, SABATON_SHIN_F, SABATON_SHIN_N } from './sabatonsGauntletsArt';
+import { BOOT_CLOTH, BOOT_FOOT_F, BOOT_FOOT_N, BOOT_KIND, BOOT_SHIN_F, BOOT_SHIN_N, BOOT_SKIN, BOOT_SOLE, BOOT_SOLE_F, BOOT_SOLE_N } from './shinobiBootsArt';
 
 type Kind = 'cloth' | 'leather' | 'metal';
 const col = (key: string, label: string, def: string, kind: Kind = 'leather') => ({ key, label, default: def, kind });
@@ -269,6 +270,26 @@ function lowerLegOff(g: DrawCtx, s: Side): void {
   }
 }
 
+/**
+ * Takes our leg away from `above` design units over the ankle (up the shin) down, foot and all: a boot
+ * the owner painted takes its place there. Trousers drawn on the leg go too.
+ */
+function legBelowOff(g: DrawCtx, s: Side, above: number): void {
+  const shin = partIndex(`shin${s}`);
+  const foot = partIndex(`foot${s}`);
+  const { knee, ankle } = legJoints(g.rig, s);
+  const dir = norm(sub(ankle, knee));
+  for (const d of [legDepth(s, 'body'), legDepth(s, 'cloth')]) {
+    const L = g.L(d);
+    for (let i = 0; i < GRID * GRID; i++) {
+      if (L.mat[i] < 0 || (L.part[i] !== shin && L.part[i] !== foot)) continue;
+      const along = ((i % GRID) + 0.5) / RES - ankle.x;
+      const down = (Math.floor(i / GRID) + 0.5) / RES - ankle.y;
+      if (L.part[i] === foot || along * dir.x + down * dir.y > -above) L.mat[i] = -1;
+    }
+  }
+}
+
 /** Takes our bare foot away (a sandal the owner painted takes its place); the shin stays. */
 function bareFootOff(g: DrawCtx, s: Side): void {
   const foot = partIndex(`foot${s}`);
@@ -310,23 +331,31 @@ export const FEET_ITEMS: ItemDef[] = [
   {
     id: 'feet_shinobi',
     slot: 'feet',
-    name: 'Blue Shinobi Boots',
+    name: 'Shinobi Boots',
     desc: 'Shin-high open-toed ninja boots with a covered heel and a thin sole.',
-    colors: [col('main', 'Boot', '#2f5fa8', 'cloth'), col('sole', 'Sole', '#1d2433')],
+    colors: [col('main', 'Boot', BOOT_CLOTH, 'cloth'), col('sole', 'Sole', BOOT_SOLE)],
     draw: (g, [c, sole]) => {
+      // The owner's open-toe boots on his Cazador 1, his pixels (2026-10-21; tools/refs/
+      // cazador1-boots-from-ref.py): on each leg the shaft turns with the shin about the ankle and the
+      // foot stays flat on the ground like our feet; our leg below the boot's top and our foot are taken
+      // away. At rest every pixel is his and where he drew it. His cloth follows Boot, the foot's last
+      // row Sole, his toes the character's skin; his black line stays.
+      const skinTint = (hex: string) => retintHex(hex, BOOT_SKIN, g.look.skin);
+      const boot = (_ch: string, hex: string) => {
+        const k = BOOT_KIND[hex];
+        return k === 'line' ? hex : k === 'skin' ? skinTint(hex) : retintHex(hex, BOOT_CLOTH, c);
+      };
+      const soled = (_ch: string, hex: string) => (BOOT_KIND[hex] === 'line' ? hex : retintHex(hex, BOOT_SOLE, sole));
       for (const s of SIDES) {
-        const L = g.L(legDepth(s, 'feet'));
-        const sp = bootPen(g, c, s, 'shin', 'cloth');
-        limb(g, L, 'leg', s, 1.45, 2, [0.55, 0.5], sp, { round1: true });
-        // rolled top band
-        limb(g, L, 'leg', s, 1.45, 1.54, 0.72, sp);
-        across(g, L, 'leg', s, 1.54, 0.72, -1);
-        footDraw(g, L, s, SHINOBI, { main: g.m(c, 'cloth'), second: g.m(sole, 'leather') });
-        // centre seam down the front of the shaft and the opening's lit edge
-        const p0 = legPoint(g, s, 1.56);
-        const p1 = legPoint(g, s, 1.96);
-        seam(L, along(p0, p1, 0, limbR(g, 'leg', 1.56) * 0.35), along(p0, p1, 1, limbR(g, 'leg', 1.96) * 0.4), -1);
-        seam(L, along(p0, p1, 0, -limbR(g, 'leg', 1.56) * 0.5), along(p0, p1, 1, -limbR(g, 'leg', 1.96) * 0.5), 1);
+        const { knee, ankle } = legJoints(g.rig, s);
+        const shin = s === 'N' ? BOOT_SHIN_N : BOOT_SHIN_F;
+        const foot = s === 'N' ? BOOT_FOOT_N : BOOT_FOOT_F;
+        // His boot's top row is the shaft's first: the leg goes from a pixel under it (the cut runs
+        // across our slanting shin, his top straight across).
+        legBelowOff(g, s, (shin.pivot[1] - 1) / RES);
+        stampPiece(g, legDepth(s, 'feet'), shin, ankle, segAngle(knee, ankle), `shin${s}`, boot);
+        stampPiece(g, legDepth(s, 'feet'), foot, ankle, foot.angle, `foot${s}`, boot);
+        stampPiece(g, legDepth(s, 'feet'), s === 'N' ? BOOT_SOLE_N : BOOT_SOLE_F, ankle, foot.angle, `foot${s}`, soled);
       }
     },
   },

@@ -6,7 +6,7 @@
 // eye (see hairTemplate in hairkit.ts). Templates carry their own outline,
 // jagged edge and clustered shading, matching the reference sprite.
 // Parts that must follow the body (long hair down the back, ponytails, the
-// low tail, front locks over the shoulders) stay procedural in head-local
+// front locks over the shoulders) stay procedural in head-local
 // design units (see hairkit.ts) and get the automatic outline and texture.
 //
 // Depths:
@@ -19,6 +19,8 @@ import type { DrawCtx, ItemDef } from '../ctx';
 import { ellipse, F_NO_OUTLINE, F_NO_TEXTURE, GRID, Layer, Pen, poly, v, Vec } from '../raster';
 import type { PaintedPart } from './capeArt';
 import { braid, BraidArt, hairTemplate, hd, hlock, lock, LockOpts } from './hairkit';
+import { HUNTER_HAIR, HUNTER_HAIR_BASE, HUNTER_HAIR_KIND, HUNTER_HAIR_SKIN } from './hunterHairArt';
+import { ONI_MASK } from './oniMaskArt';
 import { VALIANT_HAIR_BACK, VALIANT_HAIR_BASE, VALIANT_HAIR_FRONT, VALIANT_HAIR_LINE } from './valiantHairArt';
 
 const hairColor = (def: string) => [{ key: 'hair', label: 'Hair', default: def, kind: 'hair' as const }];
@@ -652,36 +654,6 @@ const TPL: Record<string, HairTpl> = {
       '........02111..........1...........',
       '.........010.......................',
       '.........00........................',
-    ],
-  },
-  hair_lowtail: {
-    fa: [13, 18],
-    f: [
-      '...........0...............',
-      '...........00000000........',
-      '........000332222310.......',
-      '......0033333323321100.....',
-      '.....032254333332212110....',
-      '....033534345343423210.....',
-      '...03334335434315432110000.',
-      '..02435533533231342221110..',
-      '.024433333332314233231220..',
-      '..0535323552321412333112100',
-      '..033522232221131133211210.',
-      '.0213332232211131112212210.',
-      '02134422222211.21..2211220.',
-      '.01244211322...21..22111210',
-      '..0242211321...21...2111110',
-      '..033221231....21...2111110',
-      '.0233222221....21...2112110',
-      '..0221211......21.....12110',
-      '..022111.......21......2110',
-      '..002111...............2110',
-      '....011................110.',
-      '....011.................10.',
-      '.....11.................10.',
-      '.....11.................10.',
-      '.....11.................00.',
     ],
   },
   hair_storm: {
@@ -1610,7 +1582,7 @@ const hairStyle = (id: string, name: string, desc: string, def: string, body?: (
  * in every pose. His pixels are already the final on-screen pixels: they go in unscaled, like the
  * hair templates.
  */
-function paintedHair(g: DrawCtx, L: Layer, p: PaintedPart, color: (ch: string, hex: string) => string): void {
+export function paintedHair(g: DrawCtx, L: Layer, p: PaintedPart, color: (ch: string, hex: string) => string): void {
   const { nx, ny } = faceAnchor(g);
   const ax = nx - p.pivot[0];
   const ay = ny - p.pivot[1];
@@ -1630,17 +1602,26 @@ function paintedHair(g: DrawCtx, L: Layer, p: PaintedPart, color: (ch: string, h
  * his face hides filled in), so no edge of ours shows past his hair, such as in the notch between the
  * two spikes on his crown.
  */
-function trimSkull(g: DrawCtx, p: PaintedPart): void {
+function trimSkull(g: DrawCtx, p: PaintedPart, face?: PaintedPart): void {
   const H = g.L('head.body');
   const { nx, ny } = faceAnchor(g);
-  const ax = nx - p.pivot[0];
-  const ay = ny - p.pivot[1];
+  // `face`: a part over the face whose place the skull keeps too (the forehead under a mask's brow).
+  const at = (q: PaintedPart, x: number, y: number) => q.rows[y - (ny - q.pivot[1])]?.[x - (nx - q.pivot[0])] ?? '.';
   for (let y = Math.max(0, ny - 32); y < ny; y++) {
     for (let x = Math.max(0, nx - 32); x < Math.min(GRID, nx + 32); x++) {
-      if (H.has(x, y) && (p.rows[y - ay]?.[x - ax] ?? '.') === '.') H.clear(x, y);
+      if (H.has(x, y) && at(p, x, y) === '.' && (!face || at(face, x, y) === '.')) H.clear(x, y);
     }
   }
 }
+
+/**
+ * His hair on the Cazador 1 recoloured: his black line stays, his blacks and blue-grey glints move the
+ * way his mid black does, and the pixel of ear he left showing takes the character's skin.
+ */
+const hunterHairColor = (g: DrawCtx, hair: string) => (_ch: string, hex: string): string => {
+  const k = HUNTER_HAIR_KIND[hex];
+  return k === 'line' ? hex : k === 'skin' ? retintHex(hex, HUNTER_HAIR_SKIN, g.look.skin) : retintHex(hex, HUNTER_HAIR_BASE, hair);
+};
 
 /** His hair recoloured: his black line stays, his browns move the way his mid brown does. */
 const valiantHairColor = (hair: string) => (ch: string, hex: string) => (VALIANT_HAIR_LINE.includes(ch) ? hex : retintHex(hex, VALIANT_HAIR_BASE, hair));
@@ -1665,11 +1646,21 @@ export const HAIR_ITEMS: ItemDef[] = [
   hairStyle('hair_tousled', 'Tousled Crown', 'Short and messy, with one stubborn cowlick that never stays down.', '#f1cf7a'),
   hairStyle('hair_scholar', 'Scholar Waves', 'Soft waves down to the nape, side-swept bangs and a tiny cowlick.', '#7a4a2a'),
   hairStyle('hair_gravity', 'Gravity Defier', 'A tall silver mass that leans to one side and ignores gravity.', '#c9ccd6'),
-  hairStyle('hair_lowtail', 'Low Tail', 'Sleek and severe: long side locks and a low tail tied at the nape.', '#141218', (g, P) => {
-    const tie = hd(g, -6.2, 4.2);
-    const [tx, ty] = toHead(g, backPt(g, g.bp.torsoLen - 9, 1.8));
-    lock(g.L('hairBack'), tie, hd(g, -9 + sway(g, 0.1), (4 + ty) * 0.5), hd(g, tx + sway(g, 0.15), ty), 3.8, P.t, { hold: 0.75, tipW: 1.6, clumps: 3.2, seed: 5 });
-  }),
+  {
+    id: 'hair_lowtail',
+    slot: 'hair',
+    name: 'Wild Mop',
+    desc: 'A messy black mop with blue-grey glints: strands over the brow and between the eyes, locks down the sides of the face to the shoulders.',
+    colors: hairColor(HUNTER_HAIR_BASE),
+    draw: (g, [c]) => {
+      // The owner's hair on his Cazador 1, his pixels (the standard for characters, 2026-10-21;
+      // tools/refs/cazador1-hair-from-ref.py): one piece over the head on the face anchor, as his
+      // Valiant hair is. The Low Tail's old default colour now means his.
+      const hair = c.toLowerCase() === '#141218' ? HUNTER_HAIR_BASE : c;
+      paintedHair(g, g.L('hairFront'), HUNTER_HAIR, hunterHairColor(g, hair));
+      trimSkull(g, HUNTER_HAIR, ONI_MASK);
+    },
+  },
   hairStyle('hair_storm', 'Storm Spikes', 'Huge gelled spikes swept up and back, with bangs falling forward.', '#e8c34a'),
   hairStyle('hair_silver', 'Silver Cascade', 'Waist-length, perfectly straight hair parted in the middle.', '#dfe3ee', (g, P) => {
     curtain(g, g.L('hairBack'), P.t, { ty: 3, out: 1.5, spread: 3, n: 5, w: 5.5, tipW: 1.2, jag: 1.5, bulge: 1, hold: 0.7, gloss: [0.3, 0.42] });

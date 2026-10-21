@@ -8,6 +8,11 @@ import { retintHex, type RampKind } from '../color';
 import { hd } from './hairkit';
 import { CRYSTAL_SWORD, drawPaintedWeapon, drawWeapon, ICE_CRYSTAL_SWORD, KUNAI } from './weapons';
 import { FLAME_LONGSWORD, FLAME_SWORD_FLAME, FLAME_SWORD_GOLD } from './flameSwordArt';
+import { faceAnchor } from '../body';
+import type { PaintedPart } from './capeArt';
+import { paintedHair } from './hair';
+import { NAGINATA, NAGINATA_KIND, NAGINATA_STEEL, NAGINATA_WOOD } from './naginataArt';
+import { ONI_EYES, ONI_HORNS, ONI_MASK, ONI_MASK_KIND, ONI_PAINT, ONI_PORCELAIN } from './oniMaskArt';
 import { KATANA_PARTS, katanaHipColors, katanaTemplate } from './katana';
 import { chakraHex } from '../chakraInfo';
 import { gripPoint, handsBusy, handsLimp, handsReleased, poleAngle, swordAngle, throwsKunai } from '../grip';
@@ -47,28 +52,6 @@ function paintOver(L: Layer, a: Vec, b: Vec, pen: Pen, shade: number, mat?: numb
 // Held items
 // ---------------------------------------------------------------------------
 
-interface Grip {
-  hand: Vec;
-  /** Direction the weapon points (unit). */
-  dir: Vec;
-  /** Perpendicular (unit), on the "back/top" side of the blade. */
-  n: Vec;
-  side: Side;
-  /** Design units available from the hand along `dir` before leaving the canvas. */
-  room: number;
-}
-
-function gripOf(g: DrawCtx, angle: number, side: Side = 'N'): Grip {
-  const j = armJoints(g.rig, side);
-  const dir = fromAngle(angle);
-  // "Back" of the blade: the perpendicular that points more upward.
-  let n = perp(dir);
-  if (n.y > 0 || (Math.abs(n.y) < 0.15 && n.x > 0)) n = scale(n, -1);
-  const lim = (p: number, d: number) => (d > 1e-3 ? (UNITS - 1 - p) / d : d < -1e-3 ? (p - 1) / -d : 999);
-  const room = Math.min(lim(j.hand.x, dir.x), lim(j.hand.y, dir.y));
-  return { hand: j.hand, dir, n, side, room };
-}
-
 /** Wrapped grip with a diamond pattern (fine detail). */
 function wrappedHandle(L: Layer, a: Vec, b: Vec, r: number, pen: Pen, wrap: Pen): void {
   capsule(L, a, b, r, r, pen, 2);
@@ -81,53 +64,6 @@ function wrappedHandle(L: Layer, a: Vec, b: Vec, r: number, pen: Pen, wrap: Pen)
     const q = add(a, scale(d, s + 0.45));
     px(L, q.x - n.x * r * 0.3, q.y - n.y * r * 0.3, wrap, 3);
   }
-}
-
-/** Single-edged slightly curved blade with an edge highlight and a fuller line. */
-function katanaBlade(L: Layer, base: Vec, gp: Grip, length: number, width: number, pen: Pen, curve = 0.9): void {
-  const { dir, n } = gp;
-  const at = (t: number, off: number) => add(add(base, scale(dir, length * t)), scale(n, curve * t * t + off));
-  const back: Vec[] = [];
-  const edge: Vec[] = [];
-  const K = 10;
-  for (let i = 0; i <= K; i++) {
-    const t = (i / K) * 0.9;
-    back.push(at(t, width * 0.5));
-    edge.push(at(t, -width * 0.5));
-  }
-  const tip = at(1, width * 0.45);
-  const kissaki = at(0.94, -width * 0.25);
-  poly(L, [...back, tip, kissaki, ...edge.reverse()], pen, 3);
-  // Lit back edge, bright cutting edge, dark fuller groove.
-  for (let i = 0; i < K; i++) {
-    const t0 = (i / K) * 0.9;
-    const t1 = ((i + 1) / K) * 0.9;
-    paintOver(L, at(t0, width * 0.18), at(t1, width * 0.18), pen, 2);
-    paintOver(L, at(t0, -width * 0.32), at(t1, -width * 0.32), pen, 5);
-  }
-  paintOver(L, at(0.92, -width * 0.1), tip, pen, 5);
-}
-
-function drawNaginata(g: DrawCtx, gp: Grip, c: { blade: string; shaft: string; fittings: string }, depth: 'nearArm.held' | 'backGear' = 'nearArm.held'): void {
-  const L = g.L(depth);
-  const part = 'held';
-  const blade: Pen = { mat: g.m(c.blade, 'metal'), part };
-  const shaft: Pen = { mat: g.m(c.shaft, 'leather'), part };
-  const fit: Pen = { mat: g.m(c.fittings, 'metal'), part };
-  const { hand, dir, n } = gp;
-  // Keep the blade on the canvas when thrusting forward.
-  const room = gp.room - 10.5;
-  const butt = add(hand, scale(dir, -11));
-  const head = add(hand, scale(dir, Math.max(6, Math.min(14, room))));
-  capsule(L, butt, head, 0.75, 0.75, shaft);
-  // wood grain highlight line
-  paintOver(L, add(add(butt, scale(n, 0.25)), scale(dir, 0.6)), add(head, scale(n, 0.25)), shaft, 4);
-  capsule(L, add(butt, scale(dir, -0.6)), add(butt, scale(dir, 0.8)), 0.75, 0.75, fit);
-  // Collar where the blade is mounted, plus a small guard.
-  capsule(L, add(head, scale(dir, -1.6)), head, 0.85, 0.85, fit);
-  capsule(L, add(head, scale(n, 1.3)), add(head, scale(n, -1.3)), 0.5, 0.5, fit);
-  const bgp: Grip = { ...gp };
-  katanaBlade(L, add(head, scale(dir, 0.3)), bgp, 10, 2.8, blade, 1.8);
 }
 
 /** Moving around the map, a held technique stays in the near hand whatever the other hand does. */
@@ -300,6 +236,19 @@ export function drawThrowKunai(g: DrawCtx): void {
   if (throwsKunai(g)) drawWeapon(g, 'nearArm.held', KUNAI, gripPoint(g), swordAngle(g), { blade: '#aab4c2', grip: '#3a3346', guard: '#aab4c2', wrap: '#e2dccb' });
 }
 
+/**
+ * The naginata's colours: his steel turned from his mid steel, his wood from his mid wood; his black line
+ * and the blood on the blade stay. The old default colours now mean his.
+ */
+const naginataTint = (blade: string, shaft: string) => {
+  const steel = blade.toLowerCase() === '#d4dbe4' ? NAGINATA_STEEL : blade;
+  const wood = shaft.toLowerCase() === '#5a3622' ? NAGINATA_WOOD : shaft;
+  return (_ch: string, hex: string): string => {
+    const k = NAGINATA_KIND[hex];
+    return k === 'blade' ? retintHex(hex, NAGINATA_STEEL, steel) : k === 'shaft' ? retintHex(hex, NAGINATA_WOOD, wood) : hex;
+  };
+};
+
 /** The flame longsword's colours: its blade and jewels turned from his flame red, its gold from his gold. */
 const flameSwordTint =
   (flame: string, gold: string) =>
@@ -391,13 +340,16 @@ export const HELD_ITEMS: ItemDef[] = [
     id: 'held_naginata',
     slot: 'held',
     name: 'Naginata',
-    desc: 'A long polearm topped with a curved blade.',
-    colors: [col('blade', 'Blade', '#d4dbe4', 'metal'), col('shaft', 'Shaft', '#5a3622', 'leather'), col('fit', 'Fittings', '#c9a227', 'metal')],
-    draw: (g, [blade, shaft, fittings]) => {
-      const c = { blade, shaft, fittings };
-      if (handsBusy(g)) drawNaginata(g, { ...gripOf(g, backAngle(g, -62)), hand: backGrip(g, -62), room: 99 }, c, 'backGear');
-      else if (handsLimp(g)) drawNaginata(g, { ...gripOf(g, -88), hand: droppedGrip(g, 0.6, 0.8), room: 99 }, c);
-      else if (!handsReleased(g)) drawNaginata(g, { ...gripOf(g, poleAngle(g)), hand: gripPoint(g) }, c);
+    desc: 'A long polearm, its steel blade with a spike and a hook on a wooden shaft capped with steel; held low, blade down.',
+    colors: [col('blade', 'Blade', NAGINATA_STEEL, 'metal'), col('shaft', 'Shaft', NAGINATA_WOOD, 'leather')],
+    draw: (g, [blade, shaft]) => {
+      // The owner's naginata on his Cazador 1, his pixels (2026-10-21; tools/refs/
+      // cazador1-naginata-from-ref.py): held at the grip, at rest at the angle he holds it (grip.ts
+      // poleAngle), so it is every pixel his; in the other poses it turns about the grip.
+      const tint = naginataTint(blade, shaft);
+      if (handsBusy(g)) drawPaintedWeapon(g, 'backGear', NAGINATA, backGrip(g, -62), backAngle(g, -62), tint);
+      else if (handsLimp(g)) drawPaintedWeapon(g, 'nearArm.held', NAGINATA, droppedGrip(g, 0.6, 0.8), -88, tint);
+      else if (!handsReleased(g)) drawPaintedWeapon(g, 'nearArm.held', NAGINATA, gripPoint(g), poleAngle(g), tint);
     },
   },
   {
@@ -452,6 +404,30 @@ function headRegion(g: DrawCtx, L: Layer, pen: Pen, keep: (x: number, y: number)
       const y = ((fy + 0.5) / RES - hy) / k;
       if (!keep(x, y)) continue;
       L.set(fx, fy, pen.mat, shade(x, y) + (pen.bias || 0), pen.part, pen.flags || 0);
+    }
+  }
+}
+
+/**
+ * Takes our jaw away below a mask the owner painted over the whole face (his collar is drawn there): in
+ * each of the mask's columns, the head and face pixels under its lowest pixel.
+ */
+function jawOff(g: DrawCtx, p: PaintedPart): void {
+  const { nx, ny } = faceAnchor(g);
+  const ax = nx - p.pivot[0];
+  const ay = ny - p.pivot[1];
+  const H = g.L('head.body');
+  const F = g.L('head.face');
+  const w = Math.max(...p.rows.map((r) => r.length));
+  for (let i = 0; i < w; i++) {
+    let low = -1;
+    p.rows.forEach((r, j) => {
+      if ((r[i] ?? '.') !== '.') low = j;
+    });
+    if (low < 0) continue;
+    for (let y = ay + low + 1; y < ay + low + 9; y++) {
+      H.clear(ax + i, y);
+      F.clear(ax + i, y);
     }
   }
 }
@@ -663,10 +639,25 @@ export const FACE_ITEMS: ItemDef[] = [
   {
     id: 'face_foxmask',
     slot: 'face',
-    name: 'Fox Mask',
-    desc: 'A white porcelain fox mask with red painted markings.',
-    colors: [col('base', 'Porcelain', '#f2eee6'), col('paint', 'Paint', '#cf2a2a'), col('eyes', 'Eye Holes', '#1b1420', 'flat')],
-    draw: (g, [base, paint, eyes]) => animalMask(g, { base, paint, eyes }, 'fox'),
+    name: 'Oni Mask',
+    desc: 'A white porcelain oni mask with red markings, dark eye holes and two red horns.',
+    colors: [col('base', 'Porcelain', ONI_PORCELAIN), col('paint', 'Paint', ONI_PAINT), col('eyes', 'Eye Holes', ONI_EYES, 'flat')],
+    draw: (g, [base, paint, eyes]) => {
+      // The owner's oni mask on his Cazador 1, his pixels (2026-10-21, his redesign of the old fox
+      // mask; tools/refs/cazador1-mask-from-ref.py): the mask over the face and the horns over the hair,
+      // both on the face anchor as his hair is. His porcelain, red and eye holes follow the slots; his
+      // black line stays. The fox mask's old default colours now mean his.
+      const old: Record<string, string> = { '#f2eee6': ONI_PORCELAIN, '#cf2a2a': ONI_PAINT, '#1b1420': ONI_EYES };
+      const to = { porcelain: old[base.toLowerCase()] ?? base, paint: old[paint.toLowerCase()] ?? paint, eyes: old[eyes.toLowerCase()] ?? eyes };
+      const from = { porcelain: ONI_PORCELAIN, paint: ONI_PAINT, eyes: ONI_EYES };
+      const tint = (_ch: string, hex: string) => {
+        const k = ONI_MASK_KIND[hex];
+        return k === 'line' ? hex : retintHex(hex, from[k], to[k]);
+      };
+      paintedHair(g, g.L('head.mask'), ONI_MASK, tint);
+      paintedHair(g, g.L('head.gear'), ONI_HORNS, tint);
+      jawOff(g, ONI_MASK);
+    },
   },
   {
     id: 'face_catmask',

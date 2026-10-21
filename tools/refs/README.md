@@ -152,3 +152,21 @@ folders.
       python3 -I tools/refs/cazador1-trousers-from-ref.py src/sprite/items/hunterTrousersArt.ts [studyDir]
       python3 -I tools/refs/cazador1-boots-from-ref.py src/sprite/items/shinobiBootsArt.ts [studyDir]
       python3 -I tools/refs/cazador1-naginata-from-ref.py src/sprite/items/naginataArt.ts [studyDir]
+- `cazador2_ref.py` + `cazador2-hair-from-ref.py`, `cazador2-mask-from-ref.py`, `cazador2-vest-from-ref.py`,
+  `cazador2-leggings-from-ref.py`, `cazador2-boots-from-ref.py`, `cazador2-kunai-from-ref.py`: the owner's Cazador 2
+  (`docs/reference/cazador2-owner-reference.jpg`), the female version of the Cazador 1, cut with `cazador1_ref.py`'s tools.
+  He painted her on a new female figure our female body does not have yet (`body/female-v2` rebuilds it): her body lines
+  up with our female idle frame 0 at `BODY` (75, 122), her head at `HEAD` (74, 123), and every piece is pinned on our
+  female joint at its place, so at rest every pixel but her face lands where he drew it (0 pixels differ besides the face,
+  which is the body's). Her legs are longer than ours: the leggings and boots hang from her own leg joints
+  (`cazador2_ref.HIS_LEGS`, exported as `*_LEGS`), carried by our leg's angles along her own thigh and shin
+  (`src/sprite/painted.ts` `hisLeg`), so her boots stay on her shins in every pose. When the female body is rebuilt to her
+  proportions, re-measure `BODY`, `HEAD`, `JOINTS` and `FACE` (and `HIS_LEGS` becomes our legs) and rerun the scripts.
+  Her black line is a navy black (`cazador2_ref.kind`). `src/sprite/cazador2.test.ts` pins the pieces at rest.
+
+      python3 -I tools/refs/cazador2-hair-from-ref.py src/sprite/items/ponyHairArt.ts [studyDir]
+      python3 -I tools/refs/cazador2-mask-from-ref.py src/sprite/items/lynxMaskArt.ts [studyDir]
+      python3 -I tools/refs/cazador2-vest-from-ref.py src/sprite/items/shadowOpsFemaleArt.ts [studyDir]
+      python3 -I tools/refs/cazador2-leggings-from-ref.py src/sprite/items/huntressLeggingsArt.ts [studyDir]
+      python3 -I tools/refs/cazador2-boots-from-ref.py src/sprite/items/shinobiBootsFemaleArt.ts [studyDir]
+      python3 -I tools/refs/cazador2-kunai-from-ref.py src/sprite/items/kunaiArt.ts [studyDir]

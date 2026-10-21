@@ -132,3 +132,7 @@ folders.
 - `princess-skirt-from-ref.py`: her gown skirt (`skirt_rose_gown`) as one piece, the open pink overskirt, the lilac underskirt and the petticoat, his pixels one for one at `PART_OFFSET['overskirt']` on our female at idle frame 0 → `src/sprite/items/princessSkirtArt.ts` (`princessSkirt.ts` drapes it on the rig). What her sleeves, near hand, bodice point, sceptre and shoes hide is filled by carrying his pixels on (down his folds at the hips, mirrored along the row at the hem), with his line round it:
 
       python3 -I tools/refs/princess-skirt-from-ref.py <dir> src/sprite/items/princessSkirtArt.ts   # <dir>/skirt-his@8.png
+
+- `princess-shoes-from-ref.py`: her heeled shoes (`feet_rose_heels`), his pixels one for one at `PART_OFFSET['shoes']` on our female at idle frame 0 → `src/sprite/items/princessShoesArt.ts`: the far heeled shoe with the ribbons round its ankle, the near toe under the hem, and above it (hidden by the hem) the far ankle's ribbons. `princessShoes.ts` draws the lilac stocking from our knee to his ankle in the pose, his colours inside his line, and stands the shoes flat at its foot:
+
+      python3 -I tools/refs/princess-shoes-from-ref.py <dir> src/sprite/items/princessShoesArt.ts   # <dir>/tu-dibujo-vs-piezas@8.png

@@ -281,6 +281,11 @@ const ES: Record<string, string> = {
   Underskirt: 'Falda interior',
   Embroidery: 'Bordado',
   Petticoat: 'Enagua',
+  // the princess's heeled shoes (items/princessShoes.ts)
+  'Rose Dawn Heels': 'Tacones del Alba Rosa',
+  'Gold heeled shoes over lilac stockings to the knee, gold ribbons wound round the ankles. Women only.':
+    'Zapatos de tacón de oro sobre medias lilas hasta la rodilla, con cintas de oro enrolladas en los tobillos. Solo mujeres.',
+  Stocking: 'Media',
 };
 
 /** An editor label in the screen's language. */

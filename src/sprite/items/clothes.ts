@@ -11,6 +11,7 @@ import { add, along, ellipse, F_NO_EDGE, F_NO_OUTLINE, F_NO_TEXTURE, GRID, Layer
 import { stampTemplate, TemplatePalette } from '../rotsprite';
 import { crimsonKind, GAUNTLET_F, GAUNTLET_N, GLOVE_LEATHER, GLOVE_STEEL, GLOVE_TONES, GLOVE_TRIM } from './sabatonsGauntletsArt';
 import { BRACER_BRONZE, BRACER_F, BRACER_N, ROMAN_KIT_KIND } from './bracersSandalsArt';
+import { BOOTS_PART } from './bootsPart';
 
 type Kind = 'cloth' | 'leather' | 'metal';
 const col = (key: string, label: string, def: string, kind: Kind = 'cloth') => ({ key, label, default: def, kind });
@@ -1301,6 +1302,7 @@ export const BOTTOM_ITEMS: ItemDef[] = liftMain([
     name: 'Shinobi Pants',
     desc: 'Fitted trousers with bandage wraps at the ankles.',
     colors: [col('main', 'Pants', '#2b3346'), col('wrap', 'Wraps', '#e7e1d1')],
+    parts: [BOOTS_PART('out')],
     draw: (g, [c, w]) => {
       trousers(g, c, 1.8, 0.55);
       waistband(g, 3);
@@ -1346,6 +1348,7 @@ export const BOTTOM_ITEMS: ItemDef[] = liftMain([
     name: 'Wide Hakama',
     desc: 'Pleated wide-legged trousers that fall almost like a skirt, tied high at the waist.',
     colors: [col('main', 'Hakama', '#2c3043'), col('ties', 'Ties', '#cfc8b6')],
+    parts: [BOOTS_PART('out')],
     draw: (g, [c, t]) => {
       const b = g.bp;
       for (const s of SIDES) {
@@ -1372,6 +1375,7 @@ export const BOTTOM_ITEMS: ItemDef[] = liftMain([
     name: 'Baggy Cargo Pants',
     desc: 'Roomy work trousers bloused at the ankle, with a strapped thigh pouch.',
     colors: [col('main', 'Pants', '#55603f'), col('pouch', 'Pouch', '#6e5a3c', 'leather')],
+    parts: [BOOTS_PART('out')],
     draw: (g, [c, p]) => {
       trousers(g, c, 1.86, 1.05, 3.2);
       waistband(g, 3.2);
@@ -1416,6 +1420,7 @@ export const BOTTOM_ITEMS: ItemDef[] = liftMain([
     name: 'Fitted Leggings',
     desc: 'Snug stretch leggings with a contrasting side seam.',
     colors: [col('main', 'Leggings', '#2a2433'), col('seam', 'Side Seam', '#7a68a0')],
+    parts: [BOOTS_PART('out')],
     draw: (g, [c, sc]) => {
       trousers(g, c, 1.96, 0.18, 3.4);
       waistband(g, 3.4);

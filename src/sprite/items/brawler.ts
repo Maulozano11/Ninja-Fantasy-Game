@@ -14,6 +14,7 @@ import { retintHex } from '../color';
 import { capPlace, ownerSkin } from '../bulkyBody';
 import { armDepth, armJoints, Depth, DrawCtx, handDraw, handPose, ItemDef, legDepth, legJoints, Side } from '../ctx';
 import { centered, refit, uprightPiece } from '../fit';
+import { BOOTS_PART } from './bootsPart';
 import { clothPen, limb } from './clothes';
 import { segAngle, type PaintedPiece } from '../painted';
 import { F_NO_OUTLINE, F_NO_TEXTURE, GRID, Layer, partIndex, PartId, RES, Vec } from '../raster';
@@ -174,17 +175,6 @@ const SHIRT_HEM = 2.8;
 // ---------------------------------------------------------------------------
 // The items
 // ---------------------------------------------------------------------------
-
-/**
- * The trousers' 'boots' part (any bottom item may have it): boots worn inside the trousers (their hems
- * over the boot tops) or outside them (the boot shafts over the trouser legs). compose.ts tucks the boots
- * in after everything is drawn.
- */
-export const BOOTS_PART = (first: 'tucked' | 'out') => {
-  const tucked = { id: 'tucked', label: 'Inside', desc: 'The boots go inside the trousers: the hems fall over the boot tops.' };
-  const out = { id: 'out', label: 'Outside', desc: 'The boots go outside: the boot tops are drawn over the trouser legs.' };
-  return { key: 'boots', label: 'Boots', options: first === 'tucked' ? [tucked, out] : [out, tucked] };
-};
 
 export const BRAWLER_TOPS: ItemDef[] = [
   {

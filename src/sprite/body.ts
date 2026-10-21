@@ -230,11 +230,15 @@ function drawArm(g: DrawCtx, L: Layer, s: Side, upper: Pen, fore: Pen): void {
     // The owner paints his heroines' arms flat: no muscle lines (see flatSkin). The near shoulder
     // is his: Aurelia's bare shoulder (femaleBodyArt.ts), turned with the upper arm.
     flatSkin(L, upper.mat, s === 'F' ? 2 : 3);
-    if (s === 'N') {
-      const j = armJoints(g.rig, s);
-      const P = FEMALE_SHOULDER_N;
+    // His shoulder is the round of a hanging arm: turned far from his angle (an arm raised, swung
+    // across the chest or flung back) its line falls inside the arm and the torso and its round
+    // stands off the body, so there the shoulder is the body's own round, outlined like the rest.
+    const j = armJoints(g.rig, s);
+    const P = FEMALE_SHOULDER_N;
+    const turn = ((segAngle(j.shoulder, j.elbow) - P.angle + 540) % 360) - 180;
+    if (s === 'N' && Math.abs(turn) <= SHOULDER_TURN) {
       const pal: TemplatePalette = { o: [upper.mat, 0], D: [upper.mat, 1], s: [upper.mat, 2], b: [upper.mat, 3] };
-      stampTemplate(L, P, j.shoulder, segAngle(j.shoulder, j.elbow) - P.angle, pal, upper.part, { flags: F_NO_OUTLINE | F_NO_TEXTURE });
+      stampTemplate(L, P, j.shoulder, turn, pal, upper.part, { flags: F_NO_OUTLINE | F_NO_TEXTURE });
     }
     return;
   }
@@ -242,6 +246,9 @@ function drawArm(g: DrawCtx, L: Layer, s: Side, upper: Pen, fore: Pen): void {
   muscleLine(g, L, s, fore.mat, 1.06, 1.58, 0.4, 1);
   despeckle(L, upper.mat);
 }
+
+/** How far (degrees) the near upper arm may turn from his before his shoulder piece is left out (see drawArm). */
+export const SHOULDER_TURN = 30;
 
 /**
  * Skin painted the way the owner paints his heroines (his game-scale pictures: Aurelia's and Saya's

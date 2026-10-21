@@ -11,7 +11,8 @@ strand ends sticking out on both sides. This script lifts it out of the reduced 
 
   hair     what of the reduced reference's head joins his crown through his crimsons (and his line
            at the ends of his strands, above his eyes): not his face, lashes or chin, in the same
-           darks
+           darks. The strand ends the study bends down by hand on the near side (its PATCHES, which
+           belong to no part of his) are hair too.
   speckle  a single pixel of his whose crimson is in none of its neighbours and two or more steps
            from their middle one (the median) takes that middle one: one sample a pixel drops a pixel
            of a light strand into a dark parting here and there, which reads as noise at our size;
@@ -28,10 +29,10 @@ and splits it like the owner's Aiden hair (valiant-hair-from-ref.py):
   back    the same hair with what his face hides filled in: behind the forehead between the strands
           of his fringe (each hidden pixel takes the crimson of the nearest strand above it, so his
           strands run on down), and behind his cheeks and jaw between his side locks (in his darkest
-          crimson but the line: his hair behind his face is in shadow, as his far lock is). Drawn
-          behind the head, it shows
-          only where a head is narrower than his; it is also his head's outline at the top (the game
-          trims our skull to it).
+          crimson but the line: his hair behind his face is in shadow, as his far lock is). Only what
+          his face covers: the white between his strand ends round the hair stays open, so they
+          stand apart as he drew them. Drawn behind the head, it shows only where a head is narrower
+          than his; it is also his head's outline at the top (the game trims our skull to it).
 
 It writes, in <out>:
 
@@ -90,7 +91,10 @@ def build():
     """The hair in our frame: (front, back) as (GRID, GRID) PALETTE indices (255 empty) and the mask of
     the back's filled-in pixels."""
     fig = R.reduced_index()
-    head = R.reduced_parts()['head']
+    parts = R.reduced_parts()
+    # his head, and the study's mends on the finished figure (its PATCHES, of no part): his strand
+    # ends bent down on the near side
+    head = parts['head'] | ((fig < 255) & ~np.logical_or.reduce(list(parts.values())))
     G = fig.shape[0]
     ramp = [ci(h) for h in RAMP]
     level = {i: k for k, i in enumerate(ramp)}
@@ -126,15 +130,16 @@ def build():
     front[hair] = np.asarray(ramp)[out[hair]]
 
     # the back: the front, and what his face hides, from his hair's first column to its last in
-    # each row: above his eyes each pixel the crimson of the nearest strand above it (his line left
-    # out), below them his darkest crimson but the line (his hair behind his cheeks is in shadow)
+    # each row (not the white between his strand ends: they stand apart): above his eyes each pixel
+    # the crimson of the nearest strand above it (his line left out), below them his darkest crimson
+    # but the line (his hair behind his cheeks is in shadow)
     on = front < 255
     hidden = np.zeros(fig.shape, bool)
     for y in range(y0, JAW_TO + 1):
         cols = np.nonzero(on[y])[0]
         if len(cols):
             hidden[y, cols[0]:cols[-1] + 1] = True
-    hidden &= ~on
+    hidden &= ~on & (fig < 255)
     back = front.copy()
     line = ci(RAMP[0])
     crimson = lambda v: v < 255 and v != line

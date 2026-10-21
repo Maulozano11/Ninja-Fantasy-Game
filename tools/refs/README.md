@@ -125,3 +125,9 @@ folders.
 
       npx tsx tools/refs/scarlet-idle.mts <out>
       python3 -I tools/refs/scarlet-study.py <out> <out>/male-idle.png --write
+
+- `scarlet-hair-from-ref.py`: his hair as the `hair_scarlet` hairstyle, lifted out of the reduced
+  reference in his eight crimsons (front over the head, back behind it with what his face hides
+  filled in, like the Aiden hair). It writes `src/sprite/items/scarletHairArt.ts`.
+
+      python3 -I tools/refs/scarlet-hair-from-ref.py <out> src/sprite/items/scarletHairArt.ts

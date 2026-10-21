@@ -1830,7 +1830,7 @@ export const HAIR_ITEMS: ItemDef[] = [
     id: 'hair_scarlet',
     slot: 'hair',
     name: 'Scarlet Tousle',
-    desc: 'Messy crimson hair: a rounded crown of tousled locks, a heavy fringe falling over the brow and one eye, a side lock over the cheek to the jaw and thin strands sticking out at the sides.',
+    desc: 'Messy crimson hair: a rounded crown of tousled locks, a heavy fringe over the brow with a lock falling between the eyes, side locks down to the jaw and thin strands sticking out at the sides.',
     colors: hairColor(SCARLET_HAIR_BASE),
     draw: (g, [c]) => {
       // The owner's hair on his Scarlet (2026-10-21), brought down to our scale in his colours: his

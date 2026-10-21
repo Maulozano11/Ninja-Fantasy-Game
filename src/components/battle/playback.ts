@@ -2,12 +2,12 @@
 // striking and casting, damage numbers, effects, banners and sounds. The engine has already
 // decided everything; this only paces it so it can be watched.
 
-import type { AreaShape, BattleEvent, BattleState, Down, Pt, Unit, Wall, WeaponNode } from '../../battle/types';
+import type { AreaShape, BattleEvent, BattleState, Down, GaleZone, Pt, Unit, Wall, WeaponNode } from '../../battle/types';
 import type { SpritePose } from '../../sprite/types';
-import { JUTSU } from '../../battle/jutsu';
+import { JUTSU, nearSegment } from '../../battle/jutsu';
 import type { JutsuSpec, VfxElement, VfxRole } from '../../battle/jutsu';
 import { POSE_FPS, TACKLE_IMPACT_FRAME } from '../../sprite/rig';
-import { FAN_MS, FAN_ROLL, blastMs, impactMs, signatureMs, skySignature } from './vfxSprites';
+import { FAN_MS, FAN_ROLL, TOWER_MS, TOWER_RISE, WAVE_CREST, blastMs, impactMs, signatureMs, skySignature } from './vfxSprites';
 import { jutsuTint, unitTint } from './vfxTintPlan';
 import { dist } from '../../battle/map';
 import { closestPoint } from '../../battle/structures';
@@ -58,7 +58,7 @@ export interface Floater {
   big?: boolean;
 }
 
-export type FxKind = 'projectile' | 'kunai' | 'area' | 'cone' | 'line' | 'burst' | 'explosion' | 'electric' | 'smoke' | 'heal' | 'aura' | 'noise' | 'slash' | 'wall' | 'seal' | 'fire';
+export type FxKind = 'projectile' | 'kunai' | 'area' | 'cone' | 'line' | 'burst' | 'explosion' | 'electric' | 'smoke' | 'heal' | 'aura' | 'noise' | 'slash' | 'wall' | 'seal' | 'fire' | 'wave' | 'tower' | 'swirl';
 
 export interface Fx {
   kind: FxKind;
@@ -98,6 +98,14 @@ export interface Fx {
    * cast, so the effect keeps it. Unset: his colours.
    */
   tint?: string;
+  /**
+   * A fire fanned by a gale (the Gale Curtain): from this point of its play (0..1) it burns
+   * brighter, and a Fireball grows into the Great Fireball.
+   */
+  fan?: number;
+  /** A wave's rows of columns (the Devouring Tide); a tower's small whirlwinds (the Whirlwind Tower). */
+  rows?: number;
+  minis?: number;
 }
 
 export type VolleyPath = 'high' | 'straight' | 'low';
@@ -158,6 +166,9 @@ export class Playback {
   fled = new Map<number, number>();
   /** When each jutsu wall was raised, so it plays its rise before standing. */
   wallBorn = new Map<string, number>();
+  /** When each gale on the ground started turning, and the ones dying down (from when their event played). */
+  zoneBorn = new Map<string, number>();
+  zoneGone: { zone: GaleZone; t0: number }[] = [];
   /** Kōton structures that crumbled or broke, sinking out of sight (from when their event played). */
   fallen: { wall: Wall; t0: number }[] = [];
   /** Whose turn the screen shows (it trails the engine while events play). */
@@ -272,6 +283,7 @@ export class Playback {
       }
     }
     this.floaters = this.floaters.filter((f) => now < f.t0 + f.dur);
+    this.zoneGone = this.zoneGone.filter((z) => now < z.t0 + 1000 / this.speed);
     this.fx = this.fx.filter((f) => now < f.t0 + f.dur);
     this.banners = this.banners.filter((b) => now < b.t0 + b.dur);
     this.fallen = this.fallen.filter((f) => now < f.t0 + FALL_MS / this.speed);
@@ -313,6 +325,13 @@ export class Playback {
   goneWalls(): Wall[] {
     const out: Wall[] = [];
     for (const e of this.queue) if (e.t === 'wall' && !e.on) out.push(e.wall);
+    return out;
+  }
+
+  /** Gales already gone from the state whose dying down hasn't played yet: they still turn. */
+  goneZones(): GaleZone[] {
+    const out: GaleZone[] = [];
+    for (const e of this.queue) if (e.t === 'zone' && !e.on) out.push(e.zone);
     return out;
   }
 
@@ -540,6 +559,95 @@ export class Playback {
       return CAST + warn + 300;
     }
 
+    if (seq.wave && ev.shape?.kind === 'cone') {
+      // The Devouring Tide: the water rises round the caster, then a wave runs out along the cone (a
+      // row of the element's water columns, the rows behind its crest fading, its spray before it);
+      // a splash on each one as the crest goes over them, and a heavy jolt as it breaks at the end.
+      announce();
+      this.setPose(a, 'cast', now, 900);
+      const gather = seq.castAura ?? CAST;
+      this.fx.push({ ...base, kind: 'aura', from, to: from, t0: now, dur: gather + 400, unit: ev.unit });
+      const cone = ev.shape;
+      const run = seq.wave.ms;
+      this.fx.push({ ...base, kind: 'wave', from: cone.origin, to: ev.at, area: cone, t0: at(gather), dur: run, rows: seq.wave.rows });
+      const who = this.reached(ev.unit);
+      const hitMs = impactMs(el, 'hit', 900);
+      let last = gather;
+      who.forEach((id) => {
+        const p = this.posOf(id, now);
+        const t0 = gather + run * WAVE_CREST(dist(cone.origin, p), cone.length);
+        this.fx.push({ ...base, kind: 'burst', from, to: p, t0: at(t0), dur: hitMs, lift: [50, 50], role: 'hit' });
+        last = Math.max(last, t0);
+      });
+      this.shakeAt(now, gather + run * 0.9, (seq.shake ?? 6) + (ev.enhanced ? 1 : 0));
+      linger(gather + run + 200);
+      // The rolls, the damage and the sweeps follow once the crest has gone over the last one.
+      return last + 250;
+    }
+
+    if (seq.tower && ev.shape?.kind === 'circle') {
+      // The Whirlwind Tower: a warning burst of leaves at the point, then the element's tornado
+      // column rises there and turns with small whirlwinds circling it, an impact on each one reached.
+      announce();
+      this.setPose(a, 'cast', now, 900);
+      const c = ev.shape.center;
+      const warn = seq.tower.warn;
+      this.fx.push({ ...base, kind: 'burst', from: c, to: c, t0: at(CAST), dur: impactMs(el, 'hit', 700), lift: [6, 6], role: 'hit' });
+      this.fx.push({ ...base, kind: 'tower', from: c, to: c, area: ev.shape, t0: at(CAST + warn), dur: TOWER_MS, minis: seq.tower.minis });
+      const up = CAST + warn + TOWER_RISE;
+      const who = this.reached(ev.unit);
+      const hitMs = impactMs(el, 'hit', 900);
+      who.forEach((id, i) => this.fx.push({ ...base, kind: 'burst', from, to: this.posOf(id, now), t0: at(up + i * 80), dur: hitMs, lift: [56, 56], role: 'hit' }));
+      if (seq.shake) this.shakeAt(now, up, seq.shake + (ev.enhanced ? 1 : 0));
+      linger(CAST + warn + TOWER_MS);
+      return up + Math.max(0, who.length - 1) * 80 + 200;
+    }
+
+    if (seq.hitEach && ev.shape?.kind === 'line') {
+      // The Thunder Beam: the element's beam runs out along the line, a spark on each one it reaches
+      // as its head gets there.
+      announce();
+      this.setPose(a, 'cast', now, 900);
+      const LINE = 1300;
+      this.fx.push({ ...base, kind: 'line', from, to: ev.at, area: ev.shape, t0: at(CAST), dur: LINE, lift: [HAND_LIFT, 50] });
+      const who = this.reached(ev.unit);
+      const hitMs = impactMs(el, 'hit', 900);
+      const len = ev.shape.length;
+      let end = CAST + 900;
+      who.forEach((id, i) => {
+        const p = this.posOf(id, now);
+        // The beam's head reaches the end of the line at 1/1.8 of its play (vfxSprites.ts).
+        const t0 = CAST + (LINE / 1.8) * Math.min(1, dist(from, p) / len) + i * seq.hitEach!.stagger;
+        this.fx.push({ ...base, kind: 'burst', from, to: p, t0: at(t0), dur: hitMs, lift: [56, 56], role: 'hit' });
+        end = Math.max(end, t0 + hitMs);
+      });
+      linger(Math.max(end, CAST + LINE));
+      return CAST + 900;
+    }
+
+    if (seq.breathMs && ev.shape?.kind === 'cone') {
+      // The Rubble Gust: the earth aura rises while the ninja casts, then the dust and stones roll
+      // out along the cone, a rock impact on each one reached as the dust gets there.
+      announce();
+      this.setPose(a, 'cast', now, 900);
+      const gather = seq.castAura ?? CAST;
+      this.fx.push({ ...base, kind: 'aura', from, to: from, t0: now, dur: gather + 300, unit: ev.unit });
+      this.fx.push({ ...base, kind: 'cone', from, to: ev.at, area: ev.shape, t0: at(gather), dur: seq.breathMs, lift: [70, 30] });
+      const who = this.reached(ev.unit);
+      const hitMs = impactMs(el, 'hit', 900);
+      const len = ev.shape.length;
+      let end = gather + 900;
+      who.forEach((id, i) => {
+        const p = this.posOf(id, now);
+        // The breaths show one by one over the first 60 % of its play (vfxSprites.ts).
+        const t0 = gather + seq.breathMs! * 0.6 * Math.min(1, dist(from, p) / len) + i * (seq.hitEach?.stagger ?? 80);
+        this.fx.push({ ...base, kind: 'burst', from, to: p, t0: at(t0), dur: hitMs, lift: [50, 50], role: 'hit' });
+        end = Math.max(end, t0 + hitMs);
+      });
+      linger(Math.max(end, gather + seq.breathMs));
+      return gather + 900;
+    }
+
     if (seq.healAura && spec.special === 'heal') {
       // The Healing Dew: the element's orb flies to the ally and its aura wraps them as they heal.
       // The Mystical Palm heals by touch: no orb, only the aura (the owner: the Dew's aura on it too).
@@ -554,6 +662,155 @@ export class Playback {
       return CAST + fly + 250;
     }
     return null;
+  }
+
+  /** The jutsu event: the cast, its flight and its effects (the staged ones apart). Returns how long to wait. */
+  private playJutsu(ev: Extract<BattleEvent, { t: 'jutsu' }>, now: number, state: BattleState, label: string | null): number {
+    const h = this.hooks;
+    const a = this.view(ev.unit);
+    if (!a) return 0;
+    const spec = JUTSU[ev.jutsu];
+    const from = this.posOf(ev.unit, now);
+    if (Math.abs(ev.at.x - from.x) > 0.05) a.facing = ev.at.x > from.x ? 1 : -1;
+    const caster = state.units[ev.unit];
+    const head = caster?.kind === 'hydra_head';
+    if ((spec?.special === 'warp' || spec?.special === 'swap') && this.phaseFollows(ev.unit)) {
+      // A Warp Strike or a Spatial Swap that goes through: its name and a beat, then the phase
+      // itself plays (no cast pose, no chakra flare: the ninja turns to light at once).
+      h.sound('jutsu', 'chakra');
+      if (label) this.float(label, '#fde68a', from, now, { rise: 128, dur: 1400 });
+      return 90;
+    }
+    if (spec?.seq || spec?.pose || spec?.vfxSet) {
+      const staged = this.staged(ev, spec, a, from, now, label, jutsuTint(spec, caster));
+      if (staged !== null) return staged;
+    }
+    if (!head) this.setPose(a, spec?.melee ? 'attack' : 'cast', now, 900);
+    else {
+      a.creature = { anim: ev.jutsu === 'hydra_roar' ? 'roar' : 'spit', t0: now };
+      if (ev.jutsu === 'hydra_roar') h.sound('roar');
+    }
+    const el: VfxElement = spec?.element ?? 'chakra';
+    // Jutsu play at a pace the player can follow: a beat for the cast, a flight you can watch
+    // (beasts slower still), and the impact plays out whole before the next turn starts.
+    const castDelay = head ? 150 : 560;
+    // A dream's drift flies slower (the Mirage).
+    const fly = (spec?.vfx === 'beast' ? Math.max(900, dist(from, ev.at) * 150) : Math.max(500, dist(from, ev.at) * 115)) * (spec?.seq?.slowFlight ?? 1);
+    const linger = (ms: number) => (this.lingerUntil = Math.max(this.lingerUntil, t1 + ms / this.speed));
+    h.sound('jutsu', el);
+    if (label) this.float(label, '#fde68a', from, now, { rise: 128, dur: 1400 });
+    const t1 = now + castDelay / this.speed;
+    const base = { element: el, t0: t1, enhanced: ev.enhanced, sig: spec?.sig, role: spec?.vfx, tint: jutsuTint(spec, caster) };
+    switch (spec?.special) {
+      case 'heal':
+        this.fx.push({ ...base, kind: 'heal', from: ev.at, to: ev.at, dur: 1300 });
+        linger(1300);
+        return castDelay + 700;
+      case 'clone':
+      case 'mantle':
+        this.fx.push({ ...base, kind: 'aura', from, to: from, dur: 1100, unit: ev.unit });
+        linger(1100);
+        return castDelay + 400;
+      case 'galeZone':
+        // The wind gathers round the caster; the gale itself starts turning when its event plays.
+        this.fx.push({ ...base, kind: 'aura', from, to: from, t0: now, dur: castDelay + 500, unit: ev.unit });
+        return castDelay;
+      case 'flicker':
+      case 'warp':
+      case 'swap':
+        // The chakra flares while it gathers, and is gone with the ninja when it vanishes (it
+        // would otherwise burn on at the spot it left, around whoever is swapped in there).
+        this.fx.push({ ...base, kind: 'aura', from, to: from, t0: now, dur: castDelay + 400, unit: ev.unit, follow: true });
+        return castDelay + 400;
+      case 'earthWall':
+      case 'waterWall':
+        this.fx.push({ ...base, kind: 'wall', from: ev.at, to: ev.at, dur: 1200 });
+        // The wall itself rises when its event plays, right as the jutsu lands.
+        return castDelay;
+      case 'metalBlock':
+      case 'metalWall':
+        // Steel dust where the structure rises (the earth wall's sheet would hide it otherwise);
+        // the structure itself grows out of the ground when its event plays (renderer.ts).
+        this.fx.push({ ...base, kind: 'wall', from: ev.at, to: ev.at, dur: 1200, sig: 'debris' });
+        return castDelay;
+      case 'command':
+      case 'submission':
+        // The Northstar's will flares around it; the mind it takes glows when its event plays.
+        this.fx.push({ ...base, kind: 'aura', from, to: from, dur: 900, unit: ev.unit });
+        linger(900);
+        return castDelay + 300;
+    }
+    if (ev.shape?.kind === 'cone') {
+      // A signature cone (the Great Fire Annihilation) plays its whole surge, burn and fade.
+      // It hits once the fire has spread all the way, and the next turn waits for it to burn out.
+      const long = signatureMs(el, spec?.sig, ev.enhanced);
+      this.fx.push({ ...base, kind: 'cone', from, to: ev.at, area: ev.shape, dur: long?.total ?? 1400, lift: [head ? 120 : 70, 30] });
+      if (!long) {
+        linger(1400);
+        return castDelay + 900;
+      }
+      h.shake(ev.enhanced ? 7 : 5);
+      this.lingerUntil = Math.max(this.lingerUntil, t1 + long.total / this.speed);
+      return castDelay + long.hit;
+    }
+    if (ev.shape?.kind === 'line') {
+      this.fx.push({ ...base, kind: 'line', from, to: ev.at, area: ev.shape, dur: 1300, lift: [head ? 120 : 70, 50] });
+      linger(1300);
+      return castDelay + 900;
+    }
+    if (spec?.melee) {
+      const hitMs = impactMs(el, spec.vfx, 900);
+      this.fx.push({ ...base, kind: 'burst', from: ev.at, to: ev.at, dur: hitMs, lift: [60, 60] });
+      linger(hitMs);
+      return castDelay + 450;
+    }
+    // A signature from the sky (Kirin) needs no projectile: the storm gathers over the target.
+    const sky = ev.shape?.kind === 'circle' ? skySignature(el, spec?.sig, ev.enhanced) : null;
+    if (sky) {
+      this.fx.push({ ...base, kind: 'area', from: ev.at, to: ev.at, area: ev.shape, dur: sky.total });
+      h.shake(ev.enhanced ? 8 : 6);
+      this.lingerUntil = Math.max(this.lingerUntil, t1 + sky.total / this.speed);
+      return castDelay + sky.hit / this.speed;
+    }
+    // The rank D and C jutsu (staged by seq) leave the casting hand; the others fly as they always have.
+    const out = spec?.seq && !head ? handOf(from, a.facing) : from;
+    this.fx.push({ ...base, kind: 'projectile', from: out, to: ev.at, dur: fly, lift: [head ? 120 : spec?.seq ? HAND_LIFT : 70, ev.shape ? 30 : 60] });
+    if (ev.shape?.kind === 'circle') {
+      const boom = blastMs(el, spec?.sig ? 1400 : 1200);
+      this.fx.push({ ...base, kind: 'area', from: ev.at, to: ev.at, area: ev.shape, t0: t1 + fly / this.speed, dur: boom });
+      h.shake(ev.enhanced ? 5 : 3);
+      linger(fly + boom);
+    } else {
+      const hitMs = impactMs(el, spec?.vfx, 900);
+      this.fx.push({ ...base, kind: 'burst', from, to: ev.at, t0: t1 + fly / this.speed, dur: hitMs, lift: [60, 60] });
+      linger(fly + hitMs);
+    }
+    return castDelay + fly + 300;
+  }
+
+  /**
+   * A fire fanned by a gale (the Gale Curtain; the owner: "que se vea como efecto"): every fire
+   * effect the jutsu just pushed burns brighter from where it meets the wind (a Fireball grows into
+   * the Great Fireball there), the wind swirls round the fire at that spot in the gale's colour, and
+   * the word floats over it.
+   */
+  private fan(ev: Extract<BattleEvent, { t: 'jutsu' }>, before: number, now: number, state: BattleState): void {
+    const f = ev.fanned!;
+    let meet = Infinity;
+    for (const fx of this.fx.slice(before)) {
+      if (fx.element !== 'fire' || fx.kind === 'aura') continue;
+      // A flight meets the wind part of the way along; a beam's head gets there at 1/1.8 of its
+      // play (vfxSprites.ts); a burst, a blast or a cone is in the wind from the start.
+      const k = fx.kind === 'projectile' ? nearSegment(fx.from, fx.to, f.at).t : fx.kind === 'line' ? nearSegment(fx.from, fx.to, f.at).t / 1.8 : 0;
+      fx.fan = k;
+      meet = Math.min(meet, fx.t0 + (fx.dur * k) / this.speed);
+    }
+    if (!Number.isFinite(meet)) meet = now;
+    const zone = (state.zones ?? []).find((z) => z.id === f.zone) ?? this.goneZones().find((z) => z.id === f.zone);
+    const tint = zone ? unitTint(state.units[zone.owner]) : undefined;
+    this.fx.push({ kind: 'swirl', element: 'wind', from: f.at, to: f.at, t0: meet - 120 / this.speed, dur: 900, lift: [56, 56], tint });
+    const text = this.hooks.label({ t: 'note', key: 'fanned', params: {} });
+    if (text) this.float(text, '#fdba74', f.at, now, { t0: meet, rise: 112, dur: 1300 / this.speed });
   }
 
   /** Who the jutsu just played heals (its heal event, if it comes before anything else happens). */
@@ -713,121 +970,12 @@ export class Playback {
         return ev.ranged ? 420 : 380;
       }
       case 'jutsu': {
-        const a = this.view(ev.unit);
-        if (!a) return 0;
-        const spec = JUTSU[ev.jutsu];
-        const from = this.posOf(ev.unit, now);
-        if (Math.abs(ev.at.x - from.x) > 0.05) a.facing = ev.at.x > from.x ? 1 : -1;
-        const caster = state.units[ev.unit];
-        const head = caster?.kind === 'hydra_head';
-        if ((spec?.special === 'warp' || spec?.special === 'swap') && this.phaseFollows(ev.unit)) {
-          // A Warp Strike or a Spatial Swap that goes through: its name and a beat, then the phase
-          // itself plays (no cast pose, no chakra flare: the ninja turns to light at once).
-          h.sound('jutsu', 'chakra');
-          if (label) this.float(label, '#fde68a', from, now, { rise: 128, dur: 1400 });
-          return 90;
-        }
-        if (spec?.seq || spec?.pose || spec?.vfxSet) {
-          const staged = this.staged(ev, spec, a, from, now, label, jutsuTint(spec, caster));
-          if (staged !== null) return staged;
-        }
-        if (!head) this.setPose(a, spec?.melee ? 'attack' : 'cast', now, 900);
-        else {
-          a.creature = { anim: ev.jutsu === 'hydra_roar' ? 'roar' : 'spit', t0: now };
-          if (ev.jutsu === 'hydra_roar') h.sound('roar');
-        }
-        const el: VfxElement = spec?.element ?? 'chakra';
-        // Jutsu play at a pace the player can follow: a beat for the cast, a flight you can watch
-        // (beasts slower still), and the impact plays out whole before the next turn starts.
-        const castDelay = head ? 150 : 560;
-        // A dream's drift flies slower (the Mirage).
-        const fly = (spec?.vfx === 'beast' ? Math.max(900, dist(from, ev.at) * 150) : Math.max(500, dist(from, ev.at) * 115)) * (spec?.seq?.slowFlight ?? 1);
-        const linger = (ms: number) => (this.lingerUntil = Math.max(this.lingerUntil, t1 + ms / this.speed));
-        h.sound('jutsu', el);
-        if (label) this.float(label, '#fde68a', from, now, { rise: 128, dur: 1400 });
-        const t1 = now + castDelay / this.speed;
-        const base = { element: el, t0: t1, enhanced: ev.enhanced, sig: spec?.sig, role: spec?.vfx, tint: jutsuTint(spec, caster) };
-        switch (spec?.special) {
-          case 'heal':
-            this.fx.push({ ...base, kind: 'heal', from: ev.at, to: ev.at, dur: 1300 });
-            linger(1300);
-            return castDelay + 700;
-          case 'clone':
-          case 'mantle':
-            this.fx.push({ ...base, kind: 'aura', from, to: from, dur: 1100, unit: ev.unit });
-            linger(1100);
-            return castDelay + 400;
-          case 'flicker':
-          case 'warp':
-          case 'swap':
-            // The chakra flares while it gathers, and is gone with the ninja when it vanishes (it
-            // would otherwise burn on at the spot it left, around whoever is swapped in there).
-            this.fx.push({ ...base, kind: 'aura', from, to: from, t0: now, dur: castDelay + 400, unit: ev.unit, follow: true });
-            return castDelay + 400;
-          case 'earthWall':
-          case 'waterWall':
-            this.fx.push({ ...base, kind: 'wall', from: ev.at, to: ev.at, dur: 1200 });
-            // The wall itself rises when its event plays, right as the jutsu lands.
-            return castDelay;
-          case 'metalBlock':
-          case 'metalWall':
-            // Steel dust where the structure rises (the earth wall's sheet would hide it otherwise);
-            // the structure itself grows out of the ground when its event plays (renderer.ts).
-            this.fx.push({ ...base, kind: 'wall', from: ev.at, to: ev.at, dur: 1200, sig: 'debris' });
-            return castDelay;
-          case 'command':
-          case 'submission':
-            // The Northstar's will flares around it; the mind it takes glows when its event plays.
-            this.fx.push({ ...base, kind: 'aura', from, to: from, dur: 900, unit: ev.unit });
-            linger(900);
-            return castDelay + 300;
-        }
-        if (ev.shape?.kind === 'cone') {
-          // A signature cone (the Great Fire Annihilation) plays its whole surge, burn and fade.
-          // It hits once the fire has spread all the way, and the next turn waits for it to burn out.
-          const long = signatureMs(el, spec?.sig, ev.enhanced);
-          this.fx.push({ ...base, kind: 'cone', from, to: ev.at, area: ev.shape, dur: long?.total ?? 1400, lift: [head ? 120 : 70, 30] });
-          if (!long) {
-            linger(1400);
-            return castDelay + 900;
-          }
-          h.shake(ev.enhanced ? 7 : 5);
-          this.lingerUntil = Math.max(this.lingerUntil, t1 + long.total / this.speed);
-          return castDelay + long.hit;
-        }
-        if (ev.shape?.kind === 'line') {
-          this.fx.push({ ...base, kind: 'line', from, to: ev.at, area: ev.shape, dur: 1300, lift: [head ? 120 : 70, 50] });
-          linger(1300);
-          return castDelay + 900;
-        }
-        if (spec?.melee) {
-          const hitMs = impactMs(el, spec.vfx, 900);
-          this.fx.push({ ...base, kind: 'burst', from: ev.at, to: ev.at, dur: hitMs, lift: [60, 60] });
-          linger(hitMs);
-          return castDelay + 450;
-        }
-        // A signature from the sky (Kirin) needs no projectile: the storm gathers over the target.
-        const sky = ev.shape?.kind === 'circle' ? skySignature(el, spec?.sig, ev.enhanced) : null;
-        if (sky) {
-          this.fx.push({ ...base, kind: 'area', from: ev.at, to: ev.at, area: ev.shape, dur: sky.total });
-          h.shake(ev.enhanced ? 8 : 6);
-          this.lingerUntil = Math.max(this.lingerUntil, t1 + sky.total / this.speed);
-          return castDelay + sky.hit / this.speed;
-        }
-        // The rank D and C jutsu (staged by seq) leave the casting hand; the others fly as they always have.
-        const out = spec?.seq && !head ? handOf(from, a.facing) : from;
-        this.fx.push({ ...base, kind: 'projectile', from: out, to: ev.at, dur: fly, lift: [head ? 120 : spec?.seq ? HAND_LIFT : 70, ev.shape ? 30 : 60] });
-        if (ev.shape?.kind === 'circle') {
-          const boom = blastMs(el, spec?.sig ? 1400 : 1200);
-          this.fx.push({ ...base, kind: 'area', from: ev.at, to: ev.at, area: ev.shape, t0: t1 + fly / this.speed, dur: boom });
-          h.shake(ev.enhanced ? 5 : 3);
-          linger(fly + boom);
-        } else {
-          const hitMs = impactMs(el, spec?.vfx, 900);
-          this.fx.push({ ...base, kind: 'burst', from, to: ev.at, t0: t1 + fly / this.speed, dur: hitMs, lift: [60, 60] });
-          linger(fly + hitMs);
-        }
-        return castDelay + fly + 300;
+        // A fire through a gale (the Gale Curtain): the effects it pushes now burn brighter from where
+        // they meet the wind, and the wind swirls round the fire there.
+        const before = this.fx.length;
+        const d = this.playJutsu(ev, now, state, label);
+        if (ev.fanned) this.fan(ev, before, now, state);
+        return d;
       }
       case 'save': {
         h.roll(ev);
@@ -978,6 +1126,11 @@ export class Playback {
         h.shake(3);
         return 300;
       }
+      case 'zone':
+        // A gale starts turning (it rises out of the ground), or dies down (it fades).
+        if (ev.on) this.zoneBorn.set(ev.zone.id, now);
+        else this.zoneGone.push({ zone: ev.zone, t0: now });
+        return 0;
       case 'wallHit':
         this.float(`-${ev.amount}`, '#cbd5e1', ev.at, now, { rise: 70 });
         this.fx.push({ kind: 'burst', element: 'earth', from: ev.at, to: ev.at, t0: now, dur: 400, lift: [40, 40] });
@@ -1055,6 +1208,8 @@ export class Playback {
         h.sound(ev.outcome === 'victory' ? 'victory' : 'defeat');
         return 600;
       case 'note': {
+        // A fanned fire's word floats where the fire meets the wind (fan), not over its caster.
+        if (ev.key === 'fanned') return 0;
         const u = Object.values(state.units).find((x) => x.name === ev.params?.name);
         if (u && label) this.float(label, '#e5e7eb', this.posOf(u.id, now), now, { rise: 130, dur: 1500 });
         return label ? 250 : 0;

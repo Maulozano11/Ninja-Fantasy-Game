@@ -195,6 +195,8 @@ const TABLE = strings({
   saveDisadv: { en: 'with disadvantage', es: 'con desventaja' },
   aimHits: { en: 'Hits {n}', es: 'Alcanza a {n}' },
   aimAllies: { en: '{n} allies in the area!', es: '¡{n} aliados en el área!' },
+  aimGale: { en: 'Fire through it burns harder', es: 'El fuego que pase por aquí se aviva' },
+  aimFanned: { en: 'Fanned by the gale: +1 die', es: 'El vendaval lo aviva: +1 dado' },
   aimStructures: { en: '{n}/2 standing', es: '{n}/2 en pie' },
   aimOldest: { en: 'the oldest one crumbles', es: 'la más antigua se derrumba' },
   aimWarpEdge: { en: 'Next to {name}: next attack from behind', es: 'Junto a {name}: el próximo ataque, por la espalda' },

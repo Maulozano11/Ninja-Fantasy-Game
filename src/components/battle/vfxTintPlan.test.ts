@@ -64,6 +64,12 @@ describe('jutsu effects in the caster\'s chakra colour', () => {
     assert.deepEqual(names('earth_pebble_shot'), ['vfx_dc/earth_multi_0', 'vfx_dc/earth_multi_1', 'vfx_dc/earth_multi_2', 'vfx_earth/multi_hit', 'vfx_earth/hit']);
     assert.deepEqual(names('lightning_spark_fan'), ['vfx_dc/lightning_fan', 'vfx_lightning/hit']);
     assert.deepEqual(names('kenjutsu_bleeding_cut'), [], 'the white cut has no element');
+    // The gaps' jutsu (the owner's answers of 2026-10-21): the wave, the tower, the gale, the beam's sparks, the dust.
+    assert.deepEqual(names('water_devouring_tide'), ['vfx_water/aura', 'vfx_water/aura_back', 'vfx_water/wall_depth', 'vfx_water/wall', 'vfx_water/breath', 'vfx_water/hit']);
+    assert.deepEqual(names('wind_whirlwind_tower'), ['vfx_wind/hit', 'vfx_wind/wall_depth', 'vfx_wind/multi']);
+    assert.deepEqual(names('wind_gale_curtain'), ['vfx_wind/aura', 'vfx_wind/aura_back', 'vfx_wind/wall', 'vfx_wind/bolt']);
+    assert.deepEqual(names('lightning_thunder_beam'), ['vfx_lightning/stream', 'vfx_lightning/stream_head', 'vfx_lightning/hit']);
+    assert.deepEqual(names('earth_rubble_gust'), ['vfx_earth/aura', 'vfx_earth/aura_back', 'vfx_earth/breath', 'vfx_earth/hit']);
     // The heals in the water aura (the owner: the Dew's aura on the Palm too): the Dew's orb, then the aura.
     assert.deepEqual(names('water_healing_dew'), ['vfx_water/bolt', 'vfx_water/aura', 'vfx_water/aura_back']);
     assert.deepEqual(names('mystical_palm'), ['vfx_water/aura', 'vfx_water/aura_back']);

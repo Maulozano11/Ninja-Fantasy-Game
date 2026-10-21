@@ -58,14 +58,25 @@ export function tintSheetsOf(spec: Pick<JutsuSpec, 'elemental' | 'element' | 'vf
     // The Spark Fan: his forked lightning, joined, and a spark on each one it reaches.
     own.push({ group: 'vfx_dc', name: `${el}_fan`, element: el });
     add('hit');
+  } else if (spec.seq?.wave) {
+    // The Devouring Tide: the water aura while it casts, the wave's columns (or its wall seen from
+    // the side), its spray, and a splash on each one reached.
+    add('aura', 'aura_back', 'wall_depth', 'wall', 'breath', 'hit');
+  } else if (spec.seq?.tower) {
+    // The Whirlwind Tower: the warning burst, the tornado column, the small whirlwinds round it.
+    add('hit', 'wall_depth', 'multi');
+  } else if (spec.special === 'galeZone') {
+    // The Gale Curtain: the wind gathering round the caster, the gale on the ground, and the swirl
+    // round a fire that goes through it.
+    add('aura', 'aura_back', 'wall', 'bolt');
   } else if (spec.special === 'earthWall' || spec.special === 'waterWall') add('wall', 'wall_diag', 'wall_depth');
   else if (spec.special) {
     // Heals, traps and the like are drawn in code; an aura of the element would play its sheets. A
     // heal in the element's aura (the Healing Dew, the Mystical Palm) flies its orb first, if it has one.
     if (spec.special === 'heal' && spec.seq?.healAura && spec.vfx !== 'aura') add(spec.vfx);
     if (spec.vfx === 'aura' || spec.seq?.healAura) add('aura', 'aura_back');
-  } else if (spec.shape === 'cone') add(...(spec.sig ? [spec.sig, enhancedSig(spec.sig)] : ['breath']));
-  else if (spec.shape === 'line') add('stream', 'stream_head');
+  } else if (spec.shape === 'cone') add(...(spec.sig ? [spec.sig, enhancedSig(spec.sig)] : spec.seq?.breathMs ? ['aura', 'aura_back', 'breath', 'hit'] : ['breath']));
+  else if (spec.shape === 'line') add('stream', 'stream_head', ...(spec.seq?.hitEach ? ['hit'] : []));
   else if (spec.melee) add(...(spec.vfx === 'multi' ? ['multi_hit'] : []), 'hit');
   else {
     // A projectile (its own sheet when it flies, else the bolt), then a blast or a hit; a signature

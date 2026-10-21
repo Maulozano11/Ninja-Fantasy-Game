@@ -21,7 +21,7 @@ import type { SpriteAppearance, SpritePose } from '../../sprite/types';
 import { PHASE_ADD, PHASE_RAMP, phaseHue } from '../../sprite/phase';
 import { leavesNodes, nodeUnder } from '../../battle/clans';
 import { GRID } from '../../sprite/raster';
-import { drawAuraBack, drawLinger, drawVfxSprite, drawWallSprite, wallTint } from './vfxSprites';
+import { depthFx, drawAuraBack, drawLinger, drawVfxSprite, drawWallSprite, wallTint } from './vfxSprites';
 import { isTintElement, vfxTintColors } from '../../sprite/vfxTint';
 
 export interface Camera {
@@ -203,6 +203,8 @@ export function drawBattle(ctx: CanvasRenderingContext2D, sc: Scene): void {
   // Lightning running along the water lies on the ground: what stands in front of it (a metal wall,
   // a unit) is drawn over it.
   for (const fx of sc.pb.fx) if (onGround(fx)) items.push({ z: fx.from.z + 0.005, draw: () => drawFx(ctx, sc, fx) });
+  // The Devouring Tide's wave, the Whirlwind Tower and the gales on the ground stand among the units.
+  items.push(...depthFx(ctx, sc));
   items.sort((a, b) => a.z - b.z);
   for (const it of items) it.draw();
   // Aiming a Ryusei ability: the Nodes it can use, and where it lands, show over walls and units.

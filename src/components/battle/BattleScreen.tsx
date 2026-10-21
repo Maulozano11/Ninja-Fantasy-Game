@@ -11,7 +11,7 @@ import { chargeLanding, handsBlocker, jutsuCost, needsSeals } from '../../battle
 import { aiAction, aiToAct } from '../../battle/ai';
 import { current } from '../../battle/turns';
 import { AURA_RADIUS, attackPreview, sovereign } from '../../battle/combat';
-import { JUTSU, areaOf, enhanced as enhancedSpec } from '../../battle/jutsu';
+import { JUTSU, areaOf, enhanced as enhancedSpec, fannedBy } from '../../battle/jutsu';
 import type { JutsuSpec } from '../../battle/jutsu';
 import { cellCenter, cellOf, dist, fullCoverBetween, getMap, gridFor, idx, lineOfSight, sameCell } from '../../battle/map';
 import { canStop, occupancy, pathCost, pathTo, reachable } from '../../battle/nav';
@@ -522,7 +522,12 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
       const at = self ? actor.pos : hu ? hu.pos : hover?.pt;
       if (at) {
         const area = areaOf(spec, actor.pos, at);
-        if (area) {
+        if (area && spec.special === 'galeZone') {
+          // The Gale Curtain hurts nobody: where the gale will turn, and what it does.
+          o.area = { shape: area, tone: 'heal' };
+          label = jutsuName(spec.id, lang);
+          sub = T('aimGale');
+        } else if (area) {
           o.area = { shape: area, tone: spec.special === 'heal' ? 'heal' : 'enemy' };
           // As the engine reaches them: nobody behind a metal wall from where it bursts (D13).
           const origin = spec.shape === 'selfCircle' || spec.shape === 'cone' || spec.shape === 'line' ? actor.pos : at;
@@ -541,6 +546,8 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
           const line = T('aimSave', { save: sv, dc: actor.saveDC }) + (spec.saveAdv === 'disadvantage' ? ` · ${T('saveDisadv')}` : '');
           sub = sub ? `${line} · ${sub}` : line;
         }
+        // A fire aimed through a gale on the ground burns harder (the Gale Curtain).
+        if (fannedBy(spec, actor.pos, at, s.zones ?? [])) sub = sub ? `${sub} · ${T('aimFanned')}` : T('aimFanned');
         if (!self && dist(actor.pos, at) > spec.range + 0.1 + (hu?.bulk ?? 0) + (hu?.kind === 'hydra_head' ? 2.5 : 0)) label = T('aimNoReach');
         // Then sight, as the engine refuses it: a jutsu at one target needs to see it (a strike, no
         // metal wall between); an area or a point needs to see where it goes.
@@ -1520,6 +1527,11 @@ const SHORT: Record<string, [string, string]> = {
   genjutsu_mirage: ['Mirage', 'Espejismo'],
   kenjutsu_bleeding_cut: ['Bleeding cut', 'Tajo'],
   taijutsu_rush: ['Rush', 'Embestida'],
+  water_devouring_tide: ['Devouring tide', 'Ola devoradora'],
+  wind_whirlwind_tower: ['Whirlwind tower', 'Torre'],
+  wind_gale_curtain: ['Gale curtain', 'Cortina'],
+  lightning_thunder_beam: ['Thunder beam', 'Haz de trueno'],
+  earth_rubble_gust: ['Rubble gust', 'Polvareda'],
 };
 
 const fmtM = (m: number, lang: ReturnType<typeof useLang>): string => (Math.round(m * 10) / 10).toString().replace('.', lang === 'es' ? ',' : '.');

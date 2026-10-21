@@ -11,7 +11,8 @@ import { type PaintedEye, VALIANT_BROW_HAIR, VALIANT_EYE_COLORS, VALIANT_EYES, V
 import { VALIANT_HEAD, VALIANT_SKIN } from './headArt';
 import { stampPiece } from './painted';
 import { ballShade, capsule, ellipse, F_NO_OUTLINE, F_NO_TEXTURE, GRID, Layer, PartId, Pen, poly, RES, seam, v, Vec } from './raster';
-import { isFemaleBody, type FaceShape } from './types';
+import { SAYA_EYE_AT, SAYA_EYE_COLORS, SAYA_EYES, SAYA_IRIS } from './sayaEyeArt';
+import { isFemaleBody, type EyeShape, type FaceShape } from './types';
 
 const SCLERA = '#f4f1ee';
 const EYELINE = '#1b1420';

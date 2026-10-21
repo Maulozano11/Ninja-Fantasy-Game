@@ -1,0 +1,73 @@
+// The princess's bodice and sleeves (provisional "Rosalind, the Rose Dawn Princess"): the owner's picture at our
+// game scale, his pixels one for one (princessTopArt.ts, tools/refs/princess-top-from-ref.py), cut into painted
+// pieces that ride the rig. In our female idle every pixel of these clothes that his picture shows is his, where
+// he drew it, but the far lilac sleeve: his far arm is raised to hold the sceptre up and ours hangs, so that
+// sleeve lies along our forearm. His colours are the colour slots' defaults: kept, his pixels stay his.
+
+import { retintHex } from '../color';
+import type { Depth, DrawCtx, ItemDef } from '../ctx';
+import { PaintedPiece, segAngle, stampPiece } from '../painted';
+import type { PartId, Vec } from '../raster';
+import {
+  PRINCESS_BODICE,
+  PRINCESS_BODICE_SIDE_F,
+  PRINCESS_BODICE_TIP,
+  PRINCESS_CUFF_F,
+  PRINCESS_CUFF_N,
+  PRINCESS_SLEEVE_F,
+  PRINCESS_SLEEVE_F_SIDE,
+  PRINCESS_SLEEVE_N,
+  PRINCESS_TOP_GOLD,
+  PRINCESS_TOP_LILAC,
+  PRINCESS_TOP_PINK,
+  PRINCESS_TOP_SKIN,
+} from './princessTopArt';
+
+/** The colour each slot replaces (its default): his pink, lilac and gold; and the skin he painted her in. */
+const PINK = PRINCESS_TOP_PINK[0];
+const LILAC = PRINCESS_TOP_LILAC[0];
+const GOLD = PRINCESS_TOP_GOLD[0];
+const SKIN = PRINCESS_TOP_SKIN[0];
+
+const col = (key: string, label: string, def: string, kind: 'cloth' | 'metal' = 'cloth') => ({ key, label, default: def, kind });
+
+/**
+ * The bodice, back to front: the far lilac sleeve and the far puff behind the body (the puff's columns by the
+ * bodice again over the body's edge, over the bodice's far side under it), the bodice over the body,
+ * then the near lilac sleeve and the near puff over it. Each of his tones of a kind moves the way its slot moved
+ * from his colour (retintHex), his skin the way the player's skin moves from his; his black line stays. With no
+ * armour on, the bodice's point is drawn again over the skirt, as he drew it.
+ */
+function drawBodice(g: DrawCtx, pink: string, lilac: string, gold: string): void {
+  const r = g.rig;
+  const tint = (_ch: string, hex: string): string => {
+    if (PRINCESS_TOP_PINK.includes(hex)) return retintHex(hex, PINK, pink);
+    if (PRINCESS_TOP_LILAC.includes(hex)) return retintHex(hex, LILAC, lilac);
+    if (PRINCESS_TOP_GOLD.includes(hex)) return retintHex(hex, GOLD, gold);
+    if (PRINCESS_TOP_SKIN.includes(hex)) return retintHex(hex, SKIN, g.look.skin);
+    return hex;
+  };
+  const put = (d: Depth, p: PaintedPiece, at: Vec, deg: number, part: PartId) => stampPiece(g, d, p, at, deg, part, tint);
+  const torso = segAngle(r.pelvis, r.neck);
+  put('farArm.cloth', PRINCESS_CUFF_F, r.elbowF, segAngle(r.elbowF, r.wristF), 'forearmF');
+  put('farArm.cloth', PRINCESS_SLEEVE_F, r.shoulderF, segAngle(r.shoulderF, r.elbowF), 'upperArmF');
+  // our torso is drawn over the far arm and reaches under the far puff: its columns by the bodice go again over it,
+  // over the bodice's far side (seen when the far arm moves away)
+  put('torso.top', PRINCESS_BODICE_SIDE_F, r.neck, torso, 'torso');
+  put('torso.top', PRINCESS_SLEEVE_F_SIDE, r.shoulderF, segAngle(r.shoulderF, r.elbowF), 'upperArmF');
+  put('torso.top', PRINCESS_BODICE, r.neck, torso, 'torso');
+  if (!g.has('armor')) put('torso.over', PRINCESS_BODICE_TIP, r.neck, torso, 'torso');
+  put('nearArm.cloth', PRINCESS_CUFF_N, r.elbowN, segAngle(r.elbowN, r.wristN), 'forearmN');
+  put('nearArm.cloth', PRINCESS_SLEEVE_N, r.shoulderN, segAngle(r.shoulderN, r.elbowN), 'upperArmN');
+}
+
+/** The princess's bodice (slot top), women only: cut for the female figure. */
+export const PRINCESS_BODICE_ITEM: ItemDef = {
+  id: 'top_rose_bodice',
+  slot: 'top',
+  name: 'Rose Dawn Bodice',
+  desc: "The princess's gown bodice: a high lilac collar edged in gold over bare shoulders, a gold-embroidered lilac bodice with a pointed waist and pink sides, pink puffed sleeves with gold bands over big lilac puffed sleeves with gold cuffs. Women only.",
+  colors: [col('pink', 'Dress', PINK), col('lilac', 'Lilac', LILAC), col('gold', 'Gold', GOLD, 'metal')],
+  bodies: ['female', 'slender'],
+  draw: (g, [pink, lilac, gold]) => drawBodice(g, pink, lilac, gold),
+};

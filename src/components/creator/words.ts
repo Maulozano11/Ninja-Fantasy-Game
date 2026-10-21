@@ -269,6 +269,11 @@ const ES: Record<string, string> = {
   'Rose Dawn Tiara': 'Tiara del Alba Rosa',
   'A gold tiara with a red gem at its peak, worn on the crown.': 'Una tiara de oro con una gema roja en la punta, sobre la coronilla.',
   Gem: 'Gema',
+  // The princess's bodice and sleeves (top_rose_bodice)
+  'Rose Dawn Bodice': 'Corpiño del Alba Rosa',
+  "The princess's gown bodice: a high lilac collar edged in gold over bare shoulders, a gold-embroidered lilac bodice with a pointed waist and pink sides, pink puffed sleeves with gold bands over big lilac puffed sleeves with gold cuffs. Women only.":
+    'El corpiño del vestido de la princesa: un cuello alto lila ribeteado en oro sobre los hombros al aire, un corpiño lila bordado en oro con la cintura en punta y los costados rosas, mangas abullonadas rosas con bandas de oro sobre grandes mangas abullonadas lilas con puños de oro. Solo para mujeres.',
+  Lilac: 'Lila',
 };
 
 /** An editor label in the screen's language. */

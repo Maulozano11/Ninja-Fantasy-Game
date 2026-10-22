@@ -9,6 +9,7 @@ import { PaintedPiece, segAngle } from '../painted';
 import { F_NO_OUTLINE, F_NO_TEXTURE, GRID, Layer, PartId } from '../raster';
 import { lyraFaceTone } from '../lyraFace';
 import { LONG_NECK_AHEAD } from '../neck';
+import { drawOwner, slotTint } from '../ownerFrames';
 import { drawRig, type Rig } from '../rig';
 import { rotateTemplate } from '../rotsprite';
 import type { PaintedPart } from './capeArt';
@@ -116,6 +117,8 @@ export const HAIR_COPPER_BRAID: ItemDef = {
     { key: 'ornament', label: 'Ornament', default: LYRA_PIN_BASE, kind: 'metal' },
   ],
   draw: (g, [hair, ribbon, pin]) => {
+    // In the owner's own frames of her (ownerFrames.ts) her hair is his there, pixel for pixel.
+    if (drawOwner(g, 'hair', slotTint({ hair: [LYRA_HAIR_BASE, hair], ribbon: [LYRA_RIBBON_BASE, ribbon], ornament: [LYRA_PIN_BASE, pin] }))) return;
     // Her line stays as she drew it; her auburns, the bow's greys and the pin's golds each follow
     // their colour slot (with the defaults, every pixel is hers).
     const color = (ch: string, hex: string) => {

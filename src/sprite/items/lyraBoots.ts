@@ -3,6 +3,7 @@
 
 import { retintHex } from '../color';
 import { DrawCtx, ItemDef, legDepth, legJoints, Side } from '../ctx';
+import { clearLayers, drawOwner, slotTint } from '../ownerFrames';
 import { PaintedPiece, segAngle, stampPiece } from '../painted';
 import { add, F_NO_EDGE, GRID, len, partIndex, RES, scale, sub, v, Vec } from '../raster';
 import {
@@ -115,6 +116,12 @@ export const LYRA_BOOTS: ItemDef = {
   ],
   bodies: ['female', 'slender'],
   draw: (g, [leather, gold, buckle]) => {
+    // In the owner's own frames of her (ownerFrames.ts) the boots and her bare thighs are his there:
+    // our body's legs come off under them.
+    if (drawOwner(g, 'feet', slotTint({ leather: [LYRA_BOOT_LEATHER, leather], gold: [LYRA_BOOT_GOLD, gold], buckle: [LYRA_BOOT_BUCKLE, buckle] }, g.look.skin))) {
+      clearLayers(g, ['nearLeg.body', 'farLeg.body']);
+      return;
+    }
     // His boots and the bare thigh above them, on a leg of his: from our hip his thigh to his knee and
     // his shin to his ankle, the ankle standing off ours as at idle and the knee bending forward (legNow). The
     // thigh piece turns with that thigh about the knee, the shin piece (shaft and ankle strap) with

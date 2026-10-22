@@ -8,6 +8,7 @@ import { describe, it } from 'node:test';
 import { LEGENDARY_PRESETS } from '../data/shinobiData';
 import { renderSprite, spriteLayers } from './compose';
 import type { Depth } from './ctx';
+import { paintedFrame } from './ownerFrames';
 import { GRID, type Layer, partIndex, type PartId, RES } from './raster';
 import { frameCount } from './rig';
 import { type BodyType, CAMP_POSES, MOVE_POSES, SPRITE_POSES, type SpriteAppearance, type SpritePose } from './types';
@@ -16,8 +17,12 @@ const lyra = LEGENDARY_PRESETS.find((p) => p.character.id === 'preset_lyra')!.ch
 const BODIES: BodyType[] = ['female', 'slender'];
 const look = (body: BodyType): SpriteAppearance => ({ ...lyra, body });
 
+// The frames the owner painted himself (ownerFrames.ts: her read pose, her throw's frames 3 and 4) are his
+// pixels, every one where he drew it (ownerFrames.test.ts): a leg partly hidden by the other, her far arm
+// showing only its hand on the book, a light edge pixel of his, are his drawing, not our rig's, so these
+// checks of how our rig draws her are left to the others.
 function* frames(): Generator<[SpritePose, number]> {
-  for (const pose of [...SPRITE_POSES, ...MOVE_POSES, ...CAMP_POSES] as SpritePose[]) for (let f = 0; f < frameCount(pose); f++) yield [pose, f];
+  for (const pose of [...SPRITE_POSES, ...MOVE_POSES, ...CAMP_POSES] as SpritePose[]) for (let f = 0; f < frameCount(pose); f++) if (!paintedFrame(pose, f)) yield [pose, f];
 }
 
 /** The 8-connected regions of a set of pixel indices (their sizes). */

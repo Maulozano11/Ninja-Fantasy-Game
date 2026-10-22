@@ -15,6 +15,7 @@ import { KEEN_BROW_HAIR, KEEN_BROWS, KEEN_EYE_COLORS, KEEN_EYES, KEEN_IRIS } fro
 import { LONG_NAPE, LONG_NECK_BACK, LONG_NECK_W } from './neck';
 import { LYRA_FACE_FAR_LINE, lyraFaceCells, stampLyraFace } from './lyraFace';
 import { LYRA_FACE_FAR_EYE } from './lyraFaceArt';
+import { drawOwner, slotTint } from './ownerFrames';
 import { segAngle, stampPiece } from './painted';
 import { rotateTemplate, stampTemplate, type TemplatePalette } from './rotsprite';
 import { ballShade, capsule, ellipse, F_NO_OUTLINE, F_NO_TEXTURE, GRID, Layer, PartId, Pen, poly, RES, seam, v, Vec } from './raster';
@@ -490,6 +491,9 @@ export function headAt(g: DrawCtx, dx: number, dy: number): Vec {
 }
 
 function drawHead(g: DrawCtx): void {
+  // Her face ('fine') in the owner's own frames of her (ownerFrames.ts): his face, eyes and neck there,
+  // pixel for pixel, in the character's skin and eye colour; her hair covers the rest of the head.
+  if (g.look.faceShape === 'fine' && drawOwner(g, 'face', (k, hex) => (k === 'eye' ? retintHex(hex, KEEN_IRIS, g.look.eyeColor) : slotTint({}, g.look.skin)(k, hex)))) return;
   if (g.look.faceShape === 'valiant') {
     drawValiantHead(g);
     drawFace(g);

@@ -12,6 +12,7 @@ import { KATANA_PARTS, katanaHipColors, katanaTemplate } from './katana';
 import { chakraHex } from '../chakraInfo';
 import { LYRA_SWORD_BLADE, LYRA_SWORD_GUARD } from './lyraSwordArt';
 import { drawLyraRapier } from './lyraSword';
+import { drawOwner, ownerFrame, slotTint } from '../ownerFrames';
 import { gripPoint, handsBusy, handsLimp, handsReleased, poleAngle, swordAngle, throwsKunai } from '../grip';
 
 const col = (key: string, label: string, def: string, kind: RampKind = 'cloth') => ({ key, label, default: def, kind });
@@ -436,6 +437,12 @@ export const HELD_ITEMS: ItemDef[] = [
     desc: 'A long slender blade glowing cyan under a steel swept hilt with gold tips, a cyan gem in the cross, sparkles round it: the owner drew it for Lyra.',
     colors: [col('blade', 'Blade glow', LYRA_SWORD_BLADE, 'glow'), col('guard', 'Guard', LYRA_SWORD_GUARD, 'metal')],
     draw: (g, [blade, guard]) => {
+      // In the owner's own frames of Lyra (ownerFrames.ts) the sword is his there: lying behind her on
+      // the seat as she reads, thrust out at the throw's release (put away, she throws without it).
+      if (ownerFrame(g)) {
+        if (!(g.look.stowed && g.rig.pose === 'throw')) drawOwner(g, 'held', slotTint({ blade: [LYRA_SWORD_BLADE, blade], guard: [LYRA_SWORD_GUARD, guard] }));
+        return;
+      }
       // Stowed on the back steeper than other long blades (70 degrees, not 48): her long blade then
       // stays behind the narrow female body down to the tip, instead of showing in flecks past her far
       // side (seated, reading, the female hips settle into the seat and carry the blade lower).

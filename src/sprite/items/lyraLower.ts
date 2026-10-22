@@ -9,6 +9,7 @@
 import { retintHex } from '../color';
 import type { Depth, DrawCtx, ItemDef } from '../ctx';
 import { add, F_NO_OUTLINE, F_NO_TEXTURE, GRID, lerp, PartId, partIndex, RES, scale, sub, v, Vec } from '../raster';
+import { drawOwner, slotTint } from '../ownerFrames';
 import { BodyParams, drawRig, GROUND, Rig } from '../rig';
 import {
   LYRA_BACK,
@@ -244,6 +245,8 @@ export const STRIPED_PLEATS: ItemDef = {
   ],
   bodies: ['female', 'slender'],
   draw: (g, [cloth, stripes]) => {
+    // in the owner's own frames of her (ownerFrames.ts) the skirt is his there
+    if (drawOwner(g, 'bottom', slotTint({ cloth: [LYRA_SKIRT_CLOTH_BASE, cloth], stripes: [LYRA_SKIRT_STRIPES_BASE, stripes] }))) return;
     bareThighs(g);
     const t = tint([
       [LYRA_SKIRT_CLOTH, LYRA_SKIRT_CLOTH_BASE, cloth],
@@ -266,6 +269,7 @@ export const GILDED_TABARD: ItemDef = {
   // cut for her hips, as her skirt is: on the male and bulky bodies it would sit off them
   bodies: ['female', 'slender'],
   draw: (g, [cloth, trim, gold]) => {
+    if (drawOwner(g, 'skirt', slotTint({ cloth: [LYRA_TABARD_CLOTH_BASE, cloth], trim: [LYRA_TABARD_TRIM_BASE, trim], gold: [LYRA_TABARD_GOLD_BASE, gold] }))) return;
     const t = tint([
       [LYRA_TABARD_CLOTH, LYRA_TABARD_CLOTH_BASE, cloth],
       [LYRA_TABARD_TRIM, LYRA_TABARD_TRIM_BASE, trim],
@@ -294,6 +298,7 @@ export const POUCH_BELT: ItemDef = {
   // cut for her hips (on the bulky body it stopped short of the far hip)
   bodies: ['female', 'slender'],
   draw: (g, [leather, steel, pouch, gold]) => {
+    if (drawOwner(g, 'waist', slotTint({ leather: [LYRA_BELT_LEATHER_BASE, leather], steel: [LYRA_BELT_STEEL_BASE, steel], pouch: [LYRA_BELT_POUCH_BASE, pouch], gold: [LYRA_BELT_GOLD_BASE, gold] }))) return;
     const t = tint([
       [LYRA_BELT_LEATHER, LYRA_BELT_LEATHER_BASE, leather],
       [LYRA_BELT_STEEL, LYRA_BELT_STEEL_BASE, steel],

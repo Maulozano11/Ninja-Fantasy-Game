@@ -157,6 +157,19 @@ Merge checks (`git merge-tree` on the origin tips, nothing changed):
   pieces closed in the line when turned; at rest 47 pixels differ from his picture (before 52). Limbs
   test: `src/sprite/lyraLimbs.test.ts`. Waiting for him: he repaints her throw frames 3-4 and her sitting
   pose himself.
+- Decided 2026-10-22: **his Lyra reading picture is the new standard read pose** (and his sit picture, still
+  to come, the sit pose) for every character: *"copialo exacto me encanta estas poses nuevas de sentado y
+  leyendo es el nuevo standard"*; her hands copied exactly (*"mira como estan sus manos se ven excelentes
+  copialo igual"*); the rock is an object of its own that changes with the scene (*"puedes usar la piedra
+  tambien como objeto pero ese objeto cambiara dependiendo del escenario"*). Built on `heroine/lyra-v2`,
+  waiting for his look: her read pose is his three frames ("Atenta", "Leyendo", "Pasando pagina",
+  `docs/reference/lyra-read-owner-reference.jpg`, drawn at our scale) and her throw frames 3-4 his repaint
+  (`lyra-throw-owner-reference.jpg`, his figure 1.35 times ours, brought down), every pixel his
+  (`src/sprite/ownerFrames.ts`, `ownerFrames.test.ts`); the read rig of every body is posed toward his
+  joints (`rig.ts` READ, PoseAt), his book for every reader, and his rock is the first seat prop
+  (`src/sprite/seats.ts`, the camp draws it under the read spots). Questions for him: the male and bulky
+  legs are too short for his rock (their feet hang); which of his three rocks (they differ) is the prop;
+  should the other characters' throw follow his release.
 - Decided 2026-10-21 (later): Warp Strike is renamed **"Shooting-Star Thrust"** (Spanish **"Estocada Fugaz"**; the owner first said "Shooting Star", then chose these), after the clan's name (Ryusei = shooting star) and to stay clear of other games' "Warp Strike". The id `ryusei_warp` stays. To apply once `icons/sheets-8-11` is merged (it touches the same strings): names, hotbar label, help text, log, clan texts, D24.
 - Decided 2026-10-21: the Spanish names are **"Golpe Warp"** and **"Comando"** (the owner: "los dos"); `icons/sheets-8-11` brings them and updates D24 in `docs/CLANS_DESIGN.md`.
 - Jutsu pacing (owner: too fast, "like a flashing star"): a first pass is merged (`8ef28a9`: 560 ms

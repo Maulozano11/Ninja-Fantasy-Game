@@ -173,6 +173,25 @@ folders.
 
       python3 -I tools/refs/lyra-upper-from-ref.py docs/reference/lyra-game-scale-owner-reference.jpg <out> src/sprite/items/lyraUpperArt.ts
 
+- `owner_paintover.py`, `owner_frames.py`: shared helpers for the owner's paint-overs of our frames. His
+  2000 px pictures have a pixel grid that drifts over the picture; `native()` finds it per panel (a cubic
+  fit of his pixel edges plus a local correction) and reads each of his pixels. `keep()` brings a figure he
+  drew larger than ours down to our scale by keeping his least repeated rows and columns. `owner_frames.py`
+  cuts a frame by owner (the option of hers that draws it) and part into pieces pinned to rig joints
+  (`src/sprite/ownerFrames.ts`), and checks the pieces laid together are his frame pixel for pixel.
+- `lyra-read-from-ref.py` (with `lyra_read_ref.py`) → `src/sprite/items/lyraReadArt.ts`: Lyra reading, his
+  three frames (`docs/reference/lyra-read-owner-reference.jpg`, at our scale, one for one), the read pose's
+  keys; the book for every reader is his. `seat-rock-from-ref.py` → `src/sprite/seatRockArt.ts`: his rock as
+  a seat prop of its own (`src/sprite/seats.ts`), what she hides continued from his pixels.
+  `lyra-throw-from-ref.py` (with `lyra_throw_ref.py`) → `src/sprite/items/lyraThrowArt.ts`: her throw frames
+  3 and 4 (`docs/reference/lyra-throw-owner-reference.jpg`, his figure 1.35 times ours, brought down).
+  `lyra-pose-joints.mts` prints the joints the pieces are pinned to; paste them into the scripts' `JOINTS`
+  when the rig changes.
+
+      python3 -I tools/refs/lyra-read-from-ref.py
+      python3 -I tools/refs/seat-rock-from-ref.py
+      python3 -I tools/refs/lyra-throw-from-ref.py
+
 - `heroine_ref.py`, `heroine-study.py`, `heroine_paint.py`, `heroine-proportions.py`,
   `heroine-idle.mts`: the study of the owner's four heroines (`docs/reference/{lyra,elise,saya,aurelia}-owner-reference.jpg`),
   the base every heroine part builds on. His pictures are his own pixel art at 2.2 to 2.8 of his

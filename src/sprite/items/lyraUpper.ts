@@ -33,6 +33,7 @@ import {
   LYRA_STEEL,
 } from './lyraUpperArt';
 import { hisSkinTone } from '../lyraFace';
+import { clearLayers, drawOwner, slotTint } from '../ownerFrames';
 import { FEMALE_BASE_SKIN } from '../femaleBaseArt';
 import { GRID } from '../raster';
 
@@ -72,6 +73,12 @@ function pauldronAngle(torso: number, arm: number): number {
  * over them), the body of the blouse with its neckline, then the near fitted sleeve and the near puff.
  */
 function drawBlouse(g: DrawCtx, blouse: string, lining: string): void {
+  // In the owner's own frames of her (ownerFrames.ts) the blouse is his there with the skin of her
+  // shoulders, arms, hands and neck: our body's arms and torso come off under it.
+  if (drawOwner(g, 'top', slotTint({ blouse: [BLOUSE, blouse], lining: [LINING, lining] }, g.look.skin))) {
+    clearLayers(g, ['torso.body', 'nearArm.body', 'farArm.body']);
+    return;
+  }
   const r = g.rig;
   const cloth = recolour([
     [LYRA_BLOUSE, BLOUSE, blouse],
@@ -153,6 +160,7 @@ function takeOff(g: DrawCtx, depth: Depth, cut: PaintedPiece, at: Vec, deg: numb
 
 /** The corset with its strap, the pauldron over it, and a bracer on each forearm. */
 function drawCorset(g: DrawCtx, leather: string, gold: string, steel: string): void {
+  if (drawOwner(g, 'armor', slotTint({ leather: [LEATHER, leather], gold: [GOLD, gold], steel: [STEEL, steel] }))) return;
   const r = g.rig;
   const tint = recolour([
     [LYRA_LEATHER, LEATHER, leather],

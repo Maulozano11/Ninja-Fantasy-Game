@@ -57,7 +57,10 @@ describe('female bodies at the owner\'s game scale', () => {
           const m = drawRig('male', pose, f).pelvis.y;
           // the female hips settle up to two pixels further into the seat (rig.ts SEAT_SINK)
           assert.ok(Math.abs(drawRig(body, pose, f).pelvis.y - m) * RES <= 4, `${body} ${pose} ${f} hips`);
-          assert.ok(Math.abs(rows(body, pose, f)[1] - male) <= 1, `${body} ${pose} ${f} soles`);
+          // (reading, on the owner's rock, the male legs are too short to reach the ground and his feet
+          // hang: the female soles are on the ground she stands on)
+          const ground = pose === 'read' ? rows(body, 'idle', 0)[1] : male;
+          assert.ok(Math.abs(rows(body, pose, f)[1] - ground) <= 1, `${body} ${pose} ${f} soles`);
         }
       }
     }

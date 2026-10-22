@@ -3,7 +3,7 @@
 // one-fighter combat screen.
 
 import React, { useMemo, useState } from 'react';
-import { Swords, Moon, Eye, Skull, RotateCcw } from 'lucide-react';
+import { Swords, Moon, Eye, Skull, RotateCcw, MoveVertical } from 'lucide-react';
 import type { ShinobiCharacter } from '../../types/shinobi';
 import type { Difficulty } from '../../types/mission';
 import { createBattle } from '../../battle/engine';
@@ -46,12 +46,14 @@ const S = strings({
   night_raid_d: { en: 'Raiders climb to your camp on the hill, from the river and from the lookout.', es: 'Los asaltantes suben a tu campamento en la colina, desde el río y desde el mirador.' },
   hydra: { en: 'The Hydra', es: 'La Hidra' },
   hydra_d: { en: 'Seven heads. Cut one, then burn, electrify or blow up the stump, or it grows back.', es: 'Siete cabezas. Corta una y luego quema, electrocuta o haz estallar el muñón, o vuelve a crecer.' },
+  depth_test: { en: 'Y-axis test', es: 'Prueba del eje Y' },
+  depth_test_d: { en: 'A test: the fight runs up and down the screen. You start at the front edge of the clearing, the rogues wait at the back.', es: 'Una prueba: la pelea va de arriba abajo en la pantalla. Empiezas en el borde de delante del claro y los renegados esperan al fondo.' },
   victory: { en: 'Victory', es: 'Victoria' },
   defeat: { en: 'Defeat', es: 'Derrota' },
   fled: { en: 'Retreat', es: 'Retirada' },
 });
 
-const ENCOUNTER_ICON: Record<EncounterId, React.FC<{ size?: number }>> = { river_patrol: Eye, cedar_rogues: Swords, night_raid: Moon, hydra: Skull };
+const ENCOUNTER_ICON: Record<EncounterId, React.FC<{ size?: number }>> = { river_patrol: Eye, cedar_rogues: Swords, night_raid: Moon, hydra: Skull, depth_test: MoveVertical };
 
 export interface BattleDemoProps {
   character: ShinobiCharacter;
@@ -101,7 +103,7 @@ export const BattleDemo: React.FC<BattleDemoProps> = ({ character, start }) => {
     );
   }
 
-  const ids: EncounterId[] = ['cedar_rogues', 'river_patrol', 'night_raid', 'hydra'];
+  const ids: EncounterId[] = ['cedar_rogues', 'river_patrol', 'night_raid', 'hydra', 'depth_test'];
   return (
     <div className="max-w-5xl mx-auto px-4 py-8">
       <h1 className="text-2xl font-black text-white">{S('title')}</h1>

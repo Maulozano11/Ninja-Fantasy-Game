@@ -12,7 +12,7 @@ import type { Difficulty } from '../types/mission';
 import type { AiOrder, BattleSupplies, Pt, TimeOfDay, Trap } from './types';
 import type { BattleSetup, EnemySetup } from './engine';
 
-export type EncounterId = 'river_patrol' | 'cedar_rogues' | 'night_raid' | 'hydra';
+export type EncounterId = 'river_patrol' | 'cedar_rogues' | 'night_raid' | 'hydra' | 'depth_test';
 
 export interface Encounter {
   id: EncounterId;
@@ -98,6 +98,28 @@ export const ENCOUNTERS: Record<EncounterId, Encounter> = {
       { x: 18.5, z: 15 },
     ],
     enemies: [{ kind: 'hydra', pos: { x: 28.4, z: 15.2 } }],
+  },
+  // Practice only, never on a mission: the owner's Y-axis test ("sobre el eje y hazme una prueba").
+  // The same clearing played along its depth: the party starts at the front edge (the bottom of the
+  // screen), the rogues at the back (the top), so the whole fight runs up and down the screen, in the
+  // depth, past the mushroom log, the signpost and the stump, with the fence and the boulder beside.
+  depth_test: {
+    id: 'depth_test',
+    mapId: 'river_forest',
+    time: 'day',
+    stealth: false,
+    partyAt: [
+      { x: 11, z: 18.6 },
+      { x: 13, z: 19.2 },
+      { x: 9, z: 19.3 },
+      { x: 7.2, z: 18.9 },
+    ],
+    enemies: [
+      // A Mirai rogue, a Kōton iron fist and a Northstar lookout, spread across the back of the clearing.
+      { kind: 'rogue', pos: { x: 11, z: 3.2 } },
+      { kind: 'raider', clan: 'Koton', pos: { x: 14.5, z: 2.4 } },
+      { kind: 'rogue', clan: 'Northstar', pos: { x: 17.5, z: 3.4 } },
+    ],
   },
 };
 

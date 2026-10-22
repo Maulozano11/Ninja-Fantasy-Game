@@ -71,6 +71,13 @@ type TipKey = (typeof TIP_KEYS)[number];
 /** The camera's zoom steps, closest first: Close 2×, Tactical 1×, then up to three times farther out. */
 export const ZOOMS = [2, 1, 2 / 3, 1 / 2, 1 / 3] as const;
 
+/**
+ * Screen px (on the HUD's 1600 x 900 layout) the hotbar takes at the bottom. The camera may scroll
+ * the map's front edge up past it, so a ninja standing in the front metres of the depth isn't hidden
+ * under the hotbar (the Y-axis test).
+ */
+const HOTBAR_H = 140;
+
 /** Canvas pixels per map pixel: whole steps from 1 up (crisp pixel art), the plain fraction below. */
 /** How long after the dice (ms) Space and Enter only skip them and never end the turn. */
 const DICE_KEY_GRACE = 700;
@@ -214,7 +221,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
       const vh = size.current.h / cam.current.zoom;
       const minY = art.backdropTop;
       const maxX = Math.max(0, map.px.width - vw);
-      const maxY = Math.max(minY, map.px.height - vh);
+      const maxY = Math.max(minY, map.px.height - vh + (HOTBAR_H * hudKRef.current) / cam.current.zoom);
       // A view bigger than the map (zoomed far out) holds the map in its middle.
       return { x: vw >= map.px.width ? (map.px.width - vw) / 2 : Math.max(0, Math.min(maxX, x)), y: vh >= map.px.height - minY ? minY - (vh - (map.px.height - minY)) / 2 : Math.max(minY, Math.min(maxY, y)) };
     },

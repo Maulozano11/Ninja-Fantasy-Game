@@ -19,7 +19,9 @@
 // notches of an outline he drew (a nick whose three sides are all line, as between two hair spikes).
 // Effects drawn on top of the figure (cast runes, the glow round a palm) are never filled or used.
 //
-// Pure: works on the flattened frame (sprite/compose.ts calls it), no DOM.
+// Hanging cloth (capes, skirts, coat tails) is sealed first, where it is drawn (seal.ts: its cracks take
+// the line of the darkest cloth beside them, as a seam); this pass comes after, on the whole figure, and
+// finds nothing left there. Pure: works on the flattened frame (sprite/compose.ts calls it), no DOM.
 
 import { GRID, partIndex } from './raster';
 
@@ -27,6 +29,8 @@ import { GRID, partIndex } from './raster';
 export const PINHOLE = 3;
 /** The largest piece (in pixels) apart from everything else that counts as a stray speck. */
 export const SPECK = 2;
+/** How many times closing a nick may open the next one along a bare edge (each round closes one more). */
+const ROUNDS = 6;
 
 const N = GRID * GRID;
 const HELD = partIndex('held');
@@ -215,7 +219,7 @@ export function closePinholes(
     top[i] = top[owner];
     filled.push(i);
   };
-  for (let round = 0; round < 3; round++) {
+  for (let round = 0; round < ROUNDS; round++) {
     const before = filled.length;
     // Filling a pinhole leaves the air as it was: one flood a round serves both.
     const air = airOf(rgba);

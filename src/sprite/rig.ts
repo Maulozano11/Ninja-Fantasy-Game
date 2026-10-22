@@ -612,8 +612,8 @@ const DOWNED: PoseFrame[] = [DOWNED_BASE, { ...DOWNED_BASE, lean: -6.5 }];
 /**
  * Where the camp props go, for the scene that places them (design units from
  * the feet anchor at x FEET_X, y GROUND; fine pixels are twice these).
- * - SEAT_TOP: the top of the log seat under 'sit' (26 px above the feet; 'read' sits on a seat prop
- *   whose top is READ_SEAT_TOP, seats.ts).
+ * - SEAT_TOP: the top of a log seat 26 px above the feet (the camp's own seat; 'sit' and 'read' sit on a
+ *   seat prop whose top is READ_SEAT_TOP, seats.ts).
  * - SEAT_X: the middle of the seat under the hips, behind the feet.
  * - LEAN_X: the front face of the trunk, rock or pole a 'lean' rests against.
  */
@@ -644,27 +644,8 @@ const LEAN_BASE: PoseFrame = {
 };
 const LEAN = breathe(LEAN_BASE, 4);
 
-/**
- * Sit, 4 frames: on a log seat (CAMP_PROPS: its top 26 px above the feet,
- * under the hips), the feet on the ground at the anchor, leaning in a little
- * toward the fire: the near hand on the knee, the far palm out to the
- * flames. Gentle breathing.
- */
-const SEAT_HIP = 0.74;
-/** How much of a body's ankleLift its hips sink into the camp seat (see solveRig). */
+/** How much of a body's ankleLift its hips sink into a seat (a PoseFrame with `seat`, see solveRig). */
 const SEAT_SINK = 0.7;
-const SIT_LEGS = { seat: true, hip: SEAT_HIP, footN: v(0.5, groundY(SEAT_HIP, 0.5)), footF: v(0.47, groundY(SEAT_HIP, 0.47)) };
-const SIT_BASE: PoseFrame = {
-  lean: 14,
-  pelvisDx: -8.5,
-  snap: true,
-  ...SIT_LEGS,
-  handN: knee('N', 0.6, -1.4),
-  handF: arm(0.82, 0.42),
-  shapeN: 'relaxed',
-  shapeF: 'open',
-};
-const SIT = breathe(SIT_BASE, 4);
 
 /**
  * Read: the owner's three frames of his Lyra reading (docs/reference/lyra-read-owner-reference.jpg, drawn
@@ -692,6 +673,25 @@ const READ_KEY_FRAMES: PoseFrame[] = [
  */
 export const READ_KEYS = [0, 0, 1, 1, 1, 1, 1, 1, 2, 2, 1, 1] as const;
 const READ: PoseFrame[] = READ_KEYS.map((k) => READ_KEY_FRAMES[k]);
+
+/**
+ * Sit: the owner's picture of his Lyra sitting (docs/reference/lyra-sit-owner-reference.jpg, drawn at our
+ * scale: his pixel (x, y) is our fine pixel (x + 59, y + 120)), the standard sit for every character, with
+ * his read pose (2026-10-22). She sits on his rock as she reads on it (the seat prop, seats.ts, its top on
+ * READ_SEAT_TOP; her head, torso and hips as his read frames have them, a row lower, her boots on the
+ * ground), the near arm hanging at her side, the far arm reaching out forward with the hand open, the near
+ * boot straight down and the far leg stretched out forward. Every body is posed toward his joints (PoseAt).
+ * He drew one frame, and the loop holds it (SIT_KEYS), as the read pose holds each of his keys: the old
+ * sit's breathing (the chest up 1 px on half the loop) is not in his picture.
+ */
+const SIT_AT: PoseAt = { ...READ_AT, ankleF: fp(143, 0), kneeF: fp(137, 186) };
+const SIT_KEY_FRAMES: PoseFrame[] = [
+  // the near hand by the hip (hidden behind her tabard in his picture), the far one open, reaching out
+  { lean: 0, at: SIT_AT, footN: v(0, 1), footF: v(0, 1), handN: at(110, 174), handF: at(144, 166), shapeN: 'relaxed', shapeF: 'open' },
+];
+/** His one frame over the sit loop: 4 frames at POSE_FPS.sit. */
+export const SIT_KEYS = [0, 0, 0, 0] as const;
+const SIT: PoseFrame[] = SIT_KEYS.map((k) => SIT_KEY_FRAMES[k]);
 
 /** Stance for the drills: feet apart, the near foot back. */
 const STANCE = { footN: v(-0.32, 0.94), footF: v(0.36, 0.93) };

@@ -176,6 +176,15 @@ Merge checks (`git merge-tree` on the origin tips, nothing changed):
   in "Atenta" her sword runs off the left edge of his picture, and the lift closed it in a straight black
   line; now his last column of the blade is read from his picture's edge and the blade ends in his tip of
   "Leyendo" (same sword, one pixel left and down). "Leyendo" and "Pasando pagina" keep his own tip.
+  Then he sent his sit picture (`docs/reference/lyra-sit-owner-reference.jpg`) and said of "Pasando pagina"
+  next to it: *"mira la referencia la punta es un poco mas larga y afilada"*. Built on `heroine/lyra-v2`,
+  waiting for his look: her sit pose is his one frame, every pixel his (`tools/refs/lyra_sit_ref.py` ->
+  `items/lyraSitArt.ts`, `ownerFrames.ts`), held over the 4-frame loop (the old sit only breathed; his
+  picture has one frame); the sit rig of every body is posed toward his joints (`rig.ts` SIT) and sits on
+  the seat prop like read (the camp's sit spot now has his rock, not the log). All three read frames' blades
+  end in his sit tip (narrowing 1, 2, 2, 2 pixels, about 3 px longer), turned with RotSprite to their angle;
+  nothing else in them changed. Question for him: his sit rock is drawn differently from the read rock (wider
+  to the left, other stones); should it become the seat prop, or a second rock?
 - Decided 2026-10-21 (later): Warp Strike is renamed **"Shooting-Star Thrust"** (Spanish **"Estocada Fugaz"**; the owner first said "Shooting Star", then chose these), after the clan's name (Ryusei = shooting star) and to stay clear of other games' "Warp Strike". The id `ryusei_warp` stays. To apply once `icons/sheets-8-11` is merged (it touches the same strings): names, hotbar label, help text, log, clan texts, D24.
 - Decided 2026-10-21: the Spanish names are **"Golpe Warp"** and **"Comando"** (the owner: "los dos"); `icons/sheets-8-11` brings them and updates D24 in `docs/CLANS_DESIGN.md`.
 - Jutsu pacing (owner: too fast, "like a flashing star"): a first pass is merged (`8ef28a9`: 560 ms

@@ -33,8 +33,8 @@ export const SEATS: Record<SeatId, SeatDef> = {
 /** The seat a scene gets when it does not pick one. */
 export const DEFAULT_SEAT: SeatId = 'seat_rock';
 
-/** The seated poses that sit on a seat prop, at READ_SEAT_TOP. ('sit' keeps the camp's log until the owner's sit picture.) */
-export const SEATED_POSES: SpritePose[] = ['read'];
+/** The seated poses that sit on a seat prop, at READ_SEAT_TOP: his read and sit pictures both sit on his rock. */
+export const SEATED_POSES: SpritePose[] = ['read', 'sit'];
 
 /** The seat a pose sits on in a scene that picks `scene` (its own choice, else the default); none for a pose that is not seated. */
 export function seatFor(pose: SpritePose, scene?: SeatId): SeatId | null {

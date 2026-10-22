@@ -1,16 +1,17 @@
 // The owner's own frames of Lyra (ownerFrames.ts): her read pose's three keys (his "Atenta", "Leyendo",
-// "Pasando pagina") and her throw's frames 3 and 4 (his "Cuadro 1" and "Cuadro 2") are his lift, pixel
-// for pixel (the owner, 2026-10-22: "copialo exacto"): npm test.
+// "Pasando pagina"), her sit (his one frame) and her throw's frames 3 and 4 (his "Cuadro 1" and "Cuadro 2")
+// are his lift, pixel for pixel (the owner, 2026-10-22: "copialo exacto"): npm test.
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { LEGENDARY_PRESETS } from '../data/shinobiData';
 import { renderSprite, spriteLayers } from './compose';
 import { LYRA_READ } from './items/lyraReadArt';
+import { LYRA_SIT } from './items/lyraSitArt';
 import { LYRA_THROW } from './items/lyraThrowArt';
 import { jointPixel, type OwnerPiece, paintedFrame, wearsHisFigure } from './ownerFrames';
 import { GRID } from './raster';
-import { frameCount, READ_KEYS } from './rig';
+import { frameCount, READ_KEYS, SIT_KEYS } from './rig';
 import type { BodyType, SpriteAppearance, SpritePose } from './types';
 
 const lyra = LEGENDARY_PRESETS.find((p) => p.character.id === 'preset_lyra')!.character.appearance!;
@@ -45,6 +46,8 @@ function differing(rgba: Uint8ClampedArray, want: Map<number, string>): number {
 const READ_FRAMES = [0, 1, 2].map((k) => READ_KEYS.indexOf(k as 0 | 1 | 2));
 const FRAMES: [SpritePose, number, OwnerPiece[]][] = [
   ...READ_FRAMES.map((f, k) => ['read', f, LYRA_READ[k]] as [SpritePose, number, OwnerPiece[]]),
+  // (his one sit frame, every frame of the sit loop)
+  ...SIT_KEYS.map((_, f) => ['sit', f, LYRA_SIT] as [SpritePose, number, OwnerPiece[]]),
   ['throw', 3, LYRA_THROW[0]],
   ['throw', 4, LYRA_THROW[1]],
 ];
@@ -63,6 +66,9 @@ describe("the owner's own frames of Lyra", () => {
     assert.equal(frameCount('read'), READ_KEYS.length);
     assert.deepEqual([...READ_KEYS], [0, 0, 1, 1, 1, 1, 1, 1, 2, 2, 1, 1]);
     for (let f = 0; f < READ_KEYS.length; f++) assert.equal(paintedFrame('read', f), LYRA_READ[READ_KEYS[f]], `frame ${f}`);
+    // his one sit frame over the sit loop
+    assert.equal(frameCount('sit'), SIT_KEYS.length);
+    for (let f = 0; f < SIT_KEYS.length; f++) assert.equal(paintedFrame('sit', f), LYRA_SIT, `sit ${f}`);
     // the throw's wind-up and fling stay ours
     for (const f of [0, 1, 2]) assert.equal(paintedFrame('throw', f), null, `throw ${f}`);
   });
@@ -83,6 +89,22 @@ describe("the owner's own frames of Lyra", () => {
     }
     const lift = (k: number) => Math.min(...LYRA_READ[k].filter((p) => p.part === 'handF').map((p) => p.at[1] - p.pivot[1]));
     assert.ok(lift(2) < lift(0) - 6, 'the far hand is up at the page');
+  });
+
+  it('copies her hands sitting as he drew them: the far hand open, reaching out, the near one hidden at her side', () => {
+    const hand = LYRA_SIT.filter((p) => p.owner === 'top' && p.part === 'handF');
+    assert.equal(hand.length, 1, 'his open hand, one piece with its cuff');
+    const want = his(hand);
+    assert.ok(want.size > 60, `his hand (${want.size} pixels)`);
+    // every pixel of his hand in the game where he drew it, in his colour, at every frame of the loop
+    for (let f = 0; f < SIT_KEYS.length; f++) {
+      const got = renderSprite(lyra, 'sit', f).rgba;
+      for (const [i, w] of want) assert.equal(hex(got, i), w, `sit ${f}: pixel ${i % GRID},${Math.floor(i / GRID)} of his hand`);
+    }
+    // reaching out forward, his fingertips at his column 89 (our 148)
+    assert.equal(Math.max(...[...want.keys()].map((i) => i % GRID)), 148);
+    // the near forearm and hand are hidden behind her: no piece of them
+    assert.ok(!LYRA_SIT.some((p) => p.part === 'handN' || p.part === 'forearmN'));
   });
 
   it('keep his pixels in her colours and follow a colour the player changes', () => {

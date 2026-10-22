@@ -1,5 +1,5 @@
-// Frames the owner painted himself for a pose (his Lyra reading, his repaint of her throw's release and
-// follow-through): his pixels one for one, cut by owner (the option of hers that draws them: her hair,
+// Frames the owner painted himself for a pose (his Lyra reading and sitting, his repaint of her throw's
+// release and follow-through): his pixels one for one, cut by owner (the option of hers that draws them: her hair,
 // her face, the blouse with the skin of her arms and hands, the corset, the skirt, the tabard, the belt,
 // the boots with her bare thighs, the sword, the book) and by body part, each piece pinned to the rig
 // joint its part hangs from (tools/refs/owner_frames.py). On her figure (wearsHisFigure: a female body with
@@ -11,6 +11,7 @@ import { retintHex } from './color';
 import type { Depth, DrawCtx } from './ctx';
 import { LYRA_BOOT_SKIN } from './items/lyraBootsArt';
 import { LYRA_READ } from './items/lyraReadArt';
+import { LYRA_SIT } from './items/lyraSitArt';
 import { LYRA_THROW } from './items/lyraThrowArt';
 import { hisSkinTone } from './lyraFace';
 import { F_NO_OUTLINE, F_NO_TEXTURE, GRID, RES, type PartId } from './raster';
@@ -79,6 +80,8 @@ export function wearsHisFigure(look: SpriteAppearance): boolean {
 /** His painted frame of her for a pose and frame (whatever the look), if he painted one. */
 export function paintedFrame(pose: string, frame: number): OwnerPiece[] | null {
   if (pose === 'read') return LYRA_READ[readKey(frame)];
+  // (he drew one frame of her sitting: every frame of the sit loop, rig.ts SIT_KEYS)
+  if (pose === 'sit') return LYRA_SIT;
   if (pose === 'throw' && (frame === 3 || frame === 4)) return LYRA_THROW[frame - 3];
   return null;
 }

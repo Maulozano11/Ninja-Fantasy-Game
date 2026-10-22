@@ -99,9 +99,24 @@ def frame_pieces(k):
     masks.pop('seat', None)
     want = {}
     for o, mk in masks.items():
+        if o == 'held':
+            continue
         for y, x in zip(*np.nonzero(mk)):
             want[R.to_frame(x, y)] = P.hexs(m[y, x])
-    pcs = F.pieces(masks, m, R.to_frame, JOINTS[k], parts, R.LINE)
+    # her sword, ending in his sit tip (lyra_read_ref.sword_tip; past his picture's edge in "Atenta"), in
+    # our fine pixels (his line between it and another piece of hers goes with both): where it meets another
+    # piece of hers in another colour, that piece is in front
+    sword = np.zeros((256, 256), bool)
+    scol = np.zeros((256, 256, 3), int)
+    for (x, y), hx in R.sword_tip(k, masks.pop('held')).items():
+        fx, fy = R.to_frame(x, y)
+        if want.get((fx, fy), hx) != hx:
+            continue
+        sword[fy, fx] = True
+        scol[fy, fx] = F.rgb(hx)
+        want[(fx, fy)] = hx
+    pcs = F.pieces(masks, m, R.to_frame, JOINTS[k], parts, R.LINE) + F.pieces({'held': sword}, scol, lambda x, y: (x, y), JOINTS[k], parts, R.LINE)
+    pcs.sort(key=lambda p: p['owner'])
     F.check(pcs, want)
     # the book for every reader: continued under her hands, laid under them
     book, bcol = book_under_hands(masks, m, k)

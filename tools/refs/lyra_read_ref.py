@@ -24,7 +24,9 @@ ZONES says which, in panel 1's columns: a pixel takes the owner of the last zone
 takes its colour. His black line goes with every owner it touches, so each one is closed in his line.
 """
 
+import json
 import os
+import subprocess
 import sys
 
 import numpy as np
@@ -54,12 +56,17 @@ REACH = {1: ((600, 95, 1450, 1085), 74)}
 # there, since the wider fit drifts a cell elsewhere), so his blade's last column (2) is his: three cells
 # of blade between his line.
 EDGE = {0: ((0, 95, 760, 1085), 3)}
-# Past his picture's edge (left of column 2) panel 1's blade is continued to a tip: his tip of panel 2
-# (the same sword; his blade there tapers from three cells to one and closes in his line, at column 1),
-# one column left and one row down, where panel 1's blade ends (its last column of three cells is panel
-# 2's column 3 at that offset, his line above and below agreeing to the pixel). Each pixel takes the
-# nearest colour of panel 1's own (merge()). {panel: (panel whose tip it is, (dx, dy), up to this column)}
-TIP = {0: (1, (-1, 1), 2)}
+# Her sword ends in the tip of his sit picture (lyra_sit_ref.tip(); the owner, 2026-10-22, of "Pasando
+# pagina" next to that picture: "mira la referencia la punta es un poco mas larga y afilada"). In each
+# frame his blade is kept up to its last cross-section of full width, READ_BACK fine pixels back along it
+# from its end (panel 1's blade runs off his picture's edge at full width, so all of it is kept; in
+# "Leyendo" and "Pasando pagina" his short tip narrows over its last pixel); past it the blade is his sit
+# tip, his pixels and colours, taken from the same cross-section of his sit blade, turned to this blade's
+# angle with the repo's RotSprite (tools/refs/rotsprite.mts, as stampPiece turns his pieces; the angles
+# differ by a degree or two) and set where its line best goes on with this blade's own (sword_tip()).
+# TIP_X: the blade's columns, left of the guard (panel 1's columns).
+READ_BACK = {0: 0.0, 1: 1.0, 2: 1.0}
+TIP_X = 15
 # His grey page, and how far from it a pixel is still page.
 PAGE = (139, 139, 139)
 PAGE_TOL = 14
@@ -175,7 +182,7 @@ GROUND = [(48, 84), (COLS, 84), (COLS, ROWS), (48, ROWS)]
 GROUND_ROW = 92
 # Zones of one frame only, laid after ZONES (panel 1's columns).
 FRAME_ZONES = {
-    # the blade's end left of his picture's edge (TIP) and his last column of it, over the rock's zone
+    # his last column of the blade at his picture's edge, over the rock's zone
     0: [('held', [(0, 59), (3, 59), (3, 64), (0, 64)], None)],
     1: [],
     # the far hand lifting the far page, above the book
@@ -216,20 +223,11 @@ def frame(k):
     for poly in OTHERS[k]:
         fg &= ~P.inside(poly, ROWS, COLS)
     fg[0] = False
-    # the cells read again from the picture's edge and the tip continued past it: kept out of merge(), so
-    # his colours elsewhere stay as they were, and given the nearest of the colours merge() found
+    # the cells read again from the picture's edge: kept out of merge(), so his colours elsewhere stay as
+    # they were, and given the nearest of the colours merge() found
     new = np.zeros((ROWS, COLS), bool)
     if k in EDGE:
         new[:, :EDGE[k][1]] = fg[:, :EDGE[k][1]]
-    if k in TIP:
-        src, (dx, dy), x1 = TIP[k]
-        ms, fgs, _ = frame(src)
-        for y in range(ROWS):
-            for x in range(x1):
-                ys, xs = y - dy, x - dx
-                if 0 <= ys < ROWS and 0 <= xs < COLS and fgs[ys, xs]:
-                    out[y, x] = ms[ys, xs]
-                    fg[y, x] = new[y, x] = True
     m = P.merge(out, fg & ~new, TOL)
     if new.any():
         his = np.unique(m[fg & ~new], axis=0)
@@ -276,3 +274,62 @@ def ground(fg, line):
 def to_frame(x, y):
     """Panel 1's column and row to our fine pixel."""
     return x + OFFSET[0], y + OFFSET[1]
+
+
+def rotsprite(rows, pivot, deg):
+    """The repo's RotSprite (src/sprite/rotsprite.ts rotateTemplate, through tools/refs/rotsprite.mts):
+    the template's pixels turned by deg about its pivot cell, [(dx, dy, ch)] from the pivot."""
+    run = subprocess.run(['npx', 'tsx', os.path.join(os.path.dirname(os.path.abspath(__file__)), 'rotsprite.mts')],
+                         input=json.dumps({'rows': rows, 'pivot': pivot, 'deg': deg}), capture_output=True, text=True,
+                         check=True, cwd=P.REPO)
+    return [tuple(p) for p in json.loads(run.stdout)]
+
+
+def sword_tip(k, held):
+    """Panel k's sword ending in his sit tip (READ_BACK): {(x, y): hex} in panel 1's columns (left of
+    column 0 too), his blade up to its cut and his sit tip past it. held: the sword's mask (owners())."""
+    import lyra_sit_ref as S
+
+    m, fg, line = frame(k)
+    cells, (os_, ds, ang_s), cut_s = S.tip()
+    o, d, ang = S.blade_axis(m, line, held, TIP_X)
+    b = S.blue(m) & held & ~line
+    b[:, TIP_X:] = False
+    cut = max(S.along(o, d, x, y) for y, x in zip(*np.nonzero(b))) - READ_BACK[k]
+    out = {}
+    for y, x in zip(*np.nonzero(held)):
+        if x >= TIP_X or S.along(o, d, x, y) <= cut:
+            out[(int(x), int(y))] = P.hexs(m[y, x])
+    # his sit tip as a template pivoted on the cell of its cut on his sit blade's axis, turned to this blade
+    hs = sorted({hx for _, _, hx, _ in cells})
+    ch = {hx: P.CHARS[i] for i, hx in enumerate(hs)}
+    of = {c: hx for hx, c in ch.items()}
+    x0 = min(c[0] for c in cells)
+    y0 = min(c[1] for c in cells)
+    grid = [['.'] * (max(c[0] for c in cells) - x0 + 1) for _ in range(max(c[1] for c in cells) - y0 + 1)]
+    for x, y, hx, _ in cells:
+        grid[y - y0][x - x0] = ch[hx]
+    ps = os_ + ds * cut_s
+    turned = rotsprite([''.join(r) for r in grid], [int(np.floor(ps[0])) - x0, int(np.floor(ps[1])) - y0], ang - ang_s)
+    pr = o + d * cut
+    base = (int(np.floor(pr[0])), int(np.floor(pr[1])))
+    # set where it goes on best with this blade: over the OVERLAP before the cut, his sit tip's line on this
+    # blade's line and its blade on this blade (ties: the nearest place, the first in this order)
+    best = None
+    for oy in (0, -1, 1):
+        for ox in (0, -1, 1):
+            score = 0
+            for dx, dy, c in turned:
+                x, y = base[0] + ox + dx, base[1] + oy + dy
+                if not cut - S.OVERLAP < S.along(o, d, x, y) <= cut:
+                    continue
+                mine = 0 <= y < ROWS and 0 <= x < COLS and held[y, x]
+                score += 1 if mine and (of[c] == '#000000') == bool(line[y, x]) else -1
+            if best is None or score > best[0]:
+                best = (score, ox, oy)
+    _, ox, oy = best
+    for dx, dy, c in turned:
+        x, y = base[0] + ox + dx, base[1] + oy + dy
+        if S.along(o, d, x, y) > cut:
+            out[(x, y)] = of[c]
+    return out

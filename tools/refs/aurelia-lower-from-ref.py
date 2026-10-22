@@ -201,6 +201,34 @@ ORPHAN_BOX = (36, 41, 72, 92)
 ORPHAN_REACH = 2
 # The pieces that take them (not the near panel, whose inner edge sets where the lining starts).
 ORPHAN_TO = ('front', 'far', 'waist')
+# Only small patches of such cells are orphans: a larger one (his two boots below the panels, each
+# a whole region of cloth and gold his line does not cut off from the front panel's) is not skirt. Taken
+# cell by cell, each cell taken let the next one be reached, and the front panel took both his boots
+# down to the shoes: at rest they lay on the boots exactly, moved they hung from the waist as two more
+# legs (the owner, 2026-10-22: "tienes un bug en la falda que esta poniendo como piernas o botas extra").
+ORPHAN_MAX = 30
+
+
+def unclaimed_patches(C, claimed, allow):
+    """The 4-connected patches of cells in ORPHAN_BOX that no piece's flood reached: cell -> patch size."""
+    x0, y0, x1, y1 = ORPHAN_BOX
+    size = {}
+    for y in range(y0, y1 + 1):
+        for x in range(x0, x1 + 1):
+            if (x, y) in size or claimed[y, x] or C[y, x] not in allow:
+                continue
+            patch, st = [(x, y)], [(x, y)]
+            size[(x, y)] = 0
+            while st:
+                a, b = st.pop()
+                for p, q in ((a + 1, b), (a - 1, b), (a, b + 1), (a, b - 1)):
+                    if x0 <= p <= x1 and y0 <= q <= y1 and (p, q) not in size and not claimed[q, p] and C[q, p] in allow:
+                        size[(p, q)] = 0
+                        patch.append((p, q))
+                        st.append((p, q))
+            for c in patch:
+                size[c] = len(patch)
+    return size
 
 
 def his_pieces(C):
@@ -214,9 +242,10 @@ def his_pieces(C):
     for name, (_, box) in SEEDS.items():
         claimed |= fills[name] if name == 'lining' else with_line(C, fills[name], box)
     x0, y0, x1, y1 = ORPHAN_BOX
+    patch = unclaimed_patches(C, claimed, allow)
     for y in range(y0, y1 + 1):
         for x in range(x0, x1 + 1):
-            if claimed[y, x] or C[y, x] not in allow:
+            if claimed[y, x] or C[y, x] not in allow or patch[(x, y)] > ORPHAN_MAX:
                 continue
             best = None
             for name in ORPHAN_TO:

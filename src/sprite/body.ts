@@ -177,7 +177,7 @@ export function drawBaseCloth(g: DrawCtx, which: 'top' | 'bottom', color: string
 /**
  * The female bodies: his bare body (docs/reference/female-base-owner-reference.jpg) as his pieces on
  * the rig fitted to his joints, back to front as he drew it: the far arm behind everything, the far
- * leg, the near leg, the pelvis and chest over the legs, the head, and the near arm in front. Each limb
+ * leg, the near leg, the pelvis and chest over the legs, his neck on its way to the head, the head, and the near arm in front. Each limb
  * is upper piece, lower piece and hand or foot, the lower one over the upper with its round cap over the
  * joint. A hand turns with its forearm and a foot stands level under its ankle; under footwear the boot
  * draws the foot. His hands are his closed fists; a hand round a weapon's grip, pointing, open or
@@ -228,9 +228,28 @@ function drawBaseBody(g: DrawCtx): void {
   const worn = (slot: 'armor' | 'top') => g.has(slot) && !g.look.slots[slot]!.id.endsWith('_none');
   const dressed = worn('armor') || (worn('top') && !g.has('top', 'top_sports_bra'));
   stampBase(g, 'torso.body', P.chest, r.neck, up, 'torso', undefined, undefined, dressed);
+  // His neck rides the bone from its foot to the head, so a head hung forward (the throw's release and
+  // follow-through) takes the neck with it instead of leaving it standing up behind the head.
+  const neckDeg = segAngle(r.neck, r.head);
+  stampBase(g, 'torso.body', P.neck, r.neck, neckDeg, 'torso');
+  // A head further from the neck than his (the throw hangs it well ahead of the chest) is reached by his
+  // neck drawn on along its bone by the difference, as a longer forearm is: his own rows, never a gap
+  // between the neck and the head.
+  const [hx, hy] = FEMALE_BASE_JOINTS.head;
+  const [nx, ny] = FEMALE_BASE_JOINTS.neck;
+  const extra = Math.hypot(r.head.x - r.neck.x, r.head.y - r.neck.y) - Math.hypot(hx - nx, hy - ny) / RES;
+  // his neck's rows stand straight up at rest: turned with the bone, they run this way
+  const along = ((neckDeg - P.neck.angle - 90) * Math.PI) / 180;
+  for (let d = 0; extra > 0.25 && d < extra; ) {
+    d = Math.min(extra, d + NECK_STEP);
+    stampBase(g, 'torso.body', P.neck, v(r.neck.x + Math.cos(along) * d, r.neck.y + Math.sin(along) * d), neckDeg, 'torso');
+  }
   drawHead(g);
   arm('N');
 }
+
+/** How far along its bone (design units) each further stamp of his neck goes: less than its rows, so they overlap. */
+const NECK_STEP = 2;
 
 /** Torso-local coordinates of a design point: x along the shoulders (toward the face), y up from the pelvis. */
 function torsoLocal(g: DrawCtx, x: number, y: number): [number, number] {

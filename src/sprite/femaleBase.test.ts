@@ -6,6 +6,8 @@ import { renderSprite, spriteLayers } from './compose';
 import type { Depth } from './ctx';
 import { type BasePiece, FEMALE_BASE, FEMALE_BASE_JOINTS, FEMALE_BASE_SKIN } from './femaleBaseArt';
 import { GRID, type Layer, partIndex, type PartId, RES } from './raster';
+import { LEGENDARY_PRESETS } from '../data/shinobiData';
+import { getAppearance } from './legacy';
 import { drawRig, frameCount } from './rig';
 import { CAMP_POSES, MOVE_POSES, SPRITE_POSES, type BodyType, type SpriteAppearance, type SpritePose } from './types';
 
@@ -92,10 +94,10 @@ describe("the owner's bare female body", () => {
 
   it('is his picture at rest, every pixel of his body below the head', () => {
     // His pieces laid at his joints, unturned, back to front as body.ts draws them.
-    const order: (keyof typeof FEMALE_BASE)[] = ['upperArmF', 'forearmF', 'handF', 'thighF', 'shinF', 'footF', 'thighN', 'shinN', 'footN', 'pelvis', 'chest', 'upperArmN', 'forearmN', 'handN'];
+    const order: (keyof typeof FEMALE_BASE)[] = ['upperArmF', 'forearmF', 'handF', 'thighF', 'shinF', 'footF', 'thighN', 'shinN', 'footN', 'pelvis', 'chest', 'neck', 'upperArmN', 'forearmN', 'handN'];
     const joint: Record<string, keyof typeof FEMALE_BASE_JOINTS> = {
       upperArmF: 'shoulderF', forearmF: 'elbowF', handF: 'wristF', thighF: 'hipF', shinF: 'kneeF', footF: 'ankleF',
-      thighN: 'hipN', shinN: 'kneeN', footN: 'ankleN', pelvis: 'pelvis', chest: 'neck', upperArmN: 'shoulderN', forearmN: 'elbowN', handN: 'wristN',
+      thighN: 'hipN', shinN: 'kneeN', footN: 'ankleN', pelvis: 'pelvis', chest: 'neck', neck: 'neck', upperArmN: 'shoulderN', forearmN: 'elbowN', handN: 'wristN',
     };
     const want = new Map<number, string>();
     for (const k of order) {
@@ -203,6 +205,93 @@ describe("the owner's bare female body", () => {
         }
         // a fist round a thrown kunai's grip opens where the grip leaves it
         assert.ok(open.length <= 3, `${body} ${pose} ${fr}: open edge at ${open.join(' ')}`);
+      }
+    }
+  });
+});
+
+/** A skin colour on screen: warm and light (his skin and every skin tone the creator gives, not his line). */
+const skinLike = (rgba: Uint8ClampedArray, i: number): boolean => {
+  const [r, g, b, a] = [rgba[i * 4], rgba[i * 4 + 1], rgba[i * 4 + 2], rgba[i * 4 + 3]];
+  return a > 0 && r > 120 && r >= g && g >= b && r - b > 35;
+};
+
+/**
+ * How far (degrees) the skin standing above the neck's foot points away from the head: the middle of the
+ * torso's skin more than 3 px above the neck's foot (along the torso's up), across the neck's width and
+ * within 10 px of it, against the way to the head. 0 when the head covers it (fewer than 4 pixels show).
+ */
+function neckAwayFromHead(f: ReturnType<typeof renderSprite>): { deg: number; n: number } {
+  const r = f.rig;
+  const torso = partIndex('torso');
+  const nx = r.neck.x * RES;
+  const ny = r.neck.y * RES;
+  let n = 0;
+  let cx = 0;
+  let cy = 0;
+  for (let i = 0; i < GRID * GRID; i++) {
+    if (f.part[i] !== torso || !skinLike(f.rgba, i)) continue;
+    const dx = (i % GRID) + 0.5 - nx;
+    const dy = ((i / GRID) | 0) + 0.5 - ny;
+    const up = dx * r.up.x + dy * r.up.y;
+    const across = dx * r.right.x + dy * r.right.y;
+    if (up > 3 && Math.abs(across) <= 5 && Math.hypot(dx, dy) < 10) {
+      n++;
+      cx += dx;
+      cy += dy;
+    }
+  }
+  if (n < 4) return { deg: 0, n };
+  const deg = ((Math.atan2(cy, cx) - Math.atan2(r.head.y * RES - ny, r.head.x * RES - nx)) * 180) / Math.PI;
+  return { deg: Math.abs(((deg + 540) % 360) - 180), n };
+}
+
+/** The side of the largest square of one skin colour on the torso (chest, neck, shoulders, back): a slab. */
+function torsoSlab(f: ReturnType<typeof renderSprite>): number {
+  const torso = partIndex('torso');
+  const sq = new Uint8Array(GRID * GRID);
+  const key = (i: number) => f.rgba[i * 4] * 65536 + f.rgba[i * 4 + 1] * 256 + f.rgba[i * 4 + 2];
+  let best = 0;
+  for (let y = 1; y < GRID; y++) {
+    for (let x = 1; x < GRID; x++) {
+      const i = y * GRID + x;
+      if (f.part[i] !== torso || !skinLike(f.rgba, i)) continue;
+      const same = (j: number) => sq[j] > 0 && key(j) === key(i);
+      sq[i] = same(i - 1) && same(i - GRID) && same(i - GRID - 1) ? 1 + Math.min(sq[i - 1], sq[i - GRID], sq[i - GRID - 1]) : 1;
+      best = Math.max(best, sq[i]);
+    }
+  }
+  return best;
+}
+
+describe('the neck, shoulders and back in every pose (the throw\'s "hombro espalda")', () => {
+  // The bare bodies, and every preset: on a female body in every pose, the others in the throw (the
+  // pose that hangs the head far ahead of the chest).
+  const looks: [string, SpriteAppearance, SpritePose[]][] = [
+    ...(['female', 'slender', 'male', 'bulky'] as BodyType[]).map((b): [string, SpriteAppearance, SpritePose[]] => [`bare ${b}`, bare(b), POSES]),
+    ...LEGENDARY_PRESETS.map((p): [string, SpriteAppearance, SpritePose[]] => {
+      const look = getAppearance(p.character);
+      return [p.character.id, look, BODIES.includes(look.body) ? POSES : ['throw']];
+    }),
+  ];
+
+  it('keeps the neck on the head, and opens no slab of one skin colour on the chest, neck or back', () => {
+    for (const [name, look, poses] of looks) {
+      const rest = torsoSlab(renderSprite(look, 'idle', 0));
+      for (const pose of poses) {
+        for (let fr = 0; fr < frameCount(pose); fr++) {
+          const f = renderSprite(look, pose, fr);
+          const at = `${name} ${pose} ${fr}`;
+          // at rest the neck under the chin points at the head; his neck left standing on the chest, with the
+          // head hung ahead of it, pointed 84-108 degrees away from it
+          const { deg, n } = neckAwayFromHead(f);
+          assert.ok(deg <= 60, `${at}: the skin above the neck's foot (${n} px) points ${Math.round(deg)} degrees away from the head`);
+          // The male and bulky bodies' bare torso is one flat tone at rest (their generated body, not his
+          // pieces): a slab there is how they are drawn standing, so only his bodies and dressed ones are held to it.
+          if (rest > 6) continue;
+          const s = torsoSlab(f);
+          assert.ok(s <= Math.max(3, rest + 1), `${at}: a ${s}x${s} square of one skin colour on the torso (at rest ${rest})`);
+        }
       }
     }
   });

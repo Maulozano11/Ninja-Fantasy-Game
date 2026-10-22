@@ -5,8 +5,9 @@ import { describe, it } from 'node:test';
 import { renderSprite } from './compose';
 import { getItem } from './catalog';
 import { defaultAppearance } from './legacy';
+import type { DrawCtx } from './ctx';
 import type { PaintedPiece } from './painted';
-import { GRID, RES } from './raster';
+import { GRID, Layer, RES, type Vec } from './raster';
 import { GROUND } from './rig';
 import { CAMP_POSES, MOVE_POSES, SPRITE_POSES, type BodyType, type SlotId, type SpriteAppearance, type SpritePose } from './types';
 import * as shirt from './items/shortSleeveShirtArt';
@@ -68,17 +69,17 @@ function atRest(rgba: Uint8ClampedArray, piece: PaintedPiece, rest: [number, num
 // Each item alone on our male at rest, and how much of each of its pieces must show his pixels where he
 // drew them (what is missing is under the item's other pieces, our head or our hands, or continued
 // where his picture hid it; the lower piece of a joint is partly under the end of the upper one, which
-// overlaps it).
+// overlaps it; the near cargo shin is almost all under its thigh and its boot).
 type Case = [string, Partial<Record<SlotId, string>>, Record<string, unknown>, Record<string, [number, number]>, Record<string, string>, Record<string, number>];
 const CASES: Case[] = [
   ['short-sleeved shirt', { top: 'top_highcollar' }, shirt, shirt.SHIRT_REST, shirt.SHIRT_SLOT, { SHIRT_BODY: 0.95, SHIRT_SLEEVE_F: 0.65, SHIRT_ARM_UP_F: 0.95, SHIRT_ARM_FORE_F: 0.68, SHIRT_ARM_UP_N: 0.9, SHIRT_ARM_FORE_N: 0.66 }],
-  ['cargo trousers', { bottom: 'bottom_cargo' }, cargo, cargo.CARGO_REST, cargo.CARGO_SLOT, { CARGO_SEAT: 0.93, CARGO_THIGH_N: 0.5, CARGO_SHIN_N: 0.18, CARGO_THIGH_F: 0.64, CARGO_SHIN_F: 0.58 }],
+  ['cargo trousers', { bottom: 'bottom_cargo' }, cargo, cargo.CARGO_REST, cargo.CARGO_SLOT, { CARGO_SEAT: 0.93, CARGO_THIGH_N: 0.5, CARGO_SHIN_N: 0.06, CARGO_THIGH_F: 0.64, CARGO_SHIN_F: 0.58, CARGO_GAP: 0.9 }],
   ['leather boots', { feet: 'feet_leather' }, boots, boots.LEATHER_BOOT_REST, boots.LEATHER_BOOT_SLOT, { BOOT_SHAFT_N: 0.63, BOOT_FOOT_N: 0.95, BOOT_SHAFT_F: 0.7, BOOT_FOOT_F: 0.87 }],
   ['belt', { waist: 'waist_belt' }, belt, belt.BELT_REST, belt.BELT_SLOT, { BELT: 0.95 }],
   ["traveler's gloves", { hands: 'hands_traveler_gloves' }, gloves, gloves.TRAVELER_GLOVE_REST, gloves.TRAVELER_GLOVE_SLOT, { TRAVELER_GLOVE_N: 0.95, TRAVELER_GLOVE_F: 0.95 }],
   ["traveler's cape", { cape: 'cape_traveler' }, cape, cape.TRAVELER_REST, cape.TRAVELER_SLOT, { TRAVELER_HOOD: 0.82, TRAVELER_SHOULDER: 0.95, TRAVELER_BACK: 0.55 }],
   ['bomber jacket', { top: 'top_bomber' }, bomber, bomber.BOMBER_REST, bomber.BOMBER_SLOT, { BOMBER_BODY: 0.88, BOMBER_SLEEVE_UP_N: 0.95, BOMBER_SLEEVE_FORE_N: 0.57, BOMBER_SLEEVE_UP_F: 0.68, BOMBER_SLEEVE_FORE_F: 0.52, BOMBER_FIST_F: 0.83 }],
-  ['belted trousers', { bottom: 'bottom_leggings' }, leggings, leggings.LEGGINGS_REST, leggings.LEGGINGS_SLOT, { LEGGINGS_SEAT: 0.94, LEGGINGS_THIGH_N: 0.5, LEGGINGS_SHIN_N: 0.13, LEGGINGS_THIGH_F: 0.68, LEGGINGS_SHIN_F: 0.55 }],
+  ['belted trousers', { bottom: 'bottom_leggings' }, leggings, leggings.LEGGINGS_REST, leggings.LEGGINGS_SLOT, { LEGGINGS_SEAT: 0.94, LEGGINGS_THIGH_N: 0.5, LEGGINGS_SHIN_N: 0.13, LEGGINGS_THIGH_F: 0.68, LEGGINGS_SHIN_F: 0.42 }],
   ['open-toed boots', { feet: 'feet_cowboy' }, openBoots, openBoots.OPEN_BOOT_REST, openBoots.OPEN_BOOT_SLOT, { OPEN_BOOT_SHAFT_N: 0.59, OPEN_BOOT_FOOT_N: 0.95, OPEN_BOOT_SHAFT_F: 0.9, OPEN_BOOT_FOOT_F: 0.91 }],
 ];
 
@@ -252,5 +253,104 @@ describe("the owner's Trunks clothes", () => {
         assert.ok(his < 30, `${body} ${JSON.stringify(items)}: ${his} pixels of his`);
       }
     }
+  });
+
+  it('turn the far trouser leg whole: one piece, no hole, joined to the boot, as wide as at rest, in every pose and frame', () => {
+    // The owner: "el pantalón de trunks en la pierna izquierda tiene un bug" (a dark flap and a notch at the
+    // knee, the hem off the boot). The far leg's own layers as the trousers drew them (their draw wrapped).
+    const farLeg = (l: SpriteAppearance, pose: SpritePose, fr: number) => {
+      const item = getItem(l.slots.bottom!.id)!;
+      const draw = item.draw;
+      let g: DrawCtx | undefined;
+      item.draw = (gg, c, p) => {
+        g = gg;
+        draw(gg, c, p);
+      };
+      try {
+        renderSprite(l, pose, fr);
+      } finally {
+        item.draw = draw;
+      }
+      return { cloth: g!.L('farLeg.cloth'), boot: g!.L('farLeg.feet'), rig: g!.rig };
+    };
+    // How wide the leg is across the limb from `a` to `b`, `t` of the way along (fine pixels): its cloth
+    // (of `part` alone, when given) in a slab 6 pixels thick across the limb there, by area, so a turned
+    // piece's stairs do not count.
+    const across = (L: Layer, a: Vec, b: Vec, t: number, part?: number) => {
+      const len = Math.hypot(b.x - a.x, b.y - a.y) * RES;
+      const [ux, uy] = [((b.x - a.x) * RES) / len, ((b.y - a.y) * RES) / len];
+      const [px, py] = [(a.x + (b.x - a.x) * t) * RES, (a.y + (b.y - a.y) * t) * RES];
+      let n = 0;
+      for (let i = 0; i < GRID * GRID; i++) {
+        if (L.mat[i] < 0 || (part !== undefined && L.part[i] !== part)) continue;
+        const [dx, dy] = [(i % GRID) + 0.5 - px, Math.floor(i / GRID) + 0.5 - py];
+        if (Math.abs(dx * ux + dy * uy) <= 3 && Math.abs(-dx * uy + dy * ux) <= 16) n++;
+      }
+      return n / 6;
+    };
+    const turnOf = (d: number) => ((((d + 180) % 360) + 360) % 360) - 180;
+    const angle = (a: Vec, b: Vec) => (Math.atan2(b.y - a.y, b.x - a.x) * 180) / Math.PI;
+    const thighF = PARTS.indexOf('thighF');
+    // 4-neighbours of a pixel inside the frame.
+    const around = (i: number) => [i - 1, i + 1, i - GRID, i + GRID].filter((j) => j >= 0 && j < GRID * GRID && Math.abs((j % GRID) - (i % GRID)) <= 1);
+    const looks = [
+      painted({ cape: 'cape_traveler', top: 'top_highcollar', bottom: 'bottom_cargo', feet: 'feet_leather', waist: 'waist_belt', hands: 'hands_traveler_gloves' }),
+      painted({ top: 'top_bomber', bottom: 'bottom_leggings', feet: 'feet_cowboy' }),
+    ];
+    const bad: string[] = [];
+    for (const body of ['male', 'bulky'] as BodyType[]) {
+      for (const l of looks) {
+        l.body = body;
+        const name = `${body} ${l.slots.bottom!.id}`;
+        let rest: { thigh: number; shin: number; bend: number } | undefined;
+        for (const pose of POSES) {
+          const n = frameCount(rigPoseFor(pose, l.cast?.style, l.slots.held?.id));
+          for (let fr = 0; fr < n; fr++) {
+            const { cloth, boot, rig } = farLeg(l, pose, fr);
+            const at = `${name} ${pose} ${fr}`;
+            // One piece (4-connected), touching the boot (on it or beside it).
+            const seen = new Uint8Array(GRID * GRID);
+            let pieces = 0;
+            let joined = false;
+            for (let i0 = 0; i0 < GRID * GRID; i0++) {
+              if (cloth.mat[i0] < 0 || seen[i0]) continue;
+              pieces++;
+              const stack = [i0];
+              seen[i0] = 1;
+              while (stack.length) {
+                const i = stack.pop()!;
+                for (const j of around(i)) {
+                  if (boot.mat[j] >= 0 || boot.mat[i] >= 0) joined = true;
+                  if (cloth.mat[j] >= 0 && !seen[j]) {
+                    seen[j] = 1;
+                    stack.push(j);
+                  }
+                }
+              }
+            }
+            if (pieces !== 1) bad.push(`${at}: the far trouser leg in ${pieces} pieces`);
+            if (!joined) bad.push(`${at}: the far trouser leg off its boot`);
+            // No hole in it: every empty pixel reaches the frame's edge round the leg.
+            const out = new Uint8Array(GRID * GRID);
+            const stack: number[] = [];
+            for (let k = 0; k < GRID; k++) for (const i of [k, (GRID - 1) * GRID + k, k * GRID, k * GRID + GRID - 1]) if (cloth.mat[i] < 0 && !out[i]) (out[i] = 1), stack.push(i);
+            while (stack.length) for (const j of around(stack.pop()!)) if (cloth.mat[j] < 0 && !out[j]) (out[j] = 1), stack.push(j);
+            const holes: string[] = [];
+            for (let i = 0; i < GRID * GRID; i++) if (cloth.mat[i] < 0 && !out[i]) holes.push(`${i % GRID},${Math.floor(i / GRID)}`);
+            if (holes.length) bad.push(`${at}: holes in the far trouser leg at ${holes.join(' ')}`);
+            // As wide as at rest, give or take a pixel: across the thigh (its own cloth, whatever lies under
+            // it), and across the leg under the knee while the knee bends no more than 20 degrees past the way
+            // he drew it (folded further, the back of the thigh rightly comes down over the calf).
+            const thigh = across(cloth, rig.hipF, rig.kneeF, 0.6, thighF);
+            const shin = across(cloth, rig.kneeF, rig.ankleF, 0.35);
+            const bend = turnOf(angle(rig.kneeF, rig.ankleF) - angle(rig.hipF, rig.kneeF));
+            rest ??= { thigh, shin, bend };
+            if (Math.abs(thigh - rest.thigh) > 1) bad.push(`${at}: the thigh ${thigh.toFixed(2)} wide, ${rest.thigh.toFixed(2)} at rest`);
+            if (Math.abs(turnOf(bend - rest.bend)) <= 20 && Math.abs(shin - rest.shin) > 1) bad.push(`${at}: the leg under the knee ${shin.toFixed(2)} wide, ${rest.shin.toFixed(2)} at rest`);
+          }
+        }
+      }
+    }
+    assert.deepEqual(bad, []);
   });
 });

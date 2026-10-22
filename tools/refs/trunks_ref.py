@@ -219,10 +219,11 @@ def module(pic, doc, pieces, prefix, base_names, quantile=None):
     black line and whatever else stays as he drew it).
 
     It exports, for each slot in `base_names` (slot -> constant name), his colour the slot recolours
-    from: his colour of middle lightness among that slot's pixels (or at `quantile[slot]`), counting only
-    his own pixels, not those continued where a piece is hidden; with the slot at that colour every pixel
-    is his. Then <prefix>_SLOT (each colour -> its slot) and <prefix>_REST (where each piece lands in our
-    male idle frame 0, unturned: the fine pixel of its first row's first cell), which the tests check.
+    from: his colour of middle lightness among that slot's pixels (or at `quantile[slot]`, or the colour
+    `quantile[slot]` names), counting only his own pixels, not those continued where a piece is hidden;
+    with the slot at that colour every pixel is his. Then <prefix>_SLOT (each colour -> its slot) and
+    <prefix>_REST (where each piece lands in our male idle frame 0, unturned: the fine pixel of its first
+    row's first cell), which the tests check.
     """
     a = native(pic)
     J = joints(pic)
@@ -256,7 +257,8 @@ def module(pic, doc, pieces, prefix, base_names, quantile=None):
     dist = lambda h, k: sum(abs(int(h[i:i + 2], 16) - int(k[i:i + 2], 16)) for i in (1, 3, 5))  # noqa: E731
     for sl, name in base_names.items():
         f = sorted(found[sl])
-        want = f[int(len(f) * quantile.get(sl, 0.5))][1]
+        q = quantile.get(sl, 0.5)
+        want = q if isinstance(q, str) else f[int(len(f) * q)][1]
         # The palettes keep the first of colours within 3 of each other: the base is the one standing for it.
         bases[sl] = min(sorted(h for h in slots if slots[h] == sl), key=lambda h: dist(h, want))
         out.append(f"export const {name} = '{bases[sl]}';")
@@ -399,6 +401,42 @@ T2_NEAR_LEG = [(30, 58), (53, 58), (53, 72), (51, 80), (51, 84), (30, 84)]  # th
 T2_KNEE = {'N': 75, 'F': 71}    # the thigh's pieces end 2 rows under this row, the shin's start 2 rows above
 T2_HIP = 61                     # the seat's piece ends on this row, the thighs' start 3 rows above
 T2_FOOT = {'N': 90, 'F': 88}    # the boot's shaft ends 2 rows under this row, its foot starts here
+# Each leg: (where what the sword hides is filled in, the side of its inner black line the leg lies on).
+# The near leg's inner line runs from x 53 under the crotch down to where it shows over his boot (x 48 at
+# row 77); the far leg's shows at x 55 and x 56 beside the sword and runs straight on down to his far
+# boot's shaft (x 56 at row 81).
+T2_LEG = {
+    'N': ([(37, 59), (53, 59), (53, 73), (50, 76), (50, 77), (49, 77), (49, 79), (48, 79), (48, 80), (47, 80), (47, 83), (36, 83), (35, 81), (37, 70)],
+          [(0, 50), (53, 50), (53, 73), (50, 76), (50, 77), (49, 77), (49, 79), (48, 79), (48, 80), (47, 80), (47, 100), (0, 100)]),
+    'F': ([(53, 59), (65, 59), (65, 63), (68, 63), (68, 80), (66, 81), (56, 81), (56, 70), (55, 70), (55, 67), (53, 67)],
+          [(53, 50), (100, 50), (100, 100), (56, 100), (56, 70), (55, 70), (55, 67), (53, 67)]),
+}
+
+
+def between_legs(a, pants, legs, hip, black, hidden):
+    """What he drew of the trousers' colours between the legs, which neither leg takes (under the hips),
+    continued where `hidden` (a polygon) lies under the sword between them: shown only while the legs
+    stand as he drew them."""
+    m = pants & ~(legs['N'][0] | legs['F'][0])
+    m[:hip + 1] = False
+    under = region(hidden) & ~background(a) & ~(legs['N'][0] | legs['F'][0]) & ~m
+    return fill(a, m, a, under, black, 'near', close=False)
+
+
+def into_boot(shin, boot, black, shape_of):
+    """Where a trouser leg reaches on, 2 rows under its hem, into the boot's shaft, in his black line: under
+    the boot as he drew it, and between the hem and the boot's top when the leg turns, so no gap opens
+    there. A piece of its own (drawn only over boots), so a bare leg's hem stays as he drew it."""
+    m = np.zeros_like(shin)
+    for x in range(shin.shape[1]):
+        ys = np.nonzero(shin[:, x])[0]
+        if not len(ys):
+            continue
+        for y in range(ys[-1] + 1, min(ys[-1] + 3, shin.shape[0])):
+            if not boot[y, x]:
+                break
+            m[y, x] = True
+    return m, np.broadcast_to(black, shape_of.shape).copy()
 
 
 def trunks2():
@@ -449,13 +487,17 @@ def trunks2():
     m |= M['sleeve_f'] & region(box(59, 31, 61, 42))
     P['shirt'] = (m, c)
     # The trousers: each leg's side of his inseam, filled in under the sword (up and down his folds),
-    # then cut into the seat, the thighs and the shins. The cape's inside he drew beside the near leg,
-    # and his browns over the boots (outside the sword), stay his: the legs are not filled over them.
+    # then cut into the seat, the thighs and the shins. The cape's inside he drew beside the near leg
+    # stays his: the legs are not filled over it. Each leg is only what lies inside its own black line
+    # (T2_LEG): the browns between his legs (the cape's inside, under the crotch and over the boots) are
+    # no leg's but a piece of their own (continued under the sword), and under the sword each leg's inner
+    # line runs on from where it shows to his boot's top.
     legs = {}
     near = region(T2_NEAR_LEG)
-    for s, poly in (('N', [(37, 59), (53, 59), (53, 72), (51, 80), (51, 83), (36, 83), (35, 81), (37, 70)]),
-                    ('F', [(53, 59), (65, 59), (65, 63), (68, 63), (68, 80), (66, 81), (55, 81), (51, 83), (51, 80), (53, 72)])):
-        legs[s] = grown(a, K, black, M['pants'] & (near if s == 'N' else ~near), a, poly, 'near', gaps=(M['cape_back'] | (np.isin(K, ('brown', 'gold', 'red', 'purple')) & ~region(T2['sword'][0]))) & ~M['pants'])
+    for s in 'NF':
+        poly, inner = T2_LEG[s]
+        legs[s] = grown(a, K, black, M['pants'] & (near if s == 'N' else ~near) & region(inner), a, poly, 'near', gaps=(M['cape_back'] | (np.isin(K, ('brown', 'gold', 'red', 'purple')) & ~region(T2['sword'][0]))) & ~M['pants'])
+    P['gap'] = between_legs(a, M['pants'], legs, T2_HIP, black, box(47, 66, 57, 81))
     seat = (legs['N'][0] | legs['F'][0]) & region(box(0, 0, 100, T2_HIP + 1))
     # The waist goes on up 3 rows under the shirt's hem (continued up his folds), so a bending body
     # never opens a gap between them.
@@ -473,6 +515,7 @@ def trunks2():
         f = T2_FOOT[s.upper()]
         P['boot_shaft_' + s] = (split(m, box(0, 0, 100, f + 3)), c)
         P['boot_foot_' + s] = (split(m, box(0, f, 100, 100)), c)
+        P['into_boot_' + s] = into_boot(P['shin_' + s][0], P['boot_shaft_' + s][0], black, a)
     return a, K, M, P, black
 
 
@@ -505,6 +548,13 @@ T3_NEAR_LEG = [(30, 57), (53, 57), (53, 66), (50, 72), (50, 84), (30, 84)]
 T3_KNEE = {'N': 76, 'F': 72}
 T3_HIP = 60
 T3_FOOT = {'N': 91, 'F': 89}
+# As T2_LEG. The far leg's inner line shows down to row 71 (x 55 to 58, beside the white he left between
+# the legs) and runs straight on down under the sword to his far boot's shaft (x 57 at row 79).
+T3_LEG = {
+    'N': ([(38, 59), (53, 59), (53, 66), (49, 72), (49, 80), (38, 80)], [(0, 50), (53, 50), (53, 100), (0, 100)]),
+    'F': ([(53, 59), (64, 59), (64, 63), (67, 63), (67, 79), (57, 79), (57, 70), (56, 70), (56, 69), (55, 69), (55, 67), (54, 67), (54, 66), (53, 66)],
+          [(53, 50), (100, 50), (100, 100), (57, 100), (57, 70), (56, 70), (56, 69), (55, 69), (55, 67), (54, 67), (54, 66), (53, 66)]),
+}
 
 
 def trunks3():
@@ -554,9 +604,9 @@ def trunks3():
     # The trousers, filled in under the sword, cut as Trunks 2's; the belt rides the seat.
     legs = {}
     near = region(T3_NEAR_LEG)
-    for s, poly in (('N', [(38, 59), (53, 59), (53, 66), (49, 72), (49, 80), (38, 80)]),
-                    ('F', [(53, 59), (64, 59), (64, 63), (67, 63), (67, 79), (55, 79), (53, 72), (53, 66)])):
-        legs[s] = G(M['pants'] & (near if s == 'N' else ~near), a, poly, 'near')
+    for s in 'NF':
+        poly, inner = T3_LEG[s]
+        legs[s] = G(M['pants'] & (near if s == 'N' else ~near) & region(inner), a, poly, 'near')
     seat = (legs['N'][0] | legs['F'][0]) & region(box(0, 0, 100, T3_HIP + 1))
     # The waist goes on up under the jacket's hem, 3 rows over the belt's top (continued up his folds),
     # so the jacket and the seat, each set on its own joint, never open a gap between them; not past the
@@ -574,6 +624,7 @@ def trunks3():
         f = T3_FOOT[s.upper()]
         P['boot_shaft_' + s] = (split(m, box(0, 0, 100, f + 3)), c)
         P['boot_foot_' + s] = (split(m, box(0, f, 100, 100)), c)
+        P['into_boot_' + s] = into_boot(P['shin_' + s][0], P['boot_shaft_' + s][0], black, a)
     return a, K, M, P, black
 
 

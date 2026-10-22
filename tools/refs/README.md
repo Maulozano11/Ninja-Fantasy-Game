@@ -140,8 +140,12 @@ folders.
   his picture (its pivot is the cell our joint falls on at rest; his legs are a little shorter and wider than ours and
   his far arm hangs where ours does give or take a pixel, so no piece is moved: at rest every pixel is his, where he
   drew it). Each module exports its pieces, the colours its slots recolour from, `<PREFIX>_SLOT` (his colours by slot;
-  `line` stays) and `<PREFIX>_REST` (where each piece lands at rest), which `src/sprite/trunks.test.ts` checks. One script
-  per part:
+  `line` stays) and `<PREFIX>_REST` (where each piece lands at rest), which `src/sprite/trunks.test.ts` checks. The
+  trousers: each leg is only what lies inside its own black line (`T2_LEG` / `T3_LEG`: under the sword its inner line
+  runs on from where it shows to his boot's top), what he drew between the legs is a piece of its own (`CARGO_GAP`,
+  drawn only at rest), each shin turns about the ankle as his boots do, and `*_INTO_BOOT_*` carries the hem 2 rows on
+  under the boot (drawn over his boots only); `stampTrouserLeg` (`src/sprite/items/trunksKit.ts`) turns each leg whole
+  and fills the bent knee. One script per part:
 
       python3 -I tools/refs/trunks-drifter-hair-from-ref.py src/sprite/items/drifterHairArt.ts [study]
       python3 -I tools/refs/trunks-surge-hair-from-ref.py src/sprite/items/surgeHairArt.ts [study]

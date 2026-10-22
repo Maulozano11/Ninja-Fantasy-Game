@@ -10,6 +10,7 @@ export const LEGGINGS_CREST = '#5b4a76';
 /** Which colour slot recolours each of his colours ('line': his black line and what else stays as he drew it). */
 export const LEGGINGS_SLOT: Record<string, 'line' | 'main' | 'seam'> = {
   '#000000': 'line',
+  '#000101': 'line',
   '#020303': 'line',
   '#060911': 'line',
   '#070b17': 'main',
@@ -87,9 +88,11 @@ export const LEGGINGS_SLOT: Record<string, 'line' | 'main' | 'seam'> = {
 export const LEGGINGS_REST: Record<string, [number, number]> = {
   LEGGINGS_SEAT: [113, 169],
   LEGGINGS_THIGH_F: [128, 175],
-  LEGGINGS_SHIN_F: [128, 187],
+  LEGGINGS_SHIN_F: [132, 187],
   LEGGINGS_THIGH_N: [113, 175],
   LEGGINGS_SHIN_N: [113, 191],
+  LEGGINGS_INTO_BOOT_F: [132, 196],
+  LEGGINGS_INTO_BOOT_N: [113, 197],
 };
 
 /** The belt, its buckle, the waist and the top of both legs: it rides the pelvis. */
@@ -160,12 +163,12 @@ export const LEGGINGS_THIGH_F: PaintedPiece = {
     '.aaeeehhhlmea.',
     '..aeehelhlmeea',
     '..aaeepllhhmea',
-    'aa.aeeelhhhmea',
-    'aba.aeeehhhnea',
-    'abeaeaeeelhqla',
-    'abeeeeehheemla',
-    'abeeeeeehhlcea',
-    '.aeeeeeeeeceea',
+    '...aeeelhhhmea',
+    '....aeeehhhnea',
+    '....aaeeelhqla',
+    '....aeehheemla',
+    '....aeeehhlcea',
+    '....aeeeeeceea',
   ],
   colors: {
     a: '#000000',
@@ -186,35 +189,34 @@ export const LEGGINGS_THIGH_F: PaintedPiece = {
   },
 };
 
-/** The far leg from the knee to the hem: it turns with the shin about the knee. */
+/** The far leg from the knee to the hem: it turns with the shin about the ankle, as the boot does. */
 export const LEGGINGS_SHIN_F: PaintedPiece = {
-  pivot: [10, 0],
+  pivot: [3, 16],
   angle: 98.58,
   rows: [
-    'aba.acccdddeca',
-    'abcacacccddeda',
-    'abcccccddcfhia',
-    'abccccccdddcca',
-    '.accccccccccca',
-    '.accccccccjkla',
-    '.accccccccmlna',
-    '..acccccccmlna',
-    '..aaaaaaaaaaaa',
+    'abbbcccdba',
+    'aabbbccdca',
+    'abbccbefha',
+    'abbbcccbba',
+    'abbbbbbbba',
+    'abbbbbijka',
+    'abbbbblkma',
+    'abbbbblkma',
+    'aaaaaaaaaa',
   ],
   colors: {
-    a: '#000000',
-    b: '#14101f',
-    c: '#1a1423',
-    d: '#372b3f',
-    e: '#5a4973',
-    f: '#181020',
-    h: '#5e4e74',
-    i: '#3a2f42',
-    j: '#443652',
-    k: '#41324f',
-    l: '#2f1412',
-    m: '#291211',
-    n: '#57291a',
+    a: '#000101',
+    b: '#1a1423',
+    c: '#372b3f',
+    d: '#5a4973',
+    e: '#181020',
+    f: '#5e4e74',
+    h: '#3a2f42',
+    i: '#443652',
+    j: '#41324f',
+    k: '#2f1412',
+    l: '#291211',
+    m: '#57291a',
   },
 };
 
@@ -263,9 +265,9 @@ export const LEGGINGS_THIGH_N: PaintedPiece = {
   },
 };
 
-/** The near leg from the knee to the hem: it turns with the shin about the knee. */
+/** The near leg from the knee to the hem: it turns with the shin about the ankle, as the boot does. */
 export const LEGGINGS_SHIN_N: PaintedPiece = {
-  pivot: [9, 1],
+  pivot: [5, 16],
   angle: 104.09,
   rows: [
     'abbbcccbbba',
@@ -287,5 +289,31 @@ export const LEGGINGS_SHIN_N: PaintedPiece = {
     j: '#3f314a',
     k: '#35293d',
     l: '#2b2332',
+  },
+};
+
+/** The far leg on under its hem into the boot (his line; drawn over boots only): it turns with the shin about the ankle. */
+export const LEGGINGS_INTO_BOOT_F: PaintedPiece = {
+  pivot: [3, 7],
+  angle: 98.58,
+  rows: [
+    'aaaaaaaaaa',
+    'aaaaaaaaaa',
+  ],
+  colors: {
+    a: '#000000',
+  },
+};
+
+/** The near leg on under its hem into the boot (his line; drawn over boots only): it turns with the shin about the ankle. */
+export const LEGGINGS_INTO_BOOT_N: PaintedPiece = {
+  pivot: [5, 10],
+  angle: 104.09,
+  rows: [
+    'aaaaaaaaaa',
+    'aaaaaaaaa.',
+  ],
+  colors: {
+    a: '#000000',
   },
 };

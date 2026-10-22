@@ -7,11 +7,11 @@
 // The owner's Trunks 2 and 3 garments (tools/refs/trunks-*-from-ref.py).
 import { BELT, BELT_BUCKLE, BELT_LEATHER, BELT_SLOT } from './beltArt';
 import { BOMBER_BLUE, BOMBER_BODY, BOMBER_FIST_F, BOMBER_FIST_N, BOMBER_FIST_TONES, BOMBER_SHIRT, BOMBER_SLEEVE_FORE_F, BOMBER_SLEEVE_FORE_N, BOMBER_SLEEVE_UP_F, BOMBER_SLEEVE_UP_N, BOMBER_SLOT } from './bomberJacketArt';
-import { CARGO_GREEN, CARGO_SEAT, CARGO_SHIN_F, CARGO_SHIN_N, CARGO_SLOT, CARGO_THIGH_F, CARGO_THIGH_N } from './cargoPantsArt';
-import { LEGGINGS_CREST, LEGGINGS_PURPLE, LEGGINGS_SEAT, LEGGINGS_SHIN_F, LEGGINGS_SHIN_N, LEGGINGS_SLOT, LEGGINGS_THIGH_F, LEGGINGS_THIGH_N } from './leggingsArt';
+import { CARGO_GAP, CARGO_GREEN, CARGO_INTO_BOOT_F, CARGO_INTO_BOOT_N, CARGO_SEAT, CARGO_SHIN_F, CARGO_SHIN_N, CARGO_SLOT, CARGO_THIGH_F, CARGO_THIGH_N } from './cargoPantsArt';
+import { LEGGINGS_CREST, LEGGINGS_INTO_BOOT_F, LEGGINGS_INTO_BOOT_N, LEGGINGS_PURPLE, LEGGINGS_SEAT, LEGGINGS_SHIN_F, LEGGINGS_SHIN_N, LEGGINGS_SLOT, LEGGINGS_THIGH_F, LEGGINGS_THIGH_N } from './leggingsArt';
 import { SHIRT_ARM_FORE_F, SHIRT_ARM_FORE_N, SHIRT_ARM_UP_F, SHIRT_ARM_UP_N, SHIRT_BLUE, SHIRT_BODY, SHIRT_SLEEVE_F, SHIRT_SLEEVE_N, SHIRT_SLOT, SHIRT_TRIM } from './shortSleeveShirtArt';
 import { TRAVELER_GLOVE_BLACK, TRAVELER_GLOVE_F, TRAVELER_GLOVE_N, TRAVELER_GLOVE_SLOT, TRAVELER_GLOVE_TONES } from './travelerGlovesArt';
-import { belowPelvisOff, PAINTED_SKIN, partsOff, savedAsHis, slotTint, stretchedPiece, torsoOff } from './trunksKit';
+import { belowPelvisOff, PAINTED_SKIN, partsOff, savedAsHis, slotTint, stampTrouserLeg, stretchedPiece, torsoOff, turnOf } from './trunksKit';
 import { isFemaleBody as femaleBody } from '../types';
 
 import { hexToRgb, retintHex } from '../color';
@@ -1457,7 +1457,7 @@ export const BOTTOM_ITEMS: ItemDef[] = liftMain([
       const sc = savedAsHis(sc0, '#7a68a0', LEGGINGS_CREST);
       if (!femaleBody(g.rig.body)) {
         const tint = slotTint(g, LEGGINGS_SLOT, { main: LEGGINGS_PURPLE, seam: LEGGINGS_CREST }, { main: c, seam: sc });
-        paintedTrousers(g, { seat: LEGGINGS_SEAT, thighN: LEGGINGS_THIGH_N, shinN: LEGGINGS_SHIN_N, thighF: LEGGINGS_THIGH_F, shinF: LEGGINGS_SHIN_F }, tint, LEGGINGS_HEM);
+        paintedTrousers(g, { seat: LEGGINGS_SEAT, thighN: LEGGINGS_THIGH_N, shinN: LEGGINGS_SHIN_N, thighF: LEGGINGS_THIGH_F, shinF: LEGGINGS_SHIN_F, intoBootN: LEGGINGS_INTO_BOOT_N, intoBootF: LEGGINGS_INTO_BOOT_F }, tint, LEGGINGS_HEM);
         return;
       }
       trousers(g, c, 1.96, 0.18, 3.4);
@@ -1980,13 +1980,13 @@ export const HAND_ITEMS: ItemDef[] = liftMain([
 // The owner's Trunks 2 and 3 garments, drawn from his pixels (tools/refs/trunks-*-from-ref.py).
 /**
  * The owner's cargo trousers (his Trunks 2 picture, cargoPantsArt.ts): on each leg the thigh turns with
- * the thigh about the hip and the shin with the shin about the knee, the far leg behind the near one;
- * the seat rides the pelvis over both. At rest every pixel is his, where he drew it. The bulky body's
- * broader legs and hips get his pieces broadened (a few of his columns doubled).
+ * the thigh about the hip and the shin with the shin about the ankle (as his boots do), the far leg
+ * behind the near one; the seat rides the pelvis over both. At rest every pixel is his, where he drew it.
+ * The bulky body's broader legs and hips get his pieces broadened (a few of his columns doubled).
  */
 function drawCargo(g: DrawCtx, green: string): void {
   const tint = slotTint(g, CARGO_SLOT, { main: CARGO_GREEN }, { main: green });
-  paintedTrousers(g, { seat: CARGO_SEAT, thighN: CARGO_THIGH_N, shinN: CARGO_SHIN_N, thighF: CARGO_THIGH_F, shinF: CARGO_SHIN_F }, tint, CARGO_HEM);
+  paintedTrousers(g, { seat: CARGO_SEAT, thighN: CARGO_THIGH_N, shinN: CARGO_SHIN_N, thighF: CARGO_THIGH_F, shinF: CARGO_SHIN_F, intoBootN: CARGO_INTO_BOOT_N, intoBootF: CARGO_INTO_BOOT_F, gap: CARGO_GAP }, tint, CARGO_HEM);
 }
 
 /** How far down the shin (from the knee) the owner's trousers reach at rest: the cargo bloused low, his
@@ -2010,10 +2010,26 @@ function bareLegOffAbove(g: DrawCtx, s: Side, t: number): void {
   }
 }
 
-/** A pair of the owner's painted trousers: his seat, thighs and shins (see drawCargo). */
+/** His pieces of a pair of trousers (cargoPantsArt.ts, leggingsArt.ts). */
+interface TrouserPieces {
+  seat: PaintedPiece;
+  thighN: PaintedPiece;
+  shinN: PaintedPiece;
+  thighF: PaintedPiece;
+  shinF: PaintedPiece;
+  intoBootN: PaintedPiece;
+  intoBootF: PaintedPiece;
+  /** What he drew between the legs, no leg's (shown at rest only). */
+  gap?: PaintedPiece;
+}
+
+/**
+ * A pair of the owner's painted trousers: his seat, thighs and shins (see drawCargo), each leg's pieces
+ * turned whole about our joints with the knee filled as it bends (stampTrouserLeg).
+ */
 function paintedTrousers(
   g: DrawCtx,
-  p: { seat: PaintedPiece; thighN: PaintedPiece; shinN: PaintedPiece; thighF: PaintedPiece; shinF: PaintedPiece },
+  p: TrouserPieces,
   tint: (ch: string, hex: string) => string,
   hem: number,
 ): void {
@@ -2021,17 +2037,27 @@ function paintedTrousers(
   const big = r.body === 'bulky';
   const fit = (q: PaintedPiece, l: number, rt: number) => (big ? stretchedPiece(q, l, rt, 0) : q);
   belowPelvisOff(g);
+  let still = true;
   for (const s of SIDES) {
     const { hip, knee, ankle } = legJoints(r, s);
-    const [thigh, shin] = s === 'N' ? [p.thighN, p.shinN] : [p.thighF, p.shinF];
+    const [thigh, shin, into] = s === 'N' ? [p.thighN, p.shinN, p.intoBootN] : [p.thighF, p.shinF, p.intoBootF];
     // Our bare leg under his trousers is taken away down to his hem, so it never shows past his
     // narrower legs or between them (below the hem our shin stays, for shoes that leave it bare).
     bareLegOffAbove(g, s, hem);
-    stampPiece(g, legDepth(s, 'cloth'), fit(shin, 1, 1), knee, segAngle(knee, ankle), prt('shin', s), tint);
-    stampPiece(g, legDepth(s, 'cloth'), fit(thigh, 2, 2), hip, segAngle(hip, knee), prt('thigh', s), tint);
+    // Over his boots each leg reaches on under its hem into the shaft, so no gap opens between them (as
+    // broad as his boots, which the bulky body does not broaden).
+    if (HIS_BOOTS.some((id) => g.has('feet', id))) stampPiece(g, legDepth(s, 'cloth'), into, ankle, segAngle(knee, ankle), prt('shin', s), tint);
+    stampTrouserLeg(g, legDepth(s, 'cloth'), fit(thigh, 2, 2), fit(shin, 1, 1), { hip, knee, ankle }, [prt('thigh', s), prt('shin', s)], tint);
+    still &&= Math.abs(turnOf(segAngle(hip, knee) - thigh.angle)) < 0.5 && Math.abs(turnOf(segAngle(knee, ankle) - shin.angle)) < 0.5;
   }
+  // What he drew between the legs is no leg's (behind them): it shows only while the legs stand as he
+  // drew them.
+  if (p.gap && still) stampPiece(g, legDepth('F', 'body'), fit(p.gap, 2, 2), r.hipF, segAngle(r.hipF, r.kneeF), prt('thigh', 'F'), tint);
   stampPiece(g, 'torso.bottom', fit(p.seat, 3, 3), r.pelvis, segAngle(r.pelvis, r.neck), 'pelvis', tint);
 }
+
+/** The owner's boots, whose shafts his trousers reach on into. */
+const HIS_BOOTS = ['feet_leather', 'feet_cowboy'];
 
 /**
  * The owner's open jacket (his Trunks 3 picture, bomberJacketArt.ts): the body rides the torso about the

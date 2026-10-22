@@ -1,13 +1,14 @@
-// The bulky body's skin, from the owner's broad man (docs/reference/bulky-owner-reference.jpg, 2026-10-21:
-// "este seria la base para cuerpo masculino mas grueso"): his muscular arms, his pixels (bulkyBodyArt.ts),
-// ride our arms over the shape our rig draws, each turning with its bone. At rest every pixel he drew is
-// where he drew it; in his skin colour every pixel is his.
+// The bulky body, from the owner's bare broad man (docs/reference/bulky-base-owner-reference.jpg, 2026-10-21:
+// "cuerpo fornido base sin camisa"): his body piece by piece (bulkyBaseArt.ts), each piece of his pixels
+// riding one bone of our bulky rig, which stands on his joints. At rest every pixel of his body is where he
+// drew it; in his skin colour every pixel is his; in any other pose each piece turns with its bone, and
+// an edge of his that a pose bares is closed with his line (compose.ts).
 
-import { hexToRgb, hslToHex, rgbToHsl } from './color';
-import { armJoints, DrawCtx, Side } from './ctx';
-import { BULKY_FOREARM_F, BULKY_FOREARM_N, BULKY_SHOULDER_F, BULKY_SHOULDER_N, BULKY_SKIN, BULKY_SKIN_LINE, BULKY_UPPER_ARM_F, BULKY_UPPER_ARM_N } from './bulkyBodyArt';
+import { hexToRgb, hslToHex, retintHex, rgbToHsl } from './color';
+import { armDepth, armJoints, DrawCtx, handDraw, handPose, legDepth, legJoints, Side } from './ctx';
+import { BULKY_BASE, BULKY_BASE_BRIEFS, BULKY_BASE_KIND, BULKY_BASE_SKIN } from './bulkyBaseArt';
 import { segAngle, type PaintedPiece } from './painted';
-import { add, F_NO_OUTLINE, F_NO_TEXTURE, F_OWNER, F_SEAL, Layer, lerp, PartId, sub, Vec } from './raster';
+import { add, F_NO_OUTLINE, F_NO_TEXTURE, F_OWNER, F_SEAL, Layer, lerp, PartId, RES, sub, Vec } from './raster';
 import { drawRig, turnPoint, type Rig } from './rig';
 import type { BodyType } from './types';
 import { stampTemplate, type TemplatePalette } from './rotsprite';
@@ -18,7 +19,7 @@ import { stampTemplate, type TemplatePalette } from './rotsprite';
  * staying as far below it and his lights as far above. In his own skin, his colour; his black line stays.
  */
 export function ownerSkin(hex: string, from: string, to: string): string {
-  if (to.toLowerCase() === from.toLowerCase() || hex.toLowerCase() === BULKY_SKIN_LINE) return hex;
+  if (to.toLowerCase() === from.toLowerCase() || hex.toLowerCase() === '#000000') return hex;
   const [h, s, l] = rgbToHsl(...hexToRgb(hex));
   const [h0, s0, l0] = rgbToHsl(...hexToRgb(from));
   const [h1, s1, l1] = rgbToHsl(...hexToRgb(to));
@@ -37,10 +38,10 @@ const idleOf = (body: BodyType): Rig => {
 };
 
 /**
- * Where an owner's shoulder cap goes (the round of the shoulder, or a sleeve over it) and how it turns:
- * it rides halfway between the shoulder joint and where the shoulder sits on the chest at rest (carried
- * with the torso), and turns with the torso and part of the way the upper arm turns past it, as the
- * owner's pauldrons do. At rest it is where he drew it.
+ * Where an owner's shoulder cap goes (a sleeve over the shoulder) and how it turns: it rides halfway
+ * between the shoulder joint and where the shoulder sits on the chest at rest (carried with the torso), and
+ * turns with the torso and part of the way the upper arm turns past it, as the owner's pauldrons do. At
+ * rest it is where he drew it.
  */
 export function capPlace(r: Rig, s: Side, p: PaintedPiece): { at: Vec; deg: number } {
   const idle = idleOf(r.body);
@@ -54,21 +55,88 @@ export function capPlace(r: Rig, s: Side, p: PaintedPiece): { at: Vec; deg: numb
   return { at: lerp(sh, onChest, 0.5), deg: torso + rest + CAP_FOLLOW * (((arm - torso - rest + 540) % 360) - 180) };
 }
 
-function stamp(g: DrawCtx, L: Layer, p: PaintedPiece, at: { x: number; y: number }, deg: number, part: PartId): void {
-  const pal: TemplatePalette = {};
-  for (const [ch, hex] of Object.entries(p.colors)) pal[ch] = [g.m(ownerSkin(hex, BULKY_SKIN, g.look.skin), 'flat'), 3];
-  stampTemplate(L, p, at, deg - p.angle, pal, part, { flags: F_NO_TEXTURE | F_NO_OUTLINE | F_OWNER, seal: p.seal ? { rows: p.seal, flag: F_SEAL } : undefined });
+/** Past this lean (degrees from his picture) a piece riding the torso is turned with RotSprite; up to it, sheared. */
+const LEAN_SHEAR = 20;
+
+const FLAGS = F_NO_TEXTURE | F_NO_OUTLINE | F_OWNER;
+
+/** His piece with its pivot on `at`, its bone pointing along `deg` (at his angle, every pixel his). */
+function onBone(L: Layer, p: PaintedPiece, at: Vec, deg: number, pal: TemplatePalette, part: PartId): void {
+  stampTemplate(L, p, at, deg - p.angle, pal, part, { flags: FLAGS, seal: p.seal ? { rows: p.seal, flag: F_SEAL } : undefined });
+}
+
+/** His piece riding the torso: a small lean shears it (each row moved across whole), a large one turns it. */
+function onTorso(L: Layer, p: PaintedPiece, at: Vec, deg: number, pal: TemplatePalette, part: PartId): void {
+  const d = deg - p.angle;
+  if (Math.abs(d) > LEAN_SHEAR) {
+    onBone(L, p, at, deg, pal, part);
+    return;
+  }
+  const ax = Math.floor(at.x * RES) - p.pivot[0];
+  const ay = Math.floor(at.y * RES) - p.pivot[1];
+  const s = Math.sin((d * Math.PI) / 180);
+  p.rows.forEach((row, j) => {
+    const dx = -Math.round((j - p.pivot[1]) * s);
+    for (let i = 0; i < row.length; i++) if (row[i] !== '.') L.set(ax + i + dx, ay + j, pal[row[i]][0], 3, part, FLAGS | (p.seal?.[j]?.[i] === 'x' ? F_SEAL : 0));
+  });
+}
+
+/** The boxer briefs' colour: the briefs item's slot when it is worn, his own grey otherwise. */
+function briefsColour(g: DrawCtx): string {
+  const b = g.look.slots.bottom;
+  return b?.id === 'bottom_boxer_briefs' && b.colors?.[0] ? b.colors[0] : BULKY_BASE_BRIEFS;
 }
 
 /**
- * His arm over ours on side `s`: the forearm about the elbow, then the upper arm about the shoulder over
- * it (his elbow is drawn on the upper arm), then the round of his shoulder riding the shoulder.
+ * The owner's bare broad man on our bulky rig: the far arm, the far leg, the pelvis, the near leg, the
+ * chest, the near arm, each piece on its bone. The pelvis (his briefs' waistband and seat) lies under the
+ * near leg, so a raised near knee comes in front of his belly and briefs; it is drawn on the near leg's
+ * layer, first, and clothes take it away there as on the torso's. His fists close the hands when they hang, grip or make a fist; an open,
+ * pointing or cradling hand is our hand picture on his wrist, in his skin.
  */
-export function drawBulkyArm(g: DrawCtx, L: Layer, s: Side): void {
-  const j = armJoints(g.rig, s);
-  stamp(g, L, s === 'N' ? BULKY_FOREARM_N : BULKY_FOREARM_F, j.elbow, segAngle(j.elbow, j.wrist), s === 'N' ? 'forearmN' : 'forearmF');
-  stamp(g, L, s === 'N' ? BULKY_UPPER_ARM_N : BULKY_UPPER_ARM_F, j.shoulder, segAngle(j.shoulder, j.elbow), s === 'N' ? 'upperArmN' : 'upperArmF');
-  const cap = s === 'N' ? BULKY_SHOULDER_N : BULKY_SHOULDER_F;
-  const { at, deg } = capPlace(g.rig, s, cap);
-  stamp(g, L, cap, at, deg, s === 'N' ? 'upperArmN' : 'upperArmF');
+export function drawBulkyBase(g: DrawCtx): void {
+  const r = g.rig;
+  const briefs = briefsColour(g);
+  const pal = (p: PaintedPiece): TemplatePalette => {
+    const out: TemplatePalette = {};
+    for (const [ch, hex] of Object.entries(p.colors)) {
+      const k = BULKY_BASE_KIND[hex];
+      const c = k === 'line' ? hex : k === 'cloth' ? retintHex(hex, BULKY_BASE_BRIEFS, briefs) : ownerSkin(hex, BULKY_BASE_SKIN, g.look.skin);
+      out[ch] = [g.m(c, 'flat'), 3];
+    }
+    return out;
+  };
+  const B = BULKY_BASE;
+  const arm = (s: Side) => {
+    const L = g.L(armDepth(s, 'body'));
+    const j = armJoints(r, s);
+    const up = s === 'N' ? B.upperArmN : B.upperArmF;
+    const fore = s === 'N' ? B.forearmN : B.forearmF;
+    const hand = s === 'N' ? B.handN : B.handF;
+    onBone(L, up, j.shoulder, segAngle(j.shoulder, j.elbow), pal(up), s === 'N' ? 'upperArmN' : 'upperArmF');
+    onBone(L, fore, j.elbow, segAngle(j.elbow, j.wrist), pal(fore), s === 'N' ? 'forearmN' : 'forearmF');
+    const { kind } = handPose(g, s);
+    if (kind === 'grip' || kind === 'fist' || kind === 'relaxed') {
+      onBone(L, hand, j.wrist, segAngle(j.elbow, j.wrist), pal(hand), s === 'N' ? 'handN' : 'handF');
+    } else {
+      handDraw(g, L, s, { mat: g.skin, part: s === 'N' ? 'handN' : 'handF', bias: s === 'F' ? -1 : 0 });
+    }
+  };
+  const leg = (s: Side) => {
+    const L = g.L(legDepth(s, 'body'));
+    const { hip, knee, ankle } = legJoints(r, s);
+    const thigh = s === 'N' ? B.thighN : B.thighF;
+    const shin = s === 'N' ? B.shinN : B.shinF;
+    const foot = s === 'N' ? B.footN : B.footF;
+    onBone(L, thigh, hip, segAngle(hip, knee), pal(thigh), s === 'N' ? 'thighN' : 'thighF');
+    onBone(L, shin, knee, segAngle(knee, ankle), pal(shin), s === 'N' ? 'shinN' : 'shinF');
+    onBone(L, foot, ankle, foot.angle, pal(foot), s === 'N' ? 'footN' : 'footF');
+  };
+  const lean = segAngle(r.pelvis, r.neck);
+  arm('F');
+  leg('F');
+  onTorso(g.L(legDepth('N', 'body')), B.pelvis, r.pelvis, lean, pal(B.pelvis), 'torso');
+  leg('N');
+  onTorso(g.L('torso.body'), B.chest, r.neck, lean, pal(B.chest), 'torso');
+  arm('N');
 }

@@ -296,12 +296,12 @@ def his_outside():
     return _OUTSIDE[0]
 
 
-def seal_rows(mask, origin, shape):
+def seal_rows(mask, origin, shape, outside=None):
     """The piece's open edge (PaintedPiece.seal): each cell on its edge whose every neighbour outside the
     piece (8 neighbours: a turn can bare a cell touching the outside only at a corner) is his figure,
     another part of him it was cut from, not the white around him or a gap he left. In a pose that opens
     it, it is closed with his black line; his own outline is never marked."""
-    out_his = his_outside()
+    out_his = his_outside() if outside is None else outside
     H, W = mask.shape
     x0, y0 = origin
     w, h = shape
@@ -320,7 +320,7 @@ def seal_rows(mask, origin, shape):
     return rows
 
 
-def piece(name, doc, col, mask, joint, ang, at=None, seal=False, drop=None, extra=None, extra_col=None):
+def piece(name, doc, col, mask, joint, ang, at=None, seal=False, drop=None, extra=None, extra_col=None, outside=None):
     """A PaintedPiece as TypeScript with its pivot the cell on `joint` (his pixels), and where its first
     cell lands in our bulky idle frame 0 (`at`: our joint, when the pivot is not on it). With `seal`, its
     open edge too (seal_rows). `drop`: pixels of his it leaves to another piece, and `extra`: pixels of his
@@ -350,7 +350,7 @@ def piece(name, doc, col, mask, joint, ang, at=None, seal=False, drop=None, extr
         mask = mask | extra
     text = ts_piece(name, doc, rows, origin, palette, joint, ang)
     if seal:
-        marks = seal_rows(mask, origin, (max(len(r) for r in rows), len(rows)))
+        marks = seal_rows(mask, origin, (max(len(r) for r in rows), len(rows)), outside)
         text = text.replace('  colors: {', '  seal: [\n' + ''.join(f"    '{r}',\n" for r in marks) + '  ],\n  colors: {', 1)
     j = at or joint
     rest = [origin[i] + OFFSET[i] + int(np.floor(j[i])) - int(np.floor(joint[i])) for i in (0, 1)]

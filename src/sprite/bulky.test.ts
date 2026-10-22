@@ -4,7 +4,7 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { describe, it } from 'node:test';
-import { BULKY_FOREARM_F, BULKY_FOREARM_N, BULKY_SHOULDER_F, BULKY_SHOULDER_N, BULKY_SKIN_REST, BULKY_UPPER_ARM_F, BULKY_UPPER_ARM_N } from './bulkyBodyArt';
+import { BULKY_BASE, BULKY_BASE_KIND, BULKY_BASE_REST, BULKY_BASE_SKIN } from './bulkyBaseArt';
 import { getItem } from './catalog';
 import { renderSprite } from './compose';
 import { limbRefit, refit } from './fit';
@@ -57,12 +57,20 @@ describe("the owner's broad man at rest", () => {
   it('every piece lands where the script measured it on the bulky rig (his joints are our joints)', () => {
     const r: Rig = IDLE;
     const checks: [string, PaintedPiece, Vec, [number, number]][] = [
-      ['BULKY_UPPER_ARM_N', BULKY_UPPER_ARM_N, r.shoulderN, BULKY_SKIN_REST.BULKY_UPPER_ARM_N],
-      ['BULKY_SHOULDER_N', BULKY_SHOULDER_N, r.shoulderN, BULKY_SKIN_REST.BULKY_SHOULDER_N],
-      ['BULKY_FOREARM_N', BULKY_FOREARM_N, r.elbowN, BULKY_SKIN_REST.BULKY_FOREARM_N],
-      ['BULKY_UPPER_ARM_F', BULKY_UPPER_ARM_F, r.shoulderF, BULKY_SKIN_REST.BULKY_UPPER_ARM_F],
-      ['BULKY_SHOULDER_F', BULKY_SHOULDER_F, r.shoulderF, BULKY_SKIN_REST.BULKY_SHOULDER_F],
-      ['BULKY_FOREARM_F', BULKY_FOREARM_F, r.elbowF, BULKY_SKIN_REST.BULKY_FOREARM_F],
+      ['BASE_CHEST', BULKY_BASE.chest, r.neck, BULKY_BASE_REST.BASE_CHEST],
+      ['BASE_PELVIS', BULKY_BASE.pelvis, r.pelvis, BULKY_BASE_REST.BASE_PELVIS],
+      ['BASE_UPPER_ARM_N', BULKY_BASE.upperArmN, r.shoulderN, BULKY_BASE_REST.BASE_UPPER_ARM_N],
+      ['BASE_FOREARM_N', BULKY_BASE.forearmN, r.elbowN, BULKY_BASE_REST.BASE_FOREARM_N],
+      ['BASE_HAND_N', BULKY_BASE.handN, r.wristN, BULKY_BASE_REST.BASE_HAND_N],
+      ['BASE_UPPER_ARM_F', BULKY_BASE.upperArmF, r.shoulderF, BULKY_BASE_REST.BASE_UPPER_ARM_F],
+      ['BASE_FOREARM_F', BULKY_BASE.forearmF, r.elbowF, BULKY_BASE_REST.BASE_FOREARM_F],
+      ['BASE_HAND_F', BULKY_BASE.handF, r.wristF, BULKY_BASE_REST.BASE_HAND_F],
+      ['BASE_THIGH_N', BULKY_BASE.thighN, r.hipN, BULKY_BASE_REST.BASE_THIGH_N],
+      ['BASE_SHIN_N', BULKY_BASE.shinN, r.kneeN, BULKY_BASE_REST.BASE_SHIN_N],
+      ['BASE_FOOT_N', BULKY_BASE.footN, r.ankleN, BULKY_BASE_REST.BASE_FOOT_N],
+      ['BASE_THIGH_F', BULKY_BASE.thighF, r.hipF, BULKY_BASE_REST.BASE_THIGH_F],
+      ['BASE_SHIN_F', BULKY_BASE.shinF, r.kneeF, BULKY_BASE_REST.BASE_SHIN_F],
+      ['BASE_FOOT_F', BULKY_BASE.footF, r.ankleF, BULKY_BASE_REST.BASE_FOOT_F],
       ['SHIRT_TORSO', shirt.SHIRT_TORSO, r.neck, shirt.SHIRT_REST.SHIRT_TORSO],
       ['SHIRT_SLEEVE_N', shirt.SHIRT_SLEEVE_N, r.shoulderN, shirt.SHIRT_REST.SHIRT_SLEEVE_N],
       ['SHIRT_CAP_N', shirt.SHIRT_CAP_N, r.shoulderN, shirt.SHIRT_REST.SHIRT_CAP_N],
@@ -111,6 +119,124 @@ describe("the owner's broad man at rest", () => {
       );
       assert.ok(hit / n > 0.7, `${hit}/${n}`);
     }
+  });
+});
+
+/** His bare broad man: only the hair (the head is ours, his face), no clothes. */
+const bare = (body: BodyType = 'bulky', skin = BULKY_BASE_SKIN, slots: Partial<SpriteAppearance['slots']> = {}): SpriteAppearance => ({
+  ...his(body),
+  skin,
+  slots: { hair: { id: 'hair_long_lock', colors: ['#f0cc74'] }, ...slots },
+});
+
+/** The pieces of his bare body, the joint each is pinned to, back to front as bulkyBody.ts draws them. */
+const BASE_ORDER: [keyof typeof BULKY_BASE, keyof Rig][] = [
+  ['upperArmF', 'shoulderF'], ['forearmF', 'elbowF'], ['handF', 'wristF'],
+  ['thighF', 'hipF'], ['shinF', 'kneeF'], ['footF', 'ankleF'], ['pelvis', 'pelvis'],
+  ['thighN', 'hipN'], ['shinN', 'kneeN'], ['footN', 'ankleN'], ['chest', 'neck'],
+  ['upperArmN', 'shoulderN'], ['forearmN', 'elbowN'], ['handN', 'wristN'],
+];
+
+/** The 8-connected regions of a set of pixel indices. */
+function regions(px: Set<number>): number {
+  const seen = new Set<number>();
+  let n = 0;
+  for (const s of px) {
+    if (seen.has(s)) continue;
+    n++;
+    const stack = [s];
+    seen.add(s);
+    while (stack.length) {
+      const i = stack.pop()!;
+      const x = i % GRID;
+      const y = (i / GRID) | 0;
+      for (let dy = -1; dy <= 1; dy++)
+        for (let dx = -1; dx <= 1; dx++) {
+          const j = (y + dy) * GRID + x + dx;
+          if ((dx || dy) && px.has(j) && !seen.has(j)) {
+            seen.add(j);
+            stack.push(j);
+          }
+        }
+    }
+  }
+  return n;
+}
+
+describe("the owner's bare broad man (the bulky body)", () => {
+  it('is his picture at rest, every pixel of his body below the head, in his skin', () => {
+    const r: Rig = IDLE;
+    const want = new Map<number, string>();
+    for (const [k, j] of BASE_ORDER) {
+      const p = BULKY_BASE[k];
+      const [ox, oy] = cell(r[j] as Vec, p);
+      p.rows.forEach((row, y) => [...row].forEach((ch, x) => ch !== '.' && want.set((oy + y) * GRID + ox + x, p.colors[ch])));
+    }
+    const f = renderSprite(bare(), 'idle', 0);
+    const hex = (i: number) => '#' + [0, 1, 2].map((c) => f.rgba[i * 4 + c].toString(16).padStart(2, '0')).join('');
+    let n = 0;
+    for (let i = 0; i < GRID * GRID; i++) {
+      if (!f.rgba[i * 4 + 3] || PARTS[f.part[i]] === 'head') continue;
+      // His long lock lies over his chest: it is the hair's.
+      if (f.hair && f.hair[i >> 3] & (1 << (i & 7))) continue;
+      assert.ok(want.has(i), `pixel ${i % GRID}, ${(i / GRID) | 0} is not his`);
+      assert.equal(hex(i), want.get(i), `pixel ${i % GRID}, ${(i / GRID) | 0}`);
+      n++;
+    }
+    assert.ok(n > 2000, `${n} pixels compared`);
+  });
+
+  it('keeps every limb whole in every pose and frame: two legs with their feet, two arms with their hands', () => {
+    const px = (f: ReturnType<typeof renderSprite>, parts: string[]) => {
+      const idx = new Set(parts.map((p) => PARTS.indexOf(p as never)));
+      const out = new Set<number>();
+      for (let i = 0; i < GRID * GRID; i++) if (f.rgba[i * 4 + 3] && idx.has(f.part[i])) out.add(i);
+      return out;
+    };
+    const touch = (a: Set<number>, b: Set<number>) => [...a].some((i) => [-1, 1, -GRID, GRID, -GRID - 1, -GRID + 1, GRID - 1, GRID + 1].some((d) => b.has(i + d)));
+    for (const [k, f] of frames(bare())) {
+      // Every part there, each joint closed (the parts either side of it touch) and below the knee the shin
+      // and foot one piece; the far leg and arm only there, the near leg and the torso can hide any of them.
+      for (const s of ['N', 'F']) {
+        const [thigh, shin, foot] = [`thigh${s}`, `shin${s}`, `foot${s}`].map((p) => px(f, [p]));
+        assert.ok(shin.size + foot.size > 0, `${k}: the ${s} leg`);
+        if (s === 'F') continue;
+        assert.ok(thigh.size && shin.size && foot.size, `${k}: the near leg's parts`);
+        // (a knee raised in front can lie under his briefs: the shin then meets them)
+        assert.ok((touch(thigh, shin) || touch(px(f, ['torso']), shin)) && touch(shin, foot), `${k}: the ${s} knee and ankle closed`);
+        assert.equal(regions(px(f, ['shinN', 'footN'])), 1, `${k}: the near shin and foot in one piece`);
+      }
+      for (const s of ['N']) {
+        const [up, fore, hand] = [`upperArm${s}`, `forearm${s}`, `hand${s}`].map((p) => px(f, [p]));
+        assert.ok(up.size && fore.size && hand.size, `${k}: the near arm's parts`);
+        assert.ok(touch(up, fore) && touch(fore, hand), `${k}: the near elbow and wrist closed`);
+        assert.equal(regions(px(f, ['upperArmN', 'forearmN', 'handN'])), 1, `${k}: the near arm and hand in one piece`);
+      }
+      // each foot once: no more of it than his piece (with its cap over his ankle) and the few pixels a
+      // closed seam beside it takes (compose.ts closeSeams); a second foot would be twice as many
+      for (const s of ['N', 'F'] as const) {
+        const foot = BULKY_BASE[`foot${s}`];
+        const most = foot.rows.join('').replace(/\./g, '').length;
+        let got = 0;
+        for (let i = 0; i < GRID * GRID; i++) if (f.rgba[i * 4 + 3] && PARTS[f.part[i]] === `foot${s}`) got++;
+        assert.ok(got <= most + 6, `${k}: the ${s} foot drawn once (${got} of ${most})`);
+      }
+    }
+  });
+
+  it("his boxer briefs take the briefs item's colour, and his jeans cover them", () => {
+    const grey = renderSprite(bare(), 'idle', 0);
+    const blue = renderSprite(bare('bulky', BULKY_BASE_SKIN, { bottom: { id: 'bottom_boxer_briefs', colors: ['#2b4c8c'] } }), 'idle', 0);
+    const own = renderSprite(bare('bulky', BULKY_BASE_SKIN, { bottom: { id: 'bottom_boxer_briefs', colors: [] } }), 'idle', 0);
+    assert.deepEqual(own.rgba, grey.rgba, 'in its own colour the item is his briefs');
+    let changed = 0;
+    for (let i = 0; i < GRID * GRID; i++) if (grey.rgba[i * 4] !== blue.rgba[i * 4] || grey.rgba[i * 4 + 2] !== blue.rgba[i * 4 + 2]) changed++;
+    assert.ok(changed > 150, `${changed} pixels of the briefs recoloured`);
+    // under the jeans no pixel of his briefs' colours shows
+    const briefs = new Set(Object.entries(BULKY_BASE_KIND).filter(([, k]) => k === 'cloth').map(([h]) => h));
+    const dressed = renderSprite(his('bulky'), 'idle', 0);
+    const shown = [...Array(GRID * GRID).keys()].filter((i) => dressed.rgba[i * 4 + 3] && PARTS[dressed.part[i]] === 'torso' && briefs.has('#' + [0, 1, 2].map((c) => dressed.rgba[i * 4 + c].toString(16).padStart(2, '0')).join('')));
+    assert.deepEqual(shown, []);
   });
 });
 
@@ -237,6 +363,8 @@ describe('every pose, every frame', () => {
     for (const [name, slots] of VARIANTS)
       for (const [k, f] of frames({ ...his(body), slots: { ...his(body).slots, ...slots } }, ['idle', 'walk', 'run', 'attack', 'throw', 'crouch'], true)) all.push([`${k} (${name})`, f, glitches(f)]);
   }
+  // and his bare broad man, every frame
+  for (const [k, f] of frames(bare('bulky', '#f2bd97'))) all.push([`${k} (bare)`, f, glitches(f)]);
 
   it('is one figure: no piece loose from the body, the pouch and the knife hanging on at their straps', () => {
     for (const [k, f] of all) assert.equal(groups(f.rgba), 1, k);
@@ -254,9 +382,11 @@ describe('every pose, every frame', () => {
     for (const [k, , g] of all) assert.deepEqual(g.hole, [], k);
   });
 
-  it('the bulky body at rest is still his picture, byte for byte', () => {
+  it('the bulky body dressed at rest is pinned: his clothes as he drew them on his bare body', () => {
+    // Every pixel of his clothes is where and as he drew it; the bare upper arms between the sleeves and
+    // the bracers are his bare body's (bulky-base-owner-reference.jpg).
     const f = renderSprite(his('bulky'), 'idle', 0);
-    assert.equal(createHash('sha1').update(f.rgba).digest('hex'), 'd181f9f7cfe714d067c7514f23f96296143bd495');
+    assert.equal(createHash('sha1').update(f.rgba).digest('hex'), 'efd752489ece1ee928ada887a7732c2d957e6728');
   });
 });
 

@@ -20,6 +20,7 @@ import { segAngle, type PaintedPiece } from '../painted';
 import { F_NO_OUTLINE, F_NO_TEXTURE, F_OWNER, F_SEAL, GRID, Layer, partIndex, PartId, RES, Vec } from '../raster';
 import { BODY_PARAMS, type BodyParams } from '../rig';
 import { stampTemplate, type TemplatePalette } from '../rotsprite';
+import { BULKY_BASE_BRIEFS } from '../bulkyBaseArt';
 import { BELT_KIND, BELT_KNIFE, BELT_LEATHER, BELT_METAL, BELT_POUCH, BELT_STRAPS, BELT_TAN } from './brawlerBeltArt';
 import { BOOT_F, BOOT_KIND, BOOT_LEATHER, BOOT_N } from './brawlerBootsArt';
 import { BRACER_BAND, BRACER_KIND, BRACER_SKIN, BRACER_STEEL, BRACER_WRAP, STEEL_BRACER_N, STEEL_FIST_N, WRAP_BRACER_F, WRAP_FIST_F } from './brawlerBracersArt';
@@ -130,7 +131,8 @@ function partsOff(g: DrawCtx, depths: Depth[], parts: PartId[], oursOnly = false
 function torsoOff(g: DrawCtx, from: number, to: number): void {
   const r = g.rig;
   const torso = partIndex('torso');
-  for (const d of ['torso.body', 'torso.under'] as Depth[]) {
+  // the bulky body's pelvis lies on the near leg's layer (bulkyBody.ts)
+  for (const d of ['torso.body', 'torso.under', legDepth('N', 'body')] as Depth[]) {
     const L = g.L(d);
     if (!L.used) continue;
     for (let i = 0; i < GRID * GRID; i++) {
@@ -271,6 +273,17 @@ export const BRAWLER_TOPS: ItemDef[] = [
 ];
 
 export const BRAWLER_BOTTOMS: ItemDef[] = [
+  {
+    // His bare broad man wears dark boxer briefs (bulky-base-owner-reference.jpg): the bulky body draws them
+    // (bulkyBody.ts); this item only gives them a colour.
+    id: 'bottom_boxer_briefs',
+    slot: 'bottom',
+    name: 'Boxer Briefs',
+    desc: "The broad man's dark boxer briefs, in any colour.",
+    colors: [col('main', 'Briefs', BULKY_BASE_BRIEFS)],
+    bodies: ['bulky'],
+    draw: () => {},
+  },
   {
     id: 'bottom_jeans',
     slot: 'bottom',

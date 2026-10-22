@@ -149,15 +149,19 @@ export function stampTemplate(
   const flags = opts.flags ?? F_NO_TEXTURE;
   const px = rotateTemplate(tt, deg);
   // Turned, a pixel can land on the piece's edge though the cell it was sampled from lay inside the piece
-  // (the turn stepped past the edge's own cells): it gets the seal flag too, so the edge is closed there.
+  // (the turn stepped past the edge's own cells) or outside it: it gets the seal flag too, so the edge is
+  // closed there.
   const filled = (x: number, y: number) => y >= 0 && y < tt.rows.length && x >= 0 && x < tt.rows[y].length && tt.rows[y][x] !== '.';
   const out = marks && deg ? new Set(px.map((p) => `${p.dx},${p.dy}`)) : null;
   for (const p of px) {
     const pal = palette[p.ch];
     if (!pal) continue;
+    // A lone pixel the turn left apart from the piece is no pixel of it.
+    if (out && ![-1, 0, 1].some((y) => [-1, 0, 1].some((x) => (x || y) && out.has(`${p.dx + x},${p.dy + y}`)))) continue;
     let sealed = !!marks && marks[p.cy]?.[p.cx] === 'x';
     if (out && !sealed && [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([x, y]) => !out.has(`${p.dx + x},${p.dy + y}`))) {
-      sealed = [[1, 0], [-1, 0], [0, 1], [0, -1]].every(([x, y]) => filled(p.cx + x, p.cy + y));
+      // Or from an empty cell the upscaling filled in (a corner rounded off by Scale2x).
+      sealed = !filled(p.cx, p.cy) || [[1, 0], [-1, 0], [0, 1], [0, -1]].every(([x, y]) => filled(p.cx + x, p.cy + y));
     }
     L.set(ax + p.dx, ay + p.dy, pal[0], Math.max(0, Math.min(5, pal[1])), part, sealed ? flags | opts.seal!.flag : flags);
   }

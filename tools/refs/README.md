@@ -130,7 +130,7 @@ folders.
       python3 -I tools/refs/roman-cuirass-from-ref.py src/sprite/items/bronzeCuirassArt.ts [studyDir]
       python3 -I tools/refs/roman-skirt-from-ref.py src/sprite/items/pterugesArt.ts [studyDir]
       python3 -I tools/refs/roman-bracers-sandals-from-ref.py src/sprite/items/bracersSandalsArt.ts [studyDir]
-- `bulky_ref.py` + `bulky-body-from-ref.py`, `stern-face-from-ref.py`, `lock-hair-from-ref.py`,
+- `bulky_ref.py` + `bulky-base-body-from-ref.py`, `stern-face-from-ref.py`, `lock-hair-from-ref.py`,
   `seam-shirt-from-ref.py`, `brawler-bracers-from-ref.py`, `brawler-belt-from-ref.py`, `jeans-from-ref.py`,
   `brawler-boots-from-ref.py`: the owner's broad man (`docs/reference/bulky-owner-reference.jpg`, a 100 x 100
   grid at pitch 20, phase 0; one of his pixels is one fine pixel of ours), the base of the bulky body. Our bulky
@@ -150,8 +150,14 @@ folders.
   with his line when a pose bares them. `piece(drop=, extra=)` moves pixels of his from one piece to another
   after its colours are packed, so the rest pack, and render at rest, as before (the line round the knife
   is the knife's; the inseam pixels at the top of the gap, `INSEAM_TOP` and `KNIFE_INSEAM`, the near leg's).
+  `bulky-base-body-from-ref.py` reads his bare broad man (`docs/reference/bulky-base-owner-reference.jpg`, same
+  grid, same place, so the same `JOINTS`): each pixel of his body goes to the limb whose capsule it lies nearest,
+  his briefs above `BRIEFS_LEG` to the pelvis, then to the bone on its side of each joint's cut; hidden parts
+  are continued from his pixels (`R.continue_along`), each lower piece gets a round cap of the upper one
+  (`CAPS`), and the script stops if the pieces put together at idle are not his picture. `seal_rows` and
+  `piece` take `outside=` (that picture's own background) for it.
 
-      python3 -I tools/refs/bulky-body-from-ref.py src/sprite/bulkyBodyArt.ts [studyDir]
+      python3 -I tools/refs/bulky-base-body-from-ref.py src/sprite/bulkyBaseArt.ts [studyDir]
       python3 -I tools/refs/stern-face-from-ref.py src/sprite/sternFaceArt.ts [studyDir]
       python3 -I tools/refs/lock-hair-from-ref.py src/sprite/items/lockHairArt.ts [studyDir]
       python3 -I tools/refs/seam-shirt-from-ref.py src/sprite/items/seamShirtArt.ts [studyDir]

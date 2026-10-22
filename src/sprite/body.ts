@@ -10,7 +10,7 @@ import { armPoint, armRadius, armSpan, DrawCtx, fillTorso, FOOT_BARE, footDraw, 
 import { type PaintedEye, VALIANT_BROW_HAIR, VALIANT_EYE_COLORS, VALIANT_EYES, VALIANT_IRIS } from './eyeArt';
 import { VALIANT_HEAD, VALIANT_SKIN } from './headArt';
 import { STERN_BROW_HAIR, STERN_EYE_COLORS, STERN_EYES, STERN_HEAD, STERN_IRIS, STERN_SKIN } from './sternFaceArt';
-import { drawBulkyArm } from './bulkyBody';
+import { drawBulkyBase } from './bulkyBody';
 import { stampPiece } from './painted';
 import { ballShade, capsule, ellipse, F_NO_OUTLINE, F_NO_TEXTURE, GRID, Layer, PartId, Pen, poly, RES, seam, v, Vec } from './raster';
 import { isFemaleBody, type EyeShape, type FaceShape } from './types';
@@ -22,6 +22,13 @@ export function drawBody(g: DrawCtx): void {
   const r = g.rig;
   const b = g.bp;
   const skin = (part: PartId, bias = 0): Pen => ({ mat: g.skin, part, bias });
+
+  if (r.body === 'bulky') {
+    // The bulky body is the owner's bare broad man, piece by piece (bulkyBody.ts), his briefs and all.
+    drawBulkyBase(g);
+    drawHead(g);
+    return;
+  }
 
   // Far arm (behind the torso, one shade darker)
   drawArm(g, g.L('farArm.body'), 'F', skin('upperArmF', -1), skin('forearmF', -1));
@@ -206,15 +213,8 @@ export function sculptClothes(g: DrawCtx, L: Layer): void {
 /** Arm: rounded shoulder + tapered upper arm and forearm. */
 function drawArm(g: DrawCtx, L: Layer, s: Side, upper: Pen, fore: Pen): void {
   const R = g.bp.armR;
-  // The bulky body's upper arm is the owner's whole (bulkyBody.ts); ours is only under its elbow end.
-  armSpan(g, L, s, g.rig.body === 'bulky' ? 0.85 : 0, 1, 0, upper, 'skin');
+  armSpan(g, L, s, 0, 1, 0, upper, 'skin');
   armSpan(g, L, s, 1, 2, 0, fore, 'skin');
-  if (g.rig.body === 'bulky') {
-    // The owner's muscular arms (bulkyBody.ts) over ours: his deltoid and shading replace our shoulder
-    // ball and muscle lines.
-    drawBulkyArm(g, L, s);
-    return;
-  }
   const sh = armPoint(g, s, 0.06);
   ellipse(L, sh.x, sh.y, R[0] + 0.3, R[0] + 0.2, upper, ballShade(sh.x, sh.y, R[0] + 0.3, R[0] + 0.2));
   // Muscle definition: a lit crest along the biceps and along the forearm

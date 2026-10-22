@@ -68,6 +68,9 @@ const ES: Record<string, string> = {
   'The steel gauntlet over the forearm and fist.': 'El guantelete de acero sobre el antebrazo y el puño.',
   'White wrappings round the forearm and fist.': 'Vendas blancas alrededor del antebrazo y el puño.',
   'The arm bare.': 'El brazo descubierto.',
+  // His bare broad man (bulky-base-owner-reference.jpg): his boxer briefs.
+  'Boxer Briefs': 'Calzoncillos bóxer',
+  Briefs: 'Calzoncillos',
   None: 'Ninguno',
   Forehead: 'Frente',
   Arm: 'Brazo',

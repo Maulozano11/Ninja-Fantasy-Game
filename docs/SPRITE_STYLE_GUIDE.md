@@ -110,8 +110,18 @@ que las botas vayan por fuera".
   94 px tall, a long torso with the shoulders well below its top (`shoulderDrop`), long heavy arms whose
   fists reach the crotch, shorter legs standing on low feet (`ankleLift`), the far foot nearly level with
   the near one (`farHipLift`, `farLift`), the head forward over the neck (`headDx`). At rest his near hand
-  rests on the hip (`idleHands`). His arms are painted pieces riding ours (`bulkyBodyArt.ts`, the shoulder
-  round following the arm part of the way). At rest, in his colours, every pixel of his figure is his.
+  rests on the hip (`idleHands`). At rest, in his colours, every pixel of his figure is his.
+- **The bare bulky body is his** (the owner, 2026-10-21, sending `reference/bulky-base-owner-reference.jpg`:
+  "cuerpo fornido base sin camisa"): his broad man without clothes, in boxer briefs, on the same grid and in
+  the same place as the clothed one, so his joints are the rig's. `bulkyBaseArt.ts` holds his body piece by
+  piece (`bulkyBody.ts` drawBulkyBase): chest, pelvis, each upper arm, forearm and fist, each thigh, shin
+  and foot, every one on its bone. What his picture hides is continued from his pixels; each lower piece
+  carries a round cap of the upper one over the joint; a cut edge a pose bares is closed with his line. The
+  legs of his briefs go with the thighs; the pelvis (waistband and seat) lies under the near leg, so a
+  raised near knee comes in front of his belly. An open, pointing or cradling hand is our hand picture in
+  his skin; hanging, gripping and fists are his fists. His briefs are the creator's `bottom_boxer_briefs`
+  (any colour); his skin follows the character's skin (`ownerSkin`). The test checks that at rest the body
+  is his picture, and that in every pose and frame both legs, feet, arms and hands are there and whole.
 - **His clothes on the normal male:** each piece fitted by leaving out or repeating whole columns and
   rows of his (`fit.ts`), never redrawn; a limb piece's rows are first moved across whole (a shear) so its
   columns run along the limb, and moved back after, so it is turned only once, by the pose. How much each

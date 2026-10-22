@@ -5,9 +5,10 @@
 // that depends on the pose, so capes trail behind in attacks and sway in idle.
 
 import { hexToRgb, retintHex } from '../color';
-import type { DrawCtx, ItemDef } from '../ctx';
+import type { Depth, DrawCtx, ItemDef } from '../ctx';
 import { add, capsule, cylShade, ellipse, F_NO_OUTLINE, F_NO_TEXTURE, fine, GRID, len, lerp, Layer, norm, PartId, Pen, perp, poly, px, RES, scale, seam, sub, v, Vec } from '../raster';
 import { GROUND } from '../rig';
+import { sealCloth } from '../seal';
 import { OWNER_CAPE_BACK, OWNER_CAPE_FRONT, OWNER_CAPE_PLATE, OWNER_CAPE_SHOULDER, PaintedPart } from './capeArt';
 import { FOUNDER_CAPE, FOUNDER_CAPE_CLOTH, FOUNDER_CAPE_KIND, FOUNDER_CAPE_REST } from './founderCapeArt';
 import { CRIMSON_CAPE_BACK, CRIMSON_CAPE_BASE, CRIMSON_CAPE_EDGE, CRIMSON_CAPE_FAR, CRIMSON_CAPE_LINE, CRIMSON_CAPE_NEAR } from './crimsonCapeArt';
@@ -563,7 +564,19 @@ function paintedBack(g: DrawCtx, p: PaintedPart, hem: number, edgeCh: string, co
 const FOUNDER_HEM_ABOVE_GROUND = GROUND * RES - (FOUNDER_CAPE_REST.FOUNDER_CAPE[1] + FOUNDER_CAPE.rows.length - 1);
 const FOUNDER_CAPE_EDGE = Object.keys(FOUNDER_CAPE.colors).find((ch) => FOUNDER_CAPE_KIND[FOUNDER_CAPE.colors[ch]] === 'line')!;
 
-export const CAPE_ITEMS: ItemDef[] = [
+/** Every layer a cape draws its cloth into (the owner's red cape puts its mantles in the arm armour's and the torso's). */
+export const CAPE_DEPTHS: Depth[] = ['capeBack', 'torso.acc', 'capeFront', 'nearArm.armor', 'nearArm.over'];
+
+/** A cape whose cloth is sealed once drawn: no crack between its pieces, no bite in its edge (seal.ts). */
+const sealed = (d: ItemDef): ItemDef => ({
+  ...d,
+  draw: (g, colors, parts) => {
+    d.draw(g, colors, parts);
+    sealCloth(g, CAPE_DEPTHS, true);
+  },
+});
+
+const CAPES: ItemDef[] = [
   {
     id: 'cape_shadow',
     slot: 'cape',
@@ -850,3 +863,5 @@ export const CAPE_ITEMS: ItemDef[] = [
     },
   },
 ];
+
+export const CAPE_ITEMS: ItemDef[] = CAPES.map(sealed);

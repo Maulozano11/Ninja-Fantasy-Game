@@ -37,6 +37,13 @@ npm run sprites -- preset <presetId> out.png  # a preset in every pose
   background with the figure on three sides, one of them not line), and takes away stray specks of 1–2 pixels.
   Real gaps stay: anything bigger or open to the outside, a notch the line goes round, and what an effect
   walls in. **Idle is left exactly as drawn** (it is the frame his pictures were copied into).
+- No background in the seam beside a clasp (the owner, 2026-10-22: *"aqui tiene unos aun en la hebilla o
+  medallon de la capa"*, then *"1 arreglar igual capa 2 solen rellenar"*). Painted pieces on different joints
+  (a mantle on the neck, its shoulder piece on the shoulder, the hair on the head) part as they move; the piece
+  says what fills its seam (`addSeam`, `src/sprite/seams.ts`): his cloth drawn beside it (Solen's cowl) or its
+  own cloth continued round its studs (`clothSeam`: the Shadow Half-Cloak). Once the figure is drawn it goes
+  in behind everything, only where nothing is drawn and the figure stands round it on all four sides. Idle
+  only where he left the seam open: Solen's cowl on the bulky body (every other idle frame is byte-identical).
 
 ## 3. Light and values
 

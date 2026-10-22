@@ -14,7 +14,7 @@ export const DAWN_BOOT_GOLD_CHARS = 'ABCDEFGHIJLMNOPQ';
 /** Where our leg goes: fine pixels above the knee along the thigh (the lace top's top edge). */
 export const DAWN_BOOT_CUT = 11.75;
 /** The same on the far leg. */
-export const DAWN_BOOT_CUT_F = 12.01;
+export const DAWN_BOOT_CUT_F = 11.96;
 
 /** The near lace top and the boot down to the knee (pivot: the knee). */
 export const DAWN_THIGH_N: PaintedPiece = {
@@ -53,31 +53,28 @@ export const DAWN_THIGH_N: PaintedPiece = {
 
 /** The near boot from the knee to the ankle (pivot: the ankle). */
 export const DAWN_SHIN_N: PaintedPiece = {
-  pivot: [6, 18],
+  pivot: [6, 15],
   angle: 105.42,
   rows: [
-    '.....kccaa...',
-    '.....kccbFabk',
-    '....kcbccOcck',
-    '....kcbcOcck.',
-    '...kcbbbOcck.',
-    '...kcbbbObk..',
-    '..kcbbbObbk..',
-    '..kcbbbObck..',
-    '..kcbbbObk...',
-    '..kcbbObck...',
-    '..kcbbObk....',
-    '..kcbbObk....',
-    '..kcbObck....',
-    '..kcbObk.....',
-    '..kcbObk.....',
-    '..kcObck.....',
-    '..kcObck.....',
-    '.kccObk......',
-    '.kcaObk......',
-    '.kbCack......',
-    '.kaCack......',
-    'kbaCabk......',
+    '....kcbcOc..',
+    '...kcbbbOcck',
+    '...kcbbbObk.',
+    '..kcbbbObbk.',
+    '..kcbbbObck.',
+    '..kcbbbObk..',
+    '..kcbbObck..',
+    '..kcbbObk...',
+    '..kcbbObk...',
+    '..kcbObck...',
+    '..kcbObk....',
+    '..kcbObk....',
+    '..kcObck....',
+    '..kcObck....',
+    '.kccObk.....',
+    '.kcaObk.....',
+    '.kbCack.....',
+    '.kaCack.....',
+    'kbaCabk.....',
   ],
   colors: {
     k: '#030517',
@@ -85,7 +82,6 @@ export const DAWN_SHIN_N: PaintedPiece = {
     b: '#cdbcab',
     c: '#9b857e',
     C: '#f2bd49',
-    F: '#cfa056',
     O: '#915f30',
   },
 };
@@ -123,21 +119,21 @@ export const DAWN_FOOT_JOIN_N: [number, number] = [-2.00, 1.00];
 
 /** The far lace top and the boot down to the knee (pivot: the knee). */
 export const DAWN_THIGH_F: PaintedPiece = {
-  pivot: [1, 12],
+  pivot: [5, 12],
   angle: 91.36,
   rows: [
-    'kkkk',
-    'kNCk',
-    'kNCk',
-    'kNCk',
-    'kNNk',
-    'kbbk',
-    'kbbk',
-    'kbbk',
-    'kbbk',
-    'kcbk',
-    'kck.',
-    'kck.',
+    'kkkkkkkk',
+    'kCCCCNCk',
+    'kCCCCNCk',
+    'kNCCCNCk',
+    'kNCCCNNk',
+    '.kcbbbbk',
+    '.kcbbbbk',
+    '.kcbbbbk',
+    '.kcbbbbk',
+    '.kcbbcbk',
+    '.kcbbck.',
+    '.kcbbck.',
   ],
   colors: {
     k: '#030517',
@@ -150,18 +146,15 @@ export const DAWN_THIGH_F: PaintedPiece = {
 
 /** The far boot from the knee to the ankle (pivot: the ankle). */
 export const DAWN_SHIN_F: PaintedPiece = {
-  pivot: [5, 17],
+  pivot: [5, 14],
   angle: 88.03,
   rows: [
-    '...kcbk..',
-    '...kck...',
-    '...kck...',
-    '...kck...',
-    '...kck...',
-    '...kDk...',
-    '...kDk...',
-    '..kcDk...',
-    '.kcbDk...',
+    'kcbbck...',
+    'kcbbck...',
+    'kcbbDk...',
+    'kcbbDk...',
+    'kcbcDk...',
+    'kccbDk...',
     'kcbbLk...',
     'kcbbLk...',
     'kcbbLk...',
@@ -223,3 +216,44 @@ export const DAWN_FOOT_F: PaintedPiece = {
 
 /** Where the far shoe meets the shin, from the ankle at rest (fine pixels): the shoe follows it. */
 export const DAWN_FOOT_JOIN_F: [number, number] = [-1.00, 0.50];
+
+/** His lit skin in the slits: a body's skin recolours his slit pixels from it (at it they stay his). */
+export const DAWN_SLIT_SKIN = '#f5c5a3';
+
+/** His bare near thigh in the skirt's slit, with the shade the panels cast on it (pivot: the knee). */
+export const DAWN_SLIT_N: PaintedPiece = {
+  pivot: [-1, 18],
+  angle: 99.25,
+  rows: [
+    '....t',
+    '....t',
+    '...tt',
+    '..ust',
+    '.tsst',
+    'tssst',
+    '.ssst',
+  ],
+  colors: {
+    s: '#f5c5a3',
+    t: '#dd937c',
+    u: '#d88b74',
+  },
+};
+
+/** His bare far thigh in the skirt's slit, with the shade the panels cast on it (pivot: the knee). */
+export const DAWN_SLIT_F: PaintedPiece = {
+  pivot: [0, 18],
+  angle: 91.36,
+  rows: [
+    't.',
+    't.',
+    'tt',
+    'ts',
+    'ts',
+    'ts',
+  ],
+  colors: {
+    s: '#f5c5a3',
+    t: '#dd937c',
+  },
+};

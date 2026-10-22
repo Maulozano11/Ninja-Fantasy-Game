@@ -544,7 +544,7 @@ function drawValiantHead(g: DrawCtx): void {
  * skin lands exactly on the character's (the rest of the body is drawn in that skin), his shadows
  * and black line staying as far below it and his lights as far above. In his own skin, his colour.
  */
-function skinTone(hex: string, skin: string, his: string = VALIANT_SKIN): string {
+export function skinTone(hex: string, skin: string, his: string = VALIANT_SKIN): string {
   if (skin.toLowerCase() === his) return hex;
   const [h, s, l] = rgbToHsl(...hexToRgb(hex));
   const [h0, s0, l0] = rgbToHsl(...hexToRgb(his));

@@ -7,8 +7,8 @@
 
 import { retintHex } from '../color';
 import { type Depth, DrawCtx, ItemDef, legDepth, legJoints, Side } from '../ctx';
-import { PaintedPiece, segAngle } from '../painted';
-import { add, F_NO_EDGE, F_NO_OUTLINE, F_NO_TEXTURE, GRID, norm, type PartId, partIndex, RES, sub, v, Vec } from '../raster';
+import { PaintedPiece, segAngle, stampBent } from '../painted';
+import { add, F_NO_EDGE, F_NO_OUTLINE, F_NO_TEXTURE, GRID, type Layer, norm, type PartId, partIndex, PARTS, RES, sub, v, Vec } from '../raster';
 import { rotateTemplate, stampTemplate, type TemplatePalette } from '../rotsprite';
 import {
   DAWN_BOOT_CLOTH,
@@ -100,6 +100,18 @@ function cover(out: Uint8Array, piece: PaintedPiece, at: Vec, deg: number): void
   }
 }
 
+/** How near the knee (fine pixels) the thigh's cells turn with it when it bends (stampBent): about half the boot's width. */
+const KNEE_R = 4;
+
+/** His black line (never tinted). */
+const isLine = (hex: string): boolean => hex === DAWN_THIGH_N.colors.k;
+
+/** How far a knee bends past the way he drew it (degrees, wrapped to -180..180). */
+function kneeBend(thighA: number, shinA: number, thigh: PaintedPiece, shin: PaintedPiece): number {
+  const d = shinA - thighA - (shin.angle - thigh.angle);
+  return ((((d + 180) % 360) + 360) % 360) - 180;
+}
+
 /** How far round the knee (fine pixels) closeKnee looks. */
 const KNEE_REACH = 6;
 
@@ -123,6 +135,35 @@ function closeKnee(g: DrawCtx, s: Side, boot: Uint8Array, knee: Vec): void {
     }
   }
   for (const i of close) L.mat[i] = line;
+}
+
+/**
+ * Fills a pixel left empty with all four of its neighbours drawn on these depths (a turned leg: his bare
+ * woman's thigh, the lace top, the shin; and her skirt's panels over it): two of his pieces turned about
+ * different joints can leave a single pixel between them, a hole in the leg. It takes the colour most of
+ * those neighbours have (the first one's on a tie), on that neighbour's layer. Callers fill only away
+ * from rest: at rest nothing is turned.
+ */
+export function fillHoles(g: DrawCtx, depths: Depth[]): void {
+  const Ls = depths.map((d) => g.L(d)).filter((L) => L.used);
+  const top = (i: number): Layer | undefined => {
+    for (let k = Ls.length - 1; k >= 0; k--) if (Ls[k].mat[i] >= 0) return Ls[k];
+    return undefined;
+  };
+  const fill: [number, Layer, number][] = [];
+  for (let y = 1; y < GRID - 1; y++)
+    for (let x = 1; x < GRID - 1; x++) {
+      const i = y * GRID + x;
+      if (top(i)) continue;
+      const ns = [i - 1, i + 1, i - GRID, i + GRID];
+      const ts = ns.map(top);
+      if (ts.some((t) => !t)) continue;
+      const count = new Map<number, number>();
+      ns.forEach((j, k) => count.set(ts[k]!.mat[j], (count.get(ts[k]!.mat[j]) ?? 0) + 1));
+      const best = ns.reduce((b, j, k) => ((count.get(ts[k]!.mat[j]) ?? 0) > (count.get(ts[b]!.mat[ns[b]]) ?? 0) ? k : b), 0);
+      fill.push([i, ts[best]!, ns[best]]);
+    }
+  for (const [i, L, j] of fill) L.set(i % GRID, (i / GRID) | 0, L.mat[j], L.shade[j], PARTS[L.part[j]], F_NO_TEXTURE | F_NO_OUTLINE);
 }
 
 type Kind = 'cloth' | 'leather' | 'metal';
@@ -159,16 +200,23 @@ export const FEET_DAWN_BOOTS: ItemDef = {
       const footAt = add(at, shoeShift(join, shinA - shin.angle));
       stampBoot(g, d, shin, at, shinA, `shin${s}`, tint);
       stampBoot(g, d, foot, footAt, foot.angle, `foot${s}`, tint);
-      if (thigh) stampBoot(g, d, thigh, knee, thighA, `thigh${s}`, tint);
       const boot = new Uint8Array(GRID * GRID);
       cover(boot, shin, at, shinA);
       cover(boot, foot, footAt, foot.angle);
-      if (thigh) cover(boot, thigh, knee, thighA);
+      // the thigh's piece over the shin's, its cells by the knee filling a bent knee's outside (at rest,
+      // and with the knee bent as he drew it, it is stampPiece exactly)
+      const under = boot.slice();
+      stampBent(g, d, thigh, knee, thighA, `thigh${s}`, [{ about: knee, r: KNEE_R, bend: kneeBend(thighA, shinA, thigh, shin) }], isLine, tint, (x, y) => !!under[y * GRID + x]);
+      // the boot covers the thigh's piece and the bent knee's fill (its pixels of the thigh on this layer)
+      const L = g.L(d);
+      const tp = partIndex(`thigh${s}`);
+      for (let i = 0; i < GRID * GRID; i++) if (L.mat[i] >= 0 && L.part[i] === tp) boot[i] = 1;
       closeKnee(g, s, boot, knee);
       torsoOffBoot(g, boot);
       // turned, an edge of his boot left open is closed in his line (at rest his line closes it)
-      const turned = Math.abs(shinA - shin.angle) >= 0.5 || (thigh && Math.abs(thighA - thigh.angle) >= 0.5) || footAt.x !== at.x;
+      const turned = Math.abs(shinA - shin.angle) >= 0.5 || Math.abs(thighA - thigh.angle) >= 0.5 || footAt.x !== at.x;
       if (turned) closeOpen(g, d, boot, DAWN_THIGH_N.colors.k);
     }
+    if (g.rig.pose !== 'idle') for (const s of ['F', 'N'] as Side[]) fillHoles(g, [legDepth(s, 'body'), legDepth(s, 'cloth'), legDepth(s, 'feet')]);
   },
 };

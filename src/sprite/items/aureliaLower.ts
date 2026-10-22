@@ -7,11 +7,15 @@
 // skirts do (armor.ts hang()), so the panels move with the legs in walk, run, sit and crouch. The piece
 // is sampled between its columns: at rest every pixel is his as drawn, moved it keeps his line round it.
 
+import { skinTone } from '../body';
 import { retintHex } from '../color';
-import type { Depth, DrawCtx, ItemDef } from '../ctx';
+import { type Depth, type DrawCtx, type ItemDef, legDepth, legJoints, type Side } from '../ctx';
+import { segAngle, stampPiece } from '../painted';
 import { F_NO_OUTLINE, F_NO_TEXTURE, GRID, type PartId, RES, v, type Vec } from '../raster';
 import { BODY_PARAMS, drawRig, GROUND, type Rig } from '../rig';
 import type { BodyType } from '../types';
+import { fillHoles } from './aureliaBoots';
+import { DAWN_SLIT_F, DAWN_SLIT_N, DAWN_SLIT_SKIN } from './aureliaBootsArt';
 import { DAWN_BASE, DAWN_FAR, DAWN_FRONT, DAWN_LINE, DAWN_LINING, DAWN_NEAR, DAWN_WAIST, type DawnPiece } from './aureliaLowerArt';
 
 /** How much a hanging piece follows its thigh (as armor.ts HANG_FOLLOW: skirts never bell out). */
@@ -257,6 +261,18 @@ function bareThighs(g: DrawCtx): void {
   }
 }
 
+/**
+ * His bare thighs in the slits (aureliaBootsArt.ts, by tools/refs/aurelia-legs-from-ref.py): his skin with
+ * the shade the panels cast on it, over our thigh's flat skin, each turning with its thigh about the knee
+ * as the lace top does. In the body's skin (at his, his colours).
+ */
+function slitThighs(g: DrawCtx): void {
+  for (const s of ['F', 'N'] as Side[]) {
+    const { hip, knee } = legJoints(g.rig, s);
+    stampPiece(g, legDepth(s, 'body'), s === 'N' ? DAWN_SLIT_N : DAWN_SLIT_F, knee, segAngle(hip, knee), `thigh${s}`, (_ch, hex) => skinTone(hex, g.look.skin, DAWN_SLIT_SKIN));
+  }
+}
+
 const tinter = (slots: Record<string, string>) => (role: string, hex: string): string => (slots[role] ? retintHex(hex, DAWN_BASE[role], slots[role]) : hex);
 
 export const SKIRT_DAWN_PANELS: ItemDef = {
@@ -273,6 +289,7 @@ export const SKIRT_DAWN_PANELS: ItemDef = {
   draw: (g, [cloth, gold, lining]) => {
     const tint = tinter({ cloth, gold, lining });
     bareThighs(g);
+    slitThighs(g);
     // the lining and the far panel behind the legs and the far arm, the near panel behind the near leg;
     // the far panel's top over the far thigh (his panel hangs over it there; ours is wider than his)
     drawPiece(g, 'backGear', 'pelvis', DAWN_LINING, tint);
@@ -281,6 +298,8 @@ export const SKIRT_DAWN_PANELS: ItemDef = {
     drawPiece(g, 'farLeg.armor', 'thighN', DAWN_NEAR, tint);
     drawPiece(g, 'skirt', 'thighN', DAWN_NEAR, tint, DAWN_NEAR.front);
     drawPiece(g, 'skirt', 'pelvis', DAWN_FRONT, tint);
+    // moved, a pixel left empty between her panels and her legs is filled (at rest each piece is as drawn)
+    if (g.rig.pose !== 'idle') fillHoles(g, ['backGear', 'farLeg.body', 'farLeg.cloth', 'farLeg.feet', 'farLeg.armor', 'nearLeg.body', 'nearLeg.cloth', 'nearLeg.feet', 'skirt']);
   },
 };
 

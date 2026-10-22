@@ -14,6 +14,7 @@ import { founderFootTurn, founderLegLen, founderLegOut, founderLegsStill } from 
 import { FOUNDER_SANDAL_FOOT_F, FOUNDER_SANDAL_FOOT_N, FOUNDER_SANDAL_KIND, FOUNDER_SANDAL_LEATHER, FOUNDER_SANDAL_SHIN_F, FOUNDER_SANDAL_SHIN_N, FOUNDER_SANDAL_SKIN } from './founderSandalsArt';
 import { ROMAN_KIT_KIND, SANDAL_FOOT_F, SANDAL_FOOT_N, SANDAL_LEATHER, SANDAL_SHIN_F, SANDAL_SHIN_N, SANDAL_SKIN } from './bracersSandalsArt';
 import { BOOT_STEEL, BOOT_TRIM, crimsonKind, SABATON_FOOT_F, SABATON_FOOT_N, SABATON_SHIFT, SABATON_SHIN_F, SABATON_SHIN_N } from './sabatonsGauntletsArt';
+import { SHADE_WRAPS } from './sayaLegs';
 
 type Kind = 'cloth' | 'leather' | 'metal';
 const col = (key: string, label: string, def: string, kind: Kind = 'leather') => ({ key, label, default: def, kind });
@@ -570,4 +571,5 @@ export const FEET_ITEMS: ItemDef[] = [
       }
     },
   },
+  SHADE_WRAPS,
 ];

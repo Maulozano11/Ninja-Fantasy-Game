@@ -5,6 +5,7 @@
 import type { DrawCtx } from './ctx';
 import { FLAME_LONGSWORD } from './items/flameSwordArt';
 import { ICE_SWORD } from './items/iceSwordArt';
+import { SAYA_SABER } from './items/sayaSwordArt';
 import { add, norm, RES, scale, sub, Vec } from './raster';
 import { drawRig, THROW_RELEASE_FRAME } from './rig';
 import type { BodyType } from './types';
@@ -65,8 +66,8 @@ export function swordAngle(g: DrawCtx): number {
     default:
       // Matches the reference: blade hangs across the legs at about 50 degrees. The owner's flame
       // longsword and ice crystal sword hang at the angle he painted them (35), so at rest they are every
-      // pixel his.
-      return g.has('held', 'held_flame_sword') ? FLAME_LONGSWORD.angle : g.has('held', 'held_ice_crystal') ? ICE_SWORD.angle : 52;
+      // pixel his. Saya's saber hangs at the angle it is drawn at (45) for the same reason.
+      return g.has('held', 'held_flame_sword') ? FLAME_LONGSWORD.angle : g.has('held', 'held_ice_crystal') ? ICE_SWORD.angle : g.has('held', 'held_shade_saber') ? SAYA_SABER.angle : 52;
   }
 }
 
@@ -126,10 +127,10 @@ export const handsBusy = (g: DrawCtx): boolean => BUSY.has(g.rig.pose) || !!g.lo
 export const handsReleased = (g: DrawCtx): boolean => g.rig.released && !handsBusy(g);
 
 /** The held items that are weapons, with a handle the fist holds; the others are empty hands or a technique held in the palm. */
-const WEAPONS = new Set(['held_katana', 'held_crystal', 'held_ice_crystal', 'held_flame_sword', 'held_kunai', 'held_naginata']);
+const WEAPONS = new Set(['held_katana', 'held_crystal', 'held_ice_crystal', 'held_flame_sword', 'held_shade_saber', 'held_kunai', 'held_naginata']);
 
-/** The owner's longswords, held by their own grip at the hand joint (the others at the fist's middle, gripPoint). */
-export const HAND_JOINT_SWORDS = new Set(['held_flame_sword', 'held_ice_crystal']);
+/** The owner's longswords and Saya's saber, held by their own grip at the hand joint (the others at the fist's middle, gripPoint). */
+export const HAND_JOINT_SWORDS = new Set(['held_flame_sword', 'held_ice_crystal', 'held_shade_saber']);
 export const isWeapon = (held: string | undefined): boolean => !!held && WEAPONS.has(held);
 
 /**
@@ -146,7 +147,7 @@ export function gripAngle(g: DrawCtx): number | null {
   if (throwsKunai(g)) return swordAngle(g);
   if (handsBusy(g) || handsLimp(g) || handsReleased(g)) return null;
   if (g.has('held', 'held_naginata')) return poleAngle(g);
-  if (g.has('held', 'held_katana') || g.has('held', 'held_crystal') || g.has('held', 'held_ice_crystal') || g.has('held', 'held_flame_sword') || g.has('held', 'held_kunai')) return swordAngle(g);
+  if (g.has('held', 'held_katana') || g.has('held', 'held_crystal') || g.has('held', 'held_ice_crystal') || g.has('held', 'held_flame_sword') || g.has('held', 'held_shade_saber') || g.has('held', 'held_kunai')) return swordAngle(g);
   return null;
 }
 
@@ -190,7 +191,7 @@ export function throwRelease(body: BodyType, held?: string): ThrowRelease {
   const fist = (r: typeof at): Vec => add(r.handN, scale(norm(sub(r.handN, r.wristN)), 0.9));
   const d = norm(sub(at.handN, at.wristN));
   const pole = held === 'held_naginata';
-  // The flame longsword is held by its own grip at the hand joint (items/accessories.ts), the others at the fist's middle.
+  // The owner's longswords and Saya's saber are held by their own grip at the hand joint (items/accessories.ts), the others at the fist's middle.
   const grip = HAND_JOINT_SWORDS.has(held ?? '') ? before.handN : fist(before);
   return {
     frame: THROW_RELEASE_FRAME,

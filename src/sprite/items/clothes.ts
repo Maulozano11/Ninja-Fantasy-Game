@@ -9,6 +9,7 @@ import { hexToRgb, retintHex } from '../color';
 import { armDepth, armJoints, armPoint, armSpan, type Depth, DrawCtx, fillTorso, handDraw, handPose, ItemDef, legDepth, legJoints, legPoint, Side, torsoNeck, torsoPoly } from '../ctx';
 import { FEMALE_BASE_CLOTH } from '../femaleBaseArt';
 import { continuedTo, limbOnly, PaintedPiece, PieceJoint, segAngle, stampBent, stampPiece } from '../painted';
+import { SHADE_BELTS_ITEM } from './sayaLower';
 import { add, along, ellipse, F_NO_EDGE, F_NO_OUTLINE, F_NO_TEXTURE, GRID, Layer, lerp, norm, PAD, PartId, partIndex, PARTS, Pen, perp, poly, RES, scale, seam, ShadeFn, sub, v, Vec } from '../raster';
 import { stampTemplate, TemplatePalette } from '../rotsprite';
 import { crimsonKind, GAUNTLET_F, GAUNTLET_N, GLOVE_LEATHER, GLOVE_STEEL, GLOVE_TONES, GLOVE_TRIM } from './sabatonsGauntletsArt';
@@ -19,6 +20,7 @@ import { FOUNDER_REACH_ARM_F, FOUNDER_REACH_BRACER_F, FOUNDER_REACH_HAND_F, FOUN
 import { FOUNDER_ARM_F, FOUNDER_ARM_N, FOUNDER_ARM_SKIN, FOUNDER_HAND_F, FOUNDER_HAND_N, FOUNDER_SLEEVE_N, FOUNDER_TUNIC, FOUNDER_TUNIC_KIND } from './founderTunicArt';
 import { FOUNDER_THIGH_F, FOUNDER_THIGH_N, FOUNDER_TROUSERS, FOUNDER_TROUSERS_KIND, FOUNDER_TROUSERS_STUD } from './founderTrousersArt';
 import { STEEL_BRACER, STEEL_BRACER_F, STEEL_BRACER_KIND, STEEL_BRACER_N } from './steelBracersArt';
+import { SAYA_SHADE_GLOVES } from './sayaUpper';
 
 type Kind = 'cloth' | 'leather' | 'metal';
 const col = (key: string, label: string, def: string, kind: Kind = 'cloth') => ({ key, label, default: def, kind });
@@ -1933,6 +1935,8 @@ export const WAIST_ITEMS: ItemDef[] = liftMain([
       tseam(g, L, CX - 0.3, 3.6, CX - 0.3, 0.9, 1);
     },
   },
+  // Saya's belts, pouch and scabbard, from the owner's Saya picture (sayaLower.ts)
+  SHADE_BELTS_ITEM,
 ]);
 
 // ---------------------------------------------------------------------------
@@ -2178,4 +2182,6 @@ export const HAND_ITEMS: ItemDef[] = liftMain([
       }
     },
   },
+  // Saya's fingerless gloves, from the owner's Saya picture (sayaUpper.ts)
+  SAYA_SHADE_GLOVES,
 ]);

@@ -9,6 +9,12 @@ import { hd } from './hairkit';
 import { CRYSTAL_SWORD, drawPaintedWeapon, drawWeapon, KUNAI } from './weapons';
 import { FLAME_LONGSWORD, FLAME_SWORD_FLAME, FLAME_SWORD_GOLD } from './flameSwordArt';
 import { ICE_SWORD, ICE_SWORD_BLADE, ICE_SWORD_KIND } from './iceSwordArt';
+import { SAYA_SWORD_BLADE, SAYA_SWORD_GUARD } from './sayaSwordArt';
+import { drawSayaSaber } from './sayaSword';
+import { sayaGrip } from './sayaUpper';
+
+/** The angle Saya's saber rides on her back (see held_shade_saber). */
+const SAYA_STOW = 72;
 import { KATANA_PARTS, katanaHipColors, katanaTemplate } from './katana';
 import { stampLeaning } from './armor';
 import { FOUNDER_COWL, FOUNDER_COWL_GOLD, FOUNDER_COWL_KIND, FOUNDER_COWL_NEAR, FOUNDER_COWL_NECK, FOUNDER_COWL_STUD, FOUNDER_COWL_STUD_F } from './founderCowlArt';
@@ -387,6 +393,23 @@ export const HELD_ITEMS: ItemDef[] = [
       // His grip crosses his fist at the hand joint (higher in the fist than our other blades' grip
       // point): held there, at rest every pixel is his and his gauntlet's place is our fist's.
       else if (!handsReleased(g)) drawPaintedWeapon(g, 'nearArm.held', FLAME_LONGSWORD, g.rig.handN, swordAngle(g), tint);
+    },
+  },
+  {
+    id: 'held_shade_saber',
+    slot: 'held',
+    name: 'Shade Saber',
+    desc: 'A straight steel blade with gold dots down its middle under a gold swept hilt, gold sparkles round it: the owner painted it for Saya.',
+    colors: [col('blade', 'Blade', SAYA_SWORD_BLADE, 'metal'), col('guard', 'Guard', SAYA_SWORD_GUARD, 'metal')],
+    draw: (g, [blade, guard]) => {
+      // Stowed steeper than the other back blades (72 degrees, not 48): her long saber crossing the back
+      // at 48 pokes its point out in front of her hips (hand signs, sitting, reading); at 72 it runs
+      // down behind her near side and its point stays behind her.
+      if (handsBusy(g)) drawSayaSaber(g, 'backGear', backGrip(g, SAYA_STOW), backAngle(g, SAYA_STOW), blade, guard, false);
+      else if (handsLimp(g)) drawSayaSaber(g, 'nearArm.held', droppedGrip(g, 0.7), -86, blade, guard, false);
+      // Its grip crosses the fist at the hand joint, as the flame longsword's does; in her own glove
+      // (sayaGrip) it passes through the middle of her fist.
+      else if (!handsReleased(g)) drawSayaSaber(g, 'nearArm.held', sayaGrip(g) ?? g.rig.handN, swordAngle(g), blade, guard, true);
     },
   },
   {

@@ -47,6 +47,9 @@ const ES: Record<string, string> = {
   Bright: 'Brillantes',
   Piercing: 'Penetrantes',
   "Aiden's eyes": 'Los ojos de Aiden',
+  Shade: 'Sombra',
+  "Saya's eyes": 'Los ojos de Saya',
+  "Saya's face": 'La cara de Saya',
   None: 'Ninguno',
   Forehead: 'Frente',
   Arm: 'Brazo',
@@ -273,6 +276,34 @@ const ES: Record<string, string> = {
   "Silk cord crossed over white ray skin, a gold ornament under the middle diamond.": "Cordón de seda cruzado sobre piel de raya blanca, con un adorno de oro bajo el rombo central.",
   "The bare white ray skin of a court sword, gold fittings and a red silk tassel.": "La piel de raya blanca de una espada de la corte, herrajes de oro y una borla de seda roja.",
   "A red and white twisted cord like a shrine's sacred rope, hung with folded paper (shide) that purifies.": "Un cordón trenzado rojo y blanco como la cuerda sagrada de un santuario, con papel doblado (shide) que purifica.",
+  // Saya's hair (hair_sun_fall)
+  'Sunfall Tresses': 'Cascada de Sol',
+  'Long straight blonde hair down the back: side-swept bangs with a strand between the eyes, a gold checker ornament on the crown, a lock down each cheek, the near one over the chest, and the rest falling behind the near shoulder.':
+    'Pelo largo, lacio y rubio por la espalda: flequillo de lado con un mechón entre los ojos, un adorno de oro a cuadros en la coronilla, un mechón por cada mejilla, el cercano sobre el pecho, y el resto cayendo tras el hombro cercano.',
+  Ornament: 'Adorno',
+  // Saya's scarf (cape_crimson_scarf)
+  'A long red scarf wound thick round the neck in two rolls and over the near shoulder, its end hanging behind the shoulder and streaming out behind in the wind.':
+    'Una larga bufanda roja enrollada gruesa al cuello en dos vueltas y sobre el hombro cercano, con la punta colgando tras el hombro y ondeando hacia atrás con el viento.',
+  // Saya's skirt, belts and scabbard (items/sayaLower.ts)
+  Stripe: 'Franja',
+  'Shade Pleated Skirt': 'Falda plisada de la Sombra',
+  'Shade Belts and Scabbard': 'Cinturones y vaina de la Sombra',
+  'A short navy skirt in pleats striped in red, with a red hem. Women only.': 'Una falda corta azul marino plisada con franjas rojas y bajo rojo. Solo mujeres.',
+  'Two brown leather belts slung across the hips with steel buckles, a pouch on the hip, and a black scabbard with gold fittings hanging behind the leg. Women only.': 'Dos cinturones de cuero marrón cruzados sobre las caderas con hebillas de acero, una bolsa en la cadera y una vaina negra con herrajes de oro colgando detrás de la pierna. Solo mujeres.',
+  // Saya's leggings (feet_shade_wraps)
+  'Thigh-high navy leggings wound with red bands, round knee pads rimmed in red, and armoured navy shoes with red trim.': 'Medias altas azul marino hasta el muslo envueltas en bandas rojas, rodilleras redondas con borde rojo y zapatos acorazados azul marino con ribete rojo.',
+  // Saya's top, gloves, scarf and leggings: names (and the top's and gloves' descriptions)
+  'Crimson Shade Garb': 'Atuendo de la Sombra Carmesí',
+  'A sleeveless navy ninja top with a cream chest plate, red piping down the front, and navy arm guards banded in red (+2 AC). Women only.':
+    'Un top ninja azul marino sin mangas con peto crema, ribete rojo por delante y brazales azul marino con bandas rojas (+2 CA). Solo mujeres.',
+  'Shade Fingerless Gloves': 'Guantes sin dedos de la Sombra',
+  'Fingerless gloves: a leather strap round the wrist, navy over the back of the hand with a red band over the knuckles (only the strap on the off hand).':
+    'Guantes sin dedos: una correa de cuero en la muñeca, azul marino sobre el dorso con una banda roja en los nudillos (en la otra mano, solo la correa).',
+  'Crimson Shade Scarf': 'Bufanda de la Sombra Carmesí',
+  'Shade Wraps': 'Vendas de la Sombra',
+  // Saya's sword
+  'Shade Saber': 'Sable de la Sombra',
+  'A straight steel blade with gold dots down its middle under a gold swept hilt, gold sparkles round it: the owner painted it for Saya.': 'Una hoja recta de acero con puntos de oro por el centro bajo una guarda de lazo de oro, con destellos de oro alrededor: el dueño la pintó para Saya.',
 };
 
 /** An editor label in the screen's language. */

@@ -1784,6 +1784,88 @@ export const LEGENDARY_PRESETS: { name: string; tag: string; nameEs?: string; ta
       }),
     },
   },
+  // ── Heroine: Saya (begin) ──────────────────────────────────────────────────────────────────────
+  // The owner's third heroine, copied 1:1 from his picture of her at our scale
+  // (docs/reference/saya-game-scale-owner-reference.jpg) part by part: hair, eyes, top with arm
+  // guards, gloves, scarf, skirt, belts with the scabbard, leggings and shoes, each its own creator
+  // item in his colours. Her sword is from his big picture (saya-owner-reference.jpg): his small one
+  // drew the weapons wrongly ("el arma bugeada"). Name and title are provisional (the owner will
+  // rename her). A ninja swordswoman: Ryusei (kunai and Nodes) and a Bukijutsu Master. Her numbers
+  // are the creator's formula; Ryusei's bonus (DEX, WIS) adds +1 AC, DC and attack. Fire chakra in
+  // the red of her scarf.
+  {
+    name: 'Saya, the Crimson Shade',
+    tag: 'Crimson Shade Garb · Shade Saber',
+    nameEs: 'Saya, la Sombra Carmesí',
+    tagEs: 'Atuendo de la Sombra Carmesí · Sable de la Sombra',
+    character: {
+      id: 'preset_saya',
+      name: 'Saya',
+      title: 'The Crimson Shade',
+      level: 5,
+      clan: 'Ryusei',
+      shinobiClass: 'Bukijutsu Master',
+      stats: { str: 12, dex: 18, con: 14, int: 12, wis: 14, cha: 13 },
+      palette: {
+        skinTone: '#f4bd97',
+        hairColor: '#f5d679',
+        eyeColor: '#3778a4',
+        armorPrimary: '#374061',
+        armorSecondary: '#ebe5d7',
+        clothColor: '#374061',
+        headbandCloth: '#374061',
+        headbandPlate: '#cbd5e1',
+        chakraAuraColor: '#b43134',
+        capeColor: '#b43134',
+        accentColor: '#a73234',
+      },
+      hairstyle: 'Sephiroth Parted Flow',
+      armorStyle: 'Leaf Chunin Flak',
+      headbandPosition: 'Forehead',
+      weaponStyle: 'Katana Blade',
+      capeStyle: 'None',
+      dojutsu: 'None',
+      selectedFeats: ['silent_killing', 'tactical_trapper'],
+      // Her explosive tags are tools in her pouch since the tag stopped being a jutsu (rules/pouch.ts):
+      // the Utility slot takes the starting sheet's Body Flicker, as loading an older sheet does.
+      pouch: { explosiveTags: 2 },
+      selectedJutsus: {
+        slot1Utility: 'body_flicker',
+        slot2Elemental: 'fireball_goukakyu',
+        slot3Elemental: 'crescent_moon_dance',
+        slot4Clan: 'wood_dragon_jutsu',
+        slot5Ultimate: 'great_fire_annihilation',
+      },
+      sheetVersion: 2,
+      maxHp: 44,
+      currentHp: 44,
+      maxChakra: 32,
+      currentChakra: 32,
+      armorClass: 17,
+      speed: 6,
+      jutsuSaveDC: 16,
+      jutsuAttackBonus: 8,
+      appearance: spriteLook({
+        body: 'female',
+        skin: '#f4bd97',
+        faceShape: 'shade',
+        eyeShape: 'shade',
+        eyeColor: '#3778a4',
+        slots: {
+          hair: it('hair_sun_fall'),
+          armor: it('armor_crimson_shade'),
+          hands: it('hands_shade_fingerless'),
+          cape: it('cape_crimson_scarf'),
+          skirt: it('skirt_shade_pleats'),
+          waist: it('waist_shade_belts'),
+          feet: it('feet_shade_wraps'),
+          held: it('held_shade_saber'),
+        },
+        chakra: { color: 'red', tint: '#b43134', onCharge: true, onCast: true, onVictory: true }, // Fire, in the red of her scarf
+      }),
+    },
+  },
+  // ── Heroine: Saya (end) ────────────────────────────────────────────────────────────────────────
 ];
 
 export const DEFAULT_CHARACTER: ShinobiCharacter = LEGENDARY_PRESETS[0].character;

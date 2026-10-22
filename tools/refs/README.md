@@ -227,3 +227,77 @@ folders.
   mirrored left to right (rows reversed, joint and angle mirrored: his pixels and colours, his lit side up):
 
       python3 -I tools/refs/solen-reach-from-ref.py src/sprite/items/founderReachArt.ts
+
+- `heroine_ref.py`, `heroine-study.py`, `heroine_paint.py`, `heroine-proportions.py`,
+  `heroine-idle.mts`: the study of the owner's four heroines (`docs/reference/{lyra,elise,saya,aurelia}-owner-reference.jpg`),
+  the base every heroine part builds on. His pictures are his own pixel art at 2.2 to 2.8 of his
+  pixels to one of ours (Lyra and Elise: 7.81 picture pixels, one body in one pose, 256 of them
+  tall; Saya: exactly 10, Aurelia: 9.66, 198 tall), in proportions that are not ours (5.1 to 5.4
+  heads tall, ours 4.1). `heroine_ref.py` holds each picture's grid (`native(which)`), its colours
+  (`PALETTES`), her joints and eyes, our female rig at idle frame 0, and how each part of her lands
+  on it (`SEGMENTS[which]`: the head about the eyes, the torso, long hair and coat as columns, the
+  limbs as chains along our limbs, the weapon at her own angle about our hand). `heroine-study.py`
+  cuts her into parts, brings each down in her colours, paints the hand-drawn part
+  (`heroine_paint.py`: everything below the head, the eyes, the weapons) and lays her line round the
+  figure. The result, the reduced reference, is in `tools/refs/data/heroine-<which>-*.npy` and read
+  with `heroine_ref.reduced(which)`, `reduced_parts(which)` (which part each pixel is) and
+  `reduced_layers(which)` (each part alone). `heroine-proportions.py` draws `proporciones.png`: the
+  template at our height beside its reduced reference and our female body, with the measurements.
+
+      npx tsx tools/refs/heroine-idle.mts <out>
+      python3 -I tools/refs/heroine-study.py <out> <out>/female-idle.png --write
+      python3 -I tools/refs/heroine-proportions.py <out> <out>/female-idle.png
+
+- `saya_rig.py`: our female body (the second one, from his game-scale heroines) at idle frame 0, which
+  every Saya script lays her pieces on: its joints, her picture's place on our frame (her soles on ours)
+  and how her picture stands against it (her hips where ours are; our neck, shoulders and arms three or
+  four rows higher, so her pieces from the neck up are moved up onto them and her top is longer by her own
+  rows; her legs as long as he drew them). It also holds `GRIP_N`, the middle of her near glove's fist,
+  where her sword's grip passes. Change it when the female rig changes, then rerun the Saya scripts.
+
+- `saya-hair-from-ref.py`: Saya's hair (`hair_sun_fall`) copied 1:1 from his picture at our game's
+  scale (`saya-game-scale-owner-reference.jpg`, 10.24 picture pixels to one of his, which is one of
+  ours), in his colours: the front over the head and the back behind it on the face anchor (his
+  lash on the lash of her own eyes, the `shade` shape, so his bangs and strands sit round them as he
+  drew them; the far lock moves out with a far eye set wider than his), and the long hair down the back on the neck, turned
+  with the torso, continued behind his arm. Writes `src/sprite/items/sayaHairArt.ts`, and in
+  `<out>/study/` his hair and the three parts at 10x.
+
+      python3 -I tools/refs/saya-hair-from-ref.py <out> src/sprite/items/sayaHairArt.ts
+
+- `saya-eyes-from-ref.py`: Saya's eyes as the `shade` eye shape (`src/sprite/sayaEyeArt.ts`), lifted 1:1
+  from his picture of her at our scale (1024 x 1024, 10.24 picture pixels to one of hers, one of
+  hers = one of ours): her lash, whites and blues in her colours on our face template's eye cells
+  (her lash row on the template's lash row; her skin there drawn in the player's skin); the lowered
+  (reading) and closed (knocked out) lids are made of her pixels.
+
+      python3 -I tools/refs/saya-eyes-from-ref.py docs/reference/saya-game-scale-owner-reference.jpg <out> src/sprite/sayaEyeArt.ts
+
+- `saya-face-from-ref.py`: Saya's face as the `shade` face shape (`src/sprite/sayaFaceArt.ts`), lifted
+  1:1 from the same picture: her flat skin, the shadow down her far jaw, her nose and one-row mouth, her
+  jaw, chin and black line, the ear between her side hair and bangs, in the player's skin (her own colours
+  in her skin). The face shape puts her far eye where he drew it (one cell nearer than the template's),
+  so her eyes, hair and scarf land on her face cell for cell.
+
+      python3 -I tools/refs/saya-face-from-ref.py docs/reference/saya-game-scale-owner-reference.jpg <out> src/sprite/sayaFaceArt.ts
+
+- `saya-upper-from-ref.py`: Saya's ninja top, arm guards and fingerless gloves
+  (`src/sprite/items/sayaUpperArt.ts`, items in `sayaUpper.ts`): his pixels 1:1 from his Saya drawn at
+  our scale (`docs/reference/saya-game-scale-owner-reference.jpg`, 10.24 picture px per pixel), laid on
+  our female idle by her eyes; what her hair, scarf and belts hide is filled (crossed in the preview).
+  The top rides the torso, each guard its limb; on the female bodies a fist is her own (her near glove
+  round her sword, her far fist), riding the forearm; other hands are our hand pictures painted in her
+  glove by how far each pixel lies from the wrist. Where our body's own skin shows, the armour paints it
+  in her two skin tones and her line.
+
+      python3 -I tools/refs/saya-upper-from-ref.py docs/reference/saya-game-scale-owner-reference.jpg src/sprite/items/sayaUpperArt.ts <out>
+
+- `saya-lower-from-ref.py`: Saya's pleated skirt (`skirt_shade_pleats`), and her belts with the pouch
+  and her scabbard (`waist_shade_belts`) (`src/sprite/items/sayaLowerArt.ts`, items in `sayaLower.ts`):
+  his pixels 1:1 from his Saya drawn at our scale (`docs/reference/saya-game-scale-owner-reference.jpg`,
+  10.24 picture px per pixel, laid on our female idle by her eyes). The weapons he called bugged in that
+  picture are not used; what they covered, and the belts' ends where our waist is wider, are filled
+  (crossed in the preview). The scabbard is drawn from her big picture at our scale, in its colours.
+  All three pieces ride the pelvis and turn with the torso; the scabbard hangs behind the near leg.
+
+      python3 -I tools/refs/saya-lower-from-ref.py docs/reference/saya-game-scale-owner-reference.jpg src/sprite/items/sayaLowerArt.ts <out>

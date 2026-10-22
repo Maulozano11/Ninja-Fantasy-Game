@@ -18,6 +18,7 @@ import { armDepth, armJoints, Depth, DrawCtx, ItemDef, legDepth, legJoints, Side
 import { PaintedPiece, segAngle, stampPiece } from '../painted';
 import { add, capsule, ellipse, F_NO_OUTLINE, F_NO_TEXTURE, fine, GRID, Layer, lerp, norm, partIndex, PartId, Pen, perp, poly, RES, scale, sub, v, Vec } from '../raster';
 import { drawRig, GROUND, Rig, turnPoint } from '../rig';
+import { SHADE_PLEATS } from './sayaLower';
 import {
   PLATE_CHEST,
   PLATE_ELBOW_N,
@@ -41,6 +42,7 @@ import { capeWind } from './capes';
 import { FOUNDER_CHEST, FOUNDER_CUIRASS_KIND, FOUNDER_SASH, FOUNDER_STEEL, FOUNDER_STRAP } from './founderCuirassArt';
 import { FOUNDER_SKIRT, FOUNDER_SKIRT_KIND, FOUNDER_SKIRT_LEATHER, FOUNDER_SKIRT_STUD, FOUNDER_SKIRT_TUNIC } from './founderSkirtArt';
 import { isFemaleBody, type BodyType } from '../types';
+import { SAYA_SHADE_ARMOR } from './sayaUpper';
 
 
 type Kind = 'cloth' | 'leather' | 'metal';
@@ -2907,6 +2909,8 @@ export const ARMOR_ITEMS: ItemDef[] = [
     statsArmor: 'Dark Knight Plate',
     draw: (g, [steel, trim]) => drawCrimsonPlate(g, steel, trim),
   },
+  // Saya's ninja top and arm guards, from the owner's Saya picture (sayaUpper.ts)
+  SAYA_SHADE_ARMOR,
 ];
 
 // ---------------------------------------------------------------------------
@@ -3107,4 +3111,6 @@ export const SKIRT_ITEMS: ItemDef[] = [
       });
     },
   },
+  // Saya's pleated skirt, from the owner's Saya picture (sayaLower.ts)
+  SHADE_PLEATS,
 ];

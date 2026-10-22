@@ -91,25 +91,23 @@ export interface ItemChoice {
 
 export type HeadbandPosition = 'none' | 'forehead' | 'neck' | 'arm' | 'waist';
 
-export type EmblemId = 'crescent' | 'wave' | 'peak' | 'bolt' | 'sun' | 'spiral' | 'blank';
-
 /**
- * The old forehead-plate headband. Removed (the owner, 2026-10-21: "quitar bandanas"; the plate
- * headband is a Naruto symbol): nothing draws it and the creator no longer offers it. Looks keep the
- * field so saves and older looks keep their shape; it is always `NO_HEADBAND` (legacy.ts,
- * migrateAppearance, turns an old one off).
+ * The headband: plain cloth only (the owner, 2026-10-22: "deja la pura bandana la pura tela"). It had a
+ * metal plate with an engraved emblem, which could be slashed; those are gone. Older saves and looks may
+ * still carry `slashed`, `emblem` and `plate`: nothing reads them, and migrateAppearance (legacy.ts)
+ * drops them on load.
  */
 export interface HeadbandChoice {
   position: HeadbandPosition;
-  slashed: boolean;
   tails: boolean;
-  emblem: EmblemId;
   cloth: string;
-  plate: string;
+  /** Legacy, ignored (the scratch across the old plate). */
+  slashed?: boolean;
+  /** Legacy, ignored (the old plate's emblem). */
+  emblem?: string;
+  /** Legacy, ignored (the old plate's colour). */
+  plate?: string;
 }
-
-/** The headband every look has now: none. */
-export const NO_HEADBAND: HeadbandChoice = { position: 'none', slashed: false, tails: false, emblem: 'crescent', cloth: '#1e3a8a', plate: '#cbd5e1' };
 
 export type ChakraColorId = 'red' | 'orange' | 'yellow' | 'green' | 'blue' | 'indigo' | 'violet' | 'white' | 'black' | 'brown' | 'cyan';
 
@@ -157,7 +155,6 @@ export interface SpriteAppearance {
   cast?: CastChoice;
   slots: Partial<Record<SlotId, ItemChoice>>;
   accessories: ItemChoice[];
-  /** Legacy, never drawn: always position 'none' (see HeadbandChoice). */
   headband: HeadbandChoice;
   chakra: ChakraChoice;
   pixelEdits: PixelEdit[];

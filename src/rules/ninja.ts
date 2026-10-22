@@ -298,7 +298,7 @@ export function addLegendNatures(c: ShinobiCharacter): ShinobiCharacter {
   };
 }
 
-/** A sheet whose look still wears a deleted piece or the old headband, with today's look (the same sheet if none). */
+/** A sheet whose look still wears a deleted piece or the old headband plate, with today's look (the same sheet if none). */
 function withTodaysLook(c: ShinobiCharacter): ShinobiCharacter {
   if (!c.appearance) return c;
   const look = migrateAppearance(c.appearance);
@@ -317,10 +317,10 @@ function withTodaysLook(c: ShinobiCharacter): ShinobiCharacter {
  *   bonus into them, its max HP and chakra are worked out again without it, and what it has left is
  *   kept under the new maxima;
  * - the clan's ability bonus counted in its numbers, once (countClanBonus);
- * - its look without the pieces deleted from the creator (each swapped for its replacement) and
- *   without the old headband (sprite/legacy.ts, migrateAppearance).
+ * - its look without the pieces deleted from the creator (each swapped for its replacement), and its
+ *   headband as plain cloth: the old plate's fields dropped (sprite/legacy.ts, migrateAppearance).
  * Hand-made numbers (the presets) keep their hand-made part; the other jutsu stay as they are, and of
- * the look only that old burst, the deleted pieces and the headband change. A sheet that is already today's comes back as it is.
+ * the look only that old burst, the deleted pieces and the headband plate change. A sheet that is already today's comes back as it is.
  */
 export function migrateCharacter(saved: ShinobiCharacter): ShinobiCharacter {
   const c = addLegendNatures(updateLegendChakra(tagJutsuToItem(withTodaysLook(saved))));

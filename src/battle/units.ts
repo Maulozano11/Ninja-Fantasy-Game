@@ -148,7 +148,7 @@ function look(o: Partial<SpriteAppearance>): SpriteAppearance {
     eyeColor: '#7a1f2a',
     slots: {},
     accessories: [],
-    headband: { position: 'none', slashed: false, tails: false, emblem: 'crescent', cloth: '#2a2d3a', plate: '#9aa3ad' },
+    headband: { position: 'forehead', tails: true, cloth: '#2a2d3a' },
     chakra: { color: 'red', onCharge: true, onCast: true, onVictory: false },
     pixelEdits: [],
     ...o,

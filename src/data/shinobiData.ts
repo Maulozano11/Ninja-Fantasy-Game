@@ -1280,7 +1280,7 @@ function spriteLook(o: Partial<SpriteAppearance>): SpriteAppearance {
     eyeColor: '#3b82f6',
     slots: {},
     accessories: [],
-    headband: { position: 'none', slashed: false, tails: false, emblem: 'crescent', cloth: '#1e3a8a', plate: '#cbd5e1' },
+    headband: { position: 'none', tails: false, cloth: '#1e3a8a' },
     chakra: { color: 'blue', onCharge: true, onCast: true, onVictory: false },
     pixelEdits: [],
     ...o,
@@ -1500,9 +1500,9 @@ export const LEGENDARY_PRESETS: { name: string; tag: string; nameEs?: string; ta
   },
   {
     name: 'Kaien, the Storm Avenger',
-    tag: 'Lightning Hand · Raven Fringe',
+    tag: 'Lightning Hand · Dark Headband',
     nameEs: 'Kaien, el Vengador de la Tormenta',
-    tagEs: 'Mano de rayo · Flequillo de cuervo',
+    tagEs: 'Mano de rayo · Bandana oscura',
     character: {
       id: 'preset_storm',
       name: 'Kaien',
@@ -1558,15 +1558,16 @@ export const LEGENDARY_PRESETS: { name: string; tag: string; nameEs?: string; ta
           feet: it('feet_shinobi', '#2a2f3d', '#141821'),
           held: it('held_lightning'),
         },
+        headband: { position: 'forehead', tails: false, cloth: '#1e293b' },
         chakra: { color: 'yellow', tint: 'violet', onCharge: true, onCast: true, onVictory: false }, // Lightning like his jutsu, in his violet
       }),
     },
   },
   {
     name: 'Hiro, the Sunburst Hero',
-    tag: 'Spiral Orb · Sunburst Spikes',
+    tag: 'Spiral Orb · Fluttering Headband',
     nameEs: 'Hiro, el Héroe del Sol Radiante',
-    tagEs: 'Orbe espiral · Puntas solares',
+    tagEs: 'Orbe espiral · Bandana al viento',
     character: {
       id: 'preset_sunburst',
       name: 'Hiro',
@@ -1621,6 +1622,7 @@ export const LEGENDARY_PRESETS: { name: string; tag: string; nameEs?: string; ta
           held: it('held_spiral'),
         },
         accessories: [it('acc_kunai_leg')],
+        headband: { position: 'forehead', tails: true, cloth: '#1e3a8a' },
         chakra: { color: 'green', tint: 'orange', onCharge: true, onCast: true, onVictory: true }, // Wind like his jutsu, in his orange
       }),
     },
@@ -1750,6 +1752,7 @@ export const LEGENDARY_PRESETS: { name: string; tag: string; nameEs?: string; ta
           feet: it('feet_sandals', '#2a2433', '#c9a46c'),
           held: it('held_palm'),
         },
+        headband: { position: 'neck', tails: false, cloth: '#1e3a8a' },
         chakra: { color: 'blue', onCharge: true, onCast: true, onVictory: false },
       }),
     },

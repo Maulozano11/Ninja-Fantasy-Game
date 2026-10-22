@@ -5,7 +5,7 @@ import { TINT_CHOICES } from './chakraInfo';
 import { OFFERED_TYPES } from './chakraNature';
 import type { ItemDef } from './ctx';
 import { CLOTH_PALETTE, EYE_COLORS, HAIR_COLORS, SKIN_TONES } from './palettes';
-import { CAST_STYLES, NO_HEADBAND, type BodyType, type EyeShape, type FaceShape, type ItemChoice, type NeckType, type SlotId, type SpriteAppearance } from './types';
+import { CAST_STYLES, type BodyType, type EyeShape, type FaceShape, type HeadbandPosition, type ItemChoice, type NeckType, type SlotId, type SpriteAppearance } from './types';
 
 const pick = <T,>(list: T[]): T => list[Math.floor(Math.random() * list.length)];
 const chance = (p: number) => Math.random() < p;
@@ -50,6 +50,7 @@ export function randomAppearance(): SpriteAppearance {
     .filter(() => chance(0.12))
     .slice(0, 2)
     .map(randomChoice);
+  const positions: HeadbandPosition[] = ['none', 'forehead', 'forehead', 'neck', 'arm', 'waist'];
   return {
     version: 1,
     body,
@@ -61,7 +62,11 @@ export function randomAppearance(): SpriteAppearance {
     eyeColor: pick(EYE_COLORS),
     slots,
     accessories,
-    headband: { ...NO_HEADBAND },
+    headband: {
+      position: pick(positions),
+      tails: chance(0.4),
+      cloth: pick(CLOTH_PALETTE),
+    },
     // a type the player could pick (its nature), one of its bursts, and now and then another color: the color never changes the type
     chakra: { color: pick(pick(OFFERED_TYPES).bursts), tint: chance(0.25) ? pick(TINT_CHOICES).id : undefined, onCharge: true, onCast: true, onVictory: chance(0.5) },
     pixelEdits: [],

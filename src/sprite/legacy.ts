@@ -3,7 +3,7 @@
 // keep working.
 
 import { rgbToHsl, hexToRgb } from './color';
-import { NO_HEADBAND, type ChakraColorId, type EyeSpecial, type ItemChoice, type SlotId, type SpriteAppearance } from './types';
+import type { ChakraColorId, EyeSpecial, ItemChoice, SlotId, SpriteAppearance } from './types';
 import type { ShinobiCharacter } from '../types/shinobi';
 
 const HAIR: Record<string, string> = {
@@ -91,7 +91,7 @@ export function defaultAppearance(): SpriteAppearance {
       feet: choice('feet_shinobi'),
     },
     accessories: [],
-    headband: { ...NO_HEADBAND },
+    headband: { position: 'forehead', tails: false, cloth: '#1e3a8a' },
     chakra: { color: 'blue', onCharge: true, onCast: true, onVictory: false },
     pixelEdits: [],
   };
@@ -129,7 +129,13 @@ export function appearanceFromLegacy(c: ShinobiCharacter): SpriteAppearance {
       look.slots.feet = choice('feet_shinobi');
       look.accessories = [choice('acc_kunai_leg')];
   }
-  // (Its headbandPosition, ribbonStyle and headband colours are no longer drawn: the headband was removed.)
+  // The headband is plain cloth now: a rogue's scratched plate is a forehead band, and the plate's colour is not used.
+  const pos = c.headbandPosition;
+  look.headband = {
+    position: pos === 'Rogue Scratched' ? 'forehead' : pos ? (pos.toLowerCase() as SpriteAppearance['headband']['position']) : 'none',
+    tails: c.ribbonStyle === 'Long Fluttering',
+    cloth: p.headbandCloth || '#1e3a8a',
+  };
   look.chakra = { color: hexToChakraId(p.chakraAuraColor), onCharge: true, onCast: true, onVictory: false };
   // Like a saved look (it names no deleted piece now, but a later deletion needs only DELETED_PIECES).
   return migrateAppearance(look);
@@ -183,8 +189,9 @@ function hairOf(def: string): (old: string[]) => string[] {
 
 /**
  * A saved look as today's creator draws it: a deleted piece swapped for its replacement
- * (DELETED_PIECES), and the old headband taken off (removed, "quitar bandanas"). A look with
- * neither comes back as it is.
+ * (DELETED_PIECES), and the headband without what the old metal plate had (`slashed`, `emblem`,
+ * `plate`; the owner, 2026-10-22, "deja la pura bandana la pura tela"). Its position, tails and cloth
+ * stay. A look with none of them comes back as it is.
  */
 export function migrateAppearance(look: SpriteAppearance): SpriteAppearance {
   let slots = look.slots;
@@ -196,7 +203,11 @@ export function migrateAppearance(look: SpriteAppearance): SpriteAppearance {
     if (r.to) slots[slot] = { id: r.to, colors: r.colors ? r.colors(was.colors ?? []) : [] };
     else delete slots[slot];
   }
-  const headband = !look.headband ? { ...NO_HEADBAND } : look.headband.position !== 'none' ? { ...look.headband, position: 'none' as const } : look.headband;
+  let headband = look.headband;
+  if (headband && ('slashed' in headband || 'emblem' in headband || 'plate' in headband)) {
+    const { slashed: _slashed, emblem: _emblem, plate: _plate, ...cloth } = headband;
+    headband = cloth;
+  }
   if (slots === look.slots && headband === look.headband) return look;
   return { ...look, slots, headband };
 }

@@ -1,5 +1,7 @@
-// Tests for the pieces deleted from the creator and the headband taken off (the owner, 2026-10-21:
-// "borrar piezas marcadas", "quitar bandanas"): old saves load with the replacements. npm test.
+// Tests for the pieces deleted from the creator (the owner, 2026-10-21: "borrar piezas marcadas"):
+// old saves load with the replacements. The headband stays, as plain cloth (2026-10-22, his later
+// "deja la pura bandana la pura tela"): here it only keeps its cloth through the same migration;
+// headband.test.ts tests the band itself. npm test.
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
@@ -31,6 +33,9 @@ const wearing = (id: string, colors: string[] = []): SpriteAppearance => {
 };
 
 const ids = (l: SpriteAppearance): string[] => [...Object.values(l.slots).map((c) => c!.id), ...l.accessories.map((a) => a.id)];
+
+/** A headband with nothing of the old metal plate left: plain cloth. */
+const plainCloth = (l: SpriteAppearance): boolean => !['slashed', 'emblem', 'plate'].some((k) => Object.hasOwn(l.headband, k));
 
 const ENEMIES: ShinobiCharacter[] = (['rogue', 'hunter', 'jonin', 'raider'] as EnemyKind[]).flatMap((k) => [0, 1, 2, 3].map((n) => enemyCharacter(k, n)));
 const EVERYONE: ShinobiCharacter[] = [...LEGENDARY_PRESETS.map((p) => p.character), ...COMPANIONS, ...ENEMIES];
@@ -72,13 +77,13 @@ describe('the deleted pieces', () => {
     }
   });
 
-  it('a look with none of them and no headband comes back as it is', () => {
+  it('a look with none of them and a plain cloth headband comes back as it is', () => {
     const l = defaultAppearance();
     assert.equal(migrateAppearance(l), l);
     for (const c of EVERYONE) assert.equal(migrateAppearance(c.appearance!), c.appearance, c.id);
   });
 
-  it('an old save wearing them and a headband loads without them', () => {
+  it('an old save wearing them and a plated headband loads without them, its band as cloth', () => {
     const preset = LEGENDARY_PRESETS[0].character;
     const look: SpriteAppearance = {
       ...wearing('hair_charlotte', ['#ff00aa']),
@@ -89,7 +94,7 @@ describe('the deleted pieces', () => {
     look.slots.face = { id: 'face_beast', colors: [] };
     const saved = JSON.parse(JSON.stringify({ ...preset, id: 'my_ninja', appearance: look })) as ShinobiCharacter;
     const now = migrateCharacter(saved);
-    assert.equal(now.appearance!.headband.position, 'none');
+    assert.deepEqual(now.appearance!.headband, { position: 'forehead', tails: true, cloth: '#1e293b' });
     assert.deepEqual(now.appearance!.slots.hair, { id: 'hair_ribbon', colors: ['#ff00aa'] });
     assert.equal(now.appearance!.slots.armor?.id, 'armor_crimson_plate');
     assert.equal(now.appearance!.slots.held?.id, 'held_ice_crystal');
@@ -97,7 +102,7 @@ describe('the deleted pieces', () => {
     assert.deepEqual(migrateCharacter(now), now);
   });
 
-  it('the old format (no look) names none of them and wears no headband', () => {
+  it('the old format (no look) names none of them, and a rogue\'s scratched headband is a cloth forehead band', () => {
     const old = {
       ...LEGENDARY_PRESETS[0].character,
       appearance: undefined,
@@ -112,7 +117,8 @@ describe('the deleted pieces', () => {
       [l.slots.hair?.id, l.slots.armor?.id, l.slots.cape?.id, l.slots.feet?.id],
       ['hair_bristle', 'armor_crimson_plate', 'cape_crimson', 'feet_crimson_sabatons'],
     );
-    assert.equal(l.headband.position, 'none');
+    assert.equal(l.headband.position, 'forehead');
+    assert.ok(plainCloth(l));
     for (const name of ['Minato Winged Flare', 'Sephiroth Parted Flow', 'Somnus Caelum'])
       assert.ok(!DELETED.includes(getAppearance({ ...old, hairstyle: name } as ShinobiCharacter).slots.hair!.id), name);
     for (const name of ['Sand Wind Guard', 'Mist Storm Vest'])
@@ -121,11 +127,11 @@ describe('the deleted pieces', () => {
 });
 
 describe('the presets, companions and enemies', () => {
-  it('wear none of the deleted pieces and no headband', () => {
+  it('wear none of the deleted pieces, and their headbands are plain cloth', () => {
     for (const c of EVERYONE) {
       assert.ok(!ids(c.appearance!).some((i) => DELETED.includes(i)), c.id);
       assert.ok(ids(c.appearance!).every((i) => getItem(i)), `${c.id}: every piece exists`);
-      assert.equal(c.appearance!.headband.position, 'none', `${c.id}: no headband`);
+      assert.ok(plainCloth(c.appearance!), `${c.id}: plain cloth headband`);
     }
   });
 
@@ -139,11 +145,11 @@ describe('the presets, companions and enemies', () => {
 });
 
 describe('the random ninja', () => {
-  it('never picks a deleted piece or a headband', () => {
+  it('never picks a deleted piece, and its headband is plain cloth', () => {
     for (let i = 0; i < 400; i++) {
       const l = randomAppearance();
       assert.ok(!ids(l).some((id) => DELETED.includes(id)), ids(l).join());
-      assert.equal(l.headband.position, 'none');
+      assert.ok(plainCloth(l), JSON.stringify(l.headband));
     }
   });
 });

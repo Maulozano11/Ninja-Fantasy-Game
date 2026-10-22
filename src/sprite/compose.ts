@@ -5,6 +5,7 @@ import { fitsBody, getItem } from './catalog';
 import { hexToRgb } from './color';
 import { Depth, DEPTHS, DrawCtx, ItemDef, NO_OUTLINE_DEPTHS, resolveParts } from './ctx';
 import { drawThrowKunai } from './items/accessories';
+import { drawHeadband } from './items/headband';
 import { add, F_NO_OUTLINE, GRID, Layer, MaterialTable, norm, PAD, PartId, partIndex, PARTS, perp, RES, scale, sub, v, Vec } from './raster';
 import { drawRig, Lay, layRig, Rig, rigPoseFor, turnPoint, turnRig } from './rig';
 import { drawCampFx } from './campfx';
@@ -306,6 +307,7 @@ export function renderSprite(
       const def = getItem(acc.id);
       if (def && def.slot === 'accessory') def.draw(g, resolveColors(def, acc.colors), resolveParts(def, acc.parts));
     }
+    drawHeadband(g);
     drawThrowKunai(g);
     // clothes over a female torso follow the bust (fitted armors shape their own plates)
     for (const d of ['torso.top', 'torso.over'] as const) {

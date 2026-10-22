@@ -44,7 +44,7 @@ describe('Gilded Thigh Boots', () => {
   it('is a women-only boot in the feet slot with her colours as defaults', () => {
     const item = getItem('feet_gilded_thigh_boots')!;
     assert.equal(item.slot, 'feet');
-    assert.deepEqual(item.bodies, ['female', 'slender']);
+    assert.deepEqual(item.bodies, ['female']);
     assert.deepEqual(item.colors.map((c) => c.default), ['#301f25', '#cc8e3b', '#da9a42']);
   });
 

@@ -47,7 +47,7 @@ describe('Dawn Boots', () => {
   it('is a women-only boot in the feet slot with his white and gold as defaults', () => {
     const item = getItem('feet_dawn_boots')!;
     assert.equal(item.slot, 'feet');
-    assert.deepEqual(item.bodies, ['female', 'slender']);
+    assert.deepEqual(item.bodies, ['female']);
     assert.deepEqual(item.colors.map((c) => c.default), [DAWN_BOOT_CLOTH, DAWN_BOOT_GOLD]);
   });
 

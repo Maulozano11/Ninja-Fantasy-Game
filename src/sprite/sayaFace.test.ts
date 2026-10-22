@@ -73,7 +73,7 @@ describe("Saya's face", () => {
     const tan = renderSprite(look({ skin: '#c58a5c' }), 'idle', 0);
     const { nx, ny } = anchor(tan);
     assert.notEqual(hexAt(tan.rgba, nx + 4, ny + 4), SAYA_FACE.colors.b);
-    for (const body of ['female', 'slender', 'male', 'bulky'] as BodyType[]) {
+    for (const body of ['female', 'male', 'bulky'] as BodyType[]) {
       for (const eyeShape of ['standard', 'shade', 'valiant'] as EyeShape[]) {
         for (const pose of ['idle', 'read', 'downed'] as SpritePose[]) assert.ok(renderSprite(look({ body, eyeShape }), pose, 0).rgba.some((v) => v > 0));
       }

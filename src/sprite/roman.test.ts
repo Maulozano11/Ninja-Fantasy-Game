@@ -89,7 +89,7 @@ describe('the Roman set', () => {
   });
 
   it('puts both bracers on the forearms in every pose and body', () => {
-    for (const body of ['male', 'bulky', 'slender'] as BodyType[]) {
+    for (const body of ['male', 'bulky'] as BodyType[]) {
       for (const pose of POSES) {
         const on = renderSprite(look(body), pose, 1);
         const off = renderSprite(look(body, 'on', { hands: false }), pose, 1);
@@ -107,8 +107,8 @@ describe('the Roman set', () => {
     }
   });
 
-  it('draws every pose on the male, bulky and slender bodies', () => {
-    for (const body of ['male', 'bulky', 'slender'] as BodyType[]) {
+  it('draws every pose on the male and bulky bodies', () => {
+    for (const body of ['male', 'bulky'] as BodyType[]) {
       for (const pose of POSES) {
         const f = renderSprite(look(body), pose, 0);
         let n = 0;
@@ -121,7 +121,7 @@ describe('the Roman set', () => {
   it('never lets the drape hang lower than at rest, nor stand up off a body knocked out', () => {
     const hem = skirt.PTERUGES_REST.PTERUGES_DRAPE[1] + skirt.PTERUGES_DRAPE.rows.length - 1;
     assert.ok(hem < GROUND * RES);
-    for (const body of ['male', 'bulky', 'slender'] as BodyType[]) {
+    for (const body of ['male', 'bulky'] as BodyType[]) {
       for (const pose of POSES) {
         const on = renderSprite(look(body), pose, 0);
         const off = renderSprite(look(body, 'off'), pose, 0);
@@ -156,8 +156,8 @@ describe('the Roman set', () => {
     assert.equal(diff(renderSprite(old, 'idle', 0).rgba, his.rgba).length, 0);
   });
 
-  it('keeps the fitted cuirass on the female bodies', () => {
-    for (const body of ['female', 'slender'] as BodyType[]) {
+  it('keeps the fitted cuirass on the female body', () => {
+    for (const body of ['female'] as BodyType[]) {
       const f = renderSprite(look(body), 'idle', 0);
       const colors = new Set(Object.values(cuirass.CUIRASS_CHEST.colors));
       let his = 0;

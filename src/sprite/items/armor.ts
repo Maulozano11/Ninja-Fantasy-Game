@@ -41,6 +41,7 @@ import { PTERUGES_DRAPE, PTERUGES_FRONT, PTERUGES_KIND, PTERUGES_LEATHER, PTERUG
 import { capeWind } from './capes';
 import { FOUNDER_CHEST, FOUNDER_CUIRASS_KIND, FOUNDER_SASH, FOUNDER_STEEL, FOUNDER_STRAP } from './founderCuirassArt';
 import { FOUNDER_SKIRT, FOUNDER_SKIRT_KIND, FOUNDER_SKIRT_LEATHER, FOUNDER_SKIRT_STUD, FOUNDER_SKIRT_TUNIC } from './founderSkirtArt';
+import { sealCloth } from '../seal';
 import { isFemaleBody, type BodyType } from '../types';
 import { SAYA_SHADE_ARMOR } from './sayaUpper';
 import { ARMOR_DAWN_VESTMENT } from './aureliaVestment';
@@ -659,11 +660,14 @@ function spread(a: number, b: number, n: number): number[] {
  * already drew its tails into `torso.over`, so the skirt goes on top of them
  * there (the strips hang from the armor, over the coat).
  */
-function skirt(g: DrawCtx, draw: (L: Layer, top: (y: number) => number) => void): void {
+function skirt(g: DrawCtx, draw: (L: Layer, top: (y: number) => number) => void, also: Depth[] = []): void {
   const over = g.L('torso.over');
   // Over a coat the skirt is also above the armor layer, so it starts at the armor's lower edge.
-  if (over.used) stamp(over, (L) => draw(L, (y) => Math.min(y, 0.75)));
+  const coat = over.used;
+  if (coat) stamp(over, (L) => draw(L, (y) => Math.min(y, 0.75)));
   else draw(g.L('skirt'), (y) => y);
+  // no crack between its panels or between them and the panels it hangs elsewhere (`also`)
+  sealCloth(g, [...also, coat ? 'torso.over' : 'skirt']);
 }
 
 /**
@@ -1438,7 +1442,10 @@ function drawFounderSkirt(g: DrawCtx, tunic: string, strips: string, studs: stri
     if (k === 'gold') return retintHex(hex, FOUNDER_SKIRT_STUD, studs);
     return k === 'leather' ? retintHex(hex, FOUNDER_SKIRT_LEATHER, strips) : hex;
   };
-  stampLeaning(g, g.L('torso.over').used ? 'torso.over' : 'skirt', FOUNDER_SKIRT, r.pelvis, segAngle(r.pelvis, r.neck), 'pelvis', color, (hex) => FOUNDER_SKIRT_KIND[hex] === 'line');
+  const depth = g.L('torso.over').used ? 'torso.over' : 'skirt';
+  stampLeaning(g, depth, FOUNDER_SKIRT, r.pelvis, segAngle(r.pelvis, r.neck), 'pelvis', color, (hex) => FOUNDER_SKIRT_KIND[hex] === 'line');
+  // turned with a leaning body, his strips can leave a pixel open between them at the hem (seal.ts)
+  sealCloth(g, [depth], true);
 }
 
 // ---------------------------------------------------------------------------
@@ -2319,7 +2326,7 @@ export const ARMOR_ITEMS: ItemDef[] = [
   },
 
   // -------------------------------------------------------------------------
-  // Fitted armors for women (female and slender bodies only)
+  // Fitted armors for women (female body only)
   {
     id: 'armor_oath',
     slot: 'armor',
@@ -2327,7 +2334,7 @@ export const ARMOR_ITEMS: ItemDef[] = [
     desc: 'A fitted white battle dress with red trim, a silver breastplate shaped to the figure and a pleated skirt (+3 AC). Women only.',
     colors: [col('cloth', 'Dress', '#eeebe6'), col('trim', 'Trim', '#c8202c'), col('plate', 'Plate', '#c3c8d4', 'metal')],
     statsArmor: 'ANBU Spec-Ops',
-    bodies: ['female', 'slender'],
+    bodies: ['female'],
     draw: (g, [cc, tc, pc]) => {
       const b = g.bp;
       const L = g.L('torso.armor');
@@ -2483,7 +2490,7 @@ export const ARMOR_ITEMS: ItemDef[] = [
     desc: 'A black corset dress with a frill of white lace at the neckline, gold lacing down the front and a pleated skirt (+3 AC). Women only.',
     colors: [col('cloth', 'Dress', '#1f1c26'), col('trim', 'Lace', '#ecebf2'), col('plate', 'Corset', '#26222f')],
     statsArmor: 'ANBU Spec-Ops',
-    bodies: ['female', 'slender'],
+    bodies: ['female'],
     draw: (g, [cc, tc, pc]) => {
       const b = g.bp;
       const L = g.L('torso.armor');
@@ -2645,7 +2652,7 @@ export const ARMOR_ITEMS: ItemDef[] = [
     desc: 'A royal blue battle dress under silver plate with gold trim: shaped breastplate, plated faulds, gauntlets and greaves (+4 AC). Women only.',
     colors: [col('dress', 'Dress', '#2a4aa6'), col('plate', 'Plate', '#c9cdd8', 'metal'), col('trim', 'Gold', '#d4a531', 'metal')],
     statsArmor: 'Greek Hoplite Cuirass',
-    bodies: ['female', 'slender'],
+    bodies: ['female'],
     draw: (g, [dc, pc, gc]) => {
       const b = g.bp;
       const L = g.L('torso.armor');
@@ -2777,8 +2784,8 @@ export const ARMOR_ITEMS: ItemDef[] = [
     },
   },
   // -------------------------------------------------------------------------
-  // Plate armors for women, at the standard of the men's plate (female and
-  // slender bodies only)
+  // Plate armors for women, at the standard of the men's plate (female body
+  // only)
   {
     id: 'armor_seraph',
     slot: 'armor',
@@ -2786,7 +2793,7 @@ export const ARMOR_ITEMS: ItemDef[] = [
     desc: 'Light paladin plate in white steel and red enamel: a breastplate shaped to the figure, slender pauldrons and vambraces, short faulds over a pleated skirt, and greaves (+4 AC). Women only.',
     colors: [col('plate', 'Plate', '#cdd3de', 'metal'), col('trim', 'Enamel', '#c8202c'), col('cloth', 'Cloth', '#f3efe6')],
     statsArmor: 'Greek Hoplite Cuirass',
-    bodies: ['female', 'slender'],
+    bodies: ['female'],
     draw: (g, [pc, tc, cc]) => {
       const b = g.bp;
       const L = g.L('torso.armor');
@@ -2852,7 +2859,7 @@ export const ARMOR_ITEMS: ItemDef[] = [
     desc: 'Knightly full plate over a royal blue gown: a sculpted gilded cuirass, tiered pauldrons, vambraces with couters, plated tassets and greaves (+5 AC). Women only.',
     colors: [col('plate', 'Plate', '#c9cdd8', 'metal'), col('gold', 'Gold', '#d4a531', 'metal'), col('gown', 'Gown', '#2a4aa6')],
     statsArmor: 'Dark Knight Plate',
-    bodies: ['female', 'slender'],
+    bodies: ['female'],
     draw: (g, [pc, gc, dc]) => {
       const b = g.bp;
       const L = g.L('torso.armor');
@@ -3021,7 +3028,7 @@ export const SKIRT_ITEMS: ItemDef[] = [
         capsule(L, kp, add(kp, v(-0.6, 3.0)), 0.7, 0.9, band, (x) => (x + 0.5 < kp.x - 0.5 ? 2 : 1));
         ellipse(L, kp.x, kp.y, 1.25, 1.15, band, (x, y) => clamp(lit(x + 0.5 - kp.x, y + 0.5 - kp.y), 1, 3));
         put(L, fine(kp.x - 0.4), fine(kp.y - 0.4), band, 4);
-      });
+      }, ['farLeg.armor']);
     },
   },
 

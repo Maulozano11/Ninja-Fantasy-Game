@@ -104,8 +104,8 @@ describe("the owner's Solen", () => {
     assert.ok(n > 250, `${n} pixels of his hair`);
   });
 
-  it('draws every pose on the male, bulky, slender and female bodies, the bracers on the forearms', () => {
-    for (const body of ['male', 'bulky', 'slender', 'female'] as BodyType[]) {
+  it('draws every pose on the male, bulky and female bodies, the bracers on the forearms', () => {
+    for (const body of ['male', 'bulky', 'female'] as BodyType[]) {
       const l = look(body);
       for (const pose of POSES) {
         const f = render(l, pose, 1);
@@ -249,7 +249,7 @@ describe("the owner's Solen", () => {
     // The far arm reaches out when it is held out straight and near level: the cast at the runes, the throw's
     // pointing arm, the combo's cross, and held out over the fire at camp.
     const has = (slot: string, id?: string) => slot === 'top' && id === 'top_founder';
-    for (const body of ['male', 'bulky', 'slender', 'female'] as BodyType[]) {
+    for (const body of ['male', 'bulky', 'female'] as BodyType[]) {
       const hits: string[] = [];
       for (const pose of POSES) {
         const rp = rigPoseFor(pose, 'runes', 'held_ice_crystal');

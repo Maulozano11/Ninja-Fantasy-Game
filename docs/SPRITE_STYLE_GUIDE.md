@@ -18,7 +18,7 @@ npm run sprites -- preset <presetId> out.png  # a preset in every pose
 | Height | About 94 px from the top of the hair to the soles, like the reference. |
 | View | 3/4, facing right. The near arm and leg (screen-left) are drawn in front; the far ones are behind and one shade darker. |
 | Head | Shrunk by `headScale` (about 0.78). The face from the lash row down is a fixed pixel template. |
-| Bodies | Male, female, bulky, slender. Every item must work on all of them. The female and slender bodies follow the owner's heroines drawn at our scale (proposal on `body/female-v2`, waiting for his approval): 92 px tall without hair, a longer torso and neck with the waist higher (`waistY`), narrow shoulders, a slim knee and fuller calf, his hands (5-7 px, cut 1:1 from his pictures) and Aurelia's bare shoulder (`femaleBodyArt.ts`), feet 4 rows shorter (the ankles stand lower, `ankleLift`; every foot template and boot is shortened by `shortFoot`), flat skin with a one-pixel shadow rim inside his near-black line (`skinF` ramp, `flatSkin`). Slender keeps narrower shoulders and waist and fuller hips. Hand size is a creator option on the female bodies (the owner, 2026-10-22: "las manos mas pequeñas ponlas como opcion en el juego para personajes femeninos"): "Manos: Normales" (the body's own, default) or "Pequeñas" (his game-scale Aurelia's open hand and fist, his pixels: `tools/refs/aurelia-hands-from-ref.py` -> `src/sprite/aureliaHandsArt.ts`, appearance `hands: 'small'`); Aurelia's preset uses Pequeñas. |
+| Bodies | Male, female, bulky (the slender body was removed by the owner, 2026-10-22). Every item must work on all three. The female body follows the owner's heroines drawn at our scale (proposal on `body/female-v2`, waiting for his approval): 92 px tall without hair, a longer torso and neck with the waist higher (`waistY`), narrow shoulders, a slim knee and fuller calf, his hands (5-7 px, cut 1:1 from his pictures) and Aurelia's bare shoulder (`femaleBodyArt.ts`), feet 4 rows shorter (the ankles stand lower, `ankleLift`; every foot template and boot is shortened by `shortFoot`), flat skin with a one-pixel shadow rim inside his near-black line (`skinF` ramp, `flatSkin`). Hand size is a creator option on the female body (the owner, 2026-10-22: "las manos mas pequeñas ponlas como opcion en el juego para personajes femeninos"): "Manos: Normales" (the body's own, default) or "Pequeñas" (his game-scale Aurelia's open hand and fist, his pixels: `tools/refs/aurelia-hands-from-ref.py` -> `src/sprite/aureliaHandsArt.ts`, appearance `hands: 'small'`); Aurelia's preset uses Pequeñas. |
 | Poses | idle, handsigns, attack (3 frames), cast, hurt, victory, charge. Every item must work in all of them. |
 | Posture | Upright: chest slightly out, head over the shoulders. Never hunched. In idle the legs are straight under the hips and the arms hang relaxed and nearly straight, fists at hip height. |
 | Depth | 3/4 front ground plane: the near foot stands lower on screen, the far hip and foot sit higher (`ANKLE_N`, `FAR_LIFT` in `rig.ts`). |
@@ -30,6 +30,13 @@ npm run sprites -- preset <presetId> out.png  # a preset in every pose
 - Where one layer overlaps another (arm over the chest, hair over the face), its outline shows as an inner line. That separation is part of the look.
 - Templates that already carry their own outline set `F_NO_OUTLINE`.
 - Outlines never stack into 2 px lines: where a layer's outline runs right next to the outline of a layer in front of it, the back one is dropped (`thinDoubleOutlines` in `compose.ts`).
+- No 1-pixel holes (the owner, 2026-10-22: *"si arregla el hueco de 1 pixel a todos"*). Turned pieces leave
+  pixels of background between them; once the figure is flat, `closePinholes` (`src/sprite/holes.ts`) closes
+  every hole of up to 3 pixels the figure walls in (with the line of the pieces round it, or inside one piece
+  with the colour most of its neighbours have), every nick in the silhouette where the line is missing (the
+  background with the figure on three sides, one of them not line), and takes away stray specks of 1–2 pixels.
+  Real gaps stay: anything bigger or open to the outside, a notch the line goes round, and what an effect
+  walls in. **Idle is left exactly as drawn** (it is the frame his pictures were copied into).
 
 ## 3. Light and values
 
@@ -57,7 +64,7 @@ The face is a template copied pixel by pixel from the reference (`FACE_MAIN` and
 
 ### The female standard (bodies, animations and sprites)
 
-**The female body is his bare female body** (`docs/reference/female-base-owner-reference.jpg`, 2026-10-21). The owner, verbatim: "sigue teniendo las manos separadas en arrojada, en arrojada preparar falta el hombro, sentada, caida y varios mas tienes bugeada las piernas y estas poniendo 3 piernas o 3 botas corrige eso aqui tienes una base del cuerpo femenino sin ropa para que entiendas la base del cuerpo". On the female and slender bodies (slender is his body too until he draws a slender one), in every pose and frame:
+**The female body is his bare female body** (`docs/reference/female-base-owner-reference.jpg`, 2026-10-21). The owner, verbatim: "sigue teniendo las manos separadas en arrojada, en arrojada preparar falta el hombro, sentada, caida y varios mas tienes bugeada las piernas y estas poniendo 3 piernas o 3 botas corrige eso aqui tienes una base del cuerpo femenino sin ropa para que entiendas la base del cuerpo". On the female body, in every pose and frame:
 
 - **His body, piece by piece.** Chest (neck, shoulders and his sports top), pelvis (belly and his briefs), each upper arm, forearm and hand, each thigh, shin and foot are his pixels (`src/sprite/femaleBaseArt.ts`, from `tools/refs/female-base-body-from-ref.py`): his skin and shading, his proportions, his arm and hand shapes and his black line. They ride the rig the way Aiden's plate does (`body.ts` `drawBaseBody`): at his angle every pixel is his, turned with RotSprite as the limb turns. His skin follows the character's skin (in his own skin, `#f6d1b0`, his colours exactly); his line never changes.
 - **The rig is fitted to his joints** (`rig.ts` `BodyFit`, `solveFit`): at idle every joint is his, so frame 0 of idle is his picture, every pixel of the body below the head (`femaleBase.test.ts`). In every other pose the torso keeps his neck, shoulders and hips and each limb his length on its side (his far arm and leg are drawn shorter on screen, so the far foot stands higher without a lift of its own). His thigh is much longer than his shin: a foot asked to come in under the hip goes forward until the knee can fold over it.
@@ -90,6 +97,11 @@ The earlier review (2026-10-21), on the body built from his heroines at our scal
 - The crossguard shows just below the fist. Blades use `metal` materials so they get a dark outline.
 - Glow materials are only for energy techniques (spiral orb, lightning, palm glow), never for steel or crystal.
 - In idle the blade hangs across the legs about 50° below horizontal, like the reference.
+- A weapon stowed on the back (hand signs, the tackle, the combo, camp, or put away in battle) is strapped to
+  the back: it turns with the torso's lean in every pose, and nothing of it shows in front of the back below
+  the shoulders (the owner, 2026-10-22: *"haz el cambio en espada guardada"*; `clipStowed` in
+  `items/accessories.ts`). What would show there is cut away, a painted blade closed with its own black line,
+  and no sliver of it is left loose.
 - Blades stay slim (about 5 px plus outline) and taper to the tip; shading is a lit bevel, a centre ridge and a darker lower half, with only sparse facet lines.
 
 ## 8. Clothes

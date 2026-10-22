@@ -32,7 +32,7 @@ describe('Aurelia dawn staff', () => {
   });
 
   it('draws in every pose and body, and recolours the gold and the orb', () => {
-    for (const body of ['female', 'male', 'bulky', 'slender'] as const)
+    for (const body of ['female', 'male', 'bulky'] as const)
       for (const pose of ['idle', 'attack', 'cast', 'victory', 'walk', 'downed', 'handsigns', 'sit', 'train'] as const) renderSprite({ ...look(), body }, pose, 0);
     const a = renderSprite(look(), 'idle', 0).rgba;
     assert.notDeepEqual(a, renderSprite(look(['#c0c8d8', AURELIA_STAFF_ORB]), 'idle', 0).rgba);

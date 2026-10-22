@@ -61,7 +61,7 @@ describe('seats', () => {
     for (const id of Object.keys(SEATS) as SeatId[]) assert.equal(SEATS[id].top, READ_SEAT_TOP, id);
     const rock = renderSeat('seat_rock');
     const on = (x: number, y: number) => rock[(y * GRID + x) * 4 + 3] > 0;
-    for (const body of ['male', 'female', 'bulky', 'slender'] as BodyType[]) {
+    for (const body of ['male', 'female', 'bulky'] as BodyType[]) {
       for (let f = 0; f < READ_KEYS.length; f++) {
         const r = drawRig(body, 'read', f);
         // the hips rest on its top: the pelvis that body's own height above it
@@ -87,7 +87,7 @@ describe('seats', () => {
   });
 
   it("seat every body the same way, toward the owner's joints: hips, feet and both hands on the book", () => {
-    for (const body of ['male', 'female', 'bulky', 'slender'] as BodyType[]) {
+    for (const body of ['male', 'female', 'bulky'] as BodyType[]) {
       const look: SpriteAppearance = { ...lyra, body, faceShape: 'tapered', slots: {} };
       for (const k of [0, 1, 2]) {
         const f = READ_KEYS.indexOf(k as 0 | 1 | 2);

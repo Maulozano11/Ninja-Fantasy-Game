@@ -1,6 +1,6 @@
 // Lyra on the owner's bare female body: two legs and two boots, each arm one piece with its hand, the near
 // shoulder round, no hand or foot drawn twice and no limb left cut open, in every pose and frame on the
-// female and slender bodies (the owner, 2026-10-21: "estas poniendo 3 piernas o 3 botas", "sigue teniendo
+// female body (the owner, 2026-10-21: "estas poniendo 3 piernas o 3 botas", "sigue teniendo
 // las manos separadas en arrojada", "en arrojada preparar falta el hombro"): npm test.
 
 import assert from 'node:assert/strict';
@@ -14,7 +14,7 @@ import { frameCount } from './rig';
 import { type BodyType, CAMP_POSES, MOVE_POSES, SPRITE_POSES, type SpriteAppearance, type SpritePose } from './types';
 
 const lyra = LEGENDARY_PRESETS.find((p) => p.character.id === 'preset_lyra')!.character.appearance!;
-const BODIES: BodyType[] = ['female', 'slender'];
+const BODIES: BodyType[] = ['female'];
 const look = (body: BodyType): SpriteAppearance => ({ ...lyra, body });
 
 // The frames the owner painted himself (ownerFrames.ts: her read pose, her throw's frames 3 and 4) are his

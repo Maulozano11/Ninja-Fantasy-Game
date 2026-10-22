@@ -114,7 +114,7 @@ export const LYRA_BOOTS: ItemDef = {
     { key: 'gold', label: 'Gold', default: LYRA_BOOT_GOLD, kind: 'metal' },
     { key: 'buckle', label: 'Buckle', default: LYRA_BOOT_BUCKLE, kind: 'metal' },
   ],
-  bodies: ['female', 'slender'],
+  bodies: ['female'],
   draw: (g, [leather, gold, buckle]) => {
     // In the owner's own frames of her (ownerFrames.ts) the boots and her bare thighs are his there:
     // our body's legs come off under them.

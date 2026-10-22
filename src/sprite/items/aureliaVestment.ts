@@ -269,6 +269,6 @@ export const ARMOR_DAWN_VESTMENT: ItemDef = {
   desc: "A priestess's white dress: a high gold-edged collar with a blue gem at the throat, bare shoulders, a bodice embroidered in gold, and white sleeves of their own banded and cuffed in gold (+1 AC). Women only.",
   colors: [col('cloth', 'Cloth', AURELIA_CLOTH), col('gold', 'Gold', AURELIA_GOLD, 'metal'), col('gem', 'Gem', AURELIA_GEM)],
   statsArmor: 'Ronin Wanderer Cloak',
-  bodies: ['female', 'slender'],
+  bodies: ['female'],
   draw: (g, [cloth, gold, gem]) => drawDawnVestment(g, cloth, gold, gem),
 };

@@ -10,7 +10,7 @@ import { GRID, RES } from './raster';
 import { drawRig, rigPoseFor } from './rig';
 import { CAMP_POSES, MOVE_POSES, SPRITE_POSES, type BodyType, type SpriteAppearance } from './types';
 
-const BODIES: BodyType[] = ['female', 'slender', 'male', 'bulky'];
+const BODIES: BodyType[] = ['female', 'male', 'bulky'];
 
 const look = (body: BodyType, colors?: string[]): SpriteAppearance => ({
   version: 1,
@@ -90,7 +90,7 @@ describe("Lyra's hair", () => {
   it('streams back along her back when she is pitched forward, not down between her legs', () => {
     // The throw from the fling on, head carried out ahead: nothing the hair adds is well below the
     // hips and forward of them, where the legs are.
-    for (const body of ['female', 'slender'] as BodyType[]) {
+    for (const body of ['female'] as BodyType[]) {
       for (const frame of [2, 3, 4]) {
         const f = renderSprite(look(body), 'throw', frame);
         const bald = renderSprite({ ...look(body), slots: {} }, 'throw', frame).rgba;

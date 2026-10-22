@@ -182,7 +182,7 @@ export const LYRA_BLOUSE_ITEM: ItemDef = {
   name: 'Off-Shoulder Blouse',
   desc: "Lyra's cream blouse worn off the shoulders: puffed sleeves, a red scarf band round the near shoulder and across the chest, a red V at the neckline edged in gold, long fitted sleeves to a cuff. Women only.",
   colors: [col('blouse', 'Blouse', BLOUSE), col('lining', 'Lining', LINING)],
-  bodies: ['female', 'slender'],
+  bodies: ['female'],
   draw: (g, [blouse, lining]) => drawBlouse(g, blouse, lining),
 };
 
@@ -194,6 +194,6 @@ export const LYRA_CORSET_ITEM: ItemDef = {
   desc: "Lyra's brown leather corset with gold filigree and two steel buckles, one gold pauldron on the far shoulder held by a strap across the chest, and leather bracers with gold studs (+4 AC). Women only.",
   colors: [col('leather', 'Leather', LEATHER, 'leather'), col('gold', 'Gold', GOLD, 'metal'), col('steel', 'Steel', STEEL, 'metal')],
   statsArmor: 'Samurai O-Yoroi',
-  bodies: ['female', 'slender'],
+  bodies: ['female'],
   draw: (g, [leather, gold, steel]) => drawCorset(g, leather, gold, steel),
 };

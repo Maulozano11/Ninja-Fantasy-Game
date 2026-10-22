@@ -46,7 +46,7 @@ describe("Lyra's blouse and corset", () => {
     assert.equal(corset.slot, 'armor');
     assert.equal(corset.statsArmor, getItem('armor_leather')!.statsArmor);
     for (const d of [blouse, corset]) {
-      assert.ok(fitsBody(d, 'female') && fitsBody(d, 'slender'), d.id);
+      assert.ok(fitsBody(d, 'female'), d.id);
       assert.ok(!fitsBody(d, 'male') && !fitsBody(d, 'bulky'), d.id);
     }
     assert.deepEqual(blouse.colors.map((c) => c.default), [ART.LYRA_BLOUSE[0], ART.LYRA_LINING[0]]);
@@ -106,7 +106,7 @@ describe("Lyra's blouse and corset", () => {
     // (On the owner's bare body a hand carries a round cap of the wrist, above the wrist's row: the
     // cuff covers it, as his cuffs do.)
     const hands = [partIndex('handN'), partIndex('handF')];
-    for (const body of ['female', 'slender'] as BodyType[]) {
+    for (const body of ['female'] as BodyType[]) {
       for (const arms of ['long', undefined] as const) {
         for (const held of [true, false]) {
           const sword = held ? { held: { id: 'held_gilded_rapier', colors: [] } } : {};
@@ -166,9 +166,9 @@ describe("Lyra's blouse and corset", () => {
     for (let y = 163; y <= 171; y++) for (let x = 106; x <= 118; x++) assert.ok(!skin.has(hexAt(f, x, y)), `(${x}, ${y}) ${hexAt(f, x, y)}`);
   });
 
-  it('draws on the female and slender bodies in every pose', () => {
+  it('draws on the female body in every pose', () => {
     const poses: SpritePose[] = [...SPRITE_POSES, ...MOVE_POSES, ...CAMP_POSES];
-    for (const body of ['female', 'slender'] as BodyType[]) {
+    for (const body of ['female'] as BodyType[]) {
       const bare = { ...look(body), slots: {} };
       for (const pose of poses) {
         for (const frame of [0, 1]) {

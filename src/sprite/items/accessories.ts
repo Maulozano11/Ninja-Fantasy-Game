@@ -2,9 +2,9 @@
 // Everything is placed from the rig (hand + forearm direction, torso-local
 // T(), head-local hd()) so it works on every body type and pose.
 
-import { armJoints, DrawCtx, ItemDef, legPoint, Side, torsoNeck } from '../ctx';
+import { armJoints, Depth, DEPTHS, DrawCtx, ItemDef, legPoint, Side, torsoNeck } from '../ctx';
 import { add, capsule, ellipse, F_NO_OUTLINE, fine, GRID, Layer, len, lerp, line, norm, partIndex, Pen, perp, poly, px, RES, scale, seam, sub, UNITS, v, Vec } from '../raster';
-import { retintHex, type RampKind } from '../color';
+import { hexToRgb, retintHex, type RampKind } from '../color';
 import { hd } from './hairkit';
 import { CRYSTAL_SWORD, drawPaintedWeapon, drawWeapon, KUNAI } from './weapons';
 import { FLAME_LONGSWORD, FLAME_SWORD_FLAME, FLAME_SWORD_GOLD } from './flameSwordArt';
@@ -25,6 +25,7 @@ import { LYRA_SWORD_BLADE, LYRA_SWORD_GUARD } from './lyraSwordArt';
 import { drawLyraRapier } from './lyraSword';
 import { drawOwner, ownerFrame, slotTint } from '../ownerFrames';
 import { gripPoint, handsBusy, handsLimp, handsReleased, poleAngle, swordAngle, throwsKunai } from '../grip';
+import type { Rig } from '../rig';
 
 const col = (key: string, label: string, def: string, kind: RampKind = 'cloth') => ({ key, label, default: def, kind });
 
@@ -293,15 +294,111 @@ function backGrip(g: DrawCtx, deg: number): Vec {
   return stowAt(g, -Math.max(b.shoulderHalf, 5.9) - 2.4 + (torsoNeck(g).x - 0.6), b.torsoLen + 2.8 - (deg < 0 ? 9 : 0));
 }
 
-const TACKLE_BACK = 30;
+/**
+ * The angle a weapon stowed on the back is drawn at (`deg`: the one it rides at standing). It is
+ * strapped to the back, so it turns with the torso's lean in every pose (the throw's release, the
+ * lunge, the tackle's shoulder, the combo's punches and kicks, leaning back at camp): it lies across
+ * the back as it does standing, instead of sticking out under the chin or past the chest. What would
+ * still show in front of the body is cut away by clipStowed.
+ */
+const backAngle = (g: DrawCtx, deg: number): number => deg + g.rig.lean;
+
+/** A piece of a stowed weapon at most this big (in pixels), seen apart from the rest of it, is cut away. */
+const STOW_SLIVER = 6;
 
 /**
- * The angle a weapon stowed on the back is drawn at (`deg`: the one it rides at standing). The
- * weapon techniques pitch the body far forward (the release of 'throw', the lunge of 'pierce', the
- * shoulder of 'tackle'): the weapon turns with the back there, so its blade stays behind the body
- * instead of sticking out under the chin. Every other pose keeps it at `deg`.
+ * Whether a fine pixel lies in front of the line of the back, below the shoulders (torsoPoly's back
+ * edge, in the torso's frame, so it leans with the body): where a weapon stowed on the back never shows.
  */
-const backAngle = (g: DrawCtx, deg: number): number => (g.rig.pose === 'throw' || g.rig.pose === 'pierce' ? deg + g.rig.lean : g.rig.pose === 'tackle' ? deg + Math.min(g.rig.lean, TACKLE_BACK) : deg);
+export function frontOfBack(r: Rig): (i: number) => boolean {
+  const b = r.bp;
+  const shoulder = b.torsoLen - 1.2;
+  const nO = -(b.hipHalf * 0.5 + b.legR[0] * 0.96);
+  // The back's edge, top down: [height above the pelvis, x].
+  const edge: [number, number][] = [[shoulder, -b.shoulderHalf * 0.86], [b.torsoLen - 5, -b.chestHalf * 0.86], [5.4, -b.waistHalf * 0.86], [1.6, nO], [-0.8, nO - 0.1]];
+  const backAt = (y: number): number => {
+    for (let k = 1; k < edge.length; k++) {
+      const [y0, x0] = edge[k - 1];
+      const [y1, x1] = edge[k];
+      if (y >= y1) return x1 + ((x0 - x1) * (y - y1)) / (y0 - y1);
+    }
+    return edge[edge.length - 1][1];
+  };
+  return (i) => {
+    const d = sub(v(((i % GRID) + 0.5) / RES, (((i / GRID) | 0) + 0.5) / RES), r.pelvis);
+    const ly = d.x * r.up.x + d.y * r.up.y;
+    return ly < shoulder && d.x * r.right.x + d.y * r.right.y > backAt(ly);
+  };
+}
+
+/**
+ * A weapon stowed on the back (the held weapon drawn on 'backGear') stays behind the body. Below the
+ * shoulders, whatever of it would show in front of the line of the back (the tip past the hip, through
+ * the gap between the legs, under an arm, past the chest) is cut away, then any piece of it left in
+ * sight apart from the rest, a few pixels big, goes too. A painted weapon (his flame or ice sword) is
+ * closed along the cut with its own black line; one we draw gets its outline there as usual. Runs once
+ * every layer that can hide it is drawn (compose.ts).
+ */
+export function clipStowed(g: DrawCtx, layers: ReadonlyMap<Depth, Layer>): void {
+  const L = layers.get('backGear');
+  if (!L?.used) return;
+  const N = GRID * GRID;
+  const held = partIndex('held');
+  const mine = (i: number) => L.mat[i] >= 0 && L.part[i] === held;
+  // What the layers in front of it cover.
+  const covered = new Uint8Array(N);
+  for (const d of DEPTHS.slice(DEPTHS.indexOf('backGear') + 1)) {
+    const F = layers.get(d);
+    if (F?.used) for (let i = 0; i < N; i++) if (F.mat[i] >= 0) covered[i] = 1;
+  }
+  const front = frontOfBack(g.rig);
+  const cut = new Uint8Array(N);
+  const drop = (i: number) => {
+    L.mat[i] = -1;
+    L.flags[i] = 0;
+    cut[i] = 1;
+  };
+  for (let i = 0; i < N; i++) if (mine(i) && !covered[i] && front(i)) drop(i);
+  // Pieces left in sight apart from the rest (8-connected).
+  const seen = new Uint8Array(N);
+  for (let i = 0; i < N; i++) {
+    if (seen[i] || !mine(i) || covered[i]) continue;
+    const piece: number[] = [];
+    const stack = [i];
+    seen[i] = 1;
+    while (stack.length) {
+      const j = stack.pop()!;
+      piece.push(j);
+      const x = j % GRID;
+      for (let dy = -GRID; dy <= GRID; dy += GRID)
+        for (let dx = -1; dx <= 1; dx++) {
+          const k = j + dy + dx;
+          if (k < 0 || k >= N || x + dx < 0 || x + dx >= GRID || seen[k] || !mine(k) || covered[k]) continue;
+          seen[k] = 1;
+          stack.push(k);
+        }
+    }
+    if (piece.length <= STOW_SLIVER) piece.forEach(drop);
+  }
+  // A painted weapon has no outline of its own: its darkest colour closes the cut.
+  let ink = -1;
+  let dark = Infinity;
+  for (let i = 0; i < N; i++) {
+    if (!mine(i) || !(L.flags[i] & F_NO_OUTLINE)) continue;
+    const [cr, cg, cb] = hexToRgb(g.mats.ramps[L.mat[i]][3]);
+    const lum = cr * 0.3 + cg * 0.59 + cb * 0.11;
+    if (lum < dark) [dark, ink] = [lum, L.mat[i]];
+  }
+  if (ink < 0) return;
+  for (let i = 0; i < N; i++) {
+    if (!mine(i) || !(L.flags[i] & F_NO_OUTLINE)) continue;
+    const x = i % GRID;
+    if ((x > 0 && cut[i - 1]) || (x < GRID - 1 && cut[i + 1]) || (i >= GRID && cut[i - GRID]) || (i < N - GRID && cut[i + GRID])) {
+      L.mat[i] = ink;
+      L.shade[i] = 3;
+    }
+  }
+}
 
 /**
  * Knocked out, a weapon lies dropped on the ground in front of the body. The

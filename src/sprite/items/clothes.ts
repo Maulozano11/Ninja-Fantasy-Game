@@ -12,6 +12,7 @@ import { continuedTo, limbOnly, PaintedPiece, PieceJoint, segAngle, stampBent, s
 import { SHADE_BELTS_ITEM } from './sayaLower';
 import { add, along, ellipse, F_NO_EDGE, F_NO_OUTLINE, F_NO_TEXTURE, GRID, Layer, lerp, norm, PAD, PartId, partIndex, PARTS, Pen, perp, poly, RES, scale, seam, ShadeFn, sub, v, Vec } from '../raster';
 import { stampTemplate, TemplatePalette } from '../rotsprite';
+import { sealCloth } from '../seal';
 import { crimsonKind, GAUNTLET_F, GAUNTLET_N, GLOVE_LEATHER, GLOVE_STEEL, GLOVE_TONES, GLOVE_TRIM } from './sabatonsGauntletsArt';
 import { BRACER_BRONZE, BRACER_F, BRACER_N, ROMAN_KIT_KIND } from './bracersSandalsArt';
 import { sandalPieces } from './feet';
@@ -1393,6 +1394,8 @@ export const TOP_ITEMS: ItemDef[] = liftMain([
       // hem: a lit fold just above the bottom edge
       mark(O, add(nL, v(0.6, -1.1)), add(nR, v(-0.4, -1.1)), (s) => Math.min(4, s + 1));
       mark(O, add(fL, v(0.4, -1.1)), add(fR, v(-0.6, -0.6)), (s) => Math.min(3, s + 1));
+      // no crack between the tails or between them and the coat, nor bitten into their edges (seal.ts)
+      sealCloth(g, ['torso.top', 'torso.over']);
       // Two rows of small studs down the lower panel, every 4 fine px
       const len = nR.y - nTop.y;
       for (let y = 2.4; y < len - 1.6; y += 2) {
@@ -1489,7 +1492,7 @@ export const TOP_ITEMS: ItemDef[] = liftMain([
     name: 'Sports Top',
     desc: 'A fitted sports top with thin straps and a band under the bust.',
     colors: [col('main', 'Cloth', FEMALE_BASE_CLOTH)],
-    bodies: ['female', 'slender'],
+    bodies: ['female'],
     draw: (g, [c]) => drawBaseCloth(g, 'top', c),
   },
 ]);
@@ -1605,6 +1608,8 @@ export const BOTTOM_ITEMS: ItemDef[] = liftMain([
       const TL = g.L('torso.bottom');
       lifted(t, () => hemBand(g, TL, 3.6, 4.8, 0.9, clothPen(g, t, 'torso'), { tuck: false }));
       tmark(g, TL, -b.hipHalf - 1, 3.4, b.hipHalf + 1, 3.4, (s) => s - 1);
+      // where the legs part, the crack at the top of the split is the dark seam between them (seal.ts)
+      sealCloth(g, ['farLeg.cloth', 'nearLeg.cloth', 'torso.bottom']);
     },
   },
   {
@@ -1705,7 +1710,7 @@ export const BOTTOM_ITEMS: ItemDef[] = liftMain([
     name: 'Briefs',
     desc: 'Fitted briefs cut high at the hips.',
     colors: [col('main', 'Cloth', FEMALE_BASE_CLOTH)],
-    bodies: ['female', 'slender'],
+    bodies: ['female'],
     draw: (g, [c]) => drawBaseCloth(g, 'bottom', c),
   },
 ]);

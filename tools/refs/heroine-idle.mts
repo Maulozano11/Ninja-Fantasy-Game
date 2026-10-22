@@ -1,7 +1,7 @@
-// Our female (and slender) body at idle frame 0 with no items, for the heroine study
-// (tools/refs/heroine-study.py): writes <out>/female-idle.png and <out>/slender-idle.png (256 x 256)
-// and prints each rig's joints in fine pixels (heroine_ref.OUR_JOINTS is the female's). Then the same
-// bodies with his Lyra's long arms (appearance `arms: 'long'`, rig.ts LONG_ARMS) holding her sword, and
+// Our female body at idle frame 0 with no items, for the heroine study
+// (tools/refs/heroine-study.py): writes <out>/female-idle.png (256 x 256) and prints its rig's
+// joints in fine pixels (heroine_ref.OUR_JOINTS). Then the same body with his Lyra's long arms
+// (appearance `arms: 'long'`, rig.ts LONG_ARMS) holding her sword, and
 // the near fist's grip point (grip.ts gripPoint): the joints the Lyra scripts (tools/refs/lyra-*.py) lay
 // her pieces on; and, per row, the first and last column of the body's near upper arm (with the
 // shoulder), near forearm and far forearm as the body draws them there (lyra-upper-from-ref.py
@@ -35,7 +35,7 @@ const bare = (body: BodyType): SpriteAppearance => ({
     pixelEdits: [],
 });
 
-for (const body of ['female', 'slender'] as BodyType[]) {
+for (const body of ['female'] as BodyType[]) {
   const look = bare(body);
   const f = renderSprite(look, 'idle', 0);
   writePng(`${process.argv[2]}/${body}-idle.png`, GRID, GRID, new Uint8Array(f.rgba.buffer, f.rgba.byteOffset, f.rgba.length));
@@ -43,7 +43,7 @@ for (const body of ['female', 'slender'] as BodyType[]) {
   print(f.rig);
 }
 
-for (const body of ['female', 'slender'] as BodyType[]) {
+for (const body of ['female'] as BodyType[]) {
   const r = drawRig(body, rigPoseFor('idle', undefined, 'held_gilded_rapier'), 0, 'long');
   console.log(`# ${body}, his Lyra's long arms, holding her sword`);
   print(r);

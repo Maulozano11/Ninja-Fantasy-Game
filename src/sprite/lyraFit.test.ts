@@ -29,7 +29,7 @@ const lowest = (rgba: Uint8ClampedArray) => {
 
 describe('Lyra on our body', () => {
   it('carries her head on the long neck one unit forward (and on the male bodies one higher), and only on the long neck', () => {
-    for (const body of ['female', 'slender'] as const) {
+    for (const body of ['female'] as const) {
       const r = drawRig(body, 'idle', 0);
       assert.deepEqual(carryHead(r, 'long').head, { x: r.head.x + 1, y: r.head.y }, body);
       for (const n of [undefined, 'slim', 'strong'] as const) assert.equal(carryHead(r, n), r);
@@ -76,7 +76,7 @@ describe('Lyra on our body', () => {
 
   it('hangs her fists and sword where he drew them on his Lyra\'s long arms, and only on them', () => {
     // standard arms are the body's own
-    for (const body of ['female', 'slender', 'male', 'bulky'] as const) {
+    for (const body of ['female', 'male', 'bulky'] as const) {
       const { T: _a, ...own } = drawRig(body, 'idle', 0, 'standard');
       const { T: _b, ...plain } = drawRig(body, 'idle', 0);
       assert.deepEqual(own, plain, body);
@@ -111,7 +111,7 @@ describe('Lyra on our body', () => {
   it('cuts her tabard and belt for women, as her blouse, corset, skirt and boots are', () => {
     for (const id of ['skirt_gilded_tabard', 'waist_pouch_belt']) {
       const d = getItem(id)!;
-      assert.ok(fitsBody(d, 'female') && fitsBody(d, 'slender'), id);
+      assert.ok(fitsBody(d, 'female'), id);
       assert.ok(!fitsBody(d, 'male') && !fitsBody(d, 'bulky'), id);
     }
   });

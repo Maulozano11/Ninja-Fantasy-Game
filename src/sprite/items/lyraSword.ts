@@ -42,5 +42,6 @@ function sparkTemplate(frame: number): typeof LYRA_RAPIER {
 export function drawLyraRapier(g: DrawCtx, depth: Depth, at: Vec, deg: number, blade: string, guard: string, sparks: boolean): void {
   const tint = tintOf(blade, guard);
   drawPaintedWeapon(g, depth, LYRA_RAPIER, at, deg, tint);
-  if (sparks) drawPaintedWeapon(g, depth, sparkTemplate(g.rig.frame), at, deg, tint);
+  // The sparkles are an effect over the figure (depth 'top'), apart from it as he painted them.
+  if (sparks) drawPaintedWeapon(g, 'top', sparkTemplate(g.rig.frame), at, deg, tint);
 }

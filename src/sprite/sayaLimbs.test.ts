@@ -1,6 +1,6 @@
 // Saya on the owner's bare female body: two legs and two boots, each arm one piece with its hand, the
 // near shoulder there, no part drawn twice and no edge left open, in every pose and frame of the female
-// and slender bodies (the owner, 2026-10-21, of the heroines on his body: "estas poniendo 3 piernas o 3
+// body (the owner, 2026-10-21, of the heroines on his body: "estas poniendo 3 piernas o 3
 // botas", "sigue teniendo las manos separadas en arrojada", "en arrojada preparar falta el hombro"): npm test.
 
 import assert from 'node:assert/strict';
@@ -14,7 +14,7 @@ import { frameCount } from './rig';
 import { CAMP_POSES, MOVE_POSES, SPRITE_POSES, type BodyType, type SpritePose } from './types';
 
 const saya = LEGENDARY_PRESETS.find((p) => p.character.id === 'preset_saya')!.character.appearance!;
-const BODIES: BodyType[] = ['female', 'slender'];
+const BODIES: BodyType[] = ['female'];
 
 function* frames(): Generator<[BodyType, SpritePose, number]> {
   for (const body of BODIES) for (const pose of [...SPRITE_POSES, ...MOVE_POSES, ...CAMP_POSES] as SpritePose[]) for (let f = 0; f < frameCount(pose); f++) yield [body, pose, f];

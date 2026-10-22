@@ -11,7 +11,7 @@ import { getAppearance } from './legacy';
 import { drawRig, frameCount } from './rig';
 import { CAMP_POSES, MOVE_POSES, SPRITE_POSES, type BodyType, type SpriteAppearance, type SpritePose } from './types';
 
-const BODIES: BodyType[] = ['female', 'slender'];
+const BODIES: BodyType[] = ['female'];
 const POSES = [...SPRITE_POSES, ...MOVE_POSES, ...CAMP_POSES] as SpritePose[];
 
 const bare = (body: BodyType, skin = '#f6c7a6', slots: SpriteAppearance['slots'] = {}): SpriteAppearance =>
@@ -268,7 +268,7 @@ describe('the neck, shoulders and back in every pose (the throw\'s "hombro espal
   // The bare bodies, and every preset: on a female body in every pose, the others in the throw (the
   // pose that hangs the head far ahead of the chest).
   const looks: [string, SpriteAppearance, SpritePose[]][] = [
-    ...(['female', 'slender', 'male', 'bulky'] as BodyType[]).map((b): [string, SpriteAppearance, SpritePose[]] => [`bare ${b}`, bare(b), POSES]),
+    ...(['female', 'male', 'bulky'] as BodyType[]).map((b): [string, SpriteAppearance, SpritePose[]] => [`bare ${b}`, bare(b), POSES]),
     ...LEGENDARY_PRESETS.map((p): [string, SpriteAppearance, SpritePose[]] => {
       const look = getAppearance(p.character);
       return [p.character.id, look, BODIES.includes(look.body) ? POSES : ['throw']];

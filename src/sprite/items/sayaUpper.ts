@@ -403,7 +403,7 @@ export const SAYA_SHADE_ARMOR: ItemDef = {
   desc: 'A sleeveless navy ninja top with a cream chest plate, red piping down the front, and navy arm guards banded in red (+2 AC). Women only.',
   colors: [col('cloth', 'Cloth', SAYA_CLOTH), col('trim', 'Trim', SAYA_TRIM), col('plate', 'Plate', SAYA_PLATE, 'metal')],
   statsArmor: 'Leaf Chunin Flak',
-  bodies: ['female', 'slender'],
+  bodies: ['female'],
   draw: (g, [cloth, trim, plate]) => drawShadeArmor(g, cloth, trim, plate),
 };
 

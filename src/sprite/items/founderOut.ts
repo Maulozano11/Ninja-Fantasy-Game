@@ -169,26 +169,6 @@ export function founderLegOut(g: DrawCtx, s: Side): { out: Vec; w: number } {
   return { out: v(dx / RES, dy / RES), w: 1 };
 }
 
-/** A shin turned this far from rest (degrees) with its ankle lifted this far (fine pixels): the foot is off the ground. */
-const FOOT_TURN = 45;
-const FOOT_LIFT = 3;
-
-/**
- * How far his sandal turns with the shin (degrees): none while the foot can stand on the ground (it stays
- * flat under the ankle, like our feet), all of the shin's turn once the leg swings a foot well off the
- * ground (a knee raised, a leg kicked back or out: the shin past FOOT_TURN from rest, the ankle lifted past
- * FOOT_LIFT). He drew the sandal under his shin, so held flat under a shin turned that far it hung apart
- * from it; turned with it, it stays on the shin as he drew it.
- */
-export function founderFootTurn(g: DrawCtx, s: Side): number {
-  const r = g.rig;
-  const idle = idleRig(r.body);
-  const [knee, ankle] = s === 'N' ? [r.kneeN, r.ankleN] : [r.kneeF, r.ankleF];
-  const [knee0, ankle0] = s === 'N' ? [idle.kneeN, idle.ankleN] : [idle.kneeF, idle.ankleF];
-  const d = wrap180(segAngle(knee, ankle) - segAngle(knee0, ankle0));
-  return Math.abs(d) > FOOT_TURN && (ankle0.y - ankle.y) * RES > FOOT_LIFT ? d : 0;
-}
-
 /** The pixels of these parts in a layer moved by `out` (rig units, whole fine pixels). */
 export function moveParts(L: Layer, parts: PartId[], out: Vec): void {
   const ox = Math.round(out.x * RES);

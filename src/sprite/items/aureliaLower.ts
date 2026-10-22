@@ -405,7 +405,7 @@ export const SKIRT_DAWN_PANELS: ItemDef = {
     { key: 'gold', label: 'Gold', default: DAWN_BASE.gold, kind: 'metal' },
     { key: 'lining', label: 'Lining', default: DAWN_BASE.lining },
   ],
-  bodies: ['female', 'slender'],
+  bodies: ['female'],
   draw: (g, [cloth, gold, lining]) => {
     const tint = tinter({ cloth, gold, lining });
     bareThighs(g);
@@ -437,7 +437,7 @@ export const WAIST_DAWN_SASH: ItemDef = {
     { key: 'leather', label: 'Leather', default: DAWN_BASE.leather, kind: 'leather' },
     { key: 'buckle', label: 'Buckle', default: DAWN_BASE.buckle, kind: 'metal' },
   ],
-  bodies: ['female', 'slender'],
+  bodies: ['female'],
   draw: (g, [sash, leather, buckle]) => {
     drawPiece(g, 'waist', 'pelvis', DAWN_WAIST, tinter({ sash, leather, buckle }));
   },

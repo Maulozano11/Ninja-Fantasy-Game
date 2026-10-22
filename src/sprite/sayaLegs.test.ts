@@ -22,7 +22,7 @@ describe('Shade Wraps', () => {
   it('is a women-only feet item with her colours as defaults', () => {
     const item = getItem('feet_shade_wraps')!;
     assert.equal(item.slot, 'feet');
-    assert.deepEqual(item.bodies, ['female', 'slender']);
+    assert.deepEqual(item.bodies, ['female']);
     assert.deepEqual(item.colors.map((c) => c.default), ['#374061', '#a63133', '#374061']);
   });
 

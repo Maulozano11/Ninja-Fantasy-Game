@@ -118,7 +118,6 @@ const SLOT_PARTS: Partial<Record<Part, { slot: SlotId; crop: 'full' | 'head' }>>
 const BODIES: { id: BodyType; label: string }[] = [
   { id: 'male', label: 'Male' },
   { id: 'female', label: 'Female' },
-  { id: 'slender', label: 'Slender' },
   { id: 'bulky', label: 'Bulky' },
 ];
 

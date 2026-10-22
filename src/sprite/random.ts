@@ -28,7 +28,7 @@ function slotItem(slot: SlotId, body: BodyType): ItemChoice | undefined {
 }
 
 export function randomAppearance(): SpriteAppearance {
-  const body = pick<BodyType>(['male', 'female', 'bulky', 'slender']);
+  const body = pick<BodyType>(['male', 'female', 'bulky']);
   const slots: SpriteAppearance['slots'] = {};
   const put = (slot: SlotId, p: number) => {
     if (!chance(p)) return;

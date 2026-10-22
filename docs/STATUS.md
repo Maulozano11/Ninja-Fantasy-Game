@@ -172,7 +172,10 @@ Merge checks (`git merge-tree` on the origin tips, nothing changed):
   should the other characters' throw follow his release. Fixed 2026-10-22 after his look (*"tiene cortada
   la pierna corrigelo"*): the lift had cut her far shin's line and far foot at the next panel of his
   picture; her legs are now whole in all three frames, and the earth he drew round her boots is the
-  seat's, not hers (`tools/refs/lyra_read_ref.py`, `seats.test.ts`).
+  seat's, not hers (`tools/refs/lyra_read_ref.py`, `seats.test.ts`). Then (*"yo aun veo el arma cortada"*):
+  in "Atenta" her sword runs off the left edge of his picture, and the lift closed it in a straight black
+  line; now his last column of the blade is read from his picture's edge and the blade ends in his tip of
+  "Leyendo" (same sword, one pixel left and down). "Leyendo" and "Pasando pagina" keep his own tip.
 - Decided 2026-10-21 (later): Warp Strike is renamed **"Shooting-Star Thrust"** (Spanish **"Estocada Fugaz"**; the owner first said "Shooting Star", then chose these), after the clan's name (Ryusei = shooting star) and to stay clear of other games' "Warp Strike". The id `ryusei_warp` stays. To apply once `icons/sheets-8-11` is merged (it touches the same strings): names, hotbar label, help text, log, clan texts, D24.
 - Decided 2026-10-21: the Spanish names are **"Golpe Warp"** and **"Comando"** (the owner: "los dos"); `icons/sheets-8-11` brings them and updates D24 in `docs/CLANS_DESIGN.md`.
 - Jutsu pacing (owner: too fast, "like a flashing star"): a first pass is merged (`8ef28a9`: 560 ms

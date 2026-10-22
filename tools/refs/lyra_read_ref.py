@@ -47,6 +47,19 @@ ROWS = 97
 # there): those columns are read again over a wider box from the same corner (the same cells; inside the
 # old box the two reads agree on her boot), from this column of panel 1's on.
 REACH = {1: ((600, 95, 1450, 1085), 74)}
+# Panel 1's blade runs off the left edge of his picture. Its box starts 5 picture pixels in, so the grid
+# read leaves the cells there unread (black): column 2 was a straight black line down the blade's end
+# (the owner, 2026-10-22: "yo aun veo el arma cortada"). The columns before EDGE's column are read again
+# over a box from the picture's very edge (the same cells: the same grid and size; the read is kept only
+# there, since the wider fit drifts a cell elsewhere), so his blade's last column (2) is his: three cells
+# of blade between his line.
+EDGE = {0: ((0, 95, 760, 1085), 3)}
+# Past his picture's edge (left of column 2) panel 1's blade is continued to a tip: his tip of panel 2
+# (the same sword; his blade there tapers from three cells to one and closes in his line, at column 1),
+# one column left and one row down, where panel 1's blade ends (its last column of three cells is panel
+# 2's column 3 at that offset, his line above and below agreeing to the pixel). Each pixel takes the
+# nearest colour of panel 1's own (merge()). {panel: (panel whose tip it is, (dx, dy), up to this column)}
+TIP = {0: (1, (-1, 1), 2)}
 # His grey page, and how far from it a pixel is still page.
 PAGE = (139, 139, 139)
 PAGE_TOL = 14
@@ -82,7 +95,7 @@ NEXT = {
 # and its sword, rock and earth beside her far leg (NEXT); on the left of panels 2 and 3 the panel
 # before's boots and book, short of her sword's tip.
 OTHERS = {
-    0: [[(-6, 0), (3, 0), (3, 58), (2, 58), (2, 63), (3, 63), (3, 98), (-6, 98)], right_of(NEXT[0]), [(66, 0), (COLS + 1, 0), (COLS + 1, 52), (66, 52)]],
+    0: [[(-6, 0), (3, 0), (3, 58), (2, 58), (2, 64), (3, 64), (3, 98), (-6, 98)], right_of(NEXT[0]), [(66, 0), (COLS + 1, 0), (COLS + 1, 52), (66, 52)]],
     1: [[(-6, 0), (3, 0), (3, 59), (1, 59), (1, 61), (2, 61), (2, 63), (3, 63), (3, 98), (-6, 98)], right_of(NEXT[1]), [(67, 0), (COLS + 1, 0), (COLS + 1, 52), (67, 52)]],
     2: [[(-6, 0), (3, 0), (3, 59), (1, 59), (1, 61), (2, 61), (2, 63), (3, 63), (3, 98), (-6, 98)], [(67, 0), (COLS + 1, 0), (COLS + 1, 52), (67, 52)]],
 }
@@ -162,7 +175,8 @@ GROUND = [(48, 84), (COLS, 84), (COLS, ROWS), (48, ROWS)]
 GROUND_ROW = 92
 # Zones of one frame only, laid after ZONES (panel 1's columns).
 FRAME_ZONES = {
-    0: [],
+    # the blade's end left of his picture's edge (TIP) and his last column of it, over the rock's zone
+    0: [('held', [(0, 59), (3, 59), (3, 64), (0, 64)], None)],
     1: [],
     # the far hand lifting the far page, above the book
     2: [('book', [(50, 23), (64, 23), (64, 30), (50, 30)], None), ('top', [(50, 23), (64, 23), (64, 32), (50, 32)], skin)],
@@ -187,6 +201,12 @@ def frame(k):
         wide[:, :a.shape[1]] = a
         wide[:h, x0 + s:b.shape[1]] = b[:h, x0 + s:]
         a = wide
+    if k in EDGE:
+        box, x1 = EDGE[k]
+        b = P.native(REF, box, PITCH)
+        assert b.shape == a.shape, (b.shape, a.shape)
+        a = a.copy()
+        a[:, :x1 + s] = b[:, :x1 + s]
     out = np.zeros((ROWS, COLS, 3), int)
     out[:, :] = PAGE
     h = min(ROWS, a.shape[0])
@@ -196,7 +216,25 @@ def frame(k):
     for poly in OTHERS[k]:
         fg &= ~P.inside(poly, ROWS, COLS)
     fg[0] = False
-    m = P.merge(out, fg, TOL)
+    # the cells read again from the picture's edge and the tip continued past it: kept out of merge(), so
+    # his colours elsewhere stay as they were, and given the nearest of the colours merge() found
+    new = np.zeros((ROWS, COLS), bool)
+    if k in EDGE:
+        new[:, :EDGE[k][1]] = fg[:, :EDGE[k][1]]
+    if k in TIP:
+        src, (dx, dy), x1 = TIP[k]
+        ms, fgs, _ = frame(src)
+        for y in range(ROWS):
+            for x in range(x1):
+                ys, xs = y - dy, x - dx
+                if 0 <= ys < ROWS and 0 <= xs < COLS and fgs[ys, xs]:
+                    out[y, x] = ms[ys, xs]
+                    fg[y, x] = new[y, x] = True
+    m = P.merge(out, fg & ~new, TOL)
+    if new.any():
+        his = np.unique(m[fg & ~new], axis=0)
+        for y, x in zip(*np.nonzero(new)):
+            m[y, x] = his[np.argmin(np.abs(his - out[y, x]).max(1))]
     line = fg & (m.max(2) < LINE)
     _CACHE[k] = (m, fg, line)
     return _CACHE[k]

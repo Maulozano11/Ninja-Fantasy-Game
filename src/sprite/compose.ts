@@ -6,6 +6,7 @@ import { hexToRgb } from './color';
 import { Depth, DEPTHS, DrawCtx, ItemDef, NO_OUTLINE_DEPTHS, resolveParts } from './ctx';
 import { closePinholes } from './holes';
 import { clipStowed, drawThrowKunai } from './items/accessories';
+import { joinFlat } from './items/ankle';
 import { CAPE_DEPTHS } from './items/capes';
 import { drawHeadband } from './items/headband';
 import { add, F_NO_OUTLINE, GRID, Layer, MaterialTable, norm, PAD, PartId, partIndex, PARTS, perp, RES, scale, sub, v, Vec } from './raster';
@@ -317,6 +318,8 @@ export function renderSprite(
       const def = getItem(acc.id);
       if (def && def.slot === 'accessory') def.draw(g, resolveColors(def, acc.colors), resolveParts(def, acc.parts));
     }
+    // The lean's flat feet meet their shins, whichever item drew each (items/ankle.ts).
+    for (const s of ['N', 'F'] as const) joinFlat(g, s);
     drawHeadband(g);
     drawThrowKunai(g);
     // clothes over a female torso follow the bust (fitted armors shape their own plates)

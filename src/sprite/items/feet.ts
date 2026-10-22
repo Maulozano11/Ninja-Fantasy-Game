@@ -9,7 +9,7 @@ import type { BodyType } from '../types';
 import { continuedTo, limbOnly, type PaintedPiece, segAngle, stampPiece } from '../painted';
 import { add, along, ellipse, GRID, norm, partIndex, Pen, RES, seam, sub, v, type Vec } from '../raster';
 import { across, crease, fpx, limb, limbR, stitch, stud, tube, wrapStripes } from './clothes';
-import { closeAnkle, footTurn, shinCarried } from './ankle';
+import { closeAnkle, footTurn, shinCarried, turned } from './ankle';
 import { founderLegLen, founderLegOut, founderLegsStill } from './founderOut';
 import { FOUNDER_SANDAL_FOOT_F, FOUNDER_SANDAL_FOOT_N, FOUNDER_SANDAL_KIND, FOUNDER_SANDAL_LEATHER, FOUNDER_SANDAL_SHIN_F, FOUNDER_SANDAL_SHIN_N, FOUNDER_SANDAL_SKIN } from './founderSandalsArt';
 import { ROMAN_KIT_KIND, SANDAL_FOOT_F, SANDAL_FOOT_N, SANDAL_LEATHER, SANDAL_SHIN_F, SANDAL_SHIN_N, SANDAL_SKIN } from './bracersSandalsArt';
@@ -390,10 +390,14 @@ export const FEET_ITEMS: ItemDef[] = [
         // spur: shank and a glinting rowel behind the heel
         const A = g.L(legDepth(s, 'armor'));
         const spm: Pen = { mat: g.m(sp, 'metal'), part: `foot${s}` as Pen['part'], bias: sb(s) };
-        const heel = s === 'F' ? v(a.x - 2.0, a.y + 3.0) : v(a.x - 2.4, a.y + 2.2);
-        tube(A, heel, add(heel, v(-1.2, -0.2)), 0.45, 0.45, spm, 3);
-        ellipse(A, heel.x - 1.6, heel.y - 0.2, 0.8, 0.8, spm, 4);
-        fpx(A, v(heel.x - 1.8, heel.y - 0.5), spm.mat, `foot${s}` as Pen['part'], 5 + sb(s));
+        // (turned with the boot's foot about the ankle when the foot turns with the shin: footTurn)
+        const t = footTurn(g, s);
+        const heel = add(a, turned(s === 'F' ? v(-2.0, 3.0) : v(-2.4, 2.2), t));
+        const off = (dx: number, dy: number) => add(heel, turned(v(dx, dy), t));
+        tube(A, heel, off(-1.2, -0.2), 0.45, 0.45, spm, 3);
+        const rowel = off(-1.6, -0.2);
+        ellipse(A, rowel.x, rowel.y, 0.8, 0.8, spm, 4);
+        fpx(A, off(-1.8, -0.5), spm.mat, `foot${s}` as Pen['part'], 5 + sb(s));
       }
     },
   },

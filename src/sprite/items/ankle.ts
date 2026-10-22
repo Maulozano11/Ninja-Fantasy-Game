@@ -3,7 +3,8 @@
 // two together in every pose: the boot carried round with the shin, turned with it once the leg swings
 // the foot off the ground, and the ankle closed with his line where the two pieces part. Shared by his
 // Solen's and his Roman's sandals (feet_gladiator_sandals), his Aiden's sabatons (feet.ts) and his Ren's
-// Night Boots (night.ts; this file is the same on fix/boots-aiden and ren/owner-standard). The branch
+// Night Boots (night.ts; this file is the same on fix/boots-aiden and ren/owner-standard), and, through
+// footDraw (ctx.ts), by every other foot: our boots, sandals and wraps and our bare foot. The branch
 // body/male-skin-face carries its own copy for the Roman sandals (footTurns and closeAnkle in its feet.ts):
 // when it merges, it should switch to these.
 
@@ -37,32 +38,55 @@ export function ankleLift(g: DrawCtx, s: Side): number {
   return (legJoints(idleRig(g.rig.body), s).ankle.y - legJoints(g.rig, s).ankle.y) * RES;
 }
 
-/** A shin turned this far from rest (degrees) with its ankle lifted this far (fine pixels): the foot is off the ground. */
+/** A shin turned no further than this from rest (degrees): the foot stays flat, as it stands at rest. */
+const FOOT_FLAT = 20;
+/** A shin turned past this (degrees): the foot turns all of the shin's turn. */
 const FOOT_TURN = 45;
+/** A shin turned past this (degrees) with its ankle lifted no more than FOOT_LIFT fine pixels lies along the ground: a kneel. */
+const KNEEL_TURN = 52;
 const FOOT_LIFT = 3;
 
 /**
- * How far a boot or sandal turns with its shin (degrees): none while the shin stands near the way it does
- * at rest (the foot stays flat under the ankle, like our feet), all of the shin's turn once the shin is
- * past FOOT_TURN degrees from rest and the leg swings the foot well off the ground (a knee raised, a leg
- * kicked back or out: the ankle lifted past FOOT_LIFT). He drew the foot under his shin, so held flat under
- * a shin turned that far it hangs apart from it; turned with it, it stays on the shin as he drew it.
- * `onGround`: also while the foot is on the ground (a kneel, a crouched step on the toes), for a boot
- * carried round with a shin longer than ours (shinCarried), whose foot only meets the ground on its toes.
+ * The camp lean ('lean') keeps every foot flat on the ground as it stood before feet turned with their
+ * shins, his Aiden's and his Roman's too (their greave or laced shin turns, the boot or sandal stays under
+ * the ankle as at rest). The owner chose it on 2026-10-22, looking at the lean turned and flat side by
+ * side: "en apoyado antes es lo correcto ahora en en despues esta mal".
+ */
+export const flatPose = (g: DrawCtx): boolean => g.rig.pose === 'lean';
+
+/**
+ * How far a boot, sandal or bare foot turns with its shin (degrees). The owner drew each foot under its
+ * shin as one piece; held flat under a shin turned far from rest (a kick, a raised knee, the run's back
+ * leg) it hangs apart from the shin or sticks out sideways (2026-10-22: "arregla las botas en donde combo
+ * 5/8 ... corrigelo en todos los personajes"). So: flat while the shin stands within FOOT_FLAT degrees of
+ * rest (on the ground under the ankle, as at rest); past it the foot turns with the shin, more and more,
+ * all of the shin's turn past FOOT_TURN, so it never sits more than FOOT_FLAT degrees off the way it sits
+ * on the shin at rest. On the ground it rises on its toes behind a shin slanted back, on its heel in front
+ * of one slanted forward. Two exceptions keep the foot flat on the ground: the camp lean (flatPose, the
+ * owner's choice), and a shin past KNEEL_TURN with its ankle on the ground (lifted no more than FOOT_LIFT:
+ * the crouch's back leg, the sneak's kneel), unless `onGround`: a boot carried round with a shin longer
+ * than ours (shinCarried), whose foot only meets the ground on its toes, turns there too. 0 at rest: every
+ * foot at rest is drawn exactly as before.
  */
 export function footTurn(g: DrawCtx, s: Side, onGround = false): number {
+  if (flatPose(g)) return 0;
   const d = shinTurn(g, s);
-  return Math.abs(d) > FOOT_TURN && (onGround || ankleLift(g, s) > FOOT_LIFT) ? d : 0;
+  const a = Math.abs(d);
+  if (a <= FOOT_FLAT) return 0;
+  if (a > KNEEL_TURN && !onGround && ankleLift(g, s) <= FOOT_LIFT) return 0;
+  if (a >= FOOT_TURN) return d;
+  return (Math.sign(d) * (a - FOOT_FLAT) * FOOT_TURN) / (FOOT_TURN - FOOT_FLAT);
 }
 
 /**
  * An offset from the ankle (fine pixels, as he drew it at rest) carried round with the shin: where his
  * ankle stands on a shin that stands apart from ours (SABATON_SHIFT). Held fixed, a shin turned from rest
  * carried his greave one way and left his boot behind; turned with the shin, the two stay where he joined
- * them. At rest it is the offset itself, to the bit.
+ * them. At rest it is the offset itself, to the bit; in the camp lean too, where his boot stays flat as it
+ * stood before (flatPose).
  */
 export function shinCarried(g: DrawCtx, s: Side, dx: number, dy: number): Vec {
-  const d = shinTurn(g, s);
+  const d = flatPose(g) ? 0 : shinTurn(g, s);
   if (!d) return v(dx / RES, dy / RES);
   const a = (d * Math.PI) / 180;
   return v((dx * Math.cos(a) - dy * Math.sin(a)) / RES, (dx * Math.sin(a) + dy * Math.cos(a)) / RES);
@@ -91,4 +115,57 @@ export function closeAnkle(g: DrawCtx, s: Side, at: Vec, line: number, lines: Se
     }
   // The open corner itself takes his line (a line put outside it would stick out of the leg).
   for (const i of open) L.mat[i] = line;
+}
+
+/** An offset (design pixels) turned by `deg` degrees (+ = clockwise on screen): a point on a foot turned with its shin (footTurn). Unturned, the offset itself. */
+export function turned(o: Vec, deg: number): Vec {
+  if (!deg) return o;
+  const a = (deg * Math.PI) / 180;
+  return v(o.x * Math.cos(a) - o.y * Math.sin(a), o.x * Math.sin(a) + o.y * Math.cos(a));
+}
+
+/** How far (fine pixels) a foot kept flat in the lean may be moved to meet its shin. */
+const JOIN_R = 6;
+
+/**
+ * The lean's foot, kept flat (flatPose) under a shin lying back, stood a pixel or a few apart from the end
+ * of his greave or laced shin: the owner, "faltaba juntar la bota porque estaba partida en dos". Moved by
+ * the least it takes to meet the shin (no turn: as he chose it, flat). The foot on the leg's feet layer,
+ * the shin there or on its armor layer (his Aiden's greave is his plate's); run once every item is drawn.
+ */
+export function joinFlat(g: DrawCtx, s: Side): void {
+  if (!flatPose(g)) return;
+  const L = g.L(legDepth(s, 'feet'));
+  const A = g.L(legDepth(s, 'armor'));
+  const shin = partIndex(`shin${s}`);
+  const foot = partIndex(`foot${s}`);
+  const shinAt = new Set<number>();
+  const feet: number[] = [];
+  for (let i = 0; i < GRID * GRID; i++) {
+    if ((L.mat[i] >= 0 && L.part[i] === shin) || (A.mat[i] >= 0 && A.part[i] === shin)) shinAt.add(i);
+    if (L.mat[i] >= 0 && L.part[i] === foot) feet.push(i);
+  }
+  if (!shinAt.size || !feet.length) return;
+  const meets = (dx: number, dy: number) =>
+    feet.some((i) => {
+      const x = (i % GRID) + dx;
+      const y = Math.floor(i / GRID) + dy;
+      for (let ny = y - 1; ny <= y + 1; ny++) for (let nx = x - 1; nx <= x + 1; nx++) if (shinAt.has(ny * GRID + nx)) return true;
+      return false;
+    });
+  if (meets(0, 0)) return;
+  const shifts: [number, number][] = [];
+  for (let dy = -JOIN_R; dy <= JOIN_R; dy++) for (let dx = -JOIN_R; dx <= JOIN_R; dx++) if (dx * dx + dy * dy <= JOIN_R * JOIN_R) shifts.push([dx, dy]);
+  shifts.sort((a, b) => a[0] * a[0] + a[1] * a[1] - (b[0] * b[0] + b[1] * b[1]));
+  const to = shifts.find(([dx, dy]) => meets(dx, dy));
+  if (!to) return;
+  const moved: [number, number, number, number][] = feet.map((i) => [i, L.mat[i], L.shade[i], L.flags[i]]);
+  for (const [i] of moved) L.mat[i] = -1;
+  for (const [i, mat, shade, flags] of moved) {
+    const j = i + to[1] * GRID + to[0];
+    L.mat[j] = mat;
+    L.shade[j] = shade;
+    L.part[j] = foot;
+    L.flags[j] = flags;
+  }
 }

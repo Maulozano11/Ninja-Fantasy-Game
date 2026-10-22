@@ -337,6 +337,67 @@ describe("the owner's Solen", () => {
     }
   });
 
+  it("shows no background and no stray white at his cowl's studs in any pose, frame or body", () => {
+    // The owner, 2026-10-22: "aqui tiene unos aun en la hebilla o medallon de la capa". The near end and the
+    // white stud ride the shoulders and the cowl round the neck the torso; the seam between them is filled
+    // as it opens (fillSeams in items/accessories.ts; idle is left as drawn, as the hole pass leaves it).
+    // Round each gold stud (2 px about it): no transparent pixel the figure walls in (within 3 px left,
+    // right, above and below), and no near-white pixel that is not one of his own colours (his white stud,
+    // his steel's highlights), but a book or the eyes passing by.
+    const gold = new Set(Object.entries(cowl.FOUNDER_COWL_KIND).filter(([, k]) => k === 'gold').map(([h]) => h));
+    const his = new Set(
+      [cowl, cuirass, cape, tunic, reach, sword, bracers, hair, skirt, trousers, sandals].flatMap((m) =>
+        Object.entries(m as Record<string, unknown>)
+          .filter(([k]) => k.endsWith('_KIND'))
+          .flatMap(([, v]) => Object.keys(v as Record<string, string>)),
+      ),
+    );
+    const passing = new Set([partIndex('held'), partIndex('head')]);
+    const bad: string[] = [];
+    for (const body of ['male', 'female', 'bulky', 'slender'] as BodyType[]) {
+      const l = look(body);
+      for (const pose of POSES) {
+        if (pose === 'idle') continue;
+        const rp = rigPoseFor(pose, l.cast?.style, l.slots.held?.id);
+        for (let f = 0; f < frameCount(rp); f++) {
+          const fr = render(l, pose, f);
+          const on = (x: number, y: number) => x >= 0 && y >= 0 && x < GRID && y < GRID && opaque(fr.rgba, y * GRID + x);
+          const walled = (x: number, y: number, dx: number, dy: number) => [1, 2, 3].some((k) => on(x + dx * k, y + dy * k));
+          // His studs: his gold near the neck and shoulders, in clusters (pixels within 3 px of each other).
+          const js = [fr.rig.neck, fr.rig.shoulderN, fr.rig.shoulderF].map((p) => [Math.floor(p.x * RES), Math.floor(p.y * RES)]);
+          const near = (x: number, y: number) => js.some(([jx, jy]) => Math.abs(x - jx) <= 10 && Math.abs(y - jy) <= 10);
+          const studs: number[][][] = [];
+          for (let i = 0; i < GRID * GRID; i++) {
+            const x = i % GRID;
+            const y = Math.floor(i / GRID);
+            if (!opaque(fr.rgba, i) || !gold.has(hex(fr.rgba, i)) || !near(x, y)) continue;
+            const c = studs.find((s) => s.some(([sx, sy]) => Math.abs(sx - x) <= 3 && Math.abs(sy - y) <= 3));
+            if (c) c.push([x, y]);
+            else studs.push([[x, y]]);
+          }
+          const seen = new Set<number>();
+          for (const s of studs) {
+            const xs = s.map((p) => p[0]);
+            const ys = s.map((p) => p[1]);
+            for (let y = Math.min(...ys) - 2; y <= Math.max(...ys) + 2; y++)
+              for (let x = Math.min(...xs) - 2; x <= Math.max(...xs) + 2; x++) {
+                const i = y * GRID + x;
+                if (seen.has(i)) continue;
+                seen.add(i);
+                if (!opaque(fr.rgba, i)) {
+                  if (walled(x, y, -1, 0) && walled(x, y, 1, 0) && walled(x, y, 0, -1) && walled(x, y, 0, 1)) bad.push(`${body} ${pose} ${f}: background at ${x},${y}`);
+                } else if (Math.min(fr.rgba[i * 4], fr.rgba[i * 4 + 1], fr.rgba[i * 4 + 2]) > 190 && !his.has(hex(fr.rgba, i)) && !passing.has(fr.part[i])) {
+                  bad.push(`${body} ${pose} ${f}: ${hex(fr.rgba, i)} at ${x},${y}`);
+                }
+              }
+          }
+          if (pose === 'walk' && f === 0 && studs.length < 2) bad.push(`${body} walk 0: ${studs.length} studs found`);
+        }
+      }
+    }
+    assert.deepEqual(bad, []);
+  });
+
   it('keeps his black line round his turned legs and fists: none of their colour lies bare against the air', () => {
     const limbs = new Set((['shinN', 'shinF', 'footN', 'footF'] as const).map((p) => partIndex(p)));
     for (const body of ['male', 'bulky'] as BodyType[]) {

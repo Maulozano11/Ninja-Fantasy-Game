@@ -15,6 +15,7 @@ import {
   BLOUSE_FOREARM_F_CUT,
   BLOUSE_FOREARM_N,
   BLOUSE_FOREARM_N_CUT,
+  BLOUSE_SHOULDER_CUT,
   BLOUSE_SIDE_F,
   BLOUSE_SLEEVE_F,
   BLOUSE_SLEEVE_N,
@@ -32,6 +33,8 @@ import {
   LYRA_STEEL,
 } from './lyraUpperArt';
 import { hisSkinTone } from '../lyraFace';
+import { FEMALE_BASE_SKIN } from '../femaleBaseArt';
+import { GRID } from '../raster';
 
 /** The colour each slot replaces (its default): his cream, red, leather, gold and steel. */
 const BLOUSE = LYRA_BLOUSE[0];
@@ -76,7 +79,8 @@ function drawBlouse(g: DrawCtx, blouse: string, lining: string): void {
   ]);
   // (the bare top of the near shoulder, above the puff, is his skin: in the character's skin)
   const tint = (ch: string, hex: string) => (LYRA_SKIN.includes(hex) ? hisSkinTone(hex, LYRA_SKIN[0], g.look.skin) : cloth(ch, hex));
-  const put = (d: Depth, p: PaintedPiece, at: Vec, deg: number, part: PartId) => stampPiece(g, d, p, at, deg, part, tint);
+  // (turned from his angle, a piece's edge is closed in the line: nothing of her is left cut open)
+  const put = (d: Depth, p: PaintedPiece, at: Vec, deg: number, part: PartId) => stampPiece(g, d, p, at, deg, part, tint, true);
   put('farArm.cloth', BLOUSE_FOREARM_F, r.wristF, segAngle(r.elbowF, r.wristF), 'forearmF');
   takeOff(g, 'farArm.body', BLOUSE_FOREARM_F_CUT, r.wristF, segAngle(r.elbowF, r.wristF), CUT_SPREAD);
   put('farArm.cloth', BLOUSE_SLEEVE_F, r.shoulderF, segAngle(r.shoulderF, r.elbowF), 'upperArmF');
@@ -87,6 +91,42 @@ function drawBlouse(g: DrawCtx, blouse: string, lining: string): void {
   takeOff(g, 'nearArm.body', BLOUSE_FOREARM_N_CUT, r.wristN, segAngle(r.elbowN, r.wristN), CUT_SPREAD);
   put('nearArm.cloth', BLOUSE_SLEEVE_N, r.shoulderN, segAngle(r.shoulderN, r.elbowN), 'upperArmN');
   takeOff(g, 'nearArm.body', BLOUSE_SLEEVE_N_CUT, r.shoulderN, segAngle(r.shoulderN, r.elbowN));
+  // (the owner's bare body's chest carries the shoulder's round over the arm: above his bare shoulder it goes)
+  takeOff(g, 'torso.body', BLOUSE_SHOULDER_CUT, r.shoulderN, segAngle(r.shoulderN, r.elbowN), CUT_SPREAD);
+  bareChest(g);
+}
+
+/**
+ * His sports top's four greys on the chest of his bare body (femaleBaseArt.ts), each with the shade of
+ * his skin it becomes under her blouse: his shadow tones, lightest to darkest, as the greys are.
+ */
+const SPORTS_TOP = new Map([
+  ['#3e3e49', '#e3987e'],
+  ['#363844', '#d38971'],
+  ['#27262e', '#b66e5f'],
+  ['#1f1f2b', '#a76859'],
+]);
+
+/**
+ * She wears no sports top under her blouse: the body always wears his (body.ts drawBaseBody), and where
+ * it would show between her clothes (a raised arm, the torso turned) it is her skin in his shadow tones,
+ * moved to the character's skin. At rest her clothes cover it all.
+ */
+function bareChest(g: DrawCtx): void {
+  const L = g.L('torso.body');
+  const skin = new Map<number, number>();
+  for (let i = 0; i < GRID * GRID; i++) {
+    const m = L.mat[i];
+    if (m < 0) continue;
+    let s = skin.get(m);
+    if (s === undefined) {
+      const hex = g.mats.ramps[m][3];
+      const his = SPORTS_TOP.get(hex);
+      s = his ? g.m(retintHex(his, FEMALE_BASE_SKIN, g.look.skin), 'painted') : -1;
+      skin.set(m, s);
+    }
+    if (s >= 0) L.mat[i] = s;
+  }
 }
 
 /**
@@ -97,10 +137,11 @@ function drawBlouse(g: DrawCtx, blouse: string, lining: string): void {
 const CUT_SPREAD = 15;
 
 /**
- * Takes the body's arm off where `cut` (laid as stampPiece lays a piece) says: our female body's
- * shoulder stands two rows higher than his, and his bare shoulder at the top of the sleeve is the
- * shoulder, his hair round it showing as he drew it; our forearms are a column or two wider than his
- * bracers and cuffs, whose line is the arm's (only within `spread` degrees of his angle, if given).
+ * Takes the body off where `cut` (laid as stampPiece lays a piece) says: his bare woman's shoulder (the
+ * arm's round and the chest's over it) stands a row or two above his Lyra's, and her bare shoulder at the
+ * top of the sleeve is the shoulder, her hair round it showing as he drew it; the body's forearms are a
+ * column wider than her bracers and cuffs, whose line is the arm's (only within `spread` degrees of his
+ * angle, if given).
  */
 function takeOff(g: DrawCtx, depth: Depth, cut: PaintedPiece, at: Vec, deg: number, spread = 360): void {
   if (Math.abs(((deg - cut.angle + 540) % 360) - 180) > spread) return;
@@ -118,7 +159,7 @@ function drawCorset(g: DrawCtx, leather: string, gold: string, steel: string): v
     [LYRA_GOLD, GOLD, gold],
     [LYRA_STEEL, STEEL, steel],
   ]);
-  const put = (d: Depth, p: PaintedPiece, at: Vec, deg: number, part: PartId) => stampPiece(g, d, p, at, deg, part, tint);
+  const put = (d: Depth, p: PaintedPiece, at: Vec, deg: number, part: PartId) => stampPiece(g, d, p, at, deg, part, tint, true);
   const torso = segAngle(r.pelvis, r.neck);
   put('farArm.armor', CORSET_BRACER_F, r.wristF, segAngle(r.elbowF, r.wristF), 'forearmF');
   put('torso.armor', CORSET, r.neck, torso, 'torso');

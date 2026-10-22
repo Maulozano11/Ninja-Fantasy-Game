@@ -211,7 +211,8 @@ function drawBaseBody(g: DrawCtx): void {
       stampBase(g, depth, forePiece, on, fore, s === 'N' ? 'forearmN' : 'forearmF', undefined, undefined, false, true);
     }
     const kind = handPose(g, s).kind;
-    if (kind === 'fist' || kind === 'relaxed') stampBase(g, depth, s === 'N' ? P.handN : P.handF, j.wrist, fore, s === 'N' ? 'handN' : 'handF');
+    // (his Lyra's open far hand, the 'long' arms, is his small hand: ctx.ts handPose)
+    if (kind === 'fist' || (kind === 'relaxed' && !(s === 'F' && g.look.arms === 'long'))) stampBase(g, depth, s === 'N' ? P.handN : P.handF, j.wrist, fore, s === 'N' ? 'handN' : 'handF');
     else {
       // his wrist under the small hand, so it stays on the forearm
       stampBase(g, depth, s === 'N' ? P.wristN : P.wristF, j.wrist, fore, s === 'N' ? 'handN' : 'handF');

@@ -23,8 +23,8 @@ the cuff goes on in the far cuff's gold pattern (dark at the ends, bright in the
 shaft in his dark leather with its lighter right side; the thigh under her skirt's hem (near rows
 181-183, far rows 182-184) continues his skin up to where our thigh is cut.
 
-His legs do not stand where ours do at idle (his far leg is straight and its foot six rows lower, his
-near foot steps further out), so the boots ride their own leg (src/sprite/items/lyraBoots.ts): from
+On the owner's bare female body his Lyra's legs stand almost where ours do at idle (his bare woman's
+knees and ankles are within a pixel of his Lyra's), but still the boots ride their own leg (src/sprite/items/lyraBoots.ts): from
 our hip, a thigh as long as his to his knee and a shin as long as his to his ankle, bent at the knee,
 the ankle standing off ours as it does at idle (so his soles keep to our feet in every pose). At
 idle frame 0 that leg is exactly his, so every pixel is where he drew it; in other poses the thigh
@@ -164,20 +164,20 @@ CUTS = {
     'N': {'thigh': (181, 196), 'shin': (194, 213), 'foot': (211, 218)},
     'F': {'thigh': (182, 197), 'shin': (195, 211), 'foot': (210, 216)},
 }
-# Our female rig at idle frame 0, fine pixels: the hip and the ankle of each leg of the female body
-# rebuilt from his heroines at our scale (tools/refs/female-body-from-ref.py; printed by
-# `npx tsx tools/refs/heroine-idle.mts <out>`). Its near ankle is a row below his, its far ankle four
-# rows above his (his far leg is straight).
+# Our female rig at idle frame 0, fine pixels: the hip and the ankle of each leg of the owner's bare
+# female body on the rig fitted to his joints (tools/refs/female-base-body-from-ref.py; printed by
+# `npx tsx tools/refs/heroine-idle.mts <out>`). Its ankles are a row above his Lyra's.
 OUR = {
-    'N': {'hip': (120.58, 181.88), 'ankle': (117.56, 211.62)},
-    'F': {'hip': (132.35, 178.47), 'ankle': (136.58, 205.06)},
+    'N': {'hip': (120.50, 173.00), 'ankle': (113.00, 209.00)},
+    'F': {'hip': (134.00, 173.00), 'ankle': (134.00, 208.50)},
 }
 # His knee and ankle on each leg (fine pixels in our frame): the ankle in the middle of the shaft above
 # the strap, the knee by the knee guard, a little in front of the line from our hip to his ankle (so
-# the leg always bends forward).
+# the leg always bends forward). Each ankle stands a whole pixel below ours (the same fraction of a
+# pixel), so his sole and our foot fall on their rows together in every pose.
 HIS = {
-    'N': {'knee': (117.5, 195.5), 'ankle': (112.5, 210.5)},
-    'F': {'knee': (134.5, 195.5), 'ankle': (133.5, 209.5)},
+    'N': {'knee': (117.5, 195.5), 'ankle': (113.0, 210.0)},
+    'F': {'knee': (134.5, 195.5), 'ankle': (134.0, 209.5)},
 }
 
 OUT_DOC = (

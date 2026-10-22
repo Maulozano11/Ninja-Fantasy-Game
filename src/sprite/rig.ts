@@ -82,6 +82,12 @@ export interface BodyParams {
    */
   hangOut?: [number, number];
   /**
+   * On a body fitted to the owner's joints (`fit`): how many degrees (with the clock) each forearm,
+   * [near, far], turns about his elbow at rest from where his bare woman holds it. Only a look's own
+   * arms set it (LONG_ARMS).
+   */
+  restTurn?: [number, number];
+  /**
    * A body painted by the owner piece by piece (the female bodies: his bare female body,
    * femaleBaseArt.ts): his joints at rest, in design units of the frame. The rig is fitted to them:
    * at idle every joint is his (so the body is his picture), and in every other pose the torso keeps
@@ -1029,8 +1035,14 @@ export function drawRig(body: BodyType, pose: RigPose, frame: number, arms?: Arm
  * degrees less far out (BodyParams.hangOut), so at rest both wrists are where his are and her fists
  * (the female body's hands, cut from his Lyra) are his, where he drew them. Her free far hand then
  * hangs open, as he drew it (ctx.ts handPose), not as a fist.
+ *
+ * On the owner's bare female body (BodyParams.fit) her forearms are as long as his bare woman's plus
+ * these, but he drew Lyra's hanging further out than his bare woman's: at rest the near forearm turns
+ * `restTurn[0]` degrees out about his elbow and the far one `restTurn[1]`, so her wrists, and the
+ * fists, cuffs and sword on them, are where he drew them (her near wrist on the cell (107, 175), the
+ * far one on (141, 177)).
  */
-export const LONG_ARMS = { forearm: 1.15, farLonger: 0.4, hangIn: 1 };
+export const LONG_ARMS = { forearm: 1.15, farLonger: 0.4, hangIn: 1, restTurn: [8.5, -4.65] as [number, number] };
 
 const ARM_PARAMS = new Map<string, BodyParams>();
 function paramsFor(body: BodyType, arms?: ArmType): BodyParams {
@@ -1043,6 +1055,7 @@ function paramsFor(body: BodyType, arms?: ArmType): BodyParams {
       forearm: bp.forearm + LONG_ARMS.forearm,
       farLonger: (bp.farLonger ?? 0) + LONG_ARMS.farLonger,
       hangOut: bp.hangOut ? [bp.hangOut[0] - LONG_ARMS.hangIn, bp.hangOut[1]] : undefined,
+      restTurn: LONG_ARMS.restTurn,
     };
     ARM_PARAMS.set(body, p);
   }
@@ -1354,9 +1367,14 @@ function solveFit(body: BodyType, bp: BodyParams, pose: RigPose, frame: number, 
 
   if (pose === 'idle') {
     // His joints, the upper body carried by the breath.
-    // a longer forearm reaches further along his
-    const longer = (e: FitJoint, w: FitJoint, extra: number) => add(fit[w], scale(norm(sub(fit[w], fit[e])), extra));
-    const at = (k: FitJoint) => add(k === 'wristN' ? longer('elbowN', 'wristN', extraN) : k === 'wristF' ? longer('elbowF', 'wristF', extraF) : fit[k], breath);
+    // a longer forearm reaches further along his, turned about his elbow by the look's restTurn
+    const longer = (e: FitJoint, w: FitJoint, extra: number, deg: number) => {
+      const d = add(sub(fit[w], fit[e]), scale(norm(sub(fit[w], fit[e])), extra));
+      const a = (deg * Math.PI) / 180;
+      return add(fit[e], v(d.x * Math.cos(a) - d.y * Math.sin(a), d.x * Math.sin(a) + d.y * Math.cos(a)));
+    };
+    const [turnN, turnF] = bp.restTurn ?? [0, 0];
+    const at = (k: FitJoint) => add(k === 'wristN' ? longer('elbowN', 'wristN', extraN, turnN) : k === 'wristF' ? longer('elbowF', 'wristF', extraF, turnF) : fit[k], breath);
     const T = (x: number, y: number): Vec => add(fit.pelvis, add(scale(right, x), scale(up, y)));
     const hand = (e: Vec, w: Vec) => add(w, scale(norm(sub(w, e)), bp.handR * 0.9));
     return {

@@ -137,9 +137,10 @@ export const LYRA_BOOTS: ItemDef = {
       const [thigh, shin, foot] = s === 'N' ? [LYRA_BOOT_THIGH_N, LYRA_BOOT_SHIN_N, LYRA_BOOT_FOOT_N] : [LYRA_BOOT_THIGH_F, LYRA_BOOT_SHIN_F, LYRA_BOOT_FOOT_F];
       legOffBelow(g, s, pieceTop(thigh, now.knee, thighA), hip, knee);
       const d = legDepth(s, 'feet');
-      stampPiece(g, d, foot, now.ankle, foot.angle, `foot${s}`, tint);
-      stampPiece(g, d, shin, now.ankle, shinA, `shin${s}`, tint);
-      stampPiece(g, d, thigh, now.knee, thighA, `thigh${s}`, tint);
+      // (turned from his angle, a piece's edge is closed in the line: nothing of her is left cut open)
+      stampPiece(g, d, foot, now.ankle, foot.angle, `foot${s}`, tint, true);
+      stampPiece(g, d, shin, now.ankle, shinA, `shin${s}`, tint, true);
+      stampPiece(g, d, thigh, now.knee, thighA, `thigh${s}`, tint, true);
     }
   },
 };

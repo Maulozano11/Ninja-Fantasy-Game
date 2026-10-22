@@ -19,7 +19,7 @@ cyan sparkles round it. What is his and what is filled:
   - The grip his hand hides is filled with his pommel's steel: its dark core and light edges carried on
     along the grip's line under the fist.
   - Our female body's fist round a grip is his own near hand on this sword, cut 1:1
-    (tools/refs/female-body-from-ref.py GRIP), so the sword is his as he drew it, as long as his: no
+    (femaleBodyArt.ts FEMALE_HANDS grip), so the sword is his as he drew it, as long as his: no
     pixel is moved or repeated (STRETCH 0; the old body's bigger fist needed the grip three diagonals
     longer). With his Lyra's long arms (appearance `arms: 'long'`, src/sprite/rig.ts LONG_ARMS) our
     fist at idle stands where he drew his (HAND_SHIFT 0), so the sword does too.
@@ -56,10 +56,11 @@ PAL_TOL = 12        # medians this close (each channel) are one colour of his
 BOX = (96, 150, 166, 216)  # our frame: x0, x1, y0, y1 (exclusive) round the sword
 
 # Our female idle with his Lyra's long arms, frame 0 (src/sprite/grip.ts gripPoint, fine pixels; printed
-# by tools/refs/heroine-idle.mts), and where our fist (his near hand, the body's grip template) stands
+# by tools/refs/heroine-idle.mts; on the owner's bare female body her forearms turn out to his Lyra's at
+# rest, rig.ts LONG_ARMS restTurn, so her fist is where he drew it), and where our fist (his near hand, the body's grip template) stands
 # there from where he drew his hand: the top left of the hand's cut, his (104, 176), is our (104, 176).
 # The template pivots on GRIP_POINT - HAND_SHIFT.
-GRIP_POINT = (105.87, 179.36)
+GRIP_POINT = (105.82, 179.28)
 HAND_SHIFT = (0, 0)
 
 # His hilt, our frame at his place: row -> columns taken (every cell, his black line with it).

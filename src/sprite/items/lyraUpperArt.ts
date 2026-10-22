@@ -7,8 +7,8 @@ import type { PaintedPiece } from '../painted';
 
 /** The blouse: the red V edged in gold and the skin in it (in the player's skin), the red scarf across the chest, the cream bust and the body to the waist (pivot: the base of the neck). */
 export const BLOUSE_TORSO: PaintedPiece = {
-  pivot: [10, -2],
-  angle: -90.10,
+  pivot: [7, -2],
+  angle: -98.05,
   rows: [
     '.........djja......',
     '..........ddja.....',
@@ -57,8 +57,8 @@ export const BLOUSE_TORSO: PaintedPiece = {
 
 /** The near sleeve: the bare top of the shoulder above it (in the player's skin), the red scarf band round the shoulder, the puff, its leather band with a steel buckle (pivot: the near shoulder). */
 export const BLOUSE_SLEEVE_N: PaintedPiece = {
-  pivot: [9, 2],
-  angle: 114.58,
+  pivot: [7, 3],
+  angle: 107.10,
   rows: [
     '.........aaa.',
     '........apdn.',
@@ -100,25 +100,23 @@ export const BLOUSE_SLEEVE_N: PaintedPiece = {
 
 /** Where our body's near shoulder and upper arm come out from under the near sleeve at idle: the sleeve takes them off (pivot and angle as the piece's). */
 export const BLOUSE_SLEEVE_N_CUT: PaintedPiece = {
-  pivot: [8, 4],
-  angle: 114.58,
+  pivot: [5, 4],
+  angle: 107.10,
   rows: [
-    '........xxx..',
-    '......xxxxxx.',
-    '.....xxx...xx',
-    '....xxx....xx',
-    '....xx......x',
-    '...xx.......x',
-    '....x.....xxx',
-    '...x.........',
-    '...x.........',
-    '...x.........',
-    '..xx.........',
-    '..x..........',
-    '.xx..........',
-    '.xx..........',
-    '.x...........',
-    'x............',
+    '.....xxx...',
+    '....xxx....',
+    '...xxx.....',
+    '..xxx......',
+    '..xx.......',
+    '..xx.....xx',
+    '..x........',
+    '.xx........',
+    '.xx........',
+    '.xx........',
+    'xx.........',
+    'xx.........',
+    'xx.........',
+    'x..........',
   ],
   colors: { x: '#000000' },
 };
@@ -126,7 +124,7 @@ export const BLOUSE_SLEEVE_N_CUT: PaintedPiece = {
 /** The near fitted sleeve under the bracer and its cream cuff at the wrist (pivot: the near wrist). */
 export const BLOUSE_FOREARM_N: PaintedPiece = {
   pivot: [2, 9],
-  angle: 110.03,
+  angle: 111.02,
   rows: [
     '....adc..',
     '...aaaaca',
@@ -150,25 +148,25 @@ export const BLOUSE_FOREARM_N: PaintedPiece = {
 /** Where our body's near forearm comes out from under the bracer and cuff at idle: the fitted sleeve takes it off (pivot and angle as the piece's). */
 export const BLOUSE_FOREARM_N_CUT: PaintedPiece = {
   pivot: [2, 10],
-  angle: 110.03,
+  angle: 111.02,
   rows: [
-    '..xx',
-    '..xx',
-    '..x.',
-    '.x..',
-    '.xx.',
-    '.x..',
-    '.x..',
-    '....',
-    'x...',
+    '...x.....',
+    '...x.....',
+    '..x......',
+    '.x......x',
+    '.xx......',
+    'xx.......',
+    'xx.......',
+    'x........',
+    'x........',
   ],
   colors: { x: '#000000' },
 };
 
 /** The far puff, its top under the pauldron (pivot: the far shoulder). */
 export const BLOUSE_SLEEVE_F: PaintedPiece = {
-  pivot: [-1, -2],
-  angle: 80.63,
+  pivot: [-1, -1],
+  angle: 72.90,
   rows: [
     '.aaa..',
     'abba..',
@@ -195,8 +193,8 @@ export const BLOUSE_SLEEVE_F: PaintedPiece = {
 
 /** The far puff's columns by the corset, drawn over the body's edge under the blouse; it moves with the far arm (pivot: the far shoulder). */
 export const BLOUSE_SIDE_F: PaintedPiece = {
-  pivot: [-3, -5],
-  angle: 80.63,
+  pivot: [-3, -4],
+  angle: 72.90,
   rows: [
     'bca',
     'bba',
@@ -221,7 +219,7 @@ export const BLOUSE_SIDE_F: PaintedPiece = {
 /** The far fitted sleeve and its cuff, behind the pouch at her hip (pivot: the far wrist). */
 export const BLOUSE_FOREARM_F: PaintedPiece = {
   pivot: [6, 11],
-  angle: 56.27,
+  angle: 66.05,
   rows: [
     'baa.....',
     'abaa....',
@@ -244,28 +242,28 @@ export const BLOUSE_FOREARM_F: PaintedPiece = {
 
 /** Where our body's far forearm comes out from under the far bracer and cuff at idle: the fitted sleeve takes it off (pivot and angle as the piece's). */
 export const BLOUSE_FOREARM_F_CUT: PaintedPiece = {
-  pivot: [9, 11],
-  angle: 56.27,
+  pivot: [7, 11],
+  angle: 66.05,
   rows: [
-    'xxx...x.....',
-    '.xx.........',
-    '.xx....x....',
-    '..x.........',
-    '..xx........',
-    '...x........',
-    '...xx....x..',
-    '....x.......',
-    '.....x....x.',
-    '.....x......',
-    '......x....x',
+    'x...x.....',
+    '..........',
+    '..........',
+    '..........',
+    '..........',
+    '..........',
+    '.......x..',
+    '........x.',
+    '..........',
+    '..........',
+    '.........x',
   ],
   colors: { x: '#000000' },
 };
 
 /** The corset: gold bands and filigree, steel buckles (pivot: the base of the neck). */
 export const CORSET: PaintedPiece = {
-  pivot: [10, -13],
-  angle: -90.10,
+  pivot: [7, -13],
+  angle: -98.05,
   rows: [
     '.............akaa..',
     '..alaaaaaddaadckkaa',
@@ -295,8 +293,8 @@ export const CORSET: PaintedPiece = {
 
 /** The gold pauldron on the far shoulder and its strap, down across the chest to the braid (pivot: the far shoulder). */
 export const CORSET_PAULDRON: PaintedPiece = {
-  pivot: [4, 3],
-  angle: 80.63,
+  pivot: [4, 4],
+  angle: 72.90,
   rows: [
     '.....da.....',
     '...abbja....',
@@ -325,7 +323,7 @@ export const CORSET_PAULDRON: PaintedPiece = {
 /** The near bracer: leather with gold studs (pivot: the near wrist). */
 export const CORSET_BRACER_N: PaintedPiece = {
   pivot: [1, 9],
-  angle: 110.03,
+  angle: 111.02,
   rows: [
     '...abc..',
     '..aaaaca',
@@ -346,7 +344,7 @@ export const CORSET_BRACER_N: PaintedPiece = {
 /** The far bracer, in his near bracer's pattern, behind the pouch at her hip (pivot: the far wrist). */
 export const CORSET_BRACER_F: PaintedPiece = {
   pivot: [6, 11],
-  angle: 56.27,
+  angle: 66.05,
   rows: [
     'daa....',
     'adaa...',
@@ -364,6 +362,19 @@ export const CORSET_BRACER_F: PaintedPiece = {
     c: '#573c3a',
     d: '#40302f',
   },
+};
+
+/** Where our body's chest carries the near shoulder's round above his bare shoulder at idle: the near sleeve takes it off the torso (pivot and angle as the piece's). */
+export const BLOUSE_SHOULDER_CUT: PaintedPiece = {
+  pivot: [5, 6],
+  angle: 107.10,
+  rows: [
+    'xxxxxxxxx',
+    'xxxxxxxxx',
+    'xxxxxxxxx',
+    'xxxxxxx..',
+  ],
+  colors: { x: '#000000' },
 };
 
 /** Her blouse's creams, the one he used most first, then light to dark; the Blouse slot moves them from the first. */

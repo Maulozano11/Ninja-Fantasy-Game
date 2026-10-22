@@ -6,7 +6,7 @@ import { fitsBody, getItem } from './catalog';
 import { renderSprite } from './compose';
 import * as ART from './items/lyraUpperArt';
 import { segAngle, type PaintedPiece } from './painted';
-import { GRID, partIndex } from './raster';
+import { GRID, partIndex, RES } from './raster';
 import { drawRig } from './rig';
 import { CAMP_POSES, MOVE_POSES, SPRITE_POSES, type BodyType, type SpriteAppearance, type SpritePose } from './types';
 
@@ -103,16 +103,19 @@ describe("Lyra's blouse and corset", () => {
   it('ends the cuffs at the wrist, on her long arms and on the body\'s own: no fist under a cuff', () => {
     // the forearm pieces pivot on the wrist: on the shorter arms the bracer goes up over the puff. A
     // fist round her sword shows whole; an open hand comes out of the cuff, which covers its wrist row.
+    // (On the owner's bare body a hand carries a round cap of the wrist, above the wrist's row: the
+    // cuff covers it, as his cuffs do.)
     const hands = [partIndex('handN'), partIndex('handF')];
     for (const body of ['female', 'slender'] as BodyType[]) {
       for (const arms of ['long', undefined] as const) {
         for (const held of [true, false]) {
           const sword = held ? { held: { id: 'held_gilded_rapier', colors: [] } } : {};
           const lk = { ...look(body), arms };
-          const bare = renderSprite({ ...lk, slots: sword }, 'idle', 0).part;
+          const { part: bare, rig } = renderSprite({ ...lk, slots: sword }, 'idle', 0);
           const f = renderSprite({ ...lk, slots: { ...lk.slots, ...sword } }, 'idle', 0).part;
+          const wrist = { [hands[0]]: Math.floor(rig.wristN.y * RES), [hands[1]]: Math.floor(rig.wristF.y * RES) };
           const rows = new Set<number>();
-          for (let i = 0; i < GRID * GRID; i++) if (hands.includes(bare[i]) && f[i] !== bare[i]) rows.add((i / GRID) | 0);
+          for (let i = 0; i < GRID * GRID; i++) if (hands.includes(bare[i]) && f[i] !== bare[i] && ((i / GRID) | 0) > wrist[bare[i]]) rows.add((i / GRID) | 0);
           assert.ok(rows.size <= (held ? 0 : 1), `${body} ${arms} ${held}: hand covered on rows ${[...rows]}`);
         }
       }
@@ -158,6 +161,7 @@ describe("Lyra's blouse and corset", () => {
     for (let y = 160; y <= 171; y++) for (let x = 106; x <= 118; x++) if (bare[(y * GRID + x) * 4 + 3]) skin.add(hexAt(bare, x, y));
     skin.delete(LINE);
     skin.delete('#060609');
+    skin.delete('#070819'); // the owner's bare body's line
     const f = renderSprite(look('female'), 'idle', 0).rgba;
     for (let y = 163; y <= 171; y++) for (let x = 106; x <= 118; x++) assert.ok(!skin.has(hexAt(f, x, y)), `(${x}, ${y}) ${hexAt(f, x, y)}`);
   });

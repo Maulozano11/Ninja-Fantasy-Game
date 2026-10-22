@@ -150,10 +150,13 @@ Merge checks (`git merge-tree` on the origin tips, nothing changed):
   stands where he drew it, both arms and the sword included. A third new appearance option comes with her:
   the arms `long` (`rig.ts` LONG_ARMS): his Lyra's forearms are 2-3 px longer than the female standard's
   (his fists start on rows 176-177, the standard's on 173-174), so on her the fists (his hands) and the
-  sword are his, where he drew them, and her free far hand hangs open as he drew it. At rest 52 pixels
-  differ from his picture (old body 332, new body before this 618; the arms 0, near fist 4 and far hand 7
-  in skin tones the female body merges, the rest pre-existing: thighs under the skirt, hair over the
-  shoulder). The standard's arms (Aurelia's) are unchanged; whether Lyra keeps her own arm length is his call.
+  sword are his, where he drew them, and her free far hand hangs open as he drew it. The owner decided
+  Lyra keeps her long arms ("lyra se queda con sus brazos largos"). Re-pinned on his bare female body
+  (`body/female-v2` 7fbba79): her pieces pinned to his joints, her forearms turned out at rest to his
+  Lyra's wrists (LONG_ARMS `restTurn`), her far hand his open one, no sports top under her blouse, her
+  pieces closed in the line when turned; at rest 47 pixels differ from his picture (before 52). Limbs
+  test: `src/sprite/lyraLimbs.test.ts`. Waiting for him: he repaints her throw frames 3-4 and her sitting
+  pose himself.
 - Decided 2026-10-21 (later): Warp Strike is renamed **"Shooting-Star Thrust"** (Spanish **"Estocada Fugaz"**; the owner first said "Shooting Star", then chose these), after the clan's name (Ryusei = shooting star) and to stay clear of other games' "Warp Strike". The id `ryusei_warp` stays. To apply once `icons/sheets-8-11` is merged (it touches the same strings): names, hotbar label, help text, log, clan texts, D24.
 - Decided 2026-10-21: the Spanish names are **"Golpe Warp"** and **"Comando"** (the owner: "los dos"); `icons/sheets-8-11` brings them and updates D24 in `docs/CLANS_DESIGN.md`.
 - Jutsu pacing (owner: too fast, "like a flashing star"): a first pass is merged (`8ef28a9`: 560 ms

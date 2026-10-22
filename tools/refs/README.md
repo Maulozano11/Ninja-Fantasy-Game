@@ -159,14 +159,16 @@ folders.
   piece takes; the parts his picture hides (under the braid, the blouse under the corset, the sleeves under
   the bracers, the far forearm behind the pouch) continue his pixels. The bare top of the near shoulder and
   the skin in the V (`K`, `V`) are his skin, drawn in the player's (`LYRA_SKIN`). One painted piece per segment of our
-  female rig with his Lyra's long arms (appearance `arms: 'long'`, `rig.ts` LONG_ARMS: the body's elbows,
-  his wrists), pivot on its joint at idle (the forearm pieces on the wrist, so on the body's own shorter
+  female rig with his Lyra's long arms (appearance `arms: 'long'`, `rig.ts` LONG_ARMS: on the owner's bare
+  female body his bare woman's elbows, her forearms longer and turned out at rest to his Lyra's wrists), pivot
+  on its joint at idle (the forearm pieces on the wrist, so on the body's own shorter
   arms the cuff still ends at the wrist). Every piece is where he drew it, her far arm cell by cell: the
   pauldron, the far puff, the far bracer's top under the puff and its foot under the pouch, the far cuff
   and its line over his far hand; only the far forearm behind his pouch is run on (`FAR_BRACER`). Where
   our body's arm comes out from under his sleeves, bracers and cuffs at idle the pieces take it off
   (`BLOUSE_SLEEVE_N_CUT`, `BLOUSE_FOREARM_N_CUT`, `BLOUSE_FOREARM_F_CUT`, from `NEAR_UPPER_ARM`,
-  `NEAR_FOREARM`, `FAR_FOREARM`). It checks that every pixel of his is where it is laid at idle and
+  `NEAR_FOREARM`, `FAR_FOREARM`, which `heroine-idle.mts` prints), and the chest's shoulder round above her
+  bare shoulder (`BLOUSE_SHOULDER_CUT`). Under the blouse the body's sports top is her skin. It checks that every pixel of his is where it is laid at idle and
   writes `hers-vs-pieces@8.png` into `<out>`.
 
       python3 -I tools/refs/lyra-upper-from-ref.py docs/reference/lyra-game-scale-owner-reference.jpg <out> src/sprite/items/lyraUpperArt.ts

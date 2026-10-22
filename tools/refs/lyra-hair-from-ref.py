@@ -63,10 +63,10 @@ N = 100
 OFFSET = (72, 121)
 FAR_FROM, FAR_SHIFT = 56, 2
 # Our face anchor and our torso's angle (pelvis to neck, screen degrees) at the female idle frame 0
-# (the anchor without the long neck; the female body rebuilt from his heroines at our scale,
-# tools/refs/female-body-from-ref.py, stands its torso a little past upright).
+# (the anchor without the long neck; the owner's bare female body, tools/refs/female-base-body-from-ref.py,
+# stands its neck forward of its pelvis, as he drew it).
 ANCHOR = (123, 139)
-TORSO_ANGLE = -90.1
+TORSO_ANGLE = -98.1
 # Two of his colours within this (per channel) are one colour (his JPEG's shades of it).
 MERGE = 10
 LINE_LUMA = 22

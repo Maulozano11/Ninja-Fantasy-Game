@@ -6,6 +6,7 @@
 // a 3/4 view facing RIGHT. "Near" limbs are the character's right arm/leg
 // (screen-left, drawn in front); "far" limbs are on screen-right, behind.
 
+import { FEMALE_BASE_JOINTS } from './femaleBaseArt';
 import { add, len, norm, PAD, RES, scale, sub, v, Vec } from './raster';
 import type { BodyType, CastStyle, SpritePose } from './types';
 
@@ -18,6 +19,15 @@ export const FEET = { x: FEET_X * RES, y: GROUND * RES };
 export const ANKLE_N = GROUND - 4;
 export const FAR_LIFT = 2;
 const FAR_HIP_LIFT = 1.5;
+
+/**
+ * How much lower than our usual ankles a body's ankle stands on side `s`, in design units: the near
+ * ankle by BodyParams.ankleLift, the far one (higher on screen, its foot shorter) by half of it.
+ */
+export function ankleLiftOf(bp: BodyParams, s: 'N' | 'F'): number {
+  const a = bp.ankleLift || 0;
+  return s === 'N' ? a : a / 2;
+}
 
 export interface BodyParams {
   torsoLen: number;
@@ -47,6 +57,76 @@ export interface BodyParams {
   crotch: number;
   /** The head group (head, face, hair, masks, forehead gear) is drawn in head-local units and shrunk by this factor. */
   headScale: number;
+  /**
+   * How much lower than ANKLE_N the near ankle stands, in design units (the far ankle half as much,
+   * see ankleLiftOf). The female bodies stand on the owner's small feet (his game-scale heroines:
+   * about 8 rows from the ankle to the sole, against our 12), so their ankles sit nearer the ground
+   * and every foot template is drawn that many rows shorter (ctx.ts footDraw).
+   */
+  ankleLift?: number;
+  /**
+   * Where the waist (the narrowest point of the torso shape) sits above the hips, in torso-local
+   * units; 5.4 when not given. The female bodies' long torso takes its waist higher, as the owner
+   * draws it, so the waist curves in under the bust and the hips flare below it.
+   */
+  waistY?: number;
+  /**
+   * How much longer the far arm's forearm is than the near one's, in design units. The owner's
+   * heroines at our scale (docs/reference/{lyra,aurelia,saya}-game-scale-owner-reference.jpg) hang
+   * the far fist lower than the near one, beside the far hip.
+   */
+  farLonger?: number;
+  /**
+   * How many degrees further out from the body a hanging arm hangs, [near, far]: his heroines' free
+   * hands hang clear of the hips (see hangsDown).
+   */
+  hangOut?: [number, number];
+  /**
+   * A body painted by the owner piece by piece (the female bodies: his bare female body,
+   * femaleBaseArt.ts): his joints at rest, in design units of the frame. The rig is fitted to them:
+   * at idle every joint is his (so the body is his picture), and in every other pose the torso keeps
+   * his neck, shoulders and hips and each limb his lengths, so his pieces meet at the joints. See
+   * solveFit.
+   */
+  fit?: BodyFit;
+}
+
+/** The joints of a fitted body (BodyParams.fit). */
+export type FitJoint = keyof typeof FEMALE_BASE_JOINTS;
+export type BodyFit = Record<FitJoint, Vec>;
+
+/** His joints from the art module (fine pixels) in design units. */
+const fitFrom = (j: Record<FitJoint, readonly [number, number]>): BodyFit =>
+  Object.fromEntries(Object.entries(j).map(([k, [x, y]]) => [k, v(x / RES, y / RES)])) as BodyFit;
+
+/** The owner's bare female body (docs/reference/female-base-owner-reference.jpg) at rest. */
+const FEMALE_BASE_FIT = fitFrom(FEMALE_BASE_JOINTS);
+
+/** A fitted body's limb lengths, the same as his at rest (design units). */
+function fitLen(fit: BodyFit) {
+  const d = (a: FitJoint, b: FitJoint) => len(sub(fit[b], fit[a]));
+  return {
+    upperArmN: d('shoulderN', 'elbowN'),
+    upperArmF: d('shoulderF', 'elbowF'),
+    forearmN: d('elbowN', 'wristN'),
+    forearmF: d('elbowF', 'wristF'),
+    thighN: d('hipN', 'kneeN'),
+    thighF: d('hipF', 'kneeF'),
+    shinN: d('kneeN', 'ankleN'),
+    shinF: d('kneeF', 'ankleF'),
+  };
+}
+
+/**
+ * Whether a hand target is a hanging arm (BodyParams.hangOut): aimed from the shoulder within
+ * HANG_SPREAD degrees of straight down and at least HANG_REACH of the arm's length away, nearly
+ * straight. A fist drawn up to a guard, a punch or an arm swung far back is not.
+ */
+const HANG_SPREAD = 35;
+const HANG_REACH = 0.85;
+function hangsDown(t: HandTarget): boolean {
+  if (t.from !== 'shoulder' || Math.hypot(t.x, t.y) < HANG_REACH) return false;
+  return Math.abs((Math.atan2(t.y, t.x) * 180) / Math.PI - 90) <= HANG_SPREAD;
 }
 
 export const BODY_PARAMS: Record<BodyType, BodyParams> = {
@@ -71,49 +151,63 @@ export const BODY_PARAMS: Record<BodyType, BodyParams> = {
     crotch: -3.4,
     headScale: 0.78,
   },
+  // The female bodies are the owner's bare female body (docs/reference/female-base-owner-reference.jpg,
+  // 2026-10-21: "una base del cuerpo femenino sin ropa para que entiendas la base del cuerpo"): his
+  // pieces ride the rig fitted to his joints (`fit`, solveFit), so the lengths below are his (the near
+  // side's; the far side's come from the fit) and the widths are his, for the items drawn on the limbs.
+  // Hands and feet are his pieces too (body.ts drawBaseBody); his heroines' small hands
+  // (femaleBodyArt.ts FEMALE_HANDS) hold a weapon, point, open and cradle.
   female: {
-    torsoLen: 13.8,
-    shoulderHalf: 5.9,
-    chestHalf: 5.8,
+    torsoLen: 13.3,
+    shoulderHalf: 5.1,
+    chestHalf: 5.3,
     waistHalf: 3.5,
-    hipHalf: 7.1,
-    upperArm: 6.0,
-    forearm: 5.2,
-    thigh: 8.0,
-    shin: 7.5,
-    armR: [1.85, 1.55, 1.75, 1.18],
-    legR: [3.2, 2.05, 1.9, 1.2],
+    hipHalf: 6.4,
+    upperArm: 6.8,
+    forearm: 4.61,
+    thigh: 10.89,
+    shin: 7.52,
+    armR: [1.9, 1.4, 1.6, 1.0],
+    legR: [2.9, 1.75, 2.0, 1.0],
     headRx: 6,
     headRy: 7,
     neckW: 1.35,
-    handR: 1.75,
+    handR: 1.4,
     footLen: 3.9,
     bust: 1.5,
     crotch: -1.9,
-    headScale: 0.76,
+    headScale: 0.7,
+    ankleLift: 0.5,
+    waistY: 5.5,
+    hangOut: [8, 0],
+    fit: FEMALE_BASE_FIT,
   },
-  // Slimmer and curvier than 'female': narrow shoulders and waist, fuller bust
-  // and hips, slender arms and long legs with a full thigh and fine ankles.
+  // Until the owner draws a slender body of his own, slender is his female body too (the same pieces
+  // and joints); its narrower widths only shape the items drawn on it.
   slender: {
-    torsoLen: 13.8,
-    shoulderHalf: 5.3,
-    chestHalf: 5.4,
-    waistHalf: 2.9,
-    hipHalf: 7.0,
-    upperArm: 6.0,
-    forearm: 5.2,
-    thigh: 8.3,
-    shin: 7.8,
-    armR: [1.7, 1.4, 1.6, 1.05],
-    legR: [3.2, 1.75, 1.7, 1.0],
+    torsoLen: 13.3,
+    shoulderHalf: 4.7,
+    chestHalf: 5.0,
+    waistHalf: 3.2,
+    hipHalf: 6.9,
+    upperArm: 6.8,
+    forearm: 4.61,
+    thigh: 10.89,
+    shin: 7.52,
+    armR: [1.75, 1.3, 1.5, 0.95],
+    legR: [3.0, 1.65, 1.9, 0.95],
     headRx: 6,
     headRy: 7,
     neckW: 1.15,
-    handR: 1.55,
+    handR: 1.4,
     footLen: 3.6,
     bust: 2.2,
     crotch: -1.7,
-    headScale: 0.76,
+    headScale: 0.7,
+    ankleLift: 0.5,
+    waistY: 5.5,
+    hangOut: [8, 0],
+    fit: FEMALE_BASE_FIT,
   },
   bulky: {
     torsoLen: 15.2,
@@ -159,6 +253,14 @@ interface PoseFrame {
   chestDy?: number;
   headDx?: number;
   headDy?: number;
+  /**
+   * On a body fitted to the owner's joints (BodyParams.fit) the head stays on his neck at his neck's
+   * length, the neck turned this many degrees forward from his at rest; headDx/headDy are not used
+   * there. The throw pitches the body far forward and his heroines keep the head up on the neck, looking
+   * at the target (docs/reference/poses/lyra-throw-owner-reference.jpg): a head moved by a fixed offset
+   * stretched his neck to twice its length.
+   */
+  neckPitch?: number;
   handN: HandTarget;
   handF: HandTarget;
   /** Ankle positions relative to each hip, in leg-length units. */
@@ -191,6 +293,8 @@ interface PoseFrame {
    * ones above it.
    */
   hip?: number;
+  /** Sitting on the camp seat: the hips stay at the seat's height on every body (see BodyParams.ankleLift). */
+  seat?: boolean;
   /**
    * Raises the whole body this many design units above the ground, so both
    * feet leave it (the flight phase of a run); negative lowers it (a pose that
@@ -489,7 +593,9 @@ const LEAN = breathe(LEAN_BASE, 4);
  * flames. Gentle breathing.
  */
 const SEAT_HIP = 0.74;
-const SIT_LEGS = { hip: SEAT_HIP, footN: v(0.5, groundY(SEAT_HIP, 0.5)), footF: v(0.47, groundY(SEAT_HIP, 0.47)) };
+/** How much of a body's ankleLift its hips sink into the camp seat (see solveRig). */
+const SEAT_SINK = 0.7;
+const SIT_LEGS = { seat: true, hip: SEAT_HIP, footN: v(0.5, groundY(SEAT_HIP, 0.5)), footF: v(0.47, groundY(SEAT_HIP, 0.47)) };
 const SIT_BASE: PoseFrame = {
   lean: 14,
   pelvisDx: -8.5,
@@ -593,7 +699,9 @@ const TRAIN_FIST: PoseFrame[] = [
  * would sit under the throwing elbow, like a second hand on that arm). From the release on the
  * weapon is out of the hand (PoseFrame.released): the battle draws it in flight from where the
  * throw flung it (throwRelease() in grip.ts). Bare hands throw a kunai from the pouch (grip.ts
- * throwsKunai).
+ * throwsKunai). The female bodies keep the head up on the neck instead, as the owner repainted the
+ * release and follow-through on his heroine Lyra (docs/reference/poses/lyra-throw-owner-reference.jpg):
+ * the neck turned only a little forward of his at rest (neckPitch), the head above the shoulders.
  */
 const THROW: PoseFrame[] = [
   // Coil: crouched over the front foot, the weapon drawn back low behind the hip, the free hand out at the target.
@@ -602,11 +710,11 @@ const THROW: PoseFrame[] = [
   { lean: 9, footN: v(-0.46, 0.91), footF: v(0.4, 0.88), handN: arm(-0.42, -0.6), bendN: -1, handF: arm(0.96, -0.1), shapeN: 'grip', shapeF: 'point' },
   // Throw: the arm whips forward under the chin and flings the weapon level at the target, the body
   // pitching after it halfway to the release, the free arm swinging back.
-  { lean: 21, pelvisDx: 1.5, headDx: 3, headDy: 4.5, footN: v(-0.52, 0.87), footF: v(0.25, 0.8), handN: arm(0.78, 0.68), handF: arm(-0.55, 0.5), shapeN: 'grip', shapeF: 'fist' },
+  { lean: 21, pelvisDx: 1.5, headDx: 3, headDy: 4.5, neckPitch: 4, footN: v(-0.52, 0.87), footF: v(0.25, 0.8), handN: arm(0.78, 0.68), handF: arm(-0.55, 0.5), shapeN: 'grip', shapeF: 'fist' },
   // RELEASE: the owner's reference; the phase starts here.
-  { lean: 32, pelvisDx: 2, headDx: 6, headDy: 8, footN: v(-0.56, 0.83), footF: v(0.087, 0.637), handN: arm(-0.73, -0.62), handF: arm(-0.62, 0.55), shapeN: 'open', shapeF: 'open', released: true, streamBack: true },
+  { lean: 32, pelvisDx: 2, headDx: 6, headDy: 8, neckPitch: 6, footN: v(-0.56, 0.83), footF: v(0.087, 0.637), handN: arm(-0.73, -0.62), handF: arm(-0.62, 0.55), shapeN: 'open', shapeF: 'open', released: true, streamBack: true },
   // Follow-through: carried on into the leap, both feet leaving the ground.
-  { lean: 34, pelvisDx: 2.5, headDx: 6, headDy: 8, lift: 1.5, footN: v(-0.6, 0.78), footF: v(0.1, 0.6), handN: arm(-0.77, -0.6), handF: arm(-0.66, 0.5), shapeN: 'open', shapeF: 'open', released: true, streamBack: true },
+  { lean: 34, pelvisDx: 2.5, headDx: 6, headDy: 8, neckPitch: 8, lift: 1.5, footN: v(-0.6, 0.78), footF: v(0.1, 0.6), handN: arm(-0.77, -0.6), handF: arm(-0.66, 0.5), shapeN: 'open', shapeF: 'open', released: true, streamBack: true },
 ];
 
 /**
@@ -646,15 +754,15 @@ const PIERCE: PoseFrame[] = [
  */
 const TACKLE: PoseFrame[] = [
   // Set: low over the front foot, the fists tucked in before the chest.
-  { lean: 20, sink: 1.5, headDx: 1, headDy: 1.5, footN: v(-0.44, 0.88), footF: v(0.36, 0.88), handN: chest(4, 1.5), handF: chest(5, -0.5), shapeN: 'fist', shapeF: 'fist', farHandFront: true },
+  { lean: 20, sink: 1.5, headDx: 1, headDy: 1.5, neckPitch: 14, footN: v(-0.44, 0.88), footF: v(0.36, 0.88), handN: chest(4, 1.5), handF: chest(5, -0.5), shapeN: 'fist', shapeF: 'fist', farHandFront: true },
   // Drive: off the back foot, pitched forward, the head down behind the shoulder.
-  { lean: 32, pelvisDx: 2.5, headDx: 1.5, headDy: 6.5, footN: v(-0.62, 0.8), footF: v(0.3, 0.72), handN: chest(3.5, 2.5), handF: arm(0.42, 0.55), shapeN: 'fist', shapeF: 'fist', streamBack: true },
+  { lean: 32, pelvisDx: 2.5, headDx: 1.5, headDy: 6.5, neckPitch: 40, footN: v(-0.62, 0.8), footF: v(0.3, 0.72), handN: chest(3.5, 2.5), handF: arm(0.42, 0.55), shapeN: 'fist', shapeF: 'fist', streamBack: true },
   // IMPACT: shoulder first, the body long, the front knee driving, off the ground.
-  { lean: 38, pelvisDx: 4.5, headDx: 1, headDy: 8.5, lift: 1.5, footN: v(-0.68, 0.74), footF: v(0.2, 0.62), handN: chest(3, 3), handF: arm(0.36, 0.6), shapeN: 'fist', shapeF: 'fist', streamBack: true },
+  { lean: 38, pelvisDx: 4.5, headDx: 1, headDy: 8.5, neckPitch: 50, lift: 1.5, footN: v(-0.68, 0.74), footF: v(0.2, 0.62), handN: chest(3, 3), handF: arm(0.36, 0.6), shapeN: 'fist', shapeF: 'fist', streamBack: true },
   // Hold on the hit.
-  { lean: 38, pelvisDx: 5, headDx: 1, headDy: 8.5, lift: 1, chestDy: 0.5, footN: v(-0.68, 0.75), footF: v(0.2, 0.64), handN: chest(3, 3), handF: arm(0.36, 0.6), shapeN: 'fist', shapeF: 'fist', streamBack: true },
+  { lean: 38, pelvisDx: 5, headDx: 1, headDy: 8.5, neckPitch: 50, lift: 1, chestDy: 0.5, footN: v(-0.68, 0.75), footF: v(0.2, 0.64), handN: chest(3, 3), handF: arm(0.36, 0.6), shapeN: 'fist', shapeF: 'fist', streamBack: true },
   // Recovery: back onto both feet, guard up.
-  { lean: 14, pelvisDx: 2, headDx: 1, headDy: 1, footN: v(-0.42, 0.9), footF: v(0.38, 0.9), handN: chest(4.5, -1.5), handF: chest(3, -3), shapeN: 'fist', shapeF: 'fist', farHandFront: true },
+  { lean: 14, pelvisDx: 2, headDx: 1, headDy: 1, neckPitch: 16, footN: v(-0.42, 0.9), footF: v(0.38, 0.9), handN: chest(4.5, -1.5), handF: chest(3, -3), shapeN: 'fist', shapeF: 'fist', farHandFront: true },
 ];
 
 /** The tackle's frame where the shoulder hits (the battle lands the blow on it). */
@@ -677,7 +785,7 @@ const COMBO: PoseFrame[] = [
   // The spin (shown mirrored): turned away, the near knee drawn up behind, fists tucked.
   { lean: 10, sink: 1, footN: v(-0.32, 0.55), footF: v(0.14, 0.96), handN: chest(3.5, -1.5), handF: chest(2, -3), shapeN: 'fist', shapeF: 'fist', farHandFront: true },
   // Spinning back kick (shown mirrored): the body pitched away, the near heel driven back into the target.
-  { lean: 26, pelvisDx: 2, headDy: 3, footN: v(-0.97, -0.08), footF: v(0.2, 0.95), handN: arm(0.62, 0.48), handF: chest(3, -2), shapeN: 'fist', shapeF: 'fist', streamBack: true },
+  { lean: 26, pelvisDx: 2, headDy: 3, neckPitch: 14, footN: v(-0.97, -0.08), footF: v(0.2, 0.95), handN: arm(0.62, 0.48), handF: chest(3, -2), shapeN: 'fist', shapeF: 'fist', streamBack: true },
   // Coming round to face the target, the near knee chambered high.
   { lean: -4, footN: v(0.36, 0.5), footF: v(0.12, 0.97), handN: chest(4, -2), handF: chest(2, -3.5), shapeN: 'fist', shapeF: 'fist', farHandFront: true },
   // Finishing kick: the near foot high at the target's head, leaning back from it.
@@ -994,7 +1102,7 @@ function layFor(r: Rig): Lay {
   const b = r.bp;
   const groundX = r.pelvis.x + b.chestHalf * 0.62 + b.bust * 0.4 + 2.2;
   const top = r.head.y - b.headRy * b.headScale - 2.4;
-  const bottom = ANKLE_N + 6;
+  const bottom = ANKLE_N + ankleLiftOf(b, 'N') + 6;
   const mid = (top + bottom) / 2;
   const dx = Math.round(FRAME_MID * RES - mid * RES);
   const dy = Math.round(GROUND * RES - 1 - groundX * RES);
@@ -1082,6 +1190,7 @@ export function turnRig(r: Rig, deg: number): Rig {
 
 function solveRig(body: BodyType, pose: RigPose, frame: number, f: PoseFrame): Rig {
   const bp = BODY_PARAMS[body];
+  if (bp.fit) return solveFit(body, bp, pose, frame, f, bp.fit);
 
   const leanRad = (f.lean * Math.PI) / 180;
   const up = v(Math.sin(leanRad), -Math.cos(leanRad));
@@ -1092,7 +1201,18 @@ function solveRig(body: BodyType, pose: RigPose, frame: number, f: PoseFrame): R
   // by `hip`); `lift` raises the whole body off it.
   const footDrop = (f.hip ?? Math.max(f.footN.y, f.footF.y)) * legLen;
   const jitter = f.jitter ? (frame % 2 === 0 ? -f.jitter : f.jitter) * 0.5 : 0;
-  const stand = v(FEET_X - 0.5 + (f.pelvisDx || 0) + jitter, ANKLE_N - footDrop - (f.lift || 0));
+  // A seated pose keeps its hips on the seat and the lower ankles of a body with `ankleLift` reach
+  // down to the ground from there; standing, the whole body stands lower on its near ankle and the
+  // far ankle comes back up by the difference (footLowN/F).
+  const liftN = ankleLiftOf(bp, 'N');
+  const liftF = ankleLiftOf(bp, 'F');
+  // Seated, those hips settle SEAT_SINK of the lift into the seat, so the shorter legs reach the ground
+  // with the knees still forward (sitting, not standing against the seat).
+  const seatSink = liftN * SEAT_SINK;
+  const ankle = ANKLE_N + (f.seat ? seatSink : liftN);
+  const footLowN = v(0, f.seat ? liftN - seatSink : 0);
+  const footLowF = v(0, f.seat ? liftF - seatSink : liftF - liftN);
+  const stand = v(FEET_X - 0.5 + (f.pelvisDx || 0) + jitter, ankle - footDrop - (f.lift || 0));
   // `sink` and `snap` lower the pelvis while the feet stay where the pose puts
   // them (the knees take it up), `snap` onto the fine pixel grid.
   const moved = !!(f.sink || f.snap);
@@ -1116,8 +1236,16 @@ function solveRig(body: BodyType, pose: RigPose, frame: number, f: PoseFrame): R
     fromN = add(hipN, back);
     fromF = add(hipF, back);
   }
-  const legN = solve2(hipN, add(fromN, scale(f.footN, legLen)), bp.thigh, bp.shin, -1);
-  const legF = solve2(hipF, add(fromF, add(scale(f.footF, legLen), v(0, FAR_HIP_LIFT - FAR_LIFT))), bp.thigh, bp.shin, -1);
+  // Seated, a foot the leg cannot reach (a body with shorter legs than the seat was set for) slides
+  // back toward the seat along the ground instead of hanging above it.
+  const onGround = (hip: Vec, t: Vec): Vec => {
+    const reach = bp.thigh + bp.shin - 0.05;
+    const dy = t.y - hip.y;
+    if (!f.seat || Math.hypot(t.x - hip.x, dy) <= reach || Math.abs(dy) >= reach) return t;
+    return v(hip.x + Math.sign(t.x - hip.x) * Math.sqrt(reach * reach - dy * dy), t.y);
+  };
+  const legN = solve2(hipN, onGround(hipN, add(add(fromN, scale(f.footN, legLen)), footLowN)), bp.thigh, bp.shin, -1);
+  const legF = solve2(hipF, onGround(hipF, add(add(fromF, add(scale(f.footF, legLen), v(0, FAR_HIP_LIFT - FAR_LIFT))), footLowF)), bp.thigh, bp.shin, -1);
 
   const chestDy = f.chestDy || 0;
   const neck = add(T(0.6, bp.torsoLen), v(0, chestDy));
@@ -1125,24 +1253,30 @@ function solveRig(body: BodyType, pose: RigPose, frame: number, f: PoseFrame): R
   const shoulderF = add(T(bp.shoulderHalf * 0.55, bp.torsoLen - 2.2), v(0, chestDy));
   const chestFront = add(T(bp.chestHalf * 0.5, bp.torsoLen - 6), v(0, chestDy));
 
-  const armLen = bp.upperArm + bp.forearm + bp.handR;
-  const resolve = (t: HandTarget, shoulder: Vec): Vec => {
+  const resolve = (t: HandTarget, shoulder: Vec, armLen: number): Vec => {
     if (t.from === 'chest') return add(chestFront, v(t.x, t.y));
     if (t.from === 'kneeN') return add(legN.mid, v(t.x, t.y));
     if (t.from === 'kneeF') return add(legF.mid, v(t.x, t.y));
     return add(shoulder, scale(v(t.x, t.y), armLen));
   };
-  const solveArm = (shoulder: Vec, t: HandTarget, bend: 1 | -1 = 1) => {
-    const target = resolve(t, shoulder);
+  const solveArm = (shoulder: Vec, t: HandTarget, bend: 1 | -1, fore: number, out: number) => {
+    // A hanging arm turned further out from the body (BodyParams.hangOut; out > 0 turns it clockwise on screen).
+    let aim = t;
+    if (out && hangsDown(t)) {
+      const a = (out * Math.PI) / 180;
+      aim = { ...t, x: t.x * Math.cos(a) - t.y * Math.sin(a), y: t.x * Math.sin(a) + t.y * Math.cos(a) };
+    }
+    const target = resolve(aim, shoulder, bp.upperArm + fore + bp.handR);
     // Aim the wrist a little short of the target so the hand lands on it.
     const toT = sub(target, shoulder);
     const wristTarget = sub(target, scale(norm(toT), bp.handR * 0.8));
-    const r = solve2(shoulder, wristTarget, bp.upperArm, bp.forearm, bend);
+    const r = solve2(shoulder, wristTarget, bp.upperArm, fore, bend);
     const dir = norm(sub(r.end, r.mid));
     return { elbow: r.mid, wrist: r.end, hand: add(r.end, scale(dir, bp.handR * 0.9)) };
   };
-  const aN = solveArm(shoulderN, f.handN, f.bendN ?? 1);
-  const aF = solveArm(shoulderF, f.handF);
+  const [outN, outF] = bp.hangOut ?? [0, 0];
+  const aN = solveArm(shoulderN, f.handN, f.bendN ?? 1, bp.forearm, outN);
+  const aF = solveArm(shoulderF, f.handF, 1, bp.forearm + (bp.farLonger ?? 0), -outF);
 
   const headY = neck.y - 5.9 * bp.headScale + (f.headDy || 0);
   const headX = neck.x - 0.4 + (f.headDx || 0);
@@ -1174,6 +1308,237 @@ function solveRig(body: BodyType, pose: RigPose, frame: number, f: PoseFrame): R
     kneeF: legF.mid,
     ankleN: legN.end,
     ankleF: legF.end,
+    shapeN: f.shapeN,
+    shapeF: f.shapeF,
+    farHandFront: !!f.farHandFront,
+    released: !!f.released,
+    streamBack: !!f.streamBack,
+    T,
+  };
+}
+
+/**
+ * Where a fitted body's torso joints sit in its torso (Rig.T coordinates: x along the shoulders, y up
+ * from the pelvis), taken from his joints at rest with the idle lean, and the head's offset from the neck.
+ */
+const FIT_LOCAL = new WeakMap<BodyFit, Record<'neck' | 'shoulderN' | 'shoulderF' | 'hipN' | 'hipF', Vec> & { head: Vec }>();
+function fitLocal(fit: BodyFit) {
+  let l = FIT_LOCAL.get(fit);
+  if (!l) {
+    const a = (IDLE.lean * Math.PI) / 180;
+    const up = v(Math.sin(a), -Math.cos(a));
+    const right = v(Math.cos(a), Math.sin(a));
+    const loc = (p: Vec) => {
+      const d = sub(p, fit.pelvis);
+      return v(d.x * right.x + d.y * right.y, d.x * up.x + d.y * up.y);
+    };
+    l = { neck: loc(fit.neck), shoulderN: loc(fit.shoulderN), shoulderF: loc(fit.shoulderF), hipN: loc(fit.hipN), hipF: loc(fit.hipF), head: sub(fit.head, fit.neck) };
+    FIT_LOCAL.set(fit, l);
+  }
+  return l;
+}
+
+/**
+ * The neck's foot in the torso (Rig.T coordinates, before breathing): his on a fitted body, (0.6,
+ * torsoLen) on the others. Items that follow the breathing chest measure it from here.
+ */
+export function neckLocal(bp: BodyParams): Vec {
+  return bp.fit ? fitLocal(bp.fit).neck : v(0.6, bp.torsoLen);
+}
+
+/**
+ * How far below the male body's seated hips a fitted body's hips sit on the camp seat (design units):
+ * his pelvis is his hip joints, 4.5 px above the seat of his briefs, which rests on the seat's top
+ * (CAMP_PROPS.SEAT_TOP).
+ */
+const FIT_SEAT_SINK = 0.45;
+
+
+/**
+ * How close to its hip a fitted body's foot may be asked to come (design units past thigh - shin): his
+ * thigh is much longer than his shin, so a foot drawn in right under the hip (a deep crouch, a knee
+ * driven up) cannot be reached by bending the knee alone. Such a foot goes forward along its row until
+ * the knee can fold over it, as his legs fold.
+ */
+const FIT_FOLD = 1.6;
+function foldable(hip: Vec, t: Vec, thigh: number, shin: number): Vec {
+  const min = thigh - shin + FIT_FOLD;
+  const dy = t.y - hip.y;
+  if (Math.hypot(t.x - hip.x, dy) >= min) return t;
+  return v(hip.x + Math.sqrt(Math.max(0, min * min - dy * dy)), t.y);
+}
+
+/**
+ * The rig of a body fitted to the owner's joints (BodyParams.fit). At idle every joint is his (the
+ * chest, shoulders, arms and head rise and fall with the breath, the arms carried with them). In every
+ * other pose the frame is solved as solveRig solves it, with his torso (neck, shoulders and hips where
+ * he drew them in the torso) and his limb lengths on each side: his far leg and arm are drawn shorter
+ * on screen, so the far foot stands a little higher without a lift of its own. Standing, the lower ankle
+ * reaches his ankle's height; seated, the hips sit on the camp seat and the feet reach the ground.
+ *
+ * `bp` may be a look's own params on the body's (longer forearms): a forearm longer than the body's
+ * by `forearm` (the far one by `farLonger` more) is that much longer than his, at idle too, its wrist
+ * further along his forearm (body.ts draws his forearm piece on along it).
+ */
+function solveFit(body: BodyType, bp: BodyParams, pose: RigPose, frame: number, f: PoseFrame, fit: BodyFit): Rig {
+  const loc = fitLocal(fit);
+  const base = BODY_PARAMS[body];
+  const extraN = bp.forearm - base.forearm;
+  const extraF = extraN + (bp.farLonger ?? 0) - (base.farLonger ?? 0);
+  const len = fitLen(fit);
+  len.forearmN += extraN;
+  len.forearmF += extraF;
+  const leanRad = (f.lean * Math.PI) / 180;
+  const up = v(Math.sin(leanRad), -Math.cos(leanRad));
+  const right = v(Math.cos(leanRad), Math.sin(leanRad));
+  const legN = len.thighN + len.shinN;
+  const legF = len.thighF + len.shinF;
+  const chestDy = f.chestDy || 0;
+  const breath = v(0, chestDy);
+
+  if (pose === 'idle') {
+    // His joints, the upper body carried by the breath.
+    // a longer forearm reaches further along his
+    const longer = (e: FitJoint, w: FitJoint, extra: number) => add(fit[w], scale(norm(sub(fit[w], fit[e])), extra));
+    const at = (k: FitJoint) => add(k === 'wristN' ? longer('elbowN', 'wristN', extraN) : k === 'wristF' ? longer('elbowF', 'wristF', extraF) : fit[k], breath);
+    const T = (x: number, y: number): Vec => add(fit.pelvis, add(scale(right, x), scale(up, y)));
+    const hand = (e: Vec, w: Vec) => add(w, scale(norm(sub(w, e)), bp.handR * 0.9));
+    return {
+      body,
+      bp,
+      pose,
+      frame,
+      lean: f.lean,
+      pelvis: fit.pelvis,
+      neck: at('neck'),
+      up,
+      right,
+      head: at('head'),
+      shoulderN: at('shoulderN'),
+      shoulderF: at('shoulderF'),
+      elbowN: at('elbowN'),
+      elbowF: at('elbowF'),
+      wristN: at('wristN'),
+      wristF: at('wristF'),
+      handN: hand(at('elbowN'), at('wristN')),
+      handF: hand(at('elbowF'), at('wristF')),
+      hipN: fit.hipN,
+      hipF: fit.hipF,
+      kneeN: fit.kneeN,
+      kneeF: fit.kneeF,
+      ankleN: fit.ankleN,
+      ankleF: fit.ankleF,
+      shapeN: f.shapeN,
+      shapeF: f.shapeF,
+      farHandFront: !!f.farHandFront,
+      released: !!f.released,
+      streamBack: !!f.streamBack,
+      T,
+    };
+  }
+
+  const jitter = f.jitter ? (frame % 2 === 0 ? -f.jitter : f.jitter) * 0.5 : 0;
+  // Where the pelvis stands so that the lower foot is on its ground (his ankle's height on that side),
+  // each hip at its own height at this lean; a pose that gives its hip height measures it on the near leg.
+  const hipDy = (l: Vec) => l.x * right.y + l.y * up.y;
+  const standOn = (l: Vec, ft: Vec, leg: number, ground: number) => ground - ft.y * leg - hipDy(l);
+  const standing =
+    f.hip !== undefined
+      ? fit.ankleN.y - f.hip * legN - hipDy(loc.hipN)
+      : Math.min(standOn(loc.hipN, f.footN, legN, fit.ankleN.y), standOn(loc.hipF, f.footF, legF, fit.ankleF.y));
+  // Seated: the male body's hips on the seat (its legs are the seat's measure), a little lower.
+  const maleLeg = BODY_PARAMS.male.thigh + BODY_PARAMS.male.shin;
+  const standY = f.seat ? ANKLE_N - (f.hip ?? 0) * maleLeg + FIT_SEAT_SINK : standing;
+  // Standing on the far foot alone (a lift below the ground: 'lean') the male body comes down FAR_LIFT
+  // and half a unit more, onto that foot; his far foot already stands on its own ground, so only what
+  // goes past FAR_LIFT and the half unit is taken.
+  const lift = (f.lift || 0) < 0 ? f.lift! + FAR_LIFT + 0.5 : f.lift || 0;
+  const stand = v(fit.pelvis.x + (f.pelvisDx || 0) + jitter, standY - lift);
+  const moved = !!(f.sink || f.snap);
+  const pelvis = moved ? v(stand.x, snapDown(stand.y + (f.sink || 0), !!f.snap)) : stand;
+  const T = (x: number, y: number): Vec => add(pelvis, add(scale(right, x), scale(up, y)));
+
+  const hipN = T(loc.hipN.x, loc.hipN.y);
+  const hipF = T(loc.hipF.x, loc.hipF.y);
+  // Feet hang from where the hips stood before sinking or snapping; a pose that gives its hip height
+  // (crouching, sitting) sets its feet on the ground at his ankles' heights.
+  const back = moved ? sub(stand, pelvis) : v(0, 0);
+  const foot = (hip: Vec, ft: Vec, leg: number, ground: number): Vec =>
+    f.hip !== undefined ? v(hip.x + ft.x * leg, ground + (ft.y - f.hip) * leg) : add(add(hip, back), scale(ft, leg));
+  const onGround = (hip: Vec, t: Vec, reach: number): Vec => {
+    const dy = t.y - hip.y;
+    if (!f.seat || Math.hypot(t.x - hip.x, dy) <= reach || Math.abs(dy) >= reach) return t;
+    return v(hip.x + Math.sign(t.x - hip.x) * Math.sqrt(reach * reach - dy * dy), t.y);
+  };
+  const lN = solve2(hipN, foldable(hipN, onGround(hipN, foot(hipN, f.footN, legN, fit.ankleN.y), legN - 0.05), len.thighN, len.shinN), len.thighN, len.shinN, -1);
+  const lF = solve2(hipF, foldable(hipF, onGround(hipF, foot(hipF, f.footF, legF, fit.ankleF.y), legF - 0.05), len.thighF, len.shinF), len.thighF, len.shinF, -1);
+
+  const neck = add(T(loc.neck.x, loc.neck.y), breath);
+  const shoulderN = add(T(loc.shoulderN.x, loc.shoulderN.y), breath);
+  const shoulderF = add(T(loc.shoulderF.x, loc.shoulderF.y), breath);
+  const chestFront = add(T(bp.chestHalf * 0.5, bp.torsoLen - 6), breath);
+
+  const resolve = (t: HandTarget, shoulder: Vec, armLen: number): Vec => {
+    if (t.from === 'chest') return add(chestFront, v(t.x, t.y));
+    if (t.from === 'kneeN') return add(lN.mid, v(t.x, t.y));
+    if (t.from === 'kneeF') return add(lF.mid, v(t.x, t.y));
+    return add(shoulder, scale(v(t.x, t.y), armLen));
+  };
+  const solveArm = (shoulder: Vec, t: HandTarget, bend: 1 | -1, upper: number, fore: number, out: number) => {
+    let aim = t;
+    if (out && hangsDown(t)) {
+      const a = (out * Math.PI) / 180;
+      aim = { ...t, x: t.x * Math.cos(a) - t.y * Math.sin(a), y: t.x * Math.sin(a) + t.y * Math.cos(a) };
+    }
+    const target = resolve(aim, shoulder, upper + fore + bp.handR);
+    const toT = sub(target, shoulder);
+    const wristTarget = sub(target, scale(norm(toT), bp.handR * 0.8));
+    const r = solve2(shoulder, wristTarget, upper, fore, bend);
+    const dir = norm(sub(r.end, r.mid));
+    return { elbow: r.mid, wrist: r.end, hand: add(r.end, scale(dir, bp.handR * 0.9)) };
+  };
+  const [outN, outF] = bp.hangOut ?? [0, 0];
+  const aN = solveArm(shoulderN, f.handN, f.bendN ?? 1, len.upperArmN, len.forearmN, outN);
+  const aF = solveArm(shoulderF, f.handF, 1, len.upperArmF, len.forearmF, -outF);
+
+  let head: Vec;
+  if (f.neckPitch !== undefined) {
+    // His head on his neck at its length, the neck turned forward (PoseFrame.neckPitch), on whole fine
+    // pixels so the length stays his.
+    const a = (f.neckPitch * Math.PI) / 180;
+    const at = add(neck, v(loc.head.x * Math.cos(a) - loc.head.y * Math.sin(a), loc.head.x * Math.sin(a) + loc.head.y * Math.cos(a)));
+    head = v(Math.round(at.x * RES) / RES, Math.round(at.y * RES) / RES);
+  } else {
+    const headX = neck.x + loc.head.x + (f.headDx || 0);
+    const headY = neck.y + loc.head.y + (f.headDy || 0);
+    head = f.snap ? v(Math.round(headX * RES) / RES, Math.round(headY * RES) / RES) : v(Math.round(headX), Math.round(headY));
+  }
+
+  return {
+    body,
+    bp,
+    pose,
+    frame,
+    lean: f.lean,
+    pelvis,
+    neck,
+    up,
+    right,
+    head,
+    shoulderN,
+    shoulderF,
+    elbowN: aN.elbow,
+    elbowF: aF.elbow,
+    wristN: aN.wrist,
+    wristF: aF.wrist,
+    handN: aN.hand,
+    handF: aF.hand,
+    hipN,
+    hipF,
+    kneeN: lN.mid,
+    kneeF: lF.mid,
+    ankleN: lN.end,
+    ankleF: lF.end,
     shapeN: f.shapeN,
     shapeF: f.shapeF,
     farHandFront: !!f.farHandFront,

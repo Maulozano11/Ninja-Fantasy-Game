@@ -6,11 +6,14 @@
 // fine pixels (RES per design unit) for 128x128 detail.
 
 import { hexToRgb, hslToHex, makeRamp, mixHex, retintHex, rgbToHsl } from './color';
-import { armPoint, armRadius, armSpan, DrawCtx, fillTorso, FOOT_BARE, footDraw, handDraw, legSpan, Side, torsoPoly } from './ctx';
+import { armJoints, armPoint, armRadius, armSpan, Depth, DrawCtx, fillTorso, FOOT_BARE, footDraw, handDraw, handPose, legJoints, legSpan, Side, torsoPoly } from './ctx';
+import { type BasePiece, FEMALE_BASE, FEMALE_BASE_CLOTH, FEMALE_BASE_JOINTS, FEMALE_BASE_SKIN } from './femaleBaseArt';
+import { FEMALE_SHOULDER_N } from './femaleBodyArt';
 import { type PaintedEye, VALIANT_BROW_HAIR, VALIANT_EYE_COLORS, VALIANT_EYES, VALIANT_IRIS } from './eyeArt';
 import { VALIANT_HEAD, VALIANT_SKIN } from './headArt';
 import { FOUNDER_FACE_KIND, FOUNDER_HEAD, FOUNDER_IRIS, FOUNDER_SKIN } from './founderFaceArt';
-import { stampPiece } from './painted';
+import { segAngle, stampPiece } from './painted';
+import { rotateTemplate, stampTemplate, type TemplatePalette } from './rotsprite';
 import { ballShade, capsule, ellipse, F_NO_OUTLINE, F_NO_TEXTURE, GRID, Layer, PartId, Pen, poly, RES, seam, v, Vec } from './raster';
 import { isFemaleBody, type FaceShape } from './types';
 
@@ -18,6 +21,10 @@ const SCLERA = '#f4f1ee';
 const EYELINE = '#1b1420';
 
 export function drawBody(g: DrawCtx): void {
+  if (g.bp.fit) {
+    drawBaseBody(g);
+    return;
+  }
   const r = g.rig;
   const b = g.bp;
   const skin = (part: PartId, bias = 0): Pen => ({ mat: g.skin, part, bias });
@@ -34,13 +41,18 @@ export function drawBody(g: DrawCtx): void {
     const shin = skin(s === 'N' ? 'shinN' : 'shinF', bias);
     legSpan(g, L, s, 0, 1, 0, thigh, 'skin');
     legSpan(g, L, s, 1, 2, 0, shin, 'skin');
-    footDraw(g, L, s, FOOT_BARE);
+    // His heroines' legs: flat skin with a shadow rim just inside the line (see flatSkin).
+    if (isFemaleBody(r.body)) flatSkin(L, g.skin, s === 'F' ? 2 : 3);
+    // Every footwear item draws its own foot (sandals and wraps with the toes in skin), so the
+    // female bodies' short bare foot is left out under it rather than poking out past a boot's toe.
+    if (!(isFemaleBody(r.body) && g.has('feet'))) footDraw(g, L, s, FOOT_BARE);
   }
 
   // Torso + neck
   const torso = g.L('torso.body');
   fillTorso(g, torso, 0, skin('torso'));
-  if (b.bust > 0) sculptTorso(g, torso, g.skin, 'skin');
+  if (isFemaleBody(r.body)) flatTorso(g, torso);
+  else if (b.bust > 0) sculptTorso(g, torso, g.skin, 'skin');
   const neckTop = v(r.head.x + 0.4 * b.headScale, r.head.y + 4 * b.headScale);
   capsule(torso, r.neck, neckTop, b.neckW, b.neckW * 0.95, skin('torso'), (x) => (x < r.neck.x - 0.6 ? 3 : 2));
   // Nape: the back of the neck, from under the skull down to the shoulders.
@@ -91,6 +103,138 @@ export function drawBody(g: DrawCtx): void {
   // Near arm (in front of everything on the torso)
   drawArm(g, g.L('nearArm.body'), 'N', skin('upperArmN'), skin('forearmN'));
   handDraw(g, g.L('nearArm.body'), 'N', skin('handN'));
+}
+
+// ---------------------------------------------------------------------------
+// The owner's bare female body (femaleBaseArt.ts), piece by piece on the fitted rig.
+// ---------------------------------------------------------------------------
+
+/** A colour of his near-black line (never recoloured). */
+const isInk = (hex: string): boolean => {
+  const [r, g, b] = hexToRgb(hex);
+  return 0.299 * r + 0.587 * g + 0.114 * b < 22;
+};
+
+/**
+ * The part above each joint: a piece's round cap over its joint is that part's pixels. A hand's cap of
+ * the wrist stays the hand's: a sleeve that takes the forearm off past its cuff leaves the wrist on it.
+ */
+const CAP_OF: Partial<Record<PartId, PartId>> = {
+  forearmN: 'upperArmN',
+  forearmF: 'upperArmF',
+  shinN: 'thighN',
+  shinF: 'thighF',
+  footN: 'shinN',
+  footF: 'shinF',
+};
+
+/** The screen angle (degrees) the torso's up points at. */
+const upAngle = (g: DrawCtx): number => (Math.atan2(g.rig.up.y, g.rig.up.x) * 180) / Math.PI;
+
+/**
+ * Stamps one of his body pieces with its pivot on `at`, its bone pointing along `deg`: at his angle
+ * every pixel is his. His skin follows the character's skin (skinTone: in his own skin, his colour),
+ * his line stays his, and his sports top and briefs take `cloth` (their colour slot) when it is given.
+ * At rest every pixel is his as he drew it. In any other pose the layer's outline turns a pixel left on
+ * its edge into his line: where the piece was cut from the next part of him and moved away from it, or
+ * where turning it lost a pixel of his line, so no piece is ever left cut open. `only` = 'cloth'
+ * stamps only the cloth (the sports top and briefs items draw it over the body in their colour).
+ */
+function stampBase(g: DrawCtx, depth: Depth, p: BasePiece, at: Vec, deg: number, part: PartId, cloth?: string, only?: 'cloth', bare = false, noCap = false): void {
+  const L = g.L(depth);
+  const rest = g.rig.pose === 'idle';
+  const pal = new Map<string, [number, number, PartId]>();
+  // A cap over the joint above is the upper piece's pixels: it counts as that part (a boot clears the
+  // shin below the knee, not the thigh's round over it).
+  const upper = CAP_OF[part] ?? part;
+  for (const [ch, hex] of Object.entries(p.colors)) {
+    const isCloth = p.cloth.includes(ch);
+    if ((only === 'cloth' && !isCloth) || (noCap && p.cap.includes(ch))) continue;
+    // `bare`: the sports top's straps off, his shoulder's skin under them
+    const strap = bare ? p.straps?.[ch] : undefined;
+    if (strap && only === 'cloth') continue;
+    const c = strap ? skinTone(strap, g.look.skin, FEMALE_BASE_SKIN) : isCloth ? (cloth ? retintHex(hex, FEMALE_BASE_CLOTH, cloth) : hex) : isInk(hex) ? hex : skinTone(hex, g.look.skin, FEMALE_BASE_SKIN);
+    pal.set(ch, [g.m(c, 'painted'), rest ? F_NO_OUTLINE | F_NO_TEXTURE : F_NO_TEXTURE, p.cap.includes(ch) ? upper : part]);
+  }
+  const ax = Math.floor(at.x * RES);
+  const ay = Math.floor(at.y * RES);
+  for (const q of rotateTemplate(p, deg - p.angle)) {
+    const e = pal.get(q.ch);
+    if (e) L.set(ax + q.dx, ay + q.dy, e[0], 3, e[2], e[1]);
+  }
+}
+
+/**
+ * His sports top (on the chest) or briefs (on the pelvis) in `color`, on the item's own layer over the
+ * body's (items/clothes.ts: the sports top and briefs items). The body always wears them in his black.
+ */
+export function drawBaseCloth(g: DrawCtx, which: 'top' | 'bottom', color: string): void {
+  if (!g.bp.fit) return;
+  const r = g.rig;
+  if (which === 'top') stampBase(g, 'torso.top', FEMALE_BASE.chest, r.neck, upAngle(g), 'torso', color, 'cloth');
+  else stampBase(g, 'torso.bottom', FEMALE_BASE.pelvis, r.pelvis, upAngle(g), 'pelvis', color, 'cloth');
+}
+
+/**
+ * The female bodies: his bare body (docs/reference/female-base-owner-reference.jpg) as his pieces on
+ * the rig fitted to his joints, back to front as he drew it: the far arm behind everything, the far
+ * leg, the near leg, the pelvis and chest over the legs, his neck on its way to the head, the head, and the near arm in front. Each limb
+ * is upper piece, lower piece and hand or foot, the lower one over the upper with its round cap over the
+ * joint. A hand turns with its forearm and a foot stands level under its ankle; under footwear the boot
+ * draws the foot. His hands are his closed fists; a hand round a weapon's grip, pointing, open or
+ * cradling a book is his heroines' small hand (handDraw), turned with the forearm too.
+ */
+function drawBaseBody(g: DrawCtx): void {
+  const r = g.rig;
+  const P = FEMALE_BASE;
+  const arm = (s: Side) => {
+    const j = armJoints(r, s);
+    const depth: Depth = s === 'N' ? 'nearArm.body' : 'farArm.body';
+    const fore = segAngle(j.elbow, j.wrist);
+    stampBase(g, depth, s === 'N' ? P.upperArmN : P.upperArmF, j.shoulder, segAngle(j.shoulder, j.elbow), s === 'N' ? 'upperArmN' : 'upperArmF');
+    const forePiece = s === 'N' ? P.forearmN : P.forearmF;
+    stampBase(g, depth, forePiece, j.elbow, fore, s === 'N' ? 'forearmN' : 'forearmF');
+    // A forearm longer than his (a look's longer arms, rig.ts solveFit) is his forearm drawn on along
+    // the bone by the difference, without its cap of the elbow: his own pixels, the wrist further out.
+    const hisFore = Math.hypot(...([0, 1] as const).map((k) => FEMALE_BASE_JOINTS[`wrist${s}`][k] - FEMALE_BASE_JOINTS[`elbow${s}`][k])) / RES;
+    const extra = Math.hypot(j.wrist.x - j.elbow.x, j.wrist.y - j.elbow.y) - hisFore;
+    if (extra > 0.25) {
+      const k = extra / Math.hypot(j.wrist.x - j.elbow.x, j.wrist.y - j.elbow.y);
+      const on = v(j.elbow.x + (j.wrist.x - j.elbow.x) * k, j.elbow.y + (j.wrist.y - j.elbow.y) * k);
+      stampBase(g, depth, forePiece, on, fore, s === 'N' ? 'forearmN' : 'forearmF', undefined, undefined, false, true);
+    }
+    const kind = handPose(g, s).kind;
+    if (kind === 'fist' || kind === 'relaxed') stampBase(g, depth, s === 'N' ? P.handN : P.handF, j.wrist, fore, s === 'N' ? 'handN' : 'handF');
+    else {
+      // his wrist under the small hand, so it stays on the forearm
+      stampBase(g, depth, s === 'N' ? P.wristN : P.wristF, j.wrist, fore, s === 'N' ? 'handN' : 'handF');
+      handDraw(g, g.L(depth), s, { mat: g.skin, part: s === 'N' ? 'handN' : 'handF', bias: s === 'F' ? -1 : 0 });
+    }
+  };
+  const leg = (s: Side) => {
+    const j = legJoints(r, s);
+    const depth: Depth = s === 'N' ? 'nearLeg.body' : 'farLeg.body';
+    stampBase(g, depth, s === 'N' ? P.thighN : P.thighF, j.hip, segAngle(j.hip, j.knee), s === 'N' ? 'thighN' : 'thighF');
+    stampBase(g, depth, s === 'N' ? P.shinN : P.shinF, j.knee, segAngle(j.knee, j.ankle), s === 'N' ? 'shinN' : 'shinF');
+    // Every footwear item draws its own foot.
+    if (!g.has('feet')) stampBase(g, depth, s === 'N' ? P.footN : P.footF, j.ankle, 0, s === 'N' ? 'footN' : 'footF');
+  };
+  arm('F');
+  leg('F');
+  leg('N');
+  const up = upAngle(g);
+  stampBase(g, 'torso.body', P.pelvis, r.pelvis, up, 'pelvis');
+  // Under a top or armour of another kind his sports top's straps come off: a dress with bare shoulders
+  // shows his shoulders, not the straps (the rest of the top stays under it).
+  const worn = (slot: 'armor' | 'top') => g.has(slot) && !g.look.slots[slot]!.id.endsWith('_none');
+  const dressed = worn('armor') || (worn('top') && !g.has('top', 'top_sports_bra'));
+  stampBase(g, 'torso.body', P.chest, r.neck, up, 'torso', undefined, undefined, dressed);
+  // His neck rides the bone from its foot to the head, so a head pitched forward (the throw) takes the
+  // neck with it. The rig keeps the head at his neck's length in every pose (rig.ts solveFit,
+  // PoseFrame.neckPitch), so his neck is only turned, never drawn longer.
+  stampBase(g, 'torso.body', P.neck, r.neck, segAngle(r.neck, r.head), 'torso');
+  drawHead(g);
+  arm('N');
 }
 
 /** Torso-local coordinates of a design point: x along the shoulders (toward the face), y up from the pelvis. */
@@ -212,9 +356,75 @@ function drawArm(g: DrawCtx, L: Layer, s: Side, upper: Pen, fore: Pen): void {
   // Muscle definition: a lit crest along the biceps and along the forearm
   // muscle just below the elbow, on the side facing the light; a shadow line
   // under the forearm crest and at the inner elbow.
+  if (isFemaleBody(g.rig.body)) {
+    // The owner paints his heroines' arms flat: no muscle lines (see flatSkin). The near shoulder
+    // is his: Aurelia's bare shoulder (femaleBodyArt.ts), turned with the upper arm.
+    flatSkin(L, upper.mat, s === 'F' ? 2 : 3);
+    // His shoulder is the round of a hanging arm: turned far from his angle (an arm raised, swung
+    // across the chest or flung back) its line falls inside the arm and the torso and its round
+    // stands off the body, so there the shoulder is the body's own round, outlined like the rest.
+    const j = armJoints(g.rig, s);
+    const P = FEMALE_SHOULDER_N;
+    const turn = ((segAngle(j.shoulder, j.elbow) - P.angle + 540) % 360) - 180;
+    if (s === 'N' && Math.abs(turn) <= SHOULDER_TURN) {
+      const pal: TemplatePalette = { o: [upper.mat, 0], D: [upper.mat, 1], s: [upper.mat, 2], b: [upper.mat, 3] };
+      stampTemplate(L, P, j.shoulder, turn, pal, upper.part, { flags: F_NO_OUTLINE | F_NO_TEXTURE });
+    }
+    return;
+  }
   muscleLine(g, L, s, upper.mat, 0.22, 0.72, 0.42, 1);
   muscleLine(g, L, s, fore.mat, 1.06, 1.58, 0.4, 1);
   despeckle(L, upper.mat);
+}
+
+/** How far (degrees) the near upper arm may turn from his before his shoulder piece is left out (see drawArm). */
+export const SHOULDER_TURN = 30;
+
+/**
+ * Skin painted the way the owner paints his heroines (his game-scale pictures: Aurelia's and Saya's
+ * bare shoulders, Lyra's thighs): one flat tone (`base`) inside a rim one shade darker, the pixel
+ * just inside the line all round. A pixel on the silhouette's edge becomes the line in the layer's
+ * outline pass, so the rim is the pixel next to it. Hands, feet and his painted pieces
+ * (F_NO_TEXTURE) keep their own pixels.
+ */
+function flatSkin(L: Layer, mat: number, base: number): void {
+  const own = (x: number, y: number) => x >= 0 && y >= 0 && x < GRID && y < GRID && L.mat[y * GRID + x] === mat;
+  const edge = (x: number, y: number) => own(x, y) && !(own(x + 1, y) && own(x - 1, y) && own(x, y + 1) && own(x, y - 1));
+  const out: [number, number][] = [];
+  for (let y = 0; y < GRID; y++) {
+    for (let x = 0; x < GRID; x++) {
+      const i = y * GRID + x;
+      if (L.mat[i] !== mat || L.shade[i] === 0 || L.flags[i] & F_NO_TEXTURE || edge(x, y)) continue;
+      const rim = edge(x + 1, y) || edge(x - 1, y) || edge(x, y + 1) || edge(x, y - 1);
+      out.push([i, rim ? base - 1 : base]);
+    }
+  }
+  for (const [i, sh] of out) L.shade[i] = sh;
+}
+
+/**
+ * The female torso's bare skin, the owner's way (see flatSkin): flat, with his shadow only where a
+ * form turns under: a soft crease under the bust and the navel.
+ */
+function flatTorso(g: DrawCtx, L: Layer): void {
+  flatSkin(L, g.skin, 3);
+  const { forms } = bustForms(g);
+  for (let fy = 0; fy < GRID; fy++) {
+    for (let fx = 0; fx < GRID; fx++) {
+      const i = fy * GRID + fx;
+      if (L.mat[i] !== g.skin || L.shade[i] === 0) continue;
+      const [lx, ly] = torsoLocal(g, (fx + 0.5) / RES, (fy + 0.5) / RES);
+      const under = forms.some(([cx, cy, rx, ry]) => {
+        const u = (lx - cx) / rx;
+        return Math.abs(u) < 0.8 && Math.abs(ly - (cy - ry * 0.95 + 0.9 * u * u)) < 0.3;
+      });
+      if (under) L.reshade(fx, fy, 2);
+    }
+  }
+  const n = g.rig.T(1.5, (g.bp.waistY ?? 5.4) - 1.2);
+  const nx = Math.floor(n.x * RES);
+  const ny = Math.floor(n.y * RES);
+  if (L.has(nx, ny) && L.mat[ny * GRID + nx] === g.skin) L.reshade(nx, ny, 2);
 }
 
 /**

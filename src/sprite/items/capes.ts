@@ -5,7 +5,7 @@
 // that depends on the pose, so capes trail behind in attacks and sway in idle.
 
 import { hexToRgb, retintHex } from '../color';
-import type { DrawCtx, ItemDef } from '../ctx';
+import { type DrawCtx, type ItemDef, torsoNeck } from '../ctx';
 import { add, capsule, cylShade, ellipse, F_NO_OUTLINE, F_NO_TEXTURE, fine, GRID, len, lerp, Layer, norm, PartId, Pen, perp, poly, px, RES, scale, seam, sub, v, Vec } from '../raster';
 import { GROUND } from '../rig';
 import { OWNER_CAPE_BACK, OWNER_CAPE_FRONT, OWNER_CAPE_PLATE, OWNER_CAPE_SHOULDER, PaintedPart } from './capeArt';
@@ -94,7 +94,8 @@ export function capeWind(g: DrawCtx): Wind {
 /** Breathing-aware torso point for the shoulder line. */
 function topPt(g: DrawCtx) {
   const T = g.rig.T;
-  const dy = g.rig.neck.y - T(0.6, g.bp.torsoLen).y;
+  const n = torsoNeck(g);
+  const dy = g.rig.neck.y - T(n.x, n.y).y;
   return (x: number, y: number) => add(T(x, y), v(0, dy));
 }
 

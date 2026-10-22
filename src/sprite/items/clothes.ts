@@ -4,8 +4,10 @@
 // parameters); primitives rasterize at the fine 128x128 resolution, so seams,
 // stitching and buttons can be a single fine pixel.
 
+import { drawBaseCloth } from '../body';
 import { hexToRgb, retintHex } from '../color';
-import { armDepth, armJoints, armPoint, armSpan, type Depth, DrawCtx, fillTorso, handDraw, handPose, ItemDef, legDepth, legJoints, legPoint, Side, torsoPoly } from '../ctx';
+import { armDepth, armJoints, armPoint, armSpan, type Depth, DrawCtx, fillTorso, handDraw, handPose, ItemDef, legDepth, legJoints, legPoint, Side, torsoNeck, torsoPoly } from '../ctx';
+import { FEMALE_BASE_CLOTH } from '../femaleBaseArt';
 import { continuedTo, limbOnly, PaintedPiece, PieceJoint, segAngle, stampBent, stampPiece } from '../painted';
 import { add, along, ellipse, F_NO_EDGE, F_NO_OUTLINE, F_NO_TEXTURE, GRID, Layer, lerp, norm, PAD, PartId, partIndex, PARTS, Pen, perp, poly, RES, scale, seam, ShadeFn, sub, v, Vec } from '../raster';
 import { stampTemplate, TemplatePalette } from '../rotsprite';
@@ -588,7 +590,8 @@ export function highCollar(g: DrawCtx, hex: string, height = 3, width = 0.8): vo
 function TB(g: DrawCtx, x: number, y: number): Vec {
   const T = g.rig.T;
   const Lt = g.bp.torsoLen;
-  const dy = g.rig.neck.y - T(0.6, Lt).y;
+  const n = torsoNeck(g);
+  const dy = g.rig.neck.y - T(n.x, n.y).y;
   const k = Math.max(0, Math.min(1, (y - 5) / (Lt - 5)));
   return add(T(x, y), v(0, dy * k));
 }
@@ -657,7 +660,7 @@ function backX(g: DrawCtx, y: number): number {
     [
       [-0.8, -b.hipHalf * 0.9 - 0.4],
       [1.6, -b.hipHalf * 0.98 - 0.6],
-      [5.4, -b.waistHalf * 0.86],
+      [b.waistY ?? 5.4, -b.waistHalf * 0.86],
       [b.torsoLen - 5, -b.chestHalf * 0.86],
       [b.torsoLen - 1.2, -b.shoulderHalf * 0.86],
     ],
@@ -1471,6 +1474,17 @@ export const TOP_ITEMS: ItemDef[] = liftMain([
       founderArm(g, 'N', tint);
     },
   },
+  // The owner's sports top from his bare female body (docs/reference/female-base-owner-reference.jpg):
+  // his pixels on the chest (body.ts), in the colour picked. The body always wears it in his black.
+  {
+    id: 'top_sports_bra',
+    slot: 'top',
+    name: 'Sports Top',
+    desc: 'A fitted sports top with thin straps and a band under the bust.',
+    colors: [col('main', 'Cloth', FEMALE_BASE_CLOTH)],
+    bodies: ['female', 'slender'],
+    draw: (g, [c]) => drawBaseCloth(g, 'top', c),
+  },
 ]);
 
 // ---------------------------------------------------------------------------
@@ -1675,6 +1689,16 @@ export const BOTTOM_ITEMS: ItemDef[] = liftMain([
       };
       founderLegs(g, tint);
     },
+  },
+  // The owner's briefs from his bare female body: his pixels on the pelvis (body.ts), in the colour picked.
+  {
+    id: 'bottom_briefs',
+    slot: 'bottom',
+    name: 'Briefs',
+    desc: 'Fitted briefs cut high at the hips.',
+    colors: [col('main', 'Cloth', FEMALE_BASE_CLOTH)],
+    bodies: ['female', 'slender'],
+    draw: (g, [c]) => drawBaseCloth(g, 'bottom', c),
   },
 ]);
 

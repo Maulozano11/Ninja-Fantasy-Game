@@ -6,6 +6,48 @@ generators in `tools/world-sprites/` decode, so a normal build needs no image fi
 hand when a reference changes. Use `python3 -I`, and keep the references outside the repo's code
 folders.
 
+- `female-base-body-from-ref.py` (with `female_base_ref.py`): **the female body**, his bare female
+  body (`docs/reference/female-base-owner-reference.jpg`, 100x100 of his pixels at 20 picture pixels,
+  phase 0; his pixel (x, y) at our (x + 73, y + 120)) cut into pieces, one per bone: chest (the neck's
+  foot, shoulders, sports top), the neck above its foot (on the bone to the head), pelvis (belly, briefs), each upper arm, forearm, hand, thigh, shin and foot,
+  every pixel his (the regions are written row by row in the script). It reads his joints off the
+  picture (`JOINTS`; the female rig is fitted to them, `rig.ts` `BodyFit`), continues what he hides
+  from his own pixels (the neck under the head, the chest's near side under the arm, the belly under
+  the top, the thigh tops under the briefs, the far upper arm behind the chest), gives each lower piece
+  a round cap of the upper piece over the joint, and checks that the pieces put together at rest are
+  his picture pixel for pixel. It writes `src/sprite/femaleBaseArt.ts`; `--check <dir>` also writes
+  his picture beside the pieces put together and a map of the pieces.
+
+      python3 -I tools/refs/female-base-body-from-ref.py
+
+- `female-base-hair-from-ref.py`: the same woman's hair, his pixels, for the hair option 'Messy
+  Ponytail' (`items/hair.ts`): every non-skin pixel of his over the head, the lock before the near
+  cheek and the fringe over the far eye (not his near eye, his face's line or his ear), on our face
+  anchor where it sits at idle (his pixel (50, 19)), and his head above the eyes for trimming our
+  skull to it. It writes `src/sprite/items/baseHairArt.ts`.
+
+      python3 -I tools/refs/female-base-hair-from-ref.py
+
+- `female-body-from-ref.py`: his heroines' small hands, from his heroines drawn at our scale
+  (`docs/reference/{lyra,aurelia,saya}-game-scale-owner-reference.jpg`; the female body itself is
+  `female-base-body-from-ref.py` now, the hands here hold a weapon, point, open and cradle on it, and
+  the skin ramp here colours the female faces): his skin ramp, his hands
+  (Aurelia's near hand relaxed, Lyra's far hand, Lyra's near hand on her sword's grip, Saya's far
+  fist, each cut 1:1; the open, pointing and cradling hands, which he has not drawn at this size,
+  are his crystal-sword hands with their most repeated rows and columns left out) and Aurelia's
+  bare near shoulder. It writes `src/sprite/femaleBodyArt.ts`; `--show` prints every piece as text.
+  The female feet are not lifted here (he drew none bare): `src/sprite/ctx.ts` `shortFoot` makes
+  every foot template shorter for the female bodies' lower ankles.
+
+      python3 -I tools/refs/female-body-from-ref.py
+
+- `saya-game-scale-clean.py`: Saya at our game scale without her bugged swords and scabbard (the
+  owner: "quita lo que esta bugeado"): outside her and between her legs the weapon pixels go, over
+  her legs and hip her armour is continued with her own colours. A 100x100 PNG for comparisons and
+  for the Saya part jobs; her sword comes back from her big picture there.
+
+      python3 -I tools/refs/saya-game-scale-clean.py OUT.png [ZOOM.png]
+
 - `beasts-from-ref.py`: the phoenix and the raijū for `vfx_beasts`. It writes
   `tools/world-sprites/vfx-beasts-ref-fire.ts` and `vfx-beasts-ref-lightning.ts`.
 

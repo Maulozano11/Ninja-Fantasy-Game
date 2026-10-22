@@ -7,6 +7,7 @@ import { retintHex } from '../color';
 import { DrawCtx, FootArt, footDraw, ItemDef, legDepth, legJoints, legPoint, Side } from '../ctx';
 import type { BodyType } from '../types';
 import { continuedTo, limbOnly, type PaintedPiece, segAngle, stampPiece } from '../painted';
+import { ankleLiftOf } from '../rig';
 import { add, along, ellipse, GRID, norm, partIndex, Pen, RES, seam, sub, v, type Vec } from '../raster';
 import { across, crease, fpx, limb, limbR, stitch, stud, tube, wrapStripes } from './clothes';
 import { founderFootTurn, founderLegLen, founderLegOut, founderLegsStill } from './founderOut';
@@ -511,7 +512,8 @@ export const FEET_ITEMS: ItemDef[] = [
         const { knee, ankle } = legJoints(g.rig, s);
         lowerLegOff(g, s);
         const [dx, dy] = SABATON_SHIFT[s];
-        const at = add(ankle, v(dx / RES, dy / RES));
+        // A body standing on lower ankles (the female bodies' small feet) keeps his sabaton on the ground.
+        const at = add(ankle, v(dx / RES, dy / RES - ankleLiftOf(g.bp, s)));
         const shin = s === 'N' ? SABATON_SHIN_N : SABATON_SHIN_F;
         const foot = s === 'N' ? SABATON_FOOT_N : SABATON_FOOT_F;
         stampPiece(g, legDepth(s, 'feet'), shin, at, segAngle(knee, ankle), `shin${s}`, tint);

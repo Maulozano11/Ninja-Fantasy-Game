@@ -6,7 +6,7 @@ import { renderSprite } from './compose';
 import { throwRelease } from './grip';
 import { defaultAppearance } from './legacy';
 import { GRID, partIndex, RES } from './raster';
-import { COMBO_KICKS, COMBO_TURNED, drawRig, frameCount, POSE_FPS, rigPoseFor, THROW_RELEASE_FRAME } from './rig';
+import { BODY_PARAMS, COMBO_KICKS, COMBO_TURNED, drawRig, frameCount, POSE_FPS, rigPoseFor, THROW_RELEASE_FRAME } from './rig';
 import { SPRITE_POSES, type BodyType, type SpriteAppearance } from './types';
 
 const BODIES: BodyType[] = ['male', 'female', 'bulky', 'slender'];
@@ -75,13 +75,18 @@ describe('throw and pierce poses', () => {
         const a = drawRig(body, 'throw', f - 1);
         const b = drawRig(body, 'throw', f);
         assert.ok(Math.abs(b.lean - a.lean) <= 12, `${body} ${f}: lean ${a.lean} -> ${b.lean}`);
-        assert.ok(Math.hypot(b.head.x - a.head.x, b.head.y - a.head.y) <= 10, `${body} ${f}: the head moves (${a.head.x},${a.head.y}) -> (${b.head.x},${b.head.y})`);
+        // The same pitch carries the head further on a longer torso (the female bodies, the owner's
+        // heroines at our scale), so the step allowed grows with it.
+        const most = 10 * Math.max(1, BODY_PARAMS[body].torsoLen / BODY_PARAMS.male.torsoLen);
+        assert.ok(Math.hypot(b.head.x - a.head.x, b.head.y - a.head.y) <= most, `${body} ${f}: the head moves (${a.head.x},${a.head.y}) -> (${b.head.x},${b.head.y})`);
       }
     }
   });
 
   it('hangs the head ahead of the chest and below the shoulders at the release, like the reference', () => {
-    for (const body of BODIES) {
+    // The female bodies follow the owner's own repaint of this moment on his heroine (Lyra) instead: the
+    // head up on the neck at its length (femaleBase.test.ts checks them).
+    for (const body of BODIES.filter((b) => !BODY_PARAMS[b].fit)) {
       const r = drawRig(body, 'throw', THROW_RELEASE_FRAME);
       const below = (Math.atan2(r.head.y - r.neck.y, r.head.x - r.neck.x) * 180) / Math.PI;
       assert.ok(below > 20 && below < 45, `${body}: neck to head ${below.toFixed(1)} degrees below level (his 33)`);

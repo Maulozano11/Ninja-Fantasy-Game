@@ -236,20 +236,21 @@ describe("the owner's skin on the male bodies", () => {
 
   it('leaves the female bodies exactly as they were', () => {
     // The default look on the female and slender bodies, as the integration branch drew them before his
-    // male skin (421b9f6). A later change to the female art updates these with it.
+    // male skin (421b9f6). A later change to the female art updates these with it. (The sit is the owner's
+    // Roman sit for every body since 2026-10-22, rig.ts SIT: a new pose, the same female art.)
     const was: Record<string, string> = {
       'female idle 0': '4f66aa1be065dd83',
       'female attack 1': '1b4219cd3403ebe6',
       'female cast 0': '3d1a84bf30cbd4b5',
       'female run 1': '88ab786d1622e6c8',
       'female downed 0': '3d024464cbf49c72',
-      'female sit 0': '577f43f888f362dd',
+      'female sit 0': '985afa66a28330f2',
       'slender idle 0': 'e0bc32b6e79f2997',
       'slender attack 1': '0003aebf087158d8',
       'slender cast 0': '9b90c2c39509bd0d',
       'slender run 1': 'b80b3518c0f108b2',
       'slender downed 0': 'e66bae752441b118',
-      'slender sit 0': '344cf8732c7e9051',
+      'slender sit 0': 'b028f3228af89ffd',
     };
     for (const [key, sum] of Object.entries(was)) {
       const [body, pose, frame] = key.split(' ');

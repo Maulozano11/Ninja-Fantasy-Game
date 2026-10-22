@@ -144,3 +144,11 @@ folders.
       python3 -I tools/refs/roman-head-from-ref.py docs/reference/roman-owner-reference.jpg <out> src/sprite/romanHeadArt.ts
       python3 -I tools/refs/roman-eyes-from-ref.py docs/reference/roman-owner-reference.jpg <out> src/sprite/romanEyeArt.ts
       python3 -I tools/refs/roman-test-pixels-from-ref.py docs/reference/roman-owner-reference.jpg src/sprite/romanRefPixels.ts
+- `roman-sit-rock-from-ref.py`: the grey rock from the owner's Roman sit (`docs/reference/roman-sit-owner-reference.jpg`,
+  2000/240 picture px per pixel of his) as a seat prop (`src/sprite/seatBoulderArt.ts`, `src/sprite/seats.ts`). His
+  figure there is 80% of ours; he chose to build the sit at our scale ("romano sentado a"), so the rock is scaled by
+  1.25 (nearest neighbour) with it. Every cell one of his four frames shows is his; what his figure hides is his
+  front face 16 (else 8) rows below, else his nearest rock pixel, his line along the new edges. The sit pose
+  (`rig.ts` SIT) takes his joints off the same frames, scaled the same way.
+
+      python3 -I tools/refs/roman-sit-rock-from-ref.py [src/sprite/seatBoulderArt.ts] [study.png]

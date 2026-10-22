@@ -43,6 +43,8 @@ import { FOUNDER_CHEST, FOUNDER_CUIRASS_KIND, FOUNDER_SASH, FOUNDER_STEEL, FOUND
 import { FOUNDER_SKIRT, FOUNDER_SKIRT_KIND, FOUNDER_SKIRT_LEATHER, FOUNDER_SKIRT_STUD, FOUNDER_SKIRT_TUNIC } from './founderSkirtArt';
 import { isFemaleBody, type BodyType } from '../types';
 import { SAYA_SHADE_ARMOR } from './sayaUpper';
+import { ARMOR_DAWN_VESTMENT } from './aureliaVestment';
+import { SKIRT_DAWN_PANELS } from './aureliaLower';
 
 
 type Kind = 'cloth' | 'leather' | 'metal';
@@ -2911,6 +2913,8 @@ export const ARMOR_ITEMS: ItemDef[] = [
   },
   // Saya's ninja top and arm guards, from the owner's Saya picture (sayaUpper.ts)
   SAYA_SHADE_ARMOR,
+  // The owner's Aurelia's dress bodice and sleeves (2026-10-21), her picture at our scale
+  ARMOR_DAWN_VESTMENT,
 ];
 
 // ---------------------------------------------------------------------------
@@ -3113,4 +3117,6 @@ export const SKIRT_ITEMS: ItemDef[] = [
   },
   // Saya's pleated skirt, from the owner's Saya picture (sayaLower.ts)
   SHADE_PLEATS,
+  // Aurelia, the owner's fourth heroine (aureliaLower.ts)
+  SKIRT_DAWN_PANELS,
 ];

@@ -53,11 +53,17 @@ export interface CastChoice {
   jutsu?: Record<string, CastStyle>;
 }
 
-/** The eye options; valiant is the owner's own eyes from his Aiden picture, in his pixels; shade is his Saya's, in her pixels at our scale. */
-export type EyeShape = 'standard' | 'sharp' | 'round' | 'calm' | 'fierce' | 'bright' | 'piercing' | 'valiant' | 'shade';
+/** The eye options; valiant is the owner's own eyes from his Aiden picture, in his pixels; shade is his Saya's and dawn his Aurelia's, in their pixels at our scale. */
+export type EyeShape = 'standard' | 'sharp' | 'round' | 'calm' | 'fierce' | 'bright' | 'piercing' | 'valiant' | 'shade' | 'dawn';
 
 /** Back of the neck behind the jaw: slender (default) or thick. */
 export type NeckType = 'slim' | 'strong';
+
+/**
+ * Hand size on the female bodies: the body's own (default), or small: his Aurelia's smaller hands in his
+ * pixels (body.ts smallHand). Ignored on the male and bulky bodies.
+ */
+export type HandSize = 'normal' | 'small';
 
 /**
  * Near-side cheek and jaw: V-line (default), fuller, or a strong flat jaw; or the owner's own head
@@ -151,6 +157,8 @@ export interface SpriteAppearance {
   neck?: NeckType;
   /** Missing on older saves; treated as 'tapered'. */
   faceShape?: FaceShape;
+  /** Missing on older saves; treated as 'normal'. */
+  hands?: HandSize;
   /** How jutsus are cast. Missing on older saves; treated as 'runes'. */
   cast?: CastChoice;
   slots: Partial<Record<SlotId, ItemChoice>>;

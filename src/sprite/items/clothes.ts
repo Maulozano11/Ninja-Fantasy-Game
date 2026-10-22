@@ -21,6 +21,7 @@ import { FOUNDER_ARM_F, FOUNDER_ARM_N, FOUNDER_ARM_SKIN, FOUNDER_HAND_F, FOUNDER
 import { FOUNDER_THIGH_F, FOUNDER_THIGH_N, FOUNDER_TROUSERS, FOUNDER_TROUSERS_KIND, FOUNDER_TROUSERS_STUD } from './founderTrousersArt';
 import { STEEL_BRACER, STEEL_BRACER_F, STEEL_BRACER_KIND, STEEL_BRACER_N } from './steelBracersArt';
 import { SAYA_SHADE_GLOVES } from './sayaUpper';
+import { WAIST_DAWN_SASH } from './aureliaLower';
 
 type Kind = 'cloth' | 'leather' | 'metal';
 const col = (key: string, label: string, def: string, kind: Kind = 'cloth') => ({ key, label, default: def, kind });
@@ -1937,6 +1938,8 @@ export const WAIST_ITEMS: ItemDef[] = liftMain([
   },
   // Saya's belts, pouch and scabbard, from the owner's Saya picture (sayaLower.ts)
   SHADE_BELTS_ITEM,
+  // Aurelia, the owner's fourth heroine (aureliaLower.ts)
+  WAIST_DAWN_SASH,
 ]);
 
 // ---------------------------------------------------------------------------

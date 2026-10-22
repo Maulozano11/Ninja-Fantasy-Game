@@ -12,6 +12,8 @@ import { FEMALE_SHOULDER_N } from './femaleBodyArt';
 import { type PaintedEye, VALIANT_BROW_HAIR, VALIANT_EYE_COLORS, VALIANT_EYES, VALIANT_IRIS } from './eyeArt';
 import { VALIANT_HEAD, VALIANT_SKIN } from './headArt';
 import { FOUNDER_FACE_KIND, FOUNDER_HEAD, FOUNDER_IRIS, FOUNDER_SKIN } from './founderFaceArt';
+import { DAWN_HAND_FIST, DAWN_HAND_LINE, DAWN_HAND_NEAR, DAWN_HAND_SKIN } from './aureliaHandsArt';
+import { DAWN_EYE_COLORS, DAWN_EYES, DAWN_IRIS } from './aureliaEyeArt';
 import { segAngle, stampPiece } from './painted';
 import { rotateTemplate, stampTemplate, type TemplatePalette } from './rotsprite';
 import { ballShade, capsule, ellipse, F_NO_OUTLINE, F_NO_TEXTURE, GRID, Layer, PartId, Pen, poly, RES, seam, v, Vec } from './raster';
@@ -206,7 +208,8 @@ function drawBaseBody(g: DrawCtx): void {
       stampBase(g, depth, forePiece, on, fore, s === 'N' ? 'forearmN' : 'forearmF', undefined, undefined, false, true);
     }
     const kind = handPose(g, s).kind;
-    if (kind === 'fist' || kind === 'relaxed') stampBase(g, depth, s === 'N' ? P.handN : P.handF, j.wrist, fore, s === 'N' ? 'handN' : 'handF');
+    if ((kind === 'fist' || kind === 'relaxed') && g.look.hands === 'small') smallHand(g, depth, s, kind, j.wrist, fore);
+    else if (kind === 'fist' || kind === 'relaxed') stampBase(g, depth, s === 'N' ? P.handN : P.handF, j.wrist, fore, s === 'N' ? 'handN' : 'handF');
     else {
       // his wrist under the small hand, so it stays on the forearm
       stampBase(g, depth, s === 'N' ? P.wristN : P.wristF, j.wrist, fore, s === 'N' ? 'handN' : 'handF');
@@ -237,6 +240,31 @@ function drawBaseBody(g: DrawCtx): void {
   stampBase(g, 'torso.body', P.neck, r.neck, segAngle(r.neck, r.head), 'torso');
   drawHead(g);
   arm('N');
+}
+
+/**
+ * The 'small' hands (appearance `hands`): his Aurelia's (aureliaHandsArt.ts, by
+ * tools/refs/aurelia-hands-from-ref.py), smaller than his bare woman's, in place of his open hand and fist:
+ * her open near hand hangs from the near wrist, her fist closes either arm's. His skin follows the body's
+ * skin, his line stays his; on her at rest every pixel is his, where he drew it.
+ */
+function smallHand(g: DrawCtx, depth: Depth, s: Side, kind: 'fist' | 'relaxed', wrist: Vec, deg: number): void {
+  const piece = s === 'N' && kind === 'relaxed' ? DAWN_HAND_NEAR : DAWN_HAND_FIST;
+  const L = g.L(depth);
+  const part: PartId = s === 'N' ? 'handN' : 'handF';
+  const line = g.m(DAWN_HAND_LINE, 'flat');
+  const mat = new Map(Object.entries(piece.colors).map(([ch, hex]) => [ch, hex === DAWN_HAND_LINE ? line : g.m(skinTone(hex, g.look.skin, DAWN_HAND_SKIN), 'flat')]));
+  const ax = Math.floor(wrist.x * RES);
+  const ay = Math.floor(wrist.y * RES);
+  const cells = rotateTemplate(piece, deg - piece.angle).filter((q) => mat.has(q.ch));
+  const at = new Set(cells.map((q) => (ay + q.dy) * GRID + ax + q.dx));
+  for (const q of cells) {
+    const x = ax + q.dx;
+    const y = ay + q.dy;
+    // turned, a pixel of his skin left on the hand's edge (where his cuff closed it at rest) is his line
+    const open = g.rig.pose !== 'idle' && [-1, 1, -GRID, GRID].some((d) => !at.has(y * GRID + x + d));
+    L.set(x, y, open ? line : mat.get(q.ch)!, 3, part, F_NO_OUTLINE | F_NO_TEXTURE);
+  }
 }
 
 /** Torso-local coordinates of a design point: x along the shoulders (toward the face), y up from the pelvis. */
@@ -572,7 +600,7 @@ const paintedHead = (g: DrawCtx): boolean => g.look.faceShape === 'valiant' || g
  * skin lands exactly on the character's (the rest of the body is drawn in that skin), his shadows
  * and black line staying as far below it and his lights as far above. In his own skin, his colour.
  */
-function skinTone(hex: string, skin: string, base = VALIANT_SKIN): string {
+export function skinTone(hex: string, skin: string, base = VALIANT_SKIN): string {
   if (skin.toLowerCase() === base) return hex;
   const [h, s, l] = rgbToHsl(...hexToRgb(hex));
   const [h0, s0, l0] = rgbToHsl(...hexToRgb(base));
@@ -665,6 +693,9 @@ const EYE_ROWS: Record<string, { near: string[]; far: string[] }> = {
   // The owner's Saya's eyes (src/sprite/sayaEyeArt.ts, from his picture at our scale) on our own
   // rows: her black lash turning down the outer corner, her whites and two blues under it.
   shade: SAYA_EYE_CELLS.open,
+  // Aurelia's eyes from the owner's game-scale picture (src/sprite/aureliaEyeArt.ts), his pixels on our
+  // own cells and rows: his navy lash with its brown outer tip, his whites, his blue over light blues.
+  dawn: { near: DAWN_EYES.open.near.letters, far: DAWN_EYES.open.far.letters },
 };
 
 /** Closed eyes (knocked out): each eye a dark lid line across its middle row. */
@@ -808,7 +839,10 @@ function drawFace(g: DrawCtx): void {
   // Saya's eyes ('shade'): her pixels in each lid state, on the template's eye cells.
   const lid = closed ? 'closed' : lowered ? 'lowered' : 'open';
   const saya = shape === 'shade' ? SAYA_EYES[lid] : undefined;
-  const eyes = his ? { near: his.near.letters, far: his.far.letters } : saya ? SAYA_EYE_CELLS[lid] : closed ? CLOSED_EYES : lowered ? EYE_ROWS.calm : EYE_ROWS[shape] || EYE_ROWS.standard;
+  // Aurelia's eyes ('dawn'): her pixels in each lid state, on our own eye cells and rows.
+  const hers = shape === 'dawn' ? DAWN_EYES[lid] : undefined;
+  const painted = his || hers;
+  const eyes = painted ? { near: painted.near.letters, far: painted.far.letters } : saya ? SAYA_EYE_CELLS[lid] : closed ? CLOSED_EYES : lowered ? EYE_ROWS.calm : EYE_ROWS[shape] || EYE_ROWS.standard;
   const main = (FACE_MAIN[isFemaleBody(g.rig.body) ? 'female' : g.rig.body] || FACE_MAIN.male).map((row, r) => eyeRow(row, r, eyes));
 
   const put = (x: number, y: number, ch: string) => {
@@ -885,6 +919,18 @@ function drawFace(g: DrawCtx): void {
     stamp(saya.near, ex);
     stamp(saya.far, fx);
   }
+  if (hers) {
+    // Her pixels over the template's eye cells: her iris moves the way the eye colour moves her mid
+    // blue (pale special eyes take our pale tones); her lash, whites and cream stay hers.
+    const tone = (letter: string, hex: string) =>
+      letter === 'd' || letter === 'i' ? (pale ? ir[letter === 'd' ? 3 : 4] : retintHex(hex, DAWN_IRIS, iris)) : hex;
+    const stamp = (eye: PaintedEye, x0: number) =>
+      eye.rows.forEach((row, r) => {
+        for (let c = 0; c < row.length; c++) if (row[c] !== '.') L.set(x0 + c, ny + r, flat(tone(eye.letters[r][c], DAWN_EYE_COLORS[row[c]])), 3, 'head', F_NO_OUTLINE);
+      });
+    stamp(hers.near, ex);
+    stamp(hers.far, fx);
+  }
 
   // Overlays drawn on the face layer (no outline, above the skin). His eyes open a row lower than
   // ours (his lash line is the template's second row): what sits on the open eye follows them.
@@ -896,8 +942,9 @@ function drawFace(g: DrawCtx): void {
     // the lashes of the closed or lowered lids
     set(ex - 1, ny + 1, EYELINE);
     set(ex - 1, ny + 2, EYELINE);
-  } else if (female) {
-    // longer lashes at the outer corners
+  } else if (female && !hers) {
+    // longer lashes at the outer corners (Aurelia's open lashes bring their own: his brown tip runs
+    // down the outer corner and the far lash stops at the face's edge)
     set(ex - 1, lash - 1, EYELINE);
     set(ex - 1, lash, EYELINE);
     set(fx + 3, lash, EYELINE);

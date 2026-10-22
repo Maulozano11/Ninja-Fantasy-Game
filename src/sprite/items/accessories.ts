@@ -12,6 +12,8 @@ import { ICE_SWORD, ICE_SWORD_BLADE, ICE_SWORD_KIND } from './iceSwordArt';
 import { SAYA_SWORD_BLADE, SAYA_SWORD_GUARD } from './sayaSwordArt';
 import { drawSayaSaber } from './sayaSword';
 import { sayaGrip } from './sayaUpper';
+import { AURELIA_STAFF_GOLD, AURELIA_STAFF_ORB, DAWN_STAFF } from './aureliaStaffArt';
+import { dawnStaffInFarHand, dawnStaffRest, drawDawnFarFist, drawDawnStaff } from './aureliaStaff';
 
 /** The angle Saya's saber rides on her back (see held_shade_saber). */
 const SAYA_STOW = 72;
@@ -436,6 +438,23 @@ export const HELD_ITEMS: ItemDef[] = [
       if (handsBusy(g)) drawNaginata(g, { ...gripOf(g, backAngle(g, -62)), hand: backGrip(g, -62), room: 99 }, c, 'backGear');
       else if (handsLimp(g)) drawNaginata(g, { ...gripOf(g, -88), hand: droppedGrip(g, 0.6, 0.8), room: 99 }, c);
       else if (!handsReleased(g)) drawNaginata(g, { ...gripOf(g, poleAngle(g)), hand: gripPoint(g) }, c);
+    },
+  },
+  {
+    id: 'held_dawn_staff',
+    slot: 'held',
+    name: 'Dawn Staff',
+    desc: 'A short gold staff with winged arms round a glowing pearl orb that sheds golden sparkles: the owner drew it for Aurelia.',
+    colors: [col('gold', 'Gold', AURELIA_STAFF_GOLD, 'metal'), col('orb', 'Orb', AURELIA_STAFF_ORB, 'glow')],
+    draw: (g, [gold, orb]) => {
+      if (handsBusy(g)) drawDawnStaff(g, 'backGear', backGrip(g, -62), -62, gold, orb, false);
+      else if (handsLimp(g)) drawDawnStaff(g, 'nearArm.held', droppedGrip(g, 1.5, 4.5), 88, gold, orb, false);
+      // At rest it hangs from her far fist at his angle, every pixel his; otherwise the near fist holds it like a pole.
+      else if (dawnStaffInFarHand(g)) {
+        drawDawnStaff(g, 'farArm.held', dawnStaffRest(g), DAWN_STAFF.angle, gold, orb, true);
+        drawDawnFarFist(g);
+      }
+      else if (!handsReleased(g)) drawDawnStaff(g, 'nearArm.held', gripPoint(g), poleAngle(g), gold, orb, true);
     },
   },
   {

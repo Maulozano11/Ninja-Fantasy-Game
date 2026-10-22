@@ -9,6 +9,7 @@ import type { BodyType } from '../types';
 import { continuedTo, limbOnly, type PaintedPiece, segAngle, stampPiece } from '../painted';
 import { ankleLiftOf } from '../rig';
 import { add, along, ellipse, GRID, norm, partIndex, Pen, RES, seam, sub, v, type Vec } from '../raster';
+import { FEET_DAWN_BOOTS } from './aureliaBoots';
 import { across, crease, fpx, limb, limbR, stitch, stud, tube, wrapStripes } from './clothes';
 import { founderFootTurn, founderLegLen, founderLegOut, founderLegsStill } from './founderOut';
 import { FOUNDER_SANDAL_FOOT_F, FOUNDER_SANDAL_FOOT_N, FOUNDER_SANDAL_KIND, FOUNDER_SANDAL_LEATHER, FOUNDER_SANDAL_SHIN_F, FOUNDER_SANDAL_SHIN_N, FOUNDER_SANDAL_SKIN } from './founderSandalsArt';
@@ -572,4 +573,5 @@ export const FEET_ITEMS: ItemDef[] = [
     },
   },
   SHADE_WRAPS,
+  FEET_DAWN_BOOTS,
 ];

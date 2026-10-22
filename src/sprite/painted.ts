@@ -127,7 +127,7 @@ const BEND_STEP = 5;
  * his limb turned there, never a hole or another limb. A copy's inside covers his black line where the
  * limb bends (no line crosses the joint); where it would lie bare (outside the piece and outside
  * `covered`, the pieces drawn over it), it takes his line. With no bend it is stampPiece given `line`. `line`
- * says which of his colours are his black line.
+ * says which of his colours are his black line. `opts.lined: false` turns the piece without rotateLined.
  */
 export function stampBent(
   g: DrawCtx,
@@ -140,15 +140,18 @@ export function stampBent(
   line: (hex: string) => boolean,
   color?: (ch: string, hex: string) => string,
   covered?: (x: number, y: number) => boolean,
+  opts: { lined?: boolean } = {},
 ): void {
   const px = new Map<number, { ch: string; added: boolean }>();
   const isLine = (ch: string) => line(piece.colors[ch]);
+  const lined = opts.lined ?? true;
   const put = (t: PixelTemplate, a: Vec, d: number, first: boolean) => {
     const ax = Math.floor(a.x * RES);
     const ay = Math.floor(a.y * RES);
     // His line kept whole as the piece turns (rotateLined): what it puts back goes only where nothing is.
+    // Without `lined` (Aurelia's legs, built and checked on the plain turn) the piece turns as RotSprite gives it.
     const own = rotateTemplate(t, d - piece.angle).length;
-    rotateLined(t, d - piece.angle, isLine).forEach((p, k) => {
+    (lined ? rotateLined(t, d - piece.angle, isLine) : rotateTemplate(t, d - piece.angle)).forEach((p, k) => {
       const x = ax + p.dx;
       const y = ay + p.dy;
       if (x < 0 || y < 0 || x >= GRID || y >= GRID) return;

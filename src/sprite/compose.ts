@@ -6,11 +6,13 @@ import { hexToRgb } from './color';
 import { Depth, DEPTHS, DrawCtx, ItemDef, NO_OUTLINE_DEPTHS, resolveParts } from './ctx';
 import { closePinholes } from './holes';
 import { clipStowed, drawThrowKunai } from './items/accessories';
+import { CAPE_DEPTHS } from './items/capes';
 import { drawHeadband } from './items/headband';
 import { add, F_NO_OUTLINE, GRID, Layer, MaterialTable, norm, PAD, PartId, partIndex, PARTS, perp, RES, scale, sub, v, Vec } from './raster';
 import { drawRig, Lay, layRig, Rig, rigPoseFor, turnPoint, turnRig } from './rig';
 import { drawCampFx } from './campfx';
 import { drawCastFx } from './castfx';
+import { sealCloth } from './seal';
 import { applyTexture, frayHair } from './texture';
 import type { EyeSpecial, PixelEdit, SlotId, SpriteAppearance, SpritePose } from './types';
 
@@ -152,6 +154,9 @@ function drawPitchedCape(g: DrawCtx, layers: Map<Depth, Layer>, draw: (g: DrawCt
     }
   }
   capeBehindBack(g.L('capeBack'), rig, g.mats);
+  // Turning the cloth over and cutting it behind the back leave cracks along its edges, between its
+  // pieces and against what the cape puts on the pitched shoulders: close them (seal.ts).
+  sealCloth(g, CAPE_DEPTHS, true);
 }
 
 /**

@@ -9,11 +9,11 @@ import * as kit from './items/bracersSandalsArt';
 import { defaultAppearance } from './legacy';
 import { MALE_SKIN_BASE } from './maleSkinArt';
 import type { PaintedPiece } from './painted';
-import { GRID, RES } from './raster';
+import { GRID, Layer, partIndex, RES } from './raster';
 import { ROMAN_LEG_PIXELS, ROMAN_OFFSET } from './romanRefPixels';
 import { buildRig, drawRig, frameCount, GROUND, rigPoseFor } from './rig';
 import type { TemplatePalette } from './rotsprite';
-import { clothHole, drapeLayer } from './items/armor';
+import { clothHole, drapeLayer, skirtHoles } from './items/armor';
 import { CAMP_POSES, MOVE_POSES, SPRITE_POSES, type BodyType, type SpriteAppearance, type SpritePose } from './types';
 
 const look = (body: BodyType, drapes = 'on', parts: Partial<Record<'armor' | 'skirt' | 'hands' | 'feet', boolean>> = {}): SpriteAppearance => {
@@ -283,6 +283,48 @@ describe('the Roman set', () => {
           assert.ok(m.far <= rest.far + 1, `${body} ${pose} ${f}: drape ${m.far.toFixed(1)} px from the legs (at rest ${rest.far.toFixed(1)})`);
           assert.ok(m.behind <= rest.behind + 1, `${body} ${pose} ${f}: drape ${m.behind.toFixed(1)} px behind the legs (at rest ${rest.behind.toFixed(1)})`);
           assert.equal(m.holes, 0, `${body} ${pose} ${f}: ${m.holes} holes in the drape`);
+        }
+      }
+    }
+  });
+
+  it('shows his drape behind his fist, where the owner marked the gap beside our fist', () => {
+    // His fist hid the cloth above the drape's top line beside the strips (the first rows of his drape):
+    // the script continues it there, and our fist, a few pixels left of his, leaves it in sight.
+    const f = renderSprite(look('male'), 'idle', 0);
+    const [ox, oy] = skirt.PTERUGES_REST.PTERUGES_DRAPE;
+    let cells = 0;
+    let open = 0;
+    skirt.PTERUGES_DRAPE.rows.slice(0, skirt.PTERUGES_DRAPE_FIST_ROWS).forEach((row, j) => {
+      for (let i = 0; i < row.length; i++) {
+        if (row[i] === '.') continue;
+        cells++;
+        if (!opaque(f.rgba, (oy + j) * GRID + ox + i)) open++;
+      }
+    });
+    assert.ok(cells >= 20, `${cells} cells of his drape behind his fist`);
+    assert.equal(open, 0, `${open} pixels of background beside the fist`);
+  });
+
+  it('never shows the background through the skirt, in any pose or frame of any body', () => {
+    // No hole within the drape's outline, no pinhole or nick (a cell with the skirt on three sides) beside
+    // the skirt, and no white in it: the owner's "white dead pixels". The skirt is what the pelvis wears.
+    const pal: TemplatePalette = {};
+    Object.keys(skirt.PTERUGES_DRAPE.colors).forEach((ch, k) => (pal[ch] = [k, 3]));
+    const pelvis = partIndex('pelvis');
+    const white = (rgba: Uint8ClampedArray, i: number) => [0, 1, 2].every((k) => rgba[i * 4 + k] >= 200);
+    for (const body of ['male', 'bulky', 'slender'] as BodyType[]) {
+      for (const pose of ALL_POSES) {
+        for (let f = 0; f < frameCount(rigPoseFor(pose)); f++) {
+          const fr = renderSprite(look(body), pose, f);
+          // knocked out the frame is laid down: only the pinholes and nicks, which lying does not change
+          const drape = pose === 'downed' ? new Layer() : drapeLayer(fr.rig, pal);
+          const holes = skirtHoles((i) => opaque(fr.rgba, i), drape, (i) => fr.part[i] === pelvis);
+          const at = holes.slice(0, 6).map((i) => `${i % GRID},${Math.floor(i / GRID)}`);
+          assert.equal(holes.length, 0, `${body} ${pose} ${f}: background through the skirt at ${at.join(' ')}`);
+          let whites = 0;
+          for (let i = 0; i < GRID * GRID; i++) if (opaque(fr.rgba, i) && fr.part[i] === pelvis && white(fr.rgba, i)) whites++;
+          assert.equal(whites, 0, `${body} ${pose} ${f}: ${whites} white pixels in the skirt`);
         }
       }
     }

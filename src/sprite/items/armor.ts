@@ -14,7 +14,7 @@
 // crests, never stripe patterns.
 
 import { hexToRgb, retintHex } from '../color';
-import { armDepth, armJoints, Depth, DrawCtx, ItemDef, legDepth, legJoints, Side, torsoPoly } from '../ctx';
+import { armDepth, armJoints, Depth, DEPTHS, DrawCtx, ItemDef, legDepth, legJoints, Side, torsoPoly } from '../ctx';
 import { PaintedPiece, segAngle, stampPiece } from '../painted';
 import { add, capsule, ellipse, F_NO_OUTLINE, F_NO_TEXTURE, fine, GRID, Layer, lerp, norm, partIndex, PartId, Pen, perp, poly, RES, scale, sub, v, Vec } from '../raster';
 import { drawRig, GROUND, Rig, turnPoint } from '../rig';
@@ -36,7 +36,7 @@ import {
   PLATE_WAIST,
 } from './crimsonPlateArt';
 import { CUIRASS_BRONZE, CUIRASS_CHEST, CUIRASS_GUARD_F, CUIRASS_GUARD_N, CUIRASS_KIND, CUIRASS_LEATHER } from './bronzeCuirassArt';
-import { PTERUGES_DRAPE, PTERUGES_FRONT, PTERUGES_KIND, PTERUGES_LEATHER, PTERUGES_REST, PTERUGES_STUD, PTERUGES_TUNIC } from './pterugesArt';
+import { PTERUGES_DRAPE, PTERUGES_DRAPE_FIST_ROWS, PTERUGES_FRONT, PTERUGES_KIND, PTERUGES_LEATHER, PTERUGES_REST, PTERUGES_STUD, PTERUGES_TUNIC } from './pterugesArt';
 import { stampTemplate, type TemplatePalette } from '../rotsprite';
 import { isFemaleBody, type BodyType } from '../types';
 
@@ -1385,6 +1385,8 @@ export function drapeStamps(r: Rig): DrapeStamp[] {
   };
   const out: DrapeStamp[] = [];
   const last = P.rows.length - 1;
+  // knocked out, the cloth his fist hides stays under the body (it would stand up off the hip)
+  const top = r.lay ? PTERUGES_DRAPE_FIST_ROWS : 0;
   const panel = (x0: number, x1: number, on: Side | 'both', turn: number, sweep = false): void => {
     // the panel turns about its hip (between the legs, about the pelvis), at our hip in this pose: his
     // hip's cell from our pelvis's, moved as far as our hip has moved about the pelvis since rest (so on
@@ -1407,7 +1409,7 @@ export function drapeStamps(r: Rig): DrapeStamp[] {
     const [c0, c1] = [x0 - DRAPE_SEAM, x1 + DRAPE_SEAM];
     for (let k = 1; k < n; k++) out.push({ piece: drapeCut(c0, c1, knee - DRAPE_FOLD, knee + DRAPE_FOLD - 1, hinge), at: hingeAt, deg: P.angle + turn + (fold * k) / n, on, name: sweep ? 'sweep' : 'fold' });
     out.push({ piece: drapeCut(c0, c1, knee - 1, last, hinge), at: hingeAt, deg: P.angle + hang, on, name: sweep ? 'sweep' : 'lower' });
-    out.push({ piece: drapeCut(c0, c1, 0, knee - 1, pivot), at: v((at[0] + 0.5) / RES, (at[1] + 0.5) / RES), deg: P.angle + turn, on, name: sweep ? 'sweep' : 'upper' });
+    out.push({ piece: drapeCut(c0, c1, top, knee - 1, pivot), at: v((at[0] + 0.5) / RES, (at[1] + 0.5) / RES), deg: P.angle + turn, on, name: sweep ? 'sweep' : 'upper' });
   };
   // The legs apart, the cloth between them is swept from one thigh's turn to the other's behind the
   // others, so it spans the gap between them as a skirt does (no gap opens down the seams).
@@ -1445,6 +1447,166 @@ export function drapeLayer(r: Rig, pal: TemplatePalette): Layer {
   return L;
 }
 
+/** A hole of at most this many cells near the skirt (SKIRT_NEAR) is a pinhole, closed wherever it is. */
+const PINHOLE = 4;
+const SKIRT_NEAR = 2;
+/** How many columns either way the drape's top reaches over a hole beside it. */
+const DRAPE_REACH = 2;
+
+/**
+ * Where the background would show through the skirt: the cells nothing covers (`covered`) that cannot be
+ * reached from outside the figure and lie within the drape's outline (its cloth on both sides in their row,
+ * or its top above them in their column or the columns beside), or are left in a pinhole near the skirt
+ * (`skirt`), and the nicks in its edge (a cell open to the outside with the skirt on three sides). Given the arms (`limbs`), a walled-in patch beside the skirt that no arm bounds (between the
+ * strips, the legs and the drape) is closed whole, and one beside a hand below the hand's top, where his
+ * fist hides the drape; a gap between an arm and the body above that stays open, as in his picture.
+ */
+export function skirtHoles(
+  covered: (i: number) => boolean,
+  drape: Layer,
+  skirt: (i: number) => boolean,
+  limbs?: { arm: (i: number) => boolean; hand: (i: number) => boolean },
+): number[] {
+  const N = GRID * GRID;
+  const outside = new Uint8Array(N);
+  const stack: number[] = [];
+  const reach = (i: number) => {
+    if (outside[i] || covered(i)) return;
+    outside[i] = 1;
+    stack.push(i);
+  };
+  const flood = (go: (i: number) => void) => {
+    while (stack.length) {
+      const i = stack.pop()!;
+      const x = i % GRID;
+      if (x > 0) go(i - 1);
+      if (x < GRID - 1) go(i + 1);
+      if (i >= GRID) go(i - GRID);
+      if (i < N - GRID) go(i + GRID);
+    }
+  };
+  const around = (j: number, r: number, f: (i: number) => boolean) => {
+    const x = j % GRID;
+    const y = (j / GRID) | 0;
+    for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) if (x + dx >= 0 && x + dx < GRID && y + dy >= 0 && y + dy < GRID && f(j + dy * GRID + dx)) return true;
+    return false;
+  };
+  for (let k = 0; k < GRID; k++) [k, N - GRID + k, k * GRID, k * GRID + GRID - 1].forEach(reach);
+  flood(reach);
+  const holes: number[] = [];
+  for (let i = 0; i < N; i++) {
+    if (!outside[i]) continue;
+    const x = i % GRID;
+    const y = (i / GRID) | 0;
+    const sides = [x > 0 ? i - 1 : -1, x < GRID - 1 ? i + 1 : -1, y > 0 ? i - GRID : -1, y < GRID - 1 ? i + GRID : -1].filter((j) => j >= 0 && covered(j));
+    if (sides.length >= 3 && sides.every(skirt)) holes.push(i);
+  }
+  // the drape's extent: each row's first and last cell, each column's first
+  const left = new Int16Array(GRID).fill(GRID);
+  const right = new Int16Array(GRID).fill(-1);
+  const top = new Int16Array(GRID).fill(GRID);
+  for (let i = 0; i < N; i++) {
+    if (drape.mat[i] < 0) continue;
+    const x = i % GRID;
+    const y = (i / GRID) | 0;
+    left[y] = Math.min(left[y], x);
+    right[y] = Math.max(right[y], x);
+    top[x] = Math.min(top[x], y);
+  }
+  const under = (x: number, y: number) => {
+    for (let k = Math.max(0, x - DRAPE_REACH); k <= Math.min(GRID - 1, x + DRAPE_REACH); k++) if (y >= top[k]) return true;
+    return false;
+  };
+  const done = new Uint8Array(N);
+  for (let i = 0; i < N; i++) {
+    if (done[i] || outside[i] || covered(i)) continue;
+    // one walled-in patch at a time
+    const patch: number[] = [];
+    const take = (j: number) => {
+      if (done[j] || outside[j] || covered(j)) return;
+      done[j] = 1;
+      patch.push(j);
+      stack.push(j);
+    };
+    take(i);
+    flood(take);
+    const near = patch.some((j) => around(j, SKIRT_NEAR, skirt));
+    const beside = patch.some((j) => around(j, 1, skirt));
+    const whole = !!limbs && beside && !patch.some((j) => around(j, 1, limbs.arm));
+    // the top of the hand beside the patch
+    let hand = GRID;
+    if (limbs && beside) {
+      for (const j of patch) {
+        const x = j % GRID;
+        const y = (j / GRID) | 0;
+        for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if (x + dx >= 0 && x + dx < GRID && y + dy >= 0 && y + dy < GRID && limbs.hand(j + dy * GRID + dx)) hand = Math.min(hand, y + dy);
+      }
+    }
+    const rest: number[] = [];
+    for (const j of patch) {
+      const x = j % GRID;
+      const y = (j / GRID) | 0;
+      (whole || y > hand || (x > left[y] && x < right[y]) || under(x, y) ? holes : rest).push(j);
+    }
+    if (near && rest.length <= PINHOLE) holes.push(...rest);
+  }
+  return holes;
+}
+
+/**
+ * Closes the skirt's holes (skirtHoles) once the whole figure is drawn: each takes the nearest cloth of the
+ * drape straight below, above or beside it (his line where there is none), so his cloth goes on behind
+ * whatever hides it, as his drape goes on behind his fist.
+ */
+function closeSkirtHoles(L: Layer, drape: Layer, lines: Set<number>, line: number, layers: ReadonlyMap<Depth, Layer>): void {
+  // what the figure shows at each cell: covered, and by the skirt (his drape and strips are the pelvis's)
+  const cover = new Uint8Array(GRID * GRID);
+  const top = new Int16Array(GRID * GRID).fill(-1);
+  for (const d of DEPTHS) {
+    const l = layers.get(d);
+    if (!l?.used) continue;
+    for (let i = 0; i < GRID * GRID; i++) {
+      if (l.mat[i] < 0) continue;
+      cover[i] = 1;
+      top[i] = l.part[i];
+    }
+  }
+  const pelvis = partIndex('pelvis');
+  const skirt = (i: number) => top[i] === pelvis;
+  const arms = [...layers].filter(([d, l]) => l.used && /^(nearArm|farArm|farHand)\./.test(d)).map(([, l]) => l);
+  const hands = new Set([partIndex('handN'), partIndex('handF')]);
+  const limbs = { arm: (i: number) => arms.some((l) => l.mat[i] >= 0), hand: (i: number) => arms.some((l) => l.mat[i] >= 0 && hands.has(l.part[i])) };
+  const cloth = (x: number, y: number) => {
+    if (x < 0 || y < 0 || x >= GRID || y >= GRID) return -1;
+    const m = drape.mat[y * GRID + x];
+    return m >= 0 && !lines.has(m) ? m : -1;
+  };
+  // closing a hole can wall in a notch beside it: again until none is left
+  for (let pass = 0; pass < 4; pass++) {
+    const holes = skirtHoles((i) => cover[i] === 1, drape, skirt, limbs);
+    if (!holes.length) break;
+    for (const i of holes) {
+      const x = i % GRID;
+      const y = (i / GRID) | 0;
+      // a nick in his line closes with his line; elsewhere the nearest of his cloth goes on into the hole
+      const nick = [[-1, 0], [1, 0], [0, -1], [0, 1]].some(([dx, dy]) => x + dx >= 0 && x + dx < GRID && y + dy >= 0 && y + dy < GRID && lines.has(L.mat[i + dy * GRID + dx]));
+      let mat = line;
+      for (let d = 1; !nick && d <= 16 && mat === line; d++) {
+        for (const [dx, dy] of [[0, 1], [0, -1], [-1, 0], [1, 0]]) {
+          const m = cloth(x + dx * d, y + dy * d);
+          if (m >= 0) {
+            mat = m;
+            break;
+          }
+        }
+      }
+      L.set(x, y, mat, 3, 'pelvis', F_NO_TEXTURE | F_NO_OUTLINE);
+      cover[i] = 1;
+      top[i] = pelvis;
+    }
+  }
+}
+
 /**
  * His red drape (capeBack), the skirt's cloth behind the legs, in panels on the thighs (drapeStamps).
  * It never goes into the ground: crouched or kneeling, the cloth that would reach below the soles lies on
@@ -1473,7 +1635,10 @@ function drawDrape(g: DrawCtx, color: (ch: string, hex: string) => string): void
   }
   const front = r.lay ? Math.floor(r.lay.groundX * RES) : GRID;
   const keep = (x: number, y: number) => (r.lay ? back.has(y) && x >= back.get(y)! - 3 && x < front : y <= hemY);
-  const line = pal[Object.keys(p.colors).find((ch) => PTERUGES_KIND[p.colors[ch]] === 'line')!][0];
+  // his darkest black, for the cuts (whatever order the script packs his colours in)
+  const lum = (hex: string) => hexToRgb(hex).reduce((t, c, k) => t + c * [0.299, 0.587, 0.114][k], 0);
+  const blacks = Object.keys(p.colors).filter((ch) => PTERUGES_KIND[p.colors[ch]] === 'line');
+  const line = pal[blacks.reduce((a, b) => (lum(p.colors[b]) < lum(p.colors[a]) ? b : a))][0];
   for (let i = 0; i < GRID * GRID; i++) {
     if (tmp.mat[i] < 0) continue;
     const x = i % GRID;
@@ -1482,6 +1647,8 @@ function drawDrape(g: DrawCtx, color: (ch: string, hex: string) => string): void
     const cut = [i - 1, i + 1, i - GRID, i + GRID].some((q) => q >= 0 && q < GRID * GRID && tmp.mat[q] >= 0 && !keep(q % GRID, (q / GRID) | 0));
     L.set(x, y, cut ? line : tmp.mat[i], 3, 'pelvis', F_NO_TEXTURE | F_NO_OUTLINE);
   }
+  const lines = new Set(blacks.map((ch) => pal[ch][0]));
+  g.after((layers) => closeSkirtHoles(L, tmp, lines, line, layers));
 }
 
 /**

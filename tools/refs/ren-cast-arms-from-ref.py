@@ -13,7 +13,9 @@ match ours at that scale), so one of his pixels is not one of ours. Each arm is 
 fine pixel one of his pixels in his exact colour: the near arm by keeping SCALE-th of his rows and columns,
 those left out the ones most like a neighbour (keep()), so his 1 px line and his folds stay; the far arm
 (EVEN) as his whole picture shrunk evenly shows it (evenly(): the pixel under each fine pixel's middle), as
-he judges it ("el brazo izquierdo ... esta muy grande": keep() had made it thicker, its glove bigger). His
+he judges it ("el brazo izquierdo ... esta muy grande": keep() had made it thicker, its glove bigger), and its
+bare forearm THIN_F fine pixels thinner across than that (thinner(): "the forearm is still too big ... 1-2
+pixels less"), its line round it 1 px. His
 far forearm comes out from behind his sword: it runs on under the sword toward the elbow (under_sword()),
 so with the sword put away it meets the sleeve. His black line is one colour (his commonest); his other
 colours are the picture's, colours within 3 merged.
@@ -63,6 +65,10 @@ EVEN = ('F',)
 # His far forearm comes out from behind his sword: this many of his pixels of it run on under the sword
 # toward the elbow (under_sword()), so with the sword put away it meets the sleeve.
 UNDER_SWORD = 4
+# The far forearm's skin this many fine pixels thinner across than his picture shrunk evenly shows it (the
+# owner, 2026-10-22: "the forearm is still too big (the part with the skin) on the arm casting ... like 1-2
+# pixels less"): thinner(), his picture pressed toward the line from our elbow to our wrist, the length kept.
+THIN_F = 2
 # Our male rig in 'cast' frame 0 (fine pixels; rig.ts drawRig), and where the near fist holds the sword's
 # grip there (grip.ts paintedGrip: the point and the fist's angle). ren.test.ts checks these.
 CAST_JOINTS = {
@@ -231,7 +237,45 @@ def at_our_scale(a, col, K, masks, side):
                     fm[fy0 + j, fx0 + i] = True
                     fc[fy0 + j, fx0 + i] = col[y, x]
         out[n] = (fm, fc)
+    if side == 'F' and THIN_F:
+        out['fore_f'] = thinner(out['fore_f'], col, K, masks['fore_f'], a)
     return out
+
+
+def thinner(piece, col, K, m, a):
+    """The far forearm THIN_F fine pixels thinner across: each fine pixel shows his pixel under the point
+    that far from our elbow-to-wrist line times T / (T - THIN_F) (T: how many rows thick the evenly shrunk
+    forearm is), so his skin's shading keeps its order and bands from his line on top to his line under it
+    and the forearm keeps its length and its place on the joints. Where pressing it leaves the top or the
+    bottom of a column without his line (his line is one of his pixels, thinner than ours), the outermost
+    pixel there is his line again: 1 px."""
+    fm0, _ = piece
+    ys, xs = np.nonzero(fm0)
+    T = ys.max() - ys.min() + 1
+    f = T / (T - THIN_F)
+    ox, oy = ORIGIN['F']
+    (ex, ey), (wx, wy) = CAST_JOINTS['elbowF'], CAST_JOINTS['wristF']
+    slope = (wy - ey) / (wx - ex)
+    H, W = m.shape
+    fm = np.zeros((256, 256), bool)
+    fc = np.zeros((256, 256, 3), np.int32)
+    for Y in range(ys.min() - 1, ys.max() + 2):
+        for X in range(xs.min() - 1, xs.max() + 2):
+            cx = X + 0.5
+            yc = ey + (cx - ex) * slope
+            sy = yc + (Y + 0.5 - yc) * f
+            x = int(np.floor((cx - ox) * SCALE))
+            y = int(np.floor((sy - oy) * SCALE))
+            if 0 <= y < H and 0 <= x < W and m[y, x]:
+                fm[Y, X] = True
+                fc[Y, X] = col[y, x]
+    line = R.his_line(a)
+    for X in np.nonzero(fm.any(axis=0))[0]:
+        rows = np.nonzero(fm[:, X])[0]
+        for Y in (rows.min(), rows.max()):
+            if R.kind(fc[Y, X]) != 'line':
+                fc[Y, X] = line
+    return fm, fc
 
 
 DOC = (

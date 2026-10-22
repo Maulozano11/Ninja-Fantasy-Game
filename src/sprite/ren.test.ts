@@ -9,7 +9,7 @@ import { migrateCharacter } from '../rules/ninja';
 import type { ShinobiCharacter } from '../types/shinobi';
 import { getItem } from './catalog';
 import { renderSprite } from './compose';
-import type { DrawCtx, Side } from './ctx';
+import type { Depth, DrawCtx, Side } from './ctx';
 import { paintedGrip } from './grip';
 import { nightFistStamps } from './items/clothes';
 import { nightArmStamps, nightSkirtStamps } from './items/night';
@@ -25,6 +25,7 @@ import { dojutsuToEye, getAppearance } from './legacy';
 import { NIGHT_HEAD, NIGHT_SKIN } from './nightHeadArt';
 import { NIGHT_EYE_COLORS, NIGHT_EYES, NIGHT_IRIS } from './nightEyeArt';
 import type { PaintedPiece } from './painted';
+import { airOf, findNicks, findPinholes } from './holes';
 import { GRID, partIndex, type PartId, RES } from './raster';
 import { drawRig, frameCount, GROUND, rigPoseFor } from './rig';
 import { rotateTemplate } from './rotsprite';
@@ -306,9 +307,15 @@ describe("the owner's Ren", () => {
         assert.ok(hex(f0, p) === foreF.colors[row[i]] || covers.has(fr0.part[p]), `the far forearm at ${rx + i},${ry + j}`);
       }
     });
-    // his far arm as he drew it, not swollen: the forearm 10 rows thick, the fist 13 rows by 12 columns
+    // his far arm not swollen: the forearm 8 rows thick (his picture shrunk evenly is 10; the owner asked for it
+    // "1-2 pixels less", THIN_F in the converter), each column closed by his line, the fist 13 rows by 12 columns
     const box = (p: PaintedPiece) => [p.rows.length, Math.max(...p.rows.map((r) => r.replace(/\.+$/, '').length))];
-    assert.equal(foreF.rows.length, 10);
+    assert.equal(foreF.rows.length, 8);
+    const lineF = (ch: string) => cast.NIGHT_CAST_KIND[foreF.colors[ch]] === 'line';
+    for (let i = 0; i < foreF.rows[0].length; i++) {
+      const col = foreF.rows.map((r) => r[i] ?? '.').filter((ch) => ch !== '.');
+      if (col.length) assert.ok(lineF(col[0]) && lineF(col[col.length - 1]), `the far forearm's column ${i} closed by his line`);
+    }
     assert.deepEqual(box(cast.NIGHT_CAST_FIST_F), [13, 12]);
     for (const body of ['male', 'bulky'] as BodyType[]) {
       for (const frame of [0, 1]) {
@@ -351,7 +358,7 @@ describe("the owner's Ren", () => {
     }
   });
 
-  it('leaves no dead pixel in any pose or frame, sword drawn or put away: no dot apart, no white that is not his', () => {
+  it('leaves no dead pixel in any pose or frame, sword drawn or put away: no hole, nick or dot apart, no white that is not his', () => {
     // his colours: every colour of his pieces
     const his = new Set<string>();
     const walk = (o: unknown): void => {
@@ -376,6 +383,15 @@ describe("the owner's Ren", () => {
             const where = `${body}${stowed ? ' (sword put away)' : ''} ${pose} ${frame}`;
             const fr = renderSprite(l, pose, frame, dojutsuToEye(REN.dojutsu));
             const px = fr.rgba;
+            // no background through him: no hole of up to 3 px walled in, no nick in his line (holes.ts);
+            // idle is his picture as he drew it
+            if (pose !== 'idle') {
+              const fx = (i: number) => !!fr.fx && !!(fr.fx[i >> 3] & (1 << (i & 7)));
+              const air = airOf(px);
+              const holes = findPinholes(px, fx, air).map((h) => `${h[0] % GRID},${(h[0] / GRID) | 0}`);
+              const nicks = findNicks(px, fx, air).map((i) => `${i % GRID},${(i / GRID) | 0}`);
+              assert.deepEqual([holes, nicks], [[], []], `${where}: holes ${holes.join(' ')} nicks ${nicks.join(' ')}`);
+            }
             const light: string[] = [];
             for (let i = 0; i < GRID * GRID; i++) {
               if (!opaque(px, i) || Math.min(px[i * 4], px[i * 4 + 1], px[i * 4 + 2]) < 200 || his.has(hex(px, i)) || CARRIED.has(fr.part[i])) continue;
@@ -392,9 +408,9 @@ describe("the owner's Ren", () => {
             }
             const sizes = apart(body1);
             assert.ok(sizes.every((n) => n > 3), `${where}: ${sizes.filter((n) => n <= 3).length} dots apart from the body`);
-            // (on the bulky body the far sleeve still comes off the shoulder with the arm raised forward:
-            // charge, run 0, sit and throw; on the male nothing comes off)
-            if (body === 'male') assert.deepEqual(sizes, [], `${where}: ${sizes.join(', ')} pixels apart from the body`);
+            // nothing comes off (on the bulky body his jacket reaches its broader shoulders: the far sleeve
+            // stays on with the arm raised forward)
+            assert.deepEqual(sizes, [], `${where}: ${sizes.join(', ')} pixels apart from the body`);
           }
         }
       }
@@ -417,6 +433,73 @@ describe("the owner's Ren", () => {
               assert.ok(!notch, `${body}${stowed ? ' (sword put away)' : ''} cast ${frame}: a notch of white at ${x},${y}`);
             }
           }
+        }
+      }
+    }
+  });
+
+  it("keeps his hip's edges on one slope in every pose: no stair, chewed bit, notch or thigh strip at the left hip", () => {
+    // The owner, 2026-10-22: "pixeles fuera de forma y con formas de escalon o morgulladas en la cadera
+    // izquierda en muchas poses". His skirt, belt and jacket and the thighs beside them alone (without his
+    // sword, whose scabbard rides the belt), every pose and frame away from rest, on the men's bodies.
+    const HIP = new Set<Depth>(['skirt', 'torso.over', 'waist', 'torso.top', 'torso.under', 'nearLeg.cloth', 'nearLeg.body', 'farLeg.cloth', 'farLeg.body']);
+    const cloth = new Set(['pelvis', 'torso', 'thighN', 'thighF'].map((p) => partIndex(p as PartId)));
+    const pelvis = partIndex('pelvis');
+    const luma = (px: Uint8ClampedArray, i: number) => px[i * 4] * 0.3 + px[i * 4 + 1] * 0.59 + px[i * 4 + 2] * 0.11;
+    for (const body of ['male', 'bulky'] as BodyType[]) {
+      const l = look();
+      delete l.slots.held;
+      l.body = body;
+      for (const pose of POSES) {
+        if (pose === 'idle') continue;
+        for (let frame = 0; frame < frameCount(rigPoseFor(pose, l.cast?.style)); frame++) {
+          const fr = renderSprite(l, pose, frame, 'none', { depths: HIP });
+          if (fr.rig.lay) continue;
+          const where = `${body} ${pose} ${frame}`;
+          const on = (x: number, y: number) => x >= 0 && y >= 0 && x < GRID && y < GRID && opaque(fr.rgba, y * GRID + x) && cloth.has(fr.part[y * GRID + x]);
+          let y0 = GRID;
+          let y1 = -1;
+          for (let i = 0; i < GRID * GRID; i++)
+            if (opaque(fr.rgba, i) && fr.part[i] === pelvis) {
+              y0 = Math.min(y0, (i / GRID) | 0);
+              y1 = Math.max(y1, (i / GRID) | 0);
+            }
+          for (const dir of [1, -1]) {
+            const X = (u: number) => (dir > 0 ? u : GRID - 1 - u);
+            const E: number[] = [];
+            for (let y = y0; y <= y1; y++) {
+              let u = 0;
+              while (u < GRID && !on(X(u), y)) u++;
+              E.push(u < GRID ? u : -1);
+              // his line is the outermost pixel of every row, 1 px
+              if (u < GRID) assert.ok(luma(fr.rgba, y * GRID + X(u)) < 6, `${where}: no line at the ${dir > 0 ? 'back' : 'front'} edge at ${X(u)},${y}`);
+            }
+            // a bump or a notch of 1-2 rows standing out or biting in 1-2 px between the rows round it
+            for (let k = 1; k + 1 < E.length; k++)
+              for (let h = 1; h <= 2 && k + h < E.length; h++) {
+                const run = E.slice(k, k + h);
+                if (run.some((e) => e < 0 || e !== run[0]) || E[k - 1] < 0 || E[k + h] < 0) continue;
+                const [a, b, e] = [E[k - 1], E[k + h], run[0]];
+                const bump = e < a && e < b && Math.min(a, b) - e <= 2;
+                const notch = e > a && e > b && e - Math.max(a, b) <= 2;
+                assert.ok(!bump && !notch, `${where}: a ${bump ? 'bump' : 'notch'} on the ${dir > 0 ? 'back' : 'front'} edge at ${X(e)},${y0 + k}`);
+              }
+          }
+        }
+      }
+      // with his trousers: a thigh swung back never shows as a strip of up to 5 px behind the skirt's back edge
+      for (const { pose, f } of everyFrame(body)) {
+        if (pose === 'idle') continue;
+        const fr = renderSprite(l, pose, f);
+        if (fr.rig.lay) continue;
+        const thigh = new Set(['thighN', 'thighF'].map((p) => partIndex(p as PartId)));
+        for (let y = 0; y < GRID; y++) {
+          let e = 0;
+          while (e < GRID && fr.part[y * GRID + e] !== pelvis) e++;
+          if (e === GRID || !opaque(fr.rgba, y * GRID + e)) continue;
+          let t = e;
+          while (t > 0 && opaque(fr.rgba, y * GRID + t - 1) && thigh.has(fr.part[y * GRID + t - 1])) t--;
+          assert.ok(e - t === 0 || e - t > 5, `${body} ${pose} ${f}: a strip of thigh ${e - t} px wide behind the skirt at ${t},${y}`);
         }
       }
     }

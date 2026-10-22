@@ -9,8 +9,9 @@
 import { retintHex } from '../color';
 import { armDepth, armJoints, DrawCtx, ItemDef, legDepth, legJoints, Side } from '../ctx';
 import { type PaintedPiece, segAngle, skinTone, stampLeaning, stampPiece } from '../painted';
-import { add, F_NO_OUTLINE, F_NO_TEXTURE, GRID, partIndex, PartId, RES, sub, v, Vec } from '../raster';
+import { add, F_NO_OUTLINE, F_NO_TEXTURE, GRID, type Layer, partIndex, PartId, PARTS, RES, sub, v, Vec } from '../raster';
 import { NIGHT_SKIN } from '../nightHeadArt';
+import { sealCloth } from '../seal';
 import { closeAnkle, footTurn } from './ankle';
 import { NIGHT_BELT, NIGHT_BELT_BASE, NIGHT_BELT_KIND } from './nightBeltArt';
 import { NIGHT_BOOT_FOOT_F, NIGHT_BOOT_FOOT_N, NIGHT_BOOT_GOLD, NIGHT_BOOT_SHIN_F, NIGHT_BOOT_SHIN_N, NIGHT_BOOT_SILVER, NIGHT_BOOTS, NIGHT_KIT_KIND } from './nightBootsGlovesArt';
@@ -81,6 +82,9 @@ function footOff(g: DrawCtx, s: Side): void {
 }
 
 const arm = (s: Side, n: PaintedPiece, f: PaintedPiece) => (s === 'N' ? n : f);
+/** His black line in his skirt's colours: turned past a shear, his line stays whole round each panel (rotateLined). */
+const skirtLine = (hex: string) => NIGHT_SKIRT_KIND[hex] === 'line';
+
 /** His colours on the jacket's pieces, his cast forearms' too (ren.test.ts: each means the same in both). */
 const JACKET_KINDS: Record<string, string> = { ...NIGHT_CAST_KIND, ...NIGHT_JACKET_KIND };
 
@@ -260,6 +264,166 @@ export function nightSkirtStamps(r: Rig, shift: Record<Side, Vec>): SkirtStamp[]
   for (const { x0, x1, on } of SKIRT_PANELS) panel(x0, x1, on, on === 'both' ? (tN + tF) / 2 : on === 'N' ? tN : tF);
   return out;
 }
+
+/** The most rows a bump or a notch on the hip's edge spans (longer ones are the cloth's shape). */
+const EDGE_BUMP = 2;
+/** The most pixels a bump or a notch on the hip's edge stands out or bites in. */
+const EDGE_DEPTH = 2;
+/** The widest strip of a thigh behind the skirt's back edge the panel is laid over (wider, the leg comes out from under it). */
+const SLIVER = 5;
+/** His line is the near-black of his outlines (luma about 2); his darkest cloth is about 9. */
+const LINE_LUMA = 6;
+
+/** Luma of what a layer has at pixel i. */
+function lumaAt(g: DrawCtx, L: Layer, i: number): number {
+  const n = parseInt(g.mats.ramps[L.mat[i]][L.shade[i]].slice(1), 16);
+  return ((n >> 16) & 255) * 0.3 + ((n >> 8) & 255) * 0.59 + (n & 255) * 0.11;
+}
+
+/**
+ * The back of his skirt over a thigh swung back (the owner, 2026-10-22: "pixeles fuera de forma y con
+ * formas de escalon o morgulladas en la cadera izquierda"). His panels turn with the thighs about the
+ * hips, but only part of the way back (SKIRT_BACK), so a thigh swung back showed behind the panel's back
+ * edge as a strip a few pixels wide with its own outline and steps beside his. Where that strip is up to
+ * SLIVER pixels wide the panel is laid over it: his panel's first columns carried out to the thigh's own
+ * edge, his line outside, so the back is one slope (a wider leg, coming out from under the skirt, shows
+ * as it is). Idle is left as drawn: there every pixel is his.
+ */
+function skirtOverThigh(g: DrawCtx, depth: 'skirt' | 'torso.over'): void {
+  if (g.rig.pose === 'idle' || g.rig.lay) return;
+  const L = g.L(depth);
+  const pelvis = partIndex('pelvis');
+  const sk = (x: number, y: number) => x >= 0 && x < GRID && L.mat[y * GRID + x] >= 0 && L.part[y * GRID + x] === pelvis;
+  const thighs = SIDES.flatMap((s) => [legDepth(s, 'body'), legDepth(s, 'cloth')].map((d) => ({ T: g.L(d), part: partIndex(`thigh${s}` as PartId) })));
+  const thighAt = (x: number, y: number) => x >= 0 && thighs.some(({ T, part }) => T.used && T.mat[y * GRID + x] >= 0 && T.part[y * GRID + x] === part);
+  const copy = (x: number, y: number, fx: number) => {
+    const j = y * GRID + fx;
+    L.set(x, y, L.mat[j], L.shade[j], 'pelvis', L.flags[j]);
+  };
+  for (let y = 0; y < GRID; y++) {
+    let e = 0;
+    while (e < GRID && !sk(e, y)) e++;
+    if (e === GRID) continue;
+    let t = e;
+    while (thighAt(t - 1, y)) t--;
+    const w = e - t;
+    if (w < 1 || w > SLIVER) continue;
+    for (let x = e - 1; x >= t; x--) copy(x, y, x + w);
+    // his line on the new edge; his line that was the edge is inside the panel now: it takes the cloth beside it
+    if (lumaAt(g, L, y * GRID + t) >= LINE_LUMA) L.set(t, y, g.m(NIGHT_SKIRT.colors.a, 'flat'), 3, 'pelvis', F_NO_TEXTURE | F_NO_OUTLINE);
+    const i = y * GRID + e;
+    if (lumaAt(g, L, i) < LINE_LUMA && sk(e + 1, y) && lumaAt(g, L, i + 1) >= LINE_LUMA) copy(e, y, e + 1);
+  }
+}
+
+/**
+ * His hip's two edges, the skirt's with the belt, the jacket's hem above it and a thigh beside it (the owner's "formas de
+ * escalon o morgulladas en la cadera izquierda"). His skirt's panels, its fold and hang, the belt and the
+ * jacket each turn whole on their own joint, so where they meet down the edge it went in and out a pixel
+ * or two a row: a stair, a chewed edge, a notch between the belt and the top of the skirt. Away from rest,
+ * down the back edge and the front one, a bump of up to EDGE_BUMP rows standing out up to EDGE_DEPTH
+ * pixels is cut back to the rows round it, and a notch as small is filled from them (his pixels above or
+ * below, each in its own layer, so his line closes it), until the edge only steps one way between longer
+ * runs; the outermost pixel of each row is then his line, 1 px (a line left inside a filled notch takes
+ * the cloth beside it). Idle is left as drawn: there every pixel is his.
+ */
+function smoothHip(g: DrawCtx): void {
+  if (g.rig.pose === 'idle' || g.rig.lay) return;
+  const pelvis = partIndex('pelvis');
+  const skirt = g.L(g.L('torso.over').used ? 'torso.over' : 'skirt');
+  // Front to back, what the edge is made of: his cloth (the belt and the skirt, the pelvis's; the jacket,
+  // the torso's: not a sheath at the belt) and, behind it, the thighs (his trousers or the leg): what shows
+  // of a thigh beside the skirt is the same edge, and what a cut would bare of a thigh goes with it.
+  const torsoPart = partIndex('torso');
+  const own = (parts: number[]) => (L: Layer, i: number) => L.mat[i] >= 0 && parts.includes(L.part[i]);
+  const Ls = [
+    ...[g.L('waist'), skirt, g.L('torso.top'), g.L('torso.under')].map((L) => ({ L, ok: own([pelvis, torsoPart]) })),
+    ...(['N', 'F'] as Side[]).flatMap((s) => [legDepth(s, 'cloth'), legDepth(s, 'body')].map((d) => ({ L: g.L(d), ok: own([partIndex(`thigh${s}` as PartId)]) }))),
+  ].filter(({ L }) => L.used);
+  const top = (x: number, y: number): Layer | undefined => (x < 0 || y < 0 || x >= GRID || y >= GRID ? undefined : Ls.find(({ L, ok }) => ok(L, y * GRID + x))?.L);
+  const on = (x: number, y: number) => !!top(x, y);
+  const isLine = (x: number, y: number) => {
+    const L = top(x, y);
+    return !!L && lumaAt(g, L, y * GRID + x) < LINE_LUMA;
+  };
+  const lineMat = g.m(NIGHT_SKIRT.colors.a, 'flat');
+  // the rows of the belt and the skirt (the pelvis's)
+  let y0 = GRID;
+  let y1 = -1;
+  for (const L of [g.L('waist'), skirt])
+    for (let i = 0; i < GRID * GRID; i++)
+      if (L.mat[i] >= 0 && L.part[i] === pelvis) {
+        y0 = Math.min(y0, (i / GRID) | 0);
+        y1 = Math.max(y1, (i / GRID) | 0);
+      }
+  if (y1 < 0) return;
+  const copy = (x: number, y: number, fx: number, fy: number) => {
+    const L = top(fx, fy)!;
+    const j = fy * GRID + fx;
+    L.set(x, y, L.mat[j], L.shade[j], PARTS[L.part[j]], L.flags[j]);
+  };
+  const clear = (x: number, y: number) => {
+    for (const { L, ok } of Ls) if (ok(L, y * GRID + x)) L.clear(x, y);
+  };
+  const setLine = (x: number, y: number) => {
+    const L = top(x, y)!;
+    L.set(x, y, lineMat, 3, PARTS[L.part[y * GRID + x]], F_NO_TEXTURE | F_NO_OUTLINE);
+  };
+  // In u the edge is the smallest: u = x down the back, the mirror of x down the front.
+  for (const dir of [1, -1]) {
+    const X = (u: number) => (dir > 0 ? u : GRID - 1 - u);
+    const edge = (y: number): number => {
+      for (let u = 0; u < GRID; u++) if (on(X(u), y)) return u;
+      return -1;
+    };
+    for (let round = 0; round < 64; round++) {
+      let changed = false;
+      const E = Array.from({ length: y1 - y0 + 1 }, (_, k) => edge(y0 + k));
+      for (let k = 1; k + 1 < E.length && !changed; k++) {
+        for (let h = 1; h <= EDGE_BUMP && k + h < E.length && !changed; h++) {
+          const run = E.slice(k, k + h);
+          if (run.some((e) => e < 0 || e !== run[0]) || E[k - 1] < 0 || E[k + h] < 0) continue;
+          const a = E[k - 1];
+          const b = E[k + h];
+          const e = run[0];
+          if (e < a && e < b && Math.min(a, b) - e <= EDGE_DEPTH) {
+            // a bump: cut back to the nearer of the rows round it, his line on the new edge
+            const to = Math.min(a, b);
+            for (let r = 0; r < h; r++) {
+              const y = y0 + k + r;
+              for (let u = e; u < to; u++) clear(X(u), y);
+              if (on(X(to), y) && !isLine(X(to), y)) setLine(X(to), y);
+            }
+            changed = true;
+          } else if (e > a && e > b && e - Math.max(a, b) <= EDGE_DEPTH) {
+            // a notch: filled from the rows round it at each column (his line and his cloth go on down)
+            const to = Math.max(a, b);
+            for (let r = 0; r < h; r++) {
+              const y = y0 + k + r;
+              for (let u = to; u < e; u++) copy(X(u), y, X(u), on(X(u), y0 + k - 1) ? y0 + k - 1 : y0 + k + h);
+              // his line that was the edge is inside now: it takes the cloth beside it
+              if (isLine(X(e), y) && isLine(X(e - 1), y) && on(X(e + 1), y) && !isLine(X(e + 1), y)) copy(X(e), y, X(e + 1), y);
+            }
+            changed = true;
+          }
+        }
+      }
+      if (!changed) break;
+    }
+    // the outermost pixel of each row is his line
+    for (let y = y0; y <= y1; y++) {
+      const e = edge(y);
+      if (e >= 0 && !isLine(X(e), y)) setLine(X(e), y);
+    }
+  }
+}
+
+/** His hip's edges smoothed, then the skirt laid over what a cut left of a thigh beside it. */
+function hipEdges(g: DrawCtx): void {
+  smoothHip(g);
+  skirtOverThigh(g, g.L('torso.over').used ? 'torso.over' : 'skirt');
+}
+
 /**
  * His skirt never goes into the ground: crouched or kneeling, the cloth that would reach below the soles
  * lies on the ground, so it ends on the ground line on his black line (his panels above stay as he drew
@@ -325,7 +489,23 @@ export const NIGHT_ITEMS: ItemDef[] = [
         armOff(g, s);
         for (const t of nightArmStamps(r, s)) stampPiece(g, armDepth(s, t.name === 'sleeve' ? 'cloth' : 'body'), t.piece, t.at, t.deg, t.part, tint);
       }
-      stampLeaning(g, 'torso.top', NIGHT_JACKET_BODY, r.neck, segAngle(r.pelvis, r.neck), 'torso', tint);
+      const torso = segAngle(r.pelvis, r.neck);
+      stampLeaning(g, 'torso.top', NIGHT_JACKET_BODY, r.neck, torso, 'torso', tint);
+      // His jacket is cut to the male chest. A broader body's shoulders stand further out than his (the
+      // bulky far shoulder 2 px), so with the far arm raised its sleeve came off the chest with a gap of
+      // background between: under his jacket the same jacket again, moved out to each of this body's
+      // shoulders as far as they stand past his, so its sides reach the sleeves (his pixels, his line).
+      if (r.body !== 'male') {
+        const rest = drawRig('male', 'idle', 0);
+        const home = drawRig(r.body, 'idle', 0);
+        const t = ((torso - segAngle(home.pelvis, home.neck)) * Math.PI) / 180;
+        for (const s of SIDES) {
+          const sh = (q: Rig) => (s === 'N' ? q.shoulderN : q.shoulderF);
+          const d = sub(sub(sh(home), home.neck), sub(sh(rest), rest.neck));
+          const at = add(r.neck, v(d.x * Math.cos(t) - d.y * Math.sin(t), d.x * Math.sin(t) + d.y * Math.cos(t)));
+          stampLeaning(g, 'torso.under', NIGHT_JACKET_BODY, at, torso, 'torso', tint);
+        }
+      }
     },
   },
   {
@@ -338,6 +518,8 @@ export const NIGHT_ITEMS: ItemDef[] = [
     draw: (g, [main]) => {
       const r = g.rig;
       stampLeaning(g, 'waist', NIGHT_BELT, r.pelvis, segAngle(r.pelvis, r.neck), 'pelvis', nightColor(g, NIGHT_BELT_KIND, [NIGHT_BELT_BASE, main]));
+      // his skirt's and belt's edges at the hip, one slope each way (the skirt's draw does it without the belt)
+      if (g.has('skirt', 'skirt_night_studded')) hipEdges(g);
     },
   },
   {
@@ -352,8 +534,14 @@ export const NIGHT_ITEMS: ItemDef[] = [
       // thighs to the knees and hang from there (nightSkirtStamps).
       const tint = nightColor(g, NIGHT_SKIRT_KIND, [NIGHT_SKIRT_BASE, main], { silver: [NIGHT_STUDS, studs] });
       const depth = g.L('torso.over').used ? 'torso.over' : 'skirt';
-      for (const t of nightSkirtStamps(g.rig, { N: legShift(g, 'N'), F: legShift(g, 'F') })) stampLeaning(g, depth, t.piece, t.at, t.deg, 'pelvis', tint);
+      for (const t of nightSkirtStamps(g.rig, { N: legShift(g, 'N'), F: legShift(g, 'F') })) stampLeaning(g, depth, t.piece, t.at, t.deg, 'pelvis', tint, skirtLine);
       hemSkirt(g, depth);
+      skirtOverThigh(g, depth);
+      // the hip's edges are smoothed once the belt is on, if he wears his (its draw does it)
+      if (!g.has('waist', 'waist_night_belt')) hipEdges(g);
+      // Where his panels part on the turn a slit of background opens between them (the owner's "pixeles
+      // blancos muertos"): sealed as the Roman skirt is, a 1 px seam of his line (seal.ts; idle as drawn).
+      sealCloth(g, [depth], true);
     },
   },
   {

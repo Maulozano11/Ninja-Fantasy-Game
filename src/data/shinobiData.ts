@@ -1280,7 +1280,7 @@ function spriteLook(o: Partial<SpriteAppearance>): SpriteAppearance {
     eyeColor: '#3b82f6',
     slots: {},
     accessories: [],
-    headband: { position: 'none', slashed: false, tails: false, emblem: 'crescent', cloth: '#1e3a8a', plate: '#cbd5e1' },
+    headband: { position: 'none', tails: false, cloth: '#1e3a8a' },
     chakra: { color: 'blue', onCharge: true, onCast: true, onVictory: false },
     pixelEdits: [],
     ...o,
@@ -1500,9 +1500,9 @@ export const LEGENDARY_PRESETS: { name: string; tag: string; nameEs?: string; ta
   },
   {
     name: 'Kaien, the Storm Avenger',
-    tag: 'Lightning Hand · Rogue Headband',
+    tag: 'Lightning Hand · Dark Headband',
     nameEs: 'Kaien, el Vengador de la Tormenta',
-    tagEs: 'Mano de rayo · Bandana de renegado',
+    tagEs: 'Mano de rayo · Bandana oscura',
     character: {
       id: 'preset_storm',
       name: 'Kaien',
@@ -1558,7 +1558,7 @@ export const LEGENDARY_PRESETS: { name: string; tag: string; nameEs?: string; ta
           feet: it('feet_shinobi', '#2a2f3d', '#141821'),
           held: it('held_lightning'),
         },
-        headband: { position: 'forehead', slashed: true, tails: false, emblem: 'bolt', cloth: '#1e293b', plate: '#cbd5e1' },
+        headband: { position: 'forehead', tails: false, cloth: '#1e293b' },
         chakra: { color: 'yellow', tint: 'violet', onCharge: true, onCast: true, onVictory: false }, // Lightning like his jutsu, in his violet
       }),
     },
@@ -1623,7 +1623,7 @@ export const LEGENDARY_PRESETS: { name: string; tag: string; nameEs?: string; ta
           held: it('held_spiral'),
         },
         accessories: [it('acc_kunai_leg')],
-        headband: { position: 'forehead', slashed: false, tails: true, emblem: 'spiral', cloth: '#1e3a8a', plate: '#cbd5e1' },
+        headband: { position: 'forehead', tails: true, cloth: '#1e3a8a' },
         chakra: { color: 'green', tint: 'orange', onCharge: true, onCast: true, onVictory: true }, // Wind like his jutsu, in his orange
       }),
     },
@@ -1753,7 +1753,7 @@ export const LEGENDARY_PRESETS: { name: string; tag: string; nameEs?: string; ta
           feet: it('feet_sandals', '#2a2433', '#c9a46c'),
           held: it('held_palm'),
         },
-        headband: { position: 'neck', slashed: false, tails: false, emblem: 'sun', cloth: '#1e3a8a', plate: '#cbd5e1' },
+        headband: { position: 'neck', tails: false, cloth: '#1e3a8a' },
         chakra: { color: 'blue', onCharge: true, onCast: true, onVictory: false },
       }),
     },

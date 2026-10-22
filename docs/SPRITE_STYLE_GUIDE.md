@@ -104,6 +104,8 @@ The face is a template copied pixel by pixel from the reference (`FACE_MAIN` and
 
 All item and preset names are original. Never use names, symbols or logos from existing franchises.
 
+The headband is plain cloth only (the owner, 2026-10-22: "deja la pura bandana la pura tela"): no metal plate, no emblem or engraved village symbol, no slash across it (`items/headband.ts`). It replaced his earlier "quita las bandanas". Don't add a plate or symbol back.
+
 ## Checklist for a new item
 
 1. Render `npm run sprites -- item <id>` and check every body and pose.

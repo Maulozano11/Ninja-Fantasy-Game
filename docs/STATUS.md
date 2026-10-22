@@ -39,7 +39,7 @@ clean.
 | Capes | 8 |
 | Held | 9 (plus `held_none`): katana built from parts, crystal, ice crystal, flame longsword, kunai, naginata, spiral, lightning, palm |
 | Accessories | 13 |
-| Headband | 5 positions, 7 emblems, slashed or not, tails or not |
+| Headband | Plain cloth (no plate, emblem or slash since 2026-10-22, `headband/plain-cloth`): none, forehead, neck, arm, waist; tails or not; cloth colour |
 | Chakra | 9 types, which are the ninja's elemental nature: 7 offered (Fire and Lightning with 2 bursts each, Water, Wind, Earth; Light and Void without element) and 2 pending, out of the selection (Shadow, Spirit); any colour for any type; 8 cast styles ("eye" hidden) |
 | Poses | 7 creator, 5 moving, 4 camp |
 
@@ -219,6 +219,7 @@ Merge checks (`git merge-tree` on the origin tips, nothing changed):
   clan secret not, the type change swaps the jutsu, Light and Void only jutsu with no element, the
   random ninja's picks); Kaien's Fireball and Raiga's Earth Wall (kept; proposed: a formal second
   nature, Kaien Rayo + Fuego, Raiga Fuego + Tierra).
+- Decided 2026-10-22: **the headband stays, as plain cloth**. The owner: *"deja la bandana pero quitale el diseño de puntitos referenciando un simbolo deja la pura bandana la pura tela"*. This replaces his earlier "quita las bandanas del juego ya no estara ninguna" (same day; the headband removal on `cleanup/remove-pieces`, "quitar bandanas", is replaced too). Built on `headband/plain-cloth`: the metal plate, its 7 emblems and the slash are gone from the drawing, the creator (Emblem picker, Plate colour, Slashed toggle) and the random ninja; position, tails and cloth colour stay, and every preset, companion and enemy keeps its band. Old saves drop `slashed`, `emblem` and `plate` on load (`migrateAppearance`, `sprite/legacy.ts`). Kaien's tag "Rogue Headband / Bandana de renegado" (the scratched plate) is now "Dark Headband / Bandana oscura". Waiting for his look at the before/after.
 - Decided 2026-10-21 (later still), his jutsu answers: *"1 d y c y los de su clan 2 propuestas 3
   sello explosivo es un item o herramienta consumible palma curativa es un jutsu de utilidad 4 si
   pero no se puede cambiar de tipo lo que se va poder es tener 2ndo elemento en nivel mas alto y 3

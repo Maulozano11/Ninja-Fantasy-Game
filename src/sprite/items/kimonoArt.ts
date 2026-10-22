@@ -130,7 +130,7 @@ export const KIMONO_BODY: PaintedPiece = {
   },
 };
 
-/** The wide near sleeve to its slanting cuff below the elbow: it rides the upper arm about the shoulder. */
+/** The wide near sleeve to its slanting cuff below the elbow, pinned on the shoulder: its band rides the upper arm, its bell hangs loose (ascended.ts). */
 export const KIMONO_SLEEVE_N: PaintedPiece = {
   pivot: [11, -1],
   angle: 107.93,
@@ -169,7 +169,7 @@ export const KIMONO_SLEEVE_N: PaintedPiece = {
   },
 };
 
-/** The far sleeve, its left edge the kimono's line: it rides the far upper arm about the shoulder. */
+/** The far sleeve, its left edge the kimono's line, pinned on the shoulder: its band rides the far upper arm, its bell hangs loose (ascended.ts). */
 export const KIMONO_SLEEVE_F: PaintedPiece = {
   pivot: [-1, 1],
   angle: 77.06,

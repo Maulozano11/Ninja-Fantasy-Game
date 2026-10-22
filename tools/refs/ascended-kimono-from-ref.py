@@ -11,7 +11,9 @@ colour:
                   from his cloth below; under the sash, from the rows of his cloth above it, repeated.
   the sleeves     the wide near sleeve to its slanting cuff below the elbow, and the far one (read cell by
                   cell, docs/SPRITE_STYLE_GUIDE.md, the far shoulder and arm: its left edge is the
-                  kimono's brown line, which both keep). Each rides its upper arm about the shoulder.
+                  kimono's brown line, which both keep). Each is pinned on the shoulder at its upper
+                  arm's angle; src/sprite/items/ascended.ts cuts it where it falls loose, the band
+                  riding the upper arm and the bell hanging from it like cloth.
                   Under the cloak on the shoulder each goes on up to the shoulder in his cloth below it.
 
 Every piece is pinned with its pivot on our joint and stamped at its limb's angle at rest, so at rest every
@@ -58,8 +60,8 @@ def main():
     }
     specs = [
         ('KIMONO_BODY', 'kimono', 'The kimono from under the scarf to its hem, its crossed navy collar, the V left open: it rides the torso about the neck.', J['neck'], A.angle('pelvis', 'neck')),
-        ('KIMONO_SLEEVE_N', 'sleeve_n', 'The wide near sleeve to its slanting cuff below the elbow: it rides the upper arm about the shoulder.', J['shoulderN'], A.angle('shoulderN', 'elbowN')),
-        ('KIMONO_SLEEVE_F', 'sleeve_f', 'The far sleeve, its left edge the kimono\'s line: it rides the far upper arm about the shoulder.', J['shoulderF'], A.angle('shoulderF', 'elbowF')),
+        ('KIMONO_SLEEVE_N', 'sleeve_n', 'The wide near sleeve to its slanting cuff below the elbow, pinned on the shoulder: its band rides the upper arm, its bell hangs loose (ascended.ts).', J['shoulderN'], A.angle('shoulderN', 'elbowN')),
+        ('KIMONO_SLEEVE_F', 'sleeve_f', 'The far sleeve, its left edge the kimono\'s line, pinned on the shoulder: its band rides the far upper arm, its bell hangs loose (ascended.ts).', J['shoulderF'], A.angle('shoulderF', 'elbowF')),
     ]
     text = A.emit(masks, cols, specs, bases, kind_of, 'KIMONO', "'line' | 'cloth' | 'collar'", DOC)
     if out_ts:

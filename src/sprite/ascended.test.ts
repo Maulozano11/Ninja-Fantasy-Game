@@ -11,10 +11,13 @@ import * as hakama from './items/hakamaArt';
 import * as kimono from './items/kimonoArt';
 import * as sash from './items/sashArt';
 import * as wraps from './items/wrapsArt';
+import type { Side } from './ctx';
+import { ascendedPalm, type ArmStamp, sleeveStamps, wrapStamps } from './items/ascended';
 import { defaultAppearance } from './legacy';
-import type { PaintedPiece } from './painted';
-import { GRID, partIndex } from './raster';
-import { POSES as RIG_POSES, rigPoseFor } from './rig';
+import { type PaintedPiece, segAngle } from './painted';
+import { GRID, partIndex, RES } from './raster';
+import { drawRig, frameCount, POSES as RIG_POSES, rigPoseFor } from './rig';
+import { rotateTemplate } from './rotsprite';
 import { CAMP_POSES, MOVE_POSES, SPRITE_POSES, type BodyType, type SpriteAppearance, type SpritePose } from './types';
 
 const SET = {
@@ -128,6 +131,63 @@ describe('the Ascended set', () => {
       }
     });
   }
+
+  it('turns his arm pieces whole about our joints, at his size, in every pose (male, bulky)', () => {
+    // What a stamped piece covers: its cells, its length along its limb and its width across it.
+    const measure = (p: PaintedPiece, turn: number) => {
+      const cells = rotateTemplate(p, turn);
+      const a = ((p.angle + turn) * Math.PI) / 180;
+      const along = cells.map(({ dx, dy }) => dx * Math.cos(a) + dy * Math.sin(a));
+      const across = cells.map(({ dx, dy }) => -dx * Math.sin(a) + dy * Math.cos(a));
+      const span = (xs: number[]) => Math.max(...xs) - Math.min(...xs) + 1;
+      return { n: cells.length, long: span(along), wide: span(across) };
+    };
+    const rest = new Map<PaintedPiece, ReturnType<typeof measure>>();
+    const atRestOf = (p: PaintedPiece) => rest.get(p) ?? rest.set(p, measure(p, 0)).get(p)!;
+    const drawn = (stamps: ArmStamp[]) => {
+      const at = new Set<string>();
+      for (const t of stamps) for (const { dx, dy } of rotateTemplate(t.piece, t.turn)) at.add(`${Math.floor(t.at.x * RES) + dx},${Math.floor(t.at.y * RES) + dy}`);
+      return at.size;
+    };
+    for (const body of ['male', 'bulky'] as BodyType[]) {
+      const sleeve0 = { N: drawn(sleeveStamps(drawRig(body, 'idle', 0), 'N')), F: drawn(sleeveStamps(drawRig(body, 'idle', 0), 'F')) };
+      for (const pose of POSES) {
+        const rp = rigPoseFor(pose);
+        for (let f = 0; f < frameCount(rp); f++) {
+          const rig = drawRig(body, rp, f);
+          for (const s of ['N', 'F'] as Side[]) {
+            const where = `${body} ${pose} ${f} ${s}`;
+            const sleeve = sleeveStamps(rig, s);
+            const j = s === 'N' ? { a: rig.shoulderN, b: rig.elbowN } : { a: rig.shoulderF, b: rig.elbowF };
+            const band = sleeve.find((t) => t.name === 'band')!;
+            const bell = sleeve.find((t) => t.name === 'bell')!;
+            // the band rides the upper arm; the bell hangs down as he drew it, swung at most 30 degrees by
+            // the arm (lying on the ground, the sleeve lies whole along the arm)
+            const off = (d: number) => Math.abs((((d % 360) + 540) % 360) - 180);
+            assert.ok(off(band.piece.angle + band.turn - segAngle(j.a, j.b)) < 1e-6, `${where}: the band leaves the upper arm`);
+            if (rig.lay) assert.ok(off(bell.turn - band.turn) < 1e-6, `${where}: the bell leaves the arm of a body lying down`);
+            else assert.ok(off(bell.turn) <= 30 + 1e-6, `${where}: the bell is turned ${bell.turn.toFixed(0)} degrees from his`);
+            // every piece (the sleeve's band and bell, the forearm, the fist) whole and at his size
+            for (const t of [band, bell, ...wrapStamps(rig, s)]) {
+              const m = measure(t.piece, t.turn);
+              const m0 = atRestOf(t.piece);
+              // (RotSprite thins a 1 px line across a diagonal: a turned piece keeps at least 80% of his cells)
+              assert.ok(m.n >= 0.8 * m0.n && m.n <= 1.1 * m0.n, `${where} ${t.name}: ${m.n} pixels, ${m0.n} at rest`);
+              assert.ok(Math.abs(m.long - m0.long) <= 2 && Math.abs(m.wide - m0.wide) <= 2, `${where} ${t.name}: ${m.long} x ${m.wide} px, ${m0.long} x ${m0.wide} at rest`);
+            }
+            // the fold between them only fills the turn (most for a raised arm, whose sleeve falls to the
+            // shoulder): the sleeve as drawn stays near his size
+            const n = drawn(sleeve);
+            assert.ok(n <= 1.5 * sleeve0[s] && n >= 0.9 * sleeve0[s], `${where}: the sleeve covers ${n} pixels, ${sleeve0[s]} at rest`);
+            // his fist everywhere but where the pose opens the hand
+            const open = ascendedPalm(rig, s);
+            assert.equal(wrapStamps(rig, s).some((t) => t.name === 'fist'), !open, `${where}: fist`);
+            if (open) assert.ok(['sign', 'cradle', 'point', 'open'].includes(s === 'N' ? rig.shapeN : rig.shapeF), `${where}: open hand`);
+          }
+        }
+      }
+    }
+  });
 
   it('keeps the drawn items on the female bodies', () => {
     const his = new Set([...Object.values(wraps.WRAPS_FORE_N.colors), ...Object.values(kimono.KIMONO_BODY.colors), ...Object.values(sash.SASH_BAND.colors)]);

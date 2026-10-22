@@ -142,7 +142,9 @@ folders.
   and folds repeated). His face and the V of his chest are ours and are not lifted. The feet are moved onto our
   ankles (`FOOT_SHIFT`). The modules export `*_KIND` (what each colour of his is, for the colour slots) and
   `*_REST` (where each piece lands in our idle), which `src/sprite/ascended.test.ts` checks; the items are drawn by
-  `src/sprite/items/ascended.ts` (the cloak in `capes.ts`, the hair in `hair.ts`). Run alone, `ascended_ref.py
+  `src/sprite/items/ascended.ts` (the cloak in `capes.ts`, the hair in `hair.ts`). Each sleeve is lifted whole and
+  cut where it falls loose when drawn (`SLEEVE_HANG` in `ascended.ts`: the band rides the upper arm, the bell hangs
+  from it like cloth); each forearm is cut where his cuff covers it at rest (`foreParts`). Run alone, `ascended_ref.py
   <out.png> [pieces.png]` draws his picture with the pieces tinted, and every piece with its continued cells crossed.
 
       python3 -I tools/refs/ascended-hair-from-ref.py src/sprite/items/ascendedHairArt.ts [studyDir]

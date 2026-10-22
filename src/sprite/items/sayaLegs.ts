@@ -111,6 +111,25 @@ function stampClean(g: DrawCtx, d: Parameters<typeof stampPiece>[1], piece: Pain
 }
 
 /**
+ * Her legging's top, turned with the thigh, keeps only what lies on our thigh and the pixel round it:
+ * its top row runs on past his skin where his thigh is wider, and turned across the thigh (seated,
+ * striding) that end stood off the leg as a dark stick.
+ */
+function onOurThigh(g: DrawCtx, s: Side, d: Parameters<typeof stampPiece>[1]): void {
+  const B = g.L(legDepth(s, 'body'));
+  const L = g.L(d);
+  const thigh = partIndex(`thigh${s}`);
+  const near = new Uint8Array(GRID * GRID);
+  for (let i = 0; i < GRID * GRID; i++) {
+    if (B.mat[i] < 0 || B.part[i] !== thigh) continue;
+    const x = i % GRID;
+    const y = (i / GRID) | 0;
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if (x + dx >= 0 && y + dy >= 0 && x + dx < GRID && y + dy < GRID) near[(y + dy) * GRID + x + dx] = 1;
+  }
+  for (let i = 0; i < GRID * GRID; i++) if (L.mat[i] >= 0 && L.part[i] === thigh && !near[i]) L.mat[i] = -1;
+}
+
+/**
  * Turned from his angles, her pieces can leave a single pixel open between them (at a bent knee, at the
  * ankle over the flat shoe) or in a turned line: an empty pixel with her pieces on three or four of its
  * sides is closed with his line, as the line runs there at rest.
@@ -174,6 +193,7 @@ export const SHADE_WRAPS: ItemDef = {
       leggingOnLeg(g, s, knee, norm(sub(hip, knee)), (thigh.pivot[1] + 0.5) / RES, navy);
       const d = legDepth(s, 'feet');
       stampClean(g, d, thigh, knee, thighA, `thigh${s}`, leg);
+      if (Math.abs(thighA - thigh.angle) >= 0.5) onOurThigh(g, s, d);
       stampClean(g, d, shin, ankle, shinA, `shin${s}`, leg);
       stampPiece(g, d, foot, footAt(shin, ankle, shinA), foot.angle, `foot${s}`, shoe);
       // at rest every pixel is his

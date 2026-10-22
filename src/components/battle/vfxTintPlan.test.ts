@@ -79,7 +79,7 @@ describe('jutsu effects in the caster\'s chakra colour', () => {
     assert.deepEqual(names('lightning_spark_fan'), ['vfx_dc/lightning_fan', 'vfx_lightning/hit']);
     assert.deepEqual(names('kenjutsu_bleeding_cut'), [], 'the white cut has no element');
     // The gaps' jutsu (the owner's answers of 2026-10-21): the wave, the tower, the gale, the beam's sparks, the dust.
-    assert.deepEqual(names('water_devouring_tide'), ['vfx_water/aura', 'vfx_water/aura_back', 'vfx_water/wall_depth', 'vfx_water/wall', 'vfx_water/breath', 'vfx_water/hit']);
+    assert.deepEqual(names('water_devouring_tide'), ['vfx_water/aura', 'vfx_water/aura_back', 'vfx_water/wall_depth', 'vfx_water/wall', 'vfx_water/breath', 'vfx_water/hit', 'vfx_water/blast']);
     assert.deepEqual(names('wind_whirlwind_tower'), ['vfx_wind/hit', 'vfx_wind/wall_depth', 'vfx_wind/multi']);
     assert.deepEqual(names('wind_gale_curtain'), ['vfx_wind/aura', 'vfx_wind/aura_back', 'vfx_wind/wall', 'vfx_wind/bolt']);
     assert.deepEqual(names('lightning_thunder_beam'), ['vfx_lightning/stream', 'vfx_lightning/stream_head', 'vfx_lightning/hit']);

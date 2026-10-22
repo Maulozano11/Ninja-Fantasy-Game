@@ -188,6 +188,12 @@ export function logLine(ev: BattleEvent, s: BattleState, lang: Lang, wallOf = (i
     case 'cracks':
       // Said once, as the ground first cracks under a charged ninja this turn (its mending is seen).
       return ev.on && ev.first ? { text: t('l_cracks', { a: nameOf(s, ev.unit, lang) }), tone: 'text-stone-300' } : null;
+    case 'ground':
+      // Steam rising has its own note (n_steamRises); the wet that turned to steam says nothing.
+      if (ev.kind === 'wet') return ev.on ? { text: t('l_wet'), tone: 'text-sky-300' } : ev.by ? null : { text: t('l_dry'), tone: 'text-slate-400' };
+      return ev.on || ev.by !== undefined ? null : { text: t('l_steamEnd'), tone: 'text-slate-400' };
+    case 'conduct':
+      return { text: t('l_conduct'), tone: 'text-sky-300' };
     case 'end':
       return { text: t(`l_end_${ev.outcome}` as TKey), tone: ev.outcome === 'victory' ? 'text-emerald-300 font-bold' : 'text-rose-300 font-bold' };
     case 'prop':

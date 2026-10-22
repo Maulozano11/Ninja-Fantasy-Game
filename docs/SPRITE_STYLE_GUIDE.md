@@ -113,8 +113,22 @@ que las botas vayan por fuera".
   rests on the hip (`idleHands`). His arms are painted pieces riding ours (`bulkyBodyArt.ts`, the shoulder
   round following the arm part of the way). At rest, in his colours, every pixel of his figure is his.
 - **His clothes on the normal male:** each piece fitted by leaving out or repeating whole columns and
-  rows of his (`fit.ts`), never redrawn; limb pieces are first turned upright so their columns run
-  across the limb.
+  rows of his (`fit.ts`), never redrawn; a limb piece's rows are first moved across whole (a shear) so its
+  columns run along the limb, and moved back after, so it is turned only once, by the pose. How much each
+  piece keeps (`MALE_FIT` in `items/brawler.ts`) was measured on the male body and on the presets fitted
+  to it (Aiden, Ren, Akira, Solen): the shirt keeps nearly all its width and covers the shoulders, a short
+  sleeve is the upper arm plus a pixel each side, bracers and fists lose a column or two, the loose jeans
+  stay two pixels wider than the legs.
+- **No white pixels, nothing cut off** (the owner, 2026-10-21, on the first male version: "hombre normal
+  se ve bugeado ... tienes pixeles blancos y cortados en muchas de las poses/animaciones corregilo"):
+  every piece marks where it was cut out of his figure (`PaintedPiece.seal`); where a pose bares that
+  edge, or a turn steps past his line, it is closed with his black line (`compose.ts`). Pieces overlap
+  where they meet (the waistband goes on under the shirt's hem, the shirt under the near sleeve), the
+  pouch hangs straight down from the belt, and the knife's sheath goes on up behind the far leg to the
+  waistband and swings with the near thigh, so nothing floats. A light pixel left alone among his dark
+  ones by a turn takes their colour. `src/sprite/bulky.test.ts` checks every pose and frame on both
+  bodies: one connected figure, no light pixel on a cut edge, no lone light pixel, no hole of background
+  in his light clothes, and the bulky idle frame byte for byte his.
 - **Boots inside or outside:** every pair of trousers can carry a 'boots' part. Inside (the jeans'
   default, as he drew them): the trouser hem falls over the boot top. Outside: the boot top is drawn over
   the trouser leg. Built for `bottom_jeans`; works with any boots.

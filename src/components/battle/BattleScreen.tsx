@@ -1562,7 +1562,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
 
 const SHORT: Record<string, [string, string]> = {
   shadow_clone: ['Clone', 'Clon'],
-  body_flicker: ['Flicker', 'Shunshin'],
+  body_flicker: ['Vanish', 'Desvanecer'],
   mystical_palm: ['Heal palm', 'Palma'],
   substitution_kawarimi: ['Kawarimi', 'Kawarimi'],
   fireball_goukakyu: ['Fireball', 'Bola de fuego'],

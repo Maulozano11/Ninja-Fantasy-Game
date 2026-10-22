@@ -30,7 +30,7 @@ function roman(body: BodyType): SpriteAppearance {
   return l;
 }
 const POSES = [...SPRITE_POSES, ...MOVE_POSES, ...CAMP_POSES] as SpritePose[];
-const BODIES: BodyType[] = ['male', 'female', 'bulky', 'slender'];
+const BODIES: BodyType[] = ['male', 'female', 'bulky'];
 
 /**
  * The 8-connected patches of a leg below the knee (its shin and foot parts) in a frame that shows only that
@@ -68,7 +68,7 @@ function lowerLegPatches(l: SpriteAppearance, pose: SpritePose, f: number, s: Si
   return out;
 }
 
-/** Every pose and frame on the four bodies where a leg below the knee is not one piece holding its foot and its shin. */
+/** Every pose and frame on the three bodies where a leg below the knee is not one piece holding its foot and its shin. */
 function looseBoots(dress: (body: BodyType) => SpriteAppearance): string[] {
   const loose: string[] = [];
   for (const body of BODIES) {
@@ -86,15 +86,15 @@ function looseBoots(dress: (body: BodyType) => SpriteAppearance): string[] {
 }
 
 describe("the owner's Crimson Sabatons", () => {
-  it('keep each boot one piece with its shin in every pose and frame, on the four bodies', () => {
+  it('keep each boot one piece with its shin in every pose and frame, on the three bodies', () => {
     // "arregla las botas de ren y aiden": the sabaton hung apart from the greave when the shin turned
-    // (the slender attack and pierce, the run, the kneel, the crouched step).
+    // (the pierce, the run, the kneel, the crouched step).
     assert.deepEqual(looseBoots(look), []);
   });
 });
 
 describe("the owner's Roman sandals", () => {
-  it('keep each sandal one piece with its laced shin in every pose and frame, on the four bodies', () => {
+  it('keep each sandal one piece with its laced shin in every pose and frame, on the three bodies', () => {
     // The sandal stood flat while the shin kicked out, and floated apart from it (the train's kick, the combo,
     // the run's back leg).
     assert.deepEqual(looseBoots(roman), []);

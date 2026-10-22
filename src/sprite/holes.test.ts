@@ -17,7 +17,7 @@ import { CAMP_POSES, MOVE_POSES, SPRITE_POSES, type BodyType, type EyeSpecial, t
 
 const N = GRID * GRID;
 const POSES = [...SPRITE_POSES, ...MOVE_POSES, ...CAMP_POSES] as SpritePose[];
-const BODIES: BodyType[] = ['male', 'female', 'bulky', 'slender'];
+const BODIES: BodyType[] = ['male', 'female', 'bulky'];
 const opaque = (rgba: Uint8ClampedArray, i: number) => rgba[i * 4 + 3] > 0;
 const bit = (m: Uint8Array | undefined, i: number) => !!m && !!(m[i >> 3] & (1 << (i & 7)));
 const at = (i: number) => `${i % GRID},${Math.floor(i / GRID)}`;

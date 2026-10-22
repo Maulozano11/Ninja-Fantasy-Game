@@ -2320,7 +2320,7 @@ export const ARMOR_ITEMS: ItemDef[] = [
   },
 
   // -------------------------------------------------------------------------
-  // Fitted armors for women (female and slender bodies only)
+  // Fitted armors for women (female body only)
   {
     id: 'armor_oath',
     slot: 'armor',
@@ -2328,7 +2328,7 @@ export const ARMOR_ITEMS: ItemDef[] = [
     desc: 'A fitted white battle dress with red trim, a silver breastplate shaped to the figure and a pleated skirt (+3 AC). Women only.',
     colors: [col('cloth', 'Dress', '#eeebe6'), col('trim', 'Trim', '#c8202c'), col('plate', 'Plate', '#c3c8d4', 'metal')],
     statsArmor: 'ANBU Spec-Ops',
-    bodies: ['female', 'slender'],
+    bodies: ['female'],
     draw: (g, [cc, tc, pc]) => {
       const b = g.bp;
       const L = g.L('torso.armor');
@@ -2484,7 +2484,7 @@ export const ARMOR_ITEMS: ItemDef[] = [
     desc: 'A black corset dress with a frill of white lace at the neckline, gold lacing down the front and a pleated skirt (+3 AC). Women only.',
     colors: [col('cloth', 'Dress', '#1f1c26'), col('trim', 'Lace', '#ecebf2'), col('plate', 'Corset', '#26222f')],
     statsArmor: 'ANBU Spec-Ops',
-    bodies: ['female', 'slender'],
+    bodies: ['female'],
     draw: (g, [cc, tc, pc]) => {
       const b = g.bp;
       const L = g.L('torso.armor');
@@ -2646,7 +2646,7 @@ export const ARMOR_ITEMS: ItemDef[] = [
     desc: 'A royal blue battle dress under silver plate with gold trim: shaped breastplate, plated faulds, gauntlets and greaves (+4 AC). Women only.',
     colors: [col('dress', 'Dress', '#2a4aa6'), col('plate', 'Plate', '#c9cdd8', 'metal'), col('trim', 'Gold', '#d4a531', 'metal')],
     statsArmor: 'Greek Hoplite Cuirass',
-    bodies: ['female', 'slender'],
+    bodies: ['female'],
     draw: (g, [dc, pc, gc]) => {
       const b = g.bp;
       const L = g.L('torso.armor');
@@ -2778,8 +2778,8 @@ export const ARMOR_ITEMS: ItemDef[] = [
     },
   },
   // -------------------------------------------------------------------------
-  // Plate armors for women, at the standard of the men's plate (female and
-  // slender bodies only)
+  // Plate armors for women, at the standard of the men's plate (female body
+  // only)
   {
     id: 'armor_seraph',
     slot: 'armor',
@@ -2787,7 +2787,7 @@ export const ARMOR_ITEMS: ItemDef[] = [
     desc: 'Light paladin plate in white steel and red enamel: a breastplate shaped to the figure, slender pauldrons and vambraces, short faulds over a pleated skirt, and greaves (+4 AC). Women only.',
     colors: [col('plate', 'Plate', '#cdd3de', 'metal'), col('trim', 'Enamel', '#c8202c'), col('cloth', 'Cloth', '#f3efe6')],
     statsArmor: 'Greek Hoplite Cuirass',
-    bodies: ['female', 'slender'],
+    bodies: ['female'],
     draw: (g, [pc, tc, cc]) => {
       const b = g.bp;
       const L = g.L('torso.armor');
@@ -2853,7 +2853,7 @@ export const ARMOR_ITEMS: ItemDef[] = [
     desc: 'Knightly full plate over a royal blue gown: a sculpted gilded cuirass, tiered pauldrons, vambraces with couters, plated tassets and greaves (+5 AC). Women only.',
     colors: [col('plate', 'Plate', '#c9cdd8', 'metal'), col('gold', 'Gold', '#d4a531', 'metal'), col('gown', 'Gown', '#2a4aa6')],
     statsArmor: 'Dark Knight Plate',
-    bodies: ['female', 'slender'],
+    bodies: ['female'],
     draw: (g, [pc, gc, dc]) => {
       const b = g.bp;
       const L = g.L('torso.armor');

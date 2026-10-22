@@ -52,7 +52,7 @@ const CLOTH_ITEMS = [
   'armor_lioness',
 ];
 
-const BODIES: BodyType[] = ['male', 'female', 'bulky', 'slender'];
+const BODIES: BodyType[] = ['male', 'female', 'bulky'];
 /** The bare body's layers (body.ts; the far hand when it works in front of the body), by depth index. */
 const BODY = new Set((['farArm.body', 'farLeg.body', 'nearLeg.body', 'torso.body', 'torso.under', 'farHand.front', 'nearArm.body', 'head.body'] as Depth[]).map((d) => DEPTHS.indexOf(d)));
 // Idle is not checked: it is the frame the owner's pictures were copied into, and his pictures are copied

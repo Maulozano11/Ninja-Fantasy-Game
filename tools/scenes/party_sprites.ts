@@ -17,7 +17,7 @@ import type { SpritePose } from '../../src/sprite/types';
 import { boxOf, Canvas } from '../world-sprites/kit';
 
 const out = process.argv[2] ?? 'party-preview';
-const wanted = process.argv.slice(3).length ? process.argv.slice(3) : ['Akira:idle', 'Shiori:idle', 'Ren:idle'];
+const wanted = process.argv.slice(3).length ? process.argv.slice(3) : ['Akira:idle', 'Hana:idle', 'Ren:idle'];
 mkdirSync(out, { recursive: true });
 const list: { name: string; file: string; pose: string; frame: number; feet: [number, number] }[] = [];
 wanted.forEach((w, k) => {

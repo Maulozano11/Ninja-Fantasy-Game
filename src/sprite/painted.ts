@@ -11,6 +11,13 @@ export interface PaintedPiece extends PixelTemplate {
   colors: Record<string, string>;
   /** The angle (screen degrees, 0 = right, + = clockwise) of the limb it rides, in his picture. */
   angle: number;
+  /**
+   * Cells on the piece's edge where his figure went on in his picture (into another piece of his), as
+   * rows like `rows` with 'x' at each: where such a cell ends up with nothing beside it in a pose, it is
+   * closed with his black line (compose.ts sealOpenEdges), as the converters close a cut. Cells on his
+   * own outline are not marked: they stay as he drew them.
+   */
+  seal?: string[];
 }
 
 /** The screen angle in degrees of the segment from `a` to `b` (0 = right, + = clockwise). */

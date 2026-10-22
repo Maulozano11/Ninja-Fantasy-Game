@@ -6,7 +6,7 @@ import { hexToRgb } from './color';
 import { Depth, DEPTHS, DrawCtx, ItemDef, NO_OUTLINE_DEPTHS, resolveParts } from './ctx';
 import { drawThrowKunai } from './items/accessories';
 import { drawHeadband } from './items/headband';
-import { add, F_NO_OUTLINE, GRID, Layer, MaterialTable, norm, PAD, PartId, partIndex, PARTS, perp, RES, scale, sub, v, Vec } from './raster';
+import { add, F_NO_OUTLINE, F_OWNER, F_SEAL, GRID, Layer, MaterialTable, norm, PAD, PartId, partIndex, PARTS, perp, RES, scale, sub, v, Vec } from './raster';
 import { drawRig, Lay, layRig, Rig, rigPoseFor, turnPoint, turnRig } from './rig';
 import { drawCampFx } from './campfx';
 import { drawCastFx } from './castfx';
@@ -384,6 +384,9 @@ export function renderSprite(
     isLine[i] = topShade[i] === 0 ? 1 : 0;
   }
   thinDoubleOutlines(rgba, top, isLine);
+  closeSeams(rgba, part, top, topFlags);
+  sealOpenEdges(rgba, topFlags);
+  mendLoneLights(rgba, topFlags);
   const hair = new Uint8Array(N >> 3);
   for (let i = 0; i < N; i++) if (top[i] === HAIR_BACK || top[i] === HAIR_FRONT) hair[i >> 3] |= 1 << (i & 7);
 
@@ -440,6 +443,92 @@ function thinDoubleOutlines(rgba: Uint8ClampedArray, top: Int16Array, isLine: Ui
   }
   for (const [i, k] of fixes) for (let c = 0; c < 3; c++) rgba[i * 4 + c] = rgba[k * 4 + c];
 }
+
+/**
+ * Where two of the owner's pieces meet at an open edge of his (PaintedPiece.seal) and leave a single
+ * pixel between them (a turned limb's edge stepping past its neighbour's), the piece behind goes on under
+ * the one in front: the pixel takes the back piece's colour beside it. A gap of his own inside one piece
+ * (between his fingers) is left as he drew it.
+ */
+function closeSeams(rgba: Uint8ClampedArray, part: Uint8Array, top: Int16Array, flags: Uint8Array): void {
+  const fill: [number, number][] = [];
+  for (let y = 1; y < GRID - 1; y++) {
+    for (let x = 1; x < GRID - 1; x++) {
+      const i = y * GRID + x;
+      if (rgba[i * 4 + 3]) continue;
+      const nb = [i - 1, i + 1, i - GRID, i + GRID];
+      if (nb.some((j) => !rgba[j * 4 + 3]) || !nb.some((j) => flags[j] & F_SEAL)) continue;
+      const back = nb.reduce((a, j) => (top[j] < top[a] ? j : a));
+      if (nb.every((j) => top[j] === top[back])) continue;
+      fill.push([i, back]);
+    }
+  }
+  for (const [i, j] of fill) {
+    for (let c = 0; c < 4; c++) rgba[i * 4 + c] = rgba[j * 4 + c];
+    part[i] = part[j];
+    top[i] = top[j];
+  }
+}
+
+/** The owner's black line on the broad man (tools/refs/bulky_ref.py his_line), closing his cut edges. */
+const HIS_LINE = hexToRgb('#000000');
+
+/**
+ * An owner's piece is cut where his figure went on into another piece of his (PaintedPiece.seal). Where a
+ * pose leaves such an edge bare (nothing drawn beside it), it is closed with his black line, as the
+ * converters close every cut he did not draw an edge at, instead of showing his light inside colours
+ * against the background. His own outline is not marked and stays as he drew it.
+ */
+function sealOpenEdges(rgba: Uint8ClampedArray, flags: Uint8Array): void {
+  const bare = (x: number, y: number) => x < 0 || y < 0 || x >= GRID || y >= GRID || !rgba[(y * GRID + x) * 4 + 3];
+  const fix: number[] = [];
+  for (let i = 0; i < GRID * GRID; i++) {
+    if (!(flags[i] & F_SEAL) || !rgba[i * 4 + 3]) continue;
+    const x = i % GRID;
+    const y = (i / GRID) | 0;
+    if (bare(x - 1, y) || bare(x + 1, y) || bare(x, y - 1) || bare(x, y + 1)) fix.push(i);
+  }
+  for (const i of fix) for (let c = 0; c < 3; c++) rgba[i * 4 + c] = HIS_LINE[c];
+}
+
+/**
+ * A light pixel of the owner's left alone among darker pixels or the background (a silver seam or a
+ * sleeve's band a turn has stepped apart, a light corner a turn has pushed past his line), or any light
+ * pixel alone among his dark pixels (our skin showing through a step in his line), takes the colour most
+ * of them have: a turned seam steps and a turned edge keeps its line, never leaving a white dot. His
+ * pieces as he drew them have none.
+ */
+function mendLoneLights(rgba: Uint8ClampedArray, flags: Uint8Array): void {
+  const lum = (i: number) => rgba[i * 4] * 0.299 + rgba[i * 4 + 1] * 0.587 + rgba[i * 4 + 2] * 0.114;
+  const fix: [number, number][] = [];
+  for (let y = 1; y < GRID - 1; y++) {
+    for (let x = 1; x < GRID - 1; x++) {
+      const i = y * GRID + x;
+      if (!rgba[i * 4 + 3] || lum(i) <= LIGHT) continue;
+      const nb = [i - GRID - 1, i - GRID, i - GRID + 1, i - 1, i + 1, i + GRID - 1, i + GRID, i + GRID + 1];
+      // Round it only his darker pixels, and the background where it sits on his edge.
+      const his = nb.filter((j) => rgba[j * 4 + 3]);
+      if (his.length < 3 || !his.every((j) => lum(j) < DARK) || !(flags[i] & F_OWNER || his.every((j) => flags[j] & F_OWNER))) continue;
+      const seen = new Map<number, number>();
+      for (const j of his) {
+        const k = (rgba[j * 4] << 16) | (rgba[j * 4 + 1] << 8) | rgba[j * 4 + 2];
+        seen.set(k, (seen.get(k) ?? 0) + 1);
+      }
+      // The commonest; on a tie the lightest of them (his cloth, not his line).
+      let best = -1;
+      for (const [k, n] of seen) if (best < 0 || n > seen.get(best)! || (n === seen.get(best)! && k > best)) best = k;
+      fix.push([i, best]);
+    }
+  }
+  for (const [i, k] of fix) {
+    rgba[i * 4] = k >> 16;
+    rgba[i * 4 + 1] = (k >> 8) & 255;
+    rgba[i * 4 + 2] = k & 255;
+  }
+}
+/** What counts as a light pixel and as a dark one round it (luminance, 0-255). */
+const LIGHT = 150;
+const DARK = 60;
 
 function resolveColors(def: ItemDef, colors: string[] | undefined): string[] {
   return def.colors.map((c, i) => (colors && colors[i]) || c.default);

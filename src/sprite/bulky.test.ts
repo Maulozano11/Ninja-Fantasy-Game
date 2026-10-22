@@ -7,7 +7,7 @@ import { describe, it } from 'node:test';
 import { BULKY_FOREARM_F, BULKY_FOREARM_N, BULKY_SHOULDER_F, BULKY_SHOULDER_N, BULKY_SKIN_REST, BULKY_UPPER_ARM_F, BULKY_UPPER_ARM_N } from './bulkyBodyArt';
 import { getItem } from './catalog';
 import { renderSprite } from './compose';
-import { refit, uprightPiece } from './fit';
+import { limbRefit, refit } from './fit';
 import * as belt from './items/brawlerBeltArt';
 import * as boots from './items/brawlerBootsArt';
 import * as bracers from './items/brawlerBracersArt';
@@ -17,7 +17,7 @@ import * as shirt from './items/seamShirtArt';
 import { LEGENDARY_PRESETS } from '../data/shinobiData';
 import { defaultAppearance } from './legacy';
 import type { PaintedPiece } from './painted';
-import { GRID, RES, Vec } from './raster';
+import { GRID, PARTS, RES, Vec } from './raster';
 import { drawRig, frameCount, rigPoseFor, type Rig } from './rig';
 import { STERN_HEAD } from './sternFaceArt';
 import { CAMP_POSES, MOVE_POSES, SPRITE_POSES, type BodyType, type SpriteAppearance, type SpritePose } from './types';
@@ -135,18 +135,23 @@ describe('the other bodies are unchanged', () => {
   });
 });
 
-/** The opaque pixels' 8-connected groups of at least `min` pixels. */
-function groups(rgba: Uint8ClampedArray, min = 3): number {
+/** Luminance (0-255) of pixel i. */
+const lum = (rgba: Uint8ClampedArray, i: number) => rgba[i * 4] * 0.299 + rgba[i * 4 + 1] * 0.587 + rgba[i * 4 + 2] * 0.114;
+const opaque = (rgba: Uint8ClampedArray, i: number) => rgba[i * 4 + 3] > 0;
+/** Light enough to show white against the background (his jeans' greys and whites, his silver seams, skin). */
+const LIGHT = 150;
+
+/** The opaque pixels' 8-connected groups (every size: a single loose pixel counts). */
+function groups(rgba: Uint8ClampedArray): number {
   const seen = new Uint8Array(GRID * GRID);
   let n = 0;
   for (let i = 0; i < GRID * GRID; i++) {
-    if (seen[i] || !rgba[i * 4 + 3]) continue;
-    let size = 0;
+    if (seen[i] || !opaque(rgba, i)) continue;
+    n++;
     const stack = [i];
     seen[i] = 1;
     while (stack.length) {
       const j = stack.pop()!;
-      size++;
       const x = j % GRID;
       const y = (j / GRID) | 0;
       for (let dy = -1; dy <= 1; dy++)
@@ -155,32 +160,103 @@ function groups(rgba: Uint8ClampedArray, min = 3): number {
           const yy = y + dy;
           if (xx < 0 || yy < 0 || xx >= GRID || yy >= GRID) continue;
           const k = yy * GRID + xx;
-          if (!seen[k] && rgba[k * 4 + 3]) {
+          if (!seen[k] && opaque(rgba, k)) {
             seen[k] = 1;
             stack.push(k);
           }
         }
     }
-    if (size >= min) n++;
   }
   return n;
 }
 
-describe('every pose', () => {
-  const POSES = [...SPRITE_POSES, ...MOVE_POSES, ...CAMP_POSES];
-  it('his clothes render on the bulky and the male body in every pose and frame, in one piece', () => {
-    for (const body of ['bulky', 'male'] as BodyType[]) {
-      // Without the knife and the pouch, which hang loose on purpose.
-      const look = his(body);
-      look.slots.waist = { id: 'waist_brawler_belt', colors: [], parts: { pouch: 'off', knife: 'off' } };
-      for (const pose of POSES) {
-        const n = frameCount(rigPoseFor(pose, look.cast?.style, look.slots.held?.id));
-        for (let f = 0; f < n; f++) {
-          const fr = renderSprite(look, pose, f);
-          assert.ok(groups(fr.rgba) <= 2, `${body} ${pose} ${f}: ${groups(fr.rgba)} separate pieces`);
-        }
+/**
+ * What is not checked for loose light pixels: the head (our face and hair) and the hands (our hand
+ * pictures, his fists), and his far forearm, whose white wrappings run white to their edge and part
+ * between their turns as he drew them.
+ */
+const NOT_CHECKED = new Set(['none', 'head', 'handN', 'handF', 'forearmF', 'held'].map((p) => PARTS.indexOf(p as never)));
+
+/**
+ * The glitches the owner saw ("tienes pixeles blancos y cortados"), as positions 'x,y':
+ * - edge: a light pixel of the clothes on the figure's edge (next to the background): a piece cut where
+ *   his figure went on, or a turn that stepped past his line;
+ * - lone: a light pixel with nothing round it but darker pixels or the background (a seam or a band a
+ *   turn has broken into dots, our skin showing through his line);
+ * - hole: a pixel of background inside light clothes (all four neighbours opaque, two of them light),
+ *   as between two pieces that no longer meet.
+ */
+function glitches(f: { rgba: Uint8ClampedArray; part: Uint8Array }): { edge: string[]; lone: string[]; hole: string[] } {
+  const { rgba, part } = f;
+  const at = (i: number) => `${i % GRID},${(i / GRID) | 0}`;
+  const out = { edge: [] as string[], lone: [] as string[], hole: [] as string[] };
+  const N4 = [-1, 1, -GRID, GRID];
+  const N8 = [...N4, -GRID - 1, -GRID + 1, GRID - 1, GRID + 1];
+  for (let y = 1; y < GRID - 1; y++) {
+    for (let x = 1; x < GRID - 1; x++) {
+      const i = y * GRID + x;
+      if (!opaque(rgba, i) && !opaque(rgba, i - 1) && !opaque(rgba, i + 1)) continue;
+      const n4 = N4.map((d) => i + d);
+      const n8 = N8.map((d) => i + d);
+      if (!opaque(rgba, i)) {
+        if (n4.every((j) => opaque(rgba, j)) && n4.filter((j) => lum(rgba, j) > 110).length >= 2 && !n8.some((j) => NOT_CHECKED.has(part[j]))) out.hole.push(at(i));
+        continue;
       }
+      if (lum(rgba, i) <= LIGHT || NOT_CHECKED.has(part[i])) continue;
+      if (n4.some((j) => !opaque(rgba, j))) out.edge.push(at(i));
+      if (n8.every((j) => !opaque(rgba, j) || (lum(rgba, j) < 60 && !NOT_CHECKED.has(part[j])))) out.lone.push(at(i));
     }
+  }
+  return out;
+}
+
+/** Every pose's every frame on a body, his clothes as he drew them (pouch and knife on). */
+const POSES = [...SPRITE_POSES, ...MOVE_POSES, ...CAMP_POSES];
+function* frames(look: SpriteAppearance, poses: readonly SpritePose[] = POSES, firstOnly = false): Generator<[string, ReturnType<typeof renderSprite>]> {
+  for (const pose of poses) {
+    const n = firstOnly ? 1 : frameCount(rigPoseFor(pose, look.cast?.style, look.slots.held?.id));
+    for (let f = 0; f < n; f++) yield [`${look.body} ${pose} ${f}`, renderSprite(look, pose, f)];
+  }
+}
+
+/** The jeans in the colours the owner was shown (his grey, denim blue, black, sand, red) and the boots out. */
+const VARIANTS: [string, Partial<SpriteAppearance['slots']>][] = [
+  ['blue', { bottom: { id: 'bottom_jeans', colors: ['#3f6fb0'] } }],
+  ['black', { bottom: { id: 'bottom_jeans', colors: ['#3a3a44'] } }],
+  ['sand', { bottom: { id: 'bottom_jeans', colors: ['#d8c89a'] } }],
+  ['red', { bottom: { id: 'bottom_jeans', colors: ['#c0453a'] } }],
+  ['boots out', { bottom: { id: 'bottom_jeans', colors: [], parts: { boots: 'out' } } }],
+];
+
+describe('every pose, every frame', () => {
+  // Rendered once: both bodies, every frame as he dressed him; each variant on the first frame of the
+  // poses that bend the legs and swing the arms most.
+  const all: [string, ReturnType<typeof renderSprite>, ReturnType<typeof glitches>][] = [];
+  for (const body of ['bulky', 'male'] as BodyType[]) {
+    for (const [k, f] of frames(his(body))) all.push([k, f, glitches(f)]);
+    for (const [name, slots] of VARIANTS)
+      for (const [k, f] of frames({ ...his(body), slots: { ...his(body).slots, ...slots } }, ['idle', 'walk', 'run', 'attack', 'throw', 'crouch'], true)) all.push([`${k} (${name})`, f, glitches(f)]);
+  }
+
+  it('is one figure: no piece loose from the body, the pouch and the knife hanging on at their straps', () => {
+    for (const [k, f] of all) assert.equal(groups(f.rgba), 1, k);
+  });
+
+  it('shows no light pixel of his clothes on the figure edge where a piece was cut or turned', () => {
+    for (const [k, , g] of all) assert.deepEqual(g.edge, [], k);
+  });
+
+  it('leaves no light pixel alone among dark ones (no white dots)', () => {
+    for (const [k, , g] of all) assert.deepEqual(g.lone, [], k);
+  });
+
+  it('opens no hole of background inside his light clothes', () => {
+    for (const [k, , g] of all) assert.deepEqual(g.hole, [], k);
+  });
+
+  it('the bulky body at rest is still his picture, byte for byte', () => {
+    const f = renderSprite(his('bulky'), 'idle', 0);
+    assert.equal(createHash('sha1').update(f.rgba).digest('hex'), 'd181f9f7cfe714d067c7514f23f96296143bd495');
   });
 });
 
@@ -202,9 +278,44 @@ describe('boots inside or outside the trousers', () => {
 describe('fitting his pieces to another body', () => {
   it('only leaves out or repeats whole columns and rows of his: every colour stays one of his', () => {
     for (const [name, p] of Object.entries({ SHIRT_TORSO: shirt.SHIRT_TORSO, JEANS_SHIN_N: jeans.JEANS_SHIN_N, STEEL_BRACER_N: bracers.STEEL_BRACER_N })) {
-      const f = refit(uprightPiece(p), { left: 0.7, right: 0.8, down: 1.3 }, `test ${name}`);
-      const used = new Set(f.rows.join('').replace(/\./g, ''));
-      for (const ch of used) assert.ok(ch in p.colors);
+      for (const f of [refit(p, { left: 0.7, right: 0.8, down: 1.3 }, `test ${name}`), limbRefit(p, 0.8, 1.3, `test ${name}`)]) {
+        const used = new Set(f.rows.join('').replace(/\./g, ''));
+        for (const ch of used) assert.ok(ch in p.colors);
+      }
     }
+  });
+
+  it('a limb piece keeps its angle and its rows: each row is one of his, moved across whole', () => {
+    // His steel bracer, drawn slanting (59 degrees): narrowed, each row of the fit is a row of his with
+    // columns left out, never a row resampled.
+    const p = bracers.STEEL_BRACER_N;
+    const f = limbRefit(p, 0.8, 1, 'test rows');
+    assert.equal(f.angle, p.angle);
+    assert.equal(f.rows.length, p.rows.length);
+    for (let j = 0; j < f.rows.length; j++) {
+      const mine = f.rows[j].replace(/\./g, '');
+      const his = p.rows[j].replace(/\./g, '');
+      // A subsequence of his row: his pixels in his order.
+      let k = 0;
+      for (const ch of his) if (ch === mine[k]) k++;
+      assert.equal(k, mine.length, `row ${j}`);
+    }
+  });
+
+  it('on the normal male his clothes cover the body: no bare torso or hip shows past them', () => {
+    // At rest the shirt covers the male's torso below the collar and the jeans his hips and legs: no pixel
+    // there is still the bare body's (our skin or briefs showing past his clothes).
+    const f = renderSprite(his('male'), 'idle', 0);
+    const bare = renderSprite({ ...his('male'), slots: { hair: his('male').slots.hair } }, 'idle', 0);
+    const collar = Math.floor(f.rig.neck.y * RES) + 2;
+    let skin = 0;
+    for (let i = collar * GRID; i < GRID * GRID; i++) {
+      if (!opaque(f.rgba, i) || !opaque(bare.rgba, i)) continue;
+      // Same colour as the bare body at a torso, hip or leg pixel: the body shows through.
+      const p = PARTS[f.part[i]];
+      if (!['torso', 'pelvis', 'thighN', 'thighF', 'shinN', 'shinF'].includes(p)) continue;
+      if ([0, 1, 2].every((c) => f.rgba[i * 4 + c] === bare.rgba[i * 4 + c])) skin++;
+    }
+    assert.equal(skin, 0);
   });
 });

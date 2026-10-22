@@ -7,7 +7,7 @@ import { hexToRgb, hslToHex, rgbToHsl } from './color';
 import { armJoints, DrawCtx, Side } from './ctx';
 import { BULKY_FOREARM_F, BULKY_FOREARM_N, BULKY_SHOULDER_F, BULKY_SHOULDER_N, BULKY_SKIN, BULKY_SKIN_LINE, BULKY_UPPER_ARM_F, BULKY_UPPER_ARM_N } from './bulkyBodyArt';
 import { segAngle, type PaintedPiece } from './painted';
-import { add, F_NO_OUTLINE, F_NO_TEXTURE, Layer, lerp, PartId, sub, Vec } from './raster';
+import { add, F_NO_OUTLINE, F_NO_TEXTURE, F_OWNER, F_SEAL, Layer, lerp, PartId, sub, Vec } from './raster';
 import { drawRig, turnPoint, type Rig } from './rig';
 import type { BodyType } from './types';
 import { stampTemplate, type TemplatePalette } from './rotsprite';
@@ -57,7 +57,7 @@ export function capPlace(r: Rig, s: Side, p: PaintedPiece): { at: Vec; deg: numb
 function stamp(g: DrawCtx, L: Layer, p: PaintedPiece, at: { x: number; y: number }, deg: number, part: PartId): void {
   const pal: TemplatePalette = {};
   for (const [ch, hex] of Object.entries(p.colors)) pal[ch] = [g.m(ownerSkin(hex, BULKY_SKIN, g.look.skin), 'flat'), 3];
-  stampTemplate(L, p, at, deg - p.angle, pal, part, { flags: F_NO_TEXTURE | F_NO_OUTLINE });
+  stampTemplate(L, p, at, deg - p.angle, pal, part, { flags: F_NO_TEXTURE | F_NO_OUTLINE | F_OWNER, seal: p.seal ? { rows: p.seal, flag: F_SEAL } : undefined });
 }
 
 /**

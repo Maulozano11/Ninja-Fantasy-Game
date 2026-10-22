@@ -24,7 +24,7 @@ import numpy as np  # noqa: E402
 from PIL import Image  # noqa: E402
 
 from aiden_ref import background, luma, save  # noqa: E402,F401
-from roman_ref import hexc, inside, near4, near8, pack, ts_piece, write  # noqa: E402,F401
+from roman_ref import CHARS, hexc, inside, near4, near8, pack, ts_piece, write  # noqa: E402,F401
 
 REF = 'docs/reference/bulky-owner-reference.jpg'
 PITCH = 20.0
@@ -253,11 +253,105 @@ def his_line(a, K):
     return np.array(max(sorted(seen), key=lambda t: seen[t]))
 
 
-def piece(name, doc, col, mask, joint, ang, at=None):
+def packed(col, mask):
+    """His colours of a piece as pack() stores them (each the first colour of the piece within 3 of it,
+    in reading order), as a (H, W, 3) array (outside the mask, `col`)."""
+    out = col.copy()
+    seen = []
+    for y, x in zip(*np.nonzero(mask)):
+        c = col[y, x]
+        for ref in seen:
+            if np.abs(ref - c).max() <= 3:
+                out[y, x] = ref
+                break
+        else:
+            seen.append(c)
+    return out
+
+
+# His pixels at the top of the knife's region that close the near leg's inseam (x, y): a grey of his jeans
+# and two of his line. They are the near leg's (jeans-from-ref.py), not the knife's (brawler-belt-from-ref.py),
+# where they would hang loose beside the sheath once the near leg moves.
+KNIFE_INSEAM = [(50, 75), (51, 75), (50, 76)]
+
+
+def cells(points, shape):
+    """A mask of these (x, y) pixels."""
+    m = np.zeros(shape, bool)
+    for x, y in points:
+        m[y, x] = True
+    return m
+
+
+_OUTSIDE = []
+
+
+def his_outside():
+    """Where his figure is not, as a (100, 100) mask: the white around him and the gaps he left inside it
+    (between an arm and the body, between fingers)."""
+    if not _OUTSIDE:
+        a = native()
+        K = np.array([[kind(a[y, x]) for x in range(a.shape[1])] for y in range(a.shape[0])])
+        _OUTSIDE.append(background(a) | (K == 'gap'))
+    return _OUTSIDE[0]
+
+
+def seal_rows(mask, origin, shape):
+    """The piece's open edge (PaintedPiece.seal): each cell on its edge whose every neighbour outside the
+    piece (8 neighbours: a turn can bare a cell touching the outside only at a corner) is his figure,
+    another part of him it was cut from, not the white around him or a gap he left. In a pose that opens
+    it, it is closed with his black line; his own outline is never marked."""
+    out_his = his_outside()
+    H, W = mask.shape
+    x0, y0 = origin
+    w, h = shape
+    rows = []
+    for y in range(y0, y0 + h):
+        r = ''
+        for x in range(x0, x0 + w):
+            mark = '.'
+            if mask[y, x]:
+                outs = [(y + dy, x + dx) for dy in (-1, 0, 1) for dx in (-1, 0, 1) if dy or dx]
+                outs = [(q, p) for q, p in outs if not (0 <= q < H and 0 <= p < W and mask[q, p])]
+                if outs and not any(not (0 <= q < H and 0 <= p < W) or out_his[q, p] for q, p in outs):
+                    mark = 'x'
+            r += mark
+        rows.append(r.rstrip('.'))
+    return rows
+
+
+def piece(name, doc, col, mask, joint, ang, at=None, seal=False, drop=None, extra=None, extra_col=None):
     """A PaintedPiece as TypeScript with its pivot the cell on `joint` (his pixels), and where its first
-    cell lands in our bulky idle frame 0 (`at`: our joint, when the pivot is not on it)."""
+    cell lands in our bulky idle frame 0 (`at`: our joint, when the pivot is not on it). With `seal`, its
+    open edge too (seal_rows). `drop`: pixels of his it leaves to another piece, and `extra`: pixels of his
+    it takes from another; both after its own colours are packed, so those pack as without them (an extra
+    pixel keeps the colour it had in the piece it came from, which packed it on its own)."""
     rows, origin, palette = pack(col, mask)
+    if drop is not None:
+        mask = mask & ~drop
+        rows = [''.join('.' if drop[origin[1] + j, origin[0] + i] else c for i, c in enumerate(r)) for j, r in enumerate(rows)]
+    if extra is not None and extra.any():
+        ys, xs = np.nonzero(extra)
+        w = max(len(r) for r in rows)
+        x0, y0 = min(origin[0], int(xs.min())), min(origin[1], int(ys.min()))
+        x1, y1 = max(origin[0] + w, int(xs.max()) + 1), max(origin[1] + len(rows), int(ys.max()) + 1)
+        grid = np.full((y1 - y0, x1 - x0), '.', dtype='<U1')
+        for j, r in enumerate(rows):
+            for i, c in enumerate(r):
+                grid[origin[1] - y0 + j, origin[0] - x0 + i] = c
+        for y, x in zip(ys, xs):
+            c = extra_col[y, x]
+            ch = next((k for k, h in palette.items() if h == hexc(c)), None)
+            if ch is None:
+                ch = next(k for k in CHARS if k not in palette)
+                palette[ch] = hexc(c)
+            grid[y - y0, x - x0] = ch
+        rows, origin = [''.join(r) for r in grid], (x0, y0)
+        mask = mask | extra
     text = ts_piece(name, doc, rows, origin, palette, joint, ang)
+    if seal:
+        marks = seal_rows(mask, origin, (max(len(r) for r in rows), len(rows)))
+        text = text.replace('  colors: {', '  seal: [\n' + ''.join(f"    '{r}',\n" for r in marks) + '  ],\n  colors: {', 1)
     j = at or joint
     rest = [origin[i] + OFFSET[i] + int(np.floor(j[i])) - int(np.floor(joint[i])) for i in (0, 1)]
     return name, text, rest, palette

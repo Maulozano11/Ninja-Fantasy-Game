@@ -5,7 +5,6 @@
 // is one of his; the pivot cell stays on its joint.
 
 import type { PaintedPiece } from './painted';
-import { rotateTemplate } from './rotsprite';
 
 type Grid = string[][];
 
@@ -22,11 +21,19 @@ function side(idx: number[], want: number, get: (i: number) => string[]): number
   if (want < out.length) {
     while (out.length > Math.max(1, want)) {
       let best = -1;
-      let score = -1;
-      // Never the outermost line (index 0 of `out`).
+      let score = -Infinity;
+      // Never the outermost line (index 0 of `out`). The line most like the next one goes first, but
+      // not one whose loss would bare his figure's inside on the lines either side of it (a jagged
+      // outline running through it): each cell it bares counts against it.
       for (let k = 1; k < out.length; k++) {
         const next = k + 1 < out.length ? out[k + 1] : null;
-        const s = next === null ? same(get(out[k]), get(out[k - 1])) : same(get(out[k]), get(next));
+        const line = get(out[k]);
+        let s = next === null ? same(line, get(out[k - 1])) : same(line, get(next));
+        if (next !== null) {
+          const a = get(out[k - 1]);
+          const b = get(next);
+          for (let r = 0; r < line.length; r++) if (line[r] !== '.' && (a[r] !== '.') !== (b[r] !== '.')) s -= 3;
+        }
         if (s > score) {
           score = s;
           best = k;
@@ -71,67 +78,99 @@ function axis(n: number, p: number, before: number, after: number, get: (i: numb
   return { order: B, pivot: B.length - 1 + Math.max(1, Math.round((p - n + 1) * before)) };
 }
 
+const grid = (rows: string[], W: number): Grid => rows.map((r) => r.padEnd(W, '.').split(''));
+
 const cache = new Map<string, PaintedPiece>();
 
 /**
  * His piece with `left`/`right` columns on each side of the pivot column and `up`/`down` rows above and
  * below the pivot row (each a factor of what he drew: 1 keeps it). A pivot outside the piece (an object
- * hanging off a joint) moves the piece by `shift` cells instead of squeezing the empty side.
+ * hanging off a joint) moves the piece by `shift` cells instead of squeezing the empty side. The cells
+ * to close with his line (`seal`) follow his pixels.
  */
-export function refit(p: PaintedPiece, f: { left?: number; right?: number; up?: number; down?: number; shift?: [number, number] }, key: string): PaintedPiece {
+export function refit(p: PaintedPiece, f: Fit, key: string): PaintedPiece {
   const k = `${key}|${f.left ?? 1},${f.right ?? 1},${f.up ?? 1},${f.down ?? 1},${f.shift ?? ''}`;
   const hit = cache.get(k);
   if (hit) return hit;
-  const W = Math.max(...p.rows.map((r) => r.length));
-  const g: Grid = p.rows.map((r) => r.padEnd(W, '.').split(''));
-  const [px, py] = p.pivot;
-  const xs = axis(W, px, f.left ?? 1, f.right ?? 1, (i) => cols(g, i));
-  const ys = axis(g.length, py, f.up ?? 1, f.down ?? 1, (i) => g[i]);
-  const pivotX = xs.pivot;
-  const pivotY = ys.pivot;
-  const rows = ys.order.map((y) => xs.order.map((x) => g[y][x]).join(''));
-  const out: PaintedPiece = { ...p, rows, pivot: [pivotX + (f.shift?.[0] ?? 0), pivotY + (f.shift?.[1] ?? 0)] };
+  const out = refitRows(p, f).out;
   cache.set(k, out);
   return out;
 }
 
-const upright = new Map<PaintedPiece, PaintedPiece>();
+type Fit = { left?: number; right?: number; up?: number; down?: number; shift?: [number, number] };
+
+/** refit, and which of his rows each row of the result is. */
+function refitRows(p: PaintedPiece, f: Fit): { out: PaintedPiece; from: number[] } {
+  const W = Math.max(...p.rows.map((r) => r.length));
+  const g = grid(p.rows, W);
+  const [px, py] = p.pivot;
+  const xs = axis(W, px, f.left ?? 1, f.right ?? 1, (i) => cols(g, i));
+  const ys = axis(g.length, py, f.up ?? 1, f.down ?? 1, (i) => g[i]);
+  const pick = (h: Grid) => ys.order.map((y) => xs.order.map((x) => h[y][x]).join(''));
+  const rows = pick(g);
+  const out: PaintedPiece = { ...p, rows, pivot: [xs.pivot + (f.shift?.[0] ?? 0), ys.pivot + (f.shift?.[1] ?? 0)] };
+  // Where lines left out bare a cell whose neighbour in his picture was more of his figure, the cell is
+  // marked open, so a pose closes it with his line like any cut of his (PaintedPiece.seal).
+  const filled = (rs: string[] | Grid, y: number, x: number) => y >= 0 && y < rs.length && x >= 0 && x < rs[y].length && rs[y][x] !== '.';
+  const seal = (p.seal ? pick(grid(p.seal, W)) : rows.map((r) => '.'.repeat(r.length))).map((r) => r.split(''));
+  let opened = false;
+  rows.forEach((r, j) =>
+    [...r].forEach((c, i) => {
+      if (c === '.') return;
+      const sy = ys.order[j];
+      const sx = xs.order[i];
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        if (!filled(rows, j + dy, i + dx) && filled(g, sy + dy, sx + dx)) {
+          seal[j][i] = 'x';
+          opened = true;
+        }
+      }
+    }),
+  );
+  if (p.seal || opened) out.seal = seal.map((r) => r.join(''));
+  return { out, from: ys.order };
+}
 
 /**
- * His limb piece turned (RotSprite, as every pose turns it) so its limb points straight down: its
- * columns then run across the limb and its rows along it, so refit narrows it across and shortens or
- * lengthens it along the limb, whatever angle he drew the limb at.
+ * Each row of a piece moved across whole by `sh[row]` cells (his pixels only moved, none made or lost),
+ * its empty columns trimmed; the pivot column follows the pivot row's move (none, for a shear about it).
  */
-export function uprightPiece(p: PaintedPiece): PaintedPiece {
-  const hit = upright.get(p);
-  if (hit) return hit;
-  const px = rotateTemplate(p, 90 - p.angle);
-  const x0 = Math.min(...px.map((q) => q.dx));
-  const y0 = Math.min(...px.map((q) => q.dy));
-  const w = Math.max(...px.map((q) => q.dx)) - x0 + 1;
-  const h = Math.max(...px.map((q) => q.dy)) - y0 + 1;
-  const g = Array.from({ length: h }, () => Array<string>(w).fill('.'));
-  for (const q of px) g[q.dy - y0][q.dx - x0] = q.ch;
-  const out: PaintedPiece = { ...p, rows: g.map((r) => r.join('')), pivot: [-x0, -y0], angle: 90 };
-  upright.set(p, out);
+function shiftRows(p: PaintedPiece, sh: number[]): PaintedPiece {
+  const W = Math.max(...p.rows.map((r) => r.length));
+  const lo = Math.min(0, ...sh);
+  const hi = Math.max(0, ...sh);
+  const move = (rows: string[]) => rows.map((r, j) => '.'.repeat(sh[j] - lo) + r.padEnd(W, '.') + '.'.repeat(hi - sh[j]));
+  let rows = move(p.rows);
+  let seal = p.seal ? move(p.seal) : undefined;
+  let x0 = 0;
+  let x1 = W + hi - lo - 1;
+  while (x0 < x1 && rows.every((r) => r[x0] === '.')) x0++;
+  while (x1 > x0 && rows.every((r) => r[x1] === '.')) x1--;
+  const cut = (rs: string[]) => rs.map((r) => r.slice(x0, x1 + 1));
+  rows = cut(rows);
+  if (seal) seal = cut(seal);
+  const out: PaintedPiece = { ...p, rows, pivot: [p.pivot[0] - lo - x0, p.pivot[1]] };
+  if (seal) out.seal = seal;
   return out;
 }
 
-const middle = new Map<PaintedPiece, PaintedPiece>();
-
-/** His piece with its pivot moved across to the middle of its columns (it hangs centred on the joint). */
-export function centered(p: PaintedPiece): PaintedPiece {
-  const hit = middle.get(p);
+/**
+ * His limb piece made `across` as wide and `along` as long below its pivot, whatever angle he drew the
+ * limb at: its rows are first moved across whole (a shear, every pixel his) so the limb runs straight
+ * down the columns, his columns along the limb are left out or repeated and his rows across it, and each
+ * row is moved back as far as it was moved (so his slanting lines join up as he drew them). It still
+ * points the way he drew it, so a pose turns it once, as any piece of his.
+ */
+export function limbRefit(p: PaintedPiece, across: number, along: number, key: string): PaintedPiece {
+  const k = `limb ${key}|${across},${along}`;
+  const hit = cache.get(k);
   if (hit) return hit;
-  let x0 = Infinity;
-  let x1 = -1;
-  for (const r of p.rows)
-    for (let i = 0; i < r.length; i++)
-      if (r[i] !== '.') {
-        x0 = Math.min(x0, i);
-        x1 = Math.max(x1, i);
-      }
-  const out: PaintedPiece = { ...p, pivot: [Math.round((x0 + x1) / 2), p.pivot[1]] };
-  middle.set(p, out);
+  const rad = (p.angle * Math.PI) / 180;
+  const cot = Math.cos(rad) / Math.sin(rad);
+  const sh = p.rows.map((_, j) => Math.round((j - p.pivot[1]) * cot));
+  const up = shiftRows(p, sh.map((v) => -v));
+  const { out: fit, from } = refitRows(up, { left: across, right: across, down: along });
+  const out = shiftRows(fit, from.map((j) => sh[j]));
+  cache.set(k, out);
   return out;
 }

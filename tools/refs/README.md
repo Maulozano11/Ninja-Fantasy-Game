@@ -145,7 +145,11 @@ folders.
   upper pieces are split into a shoulder cap and a tube (`CAP_T`), so the cap can follow the arm only part of
   the way. Each module exports `*_REST` (where each piece lands at rest, checked by `src/sprite/bulky.test.ts`)
   and, where colour slots need it, `*_KIND`. With a second argument, a folder, each writes his figure beside
-  the pieces.
+  the pieces. Every piece (but the hair's and the face's) also carries `seal`: the cells of its edge whose
+  neighbours in his picture were more of his figure (8 neighbours, `seal_rows`), which the renderer closes
+  with his line when a pose bares them. `piece(drop=, extra=)` moves pixels of his from one piece to another
+  after its colours are packed, so the rest pack, and render at rest, as before (the line round the knife
+  is the knife's; the inseam pixels at the top of the gap, `INSEAM_TOP` and `KNIFE_INSEAM`, the near leg's).
 
       python3 -I tools/refs/bulky-body-from-ref.py src/sprite/bulkyBodyArt.ts [studyDir]
       python3 -I tools/refs/stern-face-from-ref.py src/sprite/sternFaceArt.ts [studyDir]

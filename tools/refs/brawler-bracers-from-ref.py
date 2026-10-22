@@ -72,8 +72,8 @@ def main():
         fist = m & (t >= flen - 0.5)
         bracer = m & (t < flen + 1.5)
         side = 'near' if s == 'N' else 'far'
-        made.append(R.piece(f'{name}_BRACER_{s}', f'The {side} {"steel gauntlet" if name == "STEEL" else "wrappings"} from below the elbow to the wrist: it rides the forearm about the elbow.', a, bracer, el, R.joint_angle('elbow' + s, 'wrist' + s)))
-        made.append(R.piece(f'{name}_FIST_{s}', f'The {side} fist in its {"steel gauntlet" if name == "STEEL" else "wrappings"}: it hangs from the wrist like our hands.', a, fist, wr, R.joint_angle('wrist' + s, 'hand' + s)))
+        made.append(R.piece(f'{name}_BRACER_{s}', f'The {side} {"steel gauntlet" if name == "STEEL" else "wrappings"} from below the elbow to the wrist: it rides the forearm about the elbow.', a, bracer, el, R.joint_angle('elbow' + s, 'wrist' + s), seal=True))
+        made.append(R.piece(f'{name}_FIST_{s}', f'The {side} fist in its {"steel gauntlet" if name == "STEEL" else "wrappings"}: it hangs from the wrist like our hands.', a, fist, wr, R.joint_angle('wrist' + s, 'hand' + s), seal=True))
         parts += [(a, bracer), (a, fist)]
     kinds = {}
     for n, _, _, pal in made:

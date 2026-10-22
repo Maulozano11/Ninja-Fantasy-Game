@@ -71,14 +71,14 @@ def main():
         cap, tube = m & (t < R.CAP_T), m & (t >= R.CAP_T - R.CAP_OVERLAP)
         side = 'near' if s == 'N' else 'far'
         ang = R.joint_angle('shoulder' + s, 'elbow' + s)
-        made.append(R.piece(f'BULKY_UPPER_ARM_{s}', f'The {side} upper arm, below the shoulder to the elbow: his skin below the sleeve, continued up under it. It turns about the shoulder.', col, tube, sh, ang))
-        made.append(R.piece(f'BULKY_SHOULDER_{s}', f'The {side} shoulder\'s round, continued under the sleeve: it rides the shoulder and follows the arm part of the way.', col, cap, sh, ang))
+        made.append(R.piece(f'BULKY_UPPER_ARM_{s}', f'The {side} upper arm, below the shoulder to the elbow: his skin below the sleeve, continued up under it. It turns about the shoulder.', col, tube, sh, ang, seal=True))
+        made.append(R.piece(f'BULKY_SHOULDER_{s}', f'The {side} shoulder\'s round, continued under the sleeve: it rides the shoulder and follows the arm part of the way.', col, cap, sh, ang, seal=True))
         parts.append((col, m))
         # The forearm: under his bracer, his skin at the elbow walked down to the wrist.
         elbow_skin = along(skin, el, fore, -4, 3)
         want = along(masks[cover], el, fore, -3, fore_len + 1) | elbow_skin
         col, m = R.fill_hidden(a, K, elbow_skin, want, -fore, black)
-        made.append(R.piece(f'BULKY_FOREARM_{s}', f'The {"near" if s == "N" else "far"} forearm, elbow to wrist: his skin at the elbow, continued down under his bracer. It turns about the elbow.', col, m, el, R.joint_angle('elbow' + s, 'wrist' + s)))
+        made.append(R.piece(f'BULKY_FOREARM_{s}', f'The {"near" if s == "N" else "far"} forearm, elbow to wrist: his skin at the elbow, continued down under his bracer. It turns about the elbow.', col, m, el, R.joint_angle('elbow' + s, 'wrist' + s), seal=True))
         parts.append((col, m))
     header = [
         '/** His lit skin, which the character\'s skin colour stands for: every colour of his moves as far, his black line stays. */',

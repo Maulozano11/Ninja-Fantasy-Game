@@ -13,11 +13,11 @@
 import { retintHex } from '../color';
 import { capPlace, ownerSkin } from '../bulkyBody';
 import { armDepth, armJoints, Depth, DrawCtx, handDraw, handPose, ItemDef, legDepth, legJoints, Side } from '../ctx';
-import { centered, refit, uprightPiece } from '../fit';
+import { limbRefit, refit } from '../fit';
 import { BOOTS_PART } from './bootsPart';
 import { clothPen, limb } from './clothes';
 import { segAngle, type PaintedPiece } from '../painted';
-import { F_NO_OUTLINE, F_NO_TEXTURE, GRID, Layer, partIndex, PartId, RES, Vec } from '../raster';
+import { F_NO_OUTLINE, F_NO_TEXTURE, F_OWNER, F_SEAL, GRID, Layer, partIndex, PartId, RES, Vec } from '../raster';
 import { BODY_PARAMS, type BodyParams } from '../rig';
 import { stampTemplate, type TemplatePalette } from '../rotsprite';
 import { BELT_KIND, BELT_KNIFE, BELT_LEATHER, BELT_METAL, BELT_POUCH, BELT_STRAPS, BELT_TAN } from './brawlerBeltArt';
@@ -47,8 +47,11 @@ function pens(g: DrawCtx, p: PaintedPiece, tint: Tint): TemplatePalette {
 
 /** His piece with its pivot on `at`, its limb pointing along `deg` (at his angle, every pixel his). */
 function onLimb(g: DrawCtx, L: Layer, p: PaintedPiece, at: Vec, deg: number, part: PartId, tint: Tint): void {
-  stampTemplate(L, p, at, deg - p.angle, pens(g, p, tint), part, { flags: F_NO_TEXTURE | F_NO_OUTLINE });
+  stampTemplate(L, p, at, deg - p.angle, pens(g, p, tint), part, { flags: F_NO_TEXTURE | F_NO_OUTLINE | F_OWNER, seal: sealOf(p) });
 }
+
+/** His piece's open edge (PaintedPiece.seal), flagged so it is closed with his line where it ends up bare. */
+const sealOf = (p: PaintedPiece) => (p.seal ? { rows: p.seal, flag: F_SEAL } : undefined);
 
 /** Past this lean (degrees from his picture) a piece riding the torso is turned with RotSprite; up to it, sheared. */
 const LEAN_SHEAR = 20;
@@ -69,7 +72,28 @@ function onTorso(g: DrawCtx, L: Layer, p: PaintedPiece, at: Vec, deg: number, pa
   const s = Math.sin((d * Math.PI) / 180);
   p.rows.forEach((row, j) => {
     const dx = -Math.round((j - p.pivot[1]) * s);
-    for (let i = 0; i < row.length; i++) if (row[i] !== '.') L.set(ax + i + dx, ay + j, pal[row[i]][0], 3, part, F_NO_TEXTURE | F_NO_OUTLINE);
+    for (let i = 0; i < row.length; i++) if (row[i] !== '.') L.set(ax + i + dx, ay + j, pal[row[i]][0], 3, part, F_NO_TEXTURE | F_NO_OUTLINE | F_OWNER | (p.seal?.[j]?.[i] === 'x' ? F_SEAL : 0));
+  });
+}
+
+/**
+ * His piece hanging from the torso by its top (the pouch on its straps): the middle of its top row follows
+ * the torso's lean as onTorso moves that cell, and the piece hangs straight down from there, never turned,
+ * so his thin straps stay whole and it stays on the belt. At his lean every pixel is where he drew it.
+ */
+function hang(g: DrawCtx, L: Layer, p: PaintedPiece, at: Vec, deg: number, part: PartId, tint: Tint): void {
+  const d = ((deg - p.angle) * Math.PI) / 180;
+  const top = p.rows[0];
+  const cx = Math.round((top.search(/[^.]/) + top.replace(/\.+$/, '').length - 1) / 2);
+  const ox = cx - p.pivot[0];
+  const oy = -p.pivot[1];
+  // Where that cell goes: sheared across like onTorso's rows for a small lean, turned past it.
+  const [mx, my] = Math.abs(deg - p.angle) > LEAN_SHEAR ? [Math.round(ox * Math.cos(d) - oy * Math.sin(d)) - ox, Math.round(ox * Math.sin(d) + oy * Math.cos(d)) - oy] : [-Math.round(oy * Math.sin(d)), 0];
+  const pal = pens(g, p, tint);
+  const ax = Math.floor(at.x * RES) - p.pivot[0] + mx;
+  const ay = Math.floor(at.y * RES) - p.pivot[1] + my;
+  p.rows.forEach((row, j) => {
+    for (let i = 0; i < row.length; i++) if (row[i] !== '.') L.set(ax + i, ay + j, pal[row[i]][0], 3, part, F_NO_TEXTURE | F_NO_OUTLINE | F_OWNER | (p.seal?.[j]?.[i] === 'x' ? F_SEAL : 0));
   });
 }
 
@@ -83,7 +107,7 @@ function onWrist(g: DrawCtx, L: Layer, s: Side, p: PaintedPiece, tint: Tint): vo
   const { flipX } = handPose(g, s);
   const drawn = flipX ? 180 - p.angle : p.angle;
   const turn = ((segAngle(j.wrist, j.hand) - drawn + 540) % 360) - 180;
-  stampTemplate(L, p, j.wrist, Math.abs(turn) <= 30 ? 0 : turn, pens(g, p, tint), prt('hand', s), { flipX, flags: F_NO_TEXTURE | F_NO_OUTLINE });
+  stampTemplate(L, p, j.wrist, Math.abs(turn) <= 30 ? 0 : turn, pens(g, p, tint), prt('hand', s), { flipX, flags: F_NO_TEXTURE | F_NO_OUTLINE | F_OWNER, seal: sealOf(p) });
 }
 
 /**
@@ -136,6 +160,25 @@ function forearmOff(g: DrawCtx, s: Side): void {
   }
 }
 
+/**
+ * Our bare upper arm under his sleeve taken away, from above the shoulder to `upTo` design units down the
+ * arm (painted pixels stay): the sleeve is his figure there, so our arm's round never shows past his line.
+ */
+function upperArmOff(g: DrawCtx, s: Side, upTo: number): void {
+  const j = armJoints(g.rig, s);
+  const L = g.L(armDepth(s, 'body'));
+  const upper = partIndex(prt('upperArm', s));
+  const len = Math.hypot(j.elbow.x - j.shoulder.x, j.elbow.y - j.shoulder.y) || 1;
+  const ux = (j.elbow.x - j.shoulder.x) / len;
+  const uy = (j.elbow.y - j.shoulder.y) / len;
+  for (let i = 0; i < GRID * GRID; i++) {
+    if (L.mat[i] < 0 || L.part[i] !== upper || L.flags[i] & F_NO_TEXTURE) continue;
+    const t = ((i % GRID) + 0.5) / RES - j.shoulder.x;
+    const u = (Math.floor(i / GRID) + 0.5) / RES - j.shoulder.y;
+    if (t * ux + u * uy < upTo) L.mat[i] = -1;
+  }
+}
+
 /** His colours by what they are: his black line stays, each other kind follows its slot from his default. */
 const byKind = (kinds: Record<string, string>, slots: Record<string, [string, string]>, skin?: string): Tint => (_ch, hex) => {
   const k = kinds[hex];
@@ -150,21 +193,41 @@ const byKind = (kinds: Record<string, string>, slots: Record<string, [string, st
 // ---------------------------------------------------------------------------
 
 const BULKY = BODY_PARAMS.bulky;
-const ratio = (b: BodyParams, f: (p: BodyParams) => number) => f(b) / f(BULKY);
+/** How much longer (above 1) or shorter a bone of this body is than the bulky body's. */
+const boneRatio = (b: BodyParams, f: (p: BodyParams) => number) => f(b) / f(BULKY);
 
-/** A limb piece on this body: as wide as its limb, as long as its bone. */
-function limbFit(g: DrawCtx, p: PaintedPiece, key: string, width: (b: BodyParams) => number, length: (b: BodyParams) => number): PaintedPiece {
+/**
+ * How each of his pieces sits on the normal male body, as factors of what he drew: `across` a limb (or
+ * `left`/`right` of the torso's pivot), and `along` it below the pivot (by default, as much longer or
+ * shorter as the male's bone). Measured on the male body at rest against the bulky one and against the
+ * presets fitted on it (Aiden, Ren, Akira, Solen): the male's chest is as broad as the bulky's on the far
+ * side and nearly so on the near side, so his shirt keeps nearly all its columns and covers the shoulders;
+ * a short sleeve is about as wide as the male's upper arm plus a pixel each side (Ren's); a bracer and a
+ * fist one or two columns narrower than his; loose trousers two pixels wider than the male's legs each
+ * side (Ren's), so his jeans lose two or three columns of fourteen.
+ */
+const MALE_FIT = {
+  torso: { left: 0.92, right: 1, down: 0.88 },
+  hips: { left: 0.85, right: 0.85 },
+  knife: { left: 1, right: 1, down: 0.85 },
+  sleeve: { across: 0.95, along: 0.85 },
+  cap: { across: 1, along: 1 },
+  bracer: { across: 0.85 },
+  fist: { across: 0.85, along: 0.85 },
+  thigh: { across: 0.85 },
+  shin: { across: 0.85 },
+};
+
+/** A limb piece on this body: `across` as wide, and as long as its bone (or `along`) below its pivot. */
+function limbFit(g: DrawCtx, p: PaintedPiece, key: string, f: { across: number; along?: number }, bone: (b: BodyParams) => number): PaintedPiece {
   if (g.rig.body === 'bulky') return p;
-  const w = ratio(g.bp, width);
-  // Turned upright first, so its columns run across the limb whatever angle he drew it at, then centred
-  // on our limb's line (his limb's middle is a pixel or two off our bulky rig's joints).
-  return centered(refit(uprightPiece(p), { left: w, right: w, down: ratio(g.bp, length) }, `${key}@${g.rig.body}`));
+  return limbRefit(p, f.across, f.along ?? boneRatio(g.bp, bone), `${key}@${g.rig.body}`);
 }
 
 /** A piece riding the torso on this body: narrower on each side of its pivot, shorter below it. */
-function torsoFit(g: DrawCtx, p: PaintedPiece, key: string, f: { left: (b: BodyParams) => number; right: (b: BodyParams) => number; down?: (b: BodyParams) => number }): PaintedPiece {
+function torsoFit(g: DrawCtx, p: PaintedPiece, key: string, f: { left: number; right: number; down?: number }): PaintedPiece {
   if (g.rig.body === 'bulky') return p;
-  return refit(p, { left: ratio(g.bp, f.left), right: ratio(g.bp, f.right), down: f.down ? ratio(g.bp, f.down) : 1 }, `${key}@${g.rig.body}`);
+  return refit(p, f, `${key}@${g.rig.body}`);
 }
 
 const torsoAngle = (g: DrawCtx) => segAngle(g.rig.pelvis, g.rig.neck);
@@ -189,15 +252,17 @@ export const BRAWLER_TOPS: ItemDef[] = [
       const tint = byKind(SHIRT_KIND, { cloth: [SHIRT_CLOTH, cloth], seam: [SHIRT_SEAM, seam] });
       // Under his shirt our torso goes, up to the neck: the shirt is his figure there.
       torsoOff(g, SHIRT_HEM, g.bp.torsoLen);
-      const torso = torsoFit(g, SHIRT_TORSO, 'SHIRT_TORSO', { left: (b) => b.shoulderHalf, right: (b) => b.chestHalf, down: (b) => b.torsoLen });
+      const torso = torsoFit(g, SHIRT_TORSO, 'SHIRT_TORSO', MALE_FIT.torso);
       onTorso(g, g.L('torso.top'), torso, r.neck, torsoAngle(g), 'torso', tint);
       for (const s of SIDES) {
         const j = armJoints(r, s);
         const L = g.L(armDepth(s, 'cloth'));
-        const p = limbFit(g, s === 'N' ? SHIRT_SLEEVE_N : SHIRT_SLEEVE_F, `SHIRT_SLEEVE_${s}`, (b) => b.armR[0], (b) => b.upperArm);
+        const p = limbFit(g, s === 'N' ? SHIRT_SLEEVE_N : SHIRT_SLEEVE_F, `SHIRT_SLEEVE_${s}`, MALE_FIT.sleeve, (b) => b.upperArm);
+        // Under the sleeve our arm goes, but for its last two rows, where his hem lies over the arm.
+        upperArmOff(g, s, (p.rows.length - p.pivot[1] - 2) / RES);
         onLimb(g, L, p, j.shoulder, segAngle(j.shoulder, j.elbow), prt('upperArm', s), tint);
         // Over the shoulder the sleeve rides the shoulder, following the arm part of the way.
-        const cap = limbFit(g, s === 'N' ? SHIRT_CAP_N : SHIRT_CAP_F, `SHIRT_CAP_${s}`, (b) => b.armR[0], () => 1);
+        const cap = limbFit(g, s === 'N' ? SHIRT_CAP_N : SHIRT_CAP_F, `SHIRT_CAP_${s}`, MALE_FIT.cap, () => 1);
         const { at, deg } = capPlace(r, s, cap);
         onLimb(g, L, cap, at, deg, prt('upperArm', s), tint);
       }
@@ -226,12 +291,12 @@ export const BRAWLER_BOTTOMS: ItemDef[] = [
       for (const s of SIDES) {
         const L = g.L(legDepth(s, 'cloth'));
         const { hip, knee, ankle } = legJoints(r, s);
-        const shin = limbFit(g, s === 'N' ? JEANS_SHIN_N : JEANS_SHIN_F, `JEANS_SHIN_${s}`, (b) => b.legR[2], (b) => b.shin);
-        const thigh = limbFit(g, s === 'N' ? JEANS_THIGH_N : JEANS_THIGH_F, `JEANS_THIGH_${s}`, (b) => b.legR[0], (b) => b.thigh);
+        const shin = limbFit(g, s === 'N' ? JEANS_SHIN_N : JEANS_SHIN_F, `JEANS_SHIN_${s}`, MALE_FIT.shin, (b) => b.shin);
+        const thigh = limbFit(g, s === 'N' ? JEANS_THIGH_N : JEANS_THIGH_F, `JEANS_THIGH_${s}`, MALE_FIT.thigh, (b) => b.thigh);
         onLimb(g, L, shin, knee, segAngle(knee, ankle), prt('shin', s), tint);
         onLimb(g, L, thigh, hip, segAngle(hip, knee), prt('thigh', s), tint);
       }
-      const hips = torsoFit(g, JEANS_HIPS, 'JEANS_HIPS', { left: (b) => b.hipHalf, right: (b) => b.hipHalf });
+      const hips = torsoFit(g, JEANS_HIPS, 'JEANS_HIPS', MALE_FIT.hips);
       onTorso(g, g.L('torso.bottom'), hips, r.pelvis, torsoAngle(g), 'pelvis', tint);
     },
   },
@@ -257,14 +322,22 @@ export const BRAWLER_WAIST: ItemDef[] = [
       const tint = byKind(BELT_KIND, { leather: [BELT_LEATHER, leather], metal: [BELT_METAL, metal], tan: [BELT_TAN, tan] });
       const L = g.L('waist');
       const lean = torsoAngle(g);
-      if (parts.knife === 'on') onTorso(g, L, BELT_KNIFE, r.pelvis, lean, 'pelvis', tint);
+      if (parts.knife === 'on') {
+        // Behind both legs, seen between them as he drew it: its sheath goes on up behind the far leg to
+        // the waistband, so wherever the legs go it hangs from the belt. It swings about the pelvis as
+        // the near thigh turns from his picture's, so it stays between the legs and above the ground
+        // when the knees come up. On the male's shorter legs it is shorter by his sheath's rows left out.
+        const knife = torsoFit(g, BELT_KNIFE, 'BELT_KNIFE', MALE_FIT.knife);
+        const { hip, knee } = legJoints(r, 'N');
+        onLimb(g, g.L(legDepth('F', 'body')), knife, r.pelvis, knife.angle + segAngle(hip, knee) - JEANS_THIGH_N.angle, 'pelvis', tint);
+      }
       if (parts.pouch === 'on') {
         // On a narrower body the pouch moves in with the hip: his pixels, shifted, not squeezed.
         const dx = r.body === 'bulky' ? 0 : -Math.round(nearHipOut(BULKY) - nearHipOut(g.bp));
         const pouch = dx ? refit(BELT_POUCH, { shift: [dx, 0] }, `BELT_POUCH@${r.body}`) : BELT_POUCH;
-        onTorso(g, L, pouch, r.pelvis, lean, 'pelvis', tint);
+        hang(g, L, pouch, r.pelvis, lean, 'pelvis', tint);
       }
-      const straps = torsoFit(g, BELT_STRAPS, 'BELT_STRAPS', { left: (b) => b.hipHalf, right: (b) => b.hipHalf });
+      const straps = torsoFit(g, BELT_STRAPS, 'BELT_STRAPS', MALE_FIT.hips);
       onTorso(g, L, straps, r.pelvis, lean, 'pelvis', tint);
     },
   },
@@ -312,14 +385,14 @@ export const BRAWLER_HANDS: ItemDef[] = [
         // The forearm is his bracer's: our bare forearm under it goes (it would show past his edge), but
         // not the round of the elbow, which closes the upper arm; his own skin at the elbow stays.
         forearmOff(g, s);
-        const bracer = limbFit(g, style === 'steel' ? STEEL_BRACER_N : WRAP_BRACER_F, `${style}_BRACER`, (b) => b.armR[2], (b) => b.forearm);
+        const bracer = limbFit(g, style === 'steel' ? STEEL_BRACER_N : WRAP_BRACER_F, `${style}_BRACER`, MALE_FIT.bracer, (b) => b.forearm);
         onLimb(g, L, bracer, j.elbow, segAngle(j.elbow, j.wrist), prt('forearm', s), tint);
         const { kind } = handPose(g, s);
         // His fist closed (his near hand rests closed on the hip as he drew it); open, pointing or
         // cradling hands are our hand pictures.
         if (kind === 'grip' || kind === 'fist' || kind === 'relaxed') {
           partsOff(g, [armDepth(s, 'body')], [prt('hand', s)]);
-          const fist = limbFit(g, style === 'steel' ? STEEL_FIST_N : WRAP_FIST_F, `${style}_FIST`, (b) => b.handR, (b) => b.handR);
+          const fist = limbFit(g, style === 'steel' ? STEEL_FIST_N : WRAP_FIST_F, `${style}_FIST`, MALE_FIT.fist, (b) => b.handR);
           onWrist(g, L, s, fist, tint);
         } else if (style === 'steel') {
           // An open, pointing or relaxed hand: our hand picture in his steel.

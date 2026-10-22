@@ -6,7 +6,8 @@ idle frame 0 (tools/refs/bulky_ref.py). This script lifts out of it, every pixel
 
   torso    collar to hem, with its seams; where his long lock lies over the chest his shirt goes on
            under it (each hidden pixel takes his shirt met first beside it, toward the side the lock
-           leaves more of, then the other way). It rides the torso about the neck.
+           leaves more of, then the other way), and under the near sleeve three pixels. It rides the
+           torso about the neck. Its open edge is marked (bulky_ref.seal_rows), as on every piece.
   sleeves  each sleeve from the shoulder to its banded hem; it turns with the upper arm about the
            shoulder.
 
@@ -71,8 +72,13 @@ def main():
     tm = torso | got
     # Closed by his line where its new edge is not his.
     col = R.cap(col, tm, torso, black)
+    # Under the near sleeve (the near arm lies over the shirt) the shirt goes on up to three pixels, his
+    # shirt met first across toward the chest in the colours it is packed in, so a swinging arm opens no
+    # hole between them. Added after the torso's colours are packed, so those pack as before.
+    under, got_n = R.continue_along(R.packed(col, tm), tm & (K != 'line'), masks['sleeve_n'] & ~tm, np.array([1.0, 0.0]), reach=3)
+    got_n &= ~tm
     pieces = [
-        R.piece('SHIRT_TORSO', 'The shirt from collar to hem, its seams and his muscle shading; his shirt goes on under the long lock. It rides the torso about the neck.', col, tm, J['neck'], R.joint_angle('pelvis', 'neck')),
+        R.piece('SHIRT_TORSO', 'The shirt from collar to hem, its seams and his muscle shading; his shirt goes on under the long lock and under the near sleeve. It rides the torso about the neck.', col, tm, J['neck'], R.joint_angle('pelvis', 'neck'), seal=True, extra=got_n, extra_col=under),
     ]
     sleeves = []
     for s in ('N', 'F'):
@@ -81,8 +87,8 @@ def main():
         cap, tube = m & (t < R.CAP_T), m & (t >= R.CAP_T - R.CAP_OVERLAP)
         side = 'near' if s == 'N' else 'far'
         ang = R.joint_angle('shoulder' + s, 'elbow' + s)
-        pieces.append(R.piece(f'SHIRT_SLEEVE_{s}', f'The {side} sleeve below the shoulder, to its banded hem: it turns with the upper arm about the shoulder.', a, tube, J['shoulder' + s], ang))
-        pieces.append(R.piece(f'SHIRT_CAP_{s}', f'The {side} sleeve over the shoulder: it rides the shoulder and follows the arm part of the way.', a, cap, J['shoulder' + s], ang))
+        pieces.append(R.piece(f'SHIRT_SLEEVE_{s}', f'The {side} sleeve below the shoulder, to its banded hem: it turns with the upper arm about the shoulder.', a, tube, J['shoulder' + s], ang, seal=True))
+        pieces.append(R.piece(f'SHIRT_CAP_{s}', f'The {side} sleeve over the shoulder: it rides the shoulder and follows the arm part of the way.', a, cap, J['shoulder' + s], ang, seal=True))
         sleeves += [tube, cap]
     kinds = {}
     for _, _, _, pal in pieces:

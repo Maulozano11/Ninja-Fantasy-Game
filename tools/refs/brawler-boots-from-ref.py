@@ -53,7 +53,7 @@ def main():
         want[top - UP:top, xs.min():xs.max() + 1] = True
         want = boot | (want & masks['jeans'])
         col, m = R.fill_hidden(a, K, boot, want, np.array([0.0, 1.0]), black)
-        made.append(R.piece(f'BOOT_{s}', f'The {"near boot, seen from the front" if s == "N" else "far boot, pointing right"}: it stands on our ankle, flat on the ground.', col, m, J['ankle' + s], 0.0))
+        made.append(R.piece(f'BOOT_{s}', f'The {"near boot, seen from the front" if s == "N" else "far boot, pointing right"}: it stands on our ankle, flat on the ground.', col, m, J['ankle' + s], 0.0, seal=True))
         parts.append((col, m))
     kinds = {}
     count = {}

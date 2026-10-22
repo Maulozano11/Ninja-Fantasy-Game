@@ -95,6 +95,8 @@ export const partIndex = (p: PartId): number => PARTS.indexOf(p);
 export const F_NO_OUTLINE = 1; // never turned into an outline pixel
 export const F_NO_EDGE = 2; // doesn't count as "empty" for neighbours' outlines either
 export const F_NO_TEXTURE = 4; // keeps its hand-placed shading (templates)
+export const F_SEAL = 8; // an open edge of an owner's piece: closed with his black line where it ends up bare (compose.ts)
+export const F_OWNER = 16; // a pixel of an owner's piece that rides the rig (his broad man's): see compose.ts mendLoneLights
 
 /** Every outline is pulled toward this near-black so silhouettes read like hand-drawn sprites. */
 const INK = '#07060b';

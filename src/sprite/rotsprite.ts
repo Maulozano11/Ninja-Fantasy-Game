@@ -52,6 +52,9 @@ export interface RotatedPixel {
   dx: number;
   dy: number;
   ch: string;
+  /** The template cell it was sampled from. */
+  cx: number;
+  cy: number;
 }
 
 const cache = new Map<string, RotatedPixel[]>();
@@ -104,7 +107,7 @@ export function rotateTemplate(t: PixelTemplate, deg: number): RotatedPixel[] {
       const sy = Math.floor(-rx * sin + ry * cos + py0);
       if (sx < 0 || sy < 0 || sx >= w || sy >= h) continue;
       const ch = g[sy][sx];
-      if (ch !== '.') out.push({ dx: ox, dy: oy, ch });
+      if (ch !== '.') out.push({ dx: ox, dy: oy, ch, cx: Math.floor(sx / S), cy: Math.floor(sy / S) });
     }
   }
   cache.set(key, out);
@@ -127,20 +130,35 @@ export function stampTemplate(
   deg: number,
   palette: TemplatePalette,
   part: PartId,
-  opts: { flipY?: boolean; flipX?: boolean; flags?: number } = {},
+  opts: { flipY?: boolean; flipX?: boolean; flags?: number; seal?: { rows: string[]; flag: number } } = {},
 ): void {
   const ax = Math.floor(anchor.x * RES);
   const ay = Math.floor(anchor.y * RES);
   let tt = t;
-  if (opts.flipY) tt = { rows: [...tt.rows].reverse(), pivot: [tt.pivot[0], tt.rows.length - 1 - tt.pivot[1]] };
+  // Marked cells (`seal`) flipped along with the template; a marked cell's pixels get `seal.flag`.
+  let marks = opts.seal?.rows;
+  if (opts.flipY) {
+    tt = { rows: [...tt.rows].reverse(), pivot: [tt.pivot[0], tt.rows.length - 1 - tt.pivot[1]] };
+    if (marks) marks = [...marks, ...Array<string>(Math.max(0, t.rows.length - marks.length)).fill('')].reverse();
+  }
   if (opts.flipX) {
     const w = Math.max(...tt.rows.map((r) => r.length));
     tt = { rows: tt.rows.map((r) => r.padEnd(w, '.').split('').reverse().join('')), pivot: [w - 1 - tt.pivot[0], tt.pivot[1]] };
+    if (marks) marks = marks.map((r) => r.padEnd(w, '.').split('').reverse().join(''));
   }
   const flags = opts.flags ?? F_NO_TEXTURE;
-  for (const p of rotateTemplate(tt, deg)) {
+  const px = rotateTemplate(tt, deg);
+  // Turned, a pixel can land on the piece's edge though the cell it was sampled from lay inside the piece
+  // (the turn stepped past the edge's own cells): it gets the seal flag too, so the edge is closed there.
+  const filled = (x: number, y: number) => y >= 0 && y < tt.rows.length && x >= 0 && x < tt.rows[y].length && tt.rows[y][x] !== '.';
+  const out = marks && deg ? new Set(px.map((p) => `${p.dx},${p.dy}`)) : null;
+  for (const p of px) {
     const pal = palette[p.ch];
     if (!pal) continue;
-    L.set(ax + p.dx, ay + p.dy, pal[0], Math.max(0, Math.min(5, pal[1])), part, flags);
+    let sealed = !!marks && marks[p.cy]?.[p.cx] === 'x';
+    if (out && !sealed && [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([x, y]) => !out.has(`${p.dx + x},${p.dy + y}`))) {
+      sealed = [[1, 0], [-1, 0], [0, 1], [0, -1]].every(([x, y]) => filled(p.cx + x, p.cy + y));
+    }
+    L.set(ax + p.dx, ay + p.dy, pal[0], Math.max(0, Math.min(5, pal[1])), part, sealed ? flags | opts.seal!.flag : flags);
   }
 }

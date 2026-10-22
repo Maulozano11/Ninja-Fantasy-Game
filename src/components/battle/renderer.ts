@@ -25,7 +25,7 @@ import type { SpriteAppearance, SpritePose } from '../../sprite/types';
 import { PHASE_ADD, PHASE_RAMP, phaseHue } from '../../sprite/phase';
 import { edgeFoe, leavesNodes, nodeUnder, WARP, warpLanding } from '../../battle/clans';
 import { GRID, RES } from '../../sprite/raster';
-import { depthFx, drawAuraBack, drawHeld, drawLinger, drawScreenBlood, drawVfxSprite, drawWallSprite, wallTint } from './vfxSprites';
+import { depthFx, drawAuraBack, drawDouses, drawWetGround, drawHeld, drawLinger, drawScreenBlood, drawVfxSprite, drawWallSprite, wallTint } from './vfxSprites';
 import { isTintElement, vfxTintColors } from '../../sprite/vfxTint';
 
 export interface Camera {
@@ -72,7 +72,15 @@ export interface Scene {
   lang?: Lang;
   /** The HTML panels over the canvas (device pixels): floating words keep clear of them. */
   avoid?: Rect[];
+  /**
+   * Foes the acting ninja can't see from inside steam (battle/map.ts, steamHides; the owner: "que los
+   * enemigos desaparezcan de la visión de ese personaje"): drawn as a hidden foe is, faint, no bar.
+   */
+  unseen?: ReadonlySet<string>;
 }
+
+/** A unit of the other side the screen shows as hidden: hiding, or out of the acting ninja's sight in the steam. */
+export const foeHidden = (sc: Pick<Scene, 'team' | 'unseen'>, u: Unit, v: { hidden: boolean }): boolean => u.team !== sc.team && (v.hidden || !!sc.unseen?.has(u.id));
 
 export interface Rect {
   x: number;
@@ -172,15 +180,19 @@ export function drawBattle(ctx: CanvasRenderingContext2D, sc: Scene): void {
   const ground = image(art.ground);
   if (ready(ground)) ctx.drawImage(ground, 0, 0);
 
+  // Wet ground lies on the ground itself, under the aiming overlays.
+  drawWetGround(ctx, sc);
   drawGroundOverlays(ctx, sc);
   warmPhases(sc);
 
   // Everything that stands, sorted by depth.
   const items: { z: number; draw: () => void }[] = [];
   const all: PropDef[] = [...map.props, ...art.extras];
+  // A prop whose burning (or cutting, or blast) is still to play stands until then.
+  const going = sc.pb.propsQueued();
   all.forEach((p, i) => {
     const st = i < map.props.length ? state.props[i] : undefined;
-    if (st?.destroyed) return;
+    if (st?.destroyed && !going.has(i)) return;
     items.push({ z: p.sortZ ?? p.z, draw: () => drawProp(ctx, sc, p, i < map.props.length ? i : -1) });
   });
   // Walls broken by events still playing stand until their moment comes; Kōton structures that
@@ -205,6 +217,8 @@ export function drawBattle(ctx: CanvasRenderingContext2D, sc: Scene): void {
   for (const fx of sc.pb.fx) if (fx.kind === 'aura') items.push({ z: fxPos(sc, fx).z + 0.005, draw: () => drawAuraBack(ctx, sc, fx) });
   // A lingering aura (the Breeze Mantle's wind until the ninja's next turn) wraps round the body too.
   for (const [id, l] of sc.pb.lingers) items.push({ z: sc.pb.posOf(id, sc.now).z + 0.005, draw: () => drawLinger(ctx, sc, id, l, 'back') });
+  // A ninja on fire burns in his fire aura until the flames go out.
+  for (const [id, l] of sc.pb.burns) items.push({ z: sc.pb.posOf(id, sc.now).z + 0.005, draw: () => drawLinger(ctx, sc, id, l, 'back') });
   // Lightning running along the water lies on the ground: what stands in front of it (a metal wall,
   // a unit) is drawn over it.
   for (const fx of sc.pb.fx) if (onGround(fx)) items.push({ z: fx.from.z + 0.005, draw: () => drawFx(ctx, sc, fx) });
@@ -220,6 +234,8 @@ export function drawBattle(ctx: CanvasRenderingContext2D, sc: Scene): void {
   drawWarpFlights(ctx, sc);
 
   for (const [id, l] of sc.pb.lingers) drawLinger(ctx, sc, id, l, 'front');
+  for (const [id, l] of sc.pb.burns) drawLinger(ctx, sc, id, l, 'front');
+  drawDouses(ctx, sc);
   for (const fx of sc.pb.fx) if (!onGround(fx) && fx.depth === undefined && !drawVfxSprite(ctx, sc, fx)) drawFx(ctx, sc, fx);
 
   if (state.time === 'night') drawNight(ctx, sc, all);
@@ -337,7 +353,7 @@ function drawGroundOverlays(ctx: CanvasRenderingContext2D, sc: Scene): void {
   if (state.phase === 'combat') {
     for (const u of Object.values(state.units)) {
       const v = sc.pb.views.get(u.id);
-      if (!v || !sovereign({ ...u, down: v.down }) || (u.team !== sc.team && v.hidden)) continue;
+      if (!v || !sovereign({ ...u, down: v.down }) || foeHidden(sc, u, v)) continue;
       ctx.beginPath();
       groundEllipse(ctx, map, sc.pb.posOf(u.id, now), AURA_RADIUS);
       ctx.fillStyle = 'rgba(167, 139, 250, 0.12)';
@@ -798,7 +814,7 @@ function drawProp(ctx: CanvasRenderingContext2D, sc: Scene, p: PropDef, index: n
 function unitAlpha(sc: Scene, u: Unit, v: UnitView): number {
   let alpha = 1;
   if (v.fade) alpha = Math.max(0, 1 - (sc.now - v.fade.t0) / v.fade.dur);
-  if (v.hidden) alpha *= u.team === sc.team ? 0.55 : 0.35;
+  if (v.hidden || foeHidden(sc, u, v)) alpha *= u.team === sc.team ? 0.55 : 0.35;
   if (v.down === 'dead' && u.team === 'enemy') alpha *= 0.75;
   return alpha;
 }
@@ -1998,7 +2014,7 @@ function drawMarks(ctx: CanvasRenderingContext2D, sc: Scene): void {
   for (const u of Object.values(state.units)) {
     const v = sc.pb.views.get(u.id);
     if (!v || v.fade || u.down === 'dead' || u.down === 'fled') continue;
-    if (u.team !== sc.team && v.hidden) continue;
+    if (foeHidden(sc, u, v)) continue;
     const pos = sc.pb.posOf(u.id, now);
     let top: { X: number; Y: number };
     if (u.kind === 'hydra_head') {

@@ -29,7 +29,7 @@ import type {
   Unit,
 } from './types';
 import { homeTeam } from './types';
-import { cellBlocked, cellCenter, cellOf, clearRun, coverBetween, dist, fullCoverBetween, getMap, gridFor, hideSpotAt, idx, inGrid, levelAtPt, lineOfSight, propRules, sameCell, segmentsCross, waterAtPt } from './map';
+import { cellBlocked, cellCenter, cellOf, clearRun, coverBetween, dampAt, dist, fullCoverBetween, getMap, gridFor, hideSpotAt, idx, inGrid, levelAtPt, lineOfSight, propRules, sameCell, segmentsCross, waterAtPt } from './map';
 import { canStop, freeSpot, occupancy, pathTo, pathTouchesDeep, reachable, stepCost } from './nav';
 import type { AttackPreview } from './combat';
 import { attackPreview, check, damage, heal, hostileAura, passivePerception, PERFECT_HIDE, reveal, revealOutOfHiding, rollDiceExpr, skillMod } from './combat';
@@ -40,7 +40,8 @@ import type { EnemyKind } from './units';
 import { hydraUnits } from './hydra';
 import { checkEnd, current, endTurn, startCombat } from './turns';
 import { afterStealthAttack, alarm, canTakedown, dragBody, guardsTurn, openFight, scareAnimalsNear, stealthMove, STONE_RANGE, throwStone } from './stealth';
-import { electrify, groundEffects, plantTag, saveHit, springTrap, TAG, throwTag, trapAt, unitsInArea } from './hazards';
+import { conduct, electrify, groundEffects, plantTag, saveHit, springTrap, TAG, throwTag, trapAt, unitsInArea } from './hazards';
+import { blowSteam, pathArea, soak } from './ground';
 import { breakable, damageStructure, faceToward, hitStructuresIn, jutsuWallAt, raiseStructure, STRUCTURE_AC, structureAt, structureAttack, structureBlocker } from './structures';
 import {
   addNode,
@@ -642,7 +643,7 @@ function landHit(s: BattleState, t: Unit, h: Hit, ev: BattleEvent[]): void {
     damage(s, t, h.amount, h.type, { crit: h.crit, source: h.source, knockout: h.knockout, melee: h.melee, explosion: h.explosion }, ev);
   }
   if (t.down || t.head?.severed || t.kind === 'hydra_body') return;
-  if (h.effect && !(h.effect === 'burning' && waterAtPt(s, t.pos) > 0)) {
+  if (h.effect && !(h.effect === 'burning' && dampAt(s, t.pos))) {
     t.effects = addEffect(t.effects, h.effect, { source: JUTSU[h.what]?.name ?? h.what }).effects;
     ev.push({ t: 'effect', unit: t.id, effect: h.effect, on: true });
   }
@@ -711,7 +712,7 @@ function sweep(s: BattleState, t: Unit, h: Hit, ev: BattleEvent[]): void {
     t.cond.prone = true;
     landHit(s, t, { unit: t.id, amount: rollDiceExpr(s, `${Math.round(drop)}d6`), type: 'Bludgeoning', source: h.source, what: 'fall' }, ev);
   }
-  if (waterAtPt(s, t.pos) > 0 && hasEffect(t.effects, 'burning')) {
+  if (dampAt(s, t.pos) && hasEffect(t.effects, 'burning')) {
     t.effects = removeEffect(t.effects, 'burning');
     ev.push({ t: 'effect', unit: t.id, effect: 'burning', on: false });
   }
@@ -854,7 +855,8 @@ function doJutsu(s: BattleState, u: Unit, id: string, atIn: Pt, targetId: string
     case 'point':
     case 'wall':
       if (d > spec.range + 0.1) return 'outOfRange';
-      if (!lineOfSight(s, u.pos, at)) return 'noSight';
+      // A point in steam can be aimed at (the cloud is seen), not one past it.
+      if (!lineOfSight(s, u.pos, at, { into: true })) return 'noSight';
       break;
     case 'cone':
     case 'line':
@@ -1009,6 +1011,8 @@ function jutsuHits(s: BattleState, u: Unit, spec: JutsuSpec, target: Unit | unde
     if (spec.push) extra.push = { from: spec.push.toward ? { ...at } : { ...u.pos }, m: spec.push.m, toward: spec.push.toward };
     if (spec.prone) extra.prone = true;
     if (spec.douse) extra.douse = true;
+    // Fire that lands on wet ground turns the water to steam: the flames don't catch there.
+    if (extra.effect === 'burning' && dampAt(s, v.pos)) extra.effect = undefined;
     if (spec.save) {
       hits.push(saveHit(s, v, spec.save, u.saveDC, amount, type, spec.saveHalf, u.id, spec.id, extra, ev, spec.saveAdv, spec.dice ? maxCritDamage(spec.dice) : undefined));
       continue;
@@ -1022,12 +1026,25 @@ function jutsuHits(s: BattleState, u: Unit, spec: JutsuSpec, target: Unit | unde
   if (edge) u.cond.warpEdge = false;
   // The ground: fire burns, wind cuts the foliage, blasts set off barrels and tags.
   const ground = area ?? { kind: 'circle' as const, center: at, radius: 1 };
-  if (spec.dmgType) hits.push(...groundEffects(s, ground, spec.env === 'clearFoliage' ? 'Wind' : type, ev, new Set(), spec.env === 'clearFoliage'));
-  // Lightning in the water runs through it.
+  if (spec.dmgType) hits.push(...groundEffects(s, ground, spec.env === 'clearFoliage' ? 'Wind' : type, ev, new Set(), spec.env === 'clearFoliage', u.id));
+  // Water soaks the ground it passes over, wind blows steam away (the owner, 2026-10-21; ground.ts).
+  if (spec.elemental && spec.element === 'water' && spec.dmgType) soak(s, ground, u.id, ev);
+  // Every wind attack does (his "puede ser eliminada con ataques elementales de aire"): over its area,
+  // and from the caster's own cell for a cone or a line; a single-target one along its path, hit or miss.
+  if (spec.elemental && spec.element === 'wind' && spec.dmgType) {
+    if (!area) blowSteam(s, pathArea(u.pos, at), u.id, ev, u.pos, [u.pos, at]);
+    else blowSteam(s, area, u.id, ev, area.kind === 'circle' ? area.center : u.pos, area.kind === 'circle' ? [] : [u.pos]);
+  }
+  // Lightning in the water runs through it, and across the wet ground it touches.
   if (type === 'Lightning') {
     const points = victims.map((v) => v.pos);
     if (area?.kind === 'circle') points.push(area.center);
-    hits.push(...electrify(s, points, amount, u.saveDC, u.id, victims.map((v) => v.id), ev, spec.dice));
+    const struck = victims.map((v) => v.id);
+    const watered = electrify(s, points, amount, u.saveDC, u.id, struck, ev, spec.dice);
+    hits.push(...watered);
+    // Hit or miss, it lands on the ground where its target stands (as fire that misses still burns
+    // and steams there, and lightning that misses still runs through the river).
+    hits.push(...conduct(s, area, points, amount, u.saveDC, u.id, [...struck, ...watered.map((h) => h.unit)], ev, spec.dice));
   }
   return hits;
 }
@@ -1092,6 +1109,8 @@ function raiseGale(s: BattleState, u: Unit, spec: JutsuSpec, at: Pt, ev: BattleE
   const zone: GaleZone = { id: `gale_${s.tick}_${u.id}_${(s.zones ?? []).length}`, center: { ...at }, radius: spec.radius ?? 2.25, owner: u.id, rounds: 3 };
   s.zones = [...(s.zones ?? []), zone];
   ev.push({ t: 'zone', zone, on: true });
+  // The gale blows away the steam where it turns.
+  blowSteam(s, { kind: 'circle', center: zone.center, radius: zone.radius }, u.id, ev);
 }
 
 /** Ninjutsu and genjutsu are woven with hand seals; taijutsu, sword arts and bloodline abilities are not. */
@@ -1278,7 +1297,7 @@ function doShove(s: BattleState, u: Unit, targetId: string, mode: 'prone' | 'pus
         t.cond.prone = true;
         hits.push({ unit: t.id, amount: rollDiceExpr(s, `${Math.round(drop)}d6`), type: 'Bludgeoning', source: u.id, what: 'fall' });
       }
-      if (waterAtPt(s, to) > 0 && hasEffect(t.effects, 'burning')) {
+      if (dampAt(s, to) && hasEffect(t.effects, 'burning')) {
         t.effects = removeEffect(t.effects, 'burning');
         ev.push({ t: 'effect', unit: t.id, effect: 'burning', on: false });
       }
@@ -1321,7 +1340,7 @@ function doItem(s: BattleState, u: Unit, item: 'pill' | 'bandage' | 'antidote' |
     // An explosive tag thrown at a point: it seals a hydra's stump like fire.
     if (s.supplies.explosiveTags < 1) return 'noneLeft';
     if (!at || dist(u.pos, at) > TAG.range + 0.1) return 'outOfRange';
-    if (!lineOfSight(s, u.pos, at)) return 'noSight';
+    if (!lineOfSight(s, u.pos, at, { into: true })) return 'noSight';
     u.turn.action = false;
     s.supplies.explosiveTags -= 1;
     ev.push({ t: 'act', unit: u.id, act: 'item' });
@@ -1333,7 +1352,7 @@ function doItem(s: BattleState, u: Unit, item: 'pill' | 'bandage' | 'antidote' |
     // doesn't give the ninja away in the stealth phase.
     if (s.supplies.explosiveTags < 1) return 'noneLeft';
     if (!at || dist(u.pos, at) > TAG.plant + 0.1) return 'outOfRange';
-    if (!lineOfSight(s, u.pos, at)) return 'noSight';
+    if (!lineOfSight(s, u.pos, at, { into: true })) return 'noSight';
     if (cellBlocked(s, cellOf(at))) return 'blocked';
     u.turn.action = false;
     s.supplies.explosiveTags -= 1;

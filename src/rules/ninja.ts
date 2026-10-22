@@ -11,7 +11,7 @@ import { savingThrow, SKILL_ABILITY } from './checks';
 import { deriveStats, effectiveMaxHp, SHEET_VERSION } from './derived';
 import type { BuildInput } from './derived';
 import { addEffect, EFFECTS, endMission, hasEffect, removeEffect, sanitizeEffects } from './effects';
-import { offNatureJutsus } from './jutsuNature';
+import { offNatureJutsus, ultimateToElement } from './jutsuNature';
 import { GROWTH_LEVEL } from './natureGrowth';
 import { tagJutsuToItem } from './pouch';
 import { checkRng, Dice, pick } from './rng';
@@ -306,12 +306,22 @@ function withTodaysLook(c: ShinobiCharacter): ShinobiCharacter {
 }
 
 /**
+ * A sheet saved with a jutsu in its S-rank slot that is an Element slot's now (the Devouring Tide,
+ * rank A since 2026-10-21) gets it in an Element slot (rules/jutsuNature.ts, ultimateToElement).
+ */
+export function tideToElement(c: ShinobiCharacter): ShinobiCharacter {
+  const moved = c.selectedJutsus ? ultimateToElement(c.selectedJutsus) : null;
+  return moved ? { ...c, selectedJutsus: moved.loadout } : c;
+}
+
+/**
  * A sheet from an older save or an import, as today's rules read it:
  * - the explosive tag, a jutsu no more, swapped for the starting sheet's Utility jutsu and two tags
  *   in the ninja's pouch (rules/pouch.ts, tagJutsuToItem);
  * - a legend's or companion's copy with its old chakra burst and the legend's own jutsu moved to the
  *   legend's type (updateLegendChakra);
  * - a copy of Kaien or Raiga given the legend's second element (addLegendNatures);
+ * - a jutsu in the S-rank slot that is an Element slot's now moved to one (tideToElement);
  * - its clan converted (old names load as the clan that replaced them). When its numbers came from
  *   the creator's formula (its AC and jutsu DC and attack still match it) and its old clan built a
  *   bonus into them, its max HP and chakra are worked out again without it, and what it has left is
@@ -322,7 +332,7 @@ function withTodaysLook(c: ShinobiCharacter): ShinobiCharacter {
  * the look only that old burst and the headband plate change. A sheet that is already today's comes back as it is.
  */
 export function migrateCharacter(saved: ShinobiCharacter): ShinobiCharacter {
-  const c = addLegendNatures(updateLegendChakra(tagJutsuToItem(withTodaysLook(saved))));
+  const c = tideToElement(addLegendNatures(updateLegendChakra(tagJutsuToItem(withTodaysLook(saved)))));
   const clan = migrateClan(c.clan) ?? DEFAULT_CHARACTER.clan;
   const before = (c.sheetVersion ?? 1) < SHEET_VERSION;
   if (clan === c.clan && !before) return c;

@@ -137,6 +137,7 @@ screens (`CampaignMode.tsx`, `ArenaSandbox.tsx`) are English only.
 | `chakra/lightning-crackle` | on origin | Lightning's second burst, *Estática de batalla* / Battle Static (his name; id `cyan`): small bolts crackling all the time, more and longer while empowered (an enhanced jutsu's cast, the creator's chakra aura), no aura, on a 10 s loop (`src/sprite/chakra.ts`, `chakraNature.ts`, `chakraInfo.ts`, `src/sprite/chakra.test.ts`, `creator/words.ts`; the callers take the loop from `chakraLoop()` and pass `empowered`: `ShinobiSpriteCanvas.tsx`, `battle/unitArt.ts`, `battle/renderer.ts`, `battle/playback.ts`) | **Merged** (approved under his 24-hour delegation) |
 | `jutsu/bleeding-blood` | pushed | The Bleeding Cut's blood (his answer "apruebo los 12 jutsus con excepcion del de tajo sangrante..." and "las gotas de sangre manchan la pantalla..."): a spray thrown toward the side the cut travels, drops on the screen when Bleeding takes hold, a drip when it hurts (`tools/world-sprites/vfx-blood.ts` → `src/assets/world/vfx_blood/`, `src/components/battle/bloodPlan.ts` + tests, `seq.blood` in `src/battle/jutsu.ts`; touches `playback.ts`, `vfxSprites.ts`, `renderer.ts`) | **Merged** (approved under his 24-hour delegation) |
 | `jutsu/gap-set` | on origin (merged into the integration branch) | The owner's answers on the gaps proposal: the Devouring Tide (Water S), the Whirlwind Tower (Wind A), the Gale Curtain made a gale on the ground that fans fire (+1 die to a fire jutsu through it, whoever casts it), the Thunder Beam and the Rubble Gust (Lightning and Earth C); knock-down, sweep and drag on a failed save (ninjas only), water puts out flames; their effects from his sheets (the running wave, the tornado tower, the gale on the ground, the fanned fire's glow and vortex); `docs/GAMEPLAY_DESIGN.md`, "Jutsu for the gaps", and his rule that the elemental beasts are summons | **Merged** (approved under his 24-hour delegation; his open questions stay below) |
+| `jutsu/gap-set-2` | on origin | His second round on the gaps: the Devouring Tide made rank A (Element slot, 8 chakra +4, 9 m cone, 5d8; a saved one in the S-rank slot moves to an Element slot) with a wider wave combining his horizontal water wall and his columns; the Whirlwind Tower as a funnel (his column widened toward the top) with six small whirlwinds running round it on wavy paths; the elements on the ground (`src/battle/ground.ts`): every water jutsu puts flames out and soaks the ground (the rest of the round and two more), wet ground carries lightning across the patch it touches, fire on wet ground makes steam (the rest of the round and one more, blocks sight both ways: the foes outside vanish from the sight of a ninja in it, 1d6 fire a turn, every wind attack blows it away), the AI knows; his answers to the eleven questions built; `docs/GAMEPLAY_DESIGN.md`, "The gaps' jutsu, second round" | **Waiting for his approval** of the captures (his answers on the numbers are built; not merged) |
 | `vfx/ideas-round1` | merged into the integration branch | The owner's first round of jutsu effect answers (`docs/GAMEPLAY_DESIGN.md`, "Jutsu effects, round 1"): Llama Dragón (his Annihilation dragon head over his flame wall, a fan of fireballs), Fuego del dragón (half head, the stream to the line's end), Cadenas selladoras (chain and seal circle), Dragón de agua (no beast: his dragon head in water on his stream, a varied path), Balas de tierra (three volleys of rock bullets on varied paths), Luna creciente (three chakra crescents), Templo del Nirvana (crows out of the vortex), Huracán de la hoja (weapon stowed, a new unarmed `combo` pose, wind crescents); new group `vfx_dragon` (`tools/world-sprites/vfx-round1.ts`); pieces P1–P6 in the battle screen; then the two new effects: Dragón de madera (his dragon out of his icon rising behind the target after a row of roots, `vfx_wood`) and Chidori (his lightning in the bare hand, then a thrust, `vfx_hand`; the weapon stowed), by `tools/refs/wood-dragon-from-ref.py` and `tools/world-sprites/vfx-new-r1.ts` | **Merged** (approved under his 24-hour delegation; his open questions stay below) |
 | `armor/roman-paintover` | merged into the integration branch | The owner's Roman paint-over (`roman-owner-reference.jpg`): `armor_bronze` and `skirt_imperial` now his pixels (same ids; drapes as a part, hanging from the hip and ending above the ground), new `hands_bronze_bracers` and `feet_gladiator_sandals`; the old default colours of the two items now mean his; the female bodies keep the fitted cuirass; Solen (`preset_founder`) wears the skirt without drapes; `tools/refs/roman*`; `src/sprite/roman.test.ts`. Touches `armor.ts`, `clothes.ts`, `feet.ts`, `words.ts`, `shinobiData.ts` (Solen's skirt) | **Merged** (the owner approved the cuirass, skirt, bracers and sandals, 2026-10-21) |
 | `worktree-*` | not on origin (local `6e2e8dc`) | Agent worktree leftovers | Stale |
@@ -201,6 +202,22 @@ Merge checks (`git merge-tree` on the origin tips, nothing changed):
   "+2 dados" for a rank S, a cone fans only the gales it reaches, the wave sweeps each one as its
   crest goes over them, the gale drawn behind the ninjas in it, the dust in front of the caster and
   across the cone, swept ninjas stop 1.2 m from others, the fanned Fireball's blast its own size.
+- `jutsu/gap-set-2` (2026-10-21): his second round (*"ola devoradora es rango a ... el agua apaga
+  el fuego, el agua también pone el suelo donde pasa mojado por 2 turnos que conduce electricidad y
+  si se usa un jutsu de fuego se genera vapor ... Torre de torbellino ... más ancho mediante se va más
+  arriba ..."*, verbatim in `docs/GAMEPLAY_DESIGN.md`). Approve the in-game captures (the Tide's
+  wider wave, the Tower's funnel and wavy whirlwinds, wet ground, lightning across it, steam) and our
+  numbers. After an in-game review: wet bushes no longer burn, the AI no longer walks in and out of
+  steam or ends its turn in it, burning ninjas show his fire aura and a puff of steam when water puts
+  it out, the steam is drawn as a wide curtain, the Tide's crest columns no longer stick up like a pole.
+  **His answers to the eleven questions are built** (*"1 vacio por ahora 2 mas chakra como 8
+  minimo ... 4 dura resto de la ronda y 1 mas puede ser eliminada con ataques elementales de aire
+  ... 10 mas bien que los enemigos desaparezcan de la vision de ese personaje ..."*, verbatim and
+  as decisions in `docs/GAMEPLAY_DESIGN.md`, "His answers on the second round"): the Tide costs 8
+  chakra (+4); steam lasts the rest of the round and one more, every wind attack blows it away
+  (seen drifting off); from inside steam the foes outside vanish from that ninja's sight (drawn as
+  hidden foes); a saved Tide in the S-rank slot moves to an Element slot on load. Left for him:
+  approve the captures (`juego-3`: the steam blown away, a ninja in the steam, the Tide's cost).
 - **The elemental beasts are summons** (his rule, 2026-10-21: *"todos los elementales seran
   invocaciones que te ayudaran en el combate no ataques"*): the summon itself is to design (what it
   does, how long, its cost, who calls it). Jutsu that still show a beast as their attack: the Water
@@ -356,9 +373,9 @@ on `chakra/progression`, and so are the class gate for the taijutsu, kenjutsu an
 and the level-5 choice (a second element or a higher rank; Kaien and Raiga's second natures). The
 ladder (rank A at 7, S at 10) and the feat Tres naturalezas are on `chakra/progression-2`. Left: a
 level-up screen (the choices are made in the creator for now), the jutsu of Light and Void (and
-later Shadow and Spirit). A Water S-rank (the Devouring Tide) and more Wind jutsu (the Gale Curtain,
-the Whirlwind Tower) are built on `jutsu/gap-set`; Earth A, Water D and a third Fire D/C are still
-gaps.
+later Shadow and Spirit). More Wind jutsu (the Gale Curtain, the Whirlwind Tower) and a Water rank A
+(the Devouring Tide, rank S until his second round on `jutsu/gap-set-2`) are built; Water S, Earth
+A, Water D and a third Fire D/C are still gaps.
 
 ### 4d. Missions (not built)
 Branching road, road traps and curios, votes, cinematics and decisions, the AI choosing camp

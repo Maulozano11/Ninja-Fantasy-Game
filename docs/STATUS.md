@@ -31,7 +31,7 @@ clean.
 |---|---|
 | Bodies | 3 (male, female, bulky) |
 | Hair | 35 (plus `hair_none`) |
-| Eyes / face shapes / necks | 8 (incl. the owner's "valiant") / 4 / 2 |
+| Eyes / face shapes | 8 (incl. the owner's "valiant") / 4 |
 | Face marks and masks | 7 |
 | Tops / bottoms / skirts / waist | 9 / 5 / 4 / 5 |
 | Armor | 16 (plus `armor_none`) |
@@ -248,6 +248,7 @@ Merge checks (`git merge-tree` on the origin tips, nothing changed):
   clan secret not, the type change swaps the jutsu, Light and Void only jutsu with no element, the
   random ninja's picks); Kaien's Fireball and Raiga's Earth Wall (kept; proposed: a formal second
   nature, Kaien Rayo + Fuego, Raiga Fuego + Tierra).
+- Decided 2026-10-22: the neck option was removed from the creator; every character keeps the slim nape (his Aiden's). Saved 'strong' necks load as slim.
 - Decided 2026-10-22: **Solen approved and merged** (`solen/owner-standard`): *"me encanta la pantorilla aprovado"*. He also said yes to filling the 1-pixel holes for every character and to fixing the stowed sword that pokes out (*"si arregla el hueco de 1 pixel a todos si haz el cambio en espada guardada"*); both are built on `fix/holes-stowed-sword` (idle left as drawn).
 - Decided 2026-10-22: **Aurelia stays in our format; small hands become a creator option for women.** He first said *"la referencia es una version nueva copiala las manos mas pequeñas ponlas como opcion en el juego para personajes femeninos"*, then, seeing that his new picture is about 4 rows taller than the female base body, cancelled the re-scale: *"no esta bien deja tu diseño a nuestro formato esta bien cancela la reescala esta bien como esta"*. So Aurelia keeps the pieces from the game-scale picture on the female base body; "Manos: Normales / Pequeñas" is offered on the female and slender bodies, Pequeñas from her picture. Being built on `heroine/aurelia-v2` with the skirt and far-knee fixes.
 - Decided 2026-10-22: **the S-rank Tide is approved, and the names**: *"rango S ola si me gusta la animacion la ola normal se llama tsunami y la rango s es dragon tsunami"*. The rank-A Tide is now *Técnica de Agua: Tsunami* / *Water Technique: Tsunami*; his dragon-and-kanji version is Water's S-rank jutsu *Técnica de Agua: Dragón Tsunami* / *Water Technique: Dragon Tsunami* (Water S is no longer empty: this replaces his "vacio por ahora"). Ids unchanged. Its numbers approved by the owner for now: *"aprovado los numeros de la ola por ahora"* (12 chakra +4; 6d8, STR half, enhanced 8d8; 11.25 m 80-degree cone; knock-down and 3 m sweep; douses; ground wet one round longer). Built on `jutsu/tide-s` (`docs/GAMEPLAY_DESIGN.md`, "The Tsunami and the Dragon Tsunami").

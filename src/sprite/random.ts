@@ -5,7 +5,7 @@ import { TINT_CHOICES } from './chakraInfo';
 import { OFFERED_TYPES } from './chakraNature';
 import type { ItemDef } from './ctx';
 import { CLOTH_PALETTE, EYE_COLORS, HAIR_COLORS, SKIN_TONES } from './palettes';
-import { CAST_STYLES, type BodyType, type EyeShape, type FaceShape, type HeadbandPosition, type ItemChoice, type NeckType, type SlotId, type SpriteAppearance } from './types';
+import { CAST_STYLES, type BodyType, type EyeShape, type FaceShape, type HeadbandPosition, type ItemChoice, type SlotId, type SpriteAppearance } from './types';
 
 const pick = <T,>(list: T[]): T => list[Math.floor(Math.random() * list.length)];
 const chance = (p: number) => Math.random() < p;
@@ -57,7 +57,6 @@ export function randomAppearance(): SpriteAppearance {
     skin: pick(SKIN_TONES.slice(0, 9)),
     eyeShape: pick<EyeShape>(['standard', 'sharp', 'round', 'calm', 'fierce', 'bright', 'piercing', 'valiant']),
     faceShape: pick<FaceShape>(['tapered', 'tapered', 'soft', 'square', 'valiant', 'founder']),
-    neck: pick<NeckType>(['slim', 'slim', 'strong']),
     cast: { style: pick(CAST_STYLES) },
     eyeColor: pick(EYE_COLORS),
     slots,

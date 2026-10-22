@@ -8,6 +8,7 @@ import { ICE_SWORD } from './items/iceSwordArt';
 import { SAYA_SABER } from './items/sayaSwordArt';
 import { dawnStaffInFarHand } from './items/aureliaStaff';
 import { add, norm, RES, scale, sub, Vec } from './raster';
+import { LYRA_RAPIER } from './items/lyraSwordArt';
 import { drawRig, THROW_RELEASE_FRAME } from './rig';
 import type { BodyType } from './types';
 
@@ -65,6 +66,8 @@ export function swordAngle(g: DrawCtx): number {
     case 'train':
       return [-38, -165, 30, 64, 145, 12, -40, -42][f % 8];
     default:
+      // Lyra's rapier hangs at the angle the owner drew it, so at rest it is his pixels.
+      if (g.has('held', 'held_gilded_rapier')) return LYRA_RAPIER.angle;
       // Matches the reference: blade hangs across the legs at about 50 degrees. The owner's flame
       // longsword and ice crystal sword hang at the angle he painted them (35), so at rest they are every
       // pixel his. Saya's saber hangs at the angle it is drawn at (45) for the same reason.
@@ -128,7 +131,7 @@ export const handsBusy = (g: DrawCtx): boolean => BUSY.has(g.rig.pose) || !!g.lo
 export const handsReleased = (g: DrawCtx): boolean => g.rig.released && !handsBusy(g);
 
 /** The held items that are weapons, with a handle the fist holds; the others are empty hands or a technique held in the palm. */
-const WEAPONS = new Set(['held_katana', 'held_crystal', 'held_ice_crystal', 'held_flame_sword', 'held_shade_saber', 'held_kunai', 'held_naginata', 'held_dawn_staff']);
+const WEAPONS = new Set(['held_katana', 'held_crystal', 'held_ice_crystal', 'held_flame_sword', 'held_shade_saber', 'held_gilded_rapier', 'held_kunai', 'held_naginata', 'held_dawn_staff']);
 
 /** The owner's longswords and Saya's saber, held by their own grip at the hand joint (the others at the fist's middle, gripPoint). */
 export const HAND_JOINT_SWORDS = new Set(['held_flame_sword', 'held_ice_crystal', 'held_shade_saber']);
@@ -147,6 +150,7 @@ export const throwsKunai = (g: DrawCtx): boolean =>
 export function gripAngle(g: DrawCtx): number | null {
   if (throwsKunai(g)) return swordAngle(g);
   if (handsBusy(g) || handsLimp(g) || handsReleased(g)) return null;
+  if (g.has('held', 'held_gilded_rapier')) return swordAngle(g);
   if (g.has('held', 'held_naginata')) return poleAngle(g);
   // Aurelia's staff is in her far fist at rest (her near hand is empty), in the near one like a pole otherwise.
   if (g.has('held', 'held_dawn_staff')) return dawnStaffInFarHand(g) ? null : poleAngle(g);

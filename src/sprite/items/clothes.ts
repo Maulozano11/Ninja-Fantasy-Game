@@ -22,6 +22,8 @@ import { FOUNDER_THIGH_F, FOUNDER_THIGH_N, FOUNDER_TROUSERS, FOUNDER_TROUSERS_KI
 import { STEEL_BRACER, STEEL_BRACER_F, STEEL_BRACER_KIND, STEEL_BRACER_N } from './steelBracersArt';
 import { SAYA_SHADE_GLOVES } from './sayaUpper';
 import { WAIST_DAWN_SASH } from './aureliaLower';
+import { LYRA_BLOUSE_ITEM } from './lyraUpper';
+import { POUCH_BELT, STRIPED_PLEATS } from './lyraLower';
 
 type Kind = 'cloth' | 'leather' | 'metal';
 const col = (key: string, label: string, def: string, kind: Kind = 'cloth') => ({ key, label, default: def, kind });
@@ -1477,6 +1479,8 @@ export const TOP_ITEMS: ItemDef[] = liftMain([
       founderArm(g, 'N', tint);
     },
   },
+  // Lyra's blouse, the owner's pixels (items/lyraUpper.ts)
+  LYRA_BLOUSE_ITEM,
   // The owner's sports top from his bare female body (docs/reference/female-base-owner-reference.jpg):
   // his pixels on the chest (body.ts), in the colour picked. The body always wears it in his black.
   {
@@ -1693,6 +1697,7 @@ export const BOTTOM_ITEMS: ItemDef[] = liftMain([
       founderLegs(g, tint);
     },
   },
+  STRIPED_PLEATS,
   // The owner's briefs from his bare female body: his pixels on the pelvis (body.ts), in the colour picked.
   {
     id: 'bottom_briefs',
@@ -1940,6 +1945,7 @@ export const WAIST_ITEMS: ItemDef[] = liftMain([
   SHADE_BELTS_ITEM,
   // Aurelia, the owner's fourth heroine (aureliaLower.ts)
   WAIST_DAWN_SASH,
+  POUCH_BELT,
 ]);
 
 // ---------------------------------------------------------------------------

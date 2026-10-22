@@ -45,6 +45,8 @@ import { isFemaleBody, type BodyType } from '../types';
 import { SAYA_SHADE_ARMOR } from './sayaUpper';
 import { ARMOR_DAWN_VESTMENT } from './aureliaVestment';
 import { SKIRT_DAWN_PANELS } from './aureliaLower';
+import { LYRA_CORSET_ITEM } from './lyraUpper';
+import { GILDED_TABARD } from './lyraLower';
 
 
 type Kind = 'cloth' | 'leather' | 'metal';
@@ -2915,6 +2917,8 @@ export const ARMOR_ITEMS: ItemDef[] = [
   SAYA_SHADE_ARMOR,
   // The owner's Aurelia's dress bodice and sleeves (2026-10-21), her picture at our scale
   ARMOR_DAWN_VESTMENT,
+  // Lyra's corset, pauldron and bracers, the owner's pixels (items/lyraUpper.ts)
+  LYRA_CORSET_ITEM,
 ];
 
 // ---------------------------------------------------------------------------
@@ -3119,4 +3123,5 @@ export const SKIRT_ITEMS: ItemDef[] = [
   SHADE_PLEATS,
   // Aurelia, the owner's fourth heroine (aureliaLower.ts)
   SKIRT_DAWN_PANELS,
+  GILDED_TABARD,
 ];

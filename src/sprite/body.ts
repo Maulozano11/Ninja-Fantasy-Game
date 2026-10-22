@@ -14,6 +14,11 @@ import { VALIANT_HEAD, VALIANT_SKIN } from './headArt';
 import { FOUNDER_FACE_KIND, FOUNDER_HEAD, FOUNDER_IRIS, FOUNDER_SKIN } from './founderFaceArt';
 import { DAWN_HAND_FIST, DAWN_HAND_LINE, DAWN_HAND_NEAR, DAWN_HAND_SKIN } from './aureliaHandsArt';
 import { DAWN_EYE_COLORS, DAWN_EYES, DAWN_IRIS } from './aureliaEyeArt';
+import { KEEN_BROW_HAIR, KEEN_BROWS, KEEN_EYE_COLORS, KEEN_EYES, KEEN_IRIS } from './lyraEyeArt';
+import { LONG_NAPE, LONG_NECK_BACK, LONG_NECK_W } from './neck';
+import { LYRA_FACE_FAR_LINE, lyraFaceCells, stampLyraFace } from './lyraFace';
+import { LYRA_FACE_FAR_EYE } from './lyraFaceArt';
+import { drawOwner, slotTint } from './ownerFrames';
 import { segAngle, stampPiece } from './painted';
 import { rotateTemplate, stampTemplate, type TemplatePalette } from './rotsprite';
 import { ballShade, capsule, ellipse, F_NO_OUTLINE, F_NO_TEXTURE, GRID, Layer, PartId, Pen, poly, RES, seam, v, Vec } from './raster';
@@ -57,8 +62,12 @@ export function drawBody(g: DrawCtx): void {
   fillTorso(g, torso, 0, skin('torso'));
   if (isFemaleBody(r.body)) flatTorso(g, torso);
   else if (b.bust > 0) sculptTorso(g, torso, g.skin, 'skin');
-  const neckTop = v(r.head.x + 0.4 * b.headScale, r.head.y + 4 * b.headScale);
-  capsule(torso, r.neck, neckTop, b.neckW, b.neckW * 0.95, skin('torso'), (x) => (x < r.neck.x - 0.6 ? 3 : 2));
+  // The long neck (neck.ts) is the owner's heroines': slimmer, and set back under the chin as he drew it.
+  const long = g.look.neck === 'long';
+  const neckTop = v(r.head.x + 0.4 * b.headScale - (long ? LONG_NECK_BACK : 0), r.head.y + 4 * b.headScale);
+  const neckW = long ? Math.min(b.neckW, LONG_NECK_W) : b.neckW;
+  // (his is lit but for its far edge: a shade lighter, so it is lit where the chin's shadow falls on it)
+  capsule(torso, r.neck, neckTop, neckW, neckW * 0.95, skin('torso'), long ? (x) => (x < r.neck.x + 0.2 ? 4 : 3) : (x) => (x < r.neck.x - 0.6 ? 3 : 2));
   // Nape: the back of the neck, from under the skull down to the shoulders.
   // It fills the gap behind the tapered jaw when the hair doesn't hang there;
   // hair drawn over the head still covers it. 'slim' (default) starts well
@@ -66,12 +75,12 @@ export function drawBody(g: DrawCtx): void {
   // neck flush with the back of the skull, with a lit nape.
   const fa = faceAnchor(g);
   const strong = g.look.neck === 'strong';
-  const napeX = (fa.nx - (strong ? 5.5 : 3.5)) / RES;
+  const napeX = (fa.nx - (strong ? 5.5 : long ? LONG_NAPE : 3.5)) / RES;
   poly(
     torso,
     [v(napeX, (fa.ny + 1) / RES), v(napeX, r.neck.y + 0.2), v(napeX - 0.8, r.neck.y + 1.2), v(r.neck.x, r.neck.y + 1.2), v(neckTop.x, (fa.ny + 1) / RES)],
     skin('torso'),
-    strong ? (x) => (x < napeX + 1 ? 3 : 2) : 2,
+    strong ? (x) => (x < napeX + 1 ? 3 : 2) : long ? 4 : 2,
   );
 
   // Simple form shading only (no muscle lines): a soft chest shadow and collarbone light.
@@ -208,8 +217,9 @@ function drawBaseBody(g: DrawCtx): void {
       stampBase(g, depth, forePiece, on, fore, s === 'N' ? 'forearmN' : 'forearmF', undefined, undefined, false, true);
     }
     const kind = handPose(g, s).kind;
+    // (his Lyra's open far hand, the 'long' arms, is his small hand: ctx.ts handPose)
     if ((kind === 'fist' || kind === 'relaxed') && g.look.hands === 'small') smallHand(g, depth, s, kind, j.wrist, fore);
-    else if (kind === 'fist' || kind === 'relaxed') stampBase(g, depth, s === 'N' ? P.handN : P.handF, j.wrist, fore, s === 'N' ? 'handN' : 'handF');
+    else if (kind === 'fist' || (kind === 'relaxed' && !(s === 'F' && g.look.arms === 'long'))) stampBase(g, depth, s === 'N' ? P.handN : P.handF, j.wrist, fore, s === 'N' ? 'handN' : 'handF');
     else {
       // his wrist under the small hand, so it stays on the forearm
       stampBase(g, depth, s === 'N' ? P.wristN : P.wristF, j.wrist, fore, s === 'N' ? 'handN' : 'handF');
@@ -516,6 +526,9 @@ export function headAt(g: DrawCtx, dx: number, dy: number): Vec {
 }
 
 function drawHead(g: DrawCtx): void {
+  // Her face ('fine') in the owner's own frames of her (ownerFrames.ts): his face, eyes and neck there,
+  // pixel for pixel, in the character's skin and eye colour; her hair covers the rest of the head.
+  if (g.look.faceShape === 'fine' && drawOwner(g, 'face', (k, hex) => (k === 'eye' ? retintHex(hex, KEEN_IRIS, g.look.eyeColor) : slotTint({}, g.look.skin)(k, hex)))) return;
   if (g.look.faceShape === 'valiant') {
     drawValiantHead(g);
     drawFace(g);
@@ -562,6 +575,9 @@ function drawHead(g: DrawCtx): void {
   // Everything from the eye line down is the hand-drawn face template.
   const { nx, ny } = faceAnchor(g);
   for (let i = ny * GRID; i < GRID * GRID; i++) L.mat[i] = -1;
+  // Lyra's face ('fine') is narrower than the template: the skull stops short of his far face line, so
+  // its outline runs on up from his line.
+  if (g.look.faceShape === 'fine') for (let y = 0; y < ny; y++) for (let x = nx + LYRA_FACE_FAR_LINE; x < GRID; x++) L.mat[y * GRID + x] = -1;
   drawFace(g);
 }
 
@@ -625,7 +641,7 @@ export function skinTone(hex: string, skin: string, base = VALIANT_SKIN): string
  * square: the reference's original strong jaw, with a flat jaw line.
  * (valiant and founder, the owner's heads, are his pixels whole: see drawValiantHead, drawFounderHead.)
  */
-const FACE_LEFT: Record<Exclude<FaceShape, 'valiant' | 'founder' | 'shade'>, string[]> = {
+const FACE_LEFT: Record<Exclude<FaceShape, 'valiant' | 'founder' | 'shade' | 'fine'>, string[]> = {
   tapered: ['osbbbbb', 'ossbbbb', '.osbbbb', '..osbbb', '...osbb', '....osb', '.....os', '......o', '.......', '.......'],
   soft: ['osbbbbb', 'ossbbbb', 'ossbbbb', '.osbbbb', '..osbbb', '...osbb', '....osb', '.....oo', '.......', '.......'],
   square: ['osbbbbb', 'ossbbbb', 'osDsbbb', 'ossbbbb', '.osbbbs', '..osbbs', '...osbs', '....ooo', '.......', '.......'],
@@ -633,7 +649,8 @@ const FACE_LEFT: Record<Exclude<FaceShape, 'valiant' | 'founder' | 'shade'>, str
 
 const faceLeft = (g: DrawCtx): string[] => {
   const s = g.look.faceShape;
-  return (s && s !== 'valiant' && s !== 'founder' && s !== 'shade' && FACE_LEFT[s]) || FACE_LEFT.tapered;
+  // (Lyra's face, 'fine', has the default near cheek under her hair)
+  return (s && s !== 'valiant' && s !== 'founder' && s !== 'shade' && s !== 'fine' && FACE_LEFT[s]) || FACE_LEFT.tapered;
 };
 
 const FACE_MAIN: Record<string, string[]> = {
@@ -696,6 +713,9 @@ const EYE_ROWS: Record<string, { near: string[]; far: string[] }> = {
   // Aurelia's eyes from the owner's game-scale picture (src/sprite/aureliaEyeArt.ts), his pixels on our
   // own cells and rows: his navy lash with its brown outer tip, his whites, his blue over light blues.
   dawn: { near: DAWN_EYES.open.near.letters, far: DAWN_EYES.open.far.letters },
+  // The owner's Lyra's eyes (src/sprite/lyraEyeArt.ts), his pixels from his picture at our scale: two
+  // rows like his Aiden's, her black lash over a single row of white and green iris; her brows right over it.
+  keen: { near: KEEN_EYES.open.near.letters, far: KEEN_EYES.open.far.letters },
 };
 
 /** Closed eyes (knocked out): each eye a dark lid line across its middle row. */
@@ -760,6 +780,11 @@ export function faceCells(g: DrawCtx, skipBack = 0): Set<number> {
     for (let r = 0; r < 8; r++) add(nx, ny + r);
     return out;
   }
+  if (g.look.faceShape === 'fine') {
+    // Lyra's face from the lash row down, over the template's near cheek.
+    for (const c of lyraFaceCells(nx, ny)) if (c.y >= ny) add(c.x, c.y);
+    return out;
+  }
   main.forEach((row, r) => {
     for (let c = 0; c < row.length; c++) if (row[c] !== '.') add(nx + c, ny + r);
   });
@@ -778,7 +803,8 @@ export function faceAnchor(g: DrawCtx): { nx: number; ny: number; ex: number; fx
   const ny = Math.floor((g.rig.head.y + 1.0 * k) * RES);
   const valiant = g.look.faceShape === 'valiant';
   // Saya's face ('shade') has her far eye where he drew it, one cell nearer than the template's.
-  const fx = valiant ? nx + 8 : g.look.faceShape === 'shade' ? nx + SAYA_FACE_EYES.far : nx + 9;
+  // Lyra's face ('fine'): her far eye where he drew it, closer in on her narrower face.
+  const fx = valiant ? nx + 8 : g.look.faceShape === 'shade' ? nx + SAYA_FACE_EYES.far : g.look.faceShape === 'fine' ? nx + LYRA_FACE_FAR_EYE : nx + 9;
   return { nx, ny, ex: valiant ? nx + 1 : nx + (g.look.faceShape === 'shade' ? SAYA_FACE_EYES.near : 0), fx, fy: ny };
 }
 
@@ -841,7 +867,9 @@ function drawFace(g: DrawCtx): void {
   const saya = shape === 'shade' ? SAYA_EYES[lid] : undefined;
   // Aurelia's eyes ('dawn'): her pixels in each lid state, on our own eye cells and rows.
   const hers = shape === 'dawn' ? DAWN_EYES[lid] : undefined;
-  const painted = his || hers;
+  // Lyra's eyes ('keen'): her pixels in each lid state, on our own eye cells and rows.
+  const lyra = shape === 'keen' ? KEEN_EYES[lid] : undefined;
+  const painted = his || hers || lyra;
   const eyes = painted ? { near: painted.near.letters, far: painted.far.letters } : saya ? SAYA_EYE_CELLS[lid] : closed ? CLOSED_EYES : lowered ? EYE_ROWS.calm : EYE_ROWS[shape] || EYE_ROWS.standard;
   const main = (FACE_MAIN[isFemaleBody(g.rig.body) ? 'female' : g.rig.body] || FACE_MAIN.male).map((row, r) => eyeRow(row, r, eyes));
 
@@ -881,6 +909,16 @@ function drawFace(g: DrawCtx): void {
     main.forEach((row, r) => {
       for (let c = 0; c < row.length; c++) if (row[c] === 'm' || row[c] === 'M') put(ex + c, ny + r, row[c]);
     });
+  } else if (g.look.faceShape === 'fine') {
+    // Lyra's face (lyraFace.ts): the template's near cheek where her hair hides hers, her pixels over
+    // it, and only the eyes from the template (her mouth is her own).
+    faceLeft(g).forEach((row, r) => {
+      for (let c = 0; c < row.length; c++) put(nx - 7 + c, ny + r, row[c]);
+    });
+    stampLyraFace(g, L, nx, ny);
+    for (const [side, x0] of [['near', ex], ['far', fx]] as const) {
+      eyes[side].forEach((row, r) => [...row].forEach((ch, c) => !(ch in skinShade) && put(x0 + c, ny + r, ch)));
+    }
   } else {
     faceLeft(g).forEach((row, r) => {
       for (let c = 0; c < row.length; c++) put(nx - 7 + c, ny + r, row[c]);
@@ -931,6 +969,17 @@ function drawFace(g: DrawCtx): void {
     stamp(hers.near, ex);
     stamp(hers.far, fx);
   }
+  if (lyra) {
+    // Her pixels over the template's eye cells: her iris moves the way the eye colour moves her green;
+    // pale special eyes take our pale tones. Her lash and white stay his.
+    const tone = (letter: string, hex: string) => (letter === 'd' || letter === 'i' ? (pale ? ir[letter === 'd' ? 3 : 4] : retintHex(hex, KEEN_IRIS, iris)) : hex);
+    const stamp = (eye: PaintedEye, x0: number) =>
+      eye.rows.forEach((row, r) => {
+        for (let c = 0; c < row.length; c++) if (row[c] !== '.') L.set(x0 + c, ny + r, flat(tone(eye.letters[r][c], KEEN_EYE_COLORS[row[c]])), 3, 'head', F_NO_OUTLINE);
+      });
+    stamp(lyra.near, ex);
+    stamp(lyra.far, fx);
+  }
 
   // Overlays drawn on the face layer (no outline, above the skin). His eyes open a row lower than
   // ours (his lash line is the template's second row): what sits on the open eye follows them.
@@ -938,6 +987,8 @@ function drawFace(g: DrawCtx): void {
   const lash = his ? ny + 1 : ny;
   if (saya) {
     // her lash turns down its own outer corner, open, lowered and closed: no lashes added
+  } else if (lyra) {
+    // her lashes are his pixels: no flick at the corners, open or shut
   } else if (female && (closed || lowered)) {
     // the lashes of the closed or lowered lids
     set(ex - 1, ny + 1, EYELINE);
@@ -952,6 +1003,12 @@ function drawFace(g: DrawCtx): void {
   // Special eye patterns (pupil marks on the red iris, veins, sage pigment); closed eyes show none.
   if (closed || lowered) {
     // nothing to see under the lids
+  } else if ((sp === 'tomoe1' || sp === 'tomoe3' || sp === 'pinwheel') && lyra) {
+    // Lyra's iris is a single row under her lash (her green, then its dark): the marks go on it, the
+    // far eye's dark green past one tomoe.
+    set(ex + 2, ny + 1, '#14040a');
+    if (sp !== 'tomoe1') set(fx + 1, ny + 1, '#14040a');
+    if (sp === 'pinwheel') set(ex + 3, ny + 1, '#14040a');
   } else if ((sp === 'tomoe1' || sp === 'tomoe3' || sp === 'pinwheel') && his) {
     // His iris is a single row under the lash: the marks go on his dark red, the near eye's first and
     // past one tomoe the far eye's too, so the near eye's red still shows.
@@ -978,9 +1035,11 @@ function drawFace(g: DrawCtx): void {
     for (let x = -1; x <= 4; x++) set(ex + x, lash - 1, '#c2410c');
     for (let x = 0; x <= (his ? 2 : 3); x++) set(fx + x, lash - 1, '#c2410c');
     if (!closed && !lowered) {
-      // the bar pupil (on his two-pixel iris only its dark half, so the gold still shows)
-      set(ex + 2, ny + 2, '#120c18');
-      if (!his) set(ex + 3, ny + 2, '#120c18');
+      // the bar pupil (on his two-pixel iris only its dark half, so the gold still shows; on Lyra's
+      // single row of iris, her dark green's cell)
+      if (lyra) set(ex + 3, ny + 1, '#120c18');
+      else set(ex + 2, ny + 2, '#120c18');
+      if (!his && !lyra) set(ex + 3, ny + 2, '#120c18');
     }
   }
 
@@ -988,6 +1047,22 @@ function drawFace(g: DrawCtx): void {
   // his Solen's head has his brows in its pixels, and Saya's face has none (he hid hers under her
   // bangs, and her forehead shows between them).
   if (his || g.look.faceShape === 'founder' || g.look.faceShape === 'shade') return;
+  if (lyra) {
+    // Hers: her pixels, long and slanting down to the inner corner, in her hair's reds moved the way the
+    // hair colour moves her hair's mid red.
+    const hair = hairChoice?.colors[0];
+    for (const [side, x0] of [['near', ex], ['far', fx]] as const) {
+      const { at, rows } = KEEN_BROWS[side];
+      rows.forEach((row, r) => {
+        for (let c = 0; c < row.length; c++) {
+          if (row[c] === '.') continue;
+          const hex = KEEN_EYE_COLORS[row[c]];
+          set(x0 + at[0] + c, ny + at[1] + r, hair ? retintHex(hex, KEEN_BROW_HAIR, hair) : hex);
+        }
+      });
+    }
+    return;
+  }
   const br = makeRamp(hairChoice?.colors[0] || '#2a2230', 'hair');
   // Sharp and fierce eyes get brows angled down toward the nose.
   const sharp = shape === 'sharp' || shape === 'fierce';

@@ -57,6 +57,15 @@ const ES: Record<string, string> = {
   "Saya's face": 'La cara de Saya',
   Dawn: 'Alba',
   "Aurelia's eyes": 'Los ojos de Aurelia',
+  Keen: 'Decididos',
+  "Lyra's eyes": 'Los ojos de Lyra',
+  Fine: 'Fina',
+  "Lyra's face": 'La cara de Lyra',
+  Long: 'Largo',
+  "Lyra's neck": 'El cuello de Lyra',
+  Arms: 'Brazos',
+  "The body's own arms": 'Los del cuerpo',
+  "Lyra's arms": 'Los brazos de Lyra',
   None: 'Ninguno',
   Forehead: 'Frente',
   Arm: 'Brazo',
@@ -171,6 +180,7 @@ const ES: Record<string, string> = {
   Studs: 'Tachas',
   Sole: 'Suela',
   Lining: 'Forro',
+  Blouse: 'Blusa',
   Gold: 'Oro',
   Dress: 'Vestido',
   Cape: 'Capa',
@@ -329,6 +339,14 @@ const ES: Record<string, string> = {
   'Dawn Staff': 'Báculo del Alba',
   'A short gold staff with winged arms round a glowing pearl orb that sheds golden sparkles: the owner drew it for Aurelia.': 'Un báculo corto de oro con brazos alados alrededor de un orbe de perla luminoso que suelta destellos dorados: el dueño lo dibujó para Aurelia.',
   'Orb': 'Orbe',
+  // Lyra's hair (hair_copper_braid)
+  'Copper Braid': 'Trenza cobriza',
+  // Lyra's skirt (items/lyraLower.ts)
+  Stripes: 'Rayas',
+  'Thigh-high dark leather boots with gold cuffs, small round knee guards and studded ankle straps, the thigh bare above them.': 'Botas altas de cuero oscuro hasta el muslo, con puños de oro, rodilleras redondas pequeñas y correas con tachas en el tobillo; el muslo queda desnudo encima.',
+  // Lyra's sword
+  'Gilded Rapier': 'Estoque Dorado',
+  'Blade glow': 'Brillo de la hoja',
 };
 
 /** An editor label in the screen's language. */

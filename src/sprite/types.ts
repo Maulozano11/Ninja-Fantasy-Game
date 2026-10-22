@@ -53,11 +53,14 @@ export interface CastChoice {
   jutsu?: Record<string, CastStyle>;
 }
 
-/** The eye options; valiant is the owner's own eyes from his Aiden picture, in his pixels; shade is his Saya's and dawn his Aurelia's, in their pixels at our scale. */
-export type EyeShape = 'standard' | 'sharp' | 'round' | 'calm' | 'fierce' | 'bright' | 'piercing' | 'valiant' | 'shade' | 'dawn';
+/** The eye options; valiant is the owner's own eyes from his Aiden picture, in his pixels; shade is his Saya's, dawn his Aurelia's and keen his Lyra's, in their colours at our scale. */
+export type EyeShape = 'standard' | 'sharp' | 'round' | 'calm' | 'fierce' | 'bright' | 'piercing' | 'valiant' | 'shade' | 'dawn' | 'keen';
 
-/** Back of the neck behind the jaw: slender (default) or thick. */
-export type NeckType = 'slim' | 'strong';
+/** Back of the neck behind the jaw: slender (default) or thick; long is the owner's heroines' (neck.ts). */
+export type NeckType = 'slim' | 'strong' | 'long';
+
+/** Arm length: the body's own (default), or long: his Lyra's longer forearms, her free hand hanging open (rig.ts LONG_ARMS). */
+export type ArmType = 'standard' | 'long';
 
 /**
  * Hand size on the female bodies: the body's own (default), or small: his Aurelia's smaller hands in his
@@ -67,9 +70,10 @@ export type HandSize = 'normal' | 'small';
 
 /**
  * Near-side cheek and jaw: V-line (default), fuller, or a strong flat jaw; or the owner's own head
- * from his Aiden picture (valiant: his skull, ear, cheeks, jaw and chin in his pixels).
+ * from his Aiden picture (valiant: his skull, ear, cheeks, jaw and chin in his pixels); or his Lyra's
+ * face (fine: her narrower face, mouth and chin in his pixels, under our skull).
  */
-export type FaceShape = 'tapered' | 'soft' | 'square' | 'valiant' | 'founder' | 'shade';
+export type FaceShape = 'tapered' | 'soft' | 'square' | 'valiant' | 'founder' | 'shade' | 'fine';
 
 /** Single-choice equipment slots, drawn back-to-front by depth (see compose.ts). */
 export type SlotId =
@@ -155,6 +159,8 @@ export interface SpriteAppearance {
   eyeColor: string;
   /** Missing on older saves; treated as 'slim'. */
   neck?: NeckType;
+  /** Missing on older saves; treated as 'standard'. */
+  arms?: ArmType;
   /** Missing on older saves; treated as 'tapered'. */
   faceShape?: FaceShape;
   /** Missing on older saves; treated as 'normal'. */

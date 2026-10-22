@@ -10,7 +10,7 @@ import { BODY_PARAMS, COMBO_KICKS, COMBO_TURNED, drawRig, frameCount, POSE_FPS, 
 import { SPRITE_POSES, type BodyType, type SpriteAppearance } from './types';
 
 const BODIES: BodyType[] = ['male', 'female', 'bulky', 'slender'];
-const WEAPONS = ['held_katana', 'held_crystal', 'held_ice_crystal', 'held_flame_sword', 'held_kunai', 'held_naginata', 'held_dawn_staff'];
+const WEAPONS = ['held_katana', 'held_crystal', 'held_ice_crystal', 'held_flame_sword', 'held_gilded_rapier', 'held_kunai', 'held_naginata', 'held_dawn_staff'];
 
 const look = (body: BodyType, held?: string, stowed = false, cape?: string): SpriteAppearance => {
   const l = defaultAppearance();
@@ -118,7 +118,7 @@ describe('throw and pierce poses', () => {
 
   it('keeps a blade stowed on the back behind the body when it pitches forward', () => {
     for (const body of BODIES) {
-      for (const held of ['held_crystal', 'held_ice_crystal', 'held_flame_sword']) {
+      for (const held of ['held_crystal', 'held_ice_crystal', 'held_flame_sword', 'held_gilded_rapier']) {
         for (const f of [THROW_RELEASE_FRAME, THROW_RELEASE_FRAME + 1]) {
           const b = heldBox(look(body, held, true), 'throw', f)!;
           const neck = drawRig(body, 'throw', f).neck;

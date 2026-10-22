@@ -9,11 +9,12 @@ import { armDepth, armJoints, armPoint, armSpan, type Depth, DrawCtx, fillTorso,
 import { PaintedPiece, segAngle, skinTone, stampPiece } from '../painted';
 import { add, along, ellipse, F_NO_EDGE, F_NO_OUTLINE, F_NO_TEXTURE, GRID, Layer, lerp, norm, PAD, PartId, partIndex, PARTS, Pen, perp, poly, RES, scale, seam, ShadeFn, sub, v, Vec } from '../raster';
 import { stampTemplate, TemplatePalette } from '../rotsprite';
-import { paintedGrip, type PaintedGrip } from '../grip';
+import { gripAngle, paintedGrip, type PaintedGrip } from '../grip';
 import type { Rig } from '../rig';
 import { crimsonKind, GAUNTLET_F, GAUNTLET_N, GLOVE_LEATHER, GLOVE_STEEL, GLOVE_TONES, GLOVE_TRIM } from './sabatonsGauntletsArt';
 import { BRACER_BRONZE, BRACER_F, BRACER_N, ROMAN_KIT_KIND } from './bracersSandalsArt';
 import { NIGHT_GLOVE, NIGHT_GLOVE_F, NIGHT_GLOVE_N, NIGHT_GLOVE_PLATE, NIGHT_KIT_KIND } from './nightBootsGlovesArt';
+import { NIGHT_CAST_FIST_F, NIGHT_CAST_FIST_N, NIGHT_CAST_FORE_N, NIGHT_CAST_GRIP_N, NIGHT_CAST_KIND } from './nightCastArmsArt';
 import { NIGHT_SKIN } from '../nightHeadArt';
 import { isFemaleBody } from '../types';
 
@@ -1777,21 +1778,45 @@ function gloveParts(piece: PaintedPiece): GloveParts {
 /** The open hand's cuff: his glove above the wrist. */
 const nightCuff = (piece: PaintedPiece): PaintedPiece => gloveParts(piece).cuff;
 
-/** One of his glove's pieces where a fist stamps it on the wrist: turned `turn` from his, mirrored or not. */
+/** One of his glove's pieces where a fist stamps it on the wrist (or at `at`): turned `turn` from his, mirrored or not. */
 export interface FistStamp {
   piece: PaintedPiece;
   turn: number;
   mirror: boolean;
   name: 'cuff' | 'fist' | 'wrist';
+  /** Where its pivot goes, when not on the wrist (design units). */
+  at?: Vec;
+}
+
+/**
+ * Casting the runes ('cast') he painted his fists himself (docs/reference/ren-cast-owner-reference.jpg):
+ * the near one closed round the sword's grip at the chest, sitting where the grip is held and turned with
+ * the fist (grip.ts paintedGrip); with the hand `empty` (the sword put away to cast, as the battle does) the
+ * same fist closing on nothing, riding the forearm where he drew it; the far one at the runes on the wrist,
+ * turned with the hand. Whole, glove and cuff in one. Null where the pose or the hand is not that one.
+ */
+function castFist(r: Rig, s: Side, hold: PaintedGrip | null, empty: boolean): FistStamp | null {
+  if (r.pose !== 'cast') return null;
+  if (s === 'F') return { piece: NIGHT_CAST_FIST_F, turn: segAngle(r.wristF, r.handF) - NIGHT_CAST_FIST_F.angle, mirror: false, name: 'fist' };
+  if (hold && !hold.mirror) return { piece: NIGHT_CAST_FIST_N, turn: hold.fist - NIGHT_CAST_FIST_N.angle, mirror: false, name: 'fist', at: hold.at };
+  if (hold || !empty) return null;
+  const turn = segAngle(r.elbowN, r.wristN) - NIGHT_CAST_FORE_N.angle;
+  const t = (turn * Math.PI) / 180;
+  const [dx, dy] = NIGHT_CAST_GRIP_N;
+  const at = add(r.wristN, v((dx * Math.cos(t) - dy * Math.sin(t)) / RES, (dx * Math.sin(t) + dy * Math.cos(t)) / RES));
+  return { piece: NIGHT_CAST_FIST_N, turn, mirror: false, name: 'fist', at };
 }
 
 /**
  * His fist on his Ren (the Fingerless Gloves), on the wrist, back to front: his cuff rides the forearm,
  * turned whole with it, and his fist turns with it too, so the wrist never breaks. Round his Katana v2
  * it sits as grip.ts paintedGrip says (`hold`: mirrored where the blade is carried back, the wrist bent
- * toward the blade), his wrist swept through the angles between under the cuff.
+ * toward the blade), his wrist swept through the angles between under the cuff. `empty`: the hand holds
+ * nothing (see castFist).
  */
-export function nightFistStamps(r: Rig, s: Side, hold: PaintedGrip | null): FistStamp[] {
+export function nightFistStamps(r: Rig, s: Side, hold: PaintedGrip | null, empty = false): FistStamp[] {
+  const cast = castFist(r, s, hold, empty);
+  if (cast) return [cast];
   const j = armJoints(r, s);
   const piece = s === 'N' ? NIGHT_GLOVE_N : NIGHT_GLOVE_F;
   const mirror = !!hold?.mirror;
@@ -1810,10 +1835,11 @@ export function nightFistStamps(r: Rig, s: Side, hold: PaintedGrip | null): Fist
 
 function nightFist(g: DrawCtx, s: Side, color: (ch: string, hex: string) => string, hold: PaintedGrip | null, depth: Depth): void {
   const j = armJoints(g.rig, s);
-  const piece = s === 'N' ? NIGHT_GLOVE_N : NIGHT_GLOVE_F;
-  const pal: TemplatePalette = {};
-  for (const [ch, hex] of Object.entries(piece.colors)) pal[ch] = [g.m(color(ch, hex), 'flat'), 3];
-  for (const t of nightFistStamps(g.rig, s, hold)) stampTemplate(g.L(depth), t.piece, j.wrist, t.turn, pal, prt('hand', s), { flipX: t.mirror, flags: F_NO_TEXTURE | F_NO_OUTLINE });
+  for (const t of nightFistStamps(g.rig, s, hold, s === 'N' && !hold && gripAngle(g) === null)) {
+    const pal: TemplatePalette = {};
+    for (const [ch, hex] of Object.entries(t.piece.colors)) pal[ch] = [g.m(color(ch, hex), 'flat'), 3];
+    stampTemplate(g.L(depth), t.piece, t.at ?? j.wrist, t.turn, pal, prt('hand', s), { flipX: t.mirror, flags: F_NO_TEXTURE | F_NO_OUTLINE });
+  }
 }
 
 /**
@@ -1862,7 +1888,7 @@ export const HAND_ITEMS: ItemDef[] = liftMain([
       // character's skin. Open, pointing or relaxed (hand signs, casts, a book), and on the female
       // bodies, the glove is drawn on our hand in the slot colours. His black stays his line.
       const tint = (_ch: string, hex: string) => {
-        const k = NIGHT_KIT_KIND[hex];
+        const k = NIGHT_KIT_KIND[hex] ?? NIGHT_CAST_KIND[hex];
         if (k === 'line') return hex;
         if (k === 'skin') return skinTone(hex, NIGHT_SKIN, g.look.skin);
         return k === 'silver' ? retintHex(hex, NIGHT_GLOVE_PLATE, pl) : retintHex(hex, NIGHT_GLOVE, c);
@@ -1870,7 +1896,9 @@ export const HAND_ITEMS: ItemDef[] = liftMain([
       const male = !isFemaleBody(g.rig.body);
       for (const s of SIDES) {
         const hold = s === 'N' && male ? paintedGrip(g) : null;
-        if (male && (hold || !nightPalm(g, s))) {
+        // (casting the runes he drew both fists closed, the near one round the grip or on nothing: castFist)
+        const castHand = g.rig.pose === 'cast' && (s === 'F' || gripAngle(g) === null);
+        if (male && (hold || !nightPalm(g, s) || castHand)) {
           // Under his jacket his bare forearm runs down to his glove: only our hand is taken away.
           if (g.has('top', 'top_night_jacket')) handOff(g, s);
           else bareHandOff(g, s);

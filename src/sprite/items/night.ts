@@ -13,6 +13,7 @@ import { add, F_NO_OUTLINE, F_NO_TEXTURE, GRID, partIndex, PartId, RES, sub, v, 
 import { NIGHT_SKIN } from '../nightHeadArt';
 import { NIGHT_BELT, NIGHT_BELT_BASE, NIGHT_BELT_KIND } from './nightBeltArt';
 import { NIGHT_BOOT_FOOT_F, NIGHT_BOOT_FOOT_N, NIGHT_BOOT_GOLD, NIGHT_BOOT_SHIN_F, NIGHT_BOOT_SHIN_N, NIGHT_BOOT_SILVER, NIGHT_BOOTS, NIGHT_KIT_KIND } from './nightBootsGlovesArt';
+import { NIGHT_CAST_FORE_F, NIGHT_CAST_FORE_N, NIGHT_CAST_KIND } from './nightCastArmsArt';
 import { NIGHT_ARM_F, NIGHT_ARM_N, NIGHT_BUTTONS, NIGHT_JACKET, NIGHT_JACKET_BODY, NIGHT_JACKET_KIND, NIGHT_SLEEVE_F, NIGHT_SLEEVE_N } from './nightJacketArt';
 import { NIGHT_SKIRT, NIGHT_SKIRT_BASE, NIGHT_SKIRT_KIND, NIGHT_STUDS } from './nightSkirtArt';
 import { drawRig, GROUND, type Rig } from '../rig';
@@ -79,6 +80,8 @@ function footOff(g: DrawCtx, s: Side): void {
 }
 
 const arm = (s: Side, n: PaintedPiece, f: PaintedPiece) => (s === 'N' ? n : f);
+/** His colours on the jacket's pieces, his cast forearms' too (ren.test.ts: each means the same in both). */
+const JACKET_KINDS: Record<string, string> = { ...NIGHT_CAST_KIND, ...NIGHT_JACKET_KIND };
 
 /**
  * His bare arm below the sleeve, cut where it bends: above the elbow it is the end of his upper arm (it
@@ -137,6 +140,16 @@ export function nightArmStamps(r: Rig, s: Side): ArmStamp[] {
   const sleeve = arm(s, NIGHT_SLEEVE_N, NIGHT_SLEEVE_F);
   const { upper, lower, elbow } = bareArm(piece, sleeve.angle);
   const fp = `forearm${s}` as PartId;
+  if (r.pose === 'cast') {
+    // Casting the runes he painted the arms himself (docs/reference/ren-cast-owner-reference.jpg): each
+    // bare forearm his, from under the sleeve (the near one bent across the chest, the far one thick and
+    // stretched at the runes), riding our forearm about the elbow, the sleeve over it as always.
+    const cast = arm(s, NIGHT_CAST_FORE_N, NIGHT_CAST_FORE_F);
+    return [
+      { piece: cast, at: j.elbow, deg: segAngle(j.elbow, j.wrist), part: fp, name: 'fore' },
+      { piece: sleeve, at: j.shoulder, deg: segAngle(j.shoulder, j.elbow), part: `upperArm${s}` as PartId, name: 'sleeve' },
+    ];
+  }
   const up = piece.angle + segAngle(j.shoulder, j.elbow) - sleeve.angle;
   const fore = segAngle(j.elbow, j.wrist);
   const bend = ((((fore - up + 180) % 360) + 360) % 360) - 180;
@@ -305,7 +318,7 @@ export const NIGHT_ITEMS: ItemDef[] = [
       // shoulder, each bare arm (his skin shading) the upper arm and the forearm about the elbow
       // (nightArmStamps), in place of ours.
       const r = g.rig;
-      const tint = nightColor(g, NIGHT_JACKET_KIND, [NIGHT_JACKET, main], { silver: [NIGHT_BUTTONS, buttons] });
+      const tint = nightColor(g, JACKET_KINDS, [NIGHT_JACKET, main], { silver: [NIGHT_BUTTONS, buttons] });
       torsoOff(g);
       for (const s of SIDES) {
         armOff(g, s);

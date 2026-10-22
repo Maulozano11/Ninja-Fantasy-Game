@@ -15,6 +15,7 @@ import { nightFistStamps } from './items/clothes';
 import { nightArmStamps, nightSkirtStamps } from './items/night';
 import * as kit from './items/nightBootsGlovesArt';
 import * as belt from './items/nightBeltArt';
+import * as cast from './items/nightCastArmsArt';
 import * as hair from './items/nightHairArt';
 import * as jacket from './items/nightJacketArt';
 import * as katana from './items/katanaV2Art';
@@ -216,6 +217,8 @@ describe("the owner's Ren", () => {
       for (const { pose, f, rig } of everyFrame(body)) {
         for (const s of ['N', 'F'] as Side[]) {
           const where = `${body} ${pose} ${f} ${s}`;
+          // (casting the runes he painted the arms himself: see the test of his cast arms)
+          if (rig.pose === 'cast') continue;
           const stamps = nightArmStamps(rig, s);
           const fore = stamps.find((t) => t.name === 'fore')!;
           const upper = stamps.find((t) => t.name === 'upper')!;
@@ -244,6 +247,62 @@ describe("the owner's Ren", () => {
           }
         }
       }
+    }
+  });
+
+  it('casting the runes, wears the arms he painted in frame 0 of his cast picture, in both frames', () => {
+    const l = look();
+    const g = (rig: ReturnType<typeof drawRig>) => ({ rig, look: l, has: (slot: string, id: string) => (l.slots as Record<string, { id: string } | undefined>)[slot]?.id === id }) as unknown as DrawCtx;
+    // the converter's joints are our male 'cast' frame 0 (tools/refs/ren-cast-arms-from-ref.py CAST_JOINTS)
+    const r0 = drawRig('male', 'cast', 0);
+    const near = (p: { x: number; y: number }, x: number, y: number) => Math.abs(p.x * RES - x) < 0.01 && Math.abs(p.y * RES - y) < 0.01;
+    const hold0 = paintedGrip(g(r0))!;
+    assert.ok(near(r0.elbowN, 120.815, 164.105) && near(r0.wristN, 131.598, 161.934) && near(r0.elbowF, 151.101, 154.013) && near(r0.wristF, 162.014, 152.636) && near(r0.handF, 165.586, 152.185), 'the rig moved: rerun the converter with its joints');
+    assert.ok(near(hold0.at, 134.876, 163.423) && Math.abs(hold0.fist - 24.44) < 0.01, 'the grip moved: rerun the converter with it');
+    // in frame 0 every pixel of his fists is where he drew it, and of his forearms all but what the sleeves, the fists and the sword cover
+    const f0 = renderSprite(l, 'cast', 0).rgba;
+    for (const [name, min] of [['NIGHT_CAST_FIST_N', 1], ['NIGHT_CAST_FIST_F', 1], ['NIGHT_CAST_FORE_N', 0.9], ['NIGHT_CAST_FORE_F', 0.9]] as const) {
+      const got = atRest(f0, cast[name], cast.NIGHT_CAST_REST[name]);
+      assert.ok(got >= min, `${name}: ${(got * 100).toFixed(0)}% of his pixels in place`);
+    }
+    for (const body of ['male', 'bulky'] as BodyType[]) {
+      for (const frame of [0, 1]) {
+        const rig = drawRig(body, 'cast', frame);
+        const hold = paintedGrip(g(rig));
+        for (const s of ['N', 'F'] as Side[]) {
+          const where = `${body} cast ${frame} ${s}`;
+          const fore = nightArmStamps(rig, s).find((t) => t.name === 'fore')!;
+          assert.equal(fore.piece, s === 'N' ? cast.NIGHT_CAST_FORE_N : cast.NIGHT_CAST_FORE_F, where);
+          assert.equal(whole(fore.piece, fore.deg - fore.piece.angle), null, `${where} forearm`);
+          const fists = nightFistStamps(rig, s, s === 'N' ? hold : null);
+          assert.deepEqual(fists.map((t) => t.piece), [s === 'N' ? cast.NIGHT_CAST_FIST_N : cast.NIGHT_CAST_FIST_F], where);
+          assert.equal(whole(fists[0].piece, fists[0].turn), null, `${where} fist`);
+        }
+        // the near fist sits where the sword's grip is held, turned with the fist
+        const fist = nightFistStamps(rig, 'N', hold)[0];
+        assert.deepEqual(fist.at, hold!.at);
+        assert.ok(Math.abs(fist.turn + fist.piece.angle - hold!.fist) < 1e-9);
+        // with the sword put away to cast (as the battle does) the same fist closes on nothing where he drew it
+        const empty = nightFistStamps(rig, 'N', null, true);
+        assert.deepEqual(empty.map((t) => t.piece), [cast.NIGHT_CAST_FIST_N]);
+        // (his angles are kept to 0.01 degree; RotSprite turns by whole degrees)
+        if (body === 'male' && frame === 0) assert.ok(Math.abs(empty[0].at!.x * RES - 134.876) < 0.01 && Math.abs(empty[0].at!.y * RES - 163.423) < 0.01 && Math.abs(empty[0].turn) < 0.01);
+        const stowed = renderSprite({ ...l, body, stowed: true }, 'cast', frame).rgba;
+        if (body === 'male' && frame === 0) assert.equal(atRest(stowed, cast.NIGHT_CAST_FIST_N, cast.NIGHT_CAST_REST.NIGHT_CAST_FIST_N), 1, 'the empty fist where he drew it');
+        // nothing comes off the body but the runes before his far fist (blue and their pale glow, past the
+        // wrist, below the blade's point)
+        const px = Uint8ClampedArray.from(renderSprite({ ...l, body }, 'cast', frame).rgba);
+        for (let i = 0; i < GRID * GRID; i++) {
+          const [r, gr, b] = [px[i * 4], px[i * 4 + 1], px[i * 4 + 2]];
+          const rune = i % GRID > rig.wristF.x * RES + 6 && i / GRID > 125 && (b > r + 60 || (b >= r && gr >= r && r > 150));
+          if (rune) px[i * 4 + 3] = 0;
+        }
+        assert.ok(loose(px) <= 3, `${body} ${frame}: ${loose(px)} pixels apart from the body`);
+      }
+    }
+    // his colours mean the same in his cast arms as in his gloves and jacket (the items recolour them by kind)
+    for (const [h, k] of Object.entries(cast.NIGHT_CAST_KIND)) {
+      for (const other of [kit.NIGHT_KIT_KIND, jacket.NIGHT_JACKET_KIND] as Record<string, string>[]) if (other[h]) assert.equal(other[h], k, h);
     }
   });
 

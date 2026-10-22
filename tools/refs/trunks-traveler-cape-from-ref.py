@@ -44,11 +44,15 @@ def main():
         ('TRAVELER_BACK', *P['cape_back'], 'The cloth hanging behind the near arm to the calf: it hangs from the near shoulder.', 'shoulderN', A('shoulderN', 'elbowN'), main_),
         ('TRAVELER_HOOD', *P['cape_hood'], 'The hood round the neck, across the chest to the far shoulder: it rides the torso about the neck.', 'neck', A('pelvis', 'neck'), main_),
         ('TRAVELER_SHOULDER', *P['cape_shoulder'], 'The cloth over the near shoulder: it rides the near shoulder.', 'shoulderN', A('shoulderN', 'elbowN'), main_),
+        ('TRAVELER_HOOD_BEHIND', *P['cape_hood_behind'], 'The hood continued under the head, the neck and the shoulder (hidden at rest): drawn behind the body, it rides the torso about the neck as the hood does.', 'neck', A('pelvis', 'neck'), main_),
+        ('TRAVELER_HOOD_SEAM', *P['cape_hood_seam'], "The shoulder's cloth's last columns beside the hood (under the shoulder's cloth at rest): it rides the torso about the neck, so the hood's edge never parts from it.", 'neck', A('pelvis', 'neck'), main_),
+        ('TRAVELER_SHOULDER_SEAM', *P['cape_shoulder_seam'], "The hood's first columns beside the shoulder's cloth (under the hood at rest): it rides the near shoulder, so the shoulder's edge never parts from it.", 'shoulderN', A('shoulderN', 'elbowN'), main_),
     ]
-    R.run('trunks2', out_ts, DOC, pieces, 'TRAVELER', {'main': 'TRAVELER_BROWN'})
+    # His base brown as before the hidden pieces were continued (a continued pixel can match his colour where it lies).
+    R.run('trunks2', out_ts, DOC, pieces, 'TRAVELER', {'main': 'TRAVELER_BROWN'}, {'main': '#64422c'})
     if study:
         os.makedirs(study, exist_ok=True)
-        R.study(a, [P['cape_back'], P['cape_hood'], P['cape_shoulder']], os.path.join(study, 'cape@8.png'))
+        R.study(a, [P['cape_hood_behind'], P['cape_back'], P['cape_hood'], P['cape_shoulder']], os.path.join(study, 'cape@8.png'))
 
 
 if __name__ == '__main__':

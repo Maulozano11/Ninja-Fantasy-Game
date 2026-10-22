@@ -186,7 +186,12 @@ folders.
   runs on from where it shows to his boot's top), what he drew between the legs is a piece of its own (`CARGO_GAP`,
   drawn only at rest), each shin turns about the ankle as his boots do, and `*_INTO_BOOT_*` carries the hem 2 rows on
   under the boot (drawn over his boots only); `stampTrouserLeg` (`src/sprite/items/trunksKit.ts`) turns each leg whole
-  and fills the bent knee. One script per part:
+  and fills the bent knee. The cape's pieces ride different joints (the back and the shoulder's cloth the near
+  shoulder, the hood the neck), so the cape script continues each a little under its neighbours, hidden at rest:
+  `TRAVELER_HOOD_BEHIND` (the hood `T2_HOOD_BEHIND` pixels on under the head, neck and shoulder, drawn behind
+  the body), the back's dark inside on behind the torso and the near leg (`T2_CAPE_BEHIND`), and the shoulder's
+  cloth and the hood crossing over by `T2_SEAM` columns (`TRAVELER_HOOD_SEAM`, `TRAVELER_SHOULDER_SEAM`); none
+  of it lies on his white. One script per part:
 
       python3 -I tools/refs/trunks-drifter-hair-from-ref.py src/sprite/items/drifterHairArt.ts [study]
       python3 -I tools/refs/trunks-surge-hair-from-ref.py src/sprite/items/surgeHairArt.ts [study]

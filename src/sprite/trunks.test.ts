@@ -5,7 +5,7 @@ import { describe, it } from 'node:test';
 import { renderSprite } from './compose';
 import { getItem } from './catalog';
 import { defaultAppearance } from './legacy';
-import type { DrawCtx } from './ctx';
+import { DEPTHS, type Depth, type DrawCtx } from './ctx';
 import type { PaintedPiece } from './painted';
 import { GRID, Layer, RES, type Vec } from './raster';
 import { GROUND } from './rig';
@@ -69,7 +69,8 @@ function atRest(rgba: Uint8ClampedArray, piece: PaintedPiece, rest: [number, num
 // Each item alone on our male at rest, and how much of each of its pieces must show his pixels where he
 // drew them (what is missing is under the item's other pieces, our head or our hands, or continued
 // where his picture hid it; the lower piece of a joint is partly under the end of the upper one, which
-// overlaps it; the near cargo shin is almost all under its thigh and its boot).
+// overlaps it; the near cargo shin is almost all under its thigh and its boot; the cape's back goes on,
+// hidden, behind the body).
 type Case = [string, Partial<Record<SlotId, string>>, Record<string, unknown>, Record<string, [number, number]>, Record<string, string>, Record<string, number>];
 const CASES: Case[] = [
   ['short-sleeved shirt', { top: 'top_highcollar' }, shirt, shirt.SHIRT_REST, shirt.SHIRT_SLOT, { SHIRT_BODY: 0.95, SHIRT_SLEEVE_F: 0.65, SHIRT_ARM_UP_F: 0.95, SHIRT_ARM_FORE_F: 0.68, SHIRT_ARM_UP_N: 0.9, SHIRT_ARM_FORE_N: 0.66 }],
@@ -77,7 +78,7 @@ const CASES: Case[] = [
   ['leather boots', { feet: 'feet_leather' }, boots, boots.LEATHER_BOOT_REST, boots.LEATHER_BOOT_SLOT, { BOOT_SHAFT_N: 0.63, BOOT_FOOT_N: 0.95, BOOT_SHAFT_F: 0.7, BOOT_FOOT_F: 0.87 }],
   ['belt', { waist: 'waist_belt' }, belt, belt.BELT_REST, belt.BELT_SLOT, { BELT: 0.95 }],
   ["traveler's gloves", { hands: 'hands_traveler_gloves' }, gloves, gloves.TRAVELER_GLOVE_REST, gloves.TRAVELER_GLOVE_SLOT, { TRAVELER_GLOVE_N: 0.95, TRAVELER_GLOVE_F: 0.95 }],
-  ["traveler's cape", { cape: 'cape_traveler' }, cape, cape.TRAVELER_REST, cape.TRAVELER_SLOT, { TRAVELER_HOOD: 0.82, TRAVELER_SHOULDER: 0.95, TRAVELER_BACK: 0.55 }],
+  ["traveler's cape", { cape: 'cape_traveler' }, cape, cape.TRAVELER_REST, cape.TRAVELER_SLOT, { TRAVELER_HOOD: 0.82, TRAVELER_SHOULDER: 0.95, TRAVELER_BACK: 0.48 }],
   ['bomber jacket', { top: 'top_bomber' }, bomber, bomber.BOMBER_REST, bomber.BOMBER_SLOT, { BOMBER_BODY: 0.88, BOMBER_SLEEVE_UP_N: 0.95, BOMBER_SLEEVE_FORE_N: 0.57, BOMBER_SLEEVE_UP_F: 0.68, BOMBER_SLEEVE_FORE_F: 0.52, BOMBER_FIST_F: 0.83 }],
   ['belted trousers', { bottom: 'bottom_leggings' }, leggings, leggings.LEGGINGS_REST, leggings.LEGGINGS_SLOT, { LEGGINGS_SEAT: 0.94, LEGGINGS_THIGH_N: 0.5, LEGGINGS_SHIN_N: 0.13, LEGGINGS_THIGH_F: 0.68, LEGGINGS_SHIN_F: 0.42 }],
   ['open-toed boots', { feet: 'feet_cowboy' }, openBoots, openBoots.OPEN_BOOT_REST, openBoots.OPEN_BOOT_SLOT, { OPEN_BOOT_SHAFT_N: 0.59, OPEN_BOOT_FOOT_N: 0.95, OPEN_BOOT_SHAFT_F: 0.9, OPEN_BOOT_FOOT_F: 0.91 }],
@@ -186,7 +187,9 @@ describe("the owner's Trunks clothes", () => {
         if (pose === 'downed') continue;
         const on = renderSprite(look({ cape: 'cape_traveler' }, body), pose, 0);
         const off = renderSprite(look({}, body), pose, 0);
-        for (const i of diff(on.rgba, off.rgba)) assert.ok(Math.floor(i / GRID) <= hem, `${body} ${pose}: cape at row ${Math.floor(i / GRID)}, below its hem at rest (${hem})`);
+        // (a crack the hem closes against the figure takes its line, a row below it at most: seal.ts sealAgainstFigure)
+        const sealed = (i: number) => Math.floor(i / GRID) === hem + 1 && hex(on.rgba, i) === '#000000';
+        for (const i of diff(on.rgba, off.rgba)) assert.ok(Math.floor(i / GRID) <= hem || sealed(i), `${body} ${pose}: cape at row ${Math.floor(i / GRID)}, below its hem at rest (${hem})`);
       }
     }
   });
@@ -353,4 +356,188 @@ describe("the owner's Trunks clothes", () => {
     }
     assert.deepEqual(bad, []);
   });
+});
+
+// Dead pixels in his cape and his boots (the owner, 2026-10-22: "tienes muchos pixeles muertos blancos en
+// la capa de trunks en muchas de las poses"; on Trunks 3: "en embestida y en varias poses donde el
+// personaje se inclina hacia delante tienes unos pixeles muertos blancos en la bota derecha"). On the
+// finished frame, beside the cape's or a boot's pixels:
+//  - hole: an empty pixel in a pocket of at most 4 that the figure walls in;
+//  - crack: an empty pixel with the figure on both sides of it, across or down (a 1 px white line or dot);
+//  - gap: a pixel of something behind it showing through a 1 px crack in it, much lighter;
+//  - light: a near-white pixel of its own.
+// Left as drawn: a notch of one piece's outline (three sides, all its line: his outline's notches), the
+// gaps beside the head (his white between the hair, the face and the hood) and those the held blade
+// crosses (between the legs, beside a boot).
+describe("the owner's Trunks cape and boots", () => {
+  const LOOKS: [string, Partial<Record<SlotId, string>>][] = [
+    ['Trunks 2', { cape: 'cape_traveler', top: 'top_highcollar', bottom: 'bottom_cargo', feet: 'feet_leather', waist: 'waist_belt', hands: 'hands_traveler_gloves', hair: 'hair_drifter' }],
+    ['Trunks 3', { top: 'top_bomber', bottom: 'bottom_leggings', feet: 'feet_cowboy', hair: 'hair_surge' }],
+  ];
+  const N = GRID * GRID;
+  const depth = (d: Depth) => DEPTHS.indexOf(d);
+  const HEAD = new Set((['hairBack', 'head.body', 'head.face', 'head.mask', 'hairFront', 'head.gear', 'neck'] as Depth[]).map(depth));
+  const HELD = new Set((['farArm.held', 'nearArm.held', 'backGear'] as Depth[]).map(depth));
+  const HELD_PART = PARTS.indexOf('held' as never);
+  type Subject = 'cape' | 'bootN' | 'bootF';
+
+  /** The dead pixels beside the cape's and each boot's pixels in one frame ("x,y kind"). */
+  function deadPixels(l: SpriteAppearance, pose: SpritePose, fr: number): Record<Subject, string[]> {
+    // The frame's layers (taken when the held item, drawn last, is drawn), and the pixels the cape drew.
+    let G: DrawCtx | null = null;
+    let capeOwn: Map<Depth, Int16Array> | null = null;
+    const capeDef = l.slots.cape && getItem(l.slots.cape.id);
+    const heldDef = getItem(l.slots.held!.id)!;
+    const restore: (() => void)[] = [];
+    if (capeDef) {
+      const orig = capeDef.draw;
+      capeDef.draw = (g, c, p) => {
+        // (a pitched cape is drawn a second time on an upright rig, into layers of its own)
+        if (capeOwn) return orig(g, c, p);
+        const before = new Map(DEPTHS.map((d) => [d, g.L(d).mat.slice()] as [Depth, Int16Array]));
+        orig(g, c, p);
+        capeOwn = new Map();
+        for (const d of DEPTHS) {
+          const m = g.L(d).mat;
+          const b = before.get(d)!;
+          const o = new Int16Array(N);
+          for (let i = 0; i < N; i++) if (m[i] >= 0 && m[i] !== b[i]) o[i] = m[i] + 1;
+          capeOwn.set(d, o);
+        }
+      };
+      restore.push(() => (capeDef.draw = orig));
+    }
+    const heldDraw = heldDef.draw;
+    heldDef.draw = (g, c, p) => {
+      G = g;
+      heldDraw(g, c, p);
+    };
+    restore.push(() => (heldDef.draw = heldDraw));
+    let f;
+    try {
+      f = renderSprite(l, pose, fr);
+    } finally {
+      restore.forEach((r) => r());
+    }
+    const g = G as DrawCtx | null;
+    assert.ok(g, 'the held item was not drawn');
+    const own = capeOwn as Map<Depth, Int16Array> | null;
+    const rgba = f.rgba;
+    // The upright drawing's front-most layer and subject at each pixel (a knocked-out figure is laid down after).
+    const top = new Int16Array(N).fill(-1);
+    const sub = new Uint8Array(N); // 1 the cape, 2 the near boot, 3 the far boot
+    const part = new Uint8Array(N);
+    DEPTHS.forEach((d, k) => {
+      const L = g.L(d);
+      if (!L.used) return;
+      const o = own?.get(d);
+      for (let i = 0; i < N; i++) {
+        if (L.mat[i] < 0) continue;
+        top[i] = k;
+        part[i] = L.part[i];
+        sub[i] = d === 'nearLeg.feet' ? 2 : d === 'farLeg.feet' ? 3 : capeDef && (d === 'capeBack' || d === 'capeFront' || (o && o[i] === L.mat[i] + 1)) ? 1 : 0;
+      }
+    });
+    const lay = g.rig.lay;
+    const back = new Int32Array(N).fill(-1);
+    for (let i = 0; i < N; i++) {
+      if (!lay) back[i] = i;
+      else {
+        const X = ((i / GRID) | 0) + lay.dx;
+        const Y = (i % GRID) + lay.dy;
+        if (X >= 0 && Y >= 0 && X < GRID && Y < GRID) back[Y * GRID + X] = i;
+      }
+    }
+    const op = (j: number) => rgba[j * 4 + 3] > 0;
+    const topOf = (j: number) => (back[j] < 0 ? -1 : top[back[j]]);
+    const subOf = (j: number) => (back[j] < 0 ? 0 : sub[back[j]]);
+    const isHead = (j: number) => HEAD.has(topOf(j));
+    const isHeld = (j: number) => HELD.has(topOf(j)) || (topOf(j) >= 0 && part[back[j]] === HELD_PART);
+    const isLine = (j: number) => Math.max(rgba[j * 4], rgba[j * 4 + 1], rgba[j * 4 + 2]) + Math.min(rgba[j * 4], rgba[j * 4 + 1], rgba[j * 4 + 2]) <= 102;
+    const luma = (j: number) => rgba[j * 4] * 0.3 + rgba[j * 4 + 1] * 0.59 + rgba[j * 4 + 2] * 0.11;
+    const sides = (j: number) => [j - 1, j + 1, j - GRID, j + GRID];
+    // The empty pixels reached from the frame's edge (the air), and the pockets the figure walls in.
+    const air = new Uint8Array(N);
+    const stack: number[] = [];
+    const reach = (j: number) => {
+      if (op(j) || air[j]) return;
+      air[j] = 1;
+      stack.push(j);
+    };
+    for (let k = 0; k < GRID; k++) [k, N - GRID + k, k * GRID, k * GRID + GRID - 1].forEach(reach);
+    while (stack.length) {
+      const j = stack.pop()!;
+      const x = j % GRID;
+      if (x > 0) reach(j - 1);
+      if (x < GRID - 1) reach(j + 1);
+      if (j >= GRID) reach(j - GRID);
+      if (j < N - GRID) reach(j + GRID);
+    }
+    const pocket = new Int32Array(N);
+    for (let s = 0; s < N; s++) {
+      if (op(s) || air[s] || pocket[s]) continue;
+      const comp = [s];
+      pocket[s] = -1;
+      for (let k = 0; k < comp.length; k++) {
+        for (const j of sides(comp[k])) {
+          if (op(j) || pocket[j]) continue;
+          pocket[j] = -1;
+          comp.push(j);
+        }
+      }
+      for (const j of comp) pocket[j] = comp.length;
+    }
+    const out: Record<Subject, string[]> = { cape: [], bootN: [], bootF: [] };
+    const names: Subject[] = ['cape', 'bootN', 'bootF'];
+    for (let j = GRID + 1; j < N - GRID - 1; j++) {
+      const x = j % GRID;
+      if (x < 1 || x > GRID - 2) continue;
+      const at = `${x},${(j / GRID) | 0}`;
+      const nb = sides(j);
+      names.forEach((name, k) => {
+        const is = (q: number) => subOf(q) === k + 1;
+        if (!op(j)) {
+          if (!nb.some(is) || nb.some(isHeld) || nb.some((q) => op(q) && isHead(q))) return;
+          const crack = (op(j - 1) && op(j + 1)) || (op(j - GRID) && op(j + GRID));
+          if (!crack && !(pocket[j] > 0 && pocket[j] <= 4)) return;
+          const solid = nb.filter(op);
+          if (air[j] && solid.length === 3 && solid.every(isLine) && solid.every((q) => topOf(q) === topOf(solid[0]))) return;
+          out[name].push(`${at} ${air[j] ? 'crack' : 'hole'}`);
+          return;
+        }
+        if (is(j)) {
+          if (rgba[j * 4] > 200 && rgba[j * 4 + 1] > 200 && rgba[j * 4 + 2] > 200) out[name].push(`${at} light`);
+          return;
+        }
+        if (isHead(j) || isHeld(j)) return;
+        const across = is(j - 1) && (is(j + 1) || is(j + 2));
+        const down = is(j - GRID) && (is(j + GRID) || is(j + 2 * GRID));
+        if (!across && !down) return;
+        const ns = nb.filter(is);
+        if (ns.some((q) => topOf(q) <= topOf(j))) return;
+        if (luma(j) - ns.reduce((a, q) => a + luma(q), 0) / ns.length > 70) out[name].push(`${at} gap`);
+      });
+    }
+    return out;
+  }
+
+  for (const [name, items] of LOOKS) {
+    it(`${name}: no dead pixel in the cape or the boots, in any pose or frame, on the male and bulky bodies`, () => {
+      const bad: string[] = [];
+      for (const body of ['male', 'bulky'] as BodyType[]) {
+        const l = painted(items);
+        l.body = body;
+        l.accessories = [];
+        l.headband = { ...l.headband, position: 'none' };
+        for (const pose of new Set(POSES)) {
+          const n = frameCount(rigPoseFor(pose, l.cast?.style, l.slots.held?.id));
+          for (let fr = 0; fr < n; fr++) {
+            const dead = deadPixels(l, pose, fr);
+            for (const [what, px] of Object.entries(dead)) if (px.length) bad.push(`${body} ${pose} ${fr} ${what}: ${px.join(', ')}`);
+          }
+        }
+      }
+      assert.deepEqual(bad, []);
+    });
+  }
 });

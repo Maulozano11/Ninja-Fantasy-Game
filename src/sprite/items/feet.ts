@@ -4,10 +4,11 @@
 // faces the viewer, the far foot points right and is authored a shade darker.
 
 import { retintHex } from '../color';
-import { DrawCtx, FootArt, footDraw, ItemDef, legDepth, legJoints, legPoint, Side } from '../ctx';
+import { DEPTHS, DrawCtx, FootArt, footDraw, ItemDef, legDepth, legJoints, legPoint, Side } from '../ctx';
 import type { BodyType } from '../types';
 import { continuedTo, limbOnly, type PaintedPiece, segAngle, stampPiece } from '../painted';
-import { add, along, ellipse, GRID, norm, partIndex, Pen, RES, seam, sub, v, type Vec } from '../raster';
+import { add, along, ellipse, GRID, norm, partIndex, PARTS, Pen, RES, seam, sub, v, type Vec } from '../raster';
+import { sealAgainstFigure } from '../seal';
 import { across, crease, fpx, limb, limbR, stitch, stud, tube, wrapStripes } from './clothes';
 import { founderFootTurn, founderLegLen, founderLegOut, founderLegsStill } from './founderOut';
 import { FOUNDER_SANDAL_FOOT_F, FOUNDER_SANDAL_FOOT_N, FOUNDER_SANDAL_KIND, FOUNDER_SANDAL_LEATHER, FOUNDER_SANDAL_SHIN_F, FOUNDER_SANDAL_SHIN_N, FOUNDER_SANDAL_SKIN } from './founderSandalsArt';
@@ -368,6 +369,58 @@ function closeAnkle(g: DrawCtx, s: Side, at: Vec, shin: PaintedPiece, tint: (ch:
   for (const i of open) L.mat[i] = edge;
 }
 
+/** How near the ankle (fine pixels) his Trunks boots' turned shaft and flat foot are closed. */
+const BOOT_ANKLE_R = 6;
+
+/**
+ * His Trunks boot on a leg: the laced shaft turned with the shin about the ankle, the foot flat on the
+ * ground. Turned, the shaft keeps his black line whole (rotateLined: at some angles a cell of his line fell
+ * between the turned samples and the leather lay bare against the air), and where the turned shaft and
+ * the flat foot part at the ankle, the cut is closed with his line: a leather pixel there left bare
+ * against the air takes his line, and a notch the two leave between them (an empty pixel walled in on
+ * three sides) is filled with it. Unturned (at rest) it is his boot exactly. The owner on Trunks 3,
+ * 2026-10-22: "en embestida y en varias poses donde el personaje se inclina hacia delante tienes unos
+ * pixeles muertos blancos en la bota derecha".
+ */
+function stampBoot(g: DrawCtx, s: Side, shaft: PaintedPiece, foot: PaintedPiece, slot: Record<string, string>, tint: (ch: string, hex: string) => string): void {
+  const { knee, ankle } = legJoints(g.rig, s);
+  const line = (hex: string) => slot[hex] === 'line';
+  const deg = segAngle(knee, ankle);
+  stampPiece(g, legDepth(s, 'feet'), shaft, ankle, deg, `shin${s}`, tint, line);
+  stampPiece(g, legDepth(s, 'feet'), foot, ankle, foot.angle, `foot${s}`, tint);
+  if (Math.round(deg - shaft.angle) % 360 === 0) return;
+  const L = g.L(legDepth(s, 'feet'));
+  const lineCh = Object.keys(shaft.colors).find((ch) => line(shaft.colors[ch]));
+  if (!lineCh) return;
+  const edge = g.m(tint(lineCh, shaft.colors[lineCh]), 'flat');
+  const lines = new Set([shaft, foot].flatMap((p) => Object.keys(p.colors).filter((ch) => line(p.colors[ch])).map((ch) => g.m(tint(ch, p.colors[ch]), 'flat'))));
+  const ax = Math.floor(ankle.x * RES);
+  const ay = Math.floor(ankle.y * RES);
+  const near: number[] = [];
+  for (let y = Math.max(1, ay - BOOT_ANKLE_R); y <= Math.min(GRID - 2, ay + BOOT_ANKLE_R); y++)
+    for (let x = Math.max(1, ax - BOOT_ANKLE_R); x <= Math.min(GRID - 2, ax + BOOT_ANKLE_R); x++) near.push(y * GRID + x);
+  const sides = (i: number) => [i - 1, i + 1, i - GRID, i + GRID];
+  // The air round the leg: nothing drawn there yet in any layer (the trousers come before the boots).
+  const drawn = DEPTHS.map((d) => g.L(d)).filter((l) => l.used);
+  const air = (i: number) => drawn.every((l) => l.mat[i] < 0);
+  // (his bare toes in an open-toed boot keep their skin)
+  const skin = new Set([shaft, foot].flatMap((p) => Object.keys(p.colors).filter((ch) => slot[p.colors[ch]] === 'skin').map((ch) => g.m(tint(ch, p.colors[ch]), 'flat'))));
+  const bare = near.filter((i) => L.mat[i] >= 0 && !lines.has(L.mat[i]) && !skin.has(L.mat[i]) && sides(i).some(air));
+  for (const i of bare) L.mat[i] = edge;
+  // A notch filled can leave the next one beside it: a few rounds.
+  for (let round = 0; round < 3; round++) {
+    const notch = near.filter((i) => air(i) && sides(i).filter((j) => L.mat[j] >= 0).length >= 3);
+    if (!notch.length) break;
+    for (const i of notch) {
+      const j = sides(i).find((q) => L.mat[q] >= 0)!;
+      L.set(i % GRID, (i / GRID) | 0, edge, 3, PARTS[L.part[j]], L.flags[j]);
+    }
+  }
+}
+
+/** His boots' cracks against the trousers, the cape and each other, closed once the figure is drawn. */
+const sealBoots = (g: DrawCtx) => sealAgainstFigure(g, ['nearLeg.feet', 'farLeg.feet']);
+
 export const FEET_ITEMS: ItemDef[] = [
   {
     id: 'feet_leather',
@@ -375,6 +428,7 @@ export const FEET_ITEMS: ItemDef[] = [
     name: 'Leather Boots',
     desc: 'Brown laced leather boots to mid-shin, worn and creased, on a dark sole.',
     colors: [col('main', 'Leather', LEATHER_BOOT_BROWN)],
+    finish: sealBoots,
     draw: (g, [c]) => {
       // The owner's boots from his Trunks 2 picture (2026-10-21; tools/refs/trunks-leather-boots-from-ref.py):
       // on each leg the laced shaft turns with the shin about the ankle and the foot stays flat on the
@@ -383,11 +437,9 @@ export const FEET_ITEMS: ItemDef[] = [
       const brown = savedAsHis(c, '#6b4226', LEATHER_BOOT_BROWN);
       const tint = slotTint(g, LEATHER_BOOT_SLOT, { main: LEATHER_BOOT_BROWN }, { main: brown });
       for (const s of SIDES) {
-        const { knee, ankle } = legJoints(g.rig, s);
         shinOffBelow(g, s, LEATHER_BOOT_TOP);
         const [shaft, foot] = s === 'N' ? [BOOT_SHAFT_N, BOOT_FOOT_N] : [BOOT_SHAFT_F, BOOT_FOOT_F];
-        stampPiece(g, legDepth(s, 'feet'), shaft, ankle, segAngle(knee, ankle), `shin${s}`, tint);
-        stampPiece(g, legDepth(s, 'feet'), foot, ankle, foot.angle, `foot${s}`, tint);
+        stampBoot(g, s, shaft, foot, LEATHER_BOOT_SLOT, tint);
       }
     },
   },
@@ -420,6 +472,7 @@ export const FEET_ITEMS: ItemDef[] = [
     name: 'Open-Toed Boots',
     desc: 'Tan leather boots to mid-shin, scuffed and creased, open at the front over the bare toes.',
     colors: [col('main', 'Leather', OPEN_BOOT_TAN)],
+    finish: sealBoots,
     draw: (g, [c]) => {
       // The owner's boots from his Trunks 3 picture (2026-10-21; tools/refs/trunks-cowboy-from-ref.py): he
       // drew this slot's boots (the Cowboy Boots) open over the toes, so they are open-toed boots now.
@@ -427,11 +480,9 @@ export const FEET_ITEMS: ItemDef[] = [
       const tan = savedAsHis(c, '#8b5a2f', OPEN_BOOT_TAN);
       const tint = slotTint(g, OPEN_BOOT_SLOT, { main: OPEN_BOOT_TAN }, { main: tan });
       for (const s of SIDES) {
-        const { knee, ankle } = legJoints(g.rig, s);
         shinOffBelow(g, s, OPEN_BOOT_TOP);
         const [shaft, foot] = s === 'N' ? [OPEN_BOOT_SHAFT_N, OPEN_BOOT_FOOT_N] : [OPEN_BOOT_SHAFT_F, OPEN_BOOT_FOOT_F];
-        stampPiece(g, legDepth(s, 'feet'), shaft, ankle, segAngle(knee, ankle), `shin${s}`, tint);
-        stampPiece(g, legDepth(s, 'feet'), foot, ankle, foot.angle, `foot${s}`, tint);
+        stampBoot(g, s, shaft, foot, OPEN_BOOT_SLOT, tint);
       }
     },
   },

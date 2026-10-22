@@ -8,11 +8,11 @@ import { hexToRgb, retintHex } from '../color';
 import type { Depth, DrawCtx, ItemDef } from '../ctx';
 import { add, capsule, cylShade, ellipse, F_NO_OUTLINE, F_NO_TEXTURE, fine, GRID, len, lerp, Layer, norm, PartId, Pen, perp, poly, px, RES, scale, seam, sub, v, Vec } from '../raster';
 import { GROUND } from '../rig';
-import { sealCloth } from '../seal';
+import { sealAgainstFigure, sealCloth } from '../seal';
 import { OWNER_CAPE_BACK, OWNER_CAPE_FRONT, OWNER_CAPE_PLATE, OWNER_CAPE_SHOULDER, PaintedPart } from './capeArt';
 import { FOUNDER_CAPE, FOUNDER_CAPE_CLOTH, FOUNDER_CAPE_KIND, FOUNDER_CAPE_REST } from './founderCapeArt';
 import { CRIMSON_CAPE_BACK, CRIMSON_CAPE_BASE, CRIMSON_CAPE_EDGE, CRIMSON_CAPE_FAR, CRIMSON_CAPE_LINE, CRIMSON_CAPE_NEAR } from './crimsonCapeArt';
-import { TRAVELER_BACK, TRAVELER_BROWN, TRAVELER_HOOD, TRAVELER_REST, TRAVELER_SHOULDER, TRAVELER_SLOT } from './travelerCapeArt';
+import { TRAVELER_BACK, TRAVELER_BROWN, TRAVELER_HOOD, TRAVELER_HOOD_BEHIND, TRAVELER_HOOD_SEAM, TRAVELER_REST, TRAVELER_SHOULDER, TRAVELER_SHOULDER_SEAM, TRAVELER_SLOT } from './travelerCapeArt';
 
 const col = (key: string, label: string, def: string, kind: 'cloth' | 'leather' | 'metal' = 'cloth') => ({ key, label, default: def, kind });
 
@@ -787,6 +787,9 @@ const CAPES: ItemDef[] = [
     name: "Traveler's Cape",
     desc: 'A weathered brown hood-cape: the hood bunched round the neck and across the chest, the cloth over the near shoulder and hanging behind the arm to the calf.',
     colors: [col('main', 'Cape', TRAVELER_BROWN)],
+    // Hung from the shoulder, it parts from a leg stepping beside it, or from the body, by a pixel in
+    // some frames: those cracks are closed once the figure is drawn.
+    finish: (g) => sealAgainstFigure(g, ['capeBack', 'capeFront', 'nearArm.over']),
     draw: (g, [c0]) => {
       // The owner's cape from his Trunks 2 picture (2026-10-21; tools/refs/trunks-traveler-cape-from-ref.py):
       // the cloth behind the near arm hangs from the near shoulder and swings in the wind as his other
@@ -797,7 +800,15 @@ const CAPES: ItemDef[] = [
       const c = c0.toLowerCase() === '#7d5b3b' ? TRAVELER_BROWN : c0;
       if (g.rig.pose !== 'downed') {
         const tint = (_ch: string, hex: string) => (TRAVELER_SLOT[hex] === 'main' ? retintHex(hex, TRAVELER_BROWN, c) : hex);
+        // The hood goes on under the head, the neck and the shoulder's cloth, behind the body (hidden at
+        // rest), and the back's inside goes on behind the body: so where the head or the swaying back part
+        // from the hood or the body, the cloth shows there, not the background.
+        paintedPart(g, g.L('capeBack'), TRAVELER_HOOD_BEHIND, 'back', tint, false, g.rig.neck);
         hemmedBack(g, TRAVELER_BACK, g.rig.shoulderN, TRAVELER_HEM_ABOVE_GROUND, tint);
+        // The shoulder's cloth and the hood cross over (each seam under the other piece at rest), so no
+        // crack opens between them as the shoulder moves off the neck.
+        paintedPart(g, g.L('capeFront'), TRAVELER_SHOULDER_SEAM, 'upperArmN', tint, false);
+        paintedPart(g, g.L('capeFront'), TRAVELER_HOOD_SEAM, 'torso', tint, false, g.rig.neck);
         paintedPart(g, g.L('capeFront'), TRAVELER_HOOD, 'torso', tint, false, g.rig.neck);
         paintedPart(g, g.L('nearArm.over'), TRAVELER_SHOULDER, 'upperArmN', tint, false);
         return;

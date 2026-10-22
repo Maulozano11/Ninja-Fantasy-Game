@@ -401,6 +401,16 @@ T2_NEAR_LEG = [(30, 58), (53, 58), (53, 72), (51, 80), (51, 84), (30, 84)]  # th
 T2_KNEE = {'N': 75, 'F': 71}    # the thigh's pieces end 2 rows under this row, the shin's start 2 rows above
 T2_HIP = 61                     # the seat's piece ends on this row, the thighs' start 3 rows above
 T2_FOOT = {'N': 90, 'F': 88}    # the boot's shaft ends 2 rows under this row, its foot starts here
+# The cape's pieces part where they ride different joints, or where the back sways off the body: the
+# hood and the back are continued a little under what lies beside them, his own pixels where he drew
+# them (the owner, 2026-10-22: "tienes muchos pixeles muertos blancos en la capa de trunks en muchas de
+# las poses").
+T2_HOOD_BEHIND = 3              # pixels the hood goes on under the head, the neck and the shoulder's cloth
+T2_SEAM = 3                     # columns the shoulder's cloth and the hood cross over behind the body
+# Where the back's dark inside goes on behind the body: 5 columns beside the torso and the belt (which
+# move with the shoulder it hangs from), 4 beside the near leg (which steps away from it: there it shows
+# as the cape's inside behind the leg, as he drew it between the boots), to the hem.
+T2_CAPE_BEHIND = [(41, 39), (47, 39), (47, 62), (42, 62), (42, 86), (37, 88), (37, 62), (41, 62)]
 # Each leg: (where what the sword hides is filled in, the side of its inner black line the leg lies on).
 # The near leg's inner line runs from x 53 under the crotch down to where it shows over his boot (x 48 at
 # row 77); the far leg's shows at x 55 and x 56 beside the sword and runs straight on down to his far
@@ -463,8 +473,29 @@ def trunks2():
     # The mantle: over the near shoulder (left of x 41) and round the neck as a hood.
     P['cape_shoulder'] = (split(M['cape_front'], box(0, 0, 41, 100)), a)
     P['cape_hood'] = (split(M['cape_front'], box(41, 0, 100, 100)), a)
-    # The cloth behind the near arm, the near fist and the sword, continued up and down its folds.
-    P['cape_back'] = G(M['cape_back'], a, T2['cape_back'][2], 'near')
+    # Where a piece goes on under its neighbours (below): inside his figure, a pixel in from its edge (our
+    # figure at rest is his give or take a pixel there), so at rest what is in front hides it.
+    under = (K != 'bg') & ~near8(K == 'bg')
+    # The cloth behind the near arm, the near fist and the sword, continued up and down its folds; then
+    # its inside continued on behind the body (T2_CAPE_BEHIND): the piece hangs from the shoulder and
+    # sways, and where it parts from the body its dark inside shows instead of the background.
+    m, c = G(M['cape_back'], a, T2['cape_back'][2], 'near')
+    P['cape_back'] = fill(a, m, c, region(T2_CAPE_BEHIND) & under, black, 'near')
+    # The hood continued T2_HOOD_BEHIND pixels on under what lies round it (the head, the hair, the
+    # shirt, the shoulder's cloth), from its own pixels: drawn behind the body, so where the head or the
+    # shoulder moves off the hood, the hood shows there instead of the background. Only the continued
+    # pixels: the hood itself is drawn in front.
+    hood = P['cape_hood'][0]
+    around = hood.copy()
+    for _ in range(T2_HOOD_BEHIND):
+        around = near8(around) | around
+    m, c = fill(a, hood, a, around & under & ~hood, black, 'near')
+    P['cape_hood_behind'] = (m & ~hood, c)
+    # Where the shoulder's cloth meets the hood (x 41) they cross over by T2_SEAM columns, his own pixels,
+    # each in a piece of its own riding the other's joint (drawn under the other at rest): so as the
+    # two part no crack opens between them.
+    P['cape_hood_seam'] = (M['cape_front'] & region(box(41 - T2_SEAM, 0, 41, 100)), a)
+    P['cape_shoulder_seam'] = (M['cape_front'] & region(box(41, 0, 41 + T2_SEAM, 100)), a)
     # The near sleeve: his hem under the mantle's edge, continued up over our near upper arm to the
     # shoulder (each column the colour of his hem below it), closed by his line.
     P['sleeve_n'] = G(M['sleeve_n'], a, [(33, 30), (41, 30), (41, 41), (31, 41), (31, 37), (33, 34)], 'up')

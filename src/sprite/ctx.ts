@@ -130,6 +130,8 @@ export interface ItemDef {
   /** The item on its own with these parts, for the part pickers' thumbnails. */
   partsPreview?: (look: SpriteAppearance, parts: Record<string, string>) => PartsPreview;
   draw: (g: DrawCtx, colors: string[], parts: Record<string, string>) => void;
+  /** Run once every item is drawn: closes what the item leaves open against the rest of the figure (seal.ts sealAgainstFigure). */
+  finish?: (g: DrawCtx) => void;
   /** For armor: which legacy armor style supplies the AC bonus. */
   statsArmor?: string;
   /** Hides the hair layers (full helmets). */

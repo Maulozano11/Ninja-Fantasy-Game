@@ -124,3 +124,130 @@ export function sealCloth(g: DrawCtx, depths: Depth[], bodyGaps = false): void {
     for (const i of comp) for (const L of Ls) L.clear(i % GRID, (i / GRID) | 0);
   }
 }
+
+/** The head's layers: what opens between the hair, the face and a collar is the head's own (his white gaps there). */
+const HEAD: Depth[] = ['hairBack', 'head.body', 'head.face', 'head.mask', 'hairFront', 'head.gear', 'neck'];
+/** The held item's layers and a blade stowed on the back: the blade crosses gaps he left open (between the legs, beside a boot). */
+const HELD: Depth[] = ['farArm.held', 'nearArm.held', 'backGear'];
+/** The largest pocket (pixels) walled in by the figure that counts as a dead pixel. */
+const POCKET = 4;
+/** How many times closing a cell may let the next one along a crack close. */
+const ROUNDS = 6;
+/** How much lighter (luma, 0..255) than the piece round it what shows through a crack in it must be to be closed. */
+const THROUGH = 70;
+
+/**
+ * Closes the dead pixels a piece leaves against the rest of the figure, once every item is drawn (an
+ * item's `finish`): an empty pixel beside these layers' pixels that is a 1 px crack between them and the
+ * figure (the figure on both sides of it, across or down) or a pocket of a few pixels the figure walls
+ * in. Pieces that ride different joints (a cape hanging from the shoulder and a leg stepping beside it,
+ * a boot's turned shaft and its flat foot) part by a pixel in some frames, and the background shows
+ * there as a white dot or line (the owner, 2026-10-22, on Trunks' cape and boots). The cell takes the
+ * darkest of these layers' pixels beside it, in that pixel's own layer (his black line, where his piece
+ * has its edge), so the piece reaches what is beside it. So does something behind these layers showing
+ * through a 1 px crack in them, much lighter than they are. Left as drawn: a notch of one piece's outline
+ * (three sides, all its line), a gap beside the head (his white between the hair, the face and the hood)
+ * or beside what is held (a blade crosses gaps he left open; a book), and anything wider.
+ */
+export function sealAgainstFigure(g: DrawCtx, depths: Depth[]): void {
+  const own = new Set(depths);
+  const all = DEPTHS.map((d) => [d, g.L(d)] as [Depth, Layer]).filter(([, L]) => L.used);
+  if (!all.some(([d]) => own.has(d))) return;
+  const head = new Set(HEAD);
+  const held = new Set(HELD);
+  // the front-most layer at each pixel (-1: none)
+  const top = new Int16Array(N).fill(-1);
+  all.forEach(([, L], k) => {
+    for (let i = 0; i < N; i++) if (L.mat[i] >= 0) top[i] = k;
+  });
+  /** Max + min of the RGB channels of a material's shade (102 or less reads as line, as holes.ts has it). */
+  const lum = (m: number, s: number) => {
+    const n = parseInt(g.mats.ramps[m][s].slice(1), 16);
+    const r = (n >> 16) & 255;
+    const gg = (n >> 8) & 255;
+    const b = n & 255;
+    return Math.max(r, gg, b) + Math.min(r, gg, b);
+  };
+  const at = (i: number) => all[top[i]][1];
+  /** The held item, a blade stowed on the back or a book in the hand. */
+  const isHeld = (i: number) => held.has(all[top[i]][0]) || PARTS[at(i).part[i]] === 'held';
+  /** Whether the front-most pixel at i reads as line (his black, or our outline-to-be on a drawn edge). */
+  const line = (i: number) => {
+    const L = at(i);
+    if (lum(L.mat[i], L.shade[i]) <= 102) return true;
+    if (!L.outline || L.flags[i] & F_NO_OUTLINE) return false;
+    return sides(i).some((j) => L.mat[j] < 0);
+  };
+  for (let round = 0; round < ROUNDS; round++) {
+    // the air: the empty pixels reached from the frame's edge; the other empty pixels are pockets
+    const air = new Uint8Array(N);
+    const stack: number[] = [];
+    const reach = (i: number) => {
+      if (top[i] >= 0 || air[i]) return;
+      air[i] = 1;
+      stack.push(i);
+    };
+    for (let k = 0; k < GRID; k++) [k, N - GRID + k, k * GRID, k * GRID + GRID - 1].forEach(reach);
+    while (stack.length) sides(stack.pop()!).forEach(reach);
+    const pocket = new Int32Array(N);
+    for (let s = 0; s < N; s++) {
+      if (top[s] >= 0 || air[s] || pocket[s]) continue;
+      const comp = [s];
+      pocket[s] = -1;
+      for (let k = 0; k < comp.length; k++)
+        for (const j of sides(comp[k]))
+          if (top[j] < 0 && !pocket[j]) {
+            pocket[j] = -1;
+            comp.push(j);
+          }
+      for (const i of comp) pocket[i] = comp.length;
+    }
+    const fills: [number, number][] = [];
+    for (let i = GRID; i < N - GRID; i++) {
+      const x = i % GRID;
+      if (x < 1 || x > GRID - 2) continue;
+      if (top[i] >= 0) {
+        // Something behind these layers showing through a 1 px crack in them (across or down), much lighter.
+        const o = (j: number) => top[j] > top[i] && own.has(all[top[j]][0]);
+        const across = o(i - 1) && (o(i + 1) || (x < GRID - 2 && o(i + 2)));
+        const down = o(i - GRID) && (o(i + GRID) || (i < N - 2 * GRID && o(i + 2 * GRID)));
+        if (isHeld(i) || head.has(all[top[i]][0]) || !(across || down)) continue;
+        const mine = sides(i).filter(o);
+        const light = (j: number) => {
+          const n = parseInt(g.mats.ramps[at(j).mat[j]][at(j).shade[j]].slice(1), 16);
+          return ((n >> 16) & 255) * 0.3 + ((n >> 8) & 255) * 0.59 + (n & 255) * 0.11;
+        };
+        if (light(i) - mine.reduce((s, j) => s + light(j), 0) / mine.length <= THROUGH) continue;
+        fills.push([i, mine.reduce((b, j) => (lum(at(j).mat[j], at(j).shade[j]) < lum(at(b).mat[b], at(b).shade[b]) ? j : b))]);
+        continue;
+      }
+      const nb = sides(i).filter((j) => top[j] >= 0);
+      const mine = nb.filter((j) => own.has(all[top[j]][0]));
+      if (!mine.length || nb.some((j) => head.has(all[top[j]][0]) || isHeld(j))) continue;
+      const crack = (top[i - 1] >= 0 && top[i + 1] >= 0) || (top[i - GRID] >= 0 && top[i + GRID] >= 0);
+      if (!crack && !(pocket[i] > 0 && pocket[i] <= POCKET)) continue;
+      // a notch of one piece's outline is his drawing (between two pieces it is where they part)
+      if (air[i] && nb.length === 3 && nb.every(line) && nb.every((j) => top[j] === top[nb[0]])) continue;
+      // the darkest of these layers' pixels beside it
+      const dark = (j: number) => lum(at(j).mat[j], at(j).shade[j]);
+      fills.push([i, mine.reduce((b, j) => (dark(j) < dark(b) ? j : b))]);
+    }
+    if (!fills.length) break;
+    for (const [i, j] of fills) {
+      const L = at(j);
+      L.set(i % GRID, (i / GRID) | 0, L.mat[j], L.shade[j], PARTS[L.part[j]], L.flags[j]);
+    }
+    for (const [i, j] of fills) top[i] = top[j];
+  }
+}
+
+/** The 4 neighbours of a pixel inside the frame. */
+function sides(i: number): number[] {
+  const x = i % GRID;
+  const out: number[] = [];
+  if (x > 0) out.push(i - 1);
+  if (x < GRID - 1) out.push(i + 1);
+  if (i >= GRID) out.push(i - GRID);
+  if (i < N - GRID) out.push(i + GRID);
+  return out;
+}

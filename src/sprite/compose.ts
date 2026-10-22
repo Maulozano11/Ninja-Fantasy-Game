@@ -314,6 +314,8 @@ export function renderSprite(
     }
     drawHeadband(g);
     drawThrowKunai(g);
+    // What an item leaves open against the rest of the figure, closed once all of it is drawn.
+    for (const def of equipped.values()) def.finish?.(g);
     // clothes over a female torso follow the bust (fitted armors shape their own plates)
     for (const d of ['torso.top', 'torso.over'] as const) {
       const L = layers.get(d);

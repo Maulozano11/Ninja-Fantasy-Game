@@ -39,7 +39,7 @@ const ES: Record<string, string> = {
   Night: 'Noche',
   "Ren's face": 'La cara de Ren',
   "Ren's eyes": 'Los ojos de Ren',
-  // the owner's Ren: his jacket, skirt, boots and Katana v2 (his trousers' colour label is Solen's 'Calzas' below)
+  // the owner's Ren: his jacket, skirt, boots and Katana v2 (his trousers' colour label is Solen's 'Pantalón' below)
   Buttons: 'Botones',
   Skirt: 'Falda',
   Silver: 'Plata',
@@ -215,7 +215,7 @@ const ES: Record<string, string> = {
   "Solen's face": 'La cara de Solen',
   Cowl: 'Embozo',
   'Shoulder stud': 'Tacha del hombro',
-  Trousers: 'Calzas',
+  Trousers: 'Pantalón',
   "Solen's": 'De Solen',
   Roman: 'Romana',
   Stitching: 'Costuras',

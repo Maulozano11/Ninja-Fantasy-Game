@@ -41,7 +41,6 @@ describe('the taijutsu, kenjutsu and genjutsu jutsu belong to their class', () =
       'night_guy_dragon',
       'taijutsu_rush',
       'temple_of_nirvana',
-      'yasaka_magatama',
     ]);
     for (const j of JUTSUS_DATA) {
       const want = (j.category === 'Elemental' || j.category === 'Ultimate') && ['Taijutsu', 'Kenjutsu', 'Genjutsu'].includes(j.nature);
@@ -80,10 +79,11 @@ describe('the taijutsu, kenjutsu and genjutsu jutsu belong to their class', () =
     assert.deepEqual(fire('Genjutsu Adept'), ['fire_three_embers', 'fireball_goukakyu', 'dragon_fire_stream', 'genjutsu_mirage', 'temple_of_nirvana']);
     assert.deepEqual(fire('Ninjutsu Specialist'), ['fire_three_embers', 'fireball_goukakyu', 'dragon_fire_stream']);
     assert.deepEqual(fire('Medical Specialist'), ['fire_three_embers', 'fireball_goukakyu', 'dragon_fire_stream']);
-    assert.deepEqual(ids(learnable('slot5Ultimate', 'Fire', 'Mirai', 'Genjutsu Adept')), ['great_fire_annihilation', 'yasaka_magatama']);
+    // Yasaka no Magatama, the genjutsu rank S, is out of the game (the owner, 2026-10-22): a Fire adept's S-rank is Fire's.
+    assert.deepEqual(ids(learnable('slot5Ultimate', 'Fire', 'Mirai', 'Genjutsu Adept')), ['great_fire_annihilation']);
     assert.deepEqual(ids(learnable('slot5Ultimate', 'Fire', 'Mirai', 'Taijutsu Master')), ['great_fire_annihilation', 'night_guy_dragon']);
-    // A new ninja, D and C: a Fire genjutsu adept has Three Embers, Fireball and the Mirage; a
-    // taijutsu master the Leaf Hurricane and the Rush instead of the Mirage.
+    // A new ninja, D and C: a Fire genjutsu adept has Three Embers, Fireball and the Mind Twist; a
+    // taijutsu master the Leaf Hurricane and the Rush instead of the Mind Twist.
     assert.deepEqual(ids(creatorChoices('slot2Elemental', 'Fire', 'Mirai', 'Genjutsu Adept')), ['fire_three_embers', 'fireball_goukakyu', 'genjutsu_mirage']);
     assert.deepEqual(ids(creatorChoices('slot2Elemental', 'Fire', 'Mirai', 'Taijutsu Master')), ['fire_three_embers', 'fireball_goukakyu', 'leaf_hurricane_senpuu', 'taijutsu_rush']);
   });
@@ -102,10 +102,12 @@ describe('the sheets keep their jutsu, marked when another class\'s', () => {
     for (const { character: c } of LEGENDARY_PRESETS) assert.deepEqual(offClassJutsus(c.selectedJutsus, c.shinobiClass), [], c.id);
   });
 
-  it('a companion\'s sheet stays as it is, marked: Hana (a medic) keeps Yasaka no Magatama (genjutsu)', () => {
-    assert.deepEqual(offClassJutsus(HANA.selectedJutsus, HANA.shinobiClass), ['yasaka_magatama']);
+  it('no companion breaks it either: Hana (a medic) has the Dragon Tsunami since Yasaka no Magatama left the game', () => {
+    // She kept Yasaka no Magatama (a genjutsu), marked, until the owner took it out (2026-10-22).
+    assert.equal(HANA.selectedJutsus.slot5Ultimate, 'water_tide_s');
+    assert.deepEqual(offClassJutsus(HANA.selectedJutsus, HANA.shinobiClass), []);
     assert.deepEqual(offClassJutsus(KENJI.selectedJutsus, KENJI.shinobiClass), []);
-    assert.equal(migrateCharacter(HANA).selectedJutsus.slot5Ultimate, 'yasaka_magatama', 'loading keeps it');
+    assert.equal(migrateCharacter(HANA).selectedJutsus.slot5Ultimate, 'water_tide_s', 'loading keeps it');
   });
 });
 

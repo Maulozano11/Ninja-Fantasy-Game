@@ -23,6 +23,8 @@ import type { DrawCtx, ItemDef } from '../ctx';
 import { ellipse, F_NO_OUTLINE, F_NO_TEXTURE, GRID, Layer, Pen, poly, v, Vec } from '../raster';
 import type { PaintedPart } from './capeArt';
 import { braid, BraidArt, hairTemplate, hd, hlock, lock, LockOpts } from './hairkit';
+import { HAIR_COPPER_BRAID } from './lyraHair';
+import { BASE_HAIR, BASE_HAIR_BASE, BASE_HAIR_LINE, BASE_HAIR_SKULL } from './baseHairArt';
 import { VALIANT_HAIR_BACK, VALIANT_HAIR_BASE, VALIANT_HAIR_FRONT, VALIANT_HAIR_LINE } from './valiantHairArt';
 import { FOUNDER_HAIR_BACK, FOUNDER_HAIR_BASE, FOUNDER_HAIR_FRONT, FOUNDER_HAIR_LINE } from './founderHairArt';
 
@@ -1864,6 +1866,22 @@ export const HAIR_ITEMS: ItemDef[] = [
       paintedHair(g, g.L('hairBack'), FOUNDER_HAIR_BACK, tint);
       paintedHair(g, g.L('hairFront'), FOUNDER_HAIR_FRONT, tint);
       trimSkull(g, FOUNDER_HAIR_BACK);
+    },
+  },
+  // Lyra's hair, after the owner's first heroine picture (lyraHair.ts).
+  HAIR_COPPER_BRAID,
+  {
+    id: 'hair_messy_ponytail',
+    slot: 'hair',
+    name: 'Messy Ponytail',
+    desc: 'Black hair in tufts over the crown, tied high in a messy tail at the back, a fringe swept over the far eye and a lock before the near cheek.',
+    colors: hairColor(BASE_HAIR_BASE),
+    draw: (g, [c]) => {
+      // The owner's bare female body's hair (2026-10-21), every pixel his over the head as he drew it
+      // on his woman; the head under it is trimmed to his head, so nothing of our skull shows past it.
+      const tint = (ch: string, hex: string) => (BASE_HAIR_LINE.includes(ch) ? hex : retintHex(hex, BASE_HAIR_BASE, c));
+      paintedHair(g, g.L('hairFront'), BASE_HAIR, tint);
+      trimSkull(g, BASE_HAIR_SKULL);
     },
   },
 ];

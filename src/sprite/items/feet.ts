@@ -6,6 +6,7 @@
 import { retintHex } from '../color';
 import { DEPTHS, DrawCtx, FootArt, footDraw, ItemDef, legDepth, legJoints, legPoint, Side } from '../ctx';
 import type { BodyType } from '../types';
+import { ankleLiftOf } from '../rig';
 import { continuedTo, limbOnly, type PaintedPiece, segAngle, stampPiece } from '../painted';
 import { add, along, ellipse, GRID, norm, partIndex, PARTS, Pen, RES, seam, sub, v, type Vec } from '../raster';
 import { sealAgainstFigure } from '../seal';
@@ -13,6 +14,7 @@ import { across, crease, fpx, limb, limbR, stitch, stud, tube, wrapStripes } fro
 import { founderFootTurn, founderLegLen, founderLegOut, founderLegsStill } from './founderOut';
 import { FOUNDER_SANDAL_FOOT_F, FOUNDER_SANDAL_FOOT_N, FOUNDER_SANDAL_KIND, FOUNDER_SANDAL_LEATHER, FOUNDER_SANDAL_SHIN_F, FOUNDER_SANDAL_SHIN_N, FOUNDER_SANDAL_SKIN } from './founderSandalsArt';
 import { ROMAN_KIT_KIND, SANDAL_FOOT_F, SANDAL_FOOT_N, SANDAL_LEATHER, SANDAL_SHIN_F, SANDAL_SHIN_N, SANDAL_SKIN } from './bracersSandalsArt';
+import { LYRA_BOOTS } from './lyraBoots';
 import { BOOT_STEEL, BOOT_TRIM, crimsonKind, SABATON_FOOT_F, SABATON_FOOT_N, SABATON_SHIFT, SABATON_SHIN_F, SABATON_SHIN_N } from './sabatonsGauntletsArt';
 import { BOOT_FOOT_F, BOOT_FOOT_N, BOOT_SHAFT_F, BOOT_SHAFT_N, LEATHER_BOOT_BROWN, LEATHER_BOOT_SLOT } from './leatherBootsArt';
 import { OPEN_BOOT_FOOT_F, OPEN_BOOT_FOOT_N, OPEN_BOOT_SHAFT_F, OPEN_BOOT_SHAFT_N, OPEN_BOOT_SLOT, OPEN_BOOT_TAN } from './openToeBootsArt';
@@ -280,12 +282,16 @@ function lowerLegOff(g: DrawCtx, s: Side): void {
  * Takes our foot and our shin below `t` of its length from the knee away (a boot the owner painted takes
  * their place; above his boot's top our shin stays, so legs without trousers keep their knees).
  */
-function shinOffBelow(g: DrawCtx, s: Side, t: number): void {
+function shinOffBelow(g: DrawCtx, s: Side, t: number, shaft?: PaintedPiece): void {
   const shin = partIndex(`shin${s}`);
   const foot = partIndex(`foot${s}`);
   const { knee, ankle } = legJoints(g.rig, s);
   const d = sub(ankle, knee);
   const l2 = d.x * d.x + d.y * d.y || 1;
+  // On the bodies fitted to his bare woman (heroine/lyra-v2's female standard) the shin is longer than
+  // the male shin his shaft was painted on: only what his shaft covers (from the ankle up, less a pixel
+  // of overlap) is taken, so the bare shin meets the top of the boot and the leg stays one piece.
+  if (shaft && g.rig.bp.fit) t = Math.max(t, 1 - (shaft.pivot[1] - 1) / RES / Math.sqrt(l2));
   // Only the bare leg: trousers (their own layer) stay, bloused over his boot as he drew them.
   const L = g.L(legDepth(s, 'body'));
   for (let i = 0; i < GRID * GRID; i++) {
@@ -437,8 +443,8 @@ export const FEET_ITEMS: ItemDef[] = [
       const brown = savedAsHis(c, '#6b4226', LEATHER_BOOT_BROWN);
       const tint = slotTint(g, LEATHER_BOOT_SLOT, { main: LEATHER_BOOT_BROWN }, { main: brown });
       for (const s of SIDES) {
-        shinOffBelow(g, s, LEATHER_BOOT_TOP);
         const [shaft, foot] = s === 'N' ? [BOOT_SHAFT_N, BOOT_FOOT_N] : [BOOT_SHAFT_F, BOOT_FOOT_F];
+        shinOffBelow(g, s, LEATHER_BOOT_TOP, shaft);
         stampBoot(g, s, shaft, foot, LEATHER_BOOT_SLOT, tint);
       }
     },
@@ -480,8 +486,8 @@ export const FEET_ITEMS: ItemDef[] = [
       const tan = savedAsHis(c, '#8b5a2f', OPEN_BOOT_TAN);
       const tint = slotTint(g, OPEN_BOOT_SLOT, { main: OPEN_BOOT_TAN }, { main: tan });
       for (const s of SIDES) {
-        shinOffBelow(g, s, OPEN_BOOT_TOP);
         const [shaft, foot] = s === 'N' ? [OPEN_BOOT_SHAFT_N, OPEN_BOOT_FOOT_N] : [OPEN_BOOT_SHAFT_F, OPEN_BOOT_FOOT_F];
+        shinOffBelow(g, s, OPEN_BOOT_TOP, shaft);
         stampBoot(g, s, shaft, foot, OPEN_BOOT_SLOT, tint);
       }
     },
@@ -572,7 +578,8 @@ export const FEET_ITEMS: ItemDef[] = [
         const { knee, ankle } = legJoints(g.rig, s);
         lowerLegOff(g, s);
         const [dx, dy] = SABATON_SHIFT[s];
-        const at = add(ankle, v(dx / RES, dy / RES));
+        // A body standing on lower ankles (the female bodies' small feet) keeps his sabaton on the ground.
+        const at = add(ankle, v(dx / RES, dy / RES - ankleLiftOf(g.bp, s)));
         const shin = s === 'N' ? SABATON_SHIN_N : SABATON_SHIN_F;
         const foot = s === 'N' ? SABATON_FOOT_N : SABATON_FOOT_F;
         stampPiece(g, legDepth(s, 'feet'), shin, at, segAngle(knee, ankle), `shin${s}`, tint);
@@ -629,4 +636,6 @@ export const FEET_ITEMS: ItemDef[] = [
       }
     },
   },
+  // Lyra's thigh-high boots, the owner's pixels (items/lyraBoots.ts)
+  LYRA_BOOTS,
 ];

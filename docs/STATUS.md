@@ -300,6 +300,37 @@ Merge checks (`git merge-tree` on the origin tips, nothing changed):
   (`src/components/dice/`, `battle/diceLayer.ts`, paced by `playback.ts`, a skip button), the
   "Opciones" panel in the main menu (`shinobi.dice`, default Gema in the chakra colour, his choice) and the camp log's die.
 - Decided 2026-10-21: the Spanish names are **"Golpe Warp"** and **"Comando"** (the owner: "los dos"); `icons/sheets-8-11` brings them and updates D24 in `docs/CLANS_DESIGN.md`. (Golpe Warp was later renamed Estocada Fugaz, above.)
+- Lyra (`heroine/lyra`, legend preset `preset_lyra`, his game-scale picture copied 1:1): waiting for his
+  approval. Two new appearance options come with her: the neck `long` (a slimmer neck carrying the head
+  2 px further forward, and on the male and bulky bodies 2 px higher; `src/sprite/neck.ts`) and the
+  face shape `fine` (his face for her, narrower than our template). On the new female body
+  (`heroine/lyra-v2`, merged with `body/female-v2`, waiting for his approval with the body): every piece
+  stands where he drew it, both arms and the sword included. A third new appearance option comes with her:
+  the arms `long` (`rig.ts` LONG_ARMS): his Lyra's forearms are 2-3 px longer than the female standard's
+  (his fists start on rows 176-177, the standard's on 173-174), so on her the fists (his hands) and the
+  sword are his, where he drew them, and her free far hand hangs open as he drew it. The owner decided
+  Lyra keeps her long arms ("lyra se queda con sus brazos largos"). Re-pinned on his bare female body
+  (`body/female-v2` 7fbba79): her pieces pinned to his joints, her forearms turned out at rest to his
+  Lyra's wrists (LONG_ARMS `restTurn`), her far hand his open one, no sports top under her blouse, her
+  pieces closed in the line when turned; at rest 47 pixels differ from his picture (before 52). Limbs
+  test: `src/sprite/lyraLimbs.test.ts`. Waiting for him: he repaints her throw frames 3-4 and her sitting
+  pose himself.
+- Decided 2026-10-22: **his Lyra reading picture is the new standard read pose** (and his sit picture, still
+  to come, the sit pose) for every character: *"copialo exacto me encanta estas poses nuevas de sentado y
+  leyendo es el nuevo standard"*; her hands copied exactly (*"mira como estan sus manos se ven excelentes
+  copialo igual"*); the rock is an object of its own that changes with the scene (*"puedes usar la piedra
+  tambien como objeto pero ese objeto cambiara dependiendo del escenario"*). Built on `heroine/lyra-v2`,
+  waiting for his look: her read pose is his three frames ("Atenta", "Leyendo", "Pasando pagina",
+  `docs/reference/lyra-read-owner-reference.jpg`, drawn at our scale) and her throw frames 3-4 his repaint
+  (`lyra-throw-owner-reference.jpg`, his figure 1.35 times ours, brought down), every pixel his
+  (`src/sprite/ownerFrames.ts`, `ownerFrames.test.ts`); the read rig of every body is posed toward his
+  joints (`rig.ts` READ, PoseAt), his book for every reader, and his rock is the first seat prop
+  (`src/sprite/seats.ts`, the camp draws it under the read spots). Questions for him: the male and bulky
+  legs are too short for his rock (their feet hang); which of his three rocks (they differ) is the prop;
+  should the other characters' throw follow his release. Fixed 2026-10-22 after his look (*"tiene cortada
+  la pierna corrigelo"*): the lift had cut her far shin's line and far foot at the next panel of his
+  picture; her legs are now whole in all three frames, and the earth he drew round her boots is the
+  seat's, not hers (`tools/refs/lyra_read_ref.py`, `seats.test.ts`).
 - Jutsu pacing (owner: too fast, "like a flashing star"): a first pass is merged (`8ef28a9`: 560 ms
   cast beat, about 115 ms/m for projectiles and 150 ms/m for beasts, longer impacts, the next turn
   waits, speed 1×/2×/3×). Not signed off.

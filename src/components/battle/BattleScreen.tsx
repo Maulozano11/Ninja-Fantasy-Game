@@ -11,7 +11,7 @@ import { chargeLanding, handsBlocker, jutsuCost, needsSeals } from '../../battle
 import { aiAction, aiToAct } from '../../battle/ai';
 import { current } from '../../battle/turns';
 import { AURA_RADIUS, attackPreview, sovereign } from '../../battle/combat';
-import { JUTSU, areaOf, enhanced as enhancedSpec, fanDice, fannedBy } from '../../battle/jutsu';
+import { JUTSU, PROPOSED_JUTSUS, areaOf, enhanced as enhancedSpec, fanDice, fannedBy } from '../../battle/jutsu';
 import type { JutsuSpec } from '../../battle/jutsu';
 import { cellCenter, cellOf, dist, fullCoverBetween, getMap, gridFor, idx, lineOfSight, sameCell, steamAt, steamBetween, steamHides } from '../../battle/map';
 import { canStop, occupancy, pathCost, pathTo, reachable } from '../../battle/nav';
@@ -1601,6 +1601,7 @@ const SHORT: Record<string, [string, string]> = {
   kenjutsu_bleeding_cut: ['Bleeding cut', 'Tajo'],
   taijutsu_rush: ['Rush', 'Embestida'],
   water_devouring_tide: ['Devouring tide', 'Ola devoradora'],
+  water_tide_s: ['Dragon tide', 'Ola del dragón'],
   wind_whirlwind_tower: ['Whirlwind tower', 'Torre'],
   wind_gale_curtain: ['Gale curtain', 'Cortina'],
   lightning_thunder_beam: ['Thunder beam', 'Haz de trueno'],
@@ -1635,7 +1636,7 @@ function jutsuTip(sp: JutsuSpec, cost: number, lang: ReturnType<typeof useLang>)
   const cast = T(sp.cast === 'bonus' ? 'bonus' : sp.cast === 'reaction' ? 'reaction' : 'action', undefined, lang);
   const reach = sp.shape === 'self' || sp.shape === 'selfCircle' ? (es ? 'en ti' : 'on yourself') : sp.melee || sp.range <= 1.5 ? (es ? 'cuerpo a cuerpo' : 'melee') : `${fmtM(sp.range, lang)} m`;
   const meta = [sp.rank ? (es ? `Rango ${sp.rank}` : `Rank ${sp.rank}`) : '', cast, `${cost} chakra`, reach].filter(Boolean).join(' · ');
-  const data = JUTSUS_DATA.find((j) => j.id === sp.id);
+  const data = JUTSUS_DATA.find((j) => j.id === sp.id) ?? PROPOSED_JUTSUS.find((j) => j.id === sp.id);
   const helpKey = `help_${sp.id}`;
   const text = T.has(helpKey) ? T(helpKey as TKey, undefined, lang) : es ? data?.descriptionEs ?? data?.description : data?.description;
   let enh: string | undefined;

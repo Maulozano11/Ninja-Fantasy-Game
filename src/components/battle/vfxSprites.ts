@@ -360,7 +360,7 @@ function sheetsOf(f: Fx): { name: string; beast: boolean; group?: string }[] {
     case 'aura':
       return named('aura', 'aura_back');
     case 'wave':
-      return named('wall', 'wall_depth', 'breath', 'blast');
+      return [...named('wall', 'wall_depth', 'breath', 'blast'), ...(f.tideS ? TIDE_S_SHEETS.map((name) => ({ group: 'vfx_tide_s', name, beast: false })) : [])];
     case 'tower':
       return named('wall_depth', 'multi');
     case 'conduct':
@@ -1142,6 +1142,9 @@ function waveItems(ctx: CanvasRenderingContext2D, sc: Scene, f: Fx): DepthItem[]
       place(p, p.z + 0.01, (q) => blit(ctx, foam, 'fly', frameAt(foam, 'fly', ms + k * 400), q.X, q.Y - 40, ux < 0, 0.85));
     }
   }
+  // The S-rank Tide: his curl, his dragon and his kanji ride the crest, over the whole wave (he
+  // painted them over it): in front of its nearest water.
+  if (f.tideS) out.push(...tideSItems(ctx, sc, f, ms, runMs, at(crest, 0), ux < 0, Math.max(at(crest, -w).z, at(crest, w).z, at(cone.length, -cone.length * tan).z, at(cone.length, cone.length * tan).z)));
   // The break: his spouts burst along the crest at the end of the cone.
   const spout = sheet(f.element, 'blast', f.tint);
   const burst = ms - runMs * 0.92;
@@ -1154,6 +1157,77 @@ function waveItems(ctx: CanvasRenderingContext2D, sc: Scene, f: Fx): DepthItem[]
       if (late < 0) continue;
       place(p, p.z + 0.03, (q) => blit(ctx, spout, 'blast', frameAt(spout, 'blast', late), q.X, q.Y, i % 2 === 1, 0.95));
     }
+  }
+  return out;
+}
+
+/** The S-rank Tide's sheets (vfx_tide_s, tools/world-sprites/vfx-tide-s.ts). */
+export const TIDE_S_SHEETS = ['curl', 'dragon', 'kanji'];
+/**
+ * The S-rank Tide's timing (ms into its wave; the run is 2200 ms, then the 900 ms break, which is
+ * what his dragon's play lasts, DRAGON_MS in the generator): his curl rises out of the ground with
+ * the wave and sinks back after the break; his kanji fades in, its glow pulsing over it as light,
+ * flashes as the wave breaks and fades. The dragon's own surge, roar and dive are in its frames.
+ */
+const TIDE_S = { curlUp: [600, 1100], sink: [150, 900], curlFade: [500, 900], kanjiIn: [1150, 1500], pulse: 600, flash: [0, 120, 420], kanjiOut: [150, 550] } as const;
+const span01 = (v: number, a: number, b: number) => Math.max(0, Math.min(1, (v - a) / (b - a)));
+
+function tideSheet(f: Fx, name: string): Sheet | undefined {
+  const s = worldSprite('vfx_tide_s', name);
+  return s && ready(s) ? inTint(s, f.element, name, f.tint) : undefined;
+}
+
+/**
+ * The S-rank Tide (the owner's paint-over of our widest wave, 2026-10-22; a proposal): his layers
+ * where he painted them on our frame, every sprite's anchor on the crest point `c`. Mirrored with
+ * the wave when it runs to the left, except his kanji, which is only moved to its mirrored place.
+ */
+function tideSItems(ctx: CanvasRenderingContext2D, sc: Scene, f: Fx, ms: number, runMs: number, c: Pt, mirror: boolean, front: number): DepthItem[] {
+  const curl = tideSheet(f, 'curl');
+  const dragon = tideSheet(f, 'dragon');
+  const kanji = tideSheet(f, 'kanji');
+  const after = ms - runMs;
+  const out: DepthItem[] = [];
+  if (curl) {
+    // It rises out of the ground (nothing of it below its foot) and sinks back into it.
+    const up = 1 - (1 - span01(ms, TIDE_S.curlUp[0], TIDE_S.curlUp[1])) ** 3;
+    const down = span01(after, TIDE_S.sink[0], TIDE_S.sink[1]) ** 2;
+    const H = curl.spec.frameH;
+    const lift = Math.round((1 - up + down) * H);
+    const alpha = 1 - span01(after, TIDE_S.curlFade[0], TIDE_S.curlFade[1]);
+    if (lift < H && alpha > 0)
+      out.push({ z: front + 0.04, draw: () => {
+        const q = project(sc.map, c);
+        const foot = Math.round(q.Y) - curl.spec.anchor[1] + H;
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(q.X - 4000, foot - 8000, 8000, 8000);
+        ctx.clip();
+        blit(ctx, curl, 'idle', 0, q.X, q.Y + lift, mirror, alpha);
+        ctx.restore();
+      } });
+  }
+  if (dragon) out.push({ z: front + 0.05, draw: () => {
+    const q = project(sc.map, c);
+    blit(ctx, dragon, 'play', frameAt(dragon, 'play', ms), q.X, q.Y, mirror);
+  } });
+  if (kanji) {
+    const k = span01(ms, TIDE_S.kanjiIn[0], TIDE_S.kanjiIn[1]) * (1 - span01(after, TIDE_S.kanjiOut[0], TIDE_S.kanjiOut[1]));
+    const flash = after < TIDE_S.flash[0] ? 0 : after < TIDE_S.flash[1] ? 1 : 1 - span01(after, TIDE_S.flash[1], TIDE_S.flash[2]);
+    const glow = Math.min(1, k * (0.3 + 0.2 * Math.sin(((ms - TIDE_S.kanjiIn[0]) / TIDE_S.pulse) * 2 * Math.PI)) + flash);
+    if (k > 0 || glow > 0)
+      out.push({ z: front + 0.06, draw: () => {
+        const q = project(sc.map, c);
+        // Never mirrored (a written character): only put at its mirrored place.
+        const x = mirror ? q.X - 2 * (kanji.spec.frameW / 2 - kanji.spec.anchor[0]) : q.X;
+        if (k > 0) blit(ctx, kanji, 'kanji', 0, x, q.Y, false, k);
+        if (glow > 0) {
+          ctx.save();
+          ctx.globalCompositeOperation = 'lighter';
+          blit(ctx, kanji, 'glow', 0, x, q.Y, false, glow);
+          ctx.restore();
+        }
+      } });
   }
   return out;
 }

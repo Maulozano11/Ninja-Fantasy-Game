@@ -17,6 +17,10 @@ import { BattleScreen } from './BattleScreen';
 import { Portrait } from './hud';
 import { unitFrom } from '../../battle/units';
 import { withPouches } from '../../rules/pouch';
+import { natureOf } from '../../rules/ninja';
+
+/** A jutsu waiting for the owner's yes, castable in practice so it can be seen (the S-rank Tide). */
+const PRACTICE_PREVIEW = 'water_tide_s';
 
 const S = strings({
   title: { en: 'Battle practice', es: 'Práctica de batalla' },
@@ -66,7 +70,7 @@ export const BattleDemo: React.FC<BattleDemoProps> = ({ character, start }) => {
 
   const initial = useMemo(() => {
     if (!battle) return null;
-    return createBattle(
+    const s = createBattle(
       encounterSetup(
         battle.id,
         party.map((c) => ({ character: c })),
@@ -74,6 +78,10 @@ export const BattleDemo: React.FC<BattleDemoProps> = ({ character, start }) => {
         { seed: battle.seed, difficulty, supplies: withPouches({ soldierPills: 2, bandages: 3, antidotes: 1, explosiveTags: 2 }, party) },
       ),
     );
+    // A preview of a proposal waiting for the owner: the S-rank Tide (his paint-over, 2026-10-22) can
+    // be cast in practice by the water ninjas, whatever their rank (a ninja learns it only at level 10).
+    for (const u of Object.values(s.state.units)) if (u.team === 'party' && u.character && natureOf(u.character) === 'Water' && !u.jutsus.includes(PRACTICE_PREVIEW)) u.jutsus.push(PRACTICE_PREVIEW);
+    return s;
   }, [battle, party, difficulty]);
 
   if (battle && initial) {

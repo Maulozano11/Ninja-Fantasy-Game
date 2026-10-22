@@ -73,6 +73,8 @@ export function tintSheetsOf(spec: Pick<JutsuSpec, 'elemental' | 'element' | 'vf
     // The Devouring Tide: the water aura while it casts, the wave's columns and its wall (the body
     // and the face), its spray, a splash on each one reached, and the spouts as it breaks.
     add('aura', 'aura_back', 'wall_depth', 'wall', 'breath', 'hit', 'blast');
+    // The S-rank Tide: his curl, his water dragon and his kanji riding the crest.
+    if (spec.seq.wave.dragon) for (const name of ['curl', 'dragon', 'kanji']) own.push({ group: 'vfx_tide_s', name, element: el });
   } else if (spec.seq?.tower) {
     // The Whirlwind Tower: the warning burst, the tornado column, the small whirlwinds round it.
     add('hit', 'wall_depth', 'multi');

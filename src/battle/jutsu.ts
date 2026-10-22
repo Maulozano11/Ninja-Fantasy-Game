@@ -61,7 +61,15 @@ export interface JutsuSeq {
    * (wall_depth; its wall seen from the side when the cone points into the depth) with `rows` rows
    * fading behind its crest and the element's breath as foam before it, in `ms`.
    */
-  wave?: { rows: number; ms: number };
+  wave?: {
+    rows: number;
+    ms: number;
+    /**
+     * The S-rank Tide (the owner's paint-over of the wave, 2026-10-22; a proposal): his curl, his
+     * water dragon and his kanji 水 ride the crest (vfx_tide_s).
+     */
+    dragon?: boolean;
+  };
   /**
    * The Whirlwind Tower: a warning impact at the point, then the element's column (wall_depth)
    * rises there, turns with `minis` small whirlwinds (multi) circling it, and fades.
@@ -247,6 +255,11 @@ const OVERRIDE: Record<string, Partial<JutsuSpec>> = {
   // the gaps"). Water's rank A (the owner's second round: "ola devoradora es rango a"): a 9 m cone
   // that sweeps the ones who fail 3 m away, knocks them down and puts their fire out.
   water_devouring_tide: { vfx: 'breath', push: { m: 3 }, prone: true, douse: true, seq: { castAura: 560, wave: { rows: 3, ms: 1900 }, hitEach: { stagger: 90 }, shake: 6 } },
+  // The S-rank Tide (the owner's paint-over of our wave, 2026-10-22): the Tide plus his curl, his
+  // water dragon and his kanji, run a little slower so the dragon can rise and roar (2200 ms and the
+  // 900 ms break). Its reach mirrors the enhanced Tide's (11.25 m, 80 degrees): placeholders waiting
+  // for the owner, like its numbers in JUTSUS_DATA.
+  water_tide_s: { vfx: 'breath', length: 11.25, angle: 80, push: { m: 3 }, prone: true, douse: true, seq: { castAura: 560, wave: { rows: 3, ms: 2200, dragon: true }, hitEach: { stagger: 90 }, shake: 7 } },
   // Wind's rank A: a tornado that drags the ones who fail 1.5 m toward its middle and knocks them down.
   wind_whirlwind_tower: { vfx: 'blast', push: { m: 1.5, toward: true }, prone: true, seq: { tower: { warn: 300, minis: 6 }, shake: 3 } },
   // The Gale Curtain, made an area by the owner: a gale on the ground that fans the fire jutsu
@@ -520,7 +533,41 @@ const CLAN_SPECS: JutsuSpec[] = [
   },
 ];
 
-export const JUTSU: Record<string, JutsuSpec> = Object.fromEntries([...JUTSUS_DATA.map((j) => [j.id, specOf(j)]), ...HYDRA_SPECS.map((j) => [j.id, j]), ...CLAN_SPECS.map((j) => [j.id, j])]);
+/**
+ * Jutsu waiting for the owner, battle-only: not in the list a ninja learns (JUTSUS_DATA), so the
+ * creator never offers them; the practice battle lets the water ninjas cast them to see them.
+ *
+ * The S-rank Tide (2026-10-22): he painted a kanji and a water dragon over our widest wave, "el jutsu
+ * en version mejorada clase s". Its look is his; Water has no S-rank by his rule ("vacio por ahora",
+ * docs/GAMEPLAY_DESIGN.md), so whether it joins the S-rank slot is his call, and every number here is
+ * a PLACEHOLDER mirroring the enhanced Tide (its cost with the enhancement, 6d8, 11.25 m, 80 degrees;
+ * the proposal is in docs/STATUS.md).
+ */
+export const PROPOSED_JUTSUS: JutsuDefinition[] = [
+  {
+    id: 'water_tide_s',
+    name: 'Water Technique: Dragon Tide',
+    nameEs: 'Técnica de Agua: Ola del dragón',
+    japaneseName: '龍喰らい波 (Ryū-kurai-nami)',
+    rank: 'S',
+    category: 'Ultimate',
+    nature: 'Water',
+    chakraCost: 12,
+    castTime: 'Action',
+    range: 8,
+    areaOfEffect: 'Cone',
+    damageDice: '6d8',
+    damageType: 'Bludgeoning',
+    savingThrow: 'STR',
+    saveEffect: 'Half Damage',
+    enhancementChakraCost: 4,
+    enhancementEffect: 'Deals 8d8 bludgeoning damage; the cone reaches farther and opens wider.',
+    description: 'The sea rises behind the ninja and curls into a great wave; a water dragon surges out of it under the kanji for water, roars, and dives with the wave onto everything ahead.',
+    descriptionEs: 'El mar se levanta detrás del ninja y se enrosca en una gran ola; un dragón de agua surge de ella bajo el kanji del agua, ruge y se lanza con la ola sobre todo lo que tiene delante.',
+  },
+];
+
+export const JUTSU: Record<string, JutsuSpec> = Object.fromEntries([...JUTSUS_DATA.map((j) => [j.id, specOf(j)]), ...PROPOSED_JUTSUS.map((j) => [j.id, specOf(j)]), ...HYDRA_SPECS.map((j) => [j.id, j]), ...CLAN_SPECS.map((j) => [j.id, j])]);
 
 /** The abilities a clan's members have, in order. */
 export const clanAbilities = (clan: ClanType): string[] => CLAN_SPECS.filter((j) => j.clan === clan).map((j) => j.id);

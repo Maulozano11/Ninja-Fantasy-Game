@@ -25,7 +25,7 @@ import { dojutsuToEye, getAppearance } from './legacy';
 import { NIGHT_HEAD, NIGHT_SKIN } from './nightHeadArt';
 import { NIGHT_EYE_COLORS, NIGHT_EYES, NIGHT_IRIS } from './nightEyeArt';
 import type { PaintedPiece } from './painted';
-import { GRID, RES } from './raster';
+import { GRID, partIndex, type PartId, RES } from './raster';
 import { drawRig, frameCount, GROUND, rigPoseFor } from './rig';
 import { rotateTemplate } from './rotsprite';
 import { CAMP_POSES, MOVE_POSES, SPRITE_POSES, type BodyType, type SpriteAppearance, type SpritePose } from './types';
@@ -78,6 +78,34 @@ function loose(rgba: Uint8ClampedArray): number {
   }
   const total = sizes.reduce((a, b) => a + b, 0);
   return total - Math.max(0, ...sizes);
+}
+
+/** The sizes of the pieces (8 ways) of a frame's opaque pixels other than the largest. */
+function apart(rgba: Uint8ClampedArray): number[] {
+  const seen = new Uint8Array(GRID * GRID);
+  const sizes: number[] = [];
+  for (let s = 0; s < GRID * GRID; s++) {
+    if (!opaque(rgba, s) || seen[s]) continue;
+    let n = 0;
+    const stack = [s];
+    seen[s] = 1;
+    while (stack.length) {
+      const i = stack.pop()!;
+      n++;
+      const x = i % GRID;
+      const y = (i / GRID) | 0;
+      for (let dy = -1; dy <= 1; dy++)
+        for (let dx = -1; dx <= 1; dx++) {
+          const q = (y + dy) * GRID + x + dx;
+          if (x + dx < 0 || x + dx >= GRID || y + dy < 0 || y + dy >= GRID || seen[q] || !opaque(rgba, q)) continue;
+          seen[q] = 1;
+          stack.push(q);
+        }
+    }
+    sizes.push(n);
+  }
+  sizes.splice(sizes.indexOf(Math.max(...sizes)), 1);
+  return sizes;
 }
 
 /** The cells a piece has. */
@@ -259,12 +287,29 @@ describe("the owner's Ren", () => {
     const hold0 = paintedGrip(g(r0))!;
     assert.ok(near(r0.elbowN, 120.815, 164.105) && near(r0.wristN, 131.598, 161.934) && near(r0.elbowF, 151.101, 154.013) && near(r0.wristF, 162.014, 152.636) && near(r0.handF, 165.586, 152.185), 'the rig moved: rerun the converter with its joints');
     assert.ok(near(hold0.at, 134.876, 163.423) && Math.abs(hold0.fist - 24.44) < 0.01, 'the grip moved: rerun the converter with it');
-    // in frame 0 every pixel of his fists is where he drew it, and of his forearms all but what the sleeves, the fists and the sword cover
-    const f0 = renderSprite(l, 'cast', 0).rgba;
-    for (const [name, min] of [['NIGHT_CAST_FIST_N', 1], ['NIGHT_CAST_FIST_F', 1], ['NIGHT_CAST_FORE_N', 0.9], ['NIGHT_CAST_FORE_F', 0.9]] as const) {
+    // in frame 0 every pixel of his fists is where he drew it, and of the near forearm all but what the sleeve, the fist and the sword cover
+    const fr0 = renderSprite(l, 'cast', 0);
+    const f0 = fr0.rgba;
+    for (const [name, min] of [['NIGHT_CAST_FIST_N', 1], ['NIGHT_CAST_FIST_F', 1], ['NIGHT_CAST_FORE_N', 0.9]] as const) {
       const got = atRest(f0, cast[name], cast.NIGHT_CAST_REST[name]);
       assert.ok(got >= min, `${name}: ${(got * 100).toFixed(0)}% of his pixels in place`);
     }
+    // the far forearm (his picture shrunk evenly to our scale): each of its pixels where he drew it, but
+    // where the sleeve or the sword is in front (his forearm runs on under the sword toward the elbow)
+    const covers = new Set(['upperArmF', 'held'].map((p) => partIndex(p as PartId)));
+    const foreF = cast.NIGHT_CAST_FORE_F;
+    const [rx, ry] = cast.NIGHT_CAST_REST.NIGHT_CAST_FORE_F;
+    foreF.rows.forEach((row, j) => {
+      for (let i = 0; i < row.length; i++) {
+        if (row[i] === '.') continue;
+        const p = (ry + j) * GRID + rx + i;
+        assert.ok(hex(f0, p) === foreF.colors[row[i]] || covers.has(fr0.part[p]), `the far forearm at ${rx + i},${ry + j}`);
+      }
+    });
+    // his far arm as he drew it, not swollen: the forearm 10 rows thick, the fist 13 rows by 12 columns
+    const box = (p: PaintedPiece) => [p.rows.length, Math.max(...p.rows.map((r) => r.replace(/\.+$/, '').length))];
+    assert.equal(foreF.rows.length, 10);
+    assert.deepEqual(box(cast.NIGHT_CAST_FIST_F), [13, 12]);
     for (const body of ['male', 'bulky'] as BodyType[]) {
       for (const frame of [0, 1]) {
         const rig = drawRig(body, 'cast', frame);
@@ -303,6 +348,77 @@ describe("the owner's Ren", () => {
     // his colours mean the same in his cast arms as in his gloves and jacket (the items recolour them by kind)
     for (const [h, k] of Object.entries(cast.NIGHT_CAST_KIND)) {
       for (const other of [kit.NIGHT_KIT_KIND, jacket.NIGHT_JACKET_KIND] as Record<string, string>[]) if (other[h]) assert.equal(other[h], k, h);
+    }
+  });
+
+  it('leaves no dead pixel in any pose or frame, sword drawn or put away: no dot apart, no white that is not his', () => {
+    // his colours: every colour of his pieces
+    const his = new Set<string>();
+    const walk = (o: unknown): void => {
+      if (typeof o === 'string' && /^#[0-9a-f]{6}$/i.test(o)) his.add(o.toLowerCase());
+      else if (o && typeof o === 'object') for (const v of Object.values(o)) walk(v);
+    };
+    walk([kit, belt, cast, hair, jacket, katana, skirt, trousers, NIGHT_HEAD, NIGHT_SKIN, NIGHT_EYES, NIGHT_EYE_COLORS, NIGHT_IRIS]);
+    // (and the grip wrap of the scabbard at his hip, lit and shaded: accessories.ts sheathedSword)
+    for (const h of ['#d9d2c0', '#e1ded1']) his.add(h);
+    // near-white colours not his come only with what he carries (the sword in hand, a kunai: parts
+    // 'back' and 'held'), on an open hand (his glove's plate drawn on our hand in the slot colours) or with
+    // what the pose casts or reads: the signs' and the runes' glow, the book
+    const PROPS = new Set<SpritePose>(['handsigns', 'cast', 'read']);
+    const CARRIED = new Set(['back', 'held', 'handN', 'handF'].map((p) => partIndex(p as PartId)));
+    const HELD = partIndex('held');
+    for (const body of ['male', 'bulky'] as BodyType[]) {
+      for (const stowed of [false, true]) {
+        const l = { ...look(), body, stowed };
+        for (const pose of POSES) {
+          const rp = rigPoseFor(pose, REN.appearance!.cast?.style, stowed ? undefined : 'held_katana_v2');
+          for (let frame = 0; frame < frameCount(rp); frame++) {
+            const where = `${body}${stowed ? ' (sword put away)' : ''} ${pose} ${frame}`;
+            const fr = renderSprite(l, pose, frame, dojutsuToEye(REN.dojutsu));
+            const px = fr.rgba;
+            const light: string[] = [];
+            for (let i = 0; i < GRID * GRID; i++) {
+              if (!opaque(px, i) || Math.min(px[i * 4], px[i * 4 + 1], px[i * 4 + 2]) < 200 || his.has(hex(px, i)) || CARRIED.has(fr.part[i])) continue;
+              light.push(`${hex(px, i)}@${i % GRID},${(i / GRID) | 0}`);
+            }
+            assert.ok(!light.length || PROPS.has(pose), `${where}: white pixels not his ${light.slice(0, 6).join(' ')}`);
+            // the runes float before his palm by design (blue and their pale glow past the far wrist, not the
+            // sword's); anything else apart from the body is never a dot
+            const body1 = Uint8ClampedArray.from(px);
+            for (let i = 0; i < GRID * GRID; i++) {
+              const [r, g, b] = [px[i * 4], px[i * 4 + 1], px[i * 4 + 2]];
+              const rune = i % GRID > fr.rig.wristF.x * RES + 6 && fr.part[i] !== HELD && (b > r + 60 || (b >= r && g >= r && r > 150));
+              if (pose === 'cast' && rune) body1[i * 4 + 3] = 0;
+            }
+            const sizes = apart(body1);
+            assert.ok(sizes.every((n) => n > 3), `${where}: ${sizes.filter((n) => n <= 3).length} dots apart from the body`);
+            // (on the bulky body the far sleeve still comes off the shoulder with the arm raised forward:
+            // charge, run 0, sit and throw; on the male nothing comes off)
+            if (body === 'male') assert.deepEqual(sizes, [], `${where}: ${sizes.join(', ')} pixels apart from the body`);
+          }
+        }
+      }
+    }
+  });
+
+  it('casting the runes, closes the back of his skirt behind the near hip: no white notch between it and the body', () => {
+    for (const body of ['male', 'bulky'] as BodyType[]) {
+      for (const stowed of [false, true]) {
+        for (const frame of [0, 1]) {
+          const fr = renderSprite({ ...look(), body, stowed }, 'cast', frame);
+          const op = (x: number, y: number) => opaque(fr.rgba, y * GRID + x);
+          const hx = Math.round(fr.rig.hipN.x * RES);
+          const hy = Math.round(fr.rig.hipN.y * RES);
+          for (let y = hy - 6; y <= hy + 4; y++) {
+            for (let x = hx - 12; x <= hx; x++) {
+              if (op(x, y)) continue;
+              const sides = [op(x - 1, y), op(x + 1, y), op(x, y - 1), op(x, y + 1)];
+              const notch = sides.filter(Boolean).length >= 3 || (sides[0] && sides[1]) || (sides[2] && sides[3]);
+              assert.ok(!notch, `${body}${stowed ? ' (sword put away)' : ''} cast ${frame}: a notch of white at ${x},${y}`);
+            }
+          }
+        }
+      }
     }
   });
 

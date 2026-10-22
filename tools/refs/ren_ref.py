@@ -382,6 +382,15 @@ def patches(m, least):
     return out
 
 
+def main_patch(m):
+    """The largest 8-connected patch of a mask."""
+    lo, hi = 1, int(m.sum())
+    while lo < hi:  # the largest `least` that still keeps a patch is the largest patch's size
+        mid = (lo + hi + 1) // 2
+        lo, hi = (mid, hi) if patches(m, mid).any() else (lo, mid - 1)
+    return patches(m, lo)
+
+
 def near8_at(m, y, x):
     H, W = m.shape
     return any(m[q, p] for q in range(max(0, y - 1), min(H, y + 2)) for p in range(max(0, x - 1), min(W, x + 2)))
@@ -477,8 +486,11 @@ def rows_from(y0, H=100, W=100):
 # side on his line at x = 41 (as below the near sleeve), its far side at x = 60.
 JACKET_SHAPE = [(41, 28), (61, 28), (61, 55), (41, 55)]
 # The skirt's outline where his fist, the guard and the blade hide it: its near side on his line at
-# x = 35, its hem from his near hem (row 76) straight to his far hem (row 73).
-SKIRT_SHAPE = [(35, 54.5), (67, 54.5), (67, 74), (58, 74), (51, 77), (35, 77)]
+# x = 35, its hem from his near hem (row 76) straight to his far hem (row 73). At the top its near
+# corner is where he drew it, beside the belt at x = 40 (he shows white left of it, between his fist and
+# the skirt), and its near side flares out from there down to x = 35: continued straight up to the belt
+# it stood as a spike apart from the skirt, his white between, wherever the near arm is raised.
+SKIRT_SHAPE = [(40, 54.5), (67, 54.5), (67, 74), (58, 74), (51, 77), (35, 77), (35, 61), (40, 57)]
 # The sword's grip line: from his pommel through where his wrap goes into the fist to where it comes
 # out by the guard (his pixels).
 KATANA_GRIP = ((26.0, 52.6), (38.0, 61.0))
@@ -514,6 +526,11 @@ def pieces(a):
         arm = masks[g] & ((K == 'skin') | warm) & (along < L)
         masks[g] = masks[g] & ~arm
         masks['fore_' + s.lower()] = masks['fore_' + s.lower()] | arm
+        # Only the glove itself: a dark pixel of the guard inside the glove's region, not joined to the
+        # glove, stood apart from the fist as a loose dot wherever the fist turns. It is the sword's.
+        glove = main_patch(masks[g])
+        masks['katana'] = masks['katana'] | (masks[g] & ~glove)
+        masks[g] = glove
     black = his_line(a)
     line = K == 'line'
     rows = np.arange(H)[:, None]
@@ -570,12 +587,19 @@ def pieces(a):
 
     # The trousers: each leg's band about his leg's line, his visible cloth kept, the rest his cloth
     # continued up each column from the first of his pixels below (his folds run on up the leg as long
-    # creases), its sides on his line.
+    # creases), its sides on his line. Up at the hip the band stays under the skirt: none above the skirt's
+    # top (under the belt) nor out beside its near side (where his fist hides it), or there it stood out
+    # past the skirt, his white beside it, wherever the near arm is raised.
+    skirt = out['skirt'][0]
+    first = int(np.nonzero(skirt.any(axis=1))[0][0])
+    near = np.array([np.nonzero(r)[0][0] if r.any() else W for r in skirt])
+    beside = (rows < first) | ((np.arange(W)[None, :] < near[:, None]) & (rows < SKIRT_SHAPE[-2][1]))
     for s in ('N', 'F'):
         n = 'trousers_' + s.lower()
         m = masks[n]
         hip, knee, ankle = his_joint('hip' + s, s), his_joint('knee' + s, s), his_joint('ankle' + s, s)
         leg = band(hip, knee, TROUSER_HALF[s]) | band(knee, ankle, TROUSER_HALF[s], y_to=TROUSER_TO[s])
+        leg &= ~beside | m
         hid = leg & ~m & ~bg  # only what something in front of it hides: where he shows white, it is white
         edge = edge4(leg) & hid
         src = m & ~line

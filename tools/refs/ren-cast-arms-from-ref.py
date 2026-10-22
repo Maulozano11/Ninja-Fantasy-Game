@@ -9,11 +9,14 @@ the picture's noise). Both frames of the pose wear his frame-0 arms: the pose is
 His pixels: a grid of 1000/120 picture pixels (one pixel pitch over the whole picture, panel 0's first
 cell at PANEL0), found from the edges of his black line. His figure is drawn larger than our sprite: about
 SCALE of his pixels to one fine pixel of ours (his runes, sword guard, pommel and the arms we had all
-match ours at that scale), so one of his pixels is not one of ours. Each arm is lifted at our scale by
-keeping SCALE-th of his rows and columns: each fine pixel is one of his pixels in his exact colour, and the
-rows and columns left out are those most like a neighbour (keep()), so his 1 px line and his folds stay.
-His black line is one colour (his commonest); his other colours are the picture's, colours within 3
-merged.
+match ours at that scale), so one of his pixels is not one of ours. Each arm is lifted at our scale, each
+fine pixel one of his pixels in his exact colour: the near arm by keeping SCALE-th of his rows and columns,
+those left out the ones most like a neighbour (keep()), so his 1 px line and his folds stay; the far arm
+(EVEN) as his whole picture shrunk evenly shows it (evenly(): the pixel under each fine pixel's middle), as
+he judges it ("el brazo izquierdo ... esta muy grande": keep() had made it thicker, its glove bigger). His
+far forearm comes out from behind his sword: it runs on under the sword toward the elbow (under_sword()),
+so with the sword put away it meets the sleeve. His black line is one colour (his commonest); his other
+colours are the picture's, colours within 3 merged.
 
 The pieces (his pixels in panel 0, in front of the jacket):
   the near forearm  bare, bent across the chest from his elbow under the short sleeve to the fist, in his
@@ -53,6 +56,13 @@ CELLS = (114, 119)
 SCALE = 1.3
 # Where his pixel corner (0, 0) of panel 0 lies in our male 'cast' frame 0 (fine pixels), per arm.
 ORIGIN = {'N': (90.23, 122.7), 'F': (93.73, 124.0)}
+# The arms shrunk evenly (evenly()), as his whole picture shrunk to our scale shows them, not by keep(): the
+# far arm. keep() may leave his rows out only where they cost nothing, beyond the arm, and so keeps up to
+# three more of the arm's own: the far arm came out thicker and its glove bigger than he drew them.
+EVEN = ('F',)
+# His far forearm comes out from behind his sword: this many of his pixels of it run on under the sword
+# toward the elbow (under_sword()), so with the sword put away it meets the sleeve.
+UNDER_SWORD = 4
 # Our male rig in 'cast' frame 0 (fine pixels; rig.ts drawRig), and where the near fist holds the sword's
 # grip there (grip.ts paintedGrip: the point and the fist's angle). ren.test.ts checks these.
 CAST_JOINTS = {
@@ -125,6 +135,23 @@ def segment(a):
     return masks, col, K
 
 
+def under_sword(masks, col, K, a):
+    """His far forearm run on toward the elbow under his sword (UNDER_SWORD of his pixels left of where
+    it comes out from behind it): each of his rows of skin continued along the row, closed on his line,
+    so with the sword put away it meets the sleeve. His own pixels are untouched."""
+    m = masks['fore_f']
+    skin = m & np.isin(K, ('skin', 'warm'))
+    H, W = m.shape
+    shape = m.copy()
+    for y in np.nonzero(skin.any(axis=1))[0]:
+        x0 = np.nonzero(m[y])[0][0]
+        shape[y, max(0, x0 - UNDER_SWORD):x0] = True
+    hid = shape & ~m
+    edge = R.edge4(shape) & hid
+    c = R.continue_along(col, skin, hid, (1, 0), 1, edge, R.his_line(a))
+    return {**masks, 'fore_f': shape}, c
+
+
 def drop_costs(col, K, m, axis):
     """What leaving out each row (axis 0) or column (axis 1) of his would lose inside the arm `m`: how
     unlike its nearer neighbour it is (his line against anything else counts most)."""
@@ -174,6 +201,12 @@ def keep(first, count, origin, cost):
     return out[::-1]
 
 
+def evenly(first, count, origin):
+    """Which of his rows (or columns) the fine rows first..first+count-1 show, his picture shrunk evenly:
+    the one under each fine pixel's middle."""
+    return [int(np.floor((k + 0.5 - origin) * SCALE)) for k in range(first, first + count)]
+
+
 def at_our_scale(a, col, K, masks, side):
     """The pieces of one arm at our scale, in our frame (256 x 256 fine pixels): {name: (mask, colours)}."""
     names = [n for n in masks if SIDE[n] == side]
@@ -182,8 +215,11 @@ def at_our_scale(a, col, K, masks, side):
     ys, xs = np.nonzero(m)
     fx0, fx1 = int(np.floor(ox + xs.min() / SCALE)) - 1, int(np.ceil(ox + (xs.max() + 1) / SCALE)) + 1
     fy0, fy1 = int(np.floor(oy + ys.min() / SCALE)) - 1, int(np.ceil(oy + (ys.max() + 1) / SCALE)) + 1
-    cols = keep(fx0, fx1 - fx0, ox, drop_costs(col, K, m, 1))
-    rows = keep(fy0, fy1 - fy0, oy, drop_costs(col, K, m, 0))
+    if side in EVEN:
+        cols, rows = evenly(fx0, fx1 - fx0, ox), evenly(fy0, fy1 - fy0, oy)
+    else:
+        cols = keep(fx0, fx1 - fx0, ox, drop_costs(col, K, m, 1))
+        rows = keep(fy0, fy1 - fy0, oy, drop_costs(col, K, m, 0))
     H, W = m.shape
     out = {}
     for n in names:
@@ -259,6 +295,7 @@ def main():
     study = sys.argv[2] if len(sys.argv) > 2 else None
     a = native()
     masks, col, K = segment(a)
+    masks, col = under_sword(masks, col, K, a)
     P = {**at_our_scale(a, col, K, masks, 'N'), **at_our_scale(a, col, K, masks, 'F')}
     J = CAST_JOINTS
     consts = [

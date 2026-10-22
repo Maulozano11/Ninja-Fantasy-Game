@@ -330,7 +330,7 @@ export const NIGHT_GLOVE_N: PaintedPiece = {
     '.cAzmdGjcb.',
     '.aHiIiib...',
     '..JKLMNa...',
-    '....OKPb.i.',
+    '....OKPb...',
   ],
   colors: {
     a: '#01010b',

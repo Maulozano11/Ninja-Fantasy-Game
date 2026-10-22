@@ -149,11 +149,17 @@ export function getAppearance(c: ShinobiCharacter): SpriteAppearance {
  * A saved look as today's creator draws it: the headband without what the old metal plate had
  * (`slashed`, `emblem`, `plate`; the owner, 2026-10-22, "deja la pura bandana la pura tela"). Its
  * position, tails and cloth stay. The slender body is gone (the owner, 2026-10-22, "elimina el tipo
- * de cuerpo delgado"): a look saved on it is drawn on the female body. A look with none of these
- * comes back as it is.
+ * de cuerpo delgado"): a look saved on it is drawn on the female body. The neck option is gone (the
+ * owner, 2026-10-22, "quitar el cuello del creador y dejar a todos con el cuello de hoy"): a saved
+ * `neck` ('slim' or the thick 'strong') is dropped, and every look has today's slim nape. A look
+ * with none of these comes back as it is.
  */
 export function migrateAppearance(look: SpriteAppearance): SpriteAppearance {
   if ((look.body as string) === 'slender') look = { ...look, body: 'female' };
+  if ('neck' in look) {
+    const { neck: _neck, ...rest } = look as SpriteAppearance & { neck?: unknown };
+    look = rest;
+  }
   const hb = look.headband;
   if (!hb || !('slashed' in hb || 'emblem' in hb || 'plate' in hb)) return look;
   const { slashed: _slashed, emblem: _emblem, plate: _plate, ...cloth } = hb;

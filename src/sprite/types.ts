@@ -56,9 +56,6 @@ export interface CastChoice {
 /** The eye options; valiant is the owner's own eyes from his Aiden picture, in his pixels. */
 export type EyeShape = 'standard' | 'sharp' | 'round' | 'calm' | 'fierce' | 'bright' | 'piercing' | 'valiant';
 
-/** Back of the neck behind the jaw: slender (default) or thick. */
-export type NeckType = 'slim' | 'strong';
-
 /**
  * Near-side cheek and jaw: V-line (default), fuller, or a strong flat jaw; or the owner's own head
  * from his Aiden picture (valiant: his skull, ear, cheeks, jaw and chin in his pixels).
@@ -147,8 +144,6 @@ export interface SpriteAppearance {
   skin: string;
   eyeShape: EyeShape;
   eyeColor: string;
-  /** Missing on older saves; treated as 'slim'. */
-  neck?: NeckType;
   /** Missing on older saves; treated as 'tapered'. */
   faceShape?: FaceShape;
   /** How jutsus are cast. Missing on older saves; treated as 'runes'. */

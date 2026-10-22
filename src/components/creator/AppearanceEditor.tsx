@@ -14,7 +14,6 @@ import type {
   FaceShape,
   HeadbandPosition,
   ItemChoice,
-  NeckType,
   SlotId,
   SpriteAppearance,
   SpritePose,
@@ -125,11 +124,6 @@ const FACE_SHAPES: { id: FaceShape; label: string; sub: string }[] = [
   { id: 'square', label: 'Square', sub: 'Strong jaw' },
   { id: 'valiant', label: 'Valiant', sub: "Aiden's face" },
   { id: 'founder', label: 'Founder', sub: "Solen's face" },
-];
-
-const NECKS: { id: NeckType; label: string; sub: string }[] = [
-  { id: 'slim', label: 'Slim', sub: 'Slender' },
-  { id: 'strong', label: 'Strong', sub: 'Thick, muscular' },
 ];
 
 const EYE_SHAPES: { id: EyeShape; label: string; sub?: string }[] = [
@@ -337,25 +331,6 @@ export const AppearanceEditor: React.FC<{
               </div>
             </div>
             <ColorRow label="Skin Tone" value={look.skin} swatches={SKIN_TONES} onChange={(skin) => onChange({ ...look, skin })} />
-            <div>
-              <SectionLabel>Neck</SectionLabel>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                {NECKS.map((n) => (
-                  <OptionCard
-                    key={n.id}
-                    selected={(look.neck || 'slim') === n.id}
-                    label={n.label}
-                    sub={n.sub}
-                    onClick={() => {
-                      soundManager.playSelect();
-                      onChange({ ...look, neck: n.id });
-                    }}
-                  >
-                    <SpriteThumb look={{ ...look, neck: n.id }} eye={eye} crop="head" />
-                  </OptionCard>
-                ))}
-              </div>
-            </div>
           </div>
         )}
 

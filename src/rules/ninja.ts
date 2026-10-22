@@ -298,7 +298,7 @@ export function addLegendNatures(c: ShinobiCharacter): ShinobiCharacter {
   };
 }
 
-/** A sheet whose look still has the old headband plate or the slender body, with today's look (the same sheet if not). */
+/** A sheet whose look still has the old headband plate, the slender body or a neck choice, with today's look (the same sheet if not). */
 function withTodaysLook(c: ShinobiCharacter): ShinobiCharacter {
   if (!c.appearance) return c;
   const look = migrateAppearance(c.appearance);
@@ -328,9 +328,10 @@ export function tideToElement(c: ShinobiCharacter): ShinobiCharacter {
  *   kept under the new maxima;
  * - the clan's ability bonus counted in its numbers, once (countClanBonus);
  * - its headband as plain cloth: the old plate's fields dropped (sprite/legacy.ts, migrateAppearance);
- * - a look on the slender body, which is gone, on the female body (migrateAppearance).
+ * - a look on the slender body, which is gone, on the female body (migrateAppearance);
+ * - a saved neck choice dropped: every look has today's slim nape (migrateAppearance).
  * Hand-made numbers (the presets) keep their hand-made part; the other jutsu stay as they are, and of
- * the look only that old burst, the headband plate and the slender body change. A sheet that is already today's comes back as it is.
+ * the look only that old burst, the headband plate, the slender body and the neck change. A sheet that is already today's comes back as it is.
  */
 export function migrateCharacter(saved: ShinobiCharacter): ShinobiCharacter {
   const c = tideToElement(addLegendNatures(updateLegendChakra(tagJutsuToItem(withTodaysLook(saved)))));

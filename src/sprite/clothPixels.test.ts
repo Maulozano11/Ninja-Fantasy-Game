@@ -8,8 +8,8 @@
 //    them and round three of its corners, where nothing is drawn (the background shows);
 //  - gap: such a cell where what is behind the cloth shows, much lighter than the cloth around it;
 //  - speck: a crumb of the cloth (3 pixels or fewer) cut off from the rest of the item.
-// npm test draws a sample (every item in every fourth pose, on one body and one frame, taking turns so
-// every pose is drawn); the whole sweep, every body each item fits and every frame of every pose, is
+// Idle is left out (see POSES). npm test draws a sample (every item in every fourth pose, on one body
+// and one frame, taking turns so every pose is drawn); the whole sweep, every body each item fits and every frame of every pose, is
 // CLOTH_FULL=1 (several minutes).
 // CLOTH_ITEMS=a,b limits the items, CLOTH_REPORT=1 prints every finding (item, body, pose, frame,
 // counts) and CLOTH_JSON=<file> writes them with their pixels.
@@ -55,7 +55,10 @@ const CLOTH_ITEMS = [
 const BODIES: BodyType[] = ['male', 'female', 'bulky', 'slender'];
 /** The bare body's layers (body.ts; the far hand when it works in front of the body), by depth index. */
 const BODY = new Set((['farArm.body', 'farLeg.body', 'nearLeg.body', 'torso.body', 'torso.under', 'farHand.front', 'nearArm.body', 'head.body'] as Depth[]).map((d) => DEPTHS.indexOf(d)));
-const POSES = [...new Set([...SPRITE_POSES, ...MOVE_POSES, ...CAMP_POSES])] as SpritePose[];
+// Idle is not checked: it is the frame the owner's pictures were copied into, and his pictures are copied
+// exactly, so a gap that shows at rest is one he drew or accepted (seal.ts leaves idle as drawn, as
+// holes.ts does).
+const POSES = [...new Set([...SPRITE_POSES, ...MOVE_POSES, ...CAMP_POSES])].filter((p) => p !== 'idle') as SpritePose[];
 const N = GRID * GRID;
 
 /** A bare body wearing only this item (and boots), so nothing else covers or fills its cloth. */

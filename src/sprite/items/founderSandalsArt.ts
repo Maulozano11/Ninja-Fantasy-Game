@@ -102,7 +102,7 @@ export const FOUNDER_SANDAL_KIND: Record<string, 'line' | 'skin' | 'red' | 'gold
 export const FOUNDER_SANDAL_REST: Record<string, [number, number]> = {
   FOUNDER_SANDAL_SHIN_N: [109, 197],
   FOUNDER_SANDAL_FOOT_N: [108, 212],
-  FOUNDER_SANDAL_SHIN_F: [129, 198],
+  FOUNDER_SANDAL_SHIN_F: [128, 198],
   FOUNDER_SANDAL_FOOT_F: [130, 208],
 };
 
@@ -197,19 +197,19 @@ export const FOUNDER_SANDAL_FOOT_N: PaintedPiece = {
 
 /** The far laced shin, from the strap band under the knee to the ankle: it turns with the shin about the ankle (moved LEG_OUT). */
 export const FOUNDER_SANDAL_SHIN_F: PaintedPiece = {
-  pivot: [4, 10],
+  pivot: [5, 10],
   angle: 98.56,
   rows: [
-    'aa......',
-    'abc.....',
-    'deeaaaa.',
-    'fdhijca.',
-    'cakllla.',
-    '.aemnka.',
-    '..dlkld.',
-    '..alpka.',
-    '..dlklqc',
-    '..arstqa',
+    '.aa......',
+    '.abc.....',
+    '.deeaaaa.',
+    'fdhiijca.',
+    'caklllla.',
+    '.aemmnka.',
+    '..dllkld.',
+    '..allpka.',
+    '...dlklqc',
+    '...arstqa',
   ],
   colors: {
     a: '#01010e',

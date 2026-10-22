@@ -159,6 +159,11 @@ folders.
 
   With a study folder each writes his picture, the piece and the continued pixels (magenta) at 8x.
 
+  His far laced shin is a pixel thicker at the calf than he drew it (the owner, 2026-10-21: "le falta más
+  pantorrilla a la pierna izquierda ponla un poco más gruesa solo un poco"): `solen-sandals-from-ref.py` draws
+  his column `CALF_COL` twice on the calf's rows (`CALF_ROWS`), his back line and the laces behind it moved
+  1 px back, so every pixel is still one of his and it tapers to the ankle as he drew it.
+
   His far arm hangs in shadow and thin (a 2 px strip of skin, a thin bracer, a small fist): stretched out it reads
   as a line. His repaint of Ren casting shows the far arm stretched out as thick as the near one, so while Solen's
   far arm reaches out (straight and near level: the cast, the throw's pointing arm, the combo's cross, the camp

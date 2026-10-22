@@ -266,4 +266,26 @@ describe("the owner's Solen", () => {
         assert.ok(n >= 0.85 * cells, `${body} ${pose} ${f}: far forearm ${n} px, his near bracer ${cells}`);
       }
   });
+  it("gives the far calf a little more, his own columns repeated, tapering to the ankle", () => {
+    // The owner on combo frame 2: "le falta más pantorrilla a la pierna izquierda ponla un poco más gruesa
+    // solo un poco" (tools/refs/solen-sandals-from-ref.py CALF_ROWS, CALF_COL).
+    const shin = sandals.FOUNDER_SANDAL_SHIN_F;
+    const line = (ch: string) => sandals.FOUNDER_SANDAL_KIND[shin.colors[ch]] === 'line';
+    const inside = shin.rows.map((row) => [...row].filter((ch) => ch !== '.' && !line(ch)).length);
+    // His calf rows (under the strap band, rows 3-7) each with his cell at column 4 drawn twice; the
+    // ankle (rows 8-9) as he drew it.
+    for (let y = 3; y <= 7; y++) assert.equal(shin.rows[y][3], shin.rows[y][4], `row ${y}: ${shin.rows[y]}`);
+    assert.deepEqual(inside, [0, 1, 2, 5, 5, 5, 4, 4, 4, 4]);
+    assert.deepEqual(shin.rows.slice(8), ['...dlklqc', '...arstqa']);
+    // In the game: the far shin a pixel wider than he drew it (6 across with his line), on male and bulky.
+    for (const body of ['male', 'bulky'] as BodyType[])
+      for (const [pose, f] of [['combo', 2], ['walk', 4], ['attack', 1]] as [SpritePose, number][]) {
+        const fr = render(look(body), pose, f);
+        const rows = new Map<number, number>();
+        for (let i = 0; i < GRID * GRID; i++) if (opaque(fr.rgba, i) && fr.part[i] === partIndex('shinF')) rows.set(Math.floor(i / GRID), (rows.get(Math.floor(i / GRID)) ?? 0) + 1);
+        const across = [...rows.values()].sort((a, b) => a - b);
+        assert.ok(across[Math.floor(across.length * 0.75)] >= 7, `${body} ${pose} ${f}: far shin ${across.join(',')}`);
+      }
+  });
+
 });

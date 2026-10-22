@@ -7,7 +7,8 @@ and skin between them, the far one 2 px shorter in the shin. This script lifts t
 second paint of that item, every pixel in his exact colour:
 
   the shins   on each leg the laced shin from the strap band under the knee to the ankle, the skin
-              between the laces his (it follows the character's skin). It turns with the shin.
+              between the laces his (it follows the character's skin). It turns with the shin. The far
+              one's calf is a pixel thicker, his own column repeated (CALF_ROWS, CALF_COL).
   the feet    each sandal with its straps over the toes and its brown sole, flat on the ground.
 
 His legs stand wider than ours (solen_ref.LEG_OUT): each piece stays where he drew it and hangs from our
@@ -35,6 +36,23 @@ DOC = (
 # The first row of each foot (the sandal widens over the instep there); above it is the shin.
 FOOT_FROM = {'N': 92, 'F': 88}
 
+# The owner on the far leg (2026-10-21, combo frame 2): "le falta más pantorrilla a la pierna izquierda
+# ponla un poco más gruesa solo un poco". He drew the far laced shin 3-4 px inside his line (the near one
+# 5). On the calf's rows (from under the strap band to above the ankle) his column CALF_COL is drawn twice:
+# what lies behind it (his back line, the laces wrapping it) moves 1 px back, so the calf is 1 px thicker,
+# his lacing runs on in each row's own colours, and it tapers to the ankle, which stays as he drew it.
+CALF_ROWS = range(81, 86)
+CALF_COL = 58
+
+
+def thicker_calf(mask, col, filled):
+    """The far shin with his column CALF_COL repeated on CALF_ROWS (everything behind it 1 px back)."""
+    for y in CALF_ROWS:
+        xs = np.nonzero(mask[y, :CALF_COL])[0]
+        for x in range(int(xs.min()) - 1, CALF_COL):
+            for arr in (mask, col, filled):
+                arr[y, x] = arr[y, x + 1]
+
 
 def main():
     out_ts = sys.argv[1] if len(sys.argv) > 1 else None
@@ -47,8 +65,9 @@ def main():
         for part, sel in (('shin', rows < FOOT_FROM[s]), ('foot', rows >= FOOT_FROM[s])):
             n = f'{part}_{s.lower()}'
             masks[n] = m & sel
-            cols[n] = cols['sandal_' + s.lower()]
-            filled[n] = filled['sandal_' + s.lower()]
+            cols[n] = cols['sandal_' + s.lower()].copy()
+            filled[n] = filled['sandal_' + s.lower()].copy()
+    thicker_calf(masks['shin_f'], cols['shin_f'], filled['shin_f'])
     J = R.JOINTS
     ankle = lambda s: (J['ankle' + s][0] + R.LEG_OUT[s][0], J['ankle' + s][1] + R.LEG_OUT[s][1])
     bases = {

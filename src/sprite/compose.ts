@@ -4,7 +4,8 @@ import { drawBody, faceCells, sculptClothes } from './body';
 import { fitsBody, getItem } from './catalog';
 import { hexToRgb } from './color';
 import { Depth, DEPTHS, DrawCtx, ItemDef, NO_OUTLINE_DEPTHS, resolveParts } from './ctx';
-import { drawThrowKunai } from './items/accessories';
+import { closePinholes } from './holes';
+import { clipStowed, drawThrowKunai } from './items/accessories';
 import { drawHeadband } from './items/headband';
 import { add, F_NO_OUTLINE, GRID, Layer, MaterialTable, norm, PAD, PartId, partIndex, PARTS, perp, RES, scale, sub, v, Vec } from './raster';
 import { drawRig, Lay, layRig, Rig, rigPoseFor, turnPoint, turnRig } from './rig';
@@ -19,6 +20,8 @@ export interface SpriteFrame {
   part: Uint8Array;
   /** One bit per pixel (byte i >> 3, bit i & 7): the top-most pixel is hair (the Ryusei's phase lights it up). */
   hair?: Uint8Array;
+  /** One bit per pixel, as `hair`: the top-most pixel is an effect drawn over the figure (depth 'top': cast runes, a palm's glow). */
+  fx?: Uint8Array;
   rig: Rig;
 }
 
@@ -26,6 +29,7 @@ export interface SpriteFrame {
 const HEAD_GROUP = new Set<Depth>(['hairBack', 'head.body', 'head.face', 'head.mask', 'hairFront', 'head.gear']);
 const HAIR_BACK = DEPTHS.indexOf('hairBack');
 const HAIR_FRONT = DEPTHS.indexOf('hairFront');
+const FX = DEPTHS.indexOf('top');
 
 // Slots are drawn in this order; within a depth, later items cover earlier ones.
 const SLOT_ORDER: SlotId[] = ['cape', 'hair', 'face', 'bottom', 'feet', 'top', 'skirt', 'armor', 'waist', 'hands', 'held'];
@@ -314,6 +318,7 @@ export function renderSprite(
       const L = layers.get(d);
       if (L) sculptClothes(g, L);
     }
+    clipStowed(g, layers);
     drawCastFx(g);
     drawCampFx(g);
     if (rig.farHandFront) farHandToFront(layers, g);
@@ -366,12 +371,33 @@ export function renderSprite(
     isLine[i] = topShade[i] === 0 ? 1 : 0;
   }
   thinDoubleOutlines(rgba, top, isLine);
+  // The 1-pixel holes turned pieces leave (sprite/holes.ts), each closed with its neighbours' line or
+  // colour. Idle is left exactly as drawn: it is the frame the owner's pictures were copied into.
+  if (pose !== 'idle') closePinholes(rgba, part, top, (i) => top[i] === FX, (i) => (topMat[i] < 0 ? 0x07060b : parseInt(mats.ramps[topMat[i]][0].slice(1), 16)));
   const hair = new Uint8Array(N >> 3);
-  for (let i = 0; i < N; i++) if (top[i] === HAIR_BACK || top[i] === HAIR_FRONT) hair[i >> 3] |= 1 << (i & 7);
+  const fx = new Uint8Array(N >> 3);
+  for (let i = 0; i < N; i++) {
+    if (top[i] === HAIR_BACK || top[i] === HAIR_FRONT) hair[i >> 3] |= 1 << (i & 7);
+    if (top[i] === FX) fx[i >> 3] |= 1 << (i & 7);
+  }
 
   if (!opts.skipEdits && !opts.heldOnly && look.pixelEdits?.length) applyEdits(look.pixelEdits, rig, rgba, part);
-  if (rig.lay) return { ...layFrame(rgba, part, hair, rig.lay), rig: layRig(rig) };
-  return { rgba, part, hair, rig };
+  if (rig.lay) return { ...layFrame(rgba, part, hair, rig.lay), fx: layBits(fx, rig.lay), rig: layRig(rig) };
+  return { rgba, part, hair, fx, rig };
+}
+
+/** A bit mask (one bit per pixel) laid down as layFrame lays the figure. */
+function layBits(bits: Uint8Array, lay: Lay): Uint8Array {
+  const out = new Uint8Array(bits.length);
+  for (let i = 0; i < GRID * GRID; i++) {
+    if (!(bits[i >> 3] & (1 << (i & 7)))) continue;
+    const X = ((i / GRID) | 0) + lay.dx;
+    const Y = (i % GRID) + lay.dy;
+    if (X < 0 || Y < 0 || X >= GRID || Y >= GRID) continue;
+    const j = Y * GRID + X;
+    out[j >> 3] |= 1 << (j & 7);
+  }
+  return out;
 }
 
 /** Lays a figure drawn upright on the ground: the transpose described by Lay (exact, no resampling). */

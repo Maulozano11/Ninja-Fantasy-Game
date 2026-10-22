@@ -68,7 +68,6 @@ describe('the headband is plain cloth', () => {
     const pos = (id: string) => EVERYONE.find((c) => c.id === id)!.appearance!.headband.position;
     assert.equal(pos('preset_storm'), 'forehead');
     assert.equal(pos('preset_sunburst'), 'forehead');
-    assert.equal(pos('preset_gentle'), 'neck');
     assert.equal(pos('companion_hana'), 'forehead');
     assert.equal(pos('companion_kenji'), 'arm');
     for (const e of ENEMIES) assert.equal(e.appearance!.headband.position, 'forehead', e.id);

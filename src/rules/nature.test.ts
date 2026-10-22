@@ -142,7 +142,6 @@ describe('the legends', () => {
       preset_storm: ['Lightning', '#a54ce0'], // was the violet Spectral Guardian
       preset_sunburst: ['Wind', '#f27c18'], // was the orange Cinder Nova
       preset_warlord: ['Fire', '#a54ce0'], // was the violet Spectral Guardian
-      preset_gentle: ['Water', '#36a0f0'],
       preset_night: ['Lightning', '#36a0f0'], // was the blue Rising Tide
     };
     assert.deepEqual(LEGENDARY_PRESETS.map((p) => p.character.id).sort(), Object.keys(want).sort());
@@ -282,7 +281,7 @@ describe('saved copies of the legends move to their new type (the owner, 2026-10
     assert.deepEqual(loadHero(), { ...ownSpirit, created: true });
     assert.equal(natureOf(loadHero()!), 'Spirit');
     // The legends whose burst did not change are not touched either.
-    for (const id of ['preset_founder', 'preset_ember', 'preset_reference_aiden', 'preset_gentle']) {
+    for (const id of ['preset_founder', 'preset_ember', 'preset_reference_aiden']) {
       const c = withChakra(legend(id), 'violet', undefined);
       assert.deepEqual(migrateCharacter(c), c, id);
     }

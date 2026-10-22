@@ -176,6 +176,8 @@ export interface Fx {
   spread?: boolean;
   /** A wave's rows of columns (the Devouring Tide); a tower's small whirlwinds (the Whirlwind Tower). */
   rows?: number;
+  /** The Dragon Tsunami's wave (Water's rank S): his curl, dragon and kanji ride its crest (vfx_tide_s). */
+  tideS?: boolean;
   minis?: number;
   /** Lightning running across a wet patch: its cells ("c,r"), from `from` outward. */
   cells?: string[];
@@ -990,7 +992,7 @@ export class Playback {
       const cone = ev.shape;
       const run = seq.wave.ms;
       // The water stays a moment at the end of its run (WAVE_HOLD), while the last ones are swept.
-      this.fx.push({ ...base, kind: 'wave', from: cone.origin, to: ev.at, area: cone, t0: at(gather), dur: run + WAVE_HOLD, rows: seq.wave.rows });
+      this.fx.push({ ...base, kind: 'wave', from: cone.origin, to: ev.at, area: cone, t0: at(gather), dur: run + WAVE_HOLD, rows: seq.wave.rows, ...(seq.wave.dragon ? { tideS: true } : {}) });
       // The ground it soaks darkens as the crest goes over each cell (its event plays later).
       const soaked = this.queue.find((e) => e.t === 'ground' && e.kind === 'wet' && e.on && e.by === ev.unit);
       if (soaked && soaked.t === 'ground') for (const k of soaked.cells) this.groundBorn.wet.set(k, at(gather + run * WAVE_CREST(dist(cone.origin, keyCenter(k)), cone.length)));

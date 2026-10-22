@@ -1028,7 +1028,7 @@ function jutsuHits(s: BattleState, u: Unit, spec: JutsuSpec, target: Unit | unde
   const ground = area ?? { kind: 'circle' as const, center: at, radius: 1 };
   if (spec.dmgType) hits.push(...groundEffects(s, ground, spec.env === 'clearFoliage' ? 'Wind' : type, ev, new Set(), spec.env === 'clearFoliage', u.id));
   // Water soaks the ground it passes over, wind blows steam away (the owner, 2026-10-21; ground.ts).
-  if (spec.elemental && spec.element === 'water' && spec.dmgType) soak(s, ground, u.id, ev);
+  if (spec.elemental && spec.element === 'water' && spec.dmgType) soak(s, ground, u.id, ev, spec.wetRounds);
   // Every wind attack does (his "puede ser eliminada con ataques elementales de aire"): over its area,
   // and from the caster's own cell for a cone or a line; a single-target one along its path, hit or miss.
   if (spec.elemental && spec.element === 'wind' && spec.dmgType) {

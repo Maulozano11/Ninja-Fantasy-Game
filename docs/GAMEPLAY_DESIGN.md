@@ -375,8 +375,8 @@ de tipo deidad angel y dios y el de vacio sombra y espiritu va ser demoniaco
 1. **The legends keep their new types** ("si"), each in the colour it always
    had: Kaien and Ren Lightning (violet, blue), Hiro Wind (orange), Raiga Fire
    (violet); of the companions, Hana Water (green) and Kenji Earth (violet).
-   Kaien, Raiga and Kenji lose the ghost-warrior burst. Solen, Akira, Aiden and
-   Shiori already matched.
+   Kaien, Raiga and Kenji lose the ghost-warrior burst. Solen, Akira and Aiden
+   already matched.
 2. **Saved copies are updated** ("actualiza"). A copy of a legend or companion
    (the hero, the roster, the party and the fallen of a mission under way, an
    import; matched by its id) that still has the burst it had before (Kaien,
@@ -1079,6 +1079,9 @@ folder (`WORLD_OUT`) until then. Approved so far: the river bridge.
   Still open there: two per gap or two in all, the 水 kanji, the gaps left.
   **His second round the same day** ("The gaps' jutsu, second round" below):
   the Devouring Tide is **rank A**, so **Water has no rank S again** (open).
+  **Answered 2026-10-22**: Water's rank S is the **Dragón Tsunami**, and the
+  Devouring Tide is renamed **Tsunami** ("The Tsunami and the Dragon Tsunami"
+  below).
 - **The elemental beasts as summons** (his rule, 2026-10-21: *"todos los
   elementales seran invocaciones que te ayudaran en el combate no ataques"*):
   how a summon works is to design (what it does on the field, how long it
@@ -1298,7 +1301,7 @@ franchise names.
 
 | jutsu (id) | nature, rank, slot | use | effect | enhanced |
 |---|---|---|---|---|
-| **Ola devoradora** / Devouring Tide (`water_devouring_tide`) | Water, **A**, Element (rank S and the S-rank slot until his second round: see below) | action, 5 chakra, **9 m cone** | STR save, half on a success: 5d8 bludgeoning to everyone in the cone, friends too; on a failure the wave **sweeps the target 3 m away from the caster** and **knocks it down**; it **puts out the flames** of everyone it reaches, saved or not, and **soaks the ground** it runs over | +3: 6d8, the cone reaches 11.25 m and opens wider |
+| **Ola devoradora** / Devouring Tide (`water_devouring_tide`; named **Tsunami** since 2026-10-22, below) | Water, **A**, Element (rank S and the S-rank slot until his second round: see below) | action, 5 chakra, **9 m cone** | STR save, half on a success: 5d8 bludgeoning to everyone in the cone, friends too; on a failure the wave **sweeps the target 3 m away from the caster** and **knocks it down**; it **puts out the flames** of everyone it reaches, saved or not, and **soaks the ground** it runs over | +3: 6d8, the cone reaches 11.25 m and opens wider |
 | **Torre del torbellino** / Whirlwind Tower (`wind_whirlwind_tower`) | Wind, **A**, Element | action, 5 chakra, a 3 m circle up to 9 m away | STR save, half on a success: 5d8 bludgeoning to everyone in the circle, friends too; on a failure the tornado **drags the target 1.5 m toward its middle** (never past it) and **knocks it down**; it cuts the grass and bushes | +3: 6d8, 4.5 m |
 | **Cortina de vendaval** / Gale Curtain (`wind_gale_curtain`) | Wind, **C**, Element | action, 2 chakra, a gale **2.25 m round** up to 6 m away | no save, no damage, silent: a **gale on the ground** (see below) that **fans the fire jutsu passing through it** | +2: 3.4 m round |
 | **Haz de trueno** / Thunder Beam (`lightning_thunder_beam`) | Lightning, **C**, Element | action, 2 chakra, **9 m line** | DEX save, half on a success: 2d8 lightning to everyone in the line, friends too; lightning in water runs through it | +2: 3d8, the line reaches 11.25 m and runs wider |
@@ -1402,7 +1405,9 @@ Each plays in its caster's chakra colour, like every elemental jutsu.
    (Not answered.)
 2. The Devouring Tide is a rank S without a giant 水 kanji (the S-rank art bar
    asks for one; there is no painted 水): approve it without, or will he paint
-   a Water signature sheet? (Not answered.)
+   a Water signature sheet? (Answered by the second round and 2026-10-22: the
+   Tide is rank A, now the Tsunami; he painted the 水 and a water dragon for
+   Water's rank S, the Dragon Tsunami.)
 3. The gaps still open: Earth rank A (the Wood Dragon is the clan's), Water
    rank D, a third Fire D/C for a new ninja. Another short list (free pieces:
    the rock sphere, the water crescents, the fire wall)? (Not answered.)
@@ -1462,7 +1467,8 @@ his approval of the in-game captures**.
   flames out stay. It costs **8 chakra (+4 enhanced)**, more than the other rank A
   (his answer: *"mas chakra como 8 minimo"*; the enhanced cost as every 8-chakra
   jutsu's).
-- Water has **no rank S jutsu, for now** (his answer: *"vacio por ahora"*). A new
+- Water has **no rank S jutsu, for now** (his answer: *"vacio por ahora"*;
+  **replaced on 2026-10-22**: Water's rank S is the Dragón Tsunami, below). A new
   ninja picks rank D and C, so the Tide opens at level 7 like every rank A; the
   nature filter offers it to a Water ninja's Element slots.
 - **A sheet saved with the Tide in its S-rank slot** (it was rank S before) gets it
@@ -1611,7 +1617,8 @@ steam), verbatim:
 
 So (built on `jutsu/gap-set-2`, the rules above say each one in full):
 
-1. **Water's rank S stays empty for now.**
+1. **Water's rank S stays empty for now.** (Replaced on 2026-10-22: it is the
+   Dragón Tsunami, below.)
 2. **The Tide costs 8 chakra (+4 enhanced)**, up from 5 (+3); the rest of its
    rank A numbers (9 m cone, 5d8, enhanced 6d8 and 11.25 m) as built.
 3. **Wet ground: the rest of the round and two more**, as built.
@@ -1633,6 +1640,62 @@ So (built on `jutsu/gap-set-2`, the rules above say each one in full):
     foes for that ninja. Seeing into the steam stays as it was. A cone or a line
     can still be sent out blind.
 11. **The saves' dice windows over the Tower**: kept.
+
+## The Tsunami and the Dragon Tsunami (the owner's decisions of 2026-10-22)
+
+He painted a kanji and a water dragon over our widest wave frame for an S-rank
+version of the Tide (`docs/reference/tide-s-owner-reference.jpg`: *"a la ola
+pasame el sprite donde se ven mas olas para agregarle un kanji y una bestia
+animada que sera el jutsu en version mejorada clase s"*). Seeing it animated in
+the game he answered (verbatim, 2026-10-22):
+
+> *"rango S ola si me gusta la animacion la ola normal se llama tsunami y la
+> rango s es dragon tsunami"*
+
+and then, on the numbers we proposed:
+
+> *"aprovado los numeros de la ola por ahora"*
+
+So:
+
+- **The rank-A Tide is the Tsunami**: *Técnica de Agua: Tsunami* / *Water
+  Technique: Tsunami* (D24's "Técnica de <Elemento>: <name>"; the hotbar's short
+  label *Tsunami*). Same id (`water_devouring_tide`), same rules (above), so
+  saves are untouched.
+- **Water's rank S is the Dragon Tsunami**: *Técnica de Agua: Dragón Tsunami* /
+  *Water Technique: Dragon Tsunami* (short label *Dragón Tsunami* / *Dragon
+  Tsunami*), id `water_tide_s`. This replaces his earlier *"vacio por ahora"*:
+  Water's S-rank slot is no longer empty. It is a jutsu of its own in the
+  S-rank slot (category Ultimate, like the Great Fire Annihilation and the
+  Kirin), learnt through the usual rules: the nature filter offers it to a Water
+  ninja's S-rank slot (first, before the genjutsu and taijutsu S-rank), and the
+  slot opens at level 10. A sheet that held the Tide in its S-rank slot still
+  gets the Tide moved to an Element slot (`ultimateToElement`), with its S-rank
+  slot left empty for the player to fill (now possibly with the Dragon Tsunami).
+- **Its numbers, approved by the owner for now (2026-10-22): «aprovado los
+  numeros de la ola por ahora»**:
+  - action, **12 chakra** (the Tsunami's 8 plus its enhancement's 4), **+4** to
+    enhance;
+  - an **11.25 m cone, 80 degrees wide** (the enhanced Tsunami's);
+  - **6d8 bludgeoning**, STR save for half; enhanced **8d8** (an S-rank's two more
+    dice) and the cone reaches farther (14 m) and opens wider (about 107
+    degrees);
+  - on a failed save the wave **sweeps the target 3 m away** and **knocks it
+    down** (a ninja; big creatures stand firm); it **puts out the flames** of
+    everyone it reaches;
+  - it **soaks the ground** it runs over, which stays wet **one round longer than
+    the Tsunami's**: the rest of the round and three more (`wetRounds` in
+    `src/battle/jutsu.ts`; soaked again by a shorter water jutsu, a cell keeps
+    the longer count).
+- **Its look** (his art, approved: *"si me gusta la animacion"*): the Tsunami's
+  wave with his curl, his water dragon (surges out of the curl, roars, dives at
+  the break) and his kanji 水 with its glow riding the crest
+  (`tools/refs/tide-s-from-ref.py` → `vfx_tide_s`), run a little slower (2.2 s
+  and the 0.9 s break).
+- **Practice**: every water ninja in the practice battles (`#combat`) can cast it
+  whatever its level, so it can be tried; missions are untouched. Hana keeps her
+  Yasaka no Magatama in her S-rank slot (his open question on the medic's
+  genjutsu, `docs/STATUS.md`); giving her the Dragon Tsunami instead is his call.
 
 ## Jutsu effects, round 1 (proposed 2026-10-21; the owner's answer the same day)
 

@@ -69,8 +69,9 @@ describe('a new ninja learns rank D and C jutsu, and its clan\'s ("d y c y los d
           for (const slot of ['slot1Utility', 'slot4Clan'] as JutsuSlot[]) assert.equal(slotLocked(slot, nature, clan, cls), false, `${nature} ${clan} ${cls} ${slot}`);
         }
     assert.equal(slotLocked('slot5Ultimate', 'Fire', 'Mirai', 'Bukijutsu Master'), true, 'Great Fire Annihilation, later');
-    // Water has no S-rank again (the Devouring Tide is rank A), nor Light: a class with no S-rank jutsu has nothing for it at all.
-    assert.equal(slotLocked('slot5Ultimate', 'Water', 'Mirai', 'Bukijutsu Master'), false, 'no Water S-rank and no kenjutsu S-rank');
+    // Water has its S-rank again: the Dragon Tsunami (the owner, 2026-10-22: "la rango s es dragon tsunami"), later.
+    assert.equal(slotLocked('slot5Ultimate', 'Water', 'Mirai', 'Bukijutsu Master'), true, 'Dragon Tsunami, later');
+    // Light has none: a class with no S-rank jutsu has nothing for it at all.
     assert.equal(slotLocked('slot5Ultimate', 'Light', 'Mirai', 'Bukijutsu Master'), false, 'no Light S-rank and no kenjutsu S-rank: nothing at all');
   });
 
@@ -163,12 +164,14 @@ describe('a new ninja learns rank D and C jutsu, and its clan\'s ("d y c y los d
         assert.equal(!!r.loadout.slot5Ultimate, fits, `${c.id} as ${nature}: its S-rank slot stays filled when something fits`);
       }
     assert.equal(fitToType(DEFAULT_CHARACTER, 'Lightning').loadout.slot5Ultimate, 'kirin_thunder');
-    // Solen (Bukijutsu) as Water: Water has no S-rank (the Devouring Tide is rank A), so the slot empties.
-    assert.equal(fitToType(DEFAULT_CHARACTER, 'Water').loadout.slot5Ultimate, '');
+    // Solen (Bukijutsu) as Water: Water's own S-rank, the Dragon Tsunami (the owner, 2026-10-22).
+    assert.equal(fitToType(DEFAULT_CHARACTER, 'Water').loadout.slot5Ultimate, 'water_tide_s');
     // As Light: no Light S-rank, and the genjutsu and taijutsu ones are other classes'.
     assert.equal(fitToType(DEFAULT_CHARACTER, 'Light').loadout.slot5Ultimate, '');
-    const shiori = LEGENDARY_PRESETS.find((p) => p.character.id === 'preset_gentle')!.character; // Taijutsu Master
-    assert.equal(fitToType(shiori, 'Fire').loadout.slot5Ultimate, 'night_guy_dragon', 'no element: it stays');
+    // Hiro (Taijutsu Master) with a taijutsu S-rank (once Shiori's, discarded by the owner on 2026-10-22).
+    const hiro = LEGENDARY_PRESETS.find((p) => p.character.id === 'preset_sunburst')!.character;
+    const taijutsuS = { ...hiro, selectedJutsus: { ...hiro.selectedJutsus, slot5Ultimate: 'night_guy_dragon' } };
+    assert.equal(fitToType(taijutsuS, 'Fire').loadout.slot5Ultimate, 'night_guy_dragon', 'no element: it stays');
   });
 
   it('changing the type in the creator swaps to jutsu a new ninja may learn; an S-rank of another element leaves the slot empty', () => {

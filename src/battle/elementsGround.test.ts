@@ -126,7 +126,7 @@ function passRounds(s: BattleState, n: number): BattleState {
 }
 
 describe('the Devouring Tide is rank A now ("ola devoradora es rango a")', () => {
-  it('an Element slot\'s jutsu of Water, 8 chakra (+4: "mas chakra como 8 minimo"), a 9 m cone, 5d8: Water has no S-rank ("vacio por ahora")', () => {
+  it('an Element slot\'s jutsu of Water, 8 chakra (+4: "mas chakra como 8 minimo"), a 9 m cone, 5d8: Water\'s S-rank is another jutsu, the Dragon Tsunami', () => {
     const j = JUTSUS_DATA.find((x) => x.id === 'water_devouring_tide')!;
     assert.deepEqual([j.rank, j.category, j.nature, j.chakraCost, j.enhancementChakraCost, j.damageDice], ['A', 'Elemental', 'Water', 8, 4, '5d8']);
     assert.deepEqual([JUTSU.water_devouring_tide.length, JUTSU.water_devouring_tide.angle], [9, 60]);
@@ -134,7 +134,9 @@ describe('the Devouring Tide is rank A now ("ola devoradora es rango a")', () =>
     for (const slot of ['slot2Elemental', 'slot3Elemental'] as const) assert.ok(jutsuChoices(slot, 'Water', 'Mirai').some((x) => x.id === j.id), slot);
     assert.ok(!jutsuChoices('slot5Ultimate', 'Water', 'Mirai').some((x) => x.id === j.id));
     assert.ok(!jutsuChoices('slot2Elemental', 'Fire', 'Mirai').some((x) => x.id === j.id), 'only Water');
-    assert.ok(!JUTSUS_DATA.some((x) => x.nature === 'Water' && x.rank === 'S'), 'Water has no S-rank, for now');
+    // Water's S-rank is the Dragon Tsunami since 2026-10-22 (the owner: "la rango s es dragon
+    // tsunami"; before, "vacio por ahora"): another jutsu, the Tsunami stays rank A.
+    assert.deepEqual(JUTSUS_DATA.filter((x) => x.nature === 'Water' && x.rank === 'S').map((x) => x.id), ['water_tide_s'], 'Water\'s one S-rank');
     // A new ninja picks D and C (and its clan's): the Tide opens at level 7, like every rank A.
     assert.ok(!creatorChoices('slot2Elemental', 'Water', 'Mirai', 'Ninjutsu Specialist').some((x) => x.id === j.id), 'not for a new ninja');
     assert.ok(creatorChoices('slot2Elemental', 'Water', 'Mirai', 'Ninjutsu Specialist', { ...NO_GROWTH, level: 7 }).some((x) => x.id === j.id), 'at level 7');

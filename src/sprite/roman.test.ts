@@ -31,6 +31,15 @@ const look = (body: BodyType, drapes = 'on', parts: Partial<Record<'armor' | 'sk
   return l;
 };
 
+/** The whole Roman set rendered, once for the sweeps over every pose and frame that share it. */
+const DRESSED = new Map<string, ReturnType<typeof renderSprite>>();
+const dressed = (body: BodyType, pose: SpritePose, f: number) => {
+  const key = `${body}|${pose}|${f}`;
+  let fr = DRESSED.get(key);
+  if (!fr) DRESSED.set(key, (fr = renderSprite(look(body), pose, f)));
+  return fr;
+};
+
 const POSES = [...SPRITE_POSES, ...MOVE_POSES, 'sit'] as SpritePose[];
 const ALL_POSES = [...new Set([...SPRITE_POSES, ...MOVE_POSES, ...CAMP_POSES])] as SpritePose[];
 const hex = (rgba: Uint8ClampedArray, i: number) => '#' + [0, 1, 2].map((k) => rgba[i * 4 + k].toString(16).padStart(2, '0')).join('');
@@ -170,6 +179,99 @@ describe('the Roman set', () => {
         assert.ok(low <= lowest, `${body} ${pose}: far sandal down to row ${low}, below the near one at rest (${lowest})`);
       }
     }
+  });
+
+  it('keeps each sandal on its shin, and the figure in one piece, in every pose and frame of every body', () => {
+    // The owner, on the combo's kick: "el pie en combo con el que patea esta separado y cortado". Every piece
+    // of a sandal in sight touches its own shin, or, for the far one, the near leg or the skirt in front of
+    // it (the far sandal peeks out on both sides of the near shin as he walks). Only the cast's chakra at the
+    // far hand stands apart from the body.
+    const near8 = (i: number) => [-GRID - 1, -GRID, -GRID + 1, -1, 1, GRID - 1, GRID, GRID + 1].map((d) => i + d);
+    const pieces = (on: (i: number) => boolean): number[][] => {
+      const seen = new Uint8Array(GRID * GRID);
+      const out: number[][] = [];
+      for (let i = 0; i < GRID * GRID; i++) {
+        if (seen[i] || !on(i)) continue;
+        const px: number[] = [];
+        const stack = [i];
+        seen[i] = 1;
+        while (stack.length) {
+          const p = stack.pop()!;
+          px.push(p);
+          for (const q of near8(p)) if (q >= 0 && q < GRID * GRID && Math.abs((q % GRID) - (p % GRID)) <= 1 && !seen[q] && on(q)) (seen[q] = 1), stack.push(q);
+        }
+        out.push(px);
+      }
+      return out;
+    };
+    const handF = partIndex('handF');
+    for (const body of ['male', 'bulky', 'slender'] as BodyType[]) {
+      for (const pose of ALL_POSES) {
+        for (let f = 0; f < frameCount(rigPoseFor(pose)); f++) {
+          const fr = dressed(body, pose, f);
+          for (const s of ['N', 'F'] as const) {
+            const foot = partIndex(`foot${s}`);
+            const ok = new Set([partIndex(`shin${s}`), ...(s === 'F' ? (['thighN', 'shinN', 'footN', 'pelvis'] as const).map(partIndex) : [])]);
+            for (const px of pieces((i) => opaque(fr.rgba, i) && fr.part[i] === foot)) {
+              const joined = px.some((p) => near8(p).some((q) => opaque(fr.rgba, q) && ok.has(fr.part[q])));
+              assert.ok(joined, `${body} ${pose} ${f}: a piece of the ${s} sandal (${px.length} px at ${px[0] % GRID},${Math.floor(px[0] / GRID)}) apart from its shin`);
+            }
+          }
+          const parts = pieces((i) => opaque(fr.rgba, i)).sort((a, b) => b.length - a.length);
+          for (const px of parts.slice(1)) {
+            const effect = pose === 'cast' && px.every((p) => fr.part[p] === handF);
+            assert.ok(effect, `${body} ${pose} ${f}: ${px.length} px apart from the figure at ${px[0] % GRID},${Math.floor(px[0] / GRID)}`);
+          }
+        }
+      }
+    }
+  });
+
+  it('turns the sandal with its shin when the leg swings the foot off the ground', () => {
+    // He drew the sandal under his laced shin as one: wherever the shin is turned well away from rest (past
+    // 45 degrees) with the foot lifted, the sandal stays where it is on the shin at rest (measured along and
+    // across the shin from our ankle), not flat under the ankle beside a shin kicked out.
+    const place = (fr: ReturnType<typeof renderSprite>, s: 'N' | 'F') => {
+      const r = fr.rig;
+      const [knee, ankle] = s === 'N' ? [r.kneeN, r.ankleN] : [r.kneeF, r.ankleF];
+      const len = Math.hypot(ankle.x - knee.x, ankle.y - knee.y);
+      const [ux, uy] = [(ankle.x - knee.x) / len, (ankle.y - knee.y) / len];
+      const foot = partIndex(`foot${s}`);
+      let along = 0;
+      let across = 0;
+      let n = 0;
+      for (let i = 0; i < GRID * GRID; i++) {
+        if (!opaque(fr.rgba, i) || fr.part[i] !== foot) continue;
+        const dx = (i % GRID) + 0.5 - ankle.x * RES;
+        const dy = Math.floor(i / GRID) + 0.5 - ankle.y * RES;
+        along += dx * ux + dy * uy;
+        across += dx * uy - dy * ux;
+        n++;
+      }
+      return { along: along / n, across: across / n, n, deg: (Math.atan2(uy, ux) * 180) / Math.PI, lift: ankle.y };
+    };
+    let lifted = 0;
+    for (const body of ['male', 'bulky', 'slender'] as BodyType[]) {
+      const rest = renderSprite(look(body), 'idle', 0);
+      for (const pose of ALL_POSES) {
+        if (pose === 'downed') continue;
+        for (let f = 0; f < frameCount(rigPoseFor(pose)); f++) {
+          const fr = dressed(body, pose, f);
+          for (const s of ['N', 'F'] as const) {
+            const r0 = place(rest, s);
+            const now = place(fr, s);
+            const turn = Math.abs(((now.deg - r0.deg + 540) % 360) - 180);
+            if (turn <= 45 || (r0.lift - now.lift) * RES <= 3) continue;
+            // a sandal mostly hidden (behind the skirt or the other leg) has no place to measure
+            if (now.n < r0.n * 0.6) continue;
+            lifted++;
+            const off = Math.hypot(now.along - r0.along, now.across - r0.across);
+            assert.ok(off <= 3, `${body} ${pose} ${f}: the ${s} sandal ${off.toFixed(1)} px from its place on the shin (shin turned ${turn.toFixed(0)} degrees)`);
+          }
+        }
+      }
+    }
+    assert.ok(lifted >= 6, `${lifted} lifted sandals measured`);
   });
 
   it('puts both bracers on the forearms in every pose and body', () => {
@@ -316,7 +418,7 @@ describe('the Roman set', () => {
     for (const body of ['male', 'bulky', 'slender'] as BodyType[]) {
       for (const pose of ALL_POSES) {
         for (let f = 0; f < frameCount(rigPoseFor(pose)); f++) {
-          const fr = renderSprite(look(body), pose, f);
+          const fr = dressed(body, pose, f);
           // knocked out the frame is laid down: only the pinholes and nicks, which lying does not change
           const drape = pose === 'downed' ? new Layer() : drapeLayer(fr.rig, pal);
           const holes = skirtHoles((i) => opaque(fr.rgba, i), drape, (i) => fr.part[i] === pelvis);

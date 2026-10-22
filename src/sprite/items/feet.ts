@@ -7,7 +7,9 @@ import { retintHex, retintSkinLifted } from '../color';
 import { DrawCtx, FootArt, footDraw, ItemDef, legDepth, legJoints, legPoint, Side } from '../ctx';
 import { segAngle, stampPiece, type PaintedPiece } from '../painted';
 import { add, along, ellipse, F_NO_EDGE, F_NO_OUTLINE, F_NO_TEXTURE, GRID, norm, partIndex, type PartId, Pen, RES, seam, sub, v, type Vec } from '../raster';
+import { drawRig, type Rig } from '../rig';
 import { rotateTemplate } from '../rotsprite';
+import type { BodyType } from '../types';
 import { across, crease, fpx, limb, limbR, stitch, stud, tube, wrapStripes } from './clothes';
 import { ROMAN_KIT_KIND, ROMAN_KIT_KNEES, ROMAN_KIT_REACH, ROMAN_KIT_REST, SANDAL_FOOT_F, SANDAL_FOOT_N, SANDAL_LEATHER, SANDAL_SHIN_F, SANDAL_SHIN_N } from './bracersSandalsArt';
 import { takesMaleSkin } from '../maleSkin';
@@ -460,6 +462,61 @@ function reach(s: Side, ankle: Vec, turn: number, foot: PaintedPiece): Vec {
   return v(r.x * k, r.y * k);
 }
 
+const IDLE_RIGS = new Map<BodyType, Rig>();
+const idleRig = (body: BodyType): Rig => {
+  let r = IDLE_RIGS.get(body);
+  if (!r) IDLE_RIGS.set(body, (r = drawRig(body, 'idle', 0)));
+  return r;
+};
+
+/** An angle wrapped into -180..180 degrees. */
+const wrap180 = (a: number) => ((a + 540) % 360) - 180;
+
+/** A shin turned this far from rest (degrees) with its ankle lifted this far (fine pixels): the foot is off the ground. */
+const FOOT_TURN = 45;
+const FOOT_LIFT = 3;
+
+/**
+ * Whether a sandal turns with its shin: not while the foot can stand on the ground (it stays flat under the
+ * ankle, like our feet), but once the leg swings the foot well off it (a knee raised, a leg kicked back or
+ * out: the shin past FOOT_TURN from rest, the ankle lifted past FOOT_LIFT). He drew the sandal under his
+ * laced shin as one, so held flat under a shin turned that far it hung apart from it (the owner, on the
+ * Roman combo's kick: "el pie en combo con el que patea esta separado y cortado"). The same rule as his
+ * Solen's sandal (founderFootTurn on the integration branch).
+ */
+function footTurns(g: DrawCtx, s: Side): boolean {
+  const r = g.rig;
+  const idle = idleRig(r.body);
+  const [knee, ankle] = s === 'N' ? [r.kneeN, r.ankleN] : [r.kneeF, r.ankleF];
+  const [knee0, ankle0] = s === 'N' ? [idle.kneeN, idle.ankleN] : [idle.kneeF, idle.ankleF];
+  return Math.abs(wrap180(segAngle(knee, ankle) - segAngle(knee0, ankle0))) > FOOT_TURN && (ankle0.y - ankle.y) * RES > FOOT_LIFT;
+}
+
+/** How near the ankle (fine pixels) his laced shin and his sandal meet. */
+const ANKLE_R = 5;
+
+/**
+ * His line round the ankle of a turned sandal. He drew his laced shin and his sandal as one: the shin's
+ * foot end and the sandal's top are open, each covering the other. Turned together they still cover each
+ * other, but RotSprite rounds each piece on its own, so a corner of one can come out a pixel past the
+ * other bare; there it takes his line, as the rest of the leg is closed.
+ */
+function closeAnkle(g: DrawCtx, s: Side, at: Vec, line: number, lines: Set<number>): void {
+  const L = g.L(legDepth(s, 'feet'));
+  const ids = new Set([partIndex(`shin${s}`), partIndex(`foot${s}`)]);
+  const ax = Math.floor(at.x * RES);
+  const ay = Math.floor(at.y * RES);
+  const open: number[] = [];
+  for (let y = ay - ANKLE_R; y <= ay + ANKLE_R; y++)
+    for (let x = ax - ANKLE_R; x <= ax + ANKLE_R; x++) {
+      if (x < 1 || y < 1 || x >= GRID - 1 || y >= GRID - 1) continue;
+      const i = y * GRID + x;
+      if (L.mat[i] >= 0 && ids.has(L.part[i]) && !lines.has(L.mat[i]) && [i - 1, i + 1, i - GRID, i + GRID].some((j) => L.mat[j] < 0)) open.push(i);
+    }
+  // The open corner itself takes his line (a line put outside it would stick out of the leg).
+  for (const i of open) L.mat[i] = line;
+}
+
 export const FEET_ITEMS: ItemDef[] = [
   {
     id: 'feet_leather',
@@ -684,7 +741,13 @@ export const FEET_ITEMS: ItemDef[] = [
           legToLacedShin(g, s, shin, ankle, shinDeg);
         }
         stampPiece(g, L, shin, at, shinDeg, `shin${s}`, tint);
-        stampPiece(g, L, foot, at, foot.angle, `foot${s}`, tint);
+        // Lifted well off the ground, his sandal turns with his laced shin about the ankle, as he drew them.
+        const turns = footTurns(g, s);
+        stampPiece(g, L, foot, at, foot.angle + (turns ? wrap180(shinDeg - shin.angle) : 0), `foot${s}`, tint);
+        if (turns) {
+          const lineHex = [...Object.values(shin.colors), ...Object.values(foot.colors)].filter((hex) => ROMAN_KIT_KIND[hex] === 'line');
+          if (lineHex.length) closeAnkle(g, s, at, g.m(lineHex[0], 'flat'), new Set(lineHex.map((hex) => g.m(hex, 'flat'))));
+        }
       }
     },
   },

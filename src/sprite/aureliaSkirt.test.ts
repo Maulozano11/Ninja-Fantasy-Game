@@ -8,7 +8,9 @@ import { describe, it } from 'node:test';
 import { LEGENDARY_PRESETS } from '../data/shinobiData';
 import { renderSprite, spriteLayers } from './compose';
 import { type Depth, legDepth } from './ctx';
+import { DAWN_SHIN_F, DAWN_SHIN_N, DAWN_THIGH_F, DAWN_THIGH_N } from './items/aureliaBootsArt';
 import { DAWN_FAR, DAWN_FRONT, DAWN_LINING, DAWN_NEAR } from './items/aureliaLowerArt';
+import { segAngle } from './painted';
 import { GRID, partIndex, RES } from './raster';
 import { frameCount } from './rig';
 import { CAMP_POSES, MOVE_POSES, SPRITE_POSES, type SpriteAppearance, type SpritePose } from './types';
@@ -167,6 +169,106 @@ describe("Aurelia's knees", () => {
           const across = (fill(i - GRID) && fill(i + GRID)) || (fill(i - 1) && fill(i + 1));
           assert.ok(!across, `${where}: his line across the knee at ${i % GRID},${(i / GRID) | 0}`);
         }
+      }
+    }
+  });
+
+  // The owner, 2026-10-22: "corrige la rodilla en correr 2 se ve rara". Folded (the shin turned 90 degrees or
+  // more past his drawing, under the thigh), the boot's knee stood out as a square block with a step and a
+  // hook. Round a folded knee the boot's outline is a knee's: no drop of two pixels or more between two
+  // longer flats (a stair step), no notch a pixel deep and up to three wide, and no bump a pixel high and one
+  // or two wide on a straight edge.
+  it('are round when folded: no stair step bigger than a pixel, no notch and no bump on the outline round the knee, in every pose and frame', () => {
+    const R = 5;
+    let folded = 0;
+    for (const [pose, fr] of frames()) {
+      if (pose === 'idle') continue;
+      const { layers, rig } = spriteLayers(aurelia, pose, fr);
+      for (const s of ['N', 'F'] as const) {
+        const [hip, knee, ankle] = s === 'N' ? [rig.hipN, rig.kneeN, rig.ankleN] : [rig.hipF, rig.kneeF, rig.ankleF];
+        const [thigh, shin] = s === 'N' ? [DAWN_THIGH_N, DAWN_SHIN_N] : [DAWN_THIGH_F, DAWN_SHIN_F];
+        const bend = segAngle(knee, ankle) - segAngle(hip, knee) - (shin.angle - thigh.angle);
+        if (Math.abs(((((bend + 180) % 360) + 360) % 360) - 180) < 90) continue;
+        folded++;
+        const L = layers.get(legDepth(s, 'feet'))!;
+        const kx = Math.floor(knee.x * RES);
+        const ky = Math.floor(knee.y * RES);
+        const where = `${pose} ${fr} ${s}`;
+        // the boot as (u, w): swapped, rows read as columns, so one pass looks at both ways an edge runs
+        for (const swap of [false, true]) {
+          const on = (u: number, w: number) => (Math.abs(u - kx) <= R + 2 && Math.abs(w - ky) <= R + 2 ? L.mat[swap ? u * GRID + w : w * GRID + u] >= 0 : false);
+          const legParts = new Set([partIndex(`thigh${s}`), partIndex(`shin${s}`)]);
+          const leg = (u: number, w: number) => on(u, w) && legParts.has(L.part[swap ? u * GRID + w : w * GRID + u]);
+          const inside = (u: number, w: number) => Math.abs(u - (swap ? ky : kx)) <= R && Math.abs(w - (swap ? kx : ky)) <= R;
+          const [cu, cw] = swap ? [ky, kx] : [kx, ky];
+          // a riser: the edge between columns u-1 and u; a flat: the edge between rows w-1 and w
+          const riser = (u: number, w: number) => inside(u - 1, w) && inside(u, w) && on(u - 1, w) !== on(u, w);
+          const flat = (u: number, w: number) => inside(u, w - 1) && inside(u, w) && on(u, w - 1) !== on(u, w);
+          const run = (u: number, w: number, du: number) => {
+            let n = 0;
+            while (flat(u + n * du, w)) n++;
+            return n;
+          };
+          for (let u = cu - R + 1; u <= cu + R; u++)
+            for (let a = cw - R; a <= cw + R; a++) {
+              if (!riser(u, a) || riser(u, a - 1)) continue;
+              let b = a;
+              while (riser(u, b + 1)) b++;
+              const r = b - a + 1;
+              if (r < 2) continue;
+              const [tl, tr, bl, br] = [run(u - 1, a, -1), run(u, a, 1), run(u - 1, b + 1, -1), run(u, b + 1, 1)];
+              assert.ok(!((tl > r && br > r && !tr && !bl) || (tr > r && bl > r && !tl && !br)), `${where}: a stair step of ${r} pixels round the knee`);
+            }
+          // a notch: a gap one pixel deep and up to three wide cut into the edge (the hook beside it)
+          for (let u = cu - R; u <= cu + R; u++)
+            for (let w = cw - R; w <= cw + R; w++)
+              for (const out of [1, -1]) {
+                if (on(u, w) || !on(u - 1, w)) continue;
+                let n = 1;
+                while (n <= 3 && !on(u + n, w)) n++;
+                // (between the boot's own pieces: by a folded knee the shoe can come up beside the shin)
+                if (n > 3 || !on(u + n, w) || !leg(u - 1, w) || !leg(u + n, w)) continue;
+                let closed = true;
+                for (let k = -1; k <= n; k++) closed &&= on(u + k, w - out);
+                assert.ok(!closed, `${where}: a notch ${n} wide in the knee's edge at ${swap ? `${w},${u}` : `${u},${w}`}`);
+              }
+          // a bump: one or two pixels out past a straight edge, the edge running on two pixels each side
+          for (let u = cu - R; u <= cu + R; u++)
+            for (let w = cw - R; w <= cw + R; w++)
+              for (const out of [1, -1]) {
+                if (!on(u, w) || on(u, w + out) || on(u - 1, w)) continue;
+                const n = on(u + 1, w) ? 2 : 1;
+                if (on(u + n, w) || on(u + n + 1, w) || on(u - 2, w) || on(u + n - 1, w + out)) continue;
+                let straight = true;
+                for (let k = -2; k <= n + 1; k++) straight &&= on(u + k, w - out);
+                assert.ok(!straight, `${where}: a bump on the knee's edge at ${swap ? `${w},${u}` : `${u},${w}`}`);
+              }
+        }
+      }
+    }
+    assert.ok(folded >= 10, `only ${folded} folded knees`);
+  });
+});
+
+describe("Aurelia's side panels", () => {
+  it('leave no strand of his line hanging off a panel once she moves (as under the far knee in run frame 2)', () => {
+    const panels = new Set([partIndex('thighF'), partIndex('thighN')]);
+    for (const [pose, fr] of frames()) {
+      if (pose === 'idle') continue;
+      const { layers } = spriteLayers(aurelia, pose, fr);
+      const Ls = [...layers.values()];
+      const drawn = (i: number) => Ls.some((L) => L.mat[i] >= 0);
+      for (const d of SKIRT_DEPTHS) {
+        const L = layers.get(d);
+        if (!L) continue;
+        for (let y = 1; y < GRID - 1; y++)
+          for (let x = 1; x < GRID - 1; x++) {
+            const i = y * GRID + x;
+            if (L.mat[i] < 0 || !panels.has(L.part[i]) || Ls.some((M) => M !== L && M.mat[i] >= 0)) continue;
+            // the end of a strand a pixel wide: one pixel of hers next to it, even diagonally
+            const ns = [-GRID - 1, -GRID, -GRID + 1, -1, 1, GRID - 1, GRID, GRID + 1].filter((d) => drawn(i + d));
+            assert.ok(ns.length > 1, `${pose} ${fr}: a pixel of a panel hanging on its own at ${x},${y}`);
+          }
       }
     }
   });

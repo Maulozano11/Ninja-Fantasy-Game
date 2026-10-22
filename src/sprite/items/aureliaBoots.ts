@@ -161,10 +161,11 @@ function sealKnee(g: DrawCtx, s: Side, knee: Vec): void {
   const each = (f: (i: number) => void) => {
     for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) f(y * GRID + x);
   };
-  // a pixel standing out on its own (twice: a spur two pixels long)
-  for (let pass = 0; pass < 2; pass++) {
+  // a pixel standing out on its own (again until none is left: a spur or a hook several pixels long)
+  for (let pass = 0; pass < 8; pass++) {
     const off: number[] = [];
     each((i) => on(i) && around(i).filter(on).length <= 1 && off.push(i));
+    if (!off.length) break;
     for (const i of off) L.mat[i] = -1;
   }
   // a notch or a step in the boot's edge (the two pieces' ends side by side): the boot closed over it
@@ -202,6 +203,134 @@ function sealKnee(g: DrawCtx, s: Side, knee: Vec): void {
       L.shade[i] = L.shade[j];
     }
     for (const i of edge) L.mat[i] = line;
+  }
+}
+
+/**
+ * The end of a piece at the knee, turned and stamped with its pivot at `at`: the middle of the boot there
+ * (fine pixels; the widest of `rows`, his pixels across the leg near the knee, set `ly` rows from the pivot
+ * along the piece) and its radius (half that row's width, out to the outer pixels' edges).
+ */
+function kneeEnd(piece: PaintedPiece, rows: number[], ly: number, at: Vec, deg: number): { c: Vec; r: number } {
+  const spans = rows
+    .filter((y) => y >= 0 && y < piece.rows.length)
+    .map((y) => [...piece.rows[y]].map((ch, x) => (ch === '.' ? -1 : x)).filter((x) => x >= 0))
+    .filter((cells) => cells.length)
+    .map((cells) => [cells[0], cells[cells.length - 1]]);
+  const [a, b] = spans.reduce((w, sp) => (sp[1] - sp[0] > w[1] - w[0] ? sp : w));
+  const lx = (a + b) / 2 - piece.pivot[0];
+  const r = (Math.round(deg - piece.angle) * Math.PI) / 180;
+  const px = Math.floor(at.x * RES) + 0.5;
+  const py = Math.floor(at.y * RES) + 0.5;
+  return { c: v(px + lx * Math.cos(r) - ly * Math.sin(r), py + lx * Math.sin(r) + ly * Math.cos(r)), r: (b - a + 1) / 2 };
+}
+
+/** How far a knee bends (degrees past his drawing) before roundKnee counts it folded: the shin under the thigh. */
+const FOLD = 90;
+
+/**
+ * Rounds a bent knee (the owner, 2026-10-22: "corrige la rodilla en correr 2 se ve rara"). The thigh's
+ * piece ends square at the knee, his boot running on into the shin there, and it turns about the knee,
+ * which he drew by the boot's front, not its middle: bent, its back corners swept round past the knee
+ * (stampBent). Folded far (the far knee in run frame 2 bends 140 degrees) they stood out past the knee as a
+ * square block, a step at its top and a pixel hanging from its bottom like a hook. A knee is the two tubes
+ * of the boot ending in round caps: past the end of both the thigh and the shin, only the cap of one of
+ * them (a disc on the middle of its end, as wide as the boot there) is boot, and what lies beyond goes.
+ * sealKnee then draws his line round what is left. Only a folded knee (FOLD) is rounded: bent less, the
+ * sweep gives the knee the point a knee has, and at rest the caller leaves the knee be.
+ */
+function roundKnee(g: DrawCtx, s: Side, hip: Vec, knee: Vec, ankle: Vec, thigh: PaintedPiece, shin: PaintedPiece, thighA: number, shinA: number): void {
+  if (Math.abs(kneeBend(thighA, shinA, thigh, shin)) < FOLD) return;
+  const L = g.L(legDepth(s, 'feet'));
+  const parts = new Set([partIndex(`thigh${s}`), partIndex(`shin${s}`)]);
+  const ty = thigh.pivot[1];
+  const t = kneeEnd(thigh, [ty - 3, ty - 2, ty - 1], 0, knee, thighA);
+  // the shin's piece reaches the knee this many rows above its pivot (the ankle)
+  const sy = Math.round(shin.pivot[1] - Math.hypot(knee.x - ankle.x, knee.y - ankle.y) * RES);
+  const sh = kneeEnd(shin, [sy, sy + 1, sy + 2], sy - shin.pivot[1], ankle, shinA);
+  const ut = norm(sub(knee, hip));
+  const us = norm(sub(knee, ankle));
+  const past = (x: number, y: number) =>
+    (x + 0.5 - t.c.x) * ut.x + (y + 0.5 - t.c.y) * ut.y > 0 && (x + 0.5 - sh.c.x) * us.x + (y + 0.5 - sh.c.y) * us.y > 0;
+  const inCap = (x: number, y: number) => Math.hypot(x + 0.5 - t.c.x, y + 0.5 - t.c.y) <= t.r || Math.hypot(x + 0.5 - sh.c.x, y + 0.5 - sh.c.y) <= sh.r;
+  const reach = Math.ceil(Math.max(t.r, sh.r)) + KNEE_REACH;
+  const kx = Math.floor(knee.x * RES);
+  const ky = Math.floor(knee.y * RES);
+  const x0 = Math.max(1, kx - reach);
+  const x1 = Math.min(GRID - 2, kx + reach);
+  const y0 = Math.max(1, ky - reach);
+  const y1 = Math.min(GRID - 2, ky + reach);
+  const on = (i: number) => L.mat[i] >= 0;
+  const clear = (i: number) => {
+    L.mat[i] = -1;
+    L.flags[i] |= F_NO_EDGE;
+  };
+  for (let y = y0; y <= y1; y++)
+    for (let x = x0; x <= x1; x++) {
+      const i = y * GRID + x;
+      if (on(i) && parts.has(L.part[i]) && past(x, y) && !inCap(x, y)) clear(i);
+    }
+  // and the thigh's back corner stands a pixel out past the shin's front folded under it: a bump one pixel
+  // high and one or two wide on the boot's edge, the edge on both sides of it a pixel in. It goes, the edge
+  // running on past it. The caps' round ends are left be.
+  for (const [along, outward] of [[1, GRID], [1, -GRID], [GRID, 1], [GRID, -1]]) {
+    const off: number[] = [];
+    for (let y = y0 + 2; y <= y1 - 2; y++)
+      for (let x = x0 + 2; x <= x1 - 2; x++) {
+        const i = y * GRID + x;
+        if (!on(i) || on(i + outward) || on(i - along)) continue;
+        const run = on(i + along) ? 2 : 1;
+        const end = i + run * along;
+        if (on(end) || on(end - along + outward)) continue;
+        let base = true;
+        for (let k = -1; k <= run && base; k++) base = on(i + k * along - outward);
+        const bump = Array.from({ length: run }, (_, k) => i + k * along);
+        if (base && bump.every((j) => parts.has(L.part[j]) && !past(j % GRID, (j / GRID) | 0))) off.push(...bump);
+      }
+    off.forEach(clear);
+  }
+  // A notch a pixel deep and up to three wide between two stubs of the boot (the thigh's piece and the
+  // shin's ending side by side under the knee) is filled: the edge runs on under it. And where the thigh's
+  // back meets the shin's front, the edge drops two pixels at once between two longer flats (a stair step):
+  // the pixel in its inner corner is filled, two steps of one.
+  const line = g.m(DAWN_THIGH_N.colors.k, 'flat');
+  for (const swap of [false, true]) {
+    const idx = (u: number, w: number) => (swap ? u * GRID + w : w * GRID + u);
+    const on2 = (u: number, w: number) => on(idx(u, w));
+    const [u0, u1, w0, w1] = swap ? [y0, y1, x0, x1] : [x0, x1, y0, y1];
+    const riser = (u: number, w: number) => on2(u - 1, w) !== on2(u, w);
+    const flat = (u: number, w: number) => on2(u, w - 1) !== on2(u, w);
+    const run = (u: number, w: number, du: number) => {
+      let n = 0;
+      while (u + n * du >= u0 && u + n * du <= u1 && flat(u + n * du, w)) n++;
+      return n;
+    };
+    const fill: number[] = [];
+    for (let u = u0 + 1; u < u1; u++)
+      for (let w = w0 + 1; w < w1; w++)
+        for (const out of [1, -1]) {
+          if (on2(u, w) || !on2(u - 1, w)) continue;
+          let n = 1;
+          while (n <= 3 && u + n <= u1 && !on2(u + n, w)) n++;
+          if (n > 3 || u + n > u1 || !on2(u + n, w) || !parts.has(L.part[idx(u - 1, w)]) || !parts.has(L.part[idx(u + n, w)])) continue;
+          let closed = true;
+          for (let k = -1; k <= n; k++) closed &&= on2(u + k, w - out);
+          if (closed) for (let k = 0; k < n; k++) fill.push(idx(u + k, w));
+        }
+    for (let u = u0 + 1; u <= u1; u++)
+      for (let w = w0 + 1; w < w1 - 1; w++) {
+        if (!riser(u, w) || riser(u, w - 1) || !riser(u, w + 1) || riser(u, w + 2)) continue;
+        const [tl, tr, bl, br] = [run(u - 1, w, -1), run(u, w, 1), run(u - 1, w + 2, -1), run(u, w + 2, 1)];
+        if (!((tl > 2 && br > 2 && !tr && !bl) || (tr > 2 && bl > 2 && !tl && !br))) continue;
+        const off = on2(u - 1, w) ? u : u - 1;
+        if (on2(off, w - 1)) fill.push(idx(off, w));
+        else if (on2(off, w + 2)) fill.push(idx(off, w + 1));
+      }
+    for (const i of fill) {
+      const ns = [i - 1, i + 1, i - GRID, i + GRID].filter((j) => on(j) && parts.has(L.part[j]));
+      const j = ns.find((n) => L.mat[n] !== line) ?? ns[0];
+      if (j !== undefined) L.set(i % GRID, (i / GRID) | 0, L.mat[j], L.shade[j], PARTS[L.part[j]], F_NO_TEXTURE | F_NO_OUTLINE);
+    }
   }
 }
 
@@ -257,7 +386,7 @@ export const FEET_DAWN_BOOTS: ItemDef = {
     // column beside her front panel, laid where he drew it, on his bare woman's far leg (the same
     // column): its lace top rides the far thigh, the rest the far shin. Each boot is drawn once, on its
     // own leg: our leg below the lace top is the boot's.
-    const sealed: [Side, Vec][] = [];
+    const sealed: [Side, Vec, () => void][] = [];
     for (const s of ['F', 'N'] as Side[]) {
       const { hip, knee, ankle } = legJoints(g.rig, s);
       const [thigh, shin, foot, join, cut] = s === 'N' ? [DAWN_THIGH_N, DAWN_SHIN_N, DAWN_FOOT_N, DAWN_FOOT_JOIN_N, DAWN_BOOT_CUT] : [DAWN_THIGH_F, DAWN_SHIN_F, DAWN_FOOT_F, DAWN_FOOT_JOIN_F, DAWN_BOOT_CUT_F];
@@ -285,10 +414,13 @@ export const FEET_DAWN_BOOTS: ItemDef = {
       // turned, an edge of his boot left open is closed in his line (at rest his line closes it)
       const turned = Math.abs(shinA - shin.angle) >= 0.5 || Math.abs(thighA - thigh.angle) >= 0.5 || footAt.x !== at.x;
       if (turned) closeOpen(g, d, boot, DAWN_THIGH_N.colors.k);
-      if (turned) sealed.push([s, knee]);
+      if (turned) sealed.push([s, knee, () => roundKnee(g, s, hip, knee, ankle, thigh, shin, thighA, shinA)]);
     }
     if (g.rig.pose !== 'idle') for (const s of ['F', 'N'] as Side[]) fillHoles(g, [legDepth(s, 'body'), legDepth(s, 'cloth'), legDepth(s, 'feet')]);
-    // and, last, each turned knee where the thigh's piece meets the shin's is sealed
-    for (const [s, knee] of sealed) sealKnee(g, s, knee);
+    // and, last, each turned knee where the thigh's piece meets the shin's is rounded and sealed
+    for (const [s, knee, round] of sealed) {
+      round();
+      sealKnee(g, s, knee);
+    }
   },
 };

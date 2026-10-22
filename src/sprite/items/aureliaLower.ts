@@ -11,11 +11,11 @@ import { skinTone } from '../body';
 import { retintHex } from '../color';
 import { type Depth, type DrawCtx, type ItemDef, legDepth, legJoints, type Side } from '../ctx';
 import { segAngle, stampPiece } from '../painted';
-import { F_NO_OUTLINE, F_NO_TEXTURE, GRID, type PartId, RES, v, type Vec } from '../raster';
+import { F_NO_OUTLINE, F_NO_TEXTURE, GRID, type Layer, partIndex, type PartId, RES, v, type Vec } from '../raster';
 import { BODY_PARAMS, drawRig, GROUND, type Rig } from '../rig';
 import type { BodyType } from '../types';
 import { fillHoles } from './aureliaBoots';
-import { DAWN_SLIT_F, DAWN_SLIT_N, DAWN_SLIT_SKIN } from './aureliaBootsArt';
+import { DAWN_SLIT_F, DAWN_SLIT_N, DAWN_SLIT_SKIN, DAWN_THIGH_N } from './aureliaBootsArt';
 import { DAWN_BASE, DAWN_FAR, DAWN_FRONT, DAWN_LINE, DAWN_LINING, DAWN_NEAR, DAWN_WAIST, type DawnPiece } from './aureliaLowerArt';
 
 /** How much a hanging piece follows its thigh (as armor.ts HANG_FOLLOW: skirts never bell out). */
@@ -361,6 +361,38 @@ function slitThighs(g: DrawCtx): void {
   }
 }
 
+/**
+ * Trims a side panel's spur: moved, a panel's hem riding the far leg past the knee can end in a strip a
+ * pixel wide standing out below the leg (run frame 2: two pixels of his line hanging under the far knee).
+ * A pixel of a panel with at most one drawn neighbour on these depths, and that one his line, goes, again
+ * until none is left. At rest the caller leaves his panels be.
+ */
+function trimPanelSpurs(g: DrawCtx, depths: Depth[]): void {
+  const Ls = depths.map((d) => g.L(d)).filter((L) => L.used);
+  const panels = new Set([partIndex('thighF'), partIndex('thighN')]);
+  const drawn = (i: number) => Ls.some((L) => L.mat[i] >= 0);
+  const lines = new Set([g.m(DAWN_LINE, 'flat'), g.m(DAWN_THIGH_N.colors.k, 'flat')]);
+  for (let pass = 0; pass < 8; pass++) {
+    const off: [Layer, number][] = [];
+    for (const d of ['backGear', 'farLeg.armor', 'skirt'] as Depth[]) {
+      const L = g.L(d);
+      if (!L.used) continue;
+      for (let y = 1; y < GRID - 1; y++)
+        for (let x = 1; x < GRID - 1; x++) {
+          const i = y * GRID + x;
+          const ns = [i - 1, i + 1, i - GRID, i + GRID].filter(drawn);
+          if (L.mat[i] < 0 || !panels.has(L.part[i]) || ns.length > 1) continue;
+          // only where nothing else of hers is drawn under it, and where its going leaves his line closed (the
+          // pixel beside it is line)
+          if (Ls.some((M) => M !== L && M.mat[i] >= 0) || ns.some((j) => !Ls.some((M) => lines.has(M.mat[j])))) continue;
+          off.push([L, i]);
+        }
+    }
+    if (!off.length) break;
+    for (const [L, i] of off) L.mat[i] = -1;
+  }
+}
+
 const tinter = (slots: Record<string, string>) => (role: string, hex: string): string => (slots[role] ? retintHex(hex, DAWN_BASE[role], slots[role]) : hex);
 
 export const SKIRT_DAWN_PANELS: ItemDef = {
@@ -387,7 +419,11 @@ export const SKIRT_DAWN_PANELS: ItemDef = {
     drawPiece(g, 'skirt', 'thighN', DAWN_NEAR, tint, DAWN_NEAR.front);
     drawPiece(g, 'skirt', 'pelvis', DAWN_FRONT, tint);
     // moved, a pixel left empty between her panels and her legs is filled (at rest each piece is as drawn)
-    if (g.rig.pose !== 'idle') fillHoles(g, ['backGear', 'farLeg.body', 'farLeg.cloth', 'farLeg.feet', 'farLeg.armor', 'nearLeg.body', 'nearLeg.cloth', 'nearLeg.feet', 'skirt']);
+    const below: Depth[] = ['backGear', 'farLeg.body', 'farLeg.cloth', 'farLeg.feet', 'farLeg.armor', 'nearLeg.body', 'nearLeg.cloth', 'nearLeg.feet', 'skirt'];
+    if (g.rig.pose !== 'idle') {
+      fillHoles(g, below);
+      trimPanelSpurs(g, below);
+    }
   },
 };
 

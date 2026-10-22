@@ -1142,7 +1142,7 @@ function waveItems(ctx: CanvasRenderingContext2D, sc: Scene, f: Fx): DepthItem[]
       place(p, p.z + 0.01, (q) => blit(ctx, foam, 'fly', frameAt(foam, 'fly', ms + k * 400), q.X, q.Y - 40, ux < 0, 0.85));
     }
   }
-  // The S-rank Tide: his curl, his dragon and his kanji ride the crest, over the whole wave (he
+  // The Dragon Tsunami (Water's rank S): his curl, his dragon and his kanji ride the crest, over the whole wave (he
   // painted them over it): in front of its nearest water.
   if (f.tideS) out.push(...tideSItems(ctx, sc, f, ms, runMs, at(crest, 0), ux < 0, Math.max(at(crest, -w).z, at(crest, w).z, at(cone.length, -cone.length * tan).z, at(cone.length, cone.length * tan).z)));
   // The break: his spouts burst along the crest at the end of the cone.
@@ -1161,10 +1161,10 @@ function waveItems(ctx: CanvasRenderingContext2D, sc: Scene, f: Fx): DepthItem[]
   return out;
 }
 
-/** The S-rank Tide's sheets (vfx_tide_s, tools/world-sprites/vfx-tide-s.ts). */
+/** The Dragon Tsunami's sheets (vfx_tide_s, tools/world-sprites/vfx-tide-s.ts). */
 export const TIDE_S_SHEETS = ['curl', 'dragon', 'kanji'];
 /**
- * The S-rank Tide's timing (ms into its wave; the run is 2200 ms, then the 900 ms break, which is
+ * The Dragon Tsunami's timing (ms into its wave; the run is 2200 ms, then the 900 ms break, which is
  * what his dragon's play lasts, DRAGON_MS in the generator): his curl rises out of the ground with
  * the wave and sinks back after the break; his kanji fades in, its glow pulsing over it as light,
  * flashes as the wave breaks and fades. The dragon's own surge, roar and dive are in its frames.
@@ -1178,7 +1178,7 @@ function tideSheet(f: Fx, name: string): Sheet | undefined {
 }
 
 /**
- * The S-rank Tide (the owner's paint-over of our widest wave, 2026-10-22; a proposal): his layers
+ * The Dragon Tsunami (the owner's paint-over of our widest wave, approved 2026-10-22): his layers
  * where he painted them on our frame, every sprite's anchor on the crest point `c`. Mirrored with
  * the wave when it runs to the left, except his kanji, which is only moved to its mirrored place.
  */

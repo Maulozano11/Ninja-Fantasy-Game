@@ -176,7 +176,7 @@ export interface Fx {
   spread?: boolean;
   /** A wave's rows of columns (the Devouring Tide); a tower's small whirlwinds (the Whirlwind Tower). */
   rows?: number;
-  /** The S-rank Tide's wave: his curl, dragon and kanji ride its crest (vfx_tide_s). */
+  /** The Dragon Tsunami's wave (Water's rank S): his curl, dragon and kanji ride its crest (vfx_tide_s). */
   tideS?: boolean;
   minis?: number;
   /** Lightning running across a wet patch: its cells ("c,r"), from `from` outward. */

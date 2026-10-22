@@ -1,7 +1,10 @@
-// The S-rank Devouring Tide (the owner's paint-over of our widest wave, 2026-10-22; a proposal
-// waiting for him): his layers lifted from his picture (tools/refs/tide-s-from-ref.py) are his
-// pixels at his places, the jutsu is battle-only (Water has no S-rank by his rule, "vacio por
-// ahora"), and it casts as the Tide with his curl, dragon and kanji riding the crest. npm test.
+// The Dragon Tsunami, Water's rank S (the owner's paint-over of our widest wave; approved on
+// 2026-10-22: "rango S ola si me gusta la animacion la ola normal se llama tsunami y la rango s es
+// dragon tsunami"): his layers lifted from his picture (tools/refs/tide-s-from-ref.py) are his pixels
+// at his places, the jutsu is Water's S-rank in the jutsu list a ninja learns, and it casts as the
+// Tsunami with his curl, dragon and kanji riding the crest. Its numbers approved by the owner for now
+// (2026-10-22): «aprovado los numeros de la ola por ahora».
+// npm test.
 
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -9,8 +12,14 @@ import { join } from 'node:path';
 import { describe, it } from 'node:test';
 import { DEFAULT_CHARACTER, JUTSUS_DATA } from '../data/shinobiData';
 import { TIDE_S_REF } from '../../tools/world-sprites/vfx-tide-s-refdata';
-import { JUTSU, PROPOSED_JUTSUS, areaOf } from './jutsu';
+import { JUTSU, areaOf, enhanced } from './jutsu';
 import { applyAction, createBattle } from './engine';
+import { WET_ROUNDS, tickGround } from './ground';
+import type { BattleEvent, BattleState } from './types';
+import { jutsuChoices } from '../rules/jutsuNature';
+import { creatorChoices } from '../rules/progression';
+import { NO_GROWTH } from '../rules/natureGrowth';
+import { logLine } from '../components/battle/battleLog';
 import { tintSheetsOf } from '../components/battle/vfxTintPlan';
 
 const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
@@ -72,35 +81,53 @@ describe('the S-rank Tide: his layers', () => {
   });
 });
 
-describe('the S-rank Tide: the jutsu (placeholders waiting for the owner)', () => {
-  it('battle-only: not in the list a ninja learns, so Water still has no S-rank in the creator', () => {
-    assert.ok(!JUTSUS_DATA.some((j) => j.id === 'water_tide_s'));
-    assert.ok(!JUTSUS_DATA.some((j) => j.nature === 'Water' && j.rank === 'S'));
-    const j = PROPOSED_JUTSUS.find((x) => x.id === 'water_tide_s')!;
-    assert.deepEqual([j.rank, j.nature, j.nameEs, j.chakraCost, j.enhancementChakraCost], ['S', 'Water', 'Técnica de Agua: Ola del dragón', 12, 4]);
+/** A Water ninja facing a rogue 6 m away, its turn, with `jutsus` and 30 chakra. */
+function duel(jutsus: string[]): BattleState {
+  const b = createBattle({
+    seed: 3, mapId: 'river_forest', time: 'day', weather: 'Clear', difficulty: 'normal',
+    party: [{ character: { ...DEFAULT_CHARACTER, id: 'a', name: 'Aki', effects: [] }, pos: { x: 8, z: 10 } }],
+    enemies: [{ kind: 'rogue', pos: { x: 14, z: 10 } }], stealth: false,
+    supplies: { soldierPills: 0, bandages: 0, antidotes: 0, explosiveTags: 0 },
+  }).state;
+  const t = structuredClone(b);
+  t.turn = t.order.indexOf('a');
+  const a = t.units.a;
+  a.turn = { move: a.speed, action: true, bonus: true, reaction: true, moved: 0 };
+  a.jutsus = jutsus;
+  a.chakra = 30;
+  return t;
+}
+
+describe('the Dragon Tsunami: the jutsu (rank S and its numbers approved by the owner for now, 2026-10-22)', () => {
+  it('Water\'s S-rank in the list a ninja learns, with his names; the Tide is the Tsunami now', () => {
+    const j = JUTSUS_DATA.find((x) => x.id === 'water_tide_s')!;
+    assert.deepEqual(
+      [j.name, j.nameEs, j.rank, j.category, j.nature, j.chakraCost, j.enhancementChakraCost, j.damageDice, j.damageType, j.savingThrow, j.saveEffect],
+      ['Water Technique: Dragon Tsunami', 'Técnica de Agua: Dragón Tsunami', 'S', 'Ultimate', 'Water', 12, 4, '6d8', 'Bludgeoning', 'STR', 'Half Damage'],
+    );
+    const tide = JUTSUS_DATA.find((x) => x.id === 'water_devouring_tide')!;
+    assert.deepEqual([tide.name, tide.nameEs, tide.rank], ['Water Technique: Tsunami', 'Técnica de Agua: Tsunami', 'A']);
+    // The S-rank slot of a Water ninja offers it first; the S-rank slot opens at level 10.
+    assert.equal(jutsuChoices('slot5Ultimate', 'Water', 'Mirai')[0].id, 'water_tide_s');
+    assert.ok(!jutsuChoices('slot5Ultimate', 'Fire', 'Mirai').some((x) => x.id === 'water_tide_s'), 'only Water');
+    assert.ok(!creatorChoices('slot5Ultimate', 'Water', 'Mirai', 'Ninjutsu Specialist').some((x) => x.id === 'water_tide_s'), 'not for a new ninja');
+    assert.ok(creatorChoices('slot5Ultimate', 'Water', 'Mirai', 'Ninjutsu Specialist', { ...NO_GROWTH, level: 10 }).some((x) => x.id === 'water_tide_s'), 'at level 10');
   });
 
-  it('the Tide with his dragon: the enhanced Tide\'s reach, its wave flagged for his layers, sheets to recolour', () => {
+  it('the Tsunami with his dragon: an 11.25 m cone 80 degrees wide, its wave flagged for his layers, sheets to recolour', () => {
     const s = JUTSU.water_tide_s;
-    assert.deepEqual([s.length, s.angle, s.dice, s.save, s.push?.m, s.prone, s.douse, s.seq?.wave?.dragon, s.seq?.wave?.ms], [11.25, 80, '6d8', 'str', 3, true, true, true, 2200]);
-    assert.ok(!JUTSU.water_devouring_tide.seq?.wave?.dragon, 'the plain Tide keeps its look');
+    assert.deepEqual([s.rank, s.length, s.angle, s.dice, s.save, s.saveHalf, s.push?.m, s.prone, s.douse, s.seq?.wave?.dragon, s.seq?.wave?.ms], ['S', 11.25, 80, '6d8', 'str', true, 3, true, true, true, 2200]);
+    assert.ok(!JUTSU.water_devouring_tide.seq?.wave?.dragon, 'the Tsunami keeps its look');
     const tint = tintSheetsOf(s).filter((r) => r.group === 'vfx_tide_s').map((r) => r.name);
     assert.deepEqual(tint, ['curl', 'dragon', 'kanji']);
+    // Enhanced (+4 chakra): 8d8, and the cone reaches farther and opens wider.
+    const e = enhanced(s);
+    assert.equal(e.dice, '8d8');
+    assert.ok(e.length! > 11.25 && e.angle! > 80);
   });
 
-  it('casts: the wave reaches along its cone and sweeps who fails', () => {
-    const b = createBattle({
-      seed: 3, mapId: 'river_forest', time: 'day', weather: 'Clear', difficulty: 'normal',
-      party: [{ character: { ...DEFAULT_CHARACTER, id: 'a', name: 'Aki', effects: [] }, pos: { x: 8, z: 10 } }],
-      enemies: [{ kind: 'rogue', pos: { x: 14, z: 10 } }], stealth: false,
-      supplies: { soldierPills: 0, bandages: 0, antidotes: 0, explosiveTags: 0 },
-    }).state;
-    const t = structuredClone(b);
-    t.turn = t.order.indexOf('a');
-    const a = t.units.a;
-    a.turn = { move: a.speed, action: true, bonus: true, reaction: true, moved: 0 };
-    a.jutsus = ['water_tide_s'];
-    a.chakra = 30;
+  it('casts: the wave reaches along its cone, makes a STR save, costs 12 chakra, and says his name in the log', () => {
+    const t = duel(['water_tide_s']);
     const out = applyAction(t, { type: 'jutsu', unit: 'a', jutsu: 'water_tide_s', at: t.units.rogue_0.pos });
     assert.ok(out.ok, out.reason);
     const ev = out.events.find((e) => e.t === 'jutsu');
@@ -108,5 +135,32 @@ describe('the S-rank Tide: the jutsu (placeholders waiting for the owner)', () =
     assert.equal(out.state.units.a.chakra, 30 - 12);
     assert.ok(out.events.some((e) => e.t === 'save' && e.unit === 'rogue_0'));
     assert.deepEqual(areaOf(JUTSU.water_tide_s, { x: 0, z: 0 }, { x: 5, z: 0 }), { kind: 'cone', origin: { x: 0, z: 0 }, dir: 0, angle: 80, length: 11.25 });
+    assert.match(logLine(ev!, out.state, 'es')!.text, /Técnica de Agua: Dragón Tsunami/);
+    assert.match(logLine(ev!, out.state, 'en')!.text, /Water Technique: Dragon Tsunami/);
+  });
+
+  it('the ground it floods stays wet one round longer than the Tsunami\'s, and a Tsunami over it never shortens that', () => {
+    assert.equal(JUTSU.water_tide_s.wetRounds, WET_ROUNDS + 1);
+    assert.equal(JUTSU.water_devouring_tide.wetRounds, undefined, 'the Tsunami: WET_ROUNDS');
+    const t = duel(['water_tide_s', 'water_devouring_tide']);
+    t.units.rogue_0.hp = t.units.rogue_0.maxHp = 999; // stands through both waves
+    const out = applyAction(t, { type: 'jutsu', unit: 'a', jutsu: 'water_tide_s', at: t.units.rogue_0.pos });
+    assert.ok(out.ok, out.reason);
+    const wet = Object.values(out.state.wet ?? {});
+    assert.ok(wet.length > 100 && wet.every((n) => n === WET_ROUNDS + 1));
+    // It dries as the fourth new round begins (the Tsunami's as the third).
+    const s = structuredClone(out.state);
+    const ev: BattleEvent[] = [];
+    for (let i = 0; i < WET_ROUNDS; i++) tickGround(s, ev);
+    assert.ok(Object.keys(s.wet ?? {}).length > 0, 'still wet three rounds on');
+    tickGround(s, ev);
+    assert.equal(Object.keys(s.wet ?? {}).length, 0, 'dry on the fourth');
+    // The Tsunami cast over the same ground: the cells keep the longer count.
+    const again = structuredClone(out.state);
+    again.units.a.turn = { ...again.units.a.turn, action: true };
+    const out2 = applyAction(again, { type: 'jutsu', unit: 'a', jutsu: 'water_devouring_tide', at: again.units.rogue_0.pos });
+    assert.ok(out2.ok, out2.reason);
+    assert.ok(Object.values(out2.state.wet ?? {}).every((n) => n === WET_ROUNDS + 1 || n === WET_ROUNDS));
+    for (const [k, n] of Object.entries(out.state.wet ?? {})) assert.equal(out2.state.wet![k], n, k);
   });
 });

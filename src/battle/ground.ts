@@ -44,16 +44,17 @@ export function cellsInArea(s: BattleState, area: AreaShape): Cell[] {
 
 /**
  * A water jutsu soaks the ground its area covers (a river or a pond is water already; a tree's or a
- * wall's cell stays dry): wet for WET_ROUNDS, or again for that long if it was wet. Steam it passes
- * over stays (the water doesn't cool it).
+ * wall's cell stays dry): wet for `rounds` (WET_ROUNDS; the Dragon Tsunami's one more), or again for
+ * that long if it was wet (never shorter than it still had). Steam it passes over stays (the water
+ * doesn't cool it).
  */
-export function soak(s: BattleState, area: AreaShape, by: string, ev: BattleEvent[]): string[] {
+export function soak(s: BattleState, area: AreaShape, by: string, ev: BattleEvent[], rounds = WET_ROUNDS): string[] {
   const cells = cellsInArea(s, area)
     .filter((c) => waterAtPt(s, cellCenter(c)) === 0 && !cellBlocked(s, c))
     .map(cellKey);
   if (!cells.length) return [];
   s.wet = { ...(s.wet ?? {}) };
-  for (const k of cells) s.wet[k] = WET_ROUNDS;
+  for (const k of cells) s.wet[k] = Math.max(s.wet[k] ?? 0, rounds);
   ev.push({ t: 'ground', kind: 'wet', cells, on: true, by });
   return cells;
 }

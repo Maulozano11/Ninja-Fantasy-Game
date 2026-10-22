@@ -6,8 +6,8 @@
 import { retintSkinLifted } from './color';
 import { armJoints, Depth, DrawCtx, handPose, Side } from './ctx';
 import { MALE_SKIN_BASE, MALE_SKIN_DARK, MALE_SKIN_JOINT, SKIN_HAND_F, SKIN_HAND_N, SKIN_SHIN_F, SKIN_SHIN_N, SKIN_THIGH_F, SKIN_THIGH_N, SKIN_UPPER_ARM_F, SKIN_UPPER_ARM_N } from './maleSkinArt';
-import { segAngle, type PaintedPiece } from './painted';
-import { F_NO_EDGE, F_NO_OUTLINE, F_NO_TEXTURE, GRID, Layer, PartId, partIndex, RES, Vec } from './raster';
+import { segAngle, stretchPiece, type PaintedPiece } from './painted';
+import { F_NO_EDGE, F_NO_OUTLINE, F_NO_TEXTURE, GRID, Layer, len, PartId, partIndex, RES, sub, Vec } from './raster';
 import { BODY_PARAMS, type Rig } from './rig';
 import { rotateTemplate } from './rotsprite';
 import { isFemaleBody } from './types';
@@ -34,6 +34,8 @@ interface Limb {
    * are under the bracers).
    */
   joint?: { part: PartId; at: Joint };
+  /** A thigh: on a frame whose thigh is longer than the body's (the seated thighs, rig.ts kneeLeg) his piece is lengthened with it (stretchPiece). */
+  stretch?: boolean;
 }
 
 const LIMBS: Limb[] = [
@@ -41,8 +43,8 @@ const LIMBS: Limb[] = [
   { name: 'SKIN_UPPER_ARM_F', piece: SKIN_UPPER_ARM_F, part: 'upperArmF', from: 'shoulderF', to: 'elbowF', widen: 'arm', joint: { part: 'forearmF', at: 'elbowF' } },
   { name: 'SKIN_HAND_N', piece: SKIN_HAND_N, part: 'handN', from: 'wristN', to: 'handN', hand: 'N' },
   { name: 'SKIN_HAND_F', piece: SKIN_HAND_F, part: 'handF', from: 'wristF', to: 'handF', hand: 'F' },
-  { name: 'SKIN_THIGH_N', piece: SKIN_THIGH_N, part: 'thighN', from: 'hipN', to: 'kneeN', widen: 'leg' },
-  { name: 'SKIN_THIGH_F', piece: SKIN_THIGH_F, part: 'thighF', from: 'hipF', to: 'kneeF', widen: 'leg' },
+  { name: 'SKIN_THIGH_N', piece: SKIN_THIGH_N, part: 'thighN', from: 'hipN', to: 'kneeN', widen: 'leg', stretch: true },
+  { name: 'SKIN_THIGH_F', piece: SKIN_THIGH_F, part: 'thighF', from: 'hipF', to: 'kneeF', widen: 'leg', stretch: true },
   { name: 'SKIN_SHIN_N', piece: SKIN_SHIN_N, part: 'shinN', from: 'kneeN', to: 'ankleN', widen: 'leg' },
   { name: 'SKIN_SHIN_F', piece: SKIN_SHIN_F, part: 'shinF', from: 'kneeF', to: 'ankleF', widen: 'leg' },
 ];
@@ -123,7 +125,9 @@ export function paintMaleSkin(g: DrawCtx, layers: Map<Depth, Layer>): void {
   };
   const all = [...layers.values()].filter((L) => L.used);
   for (const limb of LIMBS) {
-    const piece = widenPiece(limb.piece, extraColumns(r.body, limb.widen, limb.piece));
+    const wide = widenPiece(limb.piece, extraColumns(r.body, limb.widen, limb.piece));
+    const bone = BODY_PARAMS[r.body].thigh;
+    const piece = limb.stretch ? stretchPiece(wide, (len(sub(r[limb.to], r[limb.from])) - bone) * RES, bone * RES) : wide;
     const at: Vec = r[MALE_SKIN_JOINT[limb.name] as Joint];
     let deg = segAngle(r[limb.from], r[limb.to]) - piece.angle;
     let flipX = false;

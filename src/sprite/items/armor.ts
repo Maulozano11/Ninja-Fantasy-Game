@@ -15,8 +15,8 @@
 
 import { hexToRgb, retintHex } from '../color';
 import { armDepth, armJoints, Depth, DEPTHS, DrawCtx, ItemDef, legDepth, legJoints, Side, torsoPoly } from '../ctx';
-import { PaintedPiece, segAngle, stampPiece } from '../painted';
-import { add, capsule, ellipse, F_NO_OUTLINE, F_NO_TEXTURE, fine, GRID, Layer, lerp, norm, partIndex, PartId, Pen, perp, poly, RES, scale, sub, v, Vec } from '../raster';
+import { PaintedPiece, segAngle, stampPiece, stretchPiece } from '../painted';
+import { add, capsule, ellipse, F_NO_OUTLINE, F_NO_TEXTURE, fine, GRID, Layer, len, lerp, norm, partIndex, PartId, Pen, perp, poly, RES, scale, sub, v, Vec } from '../raster';
 import { drawRig, GROUND, Rig, turnPoint } from '../rig';
 import {
   PLATE_CHEST,
@@ -1351,6 +1351,19 @@ function drapeCut(x0: number, x1: number, y0: number, y1: number, pivot: [number
   return p;
 }
 
+/**
+ * The cloth on a thigh `extra` rows longer than the body's (the seated thighs, rig.ts kneeLeg): his rows
+ * between the hip and the knee repeated, spread evenly (stretchPiece), so it still reaches the knee.
+ */
+function drapeUpper(x0: number, x1: number, y0: number, knee: number, pivot: [number, number], extra: number): PaintedPiece {
+  const cut = drapeCut(x0, x1, y0, knee - 1, pivot);
+  if (extra <= 0) return cut;
+  const key = [x0, x1, y0, knee, ...pivot, extra].join(',');
+  let p = DRAPE_CUTS.get(key);
+  if (!p) DRAPE_CUTS.set(key, (p = { ...stretchPiece({ ...cut, angle: 90 }, extra, knee - pivot[1]), angle: cut.angle }));
+  return p;
+}
+
 /** A point `d` fine pixels from the fine pixel `at`, turned `deg`: as design units at that pixel's middle. */
 function turnedCell(at: [number, number], d: [number, number], deg: number): Vec {
   const t = (deg * Math.PI) / 180;
@@ -1383,6 +1396,11 @@ export function drapeStamps(r: Rig): DrapeStamp[] {
     const w = ((((t + 180) % 360) + 360) % 360) - 180;
     return w < 0 ? w * DRAPE_FORWARD : w * DRAPE_BACK;
   };
+  /** How many fine pixels longer than the body's a thigh is (a seated thigh, rig.ts kneeLeg; else none). */
+  const longer = (s: Side) => {
+    const j = legJoints(r, s);
+    return (len(sub(j.knee, j.hip)) - r.bp.thigh) * RES;
+  };
   const out: DrapeStamp[] = [];
   const last = P.rows.length - 1;
   // knocked out, the cloth his fist hides stays under the body (it would stand up off the hip)
@@ -1397,9 +1415,11 @@ export function drapeStamps(r: Rig): DrapeStamp[] {
       Math.floor(r.pelvis.x * RES) + pivot[0] - P.pivot[0] + Math.round(moved.x * RES),
       Math.floor(r.pelvis.y * RES) + pivot[1] - P.pivot[1] + Math.round(moved.y * RES),
     ];
-    // where the thigh's cloth ends: on its knee (between the legs, halfway between both knees)
+    // where the thigh's cloth ends: on its knee (between the legs, halfway between both knees), as many rows
+    // further as the thigh is longer than the body's (seated: rig.ts kneeLeg)
     const hinge: [number, number] = on === 'both' ? [Math.round((x0 + x1) / 2), Math.round((knees.N[1] + knees.F[1]) / 2)] : knees[on];
-    const hingeAt = turnedCell(at, [hinge[0] - pivot[0], hinge[1] - pivot[1]], turn);
+    const extra = Math.round(on === 'both' ? (longer('N') + longer('F')) / 2 : longer(on));
+    const hingeAt = turnedCell(at, [hinge[0] - pivot[0], hinge[1] - pivot[1] + Math.max(0, extra)], turn);
     const hang = turn * DRAPE_HANG;
     const fold = hang - turn;
     // the rows round the knee swept through the fold (at least once, so no row opens between the thigh's
@@ -1409,7 +1429,7 @@ export function drapeStamps(r: Rig): DrapeStamp[] {
     const [c0, c1] = [x0 - DRAPE_SEAM, x1 + DRAPE_SEAM];
     for (let k = 1; k < n; k++) out.push({ piece: drapeCut(c0, c1, knee - DRAPE_FOLD, knee + DRAPE_FOLD - 1, hinge), at: hingeAt, deg: P.angle + turn + (fold * k) / n, on, name: sweep ? 'sweep' : 'fold' });
     out.push({ piece: drapeCut(c0, c1, knee - 1, last, hinge), at: hingeAt, deg: P.angle + hang, on, name: sweep ? 'sweep' : 'lower' });
-    out.push({ piece: drapeCut(c0, c1, top, knee - 1, pivot), at: v((at[0] + 0.5) / RES, (at[1] + 0.5) / RES), deg: P.angle + turn, on, name: sweep ? 'sweep' : 'upper' });
+    out.push({ piece: drapeUpper(c0, c1, top, knee, pivot, extra), at: v((at[0] + 0.5) / RES, (at[1] + 0.5) / RES), deg: P.angle + turn, on, name: sweep ? 'sweep' : 'upper' });
   };
   // The legs apart, the cloth between them is swept from one thigh's turn to the other's behind the
   // others, so it spans the gap between them as a skirt does (no gap opens down the seams).

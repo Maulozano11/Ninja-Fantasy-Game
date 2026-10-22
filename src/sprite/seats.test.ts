@@ -8,9 +8,11 @@ import { describe, it } from 'node:test';
 import { renderSprite } from './compose';
 import { defaultAppearance } from './legacy';
 import { GRID, partIndex, RES } from './raster';
-import { buildRig, frameCount, rigPoseFor, SIT_SEAT_TOP } from './rig';
+import { stretchPiece } from './painted';
+import { SKIN_THIGH_F, SKIN_THIGH_N } from './maleSkinArt';
+import { BODY_PARAMS, buildRig, drawRig, frameCount, rigPoseFor, SIT_SEAT_TOP } from './rig';
 import { DEFAULT_SEAT, onSeat, renderSeat, SEATS, seatFor, type SeatId } from './seats';
-import type { BodyType, SpriteAppearance } from './types';
+import { CAMP_POSES, MOVE_POSES, SPRITE_POSES, type BodyType, type SpriteAppearance } from './types';
 
 const BODIES: BodyType[] = ['male', 'bulky', 'slender'];
 const roman = (body: BodyType): SpriteAppearance => {
@@ -46,27 +48,54 @@ const HIS = [
   { head: [117, 142], neck: [117.5, 151], shoulderN: [103, 153], shoulderF: [123, 157], elbowN: [102, 169], elbowF: [132, 166], wristN: [109, 177], wristF: [143.5, 167], handN: [113, 180.5], handF: [147, 167.5], pelvis: [110, 179], kneeN: [121, 191], kneeF: [136, 185], ankleN: [125, 208.5], ankleF: [137, 204] },
 ] as const;
 /**
- * His legs are a fifth longer than ours at this scale: from his hips our legs reach the ground only hanging
- * straight down. So the seat is lower than his (SIT_SEAT_TOP, his pelvis was 5.4 px above row 184): the body
- * from the pelvis up keeps his pose that much lower, the feet stand where he drew them.
+ * How near each joint comes to his (fine px): 2, but our shins (15.4 px) are shorter than his (18 to 19.4 px):
+ * the seated thighs lengthen so each knee is as near his as our shin standing on his ankle lets it (rig.ts
+ * kneeLeg), 2.1 to 2.6 px for the near knee and 3.6 to 4.0 for the far one, a little low on his shin's line; his
+ * frame 4 near arm is longer than ours (his elbow 16 px from the shoulder, ours 12.6), so it cannot reach; and
+ * in his frames 3 and 4 the far elbow sits lower on a straighter arm than our arm's bend puts it.
  */
-const DROP = SIT_SEAT_TOP - 184;
-const LEGS = new Set(['kneeN', 'kneeF', 'ankleN', 'ankleF']);
-/**
- * How near each joint comes to his (fine px): 2, but our thighs (16 px) are shorter than his (20 px), so the
- * knees sit lower and further back; his frame 4 near arm is longer than ours (his elbow 16 px from the
- * shoulder, ours 12.6), so it cannot reach; and in his frames 3 and 4 the far elbow sits lower on a straighter
- * arm than our arm's bend puts it.
- */
-const tolerance = (k: number, j: string) => (j.startsWith('knee') ? 12 : k === 3 && /N$/.test(j) && /^(elbow|wrist|hand)/.test(j) ? 8 : k >= 2 && j === 'elbowF' ? 4 : 2);
+const tolerance = (k: number, j: string) =>
+  j === 'kneeN' ? 3 : j === 'kneeF' ? 4.5 : k === 3 && /N$/.test(j) && /^(elbow|wrist|hand)/.test(j) ? 8 : k >= 2 && j === 'elbowF' ? 4 : 2;
 
 describe('the sit on a seat', () => {
   it('poses the male toward his joints in each of his four frames', () => {
     for (let k = 0; k < 4; k++) {
       const r = buildRig('male', rigPoseFor('sit'), k) as unknown as Record<string, { x: number; y: number }>;
       for (const [j, [x, y]] of Object.entries(HIS[k])) {
-        const d = Math.hypot(r[j].x * RES - x, r[j].y * RES - (y + (LEGS.has(j) ? 0 : DROP)));
+        const d = Math.hypot(r[j].x * RES - x, r[j].y * RES - y);
         assert.ok(d <= tolerance(k, j), `frame ${k + 1} ${j}: ${d.toFixed(1)} px from his`);
+      }
+    }
+  });
+
+  it('lengthens the thighs on the seat only, his skin with them', () => {
+    const thigh = (r: ReturnType<typeof buildRig>, s: 'N' | 'F') => Math.hypot(r[`knee${s}`].x - r[`hip${s}`].x, r[`knee${s}`].y - r[`hip${s}`].y);
+    for (const body of ['male', 'bulky'] as const) {
+      const bp = BODY_PARAMS[body];
+      for (let f = 0; f < frameCount(rigPoseFor('sit')); f++) {
+        const r = buildRig(body, rigPoseFor('sit'), f);
+        for (const s of ['N', 'F'] as const) {
+          // longer than the body's, about his (his hips to his knees: 18 to 23 px), never past 26 px
+          const t = thigh(r, s) * RES;
+          assert.ok(t > bp.thigh * RES + 3 && t < 26, `${body} sit ${f} thigh${s}: ${t.toFixed(1)} px`);
+          // and his thigh skin is as long as it: rows of his repeated, none made up
+          const p = s === 'N' ? SKIN_THIGH_N : SKIN_THIGH_F;
+          const long = stretchPiece(p, t - bp.thigh * RES, bp.thigh * RES);
+          assert.ok(long.rows.length > p.rows.length, `${body} sit ${f}: his thigh${s} skin lengthened`);
+          const his = new Set(p.rows.map((row) => row.replace(/^\.+|\.+$/g, '')));
+          for (const row of long.rows) assert.ok(his.has(row.replace(/^\.+|\.+$/g, '')), `${body} sit ${f}: a row of his thigh${s} skin`);
+        }
+      }
+      // every other pose keeps the body's own thighs (and his skin as painted)
+      for (const pose of [...SPRITE_POSES, ...MOVE_POSES, ...CAMP_POSES].filter((p) => p !== 'sit')) {
+        for (let f = 0; f < frameCount(rigPoseFor(pose)); f++) {
+          const r = drawRig(body, rigPoseFor(pose), f);
+          for (const s of ['N', 'F'] as const) {
+            assert.ok(Math.abs(thigh(r, s) - bp.thigh) < 1e-9, `${body} ${pose} ${f}: thigh${s} ${thigh(r, s)}`);
+            const p = s === 'N' ? SKIN_THIGH_N : SKIN_THIGH_F;
+            assert.equal(stretchPiece(p, (thigh(r, s) - bp.thigh) * RES, bp.thigh * RES), p);
+          }
+        }
       }
     }
   });
@@ -86,12 +115,13 @@ describe('the sit on a seat', () => {
         assert.ok(Math.abs(lowest(part, footF) - lowest(idle, footF)) <= 1, `${body} sit ${f}: far sole on row ${lowest(part, footF)}, at rest ${lowest(idle, footF)}`);
       }
     }
-    // his rock is under the hips: its top in the pelvis's column is a few rows above the seat's top
+    // his rock is under the hips: its top in the pelvis's column is on the seat's top, or as he drew it, 2 rows
+    // under it (the seat's top is his, row 184, where his hips put it; his skirt and drape lie on the rock)
     const rock = renderSeat('seat_boulder');
     const x = Math.round(buildRig('male', rigPoseFor('sit'), 0).pelvis.x * RES);
     let top = 0;
     while (!rock[(top * GRID + x) * 4 + 3]) top++;
-    assert.ok(top <= SIT_SEAT_TOP && top >= SIT_SEAT_TOP - 6, `his rock's top at row ${top} under the hips`);
+    assert.ok(top <= SIT_SEAT_TOP + 2 && top >= SIT_SEAT_TOP - 6, `his rock's top at row ${top} under the hips`);
   });
 
   it('is drawn apart from the character: the sit sprite has no rock in it', () => {

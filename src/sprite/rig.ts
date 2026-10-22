@@ -232,6 +232,8 @@ interface PoseFrame {
  * its own torso length); the ankles go to `ankleN` and `ankleF`, or with `ground` to those x on the
  * ground (the ankle heights the body stands at); a foot its leg cannot reach slides back along the
  * ground toward the hip. The hands take 'frame' targets. (The same design as heroine/lyra-v2's read.)
+ * With `kneeN`/`kneeF` (his knees, when his legs are longer than ours) the thigh lengthens for this frame
+ * so the knee comes as near his as our shin, standing on its ankle, lets it (kneeLeg); it never shortens.
  */
 interface PoseAt {
   pelvis: Vec;
@@ -240,6 +242,8 @@ interface PoseAt {
   ankleN: Vec;
   ankleF: Vec;
   ground?: boolean;
+  kneeN?: Vec;
+  kneeF?: Vec;
 }
 
 /** A point of the frame, in fine pixels, as a hand target (PoseAt). */
@@ -493,7 +497,7 @@ const DOWNED: PoseFrame[] = [DOWNED_BASE, { ...DOWNED_BASE, lean: -6.5 }];
  * Where the camp props go, for the scene that places them (design units from
  * the feet anchor at x FEET_X, y GROUND; fine pixels are twice these).
  * - SEAT_TOP: the top of the log seat under 'read' (26 px above the feet; 'sit' sits on a seat prop,
- *   seats.ts, whose top is SIT_SEAT_TOP, the same row).
+ *   seats.ts, whose top is SIT_SEAT_TOP, 6 px higher, his rock's).
  * - SEAT_X: the middle of the seat under the hips, behind the feet.
  * - LEAN_X: the front face of the trunk, rock or pole a 'lean' rests against.
  */
@@ -538,34 +542,35 @@ const SIT_LEGS = { hip: SEAT_HIP, footN: v(0.5, groundY(SEAT_HIP, 0.5)), footF: 
  * open. Frame 3 is his "mouth open" frame (no face of ours opens its mouth yet); in frame 4 the near arm
  * hangs lower, its fist lower on the lap. Every body is posed toward his joints (PoseAt; fine pixels).
  *
- * His legs are a fifth longer than ours at this scale: from his hips (his seat's top on row 184) our legs
- * reach the ground only hanging straight down. So our seat's top is SIT_DROP rows lower, on the camp
- * seat's row (CAMP_PROPS.SEAT_TOP), and his pose from the pelvis up comes down with it; the feet stay
- * where he drew them and the knees bend forward as his do.
+ * His legs are a fifth longer than ours at this scale. He chose "romano sentado opcion a" (2026-10-22): seated,
+ * the thighs lengthen so the knees sit where he put them (PoseAt kneeN/kneeF), and the seat's top is his,
+ * row 184, so the hips, the knees and the feet are all where he drew them. (Our shins stay ours, so each
+ * knee comes as near his as the shin standing on his ankle lets it.)
  */
-export const SIT_SEAT_TOP = 190;
-const SIT_DROP = SIT_SEAT_TOP - 184;
-const sitAt = (neck: [number, number], ankleN: number, ankleF: number): PoseAt => ({
+export const SIT_SEAT_TOP = 184;
+const sitAt = (neck: [number, number], ankleN: number, ankleF: number, kneeN: [number, number], kneeF: [number, number]): PoseAt => ({
   pelvis: fp(110, SIT_SEAT_TOP),
   seated: true,
-  neck: fp(neck[0], neck[1] + SIT_DROP),
+  neck: fp(neck[0], neck[1]),
   ankleN: fp(ankleN, 0),
   ankleF: fp(ankleF, 0),
   ground: true,
+  kneeN: fp(kneeN[0], kneeN[1]),
+  kneeF: fp(kneeF[0], kneeF[1]),
 });
 const SIT_KEY = { lean: 0, footN: v(0, 1), footF: v(0, 1), snap: true, shapeN: 'fist', shapeF: 'open' } as const;
-/** His neck, hands and ankles per frame (fine pixels of our frame, his seat on row 184), that SIT poses toward (seats.test.ts). */
+/** His neck, hands, knees and ankles per frame (fine pixels of our frame, his seat on row 184), that SIT poses toward (seats.test.ts). */
 const SIT_JOINTS = [
-  { neck: [118, 151], handN: [114.5, 177], handF: [147, 167.5], ankleN: 124, ankleF: 136 },
-  { neck: [119, 151], handN: [115, 177], handF: [148, 167.5], ankleN: 124, ankleF: 136 },
-  { neck: [117.5, 151], handN: [113.5, 177.5], handF: [147, 168.5], ankleN: 121, ankleF: 134 },
-  { neck: [117.5, 151], handN: [113, 180.5], handF: [147, 167.5], ankleN: 125, ankleF: 137 },
+  { neck: [118, 151], handN: [114.5, 177], handF: [147, 167.5], kneeN: [119, 191], kneeF: [134, 185], ankleN: 124, ankleF: 136 },
+  { neck: [119, 151], handN: [115, 177], handF: [148, 167.5], kneeN: [118, 191], kneeF: [133, 185], ankleN: 124, ankleF: 136 },
+  { neck: [117.5, 151], handN: [113.5, 177.5], handF: [147, 168.5], kneeN: [116, 191], kneeF: [130, 185], ankleN: 121, ankleF: 134 },
+  { neck: [117.5, 151], handN: [113, 180.5], handF: [147, 167.5], kneeN: [121, 191], kneeF: [136, 185], ankleN: 125, ankleF: 137 },
 ] as const;
 const SIT: PoseFrame[] = SIT_JOINTS.map((j) => ({
   ...SIT_KEY,
-  at: sitAt([j.neck[0], j.neck[1]], j.ankleN, j.ankleF),
-  handN: at(j.handN[0], j.handN[1] + SIT_DROP),
-  handF: at(j.handF[0], j.handF[1] + SIT_DROP),
+  at: sitAt([j.neck[0], j.neck[1]], j.ankleN, j.ankleF, [j.kneeN[0], j.kneeN[1]], [j.kneeF[0], j.kneeF[1]]),
+  handN: at(j.handN[0], j.handN[1]),
+  handF: at(j.handF[0], j.handF[1]),
 }));
 
 /**
@@ -1158,6 +1163,16 @@ function reachLeg(hip: Vec, t: Vec, thigh: number, shin: number): { mid: Vec; en
   return solve2(hip, v(hip.x + Math.sign(t.x - hip.x) * dx, t.y), thigh, shin, -1);
 }
 
+/**
+ * A leg toward an ankle target with a knee target (PoseAt kneeN/kneeF): the ankle on its target, the knee
+ * on the point nearest the knee target that the shin, standing on the ankle, reaches, and the thigh as
+ * long as getting there takes; never shorter than the body's (then it is reachLeg's leg).
+ */
+function kneeLeg(hip: Vec, t: Vec, k: Vec, thigh: number, shin: number): { mid: Vec; end: Vec } {
+  const mid = add(t, scale(norm(sub(k, t)), shin));
+  return len(sub(mid, hip)) > thigh ? { mid, end: t } : reachLeg(hip, t, thigh, shin);
+}
+
 function solveRig(body: BodyType, pose: RigPose, frame: number, f: PoseFrame): Rig {
   const bp = BODY_PARAMS[body];
   // A pose copied from the owner's frames (PoseAt): the pelvis where he put it (seated, on the seat's top),
@@ -1200,9 +1215,11 @@ function solveRig(body: BodyType, pose: RigPose, frame: number, f: PoseFrame): R
     fromF = add(hipF, back);
   }
   // (PoseAt: each ankle where he drew it, or on the ground under it, the far one FAR_LIFT higher)
-  const legN = a ? reachLeg(hipN, a.ground ? v(a.ankleN.x, ANKLE_N) : a.ankleN, bp.thigh, bp.shin) : solve2(hipN, add(fromN, scale(f.footN, legLen)), bp.thigh, bp.shin, -1);
+  // (and with his knees, the thigh as long as reaching them takes: kneeLeg)
+  const atLeg = (hip: Vec, t: Vec, k?: Vec) => (k ? kneeLeg(hip, t, k, bp.thigh, bp.shin) : reachLeg(hip, t, bp.thigh, bp.shin));
+  const legN = a ? atLeg(hipN, a.ground ? v(a.ankleN.x, ANKLE_N) : a.ankleN, a.kneeN) : solve2(hipN, add(fromN, scale(f.footN, legLen)), bp.thigh, bp.shin, -1);
   const legF = a
-    ? reachLeg(hipF, a.ground ? v(a.ankleF.x, ANKLE_N - FAR_LIFT) : a.ankleF, bp.thigh, bp.shin)
+    ? atLeg(hipF, a.ground ? v(a.ankleF.x, ANKLE_N - FAR_LIFT) : a.ankleF, a.kneeF)
     : solve2(hipF, add(fromF, add(scale(f.footF, legLen), v(0, FAR_HIP_LIFT - FAR_LIFT))), bp.thigh, bp.shin, -1);
 
   const chestDy = f.chestDy || 0;

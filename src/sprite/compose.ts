@@ -248,9 +248,10 @@ export function renderSprite(
   pose: SpritePose,
   frame: number,
   eyeSpecial: EyeSpecial = 'none',
-  opts: { skipEdits?: boolean; heldOnly?: Rig } = {},
+  opts: { skipEdits?: boolean; heldOnly?: Rig; depths?: ReadonlySet<Depth> } = {},
 ): SpriteFrame {
   // heldOnly: just the held item (or the kunai bare hands throw) on that rig, no body (sprite/thrown.ts).
+  // depths: only these layers are shown (tests look at one limb alone, nothing in front of it).
   const rig = opts.heldOnly ?? drawRig(look.body, rigPoseFor(pose, look.cast?.style, look.stowed ? undefined : look.slots.held?.id), frame);
   const mats = new MaterialTable();
   const layers = new Map<Depth, Layer>();
@@ -341,7 +342,7 @@ export function renderSprite(
   const topFlags = new Uint8Array(N);
   DEPTHS.forEach((depth, d) => {
     const L = layers.get(depth);
-    if (!L || !L.used) return;
+    if (!L || !L.used || (opts.depths && !opts.depths.has(depth))) return;
     if ((depth === 'hairFront' || depth === 'hairBack') && !L.noFray) frayHair(L, rig.head, rig.bp.headScale, depth === 'hairFront' ? 11 : 23);
     L.applyOutline();
     if (L.outline) applyTexture(L, mats, frames);

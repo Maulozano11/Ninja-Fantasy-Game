@@ -11,6 +11,7 @@ import { armDepth, armJoints, DrawCtx, ItemDef, legDepth, legJoints, Side } from
 import { type PaintedPiece, segAngle, skinTone, stampLeaning, stampPiece } from '../painted';
 import { add, F_NO_OUTLINE, F_NO_TEXTURE, GRID, partIndex, PartId, RES, sub, v, Vec } from '../raster';
 import { NIGHT_SKIN } from '../nightHeadArt';
+import { closeAnkle, footTurn } from './ankle';
 import { NIGHT_BELT, NIGHT_BELT_BASE, NIGHT_BELT_KIND } from './nightBeltArt';
 import { NIGHT_BOOT_FOOT_F, NIGHT_BOOT_FOOT_N, NIGHT_BOOT_GOLD, NIGHT_BOOT_SHIN_F, NIGHT_BOOT_SHIN_N, NIGHT_BOOT_SILVER, NIGHT_BOOTS, NIGHT_KIT_KIND } from './nightBootsGlovesArt';
 import { NIGHT_CAST_FORE_F, NIGHT_CAST_FORE_N, NIGHT_CAST_KIND } from './nightCastArmsArt';
@@ -384,7 +385,10 @@ export const NIGHT_ITEMS: ItemDef[] = [
     colors: [col('main', 'Leather', NIGHT_BOOTS, 'leather'), col('gold', 'Gold', NIGHT_BOOT_GOLD, 'metal'), col('silver', 'Silver', NIGHT_BOOT_SILVER, 'metal')],
     draw: (g, [main, gold, silver]) => {
       // His boots: on each leg the shaft turns with the shin about the ankle and the foot stays flat on
-      // the ground like our feet, our bare foot under it taken away.
+      // the ground like our feet, our bare foot under it taken away. Lifted well off the ground (a kick, the
+      // run's back leg, a knee raised) the foot turns with the shaft, as he drew them as one, and his line
+      // closes the ankle where the two part (items/ankle.ts, the rule Solen's sandals follow); standing,
+      // it stays flat, so at rest every pixel is his.
       const tint = nightColor(g, NIGHT_KIT_KIND, [NIGHT_BOOTS, main], { gold: [NIGHT_BOOT_GOLD, gold], silver: [NIGHT_BOOT_SILVER, silver] });
       for (const s of SIDES) {
         const d = legShift(g, s);
@@ -393,8 +397,13 @@ export const NIGHT_ITEMS: ItemDef[] = [
         footOff(g, s);
         const shin = s === 'N' ? NIGHT_BOOT_SHIN_N : NIGHT_BOOT_SHIN_F;
         const foot = s === 'N' ? NIGHT_BOOT_FOOT_N : NIGHT_BOOT_FOOT_F;
+        const turn = footTurn(g, s);
         stampPiece(g, legDepth(s, 'feet'), shin, ankle, segAngle(knee, ankle), `shin${s}` as PartId, tint);
-        stampPiece(g, legDepth(s, 'feet'), foot, ankle, foot.angle, `foot${s}` as PartId, tint);
+        stampPiece(g, legDepth(s, 'feet'), foot, ankle, foot.angle + turn, `foot${s}` as PartId, tint);
+        if (turn) {
+          const lineHex = [...Object.values(shin.colors), ...Object.values(foot.colors)].filter((hex) => NIGHT_KIT_KIND[hex] === 'line');
+          if (lineHex.length) closeAnkle(g, s, ankle, g.m(lineHex[0], 'flat'), new Set(lineHex.map((hex) => g.m(hex, 'flat'))));
+        }
       }
     },
   },

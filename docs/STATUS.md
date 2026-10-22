@@ -301,7 +301,8 @@ Merge checks (`git merge-tree` on the origin tips, nothing changed):
   suit, rapier with gold guard and red jewel). (His icon sheets 8–11 are on `icons/sheets-8-11`.)
 
 - `jutsu/chidori-active` (2026-10-21): the activated Chidori built with his answers. Approve his
-  lightning in the hand (copied from both paint-overs), the crackle, the cracks (new art), and the
+  lightning in the hand (copied from both paint-overs), the crackle, the cracks (new art; redone
+  deeper and heavier on 2026-10-22 after "se ven muy debiles ahora"), and the
   points left open: the blow is an attack roll (it was a CON save); the cracks slow their own ninja
   too; only the ninja's own moves set it off (`docs/GAMEPLAY_DESIGN.md`).
 

@@ -642,9 +642,14 @@ function hash01(a: number, b: number): number {
   return (h >>> 0) / 4294967296;
 }
 
+/** How long the lightning left in a new crack's depths takes to die out (ms at speed 1). */
+const CRACK_GLOW_MS = 900;
+
 /**
  * The ground cracked under a charged ninja's steps (vfx_charged/ground_crack, one of its variants per
- * cell): each crack shows as the walker gets there and fades as it mends. Never in a chakra colour.
+ * cell): each crack splits open as the walker gets there (its 'open_<variant>' frames), the Chidori's
+ * lightning flickering in its depths and dying out, then holds until it mends and fades. Never in a
+ * chakra colour.
  */
 export function drawCracks(ctx: CanvasRenderingContext2D, sc: Scene, fade: number): void {
   if (!sc.pb.cracks.size) return;
@@ -654,12 +659,40 @@ export function drawCracks(ctx: CanvasRenderingContext2D, sc: Scene, fade: numbe
   for (const [k, c] of sc.pb.cracks) {
     if (sc.now < c.t0) continue;
     const [cc, cr] = k.split(',').map(Number);
-    const born = Math.min(1, ((sc.now - c.t0) * sc.pb.speed) / 120);
-    const alpha = born * (c.gone === undefined ? 1 : Math.max(0, 1 - ((sc.now - c.gone) * sc.pb.speed) / fade));
+    const ms = (sc.now - c.t0) * sc.pb.speed;
+    const alpha = c.gone === undefined ? 1 : Math.max(0, 1 - ((sc.now - c.gone) * sc.pb.speed) / fade);
     if (alpha <= 0) continue;
     const at = project(sc.map, cellCenter({ c: cc, r: cr }));
-    blit(ctx, s, 'idle', Math.floor(hash01(cc, cr) * n), Math.round(at.X), Math.round(at.Y), hash01(cr, cc) < 0.5, alpha * 0.95);
+    const x = Math.round(at.X), y = Math.round(at.Y);
+    const v = Math.floor(hash01(cc, cr) * n);
+    const mirror = hash01(cr, cc) < 0.5;
+    const open = `open_${v}`;
+    if (s.spec.anims[open] && ms < animMs(s, open)) blit(ctx, s, open, frameAt(s, open, ms), x, y, mirror, alpha);
+    else blit(ctx, s, 'idle', v, x, y, mirror, alpha);
+    // The lightning in its depths: bright as it splits, then flickering out.
+    if (s.spec.anims.glow && ms < CRACK_GLOW_MS) {
+      const g = ms < 150 ? 1 : 1 - (ms - 150) / (CRACK_GLOW_MS - 150);
+      blit(ctx, s, 'glow', v * 2 + (Math.floor(ms / 70) % 2), x, y, mirror, alpha * g);
+    }
   }
+}
+
+/** The dust and chips of ground thrown up as each crack opens, among the standing things (over the feet that cracked it). */
+function crackDustItems(ctx: CanvasRenderingContext2D, sc: Scene): DepthItem[] {
+  if (!sc.pb.cracks.size) return [];
+  const s = worldSprite('vfx_charged', 'ground_crack_dust') as Sheet | undefined;
+  if (!s || !ready(s)) return [];
+  const out: DepthItem[] = [];
+  const dur = animMs(s, 'puff');
+  for (const [k, c] of sc.pb.cracks) {
+    const ms = (sc.now - c.t0) * sc.pb.speed;
+    if (ms < 0 || ms >= dur || c.gone !== undefined) continue;
+    const [cc, cr] = k.split(',').map(Number);
+    const p = cellCenter({ c: cc, r: cr });
+    const at = project(sc.map, p);
+    out.push({ z: p.z + 0.02, draw: () => blit(ctx, s, 'puff', frameAt(s, 'puff', ms), Math.round(at.X), Math.round(at.Y), hash01(cc, cr) < 0.5) });
+  }
+  return out;
 }
 
 function drawFromSheets(ctx: CanvasRenderingContext2D, sc: Scene, f: Fx): boolean {
@@ -1632,6 +1665,7 @@ export function depthFx(ctx: CanvasRenderingContext2D, sc: Scene): DepthItem[] {
     else if (f.kind === 'conduct') out.push(...conductItems(ctx, sc, f));
   }
   out.push(...steamItems(ctx, sc));
+  out.push(...crackDustItems(ctx, sc));
   const pending = (id: string) => sc.pb.queue.some((e) => e.t === 'zone' && e.on && e.zone.id === id);
   for (const z of [...(sc.state.zones ?? []), ...sc.pb.goneZones()]) if (!pending(z.id)) out.push(...galeItems(ctx, sc, z));
   for (const g of sc.pb.zoneGone) out.push(...galeItems(ctx, sc, g.zone, g.t0));

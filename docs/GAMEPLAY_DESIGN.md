@@ -1759,7 +1759,13 @@ for any jutsu with `handCharge`, so the Rasengan can use it as it is):
   ring and bolts and the coat's burst, mirrored when the ninja faces left), the lightning aura round
   the ninja, Battle Static's small bolts crackling on and round the body (in the charge's colour,
   whatever the ninja's own burst), and a crack under each step (`vfx_charged/ground_crack`, new art,
-  four variants). All in the caster's chakra colour but the cracks; his colours at the default.
+  four variants). The owner on the first cracks (2026-10-22): *"las grietas en el piso deben ser mas
+  contundentes profundas se ven muy debiles ahora"*. So each is a heavy fracture about a metre
+  across: deep black fissures 2–4 px wide forking out of the pit, a shadowed upper lip and a lit
+  lower one (cut into the ground), torn soil and lifted slabs of ground; it splits open in 3 frames
+  with a dust puff and thrown chips (`vfx_charged/ground_crack_dust`) and lightning flickering out
+  in its depths, holds, and fades when it mends. All in the caster's chakra colour but the cracks;
+  his colours at the default.
   The blow is his thrust of round 1 (answer 11) with the charged hand.
 - **Open for him**: the attack roll in place of the old save; whether the cracks slow the ninja who
   made them; whether a foe walking into the charged ninja's reach should set it off too; the HUD's

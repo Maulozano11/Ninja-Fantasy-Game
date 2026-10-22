@@ -28,17 +28,17 @@
    }
   },
   "ground_crack": {
-   "label": "Ground cracked under a charged ninja's step (difficult terrain while it shows): four variants in 'idle', one per cell; anchor: its middle on the ground",
+   "label": "Ground cracked under a charged ninja's step (difficult terrain while it shows): four variants in 'idle', one per cell; 'open_<variant>' splits it open; 'glow' is the lightning left in its depths (two flickers per variant, drawn over it, fading); anchor: its middle on the ground",
    "file": "ground_crack.png",
-   "frameW": 30,
-   "frameH": 16,
+   "frameW": 64,
+   "frameH": 36,
    "anchor": [
-    15,
-    8
+    32,
+    19
    ],
    "meters": [
-    0.53,
-    0.28
+    1.12,
+    0.63
    ],
    "tags": [
     "vfx"
@@ -49,6 +49,61 @@
      "frames": 4,
      "fps": 0,
      "loop": true
+    },
+    "open_0": {
+     "row": 1,
+     "frames": 3,
+     "fps": 20,
+     "loop": false
+    },
+    "open_1": {
+     "row": 2,
+     "frames": 3,
+     "fps": 20,
+     "loop": false
+    },
+    "open_2": {
+     "row": 3,
+     "frames": 3,
+     "fps": 20,
+     "loop": false
+    },
+    "open_3": {
+     "row": 4,
+     "frames": 3,
+     "fps": 20,
+     "loop": false
+    },
+    "glow": {
+     "row": 5,
+     "frames": 8,
+     "fps": 0,
+     "loop": true
+    }
+   }
+  },
+  "ground_crack_dust": {
+   "label": "The dust and chips of ground thrown up as a crack opens under a charged ninja's step ('puff', once); anchor: the crack's middle on the ground",
+   "file": "ground_crack_dust.png",
+   "frameW": 84,
+   "frameH": 50,
+   "anchor": [
+    42,
+    36
+   ],
+   "meters": [
+    1.47,
+    0.88
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "puff": {
+     "row": 0,
+     "frames": 7,
+     "fps": 16,
+     "loop": false
     }
    }
   }

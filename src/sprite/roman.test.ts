@@ -392,20 +392,41 @@ describe('the Roman set', () => {
 
   it('shows his drape behind his fist, where the owner marked the gap beside our fist', () => {
     // His fist hid the cloth above the drape's top line beside the strips (the first rows of his drape):
-    // the script continues it there, and our fist, a few pixels left of his, leaves it in sight.
-    const f = renderSprite(look('male'), 'idle', 0);
+    // the script continues it there, and our fist, a few pixels left of his, leaves it in sight. At rest no
+    // background shows between the near fist (from its top) and the strips, down to his drape's top line.
     const [ox, oy] = skirt.PTERUGES_REST.PTERUGES_DRAPE;
-    let cells = 0;
-    let open = 0;
-    skirt.PTERUGES_DRAPE.rows.slice(0, skirt.PTERUGES_DRAPE_FIST_ROWS).forEach((row, j) => {
-      for (let i = 0; i < row.length; i++) {
-        if (row[i] === '.') continue;
-        cells++;
-        if (!opaque(f.rgba, (oy + j) * GRID + ox + i)) open++;
+    const arm = new Set([partIndex('handN'), partIndex('forearmN')]);
+    for (const body of ['male', 'bulky', 'slender'] as BodyType[]) {
+      for (let f = 0; f < frameCount(rigPoseFor('idle')); f++) {
+        const fr = dressed(body, 'idle', f);
+        const hand = [...fr.part.keys()].find((i) => fr.part[i] === partIndex('handN'))!;
+        let open = 0;
+        for (let y = Math.floor(hand / GRID); y < oy + skirt.PTERUGES_DRAPE_FIST_ROWS; y++) {
+          // the near arm's right edge in the row, and what lies between it and the body beside it
+          let x = ox + 24;
+          while (x > 0 && !arm.has(fr.part[y * GRID + x])) x--;
+          for (x++; x < GRID && !opaque(fr.rgba, y * GRID + x); x++) open++;
+        }
+        assert.equal(open, 0, `${body} idle ${f}: ${open} pixels of background beside the fist`);
       }
-    });
-    assert.ok(cells >= 20, `${cells} cells of his drape behind his fist`);
-    assert.equal(open, 0, `${open} pixels of background beside the fist`);
+    }
+  });
+
+  it('cuts the drape behind his fist on his slant: one column a row up to the strips, his line along it', () => {
+    // The owner: "sigue la orientacion que tiene ahorita la capa en diagonal de abajo arriba". The cloth's
+    // left edge goes on up from his drape's top left corner one column a row (his own slant below it moves
+    // one column a row, or keeps its column), so no row sticks out past the slant, and its edge is his line.
+    const rows = skirt.PTERUGES_DRAPE.rows;
+    const n = skirt.PTERUGES_DRAPE_FIST_ROWS;
+    const left = rows.map((r) => r.search(/[^.]/));
+    for (let j = n; j < n + 10; j++) assert.ok([0, 1].includes(left[j] - left[j + 1]), `his slant at row ${j}: ${left[j]} then ${left[j + 1]}`);
+    for (let j = 0; j < n; j++) {
+      assert.equal(left[j] - left[j + 1], 1, `row ${j} of the cloth behind his fist starts at ${left[j]}, the row below at ${left[j + 1]}`);
+      assert.equal(skirt.PTERUGES_KIND[skirt.PTERUGES_DRAPE.colors[rows[j][left[j]]]], 'line', `row ${j}: the slanted edge is not his line`);
+      assert.ok(!rows[j].slice(left[j]).replace(/\.+$/, '').includes('.'), `row ${j}: a gap in the cloth`);
+    }
+    // it reaches the strips: its first row is one cell, his line, beside them
+    assert.equal(rows[0].replace(/\./g, '').length, 1);
   });
 
   it('never shows the background through the skirt, in any pose or frame of any body', () => {

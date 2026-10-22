@@ -1452,6 +1452,10 @@ const PINHOLE = 4;
 const SKIRT_NEAR = 2;
 /** How many columns either way the drape's top reaches over a hole beside it. */
 const DRAPE_REACH = 2;
+/** The widest slit between an arm and the strips, just above the drape, that is cloth behind the arm. */
+const SLIT = 6;
+/** How many rows above the drape's top (in its column or those beside, DRAPE_REACH) such a slit closes. */
+const SLIT_ABOVE = 2;
 
 /**
  * Where the background would show through the skirt: the cells nothing covers (`covered`) that cannot be
@@ -1466,6 +1470,7 @@ export function skirtHoles(
   drape: Layer,
   skirt: (i: number) => boolean,
   limbs?: { arm: (i: number) => boolean; hand: (i: number) => boolean },
+  slits?: Set<number>,
 ): number[] {
   const N = GRID * GRID;
   const outside = new Uint8Array(N);
@@ -1547,8 +1552,34 @@ export function skirtHoles(
       const x = j % GRID;
       const y = (j / GRID) | 0;
       (whole || y > hand || (x > left[y] && x < right[y]) || under(x, y) ? holes : rest).push(j);
+      // beside the hand, below its top: the cloth behind the fist (it takes his cloth below, as a slit does)
+      if (y > hand && !whole) slits?.add(j);
     }
     if (near && rest.length <= PINHOLE) holes.push(...rest);
+  }
+  // The drape behind his fist ends on his slant up to the strips, as the owner asked; with an arm hanging
+  // beside the strips (at rest our fist is a few pixels left of his) the slit left open between the arm and
+  // the strips just above that slant is cloth behind the arm, as his bracer meets the strips in his picture.
+  if (limbs) {
+    const shut = new Set(holes);
+    for (let y = 0; y < GRID; y++) {
+      for (let x = 1; x < GRID - 1; x++) {
+        const i = y * GRID + x;
+        if (covered(i) || outside[i] || !covered(i - 1) || !limbs.arm(i - 1)) continue;
+        // a run of open cells from the arm to the body beside it, its foot near the drape's top
+        let b = x;
+        while (b < GRID - 1 && b - x < SLIT && !covered(i + b + 1 - x)) b++;
+        if (b - x + 1 > SLIT || b === GRID - 1 || limbs.arm(i + b + 1 - x)) continue;
+        let low = false;
+        for (let k = x; k <= b; k++) low ||= under(k, y + SLIT_ABOVE);
+        if (!low) continue;
+        for (let k = x; k <= b; k++) {
+          if (shut.has(i + k - x)) continue;
+          holes.push(i + k - x);
+          slits?.add(i + k - x);
+        }
+      }
+    }
   }
   return holes;
 }
@@ -1583,14 +1614,17 @@ function closeSkirtHoles(L: Layer, drape: Layer, lines: Set<number>, line: numbe
   };
   // closing a hole can wall in a notch beside it: again until none is left
   for (let pass = 0; pass < 4; pass++) {
-    const holes = skirtHoles((i) => cover[i] === 1, drape, skirt, limbs);
+    const slits = new Set<number>();
+    const holes = skirtHoles((i) => cover[i] === 1, drape, skirt, limbs, slits);
     if (!holes.length) break;
     for (const i of holes) {
       const x = i % GRID;
       const y = (i / GRID) | 0;
       // a nick in his line closes with his line; elsewhere the nearest of his cloth goes on into the hole
-      const nick = [[-1, 0], [1, 0], [0, -1], [0, 1]].some(([dx, dy]) => x + dx >= 0 && x + dx < GRID && y + dy >= 0 && y + dy < GRID && lines.has(L.mat[i + dy * GRID + dx]));
+      // (the slit beside an arm takes his cloth below it, as the script continues his drape behind his fist)
+      const nick = !slits.has(i) && [[-1, 0], [1, 0], [0, -1], [0, 1]].some(([dx, dy]) => x + dx >= 0 && x + dx < GRID && y + dy >= 0 && y + dy < GRID && lines.has(L.mat[i + dy * GRID + dx]));
       let mat = line;
+      for (let d = 1; slits.has(i) && d <= 16 && mat === line; d++) if (cloth(x, y + d) >= 0) mat = cloth(x, y + d);
       for (let d = 1; !nick && d <= 16 && mat === line; d++) {
         for (const [dx, dy] of [[0, 1], [0, -1], [-1, 0], [1, 0]]) {
           const m = cloth(x + dx * d, y + dy * d);

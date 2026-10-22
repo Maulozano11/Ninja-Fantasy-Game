@@ -196,7 +196,7 @@ const look = (o: Partial<SpriteAppearance>): SpriteAppearance => ({
 const item = (id: string, ...colors: string[]) => ({ id, colors });
 
 /** A full sheet from a build: legacy look fields from a preset, derived stats from the build. */
-function companion(base: ShinobiCharacter, c: Pick<ShinobiCharacter, 'id' | 'name' | 'title' | 'level' | 'clan' | 'shinobiClass' | 'stats' | 'selectedFeats' | 'selectedJutsus' | 'appearance'>): ShinobiCharacter {
+function companion(base: Partial<ShinobiCharacter> & Pick<ShinobiCharacter, 'palette' | 'hairstyle' | 'headbandPosition'>, c: Pick<ShinobiCharacter, 'id' | 'name' | 'title' | 'level' | 'clan' | 'shinobiClass' | 'stats' | 'selectedFeats' | 'selectedJutsus' | 'appearance'>): ShinobiCharacter {
   const armorStyle = ((c.appearance?.slots.armor && getItem(c.appearance.slots.armor.id)?.statsArmor) || 'Ronin Wanderer Cloak') as ArmorStyleType;
   const d = deriveStats({ level: c.level, stats: c.stats, clan: c.clan, shinobiClass: c.shinobiClass, armor: armorStyle, feats: c.selectedFeats });
   return { ...base, ...c, dojutsu: 'None', armorStyle, ...d, sheetVersion: SHEET_VERSION, currentHp: d.maxHp, currentChakra: d.maxChakra };
@@ -204,8 +204,30 @@ function companion(base: ShinobiCharacter, c: Pick<ShinobiCharacter, 'id' | 'nam
 
 const presetById = (id: string): ShinobiCharacter => (LEGENDARY_PRESETS.find((p) => p.character.id === id) ?? LEGENDARY_PRESETS[0]).character;
 
+/**
+ * Hana's legacy look fields, from her sprite look (read only by a sheet without one). She was built on
+ * a legend's sheet until the owner discarded that legend on 2026-10-22 ("shiori desechala").
+ */
+const HANA_LEGACY: Pick<ShinobiCharacter, 'palette' | 'hairstyle' | 'headbandPosition' | 'weaponStyle' | 'capeStyle'> = {
+  palette: {
+    skinTone: '#f6d3b8',
+    hairColor: '#4a2f22',
+    eyeColor: '#2f8f6a',
+    armorPrimary: '#26323a',
+    armorSecondary: '#2f7d5b',
+    clothColor: '#e8eee8',
+    headbandCloth: '#2f7d5b',
+    headbandPlate: '#cbd5e1',
+    chakraAuraColor: '#22c55e',
+  },
+  hairstyle: 'Itachi Low Ribbon',
+  headbandPosition: 'Forehead',
+  weaponStyle: 'Gentle Fist Palm',
+  capeStyle: 'None',
+};
+
 /** A field medic, so camps can heal with jutsu and operate. */
-export const HANA: ShinobiCharacter = companion(presetById('preset_gentle'), {
+export const HANA: ShinobiCharacter = companion(HANA_LEGACY, {
   id: 'companion_hana',
   name: 'Hana',
   title: 'The Field Medic',

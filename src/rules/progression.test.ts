@@ -167,8 +167,10 @@ describe('a new ninja learns rank D and C jutsu, and its clan\'s ("d y c y los d
     assert.equal(fitToType(DEFAULT_CHARACTER, 'Water').loadout.slot5Ultimate, '');
     // As Light: no Light S-rank, and the genjutsu and taijutsu ones are other classes'.
     assert.equal(fitToType(DEFAULT_CHARACTER, 'Light').loadout.slot5Ultimate, '');
-    const shiori = LEGENDARY_PRESETS.find((p) => p.character.id === 'preset_gentle')!.character; // Taijutsu Master
-    assert.equal(fitToType(shiori, 'Fire').loadout.slot5Ultimate, 'night_guy_dragon', 'no element: it stays');
+    // Hiro (Taijutsu Master) with a taijutsu S-rank (once Shiori's, discarded by the owner on 2026-10-22).
+    const hiro = LEGENDARY_PRESETS.find((p) => p.character.id === 'preset_sunburst')!.character;
+    const taijutsuS = { ...hiro, selectedJutsus: { ...hiro.selectedJutsus, slot5Ultimate: 'night_guy_dragon' } };
+    assert.equal(fitToType(taijutsuS, 'Fire').loadout.slot5Ultimate, 'night_guy_dragon', 'no element: it stays');
   });
 
   it('changing the type in the creator swaps to jutsu a new ninja may learn; an S-rank of another element leaves the slot empty', () => {

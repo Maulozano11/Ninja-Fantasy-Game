@@ -20,9 +20,9 @@ clean.
 
 **Character creator** (`src/components/CharacterCreator.tsx`, laid out like Baldur's Gate 3)
 - Steps: Origin, Clan, Class, Appearance, Abilities, Jutsu. Plus a pixel-paint editor.
-- 8 legend presets (`LEGENDARY_PRESETS`): Solen the Founder King (default sheet), Akira the Ember
+- 7 legend presets (`LEGENDARY_PRESETS`): Solen the Founder King (default sheet), Akira the Ember
   Ronin, **Aiden the Crimson Knight (the owner's art standard)**, Kaien the Storm Avenger, Hiro the
-  Sunburst Hero, Raiga the Warlord of Ash, Shiori the Gentle Fist, Ren the Night Prince.
+  Sunburst Hero, Raiga the Warlord of Ash, Ren the Night Prince.
 - Companions: Hana (Kōton, Medical), Kenji (Ryusei, Genjutsu), and every preset.
 - 5 classes (Ninjutsu, Taijutsu, Genjutsu, Medical, Bukijutsu) and 9 feats.
 - Appearance (`src/sprite/catalog.ts`):
@@ -243,6 +243,7 @@ Merge checks (`git merge-tree` on the origin tips, nothing changed):
 - Decided 2026-10-22: **the Roman sit is built at game scale from his pose** (*"romano sentado a"*). His sit picture is drawn at 0.80 of our scale; option A keeps his pose as the exact guide (legs, arms, drape, rock, frame by frame) built with the Roman set's own pieces at our size, so a seated character is as tall as a standing one. His rock is the seat prop, scaled to fit. On `body/male-skin-face`.
 - Decided 2026-10-22: **his Lyra sitting and reading pictures are the new standard sit and read poses** for every character: *"copialo exacto me encanta estas poses nuevas de sentado y leyendo es el nuevo standard"*. She sits on a rock that is its own object and changes with the scene (*"puedes usar la piedra tambien como objeto pero ese objeto cambiara dependiendo del escenario"*); her hands are copied exactly (*"mira como estan sus manos se ven excelentes copialo igual"*). Being copied on `heroine/lyra-v2` (read in 3 frames, his throw frames 3-4); the sit picture is still to come as a file.
 - Decided 2026-10-22: **the gap round 2 is approved and merged** (`jutsu/gap-set-2`): *"la ola torre suelo mojado ,vapor se ve bien aprovado"*. He will paint an S-rank upgraded Tide over our widest wave frame: *"a la ola pasame el sprite donde se ven mas olas para agregarle un kanji y una bestia animada que sera el jutsu en version mejorada clase s"*.
+- Decided 2026-10-22: **Shiori is discarded, with everything about her** (`cleanup/remove-shiori`): *"shiori desechala esta horrible ese diseño"*, then *"todo lo que tenga que ver con ella"*. Her legend preset (`preset_gentle`, "Shiori, el Puño Suave") is gone, so 7 legends remain; this also drops one of the Naruto-derived designs (a Hinata copy, 4a). Hana, who was built on her sheet, keeps her own legacy fields and is unchanged in play. The items, feats and jutsu she wore are everyone's creator options and stay. A saved hero, roster entry or mission member made from her loads as a normal made ninja with its own data (test in `rules.test.ts`). `scripts/ai-battles.ts` plays Hiro fourth instead, so party A has no Northstar member now (D21's numbers were measured with her).
 - Decided 2026-10-22: **the headband stays, as plain cloth** (approved and merged the same day: *"si me gusta asi la bandana"*). The owner: *"deja la bandana pero quitale el diseño de puntitos referenciando un simbolo deja la pura bandana la pura tela"*. This replaces his earlier "quita las bandanas del juego ya no estara ninguna" (same day; the headband removal on `cleanup/remove-pieces`, "quitar bandanas", is replaced too). Built on `headband/plain-cloth`: the metal plate, its 7 emblems and the slash are gone from the drawing, the creator (Emblem picker, Plate colour, Slashed toggle) and the random ninja; position, tails and cloth colour stay, and every preset, companion and enemy keeps its band. Old saves drop `slashed`, `emblem` and `plate` on load (`migrateAppearance`, `sprite/legacy.ts`). Kaien's tag "Rogue Headband / Bandana de renegado" (the scratched plate) is now "Dark Headband / Bandana oscura". Waiting for his look at the before/after.
 - Decided 2026-10-21 (later still), his jutsu answers: *"1 d y c y los de su clan 2 propuestas 3
   sello explosivo es un item o herramienta consumible palma curativa es un jutsu de utilidad 4 si
@@ -348,8 +349,8 @@ What players see:
 - Feats and class text: Eight Gates, Tenketsu Lockout, feat id `sharingan_precog`.
 - Camp: "Sharingan reading", "Byakugan watch", "Close tenketsu", Ryusei's "Wood shelter" and
   "Wood skin".
-- Presets copying characters: Hiro (Naruto), Kaien (Sasuke), Raiga (Madara), Shiori (Hinata),
-  Solen (Hashirama-style founder).
+- Presets copying characters: Hiro (Naruto), Kaien (Sasuke), Raiga (Madara), Solen (Hashirama-style
+  founder). (Shiori, a Hinata copy, is gone: the owner discarded her on 2026-10-22.)
 - Items: hair `hair_sunburst`, `hair_raven`, `hair_flash`, `hair_gravity`, `hair_warlord`,
   `hair_lowtail`; capes `cape_haori`, `cape_rogue`; held `held_spiral`, `held_lightning`,
   `held_palm`; face `face_beast` whiskers, fox and cat masks.

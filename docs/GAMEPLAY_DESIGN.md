@@ -375,8 +375,8 @@ de tipo deidad angel y dios y el de vacio sombra y espiritu va ser demoniaco
 1. **The legends keep their new types** ("si"), each in the colour it always
    had: Kaien and Ren Lightning (violet, blue), Hiro Wind (orange), Raiga Fire
    (violet); of the companions, Hana Water (green) and Kenji Earth (violet).
-   Kaien, Raiga and Kenji lose the ghost-warrior burst. Solen, Akira, Aiden and
-   Shiori already matched.
+   Kaien, Raiga and Kenji lose the ghost-warrior burst. Solen, Akira and Aiden
+   already matched.
 2. **Saved copies are updated** ("actualiza"). A copy of a legend or companion
    (the hero, the roster, the party and the fallen of a mission under way, an
    import; matched by its id) that still has the burst it had before (Kaien,

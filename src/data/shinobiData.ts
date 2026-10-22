@@ -1291,7 +1291,7 @@ function spriteLook(o: Partial<SpriteAppearance>): SpriteAppearance {
  * The legendary presets. Their numbers are hand-made by the owner, with the clan's ability bonus
  * counted in (docs/CLANS_DESIGN.md, D2): each number is his plus exactly what the bonus adds to the
  * creator's formula (Solen, Akira, Aiden and Ren +1 AC, jutsu DC and attack; Kaien and Raiga +1 AC;
- * Hiro +4 max HP and +1 max chakra; Shiori nothing). rules.test.ts pins his numbers.
+ * Hiro +4 max HP and +1 max chakra). rules.test.ts pins his numbers.
  */
 export const LEGENDARY_PRESETS: { name: string; tag: string; nameEs?: string; tagEs?: string; character: ShinobiCharacter }[] = [
   {
@@ -1694,70 +1694,6 @@ export const LEGENDARY_PRESETS: { name: string; tag: string; nameEs?: string; ta
         },
         accessories: [it('acc_back_katana')],
         chakra: { color: 'red', tint: 'violet', onCharge: true, onCast: true, onVictory: true }, // Fire like his jutsu, in his violet
-      }),
-    },
-  },
-  {
-    name: 'Shiori, the Gentle Fist',
-    tag: 'Pale Eyes · Palm Glow',
-    nameEs: 'Shiori, el Puño Suave',
-    tagEs: 'Ojos pálidos · Palmas brillantes',
-    character: {
-      id: 'preset_gentle',
-      name: 'Shiori',
-      title: 'The Gentle Fist',
-      level: 4,
-      clan: 'Northstar',
-      shinobiClass: 'Taijutsu Master',
-      stats: { str: 14, dex: 18, con: 14, int: 14, wis: 16, cha: 10 },
-      palette: {
-        skinTone: '#ffedd5',
-        hairColor: '#171717',
-        eyeColor: '#e0e7ff',
-        armorPrimary: '#475569',
-        armorSecondary: '#1e293b',
-        clothColor: '#f8fafc',
-        headbandCloth: '#1e3a8a',
-        headbandPlate: '#cbd5e1',
-        chakraAuraColor: '#06b6d4',
-      },
-      hairstyle: 'Itachi Low Ribbon',
-      armorStyle: 'Ronin Wanderer Cloak',
-      headbandPosition: 'Neck',
-      weaponStyle: 'Gentle Fist Palm',
-      capeStyle: 'None',
-      dojutsu: 'Byakugan (Active Veined)',
-      selectedFeats: ['tenketsu_lockout', 'iron_skin'],
-      selectedJutsus: {
-        slot1Utility: 'body_flicker',
-        slot2Elemental: 'water_shield_suijinheki',
-        slot3Elemental: 'leaf_hurricane_senpuu',
-        slot4Clan: 'taki_sixtyfour_palms',
-        slot5Ultimate: 'night_guy_dragon',
-      },
-      sheetVersion: 2,
-      maxHp: 38,
-      currentHp: 38,
-      maxChakra: 32,
-      currentChakra: 32,
-      armorClass: 16,
-      speed: 7,
-      jutsuSaveDC: 15,
-      jutsuAttackBonus: 7,
-      appearance: spriteLook({
-        body: 'female',
-        skin: '#ffe6d2',
-        eyeShape: 'calm',
-        slots: {
-          hair: it('hair_long', '#1d1a2e'),
-          top: it('top_kimono', '#dcd6ee', '#3b3561'),
-          bottom: it('bottom_leggings', '#2a2433', '#7a68a0'),
-          waist: it('waist_sash', '#4a3f7a', '#2c2550'),
-          feet: it('feet_sandals', '#2a2433', '#c9a46c'),
-          held: it('held_palm'),
-        },
-        headband: { position: 'neck', tails: false, cloth: '#1e3a8a' },
-        chakra: { color: 'blue', onCharge: true, onCast: true, onVictory: false },
       }),
     },
   },

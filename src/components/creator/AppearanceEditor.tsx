@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight, Flame, Lock, Paintbrush, PersonStanding, ScanFace, Shield, Shirt, Sword } from 'lucide-react';
 import { fitsBody, itemsForSlot, getItem } from '../../sprite/catalog';
 import { resolveParts, type ItemDef } from '../../sprite/ctx';
-import { EMBLEMS } from '../../sprite/items/headband';
 import { CHAKRA_CHOICES, TINT_CHOICES, chakraChoice, chakraHex } from '../../sprite/chakraInfo';
 import { CHAKRA_TYPES, chakraNature, chakraType, withNature } from '../../sprite/chakraNature';
 import { CAST_STYLE_INFO, defaultCastStyle } from '../../sprite/castInfo';
@@ -126,6 +125,7 @@ const FACE_SHAPES: { id: FaceShape; label: string; sub: string }[] = [
   { id: 'soft', label: 'Soft', sub: 'Fuller cheeks' },
   { id: 'square', label: 'Square', sub: 'Strong jaw' },
   { id: 'valiant', label: 'Valiant', sub: "Aiden's face" },
+  { id: 'founder', label: 'Founder', sub: "Solen's face" },
 ];
 
 const NECKS: { id: NeckType; label: string; sub: string }[] = [
@@ -439,34 +439,10 @@ export const AppearanceEditor: React.FC<{
             </div>
             <div className="flex flex-wrap gap-2">
               <Toggle
-                label="Slashed (rogue)"
-                value={look.headband.slashed}
-                onChange={(slashed) => onChange({ ...look, headband: { ...look.headband, slashed } })}
-              />
-              <Toggle
                 label="Long cloth tails"
                 value={look.headband.tails}
                 onChange={(tails) => onChange({ ...look, headband: { ...look.headband, tails } })}
               />
-            </div>
-            <div>
-              <SectionLabel>Emblem</SectionLabel>
-              <div className="flex flex-wrap gap-2">
-                {EMBLEMS.map((e) => (
-                  <button
-                    key={e.id}
-                    type="button"
-                    onClick={() => onChange({ ...look, headband: { ...look.headband, emblem: e.id } })}
-                    className={`px-2.5 py-1.5 text-xs rounded-lg border transition ${
-                      look.headband.emblem === e.id
-                        ? 'bg-cyan-600 border-cyan-500 text-white'
-                        : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:text-slate-200'
-                    }`}
-                  >
-                    {e.name}
-                  </button>
-                ))}
-              </div>
             </div>
             <ColorRow
               label="Cloth"
@@ -474,12 +450,6 @@ export const AppearanceEditor: React.FC<{
               swatches={CLOTH_COLORS}
               families={CLOTH_FAMILIES}
               onChange={(cloth) => onChange({ ...look, headband: { ...look.headband, cloth } })}
-            />
-            <ColorRow
-              label="Plate"
-              value={look.headband.plate}
-              swatches={['#cbd5e1', '#9ca3af', '#d4af37', '#b87333', '#4b5563', '#f8fafc']}
-              onChange={(plate) => onChange({ ...look, headband: { ...look.headband, plate } })}
             />
           </div>
         )}

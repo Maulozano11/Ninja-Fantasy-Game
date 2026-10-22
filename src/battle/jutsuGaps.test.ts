@@ -1,5 +1,5 @@
 // Tests for the jutsu that fill the gaps in the elements (the owner's answers of 2026-10-21;
-// docs/GAMEPLAY_DESIGN.md, "Jutsu for the gaps"): Water's rank S (the Devouring Tide), Wind's rank A
+// docs/GAMEPLAY_DESIGN.md, "Jutsu for the gaps"): the Devouring Tide (Water, rank A since his second round), Wind's rank A
 // (the Whirlwind Tower), the Gale Curtain made an area that fans fire, the Thunder Beam and the
 // Rubble Gust, with the pieces they brought (a failed save knocks down, sweeps or drags a ninja, the
 // water puts out the flames) and their lines in the log. npm test.
@@ -105,7 +105,9 @@ const NEW = ['water_devouring_tide', 'wind_whirlwind_tower', 'wind_gale_curtain'
 describe('the gaps\' jutsu: the data', () => {
   it('the five he approved, with their names in both languages ("Técnica de <Elemento>: ..."), rank, nature, slot and chakra', () => {
     const want: Record<string, [string, string, string, string, string, number, number, number]> = {
-      water_devouring_tide: ['Técnica de Agua: Ola devoradora', 'Water Technique: Devouring Tide', 'S', 'Water', 'Ultimate', 8, 4, 12],
+      // Rank A since his second round ("ola devoradora es rango a"): an Element slot's; 8 chakra (+4)
+      // since his answer to it ("mas chakra como 8 minimo"), the enhanced cost as every 8-chakra jutsu's.
+      water_devouring_tide: ['Técnica de Agua: Ola devoradora', 'Water Technique: Devouring Tide', 'A', 'Water', 'Elemental', 8, 4, 9],
       wind_whirlwind_tower: ['Técnica de Viento: Torre del torbellino', 'Wind Technique: Whirlwind Tower', 'A', 'Wind', 'Elemental', 5, 3, 9],
       wind_gale_curtain: ['Técnica de Viento: Cortina de vendaval', 'Wind Technique: Gale Curtain', 'C', 'Wind', 'Elemental', 2, 2, 6],
       lightning_thunder_beam: ['Técnica de Rayo: Haz de trueno', 'Lightning Technique: Thunder Beam', 'C', 'Lightning', 'Elemental', 2, 2, 9],
@@ -124,9 +126,9 @@ describe('the gaps\' jutsu: the data', () => {
 
   it('their battle specs and their enhanced casts', () => {
     const t = JUTSU.water_devouring_tide;
-    assert.deepEqual([t.shape, t.length, t.dice, t.dmgType, t.save, t.saveHalf, t.push, t.prone, t.douse], ['cone', 12, '7d12', 'Bludgeoning', 'str', true, { m: 3 }, true, true]);
+    assert.deepEqual([t.shape, t.length, t.dice, t.dmgType, t.save, t.saveHalf, t.push, t.prone, t.douse], ['cone', 9, '5d8', 'Bludgeoning', 'str', true, { m: 3 }, true, true]);
     const te = enhanced(t);
-    assert.deepEqual([te.dice, te.length], ['9d12', 15]);
+    assert.deepEqual([te.dice, te.length, te.angle], ['6d8', 11.25, 80]);
     const w = JUTSU.wind_whirlwind_tower;
     assert.deepEqual([w.shape, w.range, w.radius, w.dice, w.save, w.push, w.prone, w.env], ['circle', 9, 3, '5d8', 'str', { m: 1.5, toward: true }, true, 'clearFoliage']);
     assert.deepEqual([enhanced(w).dice, enhanced(w).radius], ['6d8', 4.5]);
@@ -143,9 +145,9 @@ describe('the gaps\' jutsu: the data', () => {
   });
 });
 
-describe('the Devouring Tide (Water, rank S)', () => {
-  it('a 12 m cone: a foe 11 m away makes a STR save; failed, 7d12, swept 3 m away from the caster and knocked down', () => {
-    const s = duel('water_devouring_tide', { x: 19, z: 10 });
+describe('the Devouring Tide (Water, rank A)', () => {
+  it('a 9 m cone: a foe 8.5 m away makes a STR save; failed, 5d8, swept 3 m away from the caster and knocked down', () => {
+    const s = duel('water_devouring_tide', { x: 16.5, z: 10 });
     const before = { ...s.units.rogue_0.pos };
     const out = seeded(s, (t) => cast(t, 'water_devouring_tide', t.units.rogue_0.pos), (o) => failed(o, 'rogue_0') && !o.state.units.rogue_0.down);
     const p = pushedOf(out.events, 'rogue_0')!;

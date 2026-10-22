@@ -124,6 +124,23 @@ export function offNatureJutsus(loadout: Loadout, nature: ChakraNature, extra: r
 }
 
 /**
+ * A jutsu in the S-rank slot that is an Element slot's now (the Devouring Tide, rank S until the
+ * owner made it rank A, 2026-10-21; asked whether to move it, "si") goes to an Element slot: an empty
+ * one, else the one with the lower rank (the second on a tie), whose jutsu it takes the place of.
+ * The S-rank slot is left empty for the player to fill. Null when there is nothing to move.
+ */
+export function ultimateToElement(loadout: Loadout): { loadout: Loadout; swap: JutsuSwap } | null {
+  const j = JUTSUS_DATA.find((x) => x.id === loadout.slot5Ultimate);
+  if (!j || j.category !== 'Elemental') return null;
+  const rank = (slot: JutsuSlot) => {
+    const id = loadout[slot];
+    return !id || id === j.id ? -1 : RANK_ORDER.indexOf(JUTSUS_DATA.find((x) => x.id === id)?.rank ?? 'D');
+  };
+  const slot: JutsuSlot = rank('slot2Elemental') < rank('slot3Elemental') ? 'slot2Elemental' : 'slot3Elemental';
+  return { loadout: { ...loadout, [slot]: j.id, slot5Ultimate: '' }, swap: { slot, from: loadout[slot], to: j.id } };
+}
+
+/**
  * An imported sheet's jutsu slots: each must name a jutsu that exists (an old id is read through
  * `renamed`), or be empty (a new ninja's S-rank slot), or else it gets `defaults`' jutsu for that
  * slot. The old explosive tag jutsu goes through: migrateCharacter turns it into the item.

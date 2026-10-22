@@ -121,6 +121,7 @@ export interface CharacterPalette {
   armorSecondary: string;
   clothColor: string;
   headbandCloth: string;
+  /** Not drawn: the headband is plain cloth now, with no plate. */
   headbandPlate: string;
   chakraAuraColor: string;
   capeColor?: string;

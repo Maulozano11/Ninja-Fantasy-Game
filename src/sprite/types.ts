@@ -63,7 +63,7 @@ export type NeckType = 'slim' | 'strong';
  * Near-side cheek and jaw: V-line (default), fuller, or a strong flat jaw; or the owner's own head
  * from his Aiden picture (valiant: his skull, ear, cheeks, jaw and chin in his pixels).
  */
-export type FaceShape = 'tapered' | 'soft' | 'square' | 'valiant';
+export type FaceShape = 'tapered' | 'soft' | 'square' | 'valiant' | 'founder';
 
 /** Single-choice equipment slots, drawn back-to-front by depth (see compose.ts). */
 export type SlotId =
@@ -91,15 +91,22 @@ export interface ItemChoice {
 
 export type HeadbandPosition = 'none' | 'forehead' | 'neck' | 'arm' | 'waist';
 
-export type EmblemId = 'crescent' | 'wave' | 'peak' | 'bolt' | 'sun' | 'spiral' | 'blank';
-
+/**
+ * The headband: plain cloth only (the owner, 2026-10-22: "deja la pura bandana la pura tela"). It had a
+ * metal plate with an engraved emblem, which could be slashed; those are gone. Older saves and looks may
+ * still carry `slashed`, `emblem` and `plate`: nothing reads them, and migrateAppearance (legacy.ts)
+ * drops them on load.
+ */
 export interface HeadbandChoice {
   position: HeadbandPosition;
-  slashed: boolean;
   tails: boolean;
-  emblem: EmblemId;
   cloth: string;
-  plate: string;
+  /** Legacy, ignored (the scratch across the old plate). */
+  slashed?: boolean;
+  /** Legacy, ignored (the old plate's emblem). */
+  emblem?: string;
+  /** Legacy, ignored (the old plate's colour). */
+  plate?: string;
 }
 
 export type ChakraColorId = 'red' | 'orange' | 'yellow' | 'green' | 'blue' | 'indigo' | 'violet' | 'white' | 'black' | 'brown' | 'cyan';

@@ -155,7 +155,7 @@ export interface JutsuSpec {
    * circle's middle (a tornado). A ninja; big creatures don't move.
    */
   push?: { m: number; toward?: boolean };
-  /** Water that puts out the flames on everyone it reaches. */
+  /** Water that puts out the flames on everyone it reaches (every water jutsu that strikes). */
   douse?: boolean;
   /** What it does to the ground around it. */
   env?: 'ignite' | 'electrify' | 'clearFoliage';
@@ -244,11 +244,11 @@ const OVERRIDE: Record<string, Partial<JutsuSpec>> = {
   // A shoulder tackle with the weapon put away (the owner): a straight run in, then the blow.
   taijutsu_rush: { vfx: 'hit', melee: true, charge: true, weapon: 'stow', pose: 'tackle', seq: { launchFlash: true, fastRun: 2 } },
   // The gaps in the elements (the owner's answers of 2026-10-21; docs/GAMEPLAY_DESIGN.md, "Jutsu for
-  // the gaps"). Water's rank S: a 12 m cone (past the 9 m cap of other cones, like the Great Fire
-  // Annihilation) that sweeps the ones who fail 3 m away, knocks them down and puts their fire out.
-  water_devouring_tide: { vfx: 'breath', length: 12, push: { m: 3 }, prone: true, douse: true, seq: { castAura: 560, wave: { rows: 3, ms: 1800 }, hitEach: { stagger: 90 }, shake: 6 } },
+  // the gaps"). Water's rank A (the owner's second round: "ola devoradora es rango a"): a 9 m cone
+  // that sweeps the ones who fail 3 m away, knocks them down and puts their fire out.
+  water_devouring_tide: { vfx: 'breath', push: { m: 3 }, prone: true, douse: true, seq: { castAura: 560, wave: { rows: 3, ms: 1900 }, hitEach: { stagger: 90 }, shake: 6 } },
   // Wind's rank A: a tornado that drags the ones who fail 1.5 m toward its middle and knocks them down.
-  wind_whirlwind_tower: { vfx: 'blast', push: { m: 1.5, toward: true }, prone: true, seq: { tower: { warn: 300, minis: 4 }, shake: 2 } },
+  wind_whirlwind_tower: { vfx: 'blast', push: { m: 1.5, toward: true }, prone: true, seq: { tower: { warn: 300, minis: 6 }, shake: 3 } },
   // The Gale Curtain, made an area by the owner: a gale on the ground that fans the fire jutsu
   // crossing it (fannedBy below). It hurts nobody and is silent.
   wind_gale_curtain: { special: 'galeZone', vfx: 'wall', loud: false },
@@ -298,6 +298,9 @@ function specOf(j: JutsuDefinition): JutsuSpec {
   // Elemental by nature, and still drawn as that element (the Adamantine Chains are Water but chakra;
   // an override can say no, for the ones drawn as something else).
   if (spec.elemental === undefined && ELEMENTAL_NATURES.includes(j.nature) && spec.element === ELEMENT[j.nature]) spec.elemental = true;
+  // Water puts out the flames of whoever it reaches (the owner, 2026-10-21: "el agua apaga el fuego"):
+  // every water jutsu that strikes, not only the Tide.
+  if (spec.elemental && spec.element === 'water' && spec.dmgType) spec.douse = true;
   return spec;
 }
 

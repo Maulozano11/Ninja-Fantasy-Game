@@ -325,7 +325,7 @@ describe('rank D and C jutsu in battle', () => {
     assert.ok(after.events.some((e) => e.t === 'attack' && e.what === 'Fists'));
     // Strike first, then cast: the blade is stowed for free and the stones still fly.
     const blow = ok(applyAction(s, { type: 'attack', unit: 'a', target: 'rogue_0' }));
-    assert.ok(blow.events.some((e) => e.t === 'attack' && e.what === 'Crystal blade'));
+    assert.ok(blow.events.some((e) => e.t === 'attack' && e.what === 'Ice crystal sword'));
     const then = ok(cast(blow.state, 'earth_pebble_shot'));
     assert.ok(then.events.some((e) => e.t === 'weapon' && !e.armed && e.cost === 'free'));
     assert.equal(cast(then.state, 'earth_pebble_shot').reason, 'noBonus');

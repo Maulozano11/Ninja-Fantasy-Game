@@ -165,3 +165,40 @@ describe("Lyra's legs on his rock", () => {
     assert.equal(toe(1), 151);
   });
 });
+
+// The owner, 2026-10-22, of the same camp: "yo aun veo el arma cortada". The sword at her hip runs off the left
+// edge of his first frame, and the lift had closed it there in a straight black line down a column.
+describe("Lyra's sword at her hip", () => {
+  it('ends in a tip closed in his line, not cut along a column', () => {
+    for (const k of [0, 1, 2]) {
+      const cells = cellsOf(LYRA_READ[k].filter((p) => p.owner === 'held'));
+      const at = new Map(cells.map((c) => [`${c.x},${c.y}`, c]));
+      const rgb = (h: string) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+      // his blade: its blues (the steel and gold of the hilt are not)
+      const blade = cells.filter((c) => !c.line && rgb(c.hex)[2] > rgb(c.hex)[0] + 25);
+      assert.ok(blade.length > 30, `key ${k}: his blade (${blade.length} pixels)`);
+      // it points back and down from her hip: its far end is its leftmost column (the camp's rightmost)
+      const end = Math.min(...blade.map((c) => c.x));
+      const tip = blade.filter((c) => c.x === end);
+      assert.equal(tip.length, 1, `key ${k}: the blade's last column holds ${tip.length} pixels, not a tip`);
+      // closed in his line past the tip, above and below it
+      const [t] = tip;
+      for (const [dx, dy] of [[-1, 0], [0, -1], [0, 1]]) assert.ok(at.get(`${t.x + dx},${t.y + dy}`)?.line, `key ${k}: the tip at ${t.x},${t.y} open at ${dx},${dy}`);
+      // and no straight cut: his line past the blade's end runs at most two pixels down any one column
+      let run = 0;
+      for (let y = t.y - 6; y <= t.y + 6; y++) {
+        let n = 0;
+        while (at.get(`${end - 1},${y + n}`)?.line) n++;
+        run = Math.max(run, n);
+      }
+      assert.ok(run <= 2, `key ${k}: a straight line of ${run} pixels down x ${end - 1}`);
+      // drawn so in the game, facing right and mirrored as in the camp
+      const f = renderSprite(lyra, 'read', READ_KEYS.indexOf(k as 0 | 1 | 2)).rgba;
+      const m = mirror(f);
+      const past = at.get(`${t.x - 1},${t.y}`)!;
+      assert.equal(hexAt(f, t.x, t.y), t.hex, `key ${k}: the tip`);
+      assert.equal(hexAt(m, GRID - 1 - t.x, t.y), t.hex, `key ${k}: the tip mirrored`);
+      assert.ok(m[(t.y * GRID + GRID - t.x) * 4 + 3] > 0 && hexAt(m, GRID - t.x, t.y) === past.hex, `key ${k}: his line past the tip, mirrored`);
+    }
+  });
+});

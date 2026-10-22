@@ -4,6 +4,7 @@
 
 import type { DrawCtx } from './ctx';
 import { FLAME_LONGSWORD } from './items/flameSwordArt';
+import { ICE_SWORD } from './items/iceSwordArt';
 import { add, norm, RES, scale, sub, Vec } from './raster';
 import { drawRig, THROW_RELEASE_FRAME } from './rig';
 import type { BodyType } from './types';
@@ -63,8 +64,9 @@ export function swordAngle(g: DrawCtx): number {
       return [-38, -165, 30, 64, 145, 12, -40, -42][f % 8];
     default:
       // Matches the reference: blade hangs across the legs at about 50 degrees. The owner's flame
-      // longsword hangs at the angle he painted it (35), so at rest it is every pixel his.
-      return g.has('held', 'held_flame_sword') ? FLAME_LONGSWORD.angle : 52;
+      // longsword and ice crystal sword hang at the angle he painted them (35), so at rest they are every
+      // pixel his.
+      return g.has('held', 'held_flame_sword') ? FLAME_LONGSWORD.angle : g.has('held', 'held_ice_crystal') ? ICE_SWORD.angle : 52;
   }
 }
 
@@ -125,6 +127,9 @@ export const handsReleased = (g: DrawCtx): boolean => g.rig.released && !handsBu
 
 /** The held items that are weapons, with a handle the fist holds; the others are empty hands or a technique held in the palm. */
 const WEAPONS = new Set(['held_katana', 'held_crystal', 'held_ice_crystal', 'held_flame_sword', 'held_kunai', 'held_naginata']);
+
+/** The owner's longswords, held by their own grip at the hand joint (the others at the fist's middle, gripPoint). */
+export const HAND_JOINT_SWORDS = new Set(['held_flame_sword', 'held_ice_crystal']);
 export const isWeapon = (held: string | undefined): boolean => !!held && WEAPONS.has(held);
 
 /**
@@ -186,7 +191,7 @@ export function throwRelease(body: BodyType, held?: string): ThrowRelease {
   const d = norm(sub(at.handN, at.wristN));
   const pole = held === 'held_naginata';
   // The flame longsword is held by its own grip at the hand joint (items/accessories.ts), the others at the fist's middle.
-  const grip = held === 'held_flame_sword' ? before.handN : fist(before);
+  const grip = HAND_JOINT_SWORDS.has(held ?? '') ? before.handN : fist(before);
   return {
     frame: THROW_RELEASE_FRAME,
     hand: scale(fist(at), RES),
@@ -208,5 +213,5 @@ export function heldAt(body: BodyType, pose: 'throw' | 'pierce', frame: number, 
   const pole = held === 'held_naginata';
   const table = pose === 'throw' ? (pole ? THROW_POLE : THROW_BLADE) : pole ? PIERCE_POLE : PIERCE_BLADE;
   const fist = add(r.handN, scale(norm(sub(r.handN, r.wristN)), 0.9));
-  return { at: scale(held === 'held_flame_sword' ? r.handN : fist, RES), angle: table[((frame % table.length) + table.length) % table.length] };
+  return { at: scale(HAND_JOINT_SWORDS.has(held ?? '') ? r.handN : fist, RES), angle: table[((frame % table.length) + table.length) % table.length] };
 }

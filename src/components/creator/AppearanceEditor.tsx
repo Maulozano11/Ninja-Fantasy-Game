@@ -125,6 +125,7 @@ const FACE_SHAPES: { id: FaceShape; label: string; sub: string }[] = [
   { id: 'soft', label: 'Soft', sub: 'Fuller cheeks' },
   { id: 'square', label: 'Square', sub: 'Strong jaw' },
   { id: 'valiant', label: 'Valiant', sub: "Aiden's face" },
+  { id: 'founder', label: 'Founder', sub: "Solen's face" },
 ];
 
 const NECKS: { id: NeckType; label: string; sub: string }[] = [

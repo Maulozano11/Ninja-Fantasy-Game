@@ -19,7 +19,8 @@ const look = (body: BodyType, drapes = 'on', parts: Partial<Record<'armor' | 'sk
   if (parts.skirt !== false) l.slots.skirt = { id: 'skirt_imperial', colors: [], parts: { drapes } };
   if (parts.hands !== false) l.slots.hands = { id: 'hands_bronze_bracers', colors: [] };
   else delete l.slots.hands;
-  if (parts.feet !== false) l.slots.feet = { id: 'feet_gladiator_sandals', colors: [] };
+  // His Roman paint of the sandals (his Solen's repaint is the item's default since 2026-10-21).
+  if (parts.feet !== false) l.slots.feet = { id: 'feet_gladiator_sandals', colors: [], parts: { paint: 'roman' } };
   delete l.slots.top;
   delete l.slots.bottom;
   delete l.slots.cape;

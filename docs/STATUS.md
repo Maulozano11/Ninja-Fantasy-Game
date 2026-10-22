@@ -359,6 +359,10 @@ What players see:
   Doryuheki, Chidori, Raijuu Tsuiga, Konoha Senpuu, Mikazuki no Mai, Nehan Shouja, Kongou Fuusa,
   Hakke 64 Palms, Mokuton, Kirin, Rasenshuriken, Gouka Mekkyaku, Mokujin, Yasaka no Magatama,
   Night Guy).
+  - Decided 2026-10-22 (the owner, naming his icon sheets): Shunshin → **Desvanecer** ("Vanish",
+    `body_flicker`) and Konoha Senpuu → **Patada huracán** ("Hurricane Kick", `leaf_hurricane_senpuu`);
+    ids unchanged. He will rename Rasenshuriken and Night Guy himself, and plans to remove
+    Yasaka no Magatama and make something else.
 - Feats and class text: Eight Gates, Tenketsu Lockout, feat id `sharingan_precog`.
 - Camp: "Sharingan reading", "Byakugan watch", "Close tenketsu", Ryusei's "Wood shelter" and
   "Wood skin".

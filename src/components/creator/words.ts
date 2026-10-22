@@ -201,7 +201,7 @@ const ES: Record<string, string> = {
   "Solen's face": 'La cara de Solen',
   Cowl: 'Embozo',
   'Shoulder stud': 'Tacha del hombro',
-  Trousers: 'Calzas',
+  Trousers: 'Pantalón',
   "Solen's": 'De Solen',
   Roman: 'Romana',
   Stitching: 'Costuras',

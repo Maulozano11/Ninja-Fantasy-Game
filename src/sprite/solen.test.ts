@@ -340,7 +340,7 @@ describe("the owner's Solen", () => {
   it("shows no background and no stray white at his cowl's studs in any pose, frame or body", () => {
     // The owner, 2026-10-22: "aqui tiene unos aun en la hebilla o medallon de la capa". The near end and the
     // white stud ride the shoulders and the cowl round the neck the torso; the seam between them is filled
-    // as it opens (fillSeams in items/accessories.ts; idle is left as drawn, as the hole pass leaves it).
+    // as it opens (fillSeams in sprite/seams.ts), at rest too ("solen rellenar": the bulky body's idle).
     // Round each gold stud (2 px about it): no transparent pixel the figure walls in (within 3 px left,
     // right, above and below), and no near-white pixel that is not one of his own colours (his white stud,
     // his steel's highlights), but a book or the eyes passing by.
@@ -357,7 +357,6 @@ describe("the owner's Solen", () => {
     for (const body of ['male', 'female', 'bulky'] as BodyType[]) {
       const l = look(body);
       for (const pose of POSES) {
-        if (pose === 'idle') continue;
         const rp = rigPoseFor(pose, l.cast?.style, l.slots.held?.id);
         for (let f = 0; f < frameCount(rp); f++) {
           const fr = render(l, pose, f);

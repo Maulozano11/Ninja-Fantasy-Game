@@ -39,9 +39,14 @@ PITCH = 10.4
 BOXES = [(5, 95, 760, 1085), (600, 95, 1400, 1085), (1240, 95, 1998, 1085)]
 SHIFT = [0, 5, 5]
 OFFSET = (74, 123)
-# Panel 1's columns kept, and the rows.
-COLS = 70
+# Panel 1's columns kept, and the rows: wide enough for the toe of her far boot, which he drew reaching
+# right to the next panel's rock (panel 1's column 74, panel 2's 77).
+COLS = 78
 ROWS = 97
+# Panel 2's far toe lies past its box (the grid read stops at a box's edge and repeats its last cells
+# there): those columns are read again over a wider box from the same corner (the same cells; inside the
+# old box the two reads agree on her boot), from this column of panel 1's on.
+REACH = {1: ((600, 95, 1450, 1085), 74)}
 # His grey page, and how far from it a pixel is still page.
 PAGE = (139, 139, 139)
 PAGE_TOL = 14
@@ -51,12 +56,35 @@ TOL = 12
 LINE = 45
 NAMES = ['Atenta', 'Leyendo', 'Pasando pagina']
 
-# The neighbours' pixels in each panel's box (panel 1's columns): the next panel's rock and sword on the
-# right of panel 1, the panel before's boots and book on the left of panels 2 and 3.
+
+def right_of(starts):
+    """The cells from a column on, row by row: starts is [(row, first column)], each holding down to the
+    next row given (the last to the bottom), as a polygon for inside()."""
+    poly = []
+    for i, (y, x) in enumerate(starts):
+        y2 = starts[i + 1][0] if i + 1 < len(starts) else ROWS + 1
+        poly += [(x, y), (x, y2)]
+    return poly + [(COLS + 1, ROWS + 1), (COLS + 1, starts[0][0])]
+
+
+# Where the next panel begins on the right of panels 1 and 2, row by row (panel 1's columns): his black
+# line round her far knee, shin and boot is hers, the next panel's sword tip, tabard, rock and earth from
+# the column after it. (A rectangle from column 64 down took her far shin's line and her far foot with
+# them: the owner, 2026-10-22, "tiene cortada la pierna corrigelo".) Where her line and the next panel's
+# lie side by side, the second is the neighbour's.
+NEXT = {
+    0: [(52, 62), (60, 64), (61, 65), (63, 66), (68, 65), (69, 64), (71, 65), (73, 64), (74, 65), (75, 66), (76, 65),
+        (77, 66), (78, 67), (79, 66), (81, 67), (82, 68), (83, 67), (84, 69), (86, 70), (87, 71), (89, 74), (90, 75)],
+    1: [(52, 63), (60, 65), (61, 66), (63, 67), (68, 66), (71, 67), (73, 66), (74, 67), (75, 68), (76, 67), (77, 68),
+        (78, 69), (79, 68), (81, 69), (82, 70), (83, 69), (84, 71), (86, 72), (87, 73), (88, 74), (89, 77), (90, 78)],
+}
+# The neighbours' pixels in each panel's box (panel 1's columns): the next panel's book above her book,
+# and its sword, rock and earth beside her far leg (NEXT); on the left of panels 2 and 3 the panel
+# before's boots and book, short of her sword's tip.
 OTHERS = {
-    0: [[(-6, 0), (3, 0), (3, 58), (2, 58), (2, 63), (3, 63), (3, 98), (-6, 98)], [(64, 52), (70, 52), (70, 98), (64, 98)], [(66, 0), (70, 0), (70, 52), (66, 52)]],
-    1: [[(-6, 0), (3, 0), (3, 98), (-6, 98)], [(64, 52), (70, 52), (70, 98), (64, 98)], [(67, 0), (70, 0), (70, 52), (67, 52)]],
-    2: [[(-6, 0), (3, 0), (3, 98), (-6, 98)], [(64, 52), (70, 52), (70, 98), (64, 98)], [(67, 0), (70, 0), (70, 52), (67, 52)]],
+    0: [[(-6, 0), (3, 0), (3, 58), (2, 58), (2, 63), (3, 63), (3, 98), (-6, 98)], right_of(NEXT[0]), [(66, 0), (COLS + 1, 0), (COLS + 1, 52), (66, 52)]],
+    1: [[(-6, 0), (3, 0), (3, 59), (1, 59), (1, 61), (2, 61), (2, 63), (3, 63), (3, 98), (-6, 98)], right_of(NEXT[1]), [(67, 0), (COLS + 1, 0), (COLS + 1, 52), (67, 52)]],
+    2: [[(-6, 0), (3, 0), (3, 59), (1, 59), (1, 61), (2, 61), (2, 63), (3, 63), (3, 98), (-6, 98)], [(67, 0), (COLS + 1, 0), (COLS + 1, 52), (67, 52)]],
 }
 
 
@@ -118,7 +146,7 @@ ZONES = [
     ('top', [(45, 30), (50, 30), (50, 27), (66, 27), (66, 47), (39, 47), (39, 35), (45, 35)], skin),
     ('waist', [(27, 45), (53, 45), (53, 50), (27, 50)], None),
     ('bottom', [(30, 50), (56, 50), (56, 55), (52, 62), (36, 62), (30, 56)], None),
-    ('feet', [(38, 53), (66, 53), (66, 94), (44, 94), (44, 62), (38, 62)], None),
+    ('feet', [(38, 53), (COLS, 53), (COLS, 94), (44, 94), (44, 62), (38, 62)], None),
     ('skirt', [(26, 45), (38, 45), (30, 62), (46, 62), (46, 77), (21, 77), (21, 84), (8, 84), (6, 64), (14, 58)], None),
     ('held', [(1, 58), (16, 46), (19, 43), (27, 43), (27, 51), (10, 62), (1, 64)], None),
     ('seat', [(0, 62), (7, 62), (8, 76), (21, 76), (21, 77), (46, 77), (46, 84), (44, 86), (44, 94), (64, 94), (64, 98), (0, 98)], rock),
@@ -126,6 +154,12 @@ ZONES = [
     # her near hand at the book's foot, in front of the belt
     ('top', [(38, 37), (52, 37), (52, 48), (38, 48)], skin),
 ]
+# The ground round her boots (right of the rock and its earth), under their soles and between them, is the
+# seat's, never her boots' (his darkest earth is the colour of her boot leather, so the earth rule alone
+# leaves it to them): ground() takes it from the earth under her soles (rows from GROUND_ROW). The seat
+# prop keeps only the earth under the rock (seat-rock-from-ref.py EARTH_X); the scene's ground is there.
+GROUND = [(48, 84), (COLS, 84), (COLS, ROWS), (48, ROWS)]
+GROUND_ROW = 92
 # Zones of one frame only, laid after ZONES (panel 1's columns).
 FRAME_ZONES = {
     0: [],
@@ -144,6 +178,15 @@ def frame(k):
         return _CACHE[k]
     a = P.native(REF, BOXES[k], PITCH)
     s = SHIFT[k]
+    if k in REACH:
+        box, x0 = REACH[k]
+        b = P.native(REF, box, PITCH)
+        h = min(a.shape[0], b.shape[0])
+        wide = np.zeros((a.shape[0], max(a.shape[1], b.shape[1]), 3), int)
+        wide[:, :] = PAGE
+        wide[:, :a.shape[1]] = a
+        wide[:h, x0 + s:b.shape[1]] = b[:h, x0 + s:]
+        a = wide
     out = np.zeros((ROWS, COLS, 3), int)
     out[:, :] = PAGE
     h = min(ROWS, a.shape[0])
@@ -170,7 +213,26 @@ def owners(k):
         if rule is not None:
             z &= rule(m)
         own[z] = owner
+    own[ground(fg, line)] = 'seat'
     return P.own_lines(own, fg, line)
+
+
+def ground(fg, line):
+    """The earth he drew round her boots: every pixel of his in GROUND joined (side by side, not across
+    his line) to the earth under her soles (rows from GROUND_ROW)."""
+    region = P.inside(GROUND, ROWS, COLS) & fg & ~line
+    out = region.copy()
+    out[:GROUND_ROW] = False
+    while True:
+        grow = out.copy()
+        grow[1:] |= out[:-1]
+        grow[:-1] |= out[1:]
+        grow[:, 1:] |= out[:, :-1]
+        grow[:, :-1] |= out[:, 1:]
+        grow &= region
+        if (grow == out).all():
+            return out
+        out = grow
 
 
 def to_frame(x, y):

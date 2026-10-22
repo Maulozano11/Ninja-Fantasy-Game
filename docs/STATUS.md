@@ -169,7 +169,10 @@ Merge checks (`git merge-tree` on the origin tips, nothing changed):
   joints (`rig.ts` READ, PoseAt), his book for every reader, and his rock is the first seat prop
   (`src/sprite/seats.ts`, the camp draws it under the read spots). Questions for him: the male and bulky
   legs are too short for his rock (their feet hang); which of his three rocks (they differ) is the prop;
-  should the other characters' throw follow his release.
+  should the other characters' throw follow his release. Fixed 2026-10-22 after his look (*"tiene cortada
+  la pierna corrigelo"*): the lift had cut her far shin's line and far foot at the next panel of his
+  picture; her legs are now whole in all three frames, and the earth he drew round her boots is the
+  seat's, not hers (`tools/refs/lyra_read_ref.py`, `seats.test.ts`).
 - Decided 2026-10-21 (later): Warp Strike is renamed **"Shooting-Star Thrust"** (Spanish **"Estocada Fugaz"**; the owner first said "Shooting Star", then chose these), after the clan's name (Ryusei = shooting star) and to stay clear of other games' "Warp Strike". The id `ryusei_warp` stays. To apply once `icons/sheets-8-11` is merged (it touches the same strings): names, hotbar label, help text, log, clan texts, D24.
 - Decided 2026-10-21: the Spanish names are **"Golpe Warp"** and **"Comando"** (the owner: "los dos"); `icons/sheets-8-11` brings them and updates D24 in `docs/CLANS_DESIGN.md`.
 - Jutsu pacing (owner: too fast, "like a flashing star"): a first pass is merged (`8ef28a9`: 560 ms

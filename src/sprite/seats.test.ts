@@ -6,6 +6,8 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { LEGENDARY_PRESETS } from '../data/shinobiData';
 import { renderSprite } from './compose';
+import { LYRA_READ } from './items/lyraReadArt';
+import type { OwnerPiece } from './ownerFrames';
 import { GRID, RES } from './raster';
 import { ANKLE_N, ankleLiftOf, BODY_PARAMS, drawRig, FAR_LIFT, READ_KEYS, READ_SEAT_TOP } from './rig';
 import { DEFAULT_SEAT, onSeat, renderSeat, SEATS, seatFor, type SeatId } from './seats';
@@ -98,5 +100,68 @@ describe('seats', () => {
         assert.ok(opaque(renderSprite(look, 'read', f).rgba) > 1000, `${body} ${k}`);
       }
     }
+  });
+});
+
+/** A frame mirrored like a party member facing left in the camp (campArt.ts gradedMember, gradedSeat). */
+function mirror(src: Uint8ClampedArray): Uint8ClampedArray {
+  const out = new Uint8ClampedArray(src.length);
+  for (let y = 0; y < GRID; y++) for (let x = 0; x < GRID; x++) out.set(src.subarray((y * GRID + GRID - 1 - x) * 4, (y * GRID + GRID - x) * 4), (y * GRID + x) * 4);
+  return out;
+}
+
+/** His pixels of some pieces where they lie in the frame: fine x, y, his colour and whether it is his line. */
+function cellsOf(pieces: OwnerPiece[]): { x: number; y: number; hex: string; line: boolean }[] {
+  return pieces.flatMap((p) =>
+    p.rows.flatMap((row, j) =>
+      [...row].flatMap((c, i) => (c === '.' ? [] : [{ x: p.at[0] - p.pivot[0] + i, y: p.at[1] - p.pivot[1] + j, hex: p.colors[c], line: p.kinds[c] === 'line' }])),
+    ),
+  );
+}
+
+const hexAt = (rgba: Uint8ClampedArray, x: number, y: number) =>
+  '#' + [0, 1, 2].map((c) => rgba[(y * GRID + x) * 4 + c].toString(16).padStart(2, '0')).join('');
+
+// The owner, 2026-10-22, of Lyra reading in the camp: "tiene cortada la pierna corrigelo". His legs were cut
+// in the lift (her far shin's line and her far foot went with the next panel of his picture).
+describe("Lyra's legs on his rock", () => {
+  const legs = (k: number) => LYRA_READ[k].filter((p) => p.owner === 'feet');
+
+  it('show every pixel of his legs over the seat, facing right and mirrored as in the camp', () => {
+    for (const k of [0, 1, 2]) {
+      const f = renderSprite(lyra, 'read', READ_KEYS.indexOf(k as 0 | 1 | 2)).rgba;
+      const cells = cellsOf(legs(k));
+      assert.ok(cells.length > 500, `key ${k}: his legs (${cells.length} pixels)`);
+      for (const flip of [false, true]) {
+        // the camp lays the seat first, then the member over it, each mirrored on its own
+        const seat = flip ? mirror(renderSeat('seat_rock')) : renderSeat('seat_rock');
+        const her = flip ? mirror(f) : f;
+        const laid = seat.slice();
+        for (let i = 0; i < GRID * GRID; i++) if (her[i * 4 + 3]) laid.set(her.subarray(i * 4, i * 4 + 4), i * 4);
+        let hidden = 0;
+        for (const c of cells) {
+          const x = flip ? GRID - 1 - c.x : c.x;
+          if (!laid[(c.y * GRID + x) * 4 + 3] || hexAt(laid, x, c.y) !== c.hex) hidden++;
+        }
+        assert.equal(hidden, 0, `key ${k}${flip ? ' mirrored' : ''}: ${hidden} pixels of his legs not shown`);
+      }
+    }
+  });
+
+  it('are whole: his line closes her shins and boots on every row, and the far toe reaches where he drew it', () => {
+    for (const k of [0, 1, 2]) {
+      const low = cellsOf(legs(k).filter((p) => /^(shin|foot)/.test(p.part)));
+      const rows = new Map<number, (typeof low)[number]>();
+      for (const c of low) if (!rows.has(c.y) || c.x > rows.get(c.y)!.x) rows.set(c.y, c);
+      // (his line, or where the JPEG read it a shade lighter, his darkest leather: every channel below 56)
+      const dark = (h: string) => [1, 3, 5].every((i) => parseInt(h.slice(i, i + 2), 16) < 56);
+      for (const [y, c] of rows) assert.ok(c.line || dark(c.hex), `key ${k}: row ${y} of her legs ends at x ${c.x} in ${c.hex}, not his line`);
+      // her soles stand on the ground row, and nothing of the earth round her boots is hers
+      assert.equal(Math.max(...low.map((c) => c.y)), 215, `key ${k}: her soles`);
+    }
+    // his far foot points forward to his columns 74 and 77 (panel 1's), fine x 148 and 151
+    const toe = (k: number) => Math.max(...cellsOf(legs(k).filter((p) => p.part === 'footF')).map((c) => c.x));
+    assert.equal(toe(0), 148);
+    assert.equal(toe(1), 151);
   });
 });

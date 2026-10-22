@@ -4,7 +4,6 @@ import { fitsBody, itemsForSlot } from './catalog';
 import { TINT_CHOICES } from './chakraInfo';
 import { OFFERED_TYPES } from './chakraNature';
 import type { ItemDef } from './ctx';
-import { EMBLEMS } from './items/headband';
 import { CLOTH_PALETTE, EYE_COLORS, HAIR_COLORS, SKIN_TONES } from './palettes';
 import { CAST_STYLES, type BodyType, type EyeShape, type FaceShape, type HeadbandPosition, type ItemChoice, type NeckType, type SlotId, type SpriteAppearance } from './types';
 
@@ -29,7 +28,7 @@ function slotItem(slot: SlotId, body: BodyType): ItemChoice | undefined {
 }
 
 export function randomAppearance(): SpriteAppearance {
-  const body = pick<BodyType>(['male', 'female', 'bulky', 'slender']);
+  const body = pick<BodyType>(['male', 'female', 'bulky']);
   const slots: SpriteAppearance['slots'] = {};
   const put = (slot: SlotId, p: number) => {
     if (!chance(p)) return;
@@ -57,7 +56,7 @@ export function randomAppearance(): SpriteAppearance {
     body,
     skin: pick(SKIN_TONES.slice(0, 9)),
     eyeShape: pick<EyeShape>(['standard', 'sharp', 'round', 'calm', 'fierce', 'bright', 'piercing', 'valiant', 'night']),
-    faceShape: pick<FaceShape>(['tapered', 'tapered', 'soft', 'square', 'valiant', 'night']),
+    faceShape: pick<FaceShape>(['tapered', 'tapered', 'soft', 'square', 'valiant', 'night', 'founder']),
     neck: pick<NeckType>(['slim', 'slim', 'strong']),
     cast: { style: pick(CAST_STYLES) },
     eyeColor: pick(EYE_COLORS),
@@ -65,11 +64,8 @@ export function randomAppearance(): SpriteAppearance {
     accessories,
     headband: {
       position: pick(positions),
-      slashed: chance(0.15),
       tails: chance(0.4),
-      emblem: pick(EMBLEMS).id,
       cloth: pick(CLOTH_PALETTE),
-      plate: '#cbd5e1',
     },
     // a type the player could pick (its nature), one of its bursts, and now and then another color: the color never changes the type
     chakra: { color: pick(pick(OFFERED_TYPES).bursts), tint: chance(0.25) ? pick(TINT_CHOICES).id : undefined, onCharge: true, onCast: true, onVictory: chance(0.5) },

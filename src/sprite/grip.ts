@@ -4,6 +4,7 @@
 
 import type { DrawCtx } from './ctx';
 import { FLAME_LONGSWORD } from './items/flameSwordArt';
+import { ICE_SWORD } from './items/iceSwordArt';
 import { KATANA_V2 } from './items/katanaV2Art';
 import { NIGHT_GLOVE_N } from './items/nightBootsGlovesArt';
 import { add, norm, RES, scale, sub, v, Vec } from './raster';
@@ -70,9 +71,9 @@ function poseSwordAngle(g: DrawCtx): number {
       return [-38, -165, 30, 64, 145, 12, -40, -42][f % 8];
     default:
       // Matches the reference: blade hangs across the legs at about 50 degrees. The owner's flame
-      // longsword and his Katana v2 hang at the angles he painted them (35, 37), so at rest they are
-      // every pixel his.
-      return g.has('held', 'held_flame_sword') ? FLAME_LONGSWORD.angle : g.has('held', 'held_katana_v2') ? KATANA_V2.angle : 52;
+      // longsword, ice crystal sword and Katana v2 hang at the angles he painted them (35, 35, 37), so at
+      // rest they are every pixel his.
+      return g.has('held', 'held_flame_sword') ? FLAME_LONGSWORD.angle : g.has('held', 'held_ice_crystal') ? ICE_SWORD.angle : g.has('held', 'held_katana_v2') ? KATANA_V2.angle : 52;
   }
 }
 
@@ -179,10 +180,13 @@ export const handsReleased = (g: DrawCtx): boolean => g.rig.released && !handsBu
 
 /** The held items that are weapons, with a handle the fist holds; the others are empty hands or a technique held in the palm. */
 const WEAPONS = new Set(['held_katana', 'held_katana_v2', 'held_crystal', 'held_ice_crystal', 'held_flame_sword', 'held_kunai', 'held_naginata']);
+
+/** The owner's painted swords, held by their own grip at the hand joint (the others at the fist's middle, gripPoint). */
+export const HAND_JOINT_SWORDS = new Set(['held_flame_sword', 'held_ice_crystal', 'held_katana_v2']);
 export const isWeapon = (held: string | undefined): boolean => !!held && WEAPONS.has(held);
 
 /** The owner's painted swords are held by their own grip at the hand joint (items/accessories.ts), the others at the fist's middle. */
-export const heldAtHandJoint = (held: string | undefined): boolean => held === 'held_flame_sword' || held === 'held_katana_v2';
+export const heldAtHandJoint = (held: string | undefined): boolean => HAND_JOINT_SWORDS.has(held ?? '');
 
 /**
  * A kunai from the pouch in the near fist, like the Kunai item: in the wind-up of 'throw' with no

@@ -4,14 +4,14 @@
 import type { ChakraNature, ClanType, ShinobiCharacter } from '../types/shinobi';
 import { CLANS_DATA, DEFAULT_CHARACTER, LEGENDARY_PRESETS, SHINOBI_CLASSES } from '../data/shinobiData';
 import { chakraNature } from '../sprite/chakraNature';
-import { getAppearance } from '../sprite/legacy';
+import { getAppearance, migrateAppearance } from '../sprite/legacy';
 import type { ChakraColorId } from '../sprite/types';
 import type { BreakdownKind, ConvictionValue, EffectId, RuleEvent, SkillId } from '../types/mission';
 import { savingThrow, SKILL_ABILITY } from './checks';
 import { deriveStats, effectiveMaxHp, SHEET_VERSION } from './derived';
 import type { BuildInput } from './derived';
 import { addEffect, EFFECTS, endMission, hasEffect, removeEffect, sanitizeEffects } from './effects';
-import { offNatureJutsus } from './jutsuNature';
+import { offNatureJutsus, ultimateToElement } from './jutsuNature';
 import { GROWTH_LEVEL } from './natureGrowth';
 import { tagJutsuToItem } from './pouch';
 import { checkRng, Dice, pick } from './rng';
@@ -325,6 +325,22 @@ export function withRensNewLook(c: ShinobiCharacter): ShinobiCharacter {
   return { ...c, appearance: { ...structuredClone(ren), chakra: look.chakra, ...(look.cast ? { cast: look.cast } : {}) } };
 }
 
+/** A sheet whose look still has the old headband plate or the slender body, with today's look (the same sheet if not). */
+function withTodaysLook(c: ShinobiCharacter): ShinobiCharacter {
+  if (!c.appearance) return c;
+  const look = migrateAppearance(c.appearance);
+  return look === c.appearance ? c : { ...c, appearance: look };
+}
+
+/**
+ * A sheet saved with a jutsu in its S-rank slot that is an Element slot's now (the Devouring Tide,
+ * rank A since 2026-10-21) gets it in an Element slot (rules/jutsuNature.ts, ultimateToElement).
+ */
+export function tideToElement(c: ShinobiCharacter): ShinobiCharacter {
+  const moved = c.selectedJutsus ? ultimateToElement(c.selectedJutsus) : null;
+  return moved ? { ...c, selectedJutsus: moved.loadout } : c;
+}
+
 /**
  * A sheet from an older save or an import, as today's rules read it:
  * - the explosive tag, a jutsu no more, swapped for the starting sheet's Utility jutsu and two tags
@@ -332,17 +348,20 @@ export function withRensNewLook(c: ShinobiCharacter): ShinobiCharacter {
  * - a legend's or companion's copy with its old chakra burst and the legend's own jutsu moved to the
  *   legend's type (updateLegendChakra);
  * - a copy of Kaien or Raiga given the legend's second element (addLegendNatures);
+ * - a jutsu in the S-rank slot that is an Element slot's now moved to one (tideToElement);
  * - its clan converted (old names load as the clan that replaced them). When its numbers came from
  *   the creator's formula (its AC and jutsu DC and attack still match it) and its old clan built a
  *   bonus into them, its max HP and chakra are worked out again without it, and what it has left is
  *   kept under the new maxima;
  * - the clan's ability bonus counted in its numbers, once (countClanBonus);
- * - a copy of Ren in his old look given the owner's new Ren (withRensNewLook).
+ * - a copy of Ren in his old look given the owner's new Ren (withRensNewLook);
+ * - its headband as plain cloth: the old plate's fields dropped (sprite/legacy.ts, migrateAppearance);
+ * - a look on the slender body, which is gone, on the female body (migrateAppearance).
  * Hand-made numbers (the presets) keep their hand-made part; the other jutsu stay as they are, and of
- * the look only that old burst and the old Ren change. A sheet that is already today's comes back as it is.
+ * the look only that old burst, the old Ren, the headband plate and the slender body change. A sheet that is already today's comes back as it is.
  */
 export function migrateCharacter(saved: ShinobiCharacter): ShinobiCharacter {
-  const c = addLegendNatures(updateLegendChakra(tagJutsuToItem(withRensNewLook(saved))));
+  const c = tideToElement(addLegendNatures(updateLegendChakra(tagJutsuToItem(withTodaysLook(withRensNewLook(saved))))));
   const clan = migrateClan(c.clan) ?? DEFAULT_CHARACTER.clan;
   const before = (c.sheetVersion ?? 1) < SHEET_VERSION;
   if (clan === c.clan && !before) return c;

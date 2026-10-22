@@ -38,6 +38,9 @@ import {
 import { CUIRASS_BRONZE, CUIRASS_CHEST, CUIRASS_GUARD_F, CUIRASS_GUARD_N, CUIRASS_KIND, CUIRASS_LEATHER } from './bronzeCuirassArt';
 import { PTERUGES_DRAPE, PTERUGES_FRONT, PTERUGES_KIND, PTERUGES_LEATHER, PTERUGES_REST, PTERUGES_STUD, PTERUGES_TUNIC } from './pterugesArt';
 import { capeWind } from './capes';
+import { FOUNDER_CHEST, FOUNDER_CUIRASS_KIND, FOUNDER_SASH, FOUNDER_STEEL, FOUNDER_STRAP } from './founderCuirassArt';
+import { FOUNDER_SKIRT, FOUNDER_SKIRT_KIND, FOUNDER_SKIRT_LEATHER, FOUNDER_SKIRT_STUD, FOUNDER_SKIRT_TUNIC } from './founderSkirtArt';
+import { sealCloth } from '../seal';
 import { isFemaleBody, type BodyType } from '../types';
 
 
@@ -651,11 +654,14 @@ function spread(a: number, b: number, n: number): number[] {
  * already drew its tails into `torso.over`, so the skirt goes on top of them
  * there (the strips hang from the armor, over the coat).
  */
-function skirt(g: DrawCtx, draw: (L: Layer, top: (y: number) => number) => void): void {
+function skirt(g: DrawCtx, draw: (L: Layer, top: (y: number) => number) => void, also: Depth[] = []): void {
   const over = g.L('torso.over');
   // Over a coat the skirt is also above the armor layer, so it starts at the armor's lower edge.
-  if (over.used) stamp(over, (L) => draw(L, (y) => Math.min(y, 0.75)));
+  const coat = over.used;
+  if (coat) stamp(over, (L) => draw(L, (y) => Math.min(y, 0.75)));
   else draw(g.L('skirt'), (y) => y);
+  // no crack between its panels or between them and the panels it hangs elsewhere (`also`)
+  sealCloth(g, [...also, coat ? 'torso.over' : 'skirt']);
 }
 
 /**
@@ -1364,6 +1370,53 @@ function drawPteruges(g: DrawCtx, tc: string, lc: string, sc: string, drapes: bo
 }
 
 // ---------------------------------------------------------------------------
+// The owner's Solen (docs/reference/solen-owner-reference.jpg, 2026-10-21: "es el nuevo estandar"): his
+// steel cuirass and his studded skirt, his pixels lifted by tools/refs/solen-cuirass-from-ref.py and
+// solen-skirt-from-ref.py. In our idle pose every pixel is his; in other poses each piece follows its segment.
+// ---------------------------------------------------------------------------
+
+/** His steel cuirass recoloured: his black line and gold buckle stay; his steel follows Steel, his red sash Sash, his brown strap Strap. */
+const founderCuirassColor = (steel: string, sash: string, strap: string) => (_ch: string, hex: string): string => {
+  const k = FOUNDER_CUIRASS_KIND[hex];
+  if (k === 'line' || k === 'gold') return hex;
+  if (k === 'red') return retintHex(hex, FOUNDER_SASH, sash);
+  if (k === 'leather') return retintHex(hex, FOUNDER_STRAP, strap);
+  return retintHex(hex, FOUNDER_STEEL, steel);
+};
+
+/** His chest for the bulky body: stretched as the bronze cuirass's is (see CUIRASS_CHEST_BULKY). */
+const FOUNDER_CHEST_BULKY = stretched(FOUNDER_CHEST, 4, 5, 1);
+
+/**
+ * Draws his steel cuirass over the torso, leaning with it about the neck (his sash and strap are part of
+ * it). The female bodies wear the Legion plate it was painted over (his art is a male chest), in its colours.
+ */
+function drawFounderCuirass(g: DrawCtx, steel: string, sash: string, strap: string): void {
+  const r = g.rig;
+  if (isFemaleBody(r.body)) {
+    ARMOR_ITEMS.find((d) => d.id === 'armor_legion')!.draw(g, [steel, sash, '#c49a3a'], {});
+    return;
+  }
+  clearUnderCuirass(g);
+  stampLeaning(g, 'torso.armor', r.body === 'bulky' ? FOUNDER_CHEST_BULKY : FOUNDER_CHEST, r.neck, segAngle(r.pelvis, r.neck), 'torso', founderCuirassColor(steel, sash, strap), (hex) => FOUNDER_CUIRASS_KIND[hex] === 'line');
+}
+
+/** Draws his skirt over the thighs, leaning with the torso about the pelvis: red follows Tunic, the leather Strips, his gold studs Studs; his black line and grey studs stay. */
+function drawFounderSkirt(g: DrawCtx, tunic: string, strips: string, studs: string): void {
+  const r = g.rig;
+  const color = (_ch: string, hex: string): string => {
+    const k = FOUNDER_SKIRT_KIND[hex];
+    if (k === 'red') return retintHex(hex, FOUNDER_SKIRT_TUNIC, tunic);
+    if (k === 'gold') return retintHex(hex, FOUNDER_SKIRT_STUD, studs);
+    return k === 'leather' ? retintHex(hex, FOUNDER_SKIRT_LEATHER, strips) : hex;
+  };
+  const depth = g.L('torso.over').used ? 'torso.over' : 'skirt';
+  stampLeaning(g, depth, FOUNDER_SKIRT, r.pelvis, segAngle(r.pelvis, r.neck), 'pelvis', color, (hex) => FOUNDER_SKIRT_KIND[hex] === 'line');
+  // turned with a leaning body, his strips can leave a pixel open between them at the hem (seal.ts)
+  sealCloth(g, [depth], true);
+}
+
+// ---------------------------------------------------------------------------
 // Armor
 // ---------------------------------------------------------------------------
 
@@ -2023,6 +2076,17 @@ export const ARMOR_ITEMS: ItemDef[] = [
 
   // -------------------------------------------------------------------------
   {
+    id: 'armor_founder',
+    slot: 'armor',
+    name: "Founder's Segmentata",
+    desc: 'Steel segmented cuirass with a red sash across the chest and a thin leather strap with a gold buckle, painted by the owner for Solen (+4 AC).',
+    colors: [col('steel', 'Steel', FOUNDER_STEEL, 'metal'), col('sash', 'Sash', FOUNDER_SASH), col('strap', 'Strap', FOUNDER_STRAP, 'leather')],
+    statsArmor: 'Roman Legionary Segmentata',
+    draw: (g, [steel, sash, strap]) => drawFounderCuirass(g, steel, sash, strap),
+  },
+
+  // -------------------------------------------------------------------------
+  {
     id: 'armor_wanderer',
     slot: 'armor',
     name: 'Wanderer Mantle',
@@ -2230,7 +2294,7 @@ export const ARMOR_ITEMS: ItemDef[] = [
   },
 
   // -------------------------------------------------------------------------
-  // Fitted armors for women (female and slender bodies only)
+  // Fitted armors for women (female body only)
   {
     id: 'armor_oath',
     slot: 'armor',
@@ -2238,7 +2302,7 @@ export const ARMOR_ITEMS: ItemDef[] = [
     desc: 'A fitted white battle dress with red trim, a silver breastplate shaped to the figure and a pleated skirt (+3 AC). Women only.',
     colors: [col('cloth', 'Dress', '#eeebe6'), col('trim', 'Trim', '#c8202c'), col('plate', 'Plate', '#c3c8d4', 'metal')],
     statsArmor: 'ANBU Spec-Ops',
-    bodies: ['female', 'slender'],
+    bodies: ['female'],
     draw: (g, [cc, tc, pc]) => {
       const b = g.bp;
       const L = g.L('torso.armor');
@@ -2394,7 +2458,7 @@ export const ARMOR_ITEMS: ItemDef[] = [
     desc: 'A black corset dress with a frill of white lace at the neckline, gold lacing down the front and a pleated skirt (+3 AC). Women only.',
     colors: [col('cloth', 'Dress', '#1f1c26'), col('trim', 'Lace', '#ecebf2'), col('plate', 'Corset', '#26222f')],
     statsArmor: 'ANBU Spec-Ops',
-    bodies: ['female', 'slender'],
+    bodies: ['female'],
     draw: (g, [cc, tc, pc]) => {
       const b = g.bp;
       const L = g.L('torso.armor');
@@ -2556,7 +2620,7 @@ export const ARMOR_ITEMS: ItemDef[] = [
     desc: 'A royal blue battle dress under silver plate with gold trim: shaped breastplate, plated faulds, gauntlets and greaves (+4 AC). Women only.',
     colors: [col('dress', 'Dress', '#2a4aa6'), col('plate', 'Plate', '#c9cdd8', 'metal'), col('trim', 'Gold', '#d4a531', 'metal')],
     statsArmor: 'Greek Hoplite Cuirass',
-    bodies: ['female', 'slender'],
+    bodies: ['female'],
     draw: (g, [dc, pc, gc]) => {
       const b = g.bp;
       const L = g.L('torso.armor');
@@ -2688,8 +2752,8 @@ export const ARMOR_ITEMS: ItemDef[] = [
     },
   },
   // -------------------------------------------------------------------------
-  // Plate armors for women, at the standard of the men's plate (female and
-  // slender bodies only)
+  // Plate armors for women, at the standard of the men's plate (female body
+  // only)
   {
     id: 'armor_seraph',
     slot: 'armor',
@@ -2697,7 +2761,7 @@ export const ARMOR_ITEMS: ItemDef[] = [
     desc: 'Light paladin plate in white steel and red enamel: a breastplate shaped to the figure, slender pauldrons and vambraces, short faulds over a pleated skirt, and greaves (+4 AC). Women only.',
     colors: [col('plate', 'Plate', '#cdd3de', 'metal'), col('trim', 'Enamel', '#c8202c'), col('cloth', 'Cloth', '#f3efe6')],
     statsArmor: 'Greek Hoplite Cuirass',
-    bodies: ['female', 'slender'],
+    bodies: ['female'],
     draw: (g, [pc, tc, cc]) => {
       const b = g.bp;
       const L = g.L('torso.armor');
@@ -2763,7 +2827,7 @@ export const ARMOR_ITEMS: ItemDef[] = [
     desc: 'Knightly full plate over a royal blue gown: a sculpted gilded cuirass, tiered pauldrons, vambraces with couters, plated tassets and greaves (+5 AC). Women only.',
     colors: [col('plate', 'Plate', '#c9cdd8', 'metal'), col('gold', 'Gold', '#d4a531', 'metal'), col('gown', 'Gown', '#2a4aa6')],
     statsArmor: 'Dark Knight Plate',
-    bodies: ['female', 'slender'],
+    bodies: ['female'],
     draw: (g, [pc, gc, dc]) => {
       const b = g.bp;
       const L = g.L('torso.armor');
@@ -2849,6 +2913,14 @@ export const SKIRT_ITEMS: ItemDef[] = [
     ],
     draw: (g, [tc, lc, sc], parts) => drawPteruges(g, tc, lc, sc, parts.drapes !== 'off'),
   },
+  {
+    id: 'skirt_founder',
+    slot: 'skirt',
+    name: "Founder's War Skirt",
+    desc: 'A leather belt and studded brown leather strips, each ending in a gold stud, over a red tunic: painted by the owner for Solen.',
+    colors: [col('tunic', 'Tunic', FOUNDER_SKIRT_TUNIC), col('strips', 'Strips', FOUNDER_SKIRT_LEATHER, 'leather'), col('studs', 'Studs', FOUNDER_SKIRT_STUD, 'metal')],
+    draw: (g, [tc, lc, sc]) => drawFounderSkirt(g, tc, lc, sc),
+  },
 
   {
     id: 'skirt_apron',
@@ -2918,7 +2990,7 @@ export const SKIRT_ITEMS: ItemDef[] = [
         capsule(L, kp, add(kp, v(-0.6, 3.0)), 0.7, 0.9, band, (x) => (x + 0.5 < kp.x - 0.5 ? 2 : 1));
         ellipse(L, kp.x, kp.y, 1.25, 1.15, band, (x, y) => clamp(lit(x + 0.5 - kp.x, y + 0.5 - kp.y), 1, 3));
         put(L, fine(kp.x - 0.4), fine(kp.y - 0.4), band, 4);
-      });
+      }, ['farLeg.armor']);
     },
   },
 

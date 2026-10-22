@@ -5,10 +5,12 @@
 // that depends on the pose, so capes trail behind in attacks and sway in idle.
 
 import { hexToRgb, retintHex } from '../color';
-import type { DrawCtx, ItemDef } from '../ctx';
+import type { Depth, DrawCtx, ItemDef } from '../ctx';
 import { add, capsule, cylShade, ellipse, F_NO_OUTLINE, F_NO_TEXTURE, fine, GRID, len, lerp, Layer, norm, PartId, Pen, perp, poly, px, RES, scale, seam, sub, v, Vec } from '../raster';
 import { GROUND } from '../rig';
+import { sealCloth } from '../seal';
 import { OWNER_CAPE_BACK, OWNER_CAPE_FRONT, OWNER_CAPE_PLATE, OWNER_CAPE_SHOULDER, PaintedPart } from './capeArt';
+import { FOUNDER_CAPE, FOUNDER_CAPE_CLOTH, FOUNDER_CAPE_KIND, FOUNDER_CAPE_REST } from './founderCapeArt';
 import { CRIMSON_CAPE_BACK, CRIMSON_CAPE_BASE, CRIMSON_CAPE_EDGE, CRIMSON_CAPE_FAR, CRIMSON_CAPE_LINE, CRIMSON_CAPE_NEAR } from './crimsonCapeArt';
 
 const col = (key: string, label: string, def: string, kind: 'cloth' | 'leather' | 'metal' = 'cloth') => ({ key, label, default: def, kind });
@@ -496,7 +498,15 @@ const CRIMSON_HEM_ABOVE_GROUND = 5;
  * figure is laid down, or sink into the ground in front), with his line along the cut.
  */
 function crimsonBack(g: DrawCtx, color: (ch: string, hex: string) => string): void {
-  const p = CRIMSON_CAPE_BACK;
+  paintedBack(g, CRIMSON_CAPE_BACK, CRIMSON_HEM_ABOVE_GROUND, CRIMSON_CAPE_EDGE, color);
+}
+
+/**
+ * The back of a painted cape (capeBack) hung from the base of the neck, as crimsonBack describes: `hem` is
+ * how far above the ground line its hem hangs at rest, `edge` the character of his line drawn along the
+ * cut when it lies knocked out.
+ */
+function paintedBack(g: DrawCtx, p: PaintedPart, hem: number, edgeCh: string, color: (ch: string, hex: string) => string): void {
   const L = g.L('capeBack');
   const r = g.rig;
   const w = capeWind(g);
@@ -504,7 +514,7 @@ function crimsonBack(g: DrawCtx, color: (ch: string, hex: string) => string): vo
   const ay = Math.floor(r.neck.y * RES) - p.pivot[1];
   const n = p.rows.length;
   const lift = w.lift * 1.4 * RES;
-  const over = r.lay ? 0 : Math.max(0, ay + n - 1 - Math.round(lift) - (GROUND * RES - CRIMSON_HEM_ABOVE_GROUND));
+  const over = r.lay ? 0 : Math.max(0, ay + n - 1 - Math.round(lift) - (GROUND * RES - hem));
   const pens: Record<string, number> = {};
   for (const [ch, hex] of Object.entries(p.colors)) pens[ch] = g.m(color(ch, hex), 'flat');
   // Laid down: the body's back row by row (the cape is drawn before the clothes, over the bare body),
@@ -539,7 +549,7 @@ function crimsonBack(g: DrawCtx, color: (ch: string, hex: string) => string): vo
   });
   if (!r.lay) return;
   // His line along the cut: kept pixels next to cloth that was cut away.
-  const edge = pens[CRIMSON_CAPE_EDGE];
+  const edge = pens[edgeCh];
   const cut: number[] = [];
   for (const i of placed) {
     const x = i % GRID;
@@ -550,7 +560,23 @@ function crimsonBack(g: DrawCtx, color: (ch: string, hex: string) => string): vo
   for (const i of cut) L.set(i % GRID, (i / GRID) | 0, edge, 3, 'back', F_NO_TEXTURE | F_NO_OUTLINE);
 }
 
-export const CAPE_ITEMS: ItemDef[] = [
+/** His Solen's cape: how far above the ground line its hem hangs at rest (the male figure, idle), and his line along a cut. */
+const FOUNDER_HEM_ABOVE_GROUND = GROUND * RES - (FOUNDER_CAPE_REST.FOUNDER_CAPE[1] + FOUNDER_CAPE.rows.length - 1);
+const FOUNDER_CAPE_EDGE = Object.keys(FOUNDER_CAPE.colors).find((ch) => FOUNDER_CAPE_KIND[FOUNDER_CAPE.colors[ch]] === 'line')!;
+
+/** Every layer a cape draws its cloth into (the owner's red cape puts its mantles in the arm armour's and the torso's). */
+export const CAPE_DEPTHS: Depth[] = ['capeBack', 'torso.acc', 'capeFront', 'nearArm.armor', 'nearArm.over'];
+
+/** A cape whose cloth is sealed once drawn: no crack between its pieces, no bite in its edge (seal.ts). */
+const sealed = (d: ItemDef): ItemDef => ({
+  ...d,
+  draw: (g, colors, parts) => {
+    d.draw(g, colors, parts);
+    sealCloth(g, CAPE_DEPTHS, true);
+  },
+});
+
+const CAPES: ItemDef[] = [
   {
     id: 'cape_shadow',
     slot: 'cape',
@@ -613,6 +639,20 @@ export const CAPE_ITEMS: ItemDef[] = [
       const N = g.L('nearArm.armor');
       paintedPart(g, N, CRIMSON_CAPE_NEAR, 'upperArmN', tint, false);
       tuckUnderChin(g, N);
+    },
+  },
+  {
+    id: 'cape_founder',
+    slot: 'cape',
+    name: "Founder's Cape",
+    desc: 'A long dark grey cape falling from the shoulders and flaring out behind the near arm to the calves in long folds, its hem cut in points: painted by the owner for Solen.',
+    colors: [col('main', 'Cape', FOUNDER_CAPE_CLOTH)],
+    draw: (g, [c]) => {
+      // The owner's cape on his Solen, his pixels (the new standard, 2026-10-21; tools/refs/
+      // solen-cape-from-ref.py): hung from the base of the neck behind the body, swaying in the wind as
+      // the crimson cape does, its hem never lower than at rest. What his arm, sword and legs hid is his
+      // cloth continued. His line stays; every grey of his moves the way his base grey does.
+      paintedBack(g, FOUNDER_CAPE, FOUNDER_HEM_ABOVE_GROUND, FOUNDER_CAPE_EDGE, (_ch, hex) => (FOUNDER_CAPE_KIND[hex] === 'line' ? hex : retintHex(hex, FOUNDER_CAPE_CLOTH, c)));
     },
   },
   {
@@ -823,3 +863,5 @@ export const CAPE_ITEMS: ItemDef[] = [
     },
   },
 ];
+
+export const CAPE_ITEMS: ItemDef[] = CAPES.map(sealed);

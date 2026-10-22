@@ -10,7 +10,7 @@ import { THROW_RELEASE_FRAME } from './rig';
 import { catchLook, RELEASE_MARGIN, releaseClear, releaseStart, renderThrown, THROWN_GRIP, thrownItem } from './thrown';
 import type { BodyType, SpriteAppearance } from './types';
 
-const BODIES: BodyType[] = ['male', 'female', 'bulky', 'slender'];
+const BODIES: BodyType[] = ['male', 'female', 'bulky'];
 const BLADES = ['held_katana', 'held_crystal', 'held_ice_crystal', 'held_flame_sword', 'held_kunai'];
 /** Techniques held in the palm: not weapons, so a throw flings a kunai from the pouch instead. */
 const TECHNIQUES = ['held_spiral', 'held_lightning', 'held_palm'];
@@ -77,7 +77,7 @@ describe('the Shooting-Star Thrust thrown weapon', () => {
 
   it('a technique in the palm makes way for the kunai: the throw and the thrust are drawn as with empty hands', () => {
     // (Two bodies are enough: which items are drawn does not depend on the body.)
-    for (const body of ['male', 'slender'] as BodyType[]) {
+    for (const body of ['male', 'female'] as BodyType[]) {
       const bare = look(body);
       for (const held of TECHNIQUES) {
         const l = look(body, held);

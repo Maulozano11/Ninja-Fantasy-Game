@@ -232,7 +232,7 @@ export function drawWeapon(g: DrawCtx, depth: Depth, t: PixelTemplate, hand: Vec
  * pointing along `deg`. At its own angle every pixel is the painter's; pointing left it is mirrored
  * across its length so the lit edge stays on top. With a `tint`, `blade` and `grip` recolour it from
  * `base`; given as a function, it recolours each character's colour itself; without one it keeps its
- * colours.
+ * colours. With `line` (which of its colours are its black line), turned it keeps that line whole.
  */
 export function drawPaintedWeapon(
   g: DrawCtx,
@@ -241,6 +241,7 @@ export function drawPaintedWeapon(
   hand: Vec,
   deg: number,
   tint?: { base: string; blade: string; grip: string; gripBase: string } | ((ch: string, hex: string) => string),
+  line?: (hex: string) => boolean,
 ): void {
   const a = ((deg % 360) + 540) % 360 - 180;
   const flip = Math.abs(a) > 90;
@@ -258,5 +259,5 @@ export function drawPaintedWeapon(
   }
   // Flipped, the template points at -angle; either way it turns by what is left to reach `a`.
   const turn = flip ? a + t.angle : a - t.angle;
-  stampTemplate(g.L(depth), t, hand, turn, pal, 'held', { flipY: flip, flags: F_NO_TEXTURE | F_NO_OUTLINE });
+  stampTemplate(g.L(depth), t, hand, turn, pal, 'held', { flipY: flip, flags: F_NO_TEXTURE | F_NO_OUTLINE, line: line && ((ch) => line(t.colors[ch])) });
 }

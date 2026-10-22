@@ -375,8 +375,8 @@ de tipo deidad angel y dios y el de vacio sombra y espiritu va ser demoniaco
 1. **The legends keep their new types** ("si"), each in the colour it always
    had: Kaien and Ren Lightning (violet, blue), Hiro Wind (orange), Raiga Fire
    (violet); of the companions, Hana Water (green) and Kenji Earth (violet).
-   Kaien, Raiga and Kenji lose the ghost-warrior burst. Solen, Akira, Aiden and
-   Shiori already matched.
+   Kaien, Raiga and Kenji lose the ghost-warrior burst. Solen, Akira and Aiden
+   already matched.
 2. **Saved copies are updated** ("actualiza"). A copy of a legend or companion
    (the hero, the roster, the party and the fallen of a mission under way, an
    import; matched by its id) that still has the burst it had before (Kaien,
@@ -1077,6 +1077,11 @@ folder (`WORLD_OUT`) until then. Approved so far: the river bridge.
   **Answered 2026-10-21** ("Jutsu for the gaps" below): the Devouring Tide is
   Water's rank S; Wind gets the Gale Curtain (C) and the Whirlwind Tower (A).
   Still open there: two per gap or two in all, the 水 kanji, the gaps left.
+  **His second round the same day** ("The gaps' jutsu, second round" below):
+  the Devouring Tide is **rank A**, so **Water has no rank S again** (open).
+  **Answered 2026-10-22**: Water's rank S is the **Dragón Tsunami**, and the
+  Devouring Tide is renamed **Tsunami** ("The Tsunami and the Dragon Tsunami"
+  below).
 - **The elemental beasts as summons** (his rule, 2026-10-21: *"todos los
   elementales seran invocaciones que te ayudaran en el combate no ataques"*):
   how a summon works is to design (what it does on the field, how long it
@@ -1296,7 +1301,7 @@ franchise names.
 
 | jutsu (id) | nature, rank, slot | use | effect | enhanced |
 |---|---|---|---|---|
-| **Ola devoradora** / Devouring Tide (`water_devouring_tide`) | Water, **S**, S-rank slot | action, 8 chakra, **12 m cone** (past the 9 m cap of other cones, like the Great Fire Annihilation) | STR save, half on a success: 7d12 bludgeoning to everyone in the cone, friends too; on a failure the wave **sweeps the target 3 m away from the caster** and **knocks it down**; it **puts out the flames** of everyone it reaches, saved or not | +4: 9d12, the cone reaches 15 m and opens wider |
+| **Ola devoradora** / Devouring Tide (`water_devouring_tide`; named **Tsunami** since 2026-10-22, below) | Water, **A**, Element (rank S and the S-rank slot until his second round: see below) | action, 5 chakra, **9 m cone** | STR save, half on a success: 5d8 bludgeoning to everyone in the cone, friends too; on a failure the wave **sweeps the target 3 m away from the caster** and **knocks it down**; it **puts out the flames** of everyone it reaches, saved or not, and **soaks the ground** it runs over | +3: 6d8, the cone reaches 11.25 m and opens wider |
 | **Torre del torbellino** / Whirlwind Tower (`wind_whirlwind_tower`) | Wind, **A**, Element | action, 5 chakra, a 3 m circle up to 9 m away | STR save, half on a success: 5d8 bludgeoning to everyone in the circle, friends too; on a failure the tornado **drags the target 1.5 m toward its middle** (never past it) and **knocks it down**; it cuts the grass and bushes | +3: 6d8, 4.5 m |
 | **Cortina de vendaval** / Gale Curtain (`wind_gale_curtain`) | Wind, **C**, Element | action, 2 chakra, a gale **2.25 m round** up to 6 m away | no save, no damage, silent: a **gale on the ground** (see below) that **fans the fire jutsu passing through it** | +2: 3.4 m round |
 | **Haz de trueno** / Thunder Beam (`lightning_thunder_beam`) | Lightning, **C**, Element | action, 2 chakra, **9 m line** | DEX save, half on a success: 2d8 lightning to everyone in the line, friends too; lightning in water runs through it | +2: 3d8, the line reaches 11.25 m and runs wider |
@@ -1400,7 +1405,9 @@ Each plays in its caster's chakra colour, like every elemental jutsu.
    (Not answered.)
 2. The Devouring Tide is a rank S without a giant 水 kanji (the S-rank art bar
    asks for one; there is no painted 水): approve it without, or will he paint
-   a Water signature sheet? (Not answered.)
+   a Water signature sheet? (Answered by the second round and 2026-10-22: the
+   Tide is rank A, now the Tsunami; he painted the 水 and a water dragon for
+   Water's rank S, the Dragon Tsunami.)
 3. The gaps still open: Earth rank A (the Wood Dragon is the clan's), Water
    rank D, a third Fire D/C for a new ninja. Another short list (free pieces:
    the rock sphere, the water crescents, the fire wall)? (Not answered.)
@@ -1426,6 +1433,269 @@ Each plays in its caster's chakra colour, like every elemental jutsu.
     potenciado!" for every enhanced jutsu (a shared line, pinned by tests on
     the integration branch): change it to "potenciada" (agreeing with
     "Técnica") for all of them?
+
+## The gaps' jutsu, second round (the owner's answer of 2026-10-21; built on `jutsu/gap-set-2`)
+
+He saw the Tide, the Tower and the Gale Curtain in the game and answered
+(verbatim):
+
+> *"ola devoradora es rango a hay que agregarle mas animacion como en el muro
+> horizontal para que se vea mas ancho y bonita la animacion el sprite de el
+> muro horizantal se ve muy bien entonces piensa como puedes combinar los dos
+> muros para hacer algo mas contundente , y ahora va ver una dinamica como asi
+> el viento potencia el fuego con el muro y el agua apaga el fuego , el agua
+> tambien pone el suelo donde pasa mojado por 2 turnos que conduce electricidad
+> y si se usa un jutsu de fuego se genera vapor que es como una cortina de humo
+> que nubla la vision y hace daño por turno si estas en el area , Torre de
+> torbellino me gusta pero tambien hay que hacerlo mas contundente pon el
+> torbellino central mas ancho mediante se va mas arriba mas ancho esta el
+> torbellino y pon alguna animacion que se separe un poco los vientos que
+> pusiste alrededor para que corran alrededor en forma ondulada como el
+> viento"*
+
+So: the Devouring Tide is **rank A** with a wider, prettier wave that combines
+his two water walls; a **new dynamic of the elements on the ground** (below);
+and a more forceful Whirlwind Tower. Built on `jutsu/gap-set-2`, **waiting for
+his approval of the in-game captures**.
+
+### The Devouring Tide is rank A (his decision)
+
+- Rank **A**, an **Element** slot's jutsu of Water (no longer the S-rank slot):
+  like the other rank A (the Whirlwind Tower, the Dragon Flame Annihilation),
+  a **9 m cone**, **5d8** bludgeoning, STR save for half; enhanced 6d8, an
+  11.25 m cone that opens a third wider. The sweep (3 m), the fall and putting the
+  flames out stay. It costs **8 chakra (+4 enhanced)**, more than the other rank A
+  (his answer: *"mas chakra como 8 minimo"*; the enhanced cost as every 8-chakra
+  jutsu's).
+- Water has **no rank S jutsu, for now** (his answer: *"vacio por ahora"*;
+  **replaced on 2026-10-22**: Water's rank S is the Dragón Tsunami, below). A new
+  ninja picks rank D and C, so the Tide opens at level 7 like every rank A; the
+  nature filter offers it to a Water ninja's Element slots.
+- **A sheet saved with the Tide in its S-rank slot** (it was rank S before) gets it
+  in an Element slot when it loads (his answer: *"si"*; `ultimateToElement` in
+  `rules/jutsuNature.ts`, run by `migrateCharacter`): an empty Element slot if
+  there is one; with both full, it takes the place of the **lower-ranked** of the
+  two (the second slot's on a tie), and that jutsu is dropped. The S-rank slot is
+  left empty for the player to fill.
+
+### The elements on the ground (his dynamic; the numbers are our proposal)
+
+His words: *"el viento potencia el fuego con el muro y el agua apaga el fuego,
+el agua también pone el suelo donde pasa mojado por 2 turnos que conduce
+electricidad y si se usa un jutsu de fuego se genera vapor que es como una
+cortina de humo que nubla la visión y hace daño por turno si estás en el
+área"*. In the engine: `src/battle/ground.ts` (pure and seeded); the state keeps
+`wet` and `steam` by navigation cell (0.5 m).
+
+- **Wind fans fire**: the gale on the ground (the Gale Curtain, above), kept as
+  built.
+- **Water puts out fire**: **every water jutsu that strikes** (the Tide, the
+  Geyser, the Water Dragon Bullet) takes *Burning* off everyone it reaches,
+  saved or not; and **wet ground puts flames out like a river**: a ninja who
+  starts a turn on it stops burning, a fire jutsu's *Burning* doesn't catch on
+  someone standing on it, bushes on it don't burn (the fire turns their water to
+  steam instead). (There is no burning ground
+  in the game: fire burns bushes and trees away at once.) A heal or a wall is no
+  strike: the Healing Dew and the Water Wall soak nothing.
+- **Water soaks the ground it passes over** "por 2 turnos": the cells of the
+  water jutsu's area (a single target's 1 m round), not a river or a pond (water
+  already) nor a tree's or a wall's cell. **Wet for the rest of the round and two
+  more** (it dries as the third new round begins, like the gale; his answer: *"el
+  resto de la ronda y dos mas"*), so everyone has at least two turns with it.
+  Soaked again, it starts over.
+- **Wet ground conducts electricity**: a lightning jutsu that **touches wet
+  ground** (its area reaches a wet cell, or it is aimed at someone standing on
+  one: hit or miss it lands there, as fire that misses still burns and steams
+  where its target stands) runs across **the whole
+  wet patch it touched** (the wet cells joined to it, diagonals included; a
+  separate patch, or dry ground between, stops it). **Everyone else standing on
+  that patch** makes a DEX save against **half the lightning's damage, halved
+  again on a success** (the same numbers as lightning in a river), friends too,
+  **and the caster himself if he stands on it** (as in a river; kept: *"si"*).
+  Lightning in a river still reaches 4.5 m through the water, as before.
+- **Fire on wet ground makes steam**: a fire jutsu (or an explosion) whose area
+  reaches wet cells turns them to steam (the water is used up there; the rest of
+  the patch stays wet). Explosions (tags, barrels) do it too (kept: *"si"*). The
+  steam:
+  - it hangs **the rest of the round and one more** (it thins away as the second
+    new round begins; his answer: *"dura resto de la ronda y 1 mas"*);
+  - **seeing into it** (as built): nobody outside sees a ninja in it (unless right
+    beside it, 1.6 m), nor through it, so nobody throws a kunai or aims a
+    single-target jutsu at a ninja in it, nor through it; a blast (a circle) can
+    still be aimed at a point in the cloud (its surface is seen), not past it.
+    **A blow into it from outside has disadvantage** (the target can't be seen;
+    from inside out, or both inside, it evens out). A ninja in the steam is out
+    of every watcher's sight, so it can Hide there;
+  - **seeing out of it** (his answer: *"mas bien que los enemigos desaparezcan de
+    la vision de ese personaje"*): for a ninja standing in the steam, **the foes
+    outside it vanish from its sight**, as a hidden foe does (`steamHides` in
+    `battle/map.ts`), except one right beside it (1.6 m). It can't aim anything
+    that needs to see its target at them: no kunai, no single-target jutsu, no
+    blast at a point outside. A cone or a line needs no target and can still be
+    sent out blind; it hits whoever is on it. A ninja on the AI in it knows only
+    the plan it had made (an enemy's committed plan goes on); with no plan it
+    walks out first. On the screen, while the acting ninja stands in steam, the
+    foes outside are drawn as a hidden foe is (faint, no health bar, not on the
+    minimap), and aiming at one says "Sin línea de visión: el vapor tapa la
+    vista". A Mirai standing in it foresees nothing out of it either (the Eye of
+    Tomorrow needs sight);
+  - **it burns: 1d6 fire, no save, to whoever starts a turn in it** (its burns
+    are the fire's caster's);
+  - **wind blows it away** (his answer: *"puede ser eliminada con ataques
+    elementales de aire"*): **every wind attack** clears the steam its area
+    reaches: a cone's or a line's area and the caster's own cell (so a ninja can
+    blow the steam off from inside it), a circle's area (the Whirlwind Tower, the
+    Rasenshuriken), a gale starting to turn (the Gale Curtain); a single-target
+    one along its path to its target. A wind jutsu that is no attack (the Breeze
+    Mantle) doesn't. On the screen the steam it touched is carried off away from
+    where the wind came from (the caster, or a circle's middle), stretching out,
+    with streaks of wind through it, and thins out in about a second; the log
+    says "El viento se lleva el vapor" ("The wind blows the steam away").
+- **The AI knows**: a ninja on the AI never stops in steam (it may walk
+  through); standing in it, it walks out before acting, or, when it can do its
+  plan from right there (a blow at a foe beside it), acts first and walks out
+  after; with its action spent in it (a charge that landed there) it walks out
+  with the movement it has left before ending its turn. It doesn't see a foe lost
+  in the steam, nor, standing in it, a foe outside it (unless right beside it),
+  and weighs lightning on a wet group
+  (each foe on the patch it would reach counts half, a friend there against it).
+- **How it looks** (wet ground and steam are never in a chakra colour):
+  - wet ground: a dark sheen over the soaked cells, its edge softened, with a
+    few glints of light; under the Tide it darkens as the crest goes over;
+  - the lightning across it: jagged arcs run out over the patch from where it
+    struck, in the caster's chakra colour, his lightning spark (`hit`) bursting
+    along it, the water lit up;
+  - steam, a curtain: the camp's smoke (`campsite/smoke_tall`, `camp/smoke`: no
+    element sheet has grey smoke) on every steaming cell, at different frames,
+    some turned round, spread wider than tall so the columns run together into
+    a bank; a white veil of overlapping billows over each row of it, in front of
+    whoever stands in that row; it rises in as it forms;
+  - a ninja on fire (*Burning*): his fire aura burns round the ninja, faint,
+    while it lasts; when water or wet ground puts it out, the flames go and a
+    puff of steam (the camp's small smoke) rises off the ninja, so "el agua
+    apaga el fuego" shows on the map, not only in the log;
+  - a bush that burns stands until the fire reaches it (it used to vanish as
+    the jutsu was cast);
+  - aiming at someone the steam hides says so: "Sin línea de visión: el vapor
+    tapa la vista";
+  - the log: "El suelo queda mojado", "¡El rayo corre por el suelo mojado!",
+    "Fuego sobre suelo mojado: sube vapor y ciega a quien esté dentro", "El
+    vapor quema a …", "El viento se lleva el vapor", "El vapor se disipa", "El
+    suelo mojado se seca"; a blow into the steam says "dentro del vapor".
+
+### How they look now (his pieces moved, scaled, layered and timed; nothing redrawn)
+
+- **Devouring Tide** ("combinar los dos muros"): his horizontal water wall
+  (`wall`, the one he likes) laid along the run in lanes across the whole
+  width of the cone, a wide body of water with its front at the crest, rising
+  as it sets off; his water columns (`wall_depth`) stand along the near half of
+  the crest as its face, his spray (`breath`) before it; what it leaves behind
+  settles low and fades; at the end of the cone the water sinks back (his rise
+  played backwards) and his spouts (`blast`) burst along the crest as it breaks.
+  Pointed into the depth, the two swap: his wall stands along the crest as the
+  face (two rows) and his columns trail behind it as the body. The wet ground
+  darkens under it as the crest goes over.
+- **Whirlwind Tower** ("más ancho mediante se va más arriba"): his tornado
+  column (wind `wall_depth`) rises as a **funnel**: his frame cut into 2 px
+  strips, each stretched across by how high it is, from as wide as his column at
+  the foot to 2.6 times as wide at the top (wider for the enhanced tower), with a
+  second turn of it behind, mirrored and fainter; **six** of his small
+  whirlwinds (`multi`) come off it, spread out and **run round it on wavy paths**
+  ("en forma ondulada"): each speeds up and slows, swings in and out and rides up
+  and down, at three heights, in front of and behind whoever stands there.
+
+### His answers on the second round (2026-10-21)
+
+To the eleven questions we asked (the Tide's numbers, the ground's numbers, the
+steam), verbatim:
+
+> *"1 vacio por ahora 2 mas chakra como 8 minimo 3 el resto de la ronda y dos
+> mas , 4 dura resto de la ronda y 1 mas puede ser eliminada con ataques
+> elementales de aire 5 si me gusta , 6 si 7 me vale 8 si 9 lo dejamos 10 mas
+> bien que los enemigos desaparezcan de la vision de ese personaje 11 las
+> dejamos"*
+
+So (built on `jutsu/gap-set-2`, the rules above say each one in full):
+
+1. **Water's rank S stays empty for now.** (Replaced on 2026-10-22: it is the
+   Dragón Tsunami, below.)
+2. **The Tide costs 8 chakra (+4 enhanced)**, up from 5 (+3); the rest of its
+   rank A numbers (9 m cone, 5d8, enhanced 6d8 and 11.25 m) as built.
+3. **Wet ground: the rest of the round and two more**, as built.
+4. **Steam: the rest of the round and one more** (was two more), 1d6 fire with
+   no save at the start of a turn as built, and **every wind attack blows it
+   away** (its area, the caster's own cell for a cone or a line, a single
+   target's path, a gale), seen drifting off on the screen, with a log line.
+5. **Lightning across wet ground** (half the damage, DEX save for a quarter,
+   friends on the patch too): kept.
+6. **Explosions make steam on wet ground**: kept.
+7. **Steam drawn with the camp's grey smoke**: kept.
+8. **A sheet with the Tide in its S-rank slot gets it in an Element slot** when it
+   loads (an empty one, else in place of the lower-ranked of the two).
+9. **The caster on his own wet patch is shocked too**: kept.
+10. **From inside the steam, the foes outside vanish from that ninja's sight**
+    (unless right beside it), instead of the old rule (no circle aimed out, cones
+    and lines allowed): nothing that needs to see its target can be aimed at
+    them, the AI knows only the plan it had, and the screen draws them as hidden
+    foes for that ninja. Seeing into the steam stays as it was. A cone or a line
+    can still be sent out blind.
+11. **The saves' dice windows over the Tower**: kept.
+
+## The Tsunami and the Dragon Tsunami (the owner's decisions of 2026-10-22)
+
+He painted a kanji and a water dragon over our widest wave frame for an S-rank
+version of the Tide (`docs/reference/tide-s-owner-reference.jpg`: *"a la ola
+pasame el sprite donde se ven mas olas para agregarle un kanji y una bestia
+animada que sera el jutsu en version mejorada clase s"*). Seeing it animated in
+the game he answered (verbatim, 2026-10-22):
+
+> *"rango S ola si me gusta la animacion la ola normal se llama tsunami y la
+> rango s es dragon tsunami"*
+
+and then, on the numbers we proposed:
+
+> *"aprovado los numeros de la ola por ahora"*
+
+So:
+
+- **The rank-A Tide is the Tsunami**: *Técnica de Agua: Tsunami* / *Water
+  Technique: Tsunami* (D24's "Técnica de <Elemento>: <name>"; the hotbar's short
+  label *Tsunami*). Same id (`water_devouring_tide`), same rules (above), so
+  saves are untouched.
+- **Water's rank S is the Dragon Tsunami**: *Técnica de Agua: Dragón Tsunami* /
+  *Water Technique: Dragon Tsunami* (short label *Dragón Tsunami* / *Dragon
+  Tsunami*), id `water_tide_s`. This replaces his earlier *"vacio por ahora"*:
+  Water's S-rank slot is no longer empty. It is a jutsu of its own in the
+  S-rank slot (category Ultimate, like the Great Fire Annihilation and the
+  Kirin), learnt through the usual rules: the nature filter offers it to a Water
+  ninja's S-rank slot (first, before the genjutsu and taijutsu S-rank), and the
+  slot opens at level 10. A sheet that held the Tide in its S-rank slot still
+  gets the Tide moved to an Element slot (`ultimateToElement`), with its S-rank
+  slot left empty for the player to fill (now possibly with the Dragon Tsunami).
+- **Its numbers, approved by the owner for now (2026-10-22): «aprovado los
+  numeros de la ola por ahora»**:
+  - action, **12 chakra** (the Tsunami's 8 plus its enhancement's 4), **+4** to
+    enhance;
+  - an **11.25 m cone, 80 degrees wide** (the enhanced Tsunami's);
+  - **6d8 bludgeoning**, STR save for half; enhanced **8d8** (an S-rank's two more
+    dice) and the cone reaches farther (14 m) and opens wider (about 107
+    degrees);
+  - on a failed save the wave **sweeps the target 3 m away** and **knocks it
+    down** (a ninja; big creatures stand firm); it **puts out the flames** of
+    everyone it reaches;
+  - it **soaks the ground** it runs over, which stays wet **one round longer than
+    the Tsunami's**: the rest of the round and three more (`wetRounds` in
+    `src/battle/jutsu.ts`; soaked again by a shorter water jutsu, a cell keeps
+    the longer count).
+- **Its look** (his art, approved: *"si me gusta la animacion"*): the Tsunami's
+  wave with his curl, his water dragon (surges out of the curl, roars, dives at
+  the break) and his kanji 水 with its glow riding the crest
+  (`tools/refs/tide-s-from-ref.py` → `vfx_tide_s`), run a little slower (2.2 s
+  and the 0.9 s break).
+- **Practice**: every water ninja in the practice battles (`#combat`) can cast it
+  whatever its level, so it can be tried; missions are untouched. Hana keeps her
+  Yasaka no Magatama in her S-rank slot (his open question on the medic's
+  genjutsu, `docs/STATUS.md`); giving her the Dragon Tsunami instead is his call.
 
 ## Jutsu effects, round 1 (proposed 2026-10-21; the owner's answer the same day)
 
@@ -1490,3 +1760,35 @@ of a unit by depth (P6). The battle engine is not touched, only each jutsu's
 data for the screen (`JutsuSeq.stage`) and the Leaf Hurricane stowing the
 weapon, which is a rule: with the free interaction spent and a weapon in hand it
 waits, like a jutsu with seals.
+
+### The Chidori becomes an activated state (decided 2026-10-21; the rules are open)
+
+The owner, after sending his silver-haired paint-over (a tactical vest shown with
+and without the long coat, and lightning crackling in the near hand): *"quiero que
+copies el sprite de la mano de rayo para ponersela al efecto de chidori porque
+chidori sera una habilidad que actives y que mientras esta activada tiene tu
+personaje el chido y efectos vfx (aura , algunos sprites alredor de rayos
+alrededor y cuando camina el personaje se va rompiendo el piso )"*.
+
+- The Chidori (`chidori_lightning_blade`) is no longer a one-shot thrust: the
+  ninja activates it, and while it is active the lightning is held in the hand.
+- The lightning in the hand is his sprite from that paint-over, copied 1:1 (his
+  pixels, in the caster's chakra colour like the other lightning).
+- While active: an aura, small lightning sprites crackling around the ninja, and
+  the ground cracks under his steps as he walks.
+- How it plays, his answers the same day to our proposal (*"1si 2B pero al
+  momento de acercarte al primer enemigo en rango ataca automaticamente lo mismo
+  para el rasengan 3 si 4 terreno dificil 1 turno para aplicar ese efecto"*):
+  1. Activating it is a bonus action and costs its chakra (5, as before).
+  2. It stays charged for up to 3 rounds. The moment the ninja moves within
+     reach of the first enemy, the blow goes off by itself: one melee jutsu
+     attack, 5d8 lightning as before, and then the Chidori ends. The Rasengan
+     will work the same way when it is built (it is not a battle jutsu yet).
+  3. While charged: his lightning hand, an aura, small lightning sprites around
+     the ninja, and the ground cracking under each step.
+  4. The cracked ground is difficult terrain for 1 turn.
+
+The vest and coat in the same picture are not a new character: *"el chaleco no es
+de jonin parece mas como tactico militar solo cambiale los colores y no lo hagas
+personaje es parte de los sets"*. They become clothing pieces in the sets, with
+new colours.

@@ -1442,7 +1442,7 @@ describe('Ryusei: Weapon Nodes, Shooting-Star Thrust, Spatial Swap', () => {
 });
 
 describe('Northstar: Aura of Sovereignty, Command, Natural Submission', () => {
-  const northstar = (over: Partial<ShinobiCharacter> = {}) => hero({ id: 'n', name: 'Shiori', clan: 'Northstar', ...over });
+  const northstar = (over: Partial<ShinobiCharacter> = {}) => hero({ id: 'n', name: 'Yua', clan: 'Northstar', ...over });
   /** A Northstar at (8.25, 10.25) on its turn, the enemies 6 m away or as given. */
   const northstarTurn = (over: Partial<BattleSetup> = {}): BattleState => turnOf(createBattle(setup({ party: [{ character: northstar(), pos: { x: 8, z: 10 } }], ...over })).state, 'n');
   const cast = (s: BattleState, target: string, o: { jutsu?: string; target2?: string } = {}) =>
@@ -1925,7 +1925,7 @@ describe('enemy clans are mixed (docs/CLANS_DESIGN.md, D6)', () => {
     assert.ok(pv.reasons.includes('aura'));
     assert.equal(applyAction(s, { type: 'jutsu', unit: 'rogue_1', jutsu: 'northstar_command', at: { ...s.units.a.pos }, target: 'a' }).reason, 'cantCommand');
     // A party Northstar can take the lookout and the raider, but not the Mirai rogue.
-    const n = battleOf('cedar_rogues', 7, [{ character: hero({ id: 'n', name: 'Shiori', clan: 'Northstar' }) }]);
+    const n = battleOf('cedar_rogues', 7, [{ character: hero({ id: 'n', name: 'Yua', clan: 'Northstar' }) }]);
     assert.deepEqual(['rogue_0', 'rogue_1', 'raider_0'].map((id) => commandRefused(n, n.units.n, n.units[id])), ['mindImmune', null, null]);
   });
 
@@ -1936,7 +1936,7 @@ describe('enemy clans are mixed (docs/CLANS_DESIGN.md, D6)', () => {
       { character: noUlt(hero({ id: 'a', name: 'Aki' })), controller: 'ai' as const },
       { character: noUlt(HANA), controller: 'ai' as const, aiOrder: 'support' as const },
       { character: noUlt(KENJI), controller: 'ai' as const },
-      { character: noUlt(hero({ id: 'n', name: 'Shiori', clan: 'Northstar' })), controller: 'ai' as const },
+      { character: noUlt(hero({ id: 'n', name: 'Yua', clan: 'Northstar' })), controller: 'ai' as const },
     ];
     for (const id of Object.keys(ENCOUNTERS) as EncounterId[]) {
       for (const seed of [1, 2]) {
@@ -1965,7 +1965,7 @@ describe('enemy clans are mixed (docs/CLANS_DESIGN.md, D6)', () => {
       { character: noUlt(hero({ id: 'a', name: 'Aki' })), controller: 'ai' as const },
       { character: noUlt(HANA), controller: 'ai' as const, aiOrder: 'support' as const },
       { character: noUlt(KENJI), controller: 'ai' as const },
-      { character: noUlt(hero({ id: 'n', name: 'Shiori', clan: 'Northstar' })), controller: 'ai' as const },
+      { character: noUlt(hero({ id: 'n', name: 'Yua', clan: 'Northstar' })), controller: 'ai' as const },
     ];
     const runs: [EncounterId, number, typeof four][] = [];
     for (const id of ['river_patrol', 'cedar_rogues', 'night_raid'] as EncounterId[]) for (const seed of [1, 2, 3, 4]) runs.push([id, seed, four]);

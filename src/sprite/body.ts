@@ -12,6 +12,7 @@ import { VALIANT_HEAD, VALIANT_SKIN } from './headArt';
 import { NIGHT_EYE_COLORS, NIGHT_EYES, NIGHT_IRIS } from './nightEyeArt';
 import { NIGHT_HEAD, NIGHT_SKIN } from './nightHeadArt';
 import { type PaintedPiece, skinTone, stampPiece } from './painted';
+import { FOUNDER_FACE_KIND, FOUNDER_HEAD, FOUNDER_IRIS, FOUNDER_SKIN } from './founderFaceArt';
 import { ballShade, capsule, ellipse, F_NO_OUTLINE, F_NO_TEXTURE, GRID, Layer, PartId, Pen, poly, RES, seam, v, Vec } from './raster';
 import { type EyeShape, isFemaleBody, type FaceShape } from './types';
 
@@ -316,6 +317,11 @@ function drawHead(g: DrawCtx): void {
     drawFace(g);
     return;
   }
+  if (g.look.faceShape === 'founder') {
+    drawFounderHead(g);
+    drawFace(g);
+    return;
+  }
   const L = g.L('head.body');
   const H = (dx: number, dy: number) => headAt(g, dx, dy);
   const pen: Pen = { mat: g.skin, part: 'head' };
@@ -369,6 +375,20 @@ function drawPaintedHead(g: DrawCtx, ph: PaintedHead): void {
   stampPiece(g, 'head.body', ph.head, at, ph.head.angle, 'head', (_ch, hex) => skinTone(hex, ph.skin, g.look.skin));
 }
 
+/**
+ * The owner's face on his Solen (face shape 'founder', src/sprite/founderFaceArt.ts): his pixels, skull to
+ * chin, with his eyes and mouth, stamped on the face anchor as they are (he kept our face template's place).
+ * His skin follows the character's skin as his Aiden head's does; his eyes' reds follow the eye colour. The
+ * face template draws only what his picture does not show (closed or lowered lids, another eye shape, the
+ * clans' special eyes: see drawFace).
+ */
+function drawFounderHead(g: DrawCtx): void {
+  const { nx, ny } = faceAnchor(g);
+  const at = v((nx + 0.5) / RES, (ny + 0.5) / RES);
+  const iris = g.look.eyeColor || FOUNDER_IRIS;
+  stampPiece(g, 'head.body', FOUNDER_HEAD, at, FOUNDER_HEAD.angle, 'head', (_ch, hex) => (FOUNDER_FACE_KIND[hex] === 'red' ? retintHex(hex, FOUNDER_IRIS, iris) : FOUNDER_FACE_KIND[hex] === 'line' || FOUNDER_FACE_KIND[hex] === 'white' ? hex : skinTone(hex, FOUNDER_SKIN, g.look.skin)));
+}
+
 // ---------------------------------------------------------------------------
 // Face template (fine pixels), copied pixel by pixel from the reference sprite.
 // Columns 0..11 start at the near eye's lash; rows 0..9 start at the lash row.
@@ -383,9 +403,9 @@ function drawPaintedHead(g: DrawCtx, ph: PaintedHead): void {
  *   then the jaw tapers to the chin so the lower face stays small.
  * soft: a fuller cheek, three rows straight before a gentle taper.
  * square: the reference's original strong jaw, with a flat jaw line.
- * (valiant and night, the owner's heads, are his pixels whole: see drawPaintedHead.)
+ * (valiant, night and founder, the owner's heads, are his pixels whole: see drawPaintedHead, drawFounderHead.)
  */
-const FACE_LEFT: Record<Exclude<FaceShape, 'valiant' | 'night'>, string[]> = {
+const FACE_LEFT: Record<Exclude<FaceShape, 'valiant' | 'night' | 'founder'>, string[]> = {
   tapered: ['osbbbbb', 'ossbbbb', '.osbbbb', '..osbbb', '...osbb', '....osb', '.....os', '......o', '.......', '.......'],
   soft: ['osbbbbb', 'ossbbbb', 'ossbbbb', '.osbbbb', '..osbbb', '...osbb', '....osb', '.....oo', '.......', '.......'],
   square: ['osbbbbb', 'ossbbbb', 'osDsbbb', 'ossbbbb', '.osbbbs', '..osbbs', '...osbs', '....ooo', '.......', '.......'],
@@ -393,7 +413,7 @@ const FACE_LEFT: Record<Exclude<FaceShape, 'valiant' | 'night'>, string[]> = {
 
 const faceLeft = (g: DrawCtx): string[] => {
   const s = g.look.faceShape;
-  return (s && s !== 'valiant' && s !== 'night' && FACE_LEFT[s]) || FACE_LEFT.tapered;
+  return (s && s !== 'valiant' && s !== 'night' && s !== 'founder' && FACE_LEFT[s]) || FACE_LEFT.tapered;
 };
 
 const FACE_MAIN: Record<string, string[]> = {
@@ -496,11 +516,12 @@ export function faceCells(g: DrawCtx, skipBack = 0): Set<number> {
     if (x >= 0 && y >= 0 && x < GRID && y < GRID) out.add(y * GRID + x);
   };
   const ph = paintedHead(g);
-  if (ph) {
+  const head = g.look.faceShape === 'founder' ? FOUNDER_HEAD : ph?.head;
+  if (head) {
     // The owner's head from the lash row down, from the column the other shapes' near side starts at.
-    const ox = nx - ph.head.pivot[0];
-    const oy = ny - ph.head.pivot[1];
-    ph.head.rows.forEach((row, r) => {
+    const ox = nx - head.pivot[0];
+    const oy = ny - head.pivot[1];
+    head.rows.forEach((row, r) => {
       if (oy + r < ny) return;
       for (let c = 0; c < row.length; c++) if (row[c] !== '.' && ox + c >= nx - 7 + skipBack) add(ox + c, oy + r);
     });
@@ -574,7 +595,15 @@ function drawFace(g: DrawCtx): void {
     else if (ch in colors) L.set(x, y, colors[ch], 3, 'head', F_NO_OUTLINE);
   };
   const ph = paintedHead(g);
-  if (ph) {
+  if (g.look.faceShape === 'founder') {
+    // His Solen's eyes and mouth are in his head's pixels. The template draws his eyes over only when
+    // his picture does not show them: shut or lowered lids, another eye shape, the clans' special eyes
+    // (in full, its skin letters in the character's skin, so his open eye never shows under a lid).
+    if (closed || lowered || shape !== 'standard' || (sp && sp !== 'none')) {
+      eyes.near.forEach((row, r) => [...row].forEach((ch, c) => put(ex + c, ny + r, ch)));
+      eyes.far.forEach((row, r) => [...row].forEach((ch, c) => put(fx + c, ny + r, ch)));
+    }
+  } else if (ph) {
     // On the owner's head the template gives only the eyes and the mouth, where he painted his: his
     // skin, shading and line stay wherever the template has skin.
     const feature = (x: number, y: number, ch: string) => {
@@ -664,8 +693,9 @@ function drawFace(g: DrawCtx): void {
     }
   }
 
-  // Brows (hair-colored), two rows above the lash; most bangs cover them. His eyes bring their own.
-  if (his) return;
+  // Brows (hair-colored), two rows above the lash; most bangs cover them. His eyes bring their own, and
+  // his Solen's head has his brows in its pixels.
+  if (his || g.look.faceShape === 'founder') return;
   const br = makeRamp(hairChoice?.colors[0] || '#2a2230', 'hair');
   // Sharp and fierce eyes get brows angled down toward the nose.
   const sharp = shape === 'sharp' || shape === 'fierce';

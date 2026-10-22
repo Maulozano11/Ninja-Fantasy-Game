@@ -1,0 +1,87 @@
+{
+ "group": "vfx_tide_s",
+ "pxPerMeter": 57,
+ "sprites": {
+  "curl": {
+   "label": "His curl wave of the S-rank Tide with his spray (each of his pixels 2x2); anchor: our crest point",
+   "file": "curl.png",
+   "frameW": 298,
+   "frameH": 464,
+   "anchor": [
+    341,
+    269
+   ],
+   "meters": [
+    5.23,
+    8.14
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 1,
+     "fps": 0,
+     "loop": true
+    }
+   }
+  },
+  "dragon": {
+   "label": "His water dragon of the S-rank Tide (each of his pixels 2x2): surges up out of the curl, roars, dives into the wave at the break; anchor: our crest point",
+   "file": "dragon.png",
+   "frameW": 312,
+   "frameH": 216,
+   "anchor": [
+    265,
+    285
+   ],
+   "meters": [
+    5.47,
+    3.79
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "play": {
+     "row": 0,
+     "frames": 37,
+     "fps": 12,
+     "loop": false
+    }
+   }
+  },
+  "kanji": {
+   "label": "His kanji 水 of the S-rank Tide (kanji) and its light aura (glow), each of his pixels 2x2; anchor: our crest point",
+   "file": "kanji.png",
+   "frameW": 206,
+   "frameH": 210,
+   "anchor": [
+    245,
+    93
+   ],
+   "meters": [
+    3.61,
+    3.68
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "kanji": {
+     "row": 0,
+     "frames": 1,
+     "fps": 0,
+     "loop": true
+    },
+    "glow": {
+     "row": 1,
+     "frames": 1,
+     "fps": 0,
+     "loop": true
+    }
+   }
+  }
+ }
+}

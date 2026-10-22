@@ -141,8 +141,8 @@ Read `docs/SPRITE_STYLE_GUIDE.md` before touching character art.
 
 **Frame.** 256x256 fine px (`src/sprite/raster.ts`: `GRID=256`, `PAD={x:32,y:48}`, `BOX` = the old
 128x128 figure box). The figure is about 94 px tall, 3/4 view facing right, light from the upper
-left, 1 px outline toward `#07060b` added automatically (never 2 px). Bodies: male, female, bulky,
-slender. Poses: `SPRITE_POSES` (creator), `MOVE_POSES`, `CAMP_POSES` in `src/sprite/types.ts`.
+left, 1 px outline toward `#07060b` added automatically (never 2 px). Bodies: male, female, bulky
+(the slender body was removed). Poses: `SPRITE_POSES` (creator), `MOVE_POSES`, `CAMP_POSES` in `src/sprite/types.ts`.
 
 **Items.** `ItemDef` (`src/sprite/ctx.ts`): `id`, `slot`, `name`, `desc`, `colors` (colour slots),
 optional `parts` + `partsPreview`, `draw()`, `statsArmor` (every armor), `hidesHair`, `bodies`.
@@ -213,7 +213,8 @@ scripts' headers.
 ## Verification recipes
 
 **Sprite sheet:** `npm run sprites -- preset preset_reference_aiden <scratch>/aiden.png`, then open
-the PNG and look. It does not cover the slender body or move/camp poses; for those, render directly:
+the PNG and look. It shows only the preset's own body and the creator poses; for other bodies or
+move/camp poses, render directly:
 
 ```ts
 // <scratch>/render.ts, run from the repo root: npx tsx <scratch>/render.ts out.png

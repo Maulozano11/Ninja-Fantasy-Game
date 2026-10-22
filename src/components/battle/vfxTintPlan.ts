@@ -70,9 +70,11 @@ export function tintSheetsOf(spec: Pick<JutsuSpec, 'elemental' | 'element' | 'vf
     own.push({ group: 'vfx_dc', name: `${el}_fan`, element: el });
     add('hit');
   } else if (spec.seq?.wave) {
-    // The Devouring Tide: the water aura while it casts, the wave's columns (or its wall seen from
-    // the side), its spray, and a splash on each one reached.
-    add('aura', 'aura_back', 'wall_depth', 'wall', 'breath', 'hit');
+    // The Devouring Tide: the water aura while it casts, the wave's columns and its wall (the body
+    // and the face), its spray, a splash on each one reached, and the spouts as it breaks.
+    add('aura', 'aura_back', 'wall_depth', 'wall', 'breath', 'hit', 'blast');
+    // The Dragon Tsunami (Water's rank S): his curl, his water dragon and his kanji riding the crest.
+    if (spec.seq.wave.dragon) for (const name of ['curl', 'dragon', 'kanji']) own.push({ group: 'vfx_tide_s', name, element: el });
   } else if (spec.seq?.tower) {
     // The Whirlwind Tower: the warning burst, the tornado column, the small whirlwinds round it.
     add('hit', 'wall_depth', 'multi');
@@ -99,6 +101,8 @@ export function tintSheetsOf(spec: Pick<JutsuSpec, 'elemental' | 'element' | 'vf
     if (spec.shape === 'circle') add('blast');
     else add(...(spec.vfx === 'multi' ? ['multi_hit'] : []), 'hit');
   }
+  // Lightning that runs across wet ground bursts in his spark (hit) along it (ground.ts).
+  if (el === 'lightning') add('hit');
   const out: TintSheetRef[] = [...own, ...names.map((name) => ({ group: `vfx_${el}`, name, element: el }))];
   if (spec.vfx === 'beast' && !spec.sig && !spec.special) out.unshift({ group: 'vfx_beasts', name: el, element: el, beast: true });
   return out;

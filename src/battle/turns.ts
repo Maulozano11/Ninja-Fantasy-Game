@@ -7,7 +7,8 @@ import { rollDie } from '../rules/rng';
 import type { BattleEvent, BattleState, Unit } from './types';
 import { homeTeam } from './types';
 import { check, damage, deathSave, nextRng, releaseCommand, rollDiceExpr } from './combat';
-import { waterAtPt } from './map';
+import { dampAt } from './map';
+import { steamBurns, tickGround } from './ground';
 import { planEnemy, replanAgainst } from './intent';
 
 /** Whether a unit takes turns (heads of the hydra act on their own; fallen ninjas roll death saves). */
@@ -94,13 +95,14 @@ export function beginTurn(s: BattleState, ev: BattleEvent[]): void {
       advance(s, ev);
       continue;
     }
-    // Water puts out the flames; wounds hurt at the start of a turn.
-    if (waterAtPt(s, u.pos) > 0 && u.effects.some((e) => e.id === 'burning')) {
+    // Water (and wet ground) puts out the flames; wounds and steam hurt at the start of a turn.
+    if (dampAt(s, u.pos) && u.effects.some((e) => e.id === 'burning')) {
       u.effects = removeEffect(u.effects, 'burning');
       ev.push({ t: 'effect', unit: u.id, effect: 'burning', on: false });
     }
     if (u.effects.some((e) => e.id === 'bleeding')) damage(s, u, rollDie(nextRng(s), 4), 'Slashing', {}, ev);
     if (u.effects.some((e) => e.id === 'burning')) damage(s, u, rollDie(nextRng(s), 6), 'Fire', {}, ev);
+    steamBurns(s, u, ev);
     if (u.down) {
       advance(s, ev);
       continue;
@@ -183,6 +185,8 @@ function advance(s: BattleState, ev: BattleEvent[]): void {
       ev.push({ t: 'wall', wall: w, on: false });
       return false;
     });
+    // Wet ground dries and steam thins away.
+    tickGround(s, ev);
     // Gales on the ground die down.
     if (s.zones?.length)
       s.zones = s.zones.filter((z) => {

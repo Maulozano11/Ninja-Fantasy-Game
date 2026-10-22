@@ -84,7 +84,7 @@ function skinOf(l: SpriteAppearance): Set<number> {
 describe("the owner's Night Boots on his Ren", () => {
   it('are each one piece with their shin in every pose and frame, on the four bodies', () => {
     const loose: string[] = [];
-    for (const body of ['male', 'female', 'bulky', 'slender'] as BodyType[]) {
+    for (const body of ['male', 'female', 'bulky'] as BodyType[]) {
       const l = look(body);
       for (const [pose, f] of frames(l))
         for (const s of SIDES) {
@@ -134,7 +134,7 @@ describe("the owner's Night Boots on his Ren", () => {
 
   it('show no skin of the leg below the top of the boot (the women, whose legs are bare above it)', () => {
     const bare: string[] = [];
-    for (const body of ['female', 'slender'] as BodyType[]) {
+    for (const body of ['female'] as BodyType[]) {
       const l = look(body);
       const skin = skinOf(l);
       for (const [pose, f] of frames(l)) {
@@ -174,7 +174,7 @@ describe("the owner's Night Boots on his Ren", () => {
     // Held flat under a shin kicked out, the boot's foot stood out beside the shaft (the combo's kicks, the
     // run's back leg, the lean's crossed leg): the boot came apart at the ankle.
     const off: string[] = [];
-    for (const body of ['male', 'female', 'bulky', 'slender'] as BodyType[]) {
+    for (const body of ['male', 'female', 'bulky'] as BodyType[]) {
       const l = look(body);
       const dressed = l.slots.bottom?.id === 'bottom_night_trousers' && ['male', 'bulky'].includes(body);
       const reach = (pose: SpritePose, f: number, s: Side): number => {

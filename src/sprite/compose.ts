@@ -5,7 +5,7 @@ import { fitsBody, getItem } from './catalog';
 import { hexToRgb } from './color';
 import { Depth, DEPTHS, DrawCtx, ItemDef, NO_OUTLINE_DEPTHS, resolveParts } from './ctx';
 import { closePinholes } from './holes';
-import { clipStowed, drawThrowKunai } from './items/accessories';
+import { clipStowed, drawThrowKunai, fillSeams } from './items/accessories';
 import { CAPE_DEPTHS } from './items/capes';
 import { drawHeadband } from './items/headband';
 import { add, F_NO_OUTLINE, GRID, Layer, MaterialTable, norm, PAD, PartId, partIndex, PARTS, perp, RES, scale, sub, v, Vec } from './raster';
@@ -325,6 +325,8 @@ export function renderSprite(
       if (L) sculptClothes(g, L);
     }
     clipStowed(g, layers);
+    // Seams a painted piece opens as it moves from its neighbour, filled from behind; idle as drawn.
+    if (pose !== 'idle') fillSeams(g, layers);
     drawCastFx(g);
     drawCampFx(g);
     if (rig.farHandFront) farHandToFront(layers, g);

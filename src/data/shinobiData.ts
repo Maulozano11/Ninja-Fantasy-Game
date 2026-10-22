@@ -497,8 +497,9 @@ export const JUTSUS_DATA: JutsuDefinition[] = [
   },
   {
     id: 'water_devouring_tide',
-    name: 'Water Technique: Devouring Tide',
-    nameEs: 'Técnica de Agua: Ola devoradora',
+    // Renamed by the owner on 2026-10-22 ("la ola normal se llama tsunami"); the id stays.
+    name: 'Water Technique: Tsunami',
+    nameEs: 'Técnica de Agua: Tsunami',
     japaneseName: '喰らい波 (Kurai-nami)',
     rank: 'A',
     category: 'Elemental',
@@ -1100,6 +1101,31 @@ export const JUTSUS_DATA: JutsuDefinition[] = [
     enhancementEffect: 'Raging Sea of Fire: 10d12 damage, converts all wood structures to ashes and leaves persistent fire blazes.',
     description: 'Kneads immense chakra into a literal tsunami wall of flame that incinerates entire battlefields and wipes away fortifications!',
     descriptionEs: 'Una muralla de fuego como un tsunami que arrasa el campo de batalla y borra las fortificaciones.',
+  },
+  {
+    // Water's rank S (the owner, 2026-10-22: "rango S ola si me gusta la animacion ... la rango s es
+    // dragon tsunami"): his paint-over of the Tsunami's wave, a water dragon and the kanji 水. Numbers
+    // approved by the owner for now (2026-10-22): «aprovado los numeros de la ola por ahora»
+    // (docs/GAMEPLAY_DESIGN.md, "The Dragon Tsunami").
+    id: 'water_tide_s',
+    name: 'Water Technique: Dragon Tsunami',
+    nameEs: 'Técnica de Agua: Dragón Tsunami',
+    japaneseName: '龍津波 (Ryū-tsunami)',
+    rank: 'S',
+    category: 'Ultimate',
+    nature: 'Water',
+    chakraCost: 12,
+    castTime: 'Action',
+    range: 8,
+    areaOfEffect: 'Cone',
+    damageDice: '6d8',
+    damageType: 'Bludgeoning',
+    savingThrow: 'STR',
+    saveEffect: 'Half Damage',
+    enhancementChakraCost: 4,
+    enhancementEffect: 'Deals 8d8 bludgeoning damage; the cone reaches farther and opens wider.',
+    description: 'The sea rises behind the ninja and curls into a great wave; a water dragon surges out of it under the kanji for water, roars, and dives with the wave onto everything ahead. The ground it floods stays wet a round longer.',
+    descriptionEs: 'El mar se levanta detrás del ninja y se enrosca en una gran ola; un dragón de agua surge de ella bajo el kanji del agua, ruge y se lanza con la ola sobre todo lo que tiene delante. El suelo que inunda sigue mojado una ronda más.',
   },
   {
     id: 'wood_golem_titan',

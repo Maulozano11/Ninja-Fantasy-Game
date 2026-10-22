@@ -107,7 +107,8 @@ describe('the gaps\' jutsu: the data', () => {
     const want: Record<string, [string, string, string, string, string, number, number, number]> = {
       // Rank A since his second round ("ola devoradora es rango a"): an Element slot's; 8 chakra (+4)
       // since his answer to it ("mas chakra como 8 minimo"), the enhanced cost as every 8-chakra jutsu's.
-      water_devouring_tide: ['Técnica de Agua: Ola devoradora', 'Water Technique: Devouring Tide', 'A', 'Water', 'Elemental', 8, 4, 9],
+      // Renamed Tsunami by the owner on 2026-10-22 ("la ola normal se llama tsunami"; the id stays).
+      water_devouring_tide: ['Técnica de Agua: Tsunami', 'Water Technique: Tsunami', 'A', 'Water', 'Elemental', 8, 4, 9],
       wind_whirlwind_tower: ['Técnica de Viento: Torre del torbellino', 'Wind Technique: Whirlwind Tower', 'A', 'Wind', 'Elemental', 5, 3, 9],
       wind_gale_curtain: ['Técnica de Viento: Cortina de vendaval', 'Wind Technique: Gale Curtain', 'C', 'Wind', 'Elemental', 2, 2, 6],
       lightning_thunder_beam: ['Técnica de Rayo: Haz de trueno', 'Lightning Technique: Thunder Beam', 'C', 'Lightning', 'Elemental', 2, 2, 9],
@@ -452,8 +453,8 @@ describe('the gaps\' jutsu in the log', () => {
     const out = seeded(s, (t) => cast(t, 'water_devouring_tide', t.units.rogue_0.pos), (o) => failed(o, 'rogue_0') && !o.state.units.rogue_0.down);
     const st = out.state;
     const swept = pushedOf(out.events, 'rogue_0')!;
-    assert.match(logLine(swept, st, 'es')!.text, /es arrastrad[oa] \(Técnica de Agua: Ola devoradora\)/);
-    assert.match(logLine(swept, st, 'en')!.text, /is swept away \(Water Technique: Devouring Tide\)/);
+    assert.match(logLine(swept, st, 'es')!.text, /es arrastrad[oa] \(Técnica de Agua: Tsunami\)/);
+    assert.match(logLine(swept, st, 'en')!.text, /is swept away \(Water Technique: Tsunami\)/);
     // A tornado drags inward, it doesn't sweep away.
     const dragged: BattleEvent = { ...swept, what: 'wind_whirlwind_tower' };
     assert.match(logLine(dragged, st, 'en')!.text, /is dragged in \(Wind Technique: Whirlwind Tower\)/);

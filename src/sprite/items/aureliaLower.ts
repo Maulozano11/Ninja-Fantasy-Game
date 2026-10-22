@@ -14,7 +14,7 @@ import { segAngle, stampPiece } from '../painted';
 import { F_NO_OUTLINE, F_NO_TEXTURE, GRID, type Layer, partIndex, type PartId, RES, v, type Vec } from '../raster';
 import { BODY_PARAMS, drawRig, GROUND, type Rig } from '../rig';
 import type { BodyType } from '../types';
-import { fillHoles } from './aureliaBoots';
+import { fillHoles, sealLegsAfter } from './aureliaBoots';
 import { DAWN_SLIT_F, DAWN_SLIT_N, DAWN_SLIT_SKIN, DAWN_THIGH_N } from './aureliaBootsArt';
 import { DAWN_BASE, DAWN_FAR, DAWN_FRONT, DAWN_LINE, DAWN_LINING, DAWN_NEAR, DAWN_WAIST, type DawnPiece } from './aureliaLowerArt';
 
@@ -424,6 +424,8 @@ export const SKIRT_DAWN_PANELS: ItemDef = {
       fillHoles(g, below);
       trimPanelSpurs(g, below);
     }
+    // and her legs' outline closed where they show past it
+    sealLegsAfter(g, 'skirt');
   },
 };
 
@@ -440,5 +442,6 @@ export const WAIST_DAWN_SASH: ItemDef = {
   bodies: ['female', 'slender'],
   draw: (g, [sash, leather, buckle]) => {
     drawPiece(g, 'waist', 'pelvis', DAWN_WAIST, tinter({ sash, leather, buckle }));
+    sealLegsAfter(g, 'waist');
   },
 };

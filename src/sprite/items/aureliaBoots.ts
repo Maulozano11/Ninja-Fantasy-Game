@@ -6,7 +6,7 @@
 // is where the script lays it.
 
 import { retintHex } from '../color';
-import { type Depth, DrawCtx, ItemDef, legDepth, legJoints, Side } from '../ctx';
+import { type Depth, DEPTHS, DrawCtx, ItemDef, legDepth, legJoints, Side } from '../ctx';
 import { PaintedPiece, segAngle, stampBent } from '../painted';
 import { add, F_NO_EDGE, F_NO_OUTLINE, F_NO_TEXTURE, GRID, type Layer, norm, type PartId, partIndex, PARTS, RES, sub, v, Vec } from '../raster';
 import { rotateTemplate, stampTemplate, type TemplatePalette } from '../rotsprite';
@@ -463,6 +463,171 @@ export function fillHoles(g: DrawCtx, depths: Depth[]): void {
   for (const [i, L, j] of fill) L.set(i % GRID, (i / GRID) | 0, L.mat[j], L.shade[j], PARTS[L.part[j]], F_NO_TEXTURE | F_NO_OUTLINE);
 }
 
+/**
+ * The inside of a knee bent sharp (thigh and shin less than 100 degrees apart): the cone between the thigh
+ * and the shin from the knee, as far out as the thigh is long (fine pixels). The gap there between the two
+ * is the leg's own shape.
+ */
+export function kneePit({ hip, knee, ankle }: { hip: Vec; knee: Vec; ankle: Vec }): (x: number, y: number) => boolean {
+  const a = sub(hip, knee);
+  const b = sub(ankle, knee);
+  const ab = a.x * b.y - a.y * b.x;
+  const bent = Math.acos((a.x * b.x + a.y * b.y) / (Math.hypot(a.x, a.y) * Math.hypot(b.x, b.y))) < (100 * Math.PI) / 180;
+  const far = Math.hypot(a.x, a.y) * RES;
+  return (x, y) => {
+    if (!bent) return false;
+    const d = v(x / RES - knee.x, y / RES - knee.y);
+    return Math.hypot(d.x, d.y) * RES <= far && (a.x * d.y - a.y * d.x) * ab > 0 && (d.x * b.y - d.y * b.x) * ab > 0;
+  };
+}
+
+/**
+ * Poses her legs are left as they are drawn: at rest every pixel is his, and her walk the owner approved
+ * as it stands (2026-10-22: "en caminar esta bien esta hoja esta aprovada").
+ */
+const KEEP_LEGS = new Set(['idle', 'walk']);
+
+/**
+ * Closes the outline of her moved legs (the owner, 2026-10-22: "veo unos errores de mordidas en las piernas
+ * en sin falda en correr 3 y 4 y en correr 6 sin falda faltan pixeles en las piernas"). Her leg is several
+ * pieces turned about different joints: our thigh (cut straight across `cut` pixels above the knee), his
+ * lace top and boot over the knee (about the knee), his shin (about the ankle) and his flat shoe; each
+ * lands on its own pixels, so where two meet the leg's edge can be left with a pixel bitten out of it. And
+ * the leg's cut across the thigh is left unlined (his lace top's line runs there), so where the lace top
+ * lands a pixel lower the bare thigh had no line. With her skirt on, the skirt's hole filling closed the
+ * holes where her legs cross; without it they stayed open. Here, on both legs:
+ * - an empty pixel shut in on all four sides, two of them her legs (where her legs cross, too), an empty
+ *   pixel cut into a leg (three of its sides her legs, two of them one leg) and a dent a pixel deep and up
+ *   to three wide in a leg's straight edge are filled, again while a fill leaves another: on the edge in his
+ *   line, inside with the colour round it (see below). Her shape stays: the inside of a sharply bent knee
+ *   (kneePit) and his shoe's arch between heel and sole (empty under the shoe alone).
+ * - the cut across the thigh is lined wherever nothing lies past it.
+ * Every layer drawn so far counts as drawn, so it runs after the last of her boots, her skirt and her sash
+ * (sealLegsAfter); the clothes drawn after those lie over her legs.
+ */
+function sealLegs(g: DrawCtx): void {
+  const line = g.m(DAWN_THIGH_N.colors.k, 'flat');
+  const Ls = DEPTHS.map((d) => g.L(d));
+  const legDepths = (s: Side) => ['body', 'cloth', 'feet'].map((k) => DEPTHS.indexOf(legDepth(s, k as 'body')));
+  const sides: [Side, number[], number][] = (['F', 'N'] as Side[]).map((s) => [s, legDepths(s), partIndex(`foot${s}`)]);
+  const top = (i: number): number => {
+    for (let d = Ls.length - 1; d >= 0; d--) if (Ls[d].used && Ls[d].mat[i] >= 0) return d;
+    return -1;
+  };
+  const sideOf = (d: number): [Side, number[], number] | undefined => sides.find(([, ds]) => ds.includes(d));
+  const pits = { F: kneePit(legJoints(g.rig, 'F')), N: kneePit(legJoints(g.rig, 'N')) };
+  const inPit = (s: Side) => (i: number) => pits[s]((i % GRID) + 0.5, ((i / GRID) | 0) + 0.5);
+  const filled = new Map<number, Layer>();
+  for (let pass = 0; pass < 3; pass++) {
+    const fill: [number, Side][] = [];
+    const tops = new Int16Array(GRID * GRID);
+    for (let i = 0; i < GRID * GRID; i++) tops[i] = top(i);
+    const leg = (i: number) => sideOf(tops[i]);
+    for (let y = 2; y < GRID - 2; y++)
+      for (let x = 2; x < GRID - 2; x++) {
+        const i = y * GRID + x;
+        if (tops[i] >= 0) continue;
+        const ns = [i - 1, i + 1, i - GRID, i + GRID];
+        const legs = ns.filter((j) => leg(j));
+        if (legs.length < 2) continue;
+        const shut = ns.every((j) => tops[j] >= 0);
+        // the leg most of them are
+        const s = sides.reduce((b, sd) => (legs.filter((j) => leg(j) === sd).length > legs.filter((j) => leg(j) === b).length ? sd : b));
+        // shut in: two of her legs round it, either; on the edge: three of her legs round it, two of them one leg
+        if (!shut && (ns.filter((j) => tops[j] >= 0).length !== legs.length || legs.length < 3 || legs.filter((j) => leg(j) === s).length < 2 || inPit(s[0])(i))) continue;
+        // his shoe's arch: empty under the shoe alone
+        if (legs.every((j) => Ls[tops[j]].part[j] === leg(j)![2])) continue;
+        fill.push([i, s[0]]);
+      }
+    // a dent a pixel deep and up to three wide, the edge straight behind it (rows, then columns)
+    for (const [du, dw] of [[1, GRID], [GRID, 1]])
+      for (let y = 4; y < GRID - 4; y++)
+        for (let x = 4; x < GRID - 4; x++) {
+          const i = y * GRID + x;
+          if (tops[i] >= 0 || !leg(i - du)) continue;
+          let n = 1;
+          while (n <= 3 && tops[i + n * du] < 0) n++;
+          if (n > 3 || !leg(i + n * du)) continue;
+          const s = leg(i - du)!;
+          if (Ls[tops[i - du]].part[i - du] === s[2] && Ls[tops[i + n * du]].part[i + n * du] === s[2]) continue;
+          if (leg(i + n * du) !== s || Array.from({ length: n }, (_, k) => i + k * du).some(inPit(s[0]))) continue;
+          for (const out of [dw, -dw]) {
+            let closed = true;
+            for (let k = -1; k <= n; k++) closed &&= leg(i + k * du - out) === s;
+            if (closed) for (let k = 0; k < n; k++) fill.push([i + k * du, s[0]]);
+          }
+        }
+    if (!fill.length) break;
+    // each in his line for now (so the next pass sees it drawn), on the boot's layer: the far boot's where it
+    // touches the far leg (it closes the far leg's outline there, the near boot keeping its own shape)
+    for (const [i, s] of fill) {
+      if (filled.has(i)) continue;
+      const ns = [i - 1, i + 1, i - GRID, i + GRID].filter((j) => leg(j));
+      const far = ns.find((j) => leg(j)![0] === 'F');
+      const from = far ?? ns.find((j) => leg(j)![0] === s) ?? ns[0];
+      const L = g.L(legDepth(far !== undefined ? 'F' : s, 'feet'));
+      filled.set(i, L);
+      L.set(i % GRID, (i / GRID) | 0, line, 3, PARTS[Ls[tops[from]].part[from]], F_NO_TEXTURE | F_NO_OUTLINE);
+    }
+  }
+  // A filled pixel shut in on all four sides is inside the figure. Shut in by one leg (two of its pixels round
+  // it, the rest that leg's too) it is that leg's: on its boot's layer, the colour most of them have (his line
+  // not counted; a filled pixel once it has its colour). By one leg and something else it is that leg's
+  // edge: his line, on its boot's layer. Otherwise it takes the colour most of the pixels round it have, on
+  // that pixel's layer. One left with only line round it, and one on the edge, stays his line.
+  const coloured = new Set<number>();
+  for (let more = true; more; ) {
+    more = false;
+    const next: [number, Layer, number][] = [];
+    for (const [i] of filled) {
+      if (coloured.has(i)) continue;
+      const ns = [i - 1, i + 1, i - GRID, i + GRID];
+      if (!ns.every((j) => top(j) >= 0)) continue;
+      const own = sides.find((sd) => ns.filter((j) => sideOf(top(j)) === sd).length >= 2);
+      const ok = (j: number) => (!filled.has(j) || coloured.has(j)) && Ls[top(j)].mat[j] !== line;
+      if (own && !ns.every((j) => sideOf(top(j)) === own)) {
+        next.push([i, g.L(legDepth(own[0], 'feet')), -1]);
+        continue;
+      }
+      const src = ns.filter(ok);
+      if (!src.length) continue;
+      const count = new Map<number, number>();
+      for (const j of src) count.set(Ls[top(j)].mat[j], (count.get(Ls[top(j)].mat[j]) ?? 0) + 1);
+      const j = src.reduce((b, n) => (count.get(Ls[top(n)].mat[n])! > count.get(Ls[top(b)].mat[b])! ? n : b));
+      next.push([i, own ? g.L(legDepth(own[0], 'feet')) : Ls[top(j)], j]);
+    }
+    for (const [i, L, j] of next) {
+      const was = filled.get(i)!;
+      const part = j < 0 ? PARTS[was.part[i]] : PARTS[Ls[top(j)].part[j]];
+      const [mat, shade] = j < 0 ? [line, 3] : [Ls[top(j)].mat[j], Ls[top(j)].shade[j]];
+      was.mat[i] = -1;
+      L.set(i % GRID, (i / GRID) | 0, mat, shade, part, F_NO_TEXTURE | F_NO_OUTLINE);
+      filled.set(i, L);
+      coloured.add(i);
+      if (j >= 0) more = true;
+    }
+  }
+  // the cut across the thigh lined where nothing lies past it
+  for (const s of ['F', 'N'] as Side[])
+    for (const d of [legDepth(s, 'body'), legDepth(s, 'cloth')]) {
+      const L = g.L(d);
+      if (!L.used) continue;
+      for (let i = 0; i < GRID * GRID; i++) if (L.mat[i] < 0 && L.flags[i] & F_NO_EDGE && top(i) < 0) L.flags[i] &= ~F_NO_EDGE;
+    }
+}
+
+/**
+ * Closes her legs' outline (sealLegs) once her boots, her skirt and her sash are drawn, whichever of them she
+ * wears, from the last of them drawn (skirt and sash come after the boots): the gaps they leave by her legs
+ * are seen only then. Only on her boots, and not where her legs are kept as drawn (KEEP_LEGS).
+ */
+export function sealLegsAfter(g: DrawCtx, slot: 'feet' | 'skirt' | 'waist'): void {
+  if (slot === 'feet' && g.has('skirt', 'skirt_dawn_panels')) return;
+  if (slot !== 'waist' && g.has('waist', 'waist_dawn_sash')) return;
+  if (!g.has('feet', 'feet_dawn_boots') || KEEP_LEGS.has(g.rig.pose)) return;
+  sealLegs(g);
+}
+
 type Kind = 'cloth' | 'leather' | 'metal';
 const col = (key: string, label: string, def: string, kind: Kind = 'cloth') => ({ key, label, default: def, kind });
 
@@ -524,5 +689,6 @@ export const FEET_DAWN_BOOTS: ItemDef = {
       sealKnee(g, s, knee);
       roundCorners(g, s, knee, w);
     }
+    sealLegsAfter(g, 'feet');
   },
 };

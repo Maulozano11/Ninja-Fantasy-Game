@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import type { ShinobiCharacter } from '../../types/shinobi';
 import type { Difficulty, PartyState } from '../../types/mission';
-import { COMPANIONS, MISSIONS, MissionDef, nextPos, nodeAt, RoadNode } from '../../data/missions';
+import { canJoin, COMPANIONS, MISSIONS, MissionDef, nextPos, nodeAt, RoadNode } from '../../data/missions';
 import { clanName } from '../../data/shinobiData';
 import type { ActivityId } from '../../data/campActivities';
 import { DEFAULT_SUPPLIES, endMissionAtVillage, isStanding } from '../../rules/mission';
@@ -579,7 +579,7 @@ function Village({
 }) {
   useLang();
   const mission = MISSIONS[0];
-  const roster = COMPANIONS.filter((c) => c.id !== hero.id);
+  const roster = COMPANIONS.filter((c) => canJoin(c, hero));
   const [picked, setPicked] = useState<string[]>(roster.slice(0, 2).map((c) => c.id));
   const [leaderId, setLeaderId] = useState(hero.id);
   const [difficulty, setDifficulty] = useState<Difficulty>('normal');

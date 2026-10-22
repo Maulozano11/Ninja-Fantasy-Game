@@ -4,7 +4,7 @@
 
 import type { ShinobiCharacter } from '../types/shinobi';
 import type { Difficulty, PartyState, RuleEvent } from '../types/mission';
-import { MISSIONS, MissionBattle, MissionDef, nextPos, nodeAt, RoadPos } from '../data/missions';
+import { AURELIA, MISSIONS, MissionBattle, MissionDef, nextPos, nodeAt, RoadPos } from '../data/missions';
 import { applyBattleResult, enterNextZone, newMission, travelLeg } from '../rules/mission';
 import { CampState, morning, Outcome, StopState } from '../rules/rest';
 import { migrateCharacter, returnToVillage, sanitizeMissionFields } from '../rules/ninja';
@@ -206,11 +206,68 @@ export function resolvePartyBattle(run: MissionRun, result: PartyBattleResult): 
 const SAVE_KEY = 'shinobi5e.mission.v1';
 
 /**
+ * Companions the owner removed, by id, and the companion who takes each one's place in a run saved with
+ * them: the field medic who was removed on 2026-10-22 ("borra a hana tambien entonces y pon de nuevas
+ * compañeras a nuestras nuevas versiones femeninas de personajes") hands over to Aurelia, the new medic.
+ */
+const REPLACED_COMPANIONS: Readonly<Record<string, ShinobiCharacter>> = { companion_hana: AURELIA };
+
+/** What a ninja carries through a mission (rules/ninja.ts sanitizeMissionFields), kept when another takes its place. */
+const MISSION_FIELDS = ['effects', 'tension', 'exhaustion', 'pillsSinceCamp', 'scars', 'traits', 'hitDiceSpent', 'chakraDiceSpent'] as const;
+
+/** The replacement's sheet in the removed companion's place: as hurt and as spent, in proportion, and with its effects and wear. */
+function standIn(was: ShinobiCharacter, now: ShinobiCharacter): ShinobiCharacter {
+  const part = (cur: number, max: number, to: number) => (cur <= 0 ? 0 : Math.max(1, Math.min(to, Math.round((cur / Math.max(1, max)) * to))));
+  const out: ShinobiCharacter = { ...now, currentHp: part(was.currentHp, was.maxHp, now.maxHp), currentChakra: part(was.currentChakra, was.maxChakra, now.maxChakra) };
+  for (const k of MISSION_FIELDS) if (was[k] !== undefined) (out as unknown as Record<string, unknown>)[k] = structuredClone(was[k]);
+  return sanitizeMissionFields(out);
+}
+
+/**
+ * A run saved with a removed companion: the companion who replaces it takes its place everywhere in the
+ * run (the party, the dead, the node's entry, the leader, the bonds, the camp and the short stop), with
+ * its state (standIn). The log keeps what happened under the old name. A run that already has the
+ * replacement drops the removed companion instead, and anything that named it falls back to the hero.
+ */
+function replaceCompanions(r: MissionRun): MissionRun {
+  let run = r;
+  for (const [oldId, now] of Object.entries(REPLACED_COMPANIONS)) {
+    const has = (id: string) => [...run.party.members, ...(run.party.dead ?? []), ...(run.entry?.members ?? []), ...(run.entry?.dead ?? [])].some((m) => m.id === id);
+    if (!has(oldId)) continue;
+    const to = has(now.id) ? run.heroId : now.id;
+    const swap = (v: unknown): unknown => {
+      if (v === oldId) return to;
+      if (Array.isArray(v)) return v.map(swap);
+      if (!v || typeof v !== 'object') return v;
+      const out: Record<string, unknown> = {};
+      for (const [k, x] of Object.entries(v)) {
+        // a bond's key is the pair's ids, sorted and joined with '|'
+        const key = k === oldId ? to : k.includes('|') && k.split('|').includes(oldId) ? k.split('|').map((id) => (id === oldId ? to : id)).sort().join('|') : k;
+        out[key] = swap(x);
+      }
+      return out;
+    };
+    const party = (p: PartyState): PartyState => {
+      const each = (list: ShinobiCharacter[] = []) => (to === now.id ? list.map((m) => (m.id === oldId ? standIn(m, now) : m)) : list.filter((m) => m.id !== oldId));
+      const members = each(p.members);
+      const dead = each(p.dead);
+      const bonds = Object.fromEntries(Object.entries(p.bonds ?? {}).filter(([k]) => !k.split('|').includes(oldId) || to === now.id));
+      return swap({ ...p, members, dead, bonds }) as PartyState;
+    };
+    const { log, ...rest } = run;
+    run = { ...(swap({ ...rest, party: party(run.party), entry: party(run.entry ?? run.party) }) as Omit<MissionRun, 'log'>), log };
+  }
+  return run;
+}
+
+/**
  * A run saved before the clans were converted: its ninjas load with today's clans (rules/ninja.ts,
  * migrateCharacter). A ninja whose explosive tag jutsu becomes tags in its pouch (rules/pouch.ts) set
- * out without them in the backpack: they join it now, as they would have at the mission's start.
+ * out without them in the backpack: they join it now, as they would have at the mission's start. A
+ * removed companion's place goes to the companion who replaces it (replaceCompanions).
  */
-export function migrateRun(r: MissionRun): MissionRun {
+export function migrateRun(saved: MissionRun): MissionRun {
+  const r = replaceCompanions(saved);
   const party = (p: PartyState): PartyState => {
     const was = [...p.members, ...(p.dead ?? [])];
     const members = p.members.map(migrateCharacter);

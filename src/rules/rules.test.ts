@@ -196,7 +196,8 @@ describe('clans', () => {
 
   it('the presets keep the owner\'s hand-made numbers plus exactly what their clan\'s bonus adds', () => {
     // His numbers before the bonus counted: max HP, max chakra, AC, jutsu DC, jutsu attack. Seven
-    // presets: the owner discarded Shiori (preset_gentle) on 2026-10-22, "shiori desechala esta horrible ese diseño".
+    // legends (the owner discarded Shiori, preset_gentle, on 2026-10-22, "shiori desechala esta horrible ese diseño"),
+    // and his three heroines.
     const owner: Record<string, number[]> = {
       preset_founder: [56, 44, 19, 17, 9],
       preset_ember: [38, 30, 18, 15, 7],
@@ -351,7 +352,7 @@ describe('tension and exhaustion', () => {
 describe('camp', () => {
   const mirai = ninja({ id: 'a', name: 'Ren', clan: 'Mirai', shinobiClass: 'Ninjutsu Specialist', level: 4, currentHp: 10, currentChakra: 5 });
   const ryusei = ninja({ id: 'b', name: 'Saber', clan: 'Ryusei', shinobiClass: 'Taijutsu Master', level: 4, currentHp: 20, currentChakra: 30, tension: 4 });
-  const northstar = ninja({ id: 'c', name: 'Hana', clan: 'Northstar', shinobiClass: 'Medical Specialist', level: 4 });
+  const northstar = ninja({ id: 'c', name: 'Mei', clan: 'Northstar', shinobiClass: 'Medical Specialist', level: 4 });
   const site = { nodeId: 'clearing', zoneDanger: 30 };
   const base = (): PartyState => newMission([mirai, ryusei, northstar], { seed: 99 });
 

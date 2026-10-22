@@ -6,7 +6,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { CLANS_DATA, DEFAULT_CHARACTER, JUTSUS_DATA, LEGENDARY_PRESETS, SHINOBI_CLASSES } from '../data/shinobiData';
-import { HANA, KENJI, RIVER_FOREST_PATROL } from '../data/missions';
+import { AURELIA, KENJI, RIVER_FOREST_PATROL } from '../data/missions';
 import { JUTSU } from '../battle/jutsu';
 import { unitFrom } from '../battle/units';
 import { loadRun, migrateRun, type MissionRun, saveRun, startRun } from '../game/missionRun';
@@ -240,7 +240,7 @@ describe('the explosive tag is an item, not a jutsu ("es un item o herramienta c
   });
 
   it('a mission saved halfway: the converted tags join its backpack at once, once', () => {
-    const run = startRun(RIVER_FOREST_PATROL, 'ninja_tag', [migrateCharacter(tagNinja()), HANA], { seed: 3, leaderId: 'ninja_tag', difficulty: 'normal', noRandomness: false });
+    const run = startRun(RIVER_FOREST_PATROL, 'ninja_tag', [migrateCharacter(tagNinja()), AURELIA], { seed: 3, leaderId: 'ninja_tag', difficulty: 'normal', noRandomness: false });
     // The same run as it was saved before the tag was an item: the jutsu on the sheet, no tags for it in the backpack.
     const tags = run.party.supplies.explosiveTags - TAG_JUTSU_POUCH;
     const before = (p: MissionRun['party']): MissionRun['party'] => ({ ...p, supplies: { ...p.supplies, explosiveTags: tags }, members: [tagNinja(), ...p.members.slice(1)] });
@@ -268,11 +268,11 @@ describe('the explosive tag is an item, not a jutsu ("es un item o herramienta c
 
   it('the pouches join the backpack: a mission\'s start and a practice battle', () => {
     const tagged = migrateCharacter(tagNinja());
-    assert.deepEqual(withPouches(DEFAULT_SUPPLIES, [tagged, HANA, KENJI]), { ...DEFAULT_SUPPLIES, explosiveTags: DEFAULT_SUPPLIES.explosiveTags + 2 });
-    assert.equal(withPouches(DEFAULT_SUPPLIES, [HANA, KENJI]), DEFAULT_SUPPLIES, 'no pouches: the same backpack');
-    assert.equal(newMission([tagged, HANA], { seed: 1 }).supplies.explosiveTags, DEFAULT_SUPPLIES.explosiveTags + 2);
+    assert.deepEqual(withPouches(DEFAULT_SUPPLIES, [tagged, AURELIA, KENJI]), { ...DEFAULT_SUPPLIES, explosiveTags: DEFAULT_SUPPLIES.explosiveTags + 2 });
+    assert.equal(withPouches(DEFAULT_SUPPLIES, [AURELIA, KENJI]), DEFAULT_SUPPLIES, 'no pouches: the same backpack');
+    assert.equal(newMission([tagged, AURELIA], { seed: 1 }).supplies.explosiveTags, DEFAULT_SUPPLIES.explosiveTags + 2);
     // An old save with the jutsu sets out with its tags in the backpack.
-    const run = startRun(RIVER_FOREST_PATROL, 'ninja_tag', [tagNinja(), HANA], { seed: 2, leaderId: 'ninja_tag', difficulty: 'normal', noRandomness: false });
+    const run = startRun(RIVER_FOREST_PATROL, 'ninja_tag', [tagNinja(), AURELIA], { seed: 2, leaderId: 'ninja_tag', difficulty: 'normal', noRandomness: false });
     assert.equal(run.party.supplies.explosiveTags, (RIVER_FOREST_PATROL.supplies?.explosiveTags ?? DEFAULT_SUPPLIES.explosiveTags) + 2);
     assert.equal(run.party.members[0].selectedJutsus.slot1Utility, 'body_flicker');
   });
@@ -282,7 +282,7 @@ describe('the chakra type is fixed once the ninja is made ("no se puede cambiar 
   it('a new ninja and the legends can change it; a made one cannot', () => {
     assert.equal(typeFixed(DEFAULT_CHARACTER), false);
     for (const { character: c } of LEGENDARY_PRESETS) assert.equal(typeFixed(c), false, c.id);
-    assert.equal(typeFixed(HANA), false);
+    assert.equal(typeFixed(AURELIA), false);
     const made = asMade(DEFAULT_CHARACTER);
     assert.equal(typeFixed(made), true);
     assert.equal(asMade(made), made, 'once');

@@ -10,6 +10,7 @@ import type { ShinobiCharacter } from '../types/shinobi';
 import { renderSprite, type SpriteFrame } from './compose';
 import { airOf, closePinholes, findNicks, findPinholes, PINHOLE } from './holes';
 import { frontOfBack } from './items/accessories';
+import { paintedFrame, wearsHisFigure } from './ownerFrames';
 import { defaultAppearance, dojutsuToEye, getAppearance } from './legacy';
 import { GRID, partIndex } from './raster';
 import { frameCount, rigPoseFor } from './rig';
@@ -38,7 +39,7 @@ function roman(): SpriteAppearance {
 
 type Look = { id: string; look: SpriteAppearance; eye: EyeSpecial };
 const of = (c: ShinobiCharacter): Look => ({ id: c.id, look: getAppearance(c), eye: dojutsuToEye(c.dojutsu) });
-// Hana, Kenji, every legend preset, one of each enemy and the Roman set.
+// The companions (the heroines, Kenji, every other legend preset), one of each enemy and the Roman set.
 const LOOKS: Look[] = [
   ...COMPANIONS.map(of),
   ...(['rogue', 'hunter', 'jonin', 'raider'] as EnemyKind[]).flatMap((k) => [0, 1].map((n) => of({ ...enemyCharacter(k, n), id: `${k}${n}` }))),
@@ -47,12 +48,13 @@ const LOOKS: Look[] = [
 
 /**
  * Pieces apart from the figure that are known and not specks, by look, body and pose:
- * - Aurelia's staff falls from her hand when she is downed and lies beside her (heroine/aurelia-v2).
+ * - Aurelia's staff falls from her hand when she is downed and lies beside her (heroine/aurelia-v2), and
+ *   on the male body her far fist does not reach it at rest (her staff is drawn for the female body).
  * - Aiden's sabatons on the female body (the owner's bare female body, body/female-v2): with the leg kicked
  *   far back (the throw's follow-through, the combo's back kick) his greave stops a pixel short of the
  *   thigh. Open for the female body's branch; the owner decided the old armour is not refitted to it.
  */
-const KNOWN_APART = new Set(['preset_aurelia female downed', 'preset_reference_aiden female throw', 'preset_reference_aiden female combo']);
+const KNOWN_APART = new Set(['companion_aurelia female downed', 'companion_aurelia male idle', 'preset_reference_aiden female throw', 'preset_reference_aiden female combo']);
 
 /** The sizes of the pieces of a frame apart from the figure (8-connected), but effects (a piece with an fx pixel). */
 function loose(fr: SpriteFrame): number[] {
@@ -144,8 +146,9 @@ describe('the 1-pixel holes', () => {
         const where = `${L.id} ${body} ${pose} ${f}`;
         const specks = KNOWN_APART.has(`${L.id} ${body} ${pose}`) ? [] : loose(fr);
         if (specks.length) bad.push(`${where}: ${specks.join(', ')} px apart from the figure`);
-        // Idle is the owner's pictures, left exactly as drawn (sprite/compose.ts).
-        if (pose === 'idle') return;
+        // Idle is the owner's pictures, left exactly as drawn (sprite/compose.ts), and so are the frames he
+        // painted of Lyra himself (sprite/ownerFrames.ts).
+        if (pose === 'idle' || (wearsHisFigure(l) && paintedFrame(pose, f))) return;
         const air = airOf(fr.rgba);
         const holes = findPinholes(fr.rgba, fx, air);
         const nicks = findNicks(fr.rgba, fx, air);

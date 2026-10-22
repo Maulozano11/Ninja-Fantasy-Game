@@ -3,8 +3,8 @@
 //   npx tsx tools/scenes/party_sprites.ts <outDir> [who:pose[:frame] ...]
 //
 // Writes <outDir>/<n>.png (128 x 128, feet at x 64, y 120) for each member and pose, plus party.json
-// listing them. <who> matches the start of a character's name among the mission companions (Hana,
-// Kenji) and the legendary presets (Solen, Akira, Aiden, ...). Any sprite pose works, the camp poses
+// listing them. <who> matches the start of a character's name among the mission companions (Aurelia,
+// Lyra, Saya, Kenji) and the legendary presets (Solen, Akira, Aiden, ...). Any sprite pose works, the camp poses
 // included (lean, sit, read, train); <frame> picks the animation frame (default 0).
 
 import { mkdirSync, renameSync, writeFileSync } from 'node:fs';
@@ -17,7 +17,7 @@ import type { SpritePose } from '../../src/sprite/types';
 import { boxOf, Canvas } from '../world-sprites/kit';
 
 const out = process.argv[2] ?? 'party-preview';
-const wanted = process.argv.slice(3).length ? process.argv.slice(3) : ['Akira:idle', 'Hana:idle', 'Ren:idle'];
+const wanted = process.argv.slice(3).length ? process.argv.slice(3) : ['Akira:idle', 'Aurelia:idle', 'Ren:idle'];
 mkdirSync(out, { recursive: true });
 const list: { name: string; file: string; pose: string; frame: number; feet: [number, number] }[] = [];
 wanted.forEach((w, k) => {

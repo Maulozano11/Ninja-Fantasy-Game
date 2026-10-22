@@ -5,7 +5,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { DEFAULT_CHARACTER, JUTSUS_DATA, LEGENDARY_PRESETS } from '../data/shinobiData';
-import { COMPANIONS, HANA, KENJI, RIVER_FOREST_PATROL } from '../data/missions';
+import { AURELIA, COMPANIONS, KENJI, LYRA, SAYA, RIVER_FOREST_PATROL } from '../data/missions';
 import { loadRun, saveRun, startRun } from '../game/missionRun';
 import { loadHero, loadRoster } from '../game/saves';
 import { CHAKRA_COLORS } from '../sprite/chakra';
@@ -144,19 +144,23 @@ describe('the legends', () => {
       preset_warlord: ['Fire', '#a54ce0'], // was the violet Spectral Guardian
       preset_night: ['Lightning', '#36a0f0'], // was the blue Rising Tide
       preset_saya: ['Fire', '#b43134'], // the red of her scarf
-      preset_aurelia: ['Light', '#fac856'], // a heroine: Light, no element, in her staff's gold
+      preset_aurelia: ['Wind', '#f0c818'], // the medic: Wind in yellow (the owner, 2026-10-22: "viento amarillo")
       preset_lyra: ['Wind', '#40cccb'], // a heroine: wind in the cyan of her blade
     };
     assert.deepEqual(LEGENDARY_PRESETS.map((p) => p.character.id).sort(), Object.keys(want).sort());
     for (const { character: c } of LEGENDARY_PRESETS) {
       assert.equal(natureOf(c), want[c.id][0], c.id);
-      // A type that is no element (Aurelia's Light) has jutsu of no element.
+      // A type that is no element (Light, Void) would have jutsu of no element.
       assert.equal(loadoutNature(c), (ELEMENTS as string[]).includes(natureOf(c)) ? natureOf(c) : '', `${c.id}: its jutsu`);
       assert.equal(chakraHex(c.appearance!.chakra), want[c.id][1], `${c.id}: its colour`);
     }
-    // Hana, the water medic (was the green Leafwind Spiral), keeps her green.
-    assert.equal(natureOf(HANA), 'Water');
-    assert.equal(chakraHex(HANA.appearance!.chakra), '#3dbc48');
+    // The heroines as companions have their legend's type and colour: Aurelia Wind in yellow, Lyra Wind
+    // in her blade's cyan, Saya Fire in her scarf's red.
+    for (const [c, id] of [[AURELIA, 'preset_aurelia'], [LYRA, 'preset_lyra'], [SAYA, 'preset_saya']] as const) {
+      assert.equal(natureOf(c), want[id][0], c.id);
+      assert.equal(natureOf(c), loadoutNature(c), `${c.id}: its jutsu`);
+      assert.equal(chakraHex(c.appearance!.chakra), want[id][1], `${c.id}: its colour`);
+    }
     // Kenji, earth and wood (was the violet Spectral Guardian), keeps his violet.
     assert.equal(natureOf(KENJI), 'Earth');
     assert.equal(natureOf(KENJI), loadoutNature(KENJI));
@@ -211,11 +215,10 @@ describe('saved copies of the legends move to their new type (the owner, 2026-10
     preset_night: ['Lightning', 'yellow'], // Ren
     preset_sunburst: ['Wind', 'green'], // Hiro
     preset_warlord: ['Fire', 'red'], // Raiga
-    companion_hana: ['Water', 'blue'], // Hana
     companion_kenji: ['Earth', 'brown'], // Kenji
   };
 
-  it('the six whose burst changed, and only they', () => {
+  it('the five whose burst changed, and only they', () => {
     assert.deepEqual(Object.keys(LEGEND_BURST_CHANGE).sort(), Object.keys(NEW).sort());
     for (const [id, [nature, burst]] of Object.entries(NEW)) {
       assert.equal(legend(id).appearance!.chakra.color, burst, `${id} today`);
@@ -249,18 +252,18 @@ describe('saved copies of the legends move to their new type (the owner, 2026-10
   });
 
   it('a mission under way: the legends and companions in it (alive, fallen, and as they set out) move too', () => {
-    const run = startRun(RIVER_FOREST_PATROL, 'preset_storm', [legend('preset_storm'), HANA, KENJI], { seed: 3, leaderId: 'preset_storm', difficulty: 'normal', noRandomness: false });
+    const run = startRun(RIVER_FOREST_PATROL, 'preset_storm', [legend('preset_storm'), KENJI], { seed: 3, leaderId: 'preset_storm', difficulty: 'normal', noRandomness: false });
     const old = (c: ShinobiCharacter) => withChakra(c, LEGEND_BURST_CHANGE[c.id].old, undefined);
-    const [kaien, hana, kenji] = run.party.members;
+    const [kaien, kenji] = run.party.members;
     storage({});
     saveRun({
       ...run,
-      party: { ...run.party, members: [old(kaien), old(hana)], dead: [old(kenji)] },
-      entry: { ...run.entry, members: [old(kaien), old(hana), old(kenji)], dead: [] },
+      party: { ...run.party, members: [old(kaien)], dead: [old(kenji)] },
+      entry: { ...run.entry, members: [old(kaien), old(kenji)], dead: [] },
     });
     const r = loadRun()!;
     const all = [...r.party.members, ...r.party.dead, ...r.entry.members];
-    assert.deepEqual(all.map((c) => c.id), ['preset_storm', 'companion_hana', 'companion_kenji', 'preset_storm', 'companion_hana', 'companion_kenji']);
+    assert.deepEqual(all.map((c) => c.id), ['preset_storm', 'companion_kenji', 'preset_storm', 'companion_kenji']);
     for (const c of all) {
       assert.equal(c.appearance!.chakra.color, NEW[c.id][1], c.id);
       assert.equal(natureOf(c), NEW[c.id][0], c.id);
@@ -271,7 +274,7 @@ describe('saved copies of the legends move to their new type (the owner, 2026-10
 
   it('a copy whose player picked another burst, and any ninja that is not a legend, are left alone', () => {
     // Kaien made Fire by the player, Ren made Wind: their own choice.
-    for (const [id, burst] of [['preset_storm', 'red'], ['preset_night', 'green'], ['companion_hana', 'yellow']] as const) {
+    for (const [id, burst] of [['preset_storm', 'red'], ['preset_night', 'green'], ['companion_kenji', 'yellow']] as const) {
       const c = withChakra(legend(id), burst, undefined);
       assert.deepEqual(migrateCharacter(c), c, id);
     }
@@ -308,7 +311,6 @@ describe('saved copies of the legends move to their new type (the owner, 2026-10
     // the colour the preset passes on, "Natural", and a colour of the player's own
     for (const tint of ['blue', undefined, '#123456']) cases.push([`Ren as Water in ${tint}`, picked('preset_night', 'Water', tint)]);
     for (const tint of ['orange', undefined, 'green']) cases.push([`Hiro with Cinder Nova in ${tint}`, picked('preset_sunburst', 'Fire', tint, 'orange')]);
-    for (const tint of ['green', undefined]) cases.push([`Hana as Wind in ${tint}`, picked('companion_hana', 'Wind', tint)]);
     for (const [what, c] of cases) {
       assert.equal(c.appearance!.chakra.color, LEGEND_BURST_CHANGE[c.id].old, `${what}: the legend's old burst`);
       storage({ 'shinobi5e.hero.v1': c, 'shinobi5e.roster.v1': [{ character: c, savedAt: 1 }] });
@@ -318,7 +320,7 @@ describe('saved copies of the legends move to their new type (the owner, 2026-10
       storage({ 'shinobi5e.hero.v1': loadHero() });
       assert.deepEqual(loadHero(), made, `${what}: saved and loaded again`);
     }
-    assert.equal(natureOf(loadHero()!), 'Wind');
+    assert.equal(natureOf(loadHero()!), 'Fire');
     assert.equal(natureOf(migrateCharacter(picked('preset_night', 'Water', 'blue'))), 'Water');
   });
 

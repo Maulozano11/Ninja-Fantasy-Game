@@ -3,11 +3,13 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { DEFAULT_CHARACTER } from '../data/shinobiData';
-import { HANA, KENJI, RIVER_FOREST_PATROL } from '../data/missions';
+import { AURELIA, KENJI, RIVER_FOREST_PATROL } from '../data/missions';
 import type { Difficulty } from '../types/mission';
 import type { ShinobiCharacter } from '../types/shinobi';
 import type { PartyBattleResult } from '../battle/result';
 import { deriveStats } from '../rules/derived';
+import { addEffect } from '../rules/effects';
+import { migrateCharacter } from '../rules/ninja';
 import { chooseFire, doActivity, rollNight, serveFood, startCamp, startShortStop } from '../rules/rest';
 import { applyOutcome, continueRoad, intoNextZone, migrateRun, MissionRun, newBattle, resolvePartyBattle, startRun } from './missionRun';
 
@@ -25,7 +27,7 @@ function savedBefore(c: ShinobiCharacter): ShinobiCharacter {
 }
 
 const begin = (difficulty: Difficulty = 'normal', seed = 7): MissionRun =>
-  startRun(RIVER_FOREST_PATROL, 'hero', [hero, HANA, KENJI], { seed, leaderId: 'hero', difficulty, noRandomness: false });
+  startRun(RIVER_FOREST_PATROL, 'hero', [hero, AURELIA, KENJI], { seed, leaderId: 'hero', difficulty, noRandomness: false });
 
 /** What the battle map hands back: everyone's HP (0 = fell), chakra and the supplies left. */
 const result = (r: MissionRun, outcome: PartyBattleResult['outcome'], hp: number | ((id: string) => number), o: { chakra?: number; pills?: number } = {}): PartyBattleResult => {
@@ -60,9 +62,9 @@ describe('mission flow', () => {
     const r = fight(begin(), 'victory', (id) => (id === 'hero' ? 20 : 15), { chakra: 4 });
     assert.equal(r.battle, null);
     assert.equal(r.nodeDone, true);
-    const [solen, hana, kenji] = r.party.members;
+    const [solen, aurelia, kenji] = r.party.members;
     assert.equal(solen.currentHp, 20);
-    assert.equal(hana.currentHp, 15);
+    assert.equal(aurelia.currentHp, 15);
     assert.equal(kenji.currentChakra, 4);
     assert.equal(r.stats.battlesWon, 1);
     assert.ok(r.log.some((l) => l.text.startsWith('Victory')));
@@ -70,10 +72,10 @@ describe('mission flow', () => {
 
   it('a fallen ally wakes after the victory with 1 HP and Fall aftermath', () => {
     const r = fight(begin(), 'victory', (id) => (id === 'hero' ? 0 : 12));
-    const [solen, hana] = r.party.members;
+    const [solen, aurelia] = r.party.members;
     assert.equal(solen.currentHp, 1);
     assert.ok(solen.effects?.some((e) => e.id === 'fall_aftermath'));
-    assert.equal(hana.currentHp, 12);
+    assert.equal(aurelia.currentHp, 12);
     assert.equal(r.stats.falls, 1);
   });
 
@@ -134,7 +136,7 @@ describe('mission flow', () => {
       let c = { ...r, party: { ...r.party, progress: { ...r.party.progress, seed } } };
       c = applyOutcome(c, ok(startCamp(c.party, { nodeId: 'shrine_clearing', zoneDanger: 30, shrine: true })), (x, camp) => ({ ...x, camp }));
       c = applyOutcome(c, ok(chooseFire(c.party, c.camp!, 'bonfire')), (x, camp) => ({ ...x, camp }));
-      c = applyOutcome(c, ok(doActivity(c.party, c.camp!, HANA.id, 'pray')), (x, camp) => ({ ...x, camp }));
+      c = applyOutcome(c, ok(doActivity(c.party, c.camp!, AURELIA.id, 'pray')), (x, camp) => ({ ...x, camp }));
       c = applyOutcome(c, ok(serveFood(c.party, c.camp!, 'hot')), (x, camp) => ({ ...x, camp }));
       c = applyOutcome(c, ok(rollNight(c.party, c.camp!)), (x, camp) => ({ ...x, camp }));
       if (c.camp?.night?.ambush) camped = c;
@@ -142,7 +144,7 @@ describe('mission flow', () => {
     assert.ok(camped, 'some seed brings the raid');
     let a: MissionRun = { ...camped!, battle: newBattle('shrine_clearing:ambush', RIVER_FOREST_PATROL.ambush, camped!.party, { ambush: true }) };
     const before = a.party.members.map((m) => m.currentHp);
-    a = fight(a, 'victory', (id) => (id === HANA.id ? 0 : 10));
+    a = fight(a, 'victory', (id) => (id === AURELIA.id ? 0 : 10));
     assert.equal(a.battle, null);
     assert.equal(a.camp?.morningDone, true, 'the raid ends in an interrupted morning');
     assert.ok(a.party.members[1].currentHp >= 1);
@@ -188,10 +190,10 @@ describe('mission flow', () => {
     // without the clan's ability bonus, which only counts since 2026-10-20).
     const old = (c: ShinobiCharacter, clan: string, o: Partial<ShinobiCharacter> = {}): ShinobiCharacter => ({ ...savedBefore(c), clan: clan as ShinobiCharacter['clan'], currentHp: 9, ...o });
     const [a, b, c] = r.party.members;
-    assert.deepEqual([a.id, b.id, c.id], ['hero', HANA.id, KENJI.id]);
+    assert.deepEqual([a.id, b.id, c.id], ['hero', AURELIA.id, KENJI.id]);
     const saved: MissionRun = {
       ...r,
-      // Solen's numbers are hand-made (a preset); Hana's and Kenji's came from the old formula,
+      // Solen's numbers are hand-made (a preset); Aurelia's and Kenji's came from the old formula,
       // with Akkai's +25 % chakra (⌊30 × 1.25⌋ + 4 for Chakra Prodigy) and Uddo's +6 max HP.
       party: { ...r.party, members: [old(a, 'Uddo'), old(b, 'Akkai', { maxChakra: 41, currentChakra: 40 })], dead: [old(c, 'Uddo', { maxHp: KENJI.maxHp + 6, currentHp: 25 })] },
       entry: { ...r.entry, members: [old(a, 'Senju')], dead: [old(b, 'Uchiha'), old(c, 'Taki')] },
@@ -211,13 +213,13 @@ describe('mission flow', () => {
       for (const k of ['currentHp', 'maxHp', 'currentChakra', 'maxChakra'] as const) assert.equal(now[k], was[k], k);
     }
     // The old bonus goes, and what is left fits under the new maxima.
-    const hana = m.party.members[1];
-    assert.deepEqual([hana.maxChakra, hana.currentChakra, hana.maxHp, hana.currentHp], [HANA.maxChakra, HANA.maxChakra, HANA.maxHp, 9]);
+    const aurelia = m.party.members[1];
+    assert.deepEqual([aurelia.maxChakra, aurelia.currentChakra, aurelia.maxHp, aurelia.currentHp], [AURELIA.maxChakra, AURELIA.maxChakra, AURELIA.maxHp, 9]);
     const kenji = m.party.dead[0];
     assert.deepEqual([kenji.maxHp, kenji.currentHp, kenji.maxChakra], [KENJI.maxHp, KENJI.maxHp, KENJI.maxChakra]);
     assert.equal(KENJI.maxHp, 22);
-    // Changed on purpose (owner, 2026-10-20, D2): Hana is a Kōton, and its +2 CON now counts: 34 → 35.
-    assert.equal(HANA.maxChakra, 35);
+    // Changed on purpose (owner, 2026-10-20, D2): Aurelia is a Kōton, and its +2 CON now counts: 34 → 35.
+    assert.equal(AURELIA.maxChakra, 35);
     // Every sheet now counts its clan's bonus, once.
     assert.ok(all(m).every((x) => x.sheetVersion === 2));
     assert.deepEqual(migrateRun(m), m);
@@ -225,18 +227,18 @@ describe('mission flow', () => {
 
   it('a run saved before the clan bonus counted loads with it counted, once (D2)', () => {
     const r = begin();
-    const [hero0, hana0, kenji0] = r.party.members;
-    // Saved the day before: Hana (a Kōton) hurt and at full chakra, Kenji (a Ryusei) at full HP, Solen fallen.
-    const hana = { ...savedBefore(hana0), currentHp: 12 };
+    const [hero0, aurelia0, kenji0] = r.party.members;
+    // Saved the day before: Aurelia (a Kōton) hurt and at full chakra, Kenji (a Ryusei) at full HP, Solen fallen.
+    const aurelia = { ...savedBefore(aurelia0), currentHp: 12 };
     const kenji = savedBefore(kenji0);
     const solen = { ...savedBefore(hero0), currentHp: 0 };
-    assert.deepEqual([hana.maxHp, hana.maxChakra, hana.currentChakra], [31, 34, 34]);
-    const saved: MissionRun = { ...r, party: { ...r.party, members: [hana, kenji], dead: [solen] }, entry: { ...r.entry, members: [solen, hana, kenji] } };
+    assert.deepEqual([aurelia.maxHp, aurelia.maxChakra, aurelia.currentChakra], [31, 34, 34]);
+    const saved: MissionRun = { ...r, party: { ...r.party, members: [aurelia, kenji], dead: [solen] }, entry: { ...r.entry, members: [solen, aurelia, kenji] } };
     const m = migrateRun(JSON.parse(JSON.stringify(saved)) as MissionRun);
     const [h, k] = m.party.members;
     // Kōton's +2 CON: CON 14 plays as 16. Max HP 31 → 35 and chakra 34 → 35; the hurt HP stays, full chakra stays full.
     assert.deepEqual([h.maxHp, h.currentHp, h.maxChakra, h.currentChakra], [35, 12, 35, 35]);
-    assert.deepEqual([h.maxHp, h.maxChakra], [HANA.maxHp, HANA.maxChakra]);
+    assert.deepEqual([h.maxHp, h.maxChakra], [AURELIA.maxHp, AURELIA.maxChakra]);
     // Ryusei's +2 DEX: one more AC for Kenji, still at full HP.
     assert.deepEqual([k.armorClass, k.maxHp, k.currentHp], [kenji.armorClass + 1, 22, 22]);
     assert.equal(k.armorClass, KENJI.armorClass);
@@ -245,8 +247,49 @@ describe('mission flow', () => {
     assert.deepEqual([s.armorClass, s.jutsuSaveDC, s.jutsuAttackBonus, s.currentHp], [20, 18, 10, 0]);
     assert.deepEqual(m.entry.members.map((x) => x.maxHp), [56, 35, 22]);
     // The base scores never change; loading again (or saving and loading) adds nothing more.
-    assert.deepEqual(h.stats, hana0.stats);
+    assert.deepEqual(h.stats, aurelia0.stats);
     assert.deepEqual(migrateRun(m), m);
     assert.deepEqual(migrateRun(JSON.parse(JSON.stringify(m)) as MissionRun), m);
+  });
+
+  it('a run saved with the removed medic companion loads with Aurelia, the new medic, in her place', () => {
+    // The owner removed the old medic (companion_hana) on 2026-10-22: "borra a hana tambien entonces y pon
+    // de nuevas compañeras a nuestras nuevas versiones femeninas de personajes". Her sheet as it was saved.
+    const removed: ShinobiCharacter = { ...KENJI, id: 'companion_hana', name: 'Hana', title: 'The Field Medic', clan: 'Koton', shinobiClass: 'Medical Specialist', maxHp: 35, maxChakra: 35 };
+    let r = startRun(RIVER_FOREST_PATROL, 'hero', [hero, removed, KENJI], { seed: 7, leaderId: 'companion_hana', difficulty: 'normal', noRandomness: false });
+    // Hurt to a third and half her chakra spent, Hungry, a little worn; bonded with both; she led.
+    const hurt = { ...r.party.members[1], currentHp: 12, currentChakra: 17, tension: 3, exhaustion: 1, effects: addEffect([], 'hungry').effects };
+    r = {
+      ...r,
+      party: { ...r.party, members: [r.party.members[0], hurt, r.party.members[2]], bonds: { 'companion_hana|hero': 2, 'companion_hana|companion_kenji': 1, 'companion_kenji|hero': 3 } },
+      entry: { ...r.entry, members: [r.entry.members[0], hurt, r.entry.members[2]] },
+    };
+    const saved = JSON.parse(JSON.stringify(r)) as MissionRun;
+    const m = migrateRun(saved);
+    for (const p of [m.party, m.entry]) assert.deepEqual(p.members.map((x) => x.id), ['hero', AURELIA.id, KENJI.id]);
+    const a = m.party.members[1];
+    // Her sheet is Aurelia's; the mission's wear carries over, the HP and chakra in proportion.
+    assert.deepEqual([a.name, a.shinobiClass, a.clan, a.maxHp, a.maxChakra], ['Aurelia', 'Medical Specialist', 'Koton', AURELIA.maxHp, AURELIA.maxChakra]);
+    assert.deepEqual(a.selectedJutsus, AURELIA.selectedJutsus);
+    assert.deepEqual(a.appearance, AURELIA.appearance);
+    assert.deepEqual([a.currentHp, a.currentChakra, a.tension, a.exhaustion], [Math.round((12 / 35) * AURELIA.maxHp), Math.round((17 / 35) * AURELIA.maxChakra), 3, 1]);
+    assert.deepEqual(a.effects?.map((e) => e.id), ['hungry']);
+    // The leader and the bonds follow her place; nothing in the run names the removed one any more.
+    assert.equal(m.party.leaderId, AURELIA.id);
+    assert.deepEqual(m.party.bonds, { 'companion_aurelia|hero': 2, 'companion_aurelia|companion_kenji': 1, 'companion_kenji|hero': 3 });
+    const { log: _log, ...rest } = m;
+    assert.ok(!JSON.stringify(rest).includes('companion_hana'));
+    // Loading again changes nothing, and the mission goes on with her.
+    assert.deepEqual(migrateRun(m), m);
+    const won = fight(m, 'victory', 10);
+    assert.equal(won.party.members[1].id, AURELIA.id);
+  });
+
+  it('a saved ninja copied from the removed medic (hero or roster) still loads, as a ninja of its own', () => {
+    const copy: ShinobiCharacter = { ...KENJI, id: 'companion_hana', name: 'Hana', clan: 'Koton', shinobiClass: 'Medical Specialist', sheetVersion: 2 };
+    const loaded = migrateCharacter(JSON.parse(JSON.stringify(copy)));
+    assert.equal(loaded.id, 'companion_hana');
+    assert.equal(loaded.name, 'Hana');
+    assert.deepEqual(loaded.selectedJutsus, copy.selectedJutsus);
   });
 });

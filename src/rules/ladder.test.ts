@@ -5,7 +5,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { CLANS_DATA, DEFAULT_CHARACTER, JUTSUS_DATA, LEGENDARY_PRESETS, SHINOBI_CLASSES, SHINOBI_FEATS } from '../data/shinobiData';
-import { HANA, KENJI, RIVER_FOREST_PATROL } from '../data/missions';
+import { AURELIA, KENJI, RIVER_FOREST_PATROL } from '../data/missions';
 import { enemyCharacter, enemyUnit, unitFrom } from '../battle/units';
 import { JUTSU } from '../battle/jutsu';
 import { loadRun, type MissionRun, saveRun, startRun } from '../game/missionRun';
@@ -143,7 +143,7 @@ describe('the ladder: rank A at level 7, rank S at level 10, for every ninja ("a
     for (const c of [high, ...legends]) assert.deepEqual(roster.find((r) => r.character.id === c.id)!.character.selectedJutsus, c.selectedJutsus, `${c.id}: its jutsu stay`);
     for (const c of legends) assert.deepEqual(migrateCharacter(c).selectedJutsus, c.selectedJutsus, c.id);
     // A mission saved halfway: the party's jutsu are what they were.
-    const run: MissionRun = startRun(RIVER_FOREST_PATROL, high.id, [high, legends[0], HANA], { seed: 3, leaderId: high.id, difficulty: 'normal', noRandomness: false });
+    const run: MissionRun = startRun(RIVER_FOREST_PATROL, high.id, [high, legends[0], AURELIA], { seed: 3, leaderId: high.id, difficulty: 'normal', noRandomness: false });
     saveRun(run);
     const loaded = loadRun()!;
     for (const m of run.party.members) assert.deepEqual(loaded.party.members.find((x) => x.id === m.id)!.selectedJutsus, m.selectedJutsus, m.id);
@@ -156,7 +156,7 @@ describe('the ladder: rank A at level 7, rank S at level 10, for every ninja ("a
       for (const id of Object.values(sheet.selectedJutsus).filter((id) => JUTSU[id])) assert.ok(u.jutsus.includes(id), `${kind}: ${id}`);
     }
     assert.ok(enemyUnit('jonin', 1, { x: 1, z: 1 }, 'normal').jutsus.includes('chidori_lightning_blade'), 'the jonin keeps its rank A');
-    for (const c of [HANA, KENJI, ...LEGENDARY_PRESETS.map((p) => p.character)]) {
+    for (const c of [AURELIA, KENJI, ...LEGENDARY_PRESETS.map((p) => p.character)]) {
       const u = unitFrom(c, { team: 'party', pos: { x: 1, z: 1 } });
       for (const id of Object.values(c.selectedJutsus).filter((id) => JUTSU[id])) assert.ok(u.jutsus.includes(id), `${c.id}: ${id}`);
     }
@@ -248,7 +248,7 @@ describe('Triple Nature ("feat del tercer elemento opcion a"): level 9 and a sec
 
   it('once per long rest: spent in a battle, ready again after the camp\'s morning and at the village', () => {
     const c = { ...fitThirdElement(ninja(9, { natureGrowth: 'element', extraNatures: ['Water'], selectedFeats: [THIRD_ELEMENT_FEAT] }), 'Fire'), effects: [] };
-    let p = newMission([c, HANA], { seed: 4, noRandomness: true });
+    let p = newMission([c, AURELIA], { seed: 4, noRandomness: true });
     p = applyBattleResult(p, { victory: true, members: [{ id: c.id, hp: c.currentHp, chakra: 5, tripleNatureSpent: true }] }, 'b1').party;
     assert.equal(p.members[0].tripleNatureSpent, true);
     // A battle in which it was not spent changes nothing.

@@ -4,7 +4,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { CLANS_DATA, DEFAULT_CHARACTER, JUTSUS_DATA, LEGENDARY_PRESETS } from '../data/shinobiData';
-import { HANA, KENJI, RIVER_FOREST_PATROL } from '../data/missions';
+import { AURELIA, KENJI, RIVER_FOREST_PATROL } from '../data/missions';
 import { loadRun, migrateRun, type MissionRun, saveRun, startRun } from '../game/missionRun';
 import { loadHero, loadRoster } from '../game/saves';
 import { getAppearance } from '../sprite/legacy';
@@ -248,7 +248,7 @@ describe('Kaien (Rayo + Fuego) and Raiga (Fuego + Tierra): "ok con kaien y raiga
     storage({ 'shinobi5e.hero.v1': kaien, 'shinobi5e.roster.v1': [{ character: raiga, savedAt: 1 }] });
     assert.deepEqual(loadHero()!.extraNatures, ['Fire']);
     assert.deepEqual(loadRoster()[0].character.extraNatures, ['Earth']);
-    const run = startRun(RIVER_FOREST_PATROL, KAIEN.id, [migrateCharacter(kaien), HANA], { seed: 3, leaderId: KAIEN.id, difficulty: 'normal', noRandomness: false });
+    const run = startRun(RIVER_FOREST_PATROL, KAIEN.id, [migrateCharacter(kaien), AURELIA], { seed: 3, leaderId: KAIEN.id, difficulty: 'normal', noRandomness: false });
     const saved: MissionRun = roundTrip({ ...run, party: { ...run.party, members: [kaien, ...run.party.members.slice(1)] } });
     const m = migrateRun(saved);
     assert.deepEqual(m.party.members[0].extraNatures, ['Fire']);
@@ -260,7 +260,7 @@ describe('Kaien (Rayo + Fuego) and Raiga (Fuego + Tierra): "ok con kaien y raiga
 
   it('only their copies, as the player left them', () => {
     // Another legend's or a companion's copy, and a ninja of its own: nothing added.
-    for (const c of [DEFAULT_CHARACTER, HANA, KENJI, ninja(5)]) assert.equal(addLegendNatures(c), c, c.id);
+    for (const c of [DEFAULT_CHARACTER, AURELIA, KENJI, ninja(5)]) assert.equal(addLegendNatures(c), c, c.id);
     // A copy whose type the player changed keeps what it has.
     const kaien = { ...roundTrip(KAIEN), extraNatures: undefined };
     const look = getAppearance(kaien);

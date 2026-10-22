@@ -23,7 +23,7 @@ clean.
 - 7 legend presets (`LEGENDARY_PRESETS`): Solen the Founder King (default sheet), Akira the Ember
   Ronin, **Aiden the Crimson Knight (the owner's art standard)**, Kaien the Storm Avenger, Hiro the
   Sunburst Hero, Raiga the Warlord of Ash, Ren the Night Prince.
-- Companions: Hana (Kōton, Medical), Kenji (Ryusei, Genjutsu), and every preset.
+- Companions (on `companions/heroines`, waiting for the owner): the owner's heroines Aurelia (Kōton, Medical, Wind in yellow: the medic), Lyra (Kōton, Bukijutsu, Wind) and Saya (Ryusei, Bukijutsu, Fire), each at level 4 from her legend preset, Kenji (Ryusei, Genjutsu), and every other preset.
 - 5 classes (Ninjutsu, Taijutsu, Genjutsu, Medical, Bukijutsu) and 9 feats.
 - Appearance (`src/sprite/catalog.ts`):
 
@@ -163,8 +163,8 @@ Merge checks (`git merge-tree` on the origin tips, nothing changed):
 
 - `jutsu/tide-s` (2026-10-22): the Dragon Tsunami is approved (look, rank S, names, numbers for now).
   Still open, small:
-  - Hana (Water, medic) keeps Yasaka no Magatama in her S-rank slot (see the class question below);
-    give her the Dragon Tsunami instead? (Practice battles let every water ninja cast it anyway.)
+  - No companion is of Water since the old medic was removed: in practice Lyra plays as a water
+    ninja when the party has none, so the Dragon Tsunami can be tried (`companions/heroines`).
   - His curl stands with its foot cut straight where his canvas ended (bottom left); and where his
     dragon and kanji covered the curl, the curl is continued with his own rings turned about the
     spiral's eye (seen while the dragon rises and dives and before the kanji shows).
@@ -270,7 +270,8 @@ Merge checks (`git merge-tree` on the origin tips, nothing changed):
   seat's, not hers (`tools/refs/lyra_read_ref.py`, `seats.test.ts`).
 - Decided 2026-10-22: **the gap round 2 is approved and merged** (`jutsu/gap-set-2`): *"la ola torre suelo mojado ,vapor se ve bien aprovado"*. He will paint an S-rank upgraded Tide over our widest wave frame: *"a la ola pasame el sprite donde se ven mas olas para agregarle un kanji y una bestia animada que sera el jutsu en version mejorada clase s"*.
 - Decided 2026-10-22: **the slender body is removed** (`cleanup/remove-slender`): *"elimina el tipo de cuerpo delgado se ve horrible y ya no cumple nuestros standares y para que ya no gastes recursos en ese estilo"*. The creator offers male, female and bulky; no preset, companion or enemy used it. A saved look on it loads on the female body (`migrateAppearance`, `src/sprite/bodies.test.ts`). Male, female and bulky renders are byte-identical to before. Don't build or test new art for it; the open branches that still test it drop those cases when they merge.
-- Decided 2026-10-22: **Shiori is discarded, with everything about her** (`cleanup/remove-shiori`): *"shiori desechala esta horrible ese diseño"*, then *"todo lo que tenga que ver con ella"*. Her legend preset (`preset_gentle`, "Shiori, el Puño Suave") is gone, so 7 legends remain; this also drops one of the Naruto-derived designs (a Hinata copy, 4a). Hana, who was built on her sheet, keeps her own legacy fields and is unchanged in play. The items, feats and jutsu she wore are everyone's creator options and stay. A saved hero, roster entry or mission member made from her loads as a normal made ninja with its own data (test in `rules.test.ts`). `scripts/ai-battles.ts` plays Hiro fourth instead, so party A has no Northstar member now (D21's numbers were measured with her).
+- Decided 2026-10-22: **the old medic companion is removed, and the owner's heroines are the new companions**: *"borra a hana tambien entonces y pon de nuevas compañeras a nuestras nuevas versiones femeninas de personajes"*. Then, who heals: *"aurelia sera la nueva medica y con elemento viento amarillo"*. Built on `companions/heroines` (merging `body/female-v2`, `heroine/saya-v2`, `heroine/aurelia-v2`, `heroine/lyra-v2` and the integration branch), waiting for him: Aurelia, Lyra and Saya are mission companions made from their legend presets at level 4 (`src/data/missions.ts`), Kenji stays; Aurelia is a Medical Specialist with Wind in yellow (her preset too): the healing palm, Wind's Whirl (D) and Great Breakthrough (C), Kōton's chains, and Wind's Rasenshuriken (S) as proposals for him to confirm. A heroine joins as her companion or as her legend, not both. A saved mission with the old medic loads with Aurelia in her place (her sheet, the old medic's HP and chakra in proportion, her effects and wear, the leader and the bonds; `migrateRun` in `src/game/missionRun.ts`); a saved copy of the old medic in the hero or roster slot loads as a ninja of its own. Practice battles (`#combat`) bring the three heroines; Lyra plays as Water there when no water ninja is in the party, so the Dragon Tsunami can still be tried. Her shared items and jutsu stay.
+- Decided 2026-10-22: **Shiori is discarded, with everything about her** (`cleanup/remove-shiori`): *"shiori desechala esta horrible ese diseño"*, then *"todo lo que tenga que ver con ella"*. Her legend preset (`preset_gentle`, "Shiori, el Puño Suave") is gone, so 7 legends remain; this also drops one of the Naruto-derived designs (a Hinata copy, 4a). The medic companion, who was built on her sheet, kept her own legacy fields (and was removed in turn the same day, below). The items, feats and jutsu she wore are everyone's creator options and stay. A saved hero, roster entry or mission member made from her loads as a normal made ninja with its own data (test in `rules.test.ts`). `scripts/ai-battles.ts` plays Hiro fourth instead, so party A has no Northstar member now (D21's numbers were measured with her).
 - Decided 2026-10-22: **the headband stays, as plain cloth** (approved and merged the same day: *"si me gusta asi la bandana"*). The owner: *"deja la bandana pero quitale el diseño de puntitos referenciando un simbolo deja la pura bandana la pura tela"*. This replaces his earlier "quita las bandanas del juego ya no estara ninguna" (same day; the headband removal on `cleanup/remove-pieces`, "quitar bandanas", is replaced too). Built on `headband/plain-cloth`: the metal plate, its 7 emblems and the slash are gone from the drawing, the creator (Emblem picker, Plate colour, Slashed toggle) and the random ninja; position, tails and cloth colour stay, and every preset, companion and enemy keeps its band. Old saves drop `slashed`, `emblem` and `plate` on load (`migrateAppearance`, `sprite/legacy.ts`). Kaien's tag "Rogue Headband / Bandana de renegado" (the scratched plate) is now "Dark Headband / Bandana oscura". Waiting for his look at the before/after.
 - Decided 2026-10-21 (later still), his jutsu answers: *"1 d y c y los de su clan 2 propuestas 3
   sello explosivo es un item o herramienta consumible palma curativa es un jutsu de utilidad 4 si
@@ -284,7 +285,8 @@ Merge checks (`git merge-tree` on the origin tips, nothing changed):
 - Decided 2026-10-21 (later still), who learns the genjutsu, kenjutsu and taijutsu jutsu: *"9 los
   que elijan de clase genjutsu kenjutsu o taijutsu"*. Built on `chakra/progression`. Kenjutsu to
   the Maestro de Bukijutsu confirmed ("si bukijutsu sera kenjutsu"). **Still his**: Ninjutsu and
-  Medical learning none of the three; Hana (medic) keeping Yasaka no Magatama, marked.
+  Medical learning none of the three (the old medic's Yasaka no Magatama question ended with her
+  removal, 2026-10-22).
 - Decided 2026-10-21 (later still), the second and third element: *"nivel 5 suena bien para segundo
   elemento o subir de rango tu elemento principal proponme el feat ok con kaien y raiga"*. Built on
   `chakra/progression`: at level 5 a second element or a higher rank of the main element; Kaien

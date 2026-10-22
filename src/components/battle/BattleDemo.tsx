@@ -10,21 +10,29 @@ import { createBattle } from '../../battle/engine';
 import { encounterSetup } from '../../battle/encounters';
 import type { EncounterId } from '../../battle/encounters';
 import type { PartyBattleResult } from '../../battle/result';
-import { HANA, KENJI } from '../../data/missions';
-import { LEGENDARY_PRESETS } from '../../data/shinobiData';
+import { canJoin, COMPANIONS, LYRA } from '../../data/missions';
 import { strings, useLang } from '../../i18n';
 import { BattleScreen } from './BattleScreen';
 import { Portrait } from './hud';
 import { unitFrom } from '../../battle/units';
 import { withPouches } from '../../rules/pouch';
 import { natureOf } from '../../rules/ninja';
+import { getAppearance } from '../../sprite/legacy';
 
 /**
  * Water's rank S, the Dragon Tsunami (the owner, 2026-10-22), castable in practice by every water
- * ninja so it can be tried: a ninja learns it only at level 10, and Hana's S-rank slot keeps her
- * Yasaka no Magatama (his open question, docs/STATUS.md).
+ * ninja so it can be tried: a ninja learns it only at level 10.
  */
 const PRACTICE_PREVIEW = 'water_tide_s';
+
+/**
+ * Practice only: Lyra plays as a water ninja (her burst Water, her own colour kept) when the party has
+ * none, so the Dragon Tsunami can still be tried. Since the water medic left, no companion is of Water.
+ */
+function asWater(c: ShinobiCharacter): ShinobiCharacter {
+  const look = getAppearance(c);
+  return { ...c, appearance: { ...look, chakra: { ...look.chakra, color: 'blue', tint: look.chakra.tint ?? 'green' } } };
+}
 
 const S = strings({
   title: { en: 'Battle practice', es: 'Práctica de batalla' },
@@ -65,11 +73,12 @@ export const BattleDemo: React.FC<BattleDemoProps> = ({ character, start }) => {
   const [battle, setBattle] = useState<{ id: EncounterId; seed: number } | null>(start ? { id: start, seed: Date.now() % 100000 } : null);
   const [result, setResult] = useState<PartyBattleResult | null>(null);
 
-  // The player's ninja and three companions (fresh: full HP and chakra).
+  // The player's ninja and three companions (fresh: full HP and chakra): the heroines first.
   const party = useMemo(() => {
-    const others = [HANA, KENJI, ...LEGENDARY_PRESETS.map((p) => p.character)].filter((c) => c.id !== character.id);
+    const others = COMPANIONS.filter((c) => canJoin(c, character));
     const fresh = (c: ShinobiCharacter): ShinobiCharacter => ({ ...c, currentHp: c.maxHp, currentChakra: c.maxChakra, effects: [] });
-    return [fresh(character), ...others.slice(0, 3).map(fresh)];
+    const team = [fresh(character), ...others.slice(0, 3).map(fresh)];
+    return team.some((c) => natureOf(c) === 'Water') ? team : team.map((c) => (c.id === LYRA.id ? asWater(c) : c));
   }, [character]);
 
   const initial = useMemo(() => {

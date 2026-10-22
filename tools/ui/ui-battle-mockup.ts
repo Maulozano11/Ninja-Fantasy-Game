@@ -302,8 +302,8 @@ export function buildMockup(ps: Piece[], capDir: string, shotsDir: string): Mock
   put('button_small', S(11) - 2, S(500) - 2);
   const em = P('glyph_emblem');
   put('glyph_emblem', S(11) - 2 + (24 - em.w) / 2, S(500) - 2 + (24 - em.h) / 2);
-  const partyY = [221, 281, 341, 401]; // Solen, Hana, Kenji, Akira in the screenshot's party list
-  const orderParty = [3, 0, 1, 2]; // shown as Akira, Solen, Hana, Kenji
+  const partyY = [221, 281, 341, 401]; // the four rows of the screenshot's party list (Solen, the old medic companion, Kenji, Akira)
+  const orderParty = [3, 0, 1, 2]; // shown with Akira first
   orderParty.forEach((k, i) => {
     const fx = S(7) + i * 64, fy = S(520);
     const src = cutBackground(shot.crop(21, partyY[k], 36, 36));

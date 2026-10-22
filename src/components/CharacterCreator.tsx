@@ -715,7 +715,7 @@ export const CharacterCreator: React.FC<CharacterCreatorProps> = ({
 
     setCharacter({
       ...grown,
-      name: ['Kaito', 'Ren', 'Sasori', 'Ayame', 'Shino', 'Hana', 'Raijin', 'Kuro'][Math.floor(Math.random() * 8)],
+      name: ['Kaito', 'Ren', 'Sasori', 'Ayame', 'Shino', 'Yume', 'Raijin', 'Kuro'][Math.floor(Math.random() * 8)],
       clan: randomClan,
       shinobiClass: randomClass,
       armorStyle: randomArmor,

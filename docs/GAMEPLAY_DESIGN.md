@@ -374,14 +374,14 @@ de tipo deidad angel y dios y el de vacio sombra y espiritu va ser demoniaco
 
 1. **The legends keep their new types** ("si"), each in the colour it always
    had: Kaien and Ren Lightning (violet, blue), Hiro Wind (orange), Raiga Fire
-   (violet); of the companions, Hana Water (green) and Kenji Earth (violet).
+   (violet); of the companions, the old medic Water (green; removed 2026-10-22) and Kenji Earth (violet).
    Kaien, Raiga and Kenji lose the ghost-warrior burst. Solen, Akira and Aiden
    already matched.
 2. **Saved copies are updated** ("actualiza"). A copy of a legend or companion
    (the hero, the roster, the party and the fallen of a mission under way, an
    import; matched by its id) that still has the burst it had before (Kaien,
    Raiga and Kenji the violet Spectral Guardian, Ren the blue Rising Tide, Hiro
-   the orange Cinder Nova, Hana the green Leafwind Spiral) loads with the
+   the orange Cinder Nova, the old medic the green Leafwind Spiral) loads with the
    legend's burst of today, in the colour it showed (its own colour, else the
    old burst's natural one). Nothing else changes. A copy whose player picked
    another burst keeps it.
@@ -416,7 +416,7 @@ by the builder; his answers settle the rows marked so, the rest is still
 | Type | Burst(s) | Natural colour | State |
 |---|---|---|---|
 | Fire (Fuego) | Pyre Crown (flames), Cinder Nova (embers and a fiery shockwave) | red, orange | His rule; Cinder Nova as a second burst: his answer 4 |
-| Water (Agua) | Rising Tide | blue | Proposed (Hana is Water: his answer 1, on this table) |
+| Water (Agua) | Rising Tide | blue | Proposed (his answer 1, on this table; no legend or companion is Water since the old medic was removed, 2026-10-22) |
 | Wind (Viento) | Leafwind Spiral | green | Proposed (Hiro is Wind: his answer 1, on this table) |
 | Lightning (Rayo) | Storm Lash; Battle Static (*Estática de batalla*: no aura and no glow, only small jagged bolts crackling all the time on the hair, shoulders, arms and round the legs, more while empowered) | yellow, cyan | Storm Lash: his rule. A second burst: his request (2026-10-21), its name his; Battle Static is **new art** |
 | Earth (Tierra) | Shattered Earth (the ground cracks, stone spikes, rocks tear loose and float up) | brown | Kenji Earth: his answer 1. The burst art is **approved** (2026-10-21: "me gusta tierra quebrada") |
@@ -608,8 +608,8 @@ slots belong to a class: only a ninja of that class learns them. Built:
 - **The random ninja** picks its jutsu for its class too.
 - **The sheets keep what they have:** no legend breaks the rule today (each
   one's taijutsu, kenjutsu or genjutsu jutsu is its own class's). A sheet that
-  does (the companion Hana, a medic, has Yasaka no Magatama; an older or
-  imported sheet) keeps it, marked "no es de tu clase" in the Jutsu step. Saves
+  does (an older or imported sheet; the old medic companion, removed
+  2026-10-22, had Yasaka no Magatama) keeps it, marked "no es de tu clase" in the Jutsu step. Saves
   are not changed. Enemies and battles are not touched.
 - **An empty slot** (as built): a slot with nothing for the nature and class
   shows "Nada que aprender aún · nada para tu naturaleza y clase" with a lock;
@@ -902,7 +902,7 @@ para las bestias elementales"*.
   save, the description, and what the enhanced cast does.
 - **Names in Spanish sentences**: a generic enemy name takes its article
   ("Turno del Asaltante", "El Renegado 1 golpea a Akira", "la Sombra"), and a
-  participle agrees with the one it is about ("Hana está desprevenida"); the
+  participle agrees with the one it is about ("Aurelia está desprevenida"); the
   party's ninjas and named enemies (Kagero) never take an article.
 - **Sound**: forest ambience (river, birds, crickets at night), footsteps, the
   guard's alert, hits and jutsu, generated in the game (no audio files).
@@ -1105,9 +1105,9 @@ folder (`WORLD_OUT`) until then. Approved so far: the river bridge.
   none of the three: confirm. Consequences to decide: a **Light or Void** ninja
   of those two classes has nothing at all for its Element and S-rank slots
   until Light and Void get their jutsu; a ninja with one fitting jutsu for two
-  Element slots gets the second slot empty (not the same jutsu twice). The
-  companion **Hana** (medic) keeps Yasaka no Magatama (genjutsu), marked: give
-  her another S-rank jutsu? (Water has none yet.)
+  Element slots gets the second slot empty (not the same jutsu twice). (The old
+  medic companion's Yasaka no Magatama question ended when she was removed,
+  2026-10-22: the new medic, Aurelia, learns none of the three.)
 
 ## Three new jutsu (agreed 2026-10-20)
 
@@ -1693,9 +1693,10 @@ So:
   (`tools/refs/tide-s-from-ref.py` → `vfx_tide_s`), run a little slower (2.2 s
   and the 0.9 s break).
 - **Practice**: every water ninja in the practice battles (`#combat`) can cast it
-  whatever its level, so it can be tried; missions are untouched. Hana keeps her
-  Yasaka no Magatama in her S-rank slot (his open question on the medic's
-  genjutsu, `docs/STATUS.md`); giving her the Dragon Tsunami instead is his call.
+  whatever its level, so it can be tried; missions are untouched. No companion
+  is of Water since the old medic was removed (2026-10-22): in practice Lyra
+  plays as a water ninja (her burst Water, her own colour) when the party has
+  none, so the Dragon Tsunami can still be tried (`BattleDemo.tsx`).
 
 ## Jutsu effects, round 1 (proposed 2026-10-21; the owner's answer the same day)
 

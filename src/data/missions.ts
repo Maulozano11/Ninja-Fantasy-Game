@@ -204,69 +204,46 @@ function companion(base: Partial<ShinobiCharacter> & Pick<ShinobiCharacter, 'pal
 
 const presetById = (id: string): ShinobiCharacter => (LEGENDARY_PRESETS.find((p) => p.character.id === id) ?? LEGENDARY_PRESETS[0]).character;
 
-/**
- * Hana's legacy look fields, from her sprite look (read only by a sheet without one). She was built on
- * a legend's sheet until the owner discarded that legend on 2026-10-22 ("shiori desechala").
- */
-const HANA_LEGACY: Pick<ShinobiCharacter, 'palette' | 'hairstyle' | 'headbandPosition' | 'weaponStyle' | 'capeStyle'> = {
-  palette: {
-    skinTone: '#f6d3b8',
-    hairColor: '#4a2f22',
-    eyeColor: '#2f8f6a',
-    armorPrimary: '#26323a',
-    armorSecondary: '#2f7d5b',
-    clothColor: '#e8eee8',
-    headbandCloth: '#2f7d5b',
-    headbandPlate: '#cbd5e1',
-    chakraAuraColor: '#22c55e',
-  },
-  hairstyle: 'Itachi Low Ribbon',
-  headbandPosition: 'Forehead',
-  weaponStyle: 'Gentle Fist Palm',
-  capeStyle: 'None',
-};
+/** The companions' level (Kenji's, and the heroines' as companions). */
+const COMPANION_LEVEL = 4;
 
-/** A field medic, so camps can heal with jutsu and operate. */
-export const HANA: ShinobiCharacter = companion(HANA_LEGACY, {
-  id: 'companion_hana',
-  name: 'Hana',
-  title: 'The Field Medic',
-  level: 4,
-  clan: 'Koton',
-  shinobiClass: 'Medical Specialist',
-  stats: { str: 10, dex: 14, con: 14, int: 13, wis: 17, cha: 12 },
-  selectedFeats: ['chakra_prodigy'],
-  selectedJutsus: {
-    slot1Utility: 'mystical_palm',
-    slot2Elemental: 'water_shield_suijinheki',
-    slot3Elemental: 'water_dragon_suiryuudan',
-    slot4Clan: 'adamantine_sealing_chains',
-    slot5Ultimate: 'yasaka_magatama',
-  },
-  appearance: look({
-    body: 'female',
-    skin: '#f6d3b8',
-    eyeShape: 'calm',
-    eyeColor: '#2f8f6a',
-    slots: {
-      hair: item('hair_pony', '#4a2f22'),
-      top: item('top_kimono', '#e8eee8', '#2f7d5b'),
-      bottom: item('bottom_leggings', '#26323a', '#2f7d5b'),
-      waist: item('waist_pouches', '#6b4f2e', '#3b2c1c', '#c9a46c'),
-      feet: item('feet_sandals', '#26323a', '#c9a46c'),
-      held: item('held_palm', '#7ef0b8'),
-    },
-    headband: { position: 'forehead', tails: true, cloth: '#2f7d5b' },
-    chakra: { color: 'blue', tint: 'green', onCharge: true, onCast: true, onVictory: false }, // Water like her jutsu, in her green
-  }),
-});
+/**
+ * One of the owner's heroines as a mission companion (the owner, 2026-10-22: "borra a hana tambien
+ * entonces y pon de nuevas compañeras a nuestras nuevas versiones femeninas de personajes"): her legend
+ * preset's sheet and look (class, clan, stats, feats, jutsu, pouch), at the companions' level, with the
+ * numbers derived from that build as every companion's are.
+ */
+function heroine(presetId: string, id: string): ShinobiCharacter {
+  const p = presetById(presetId);
+  return companion(p, {
+    id,
+    name: p.name,
+    title: p.title,
+    level: COMPANION_LEVEL,
+    clan: p.clan,
+    shinobiClass: p.shinobiClass,
+    stats: p.stats,
+    selectedFeats: p.selectedFeats,
+    selectedJutsus: p.selectedJutsus,
+    appearance: p.appearance,
+  });
+}
+
+/** The medic, so camps can heal with jutsu and operate (the owner, 2026-10-22: "aurelia sera la nueva medica y con elemento viento amarillo"). */
+export const AURELIA: ShinobiCharacter = heroine('preset_aurelia', 'companion_aurelia');
+
+/** A swordswoman of the Koton, a Bukijutsu Master with Wind jutsu. */
+export const LYRA: ShinobiCharacter = heroine('preset_lyra', 'companion_lyra');
+
+/** A swordswoman of the Ryusei, a Bukijutsu Master with Fire jutsu and explosive tags. */
+export const SAYA: ShinobiCharacter = heroine('preset_saya', 'companion_saya');
 
 /** A genjutsu adept from the Ryusei, for calm nights and wood shelters. */
 export const KENJI: ShinobiCharacter = companion(presetById('preset_storm'), {
   id: 'companion_kenji',
   name: 'Kenji',
   title: 'The Dream Weaver',
-  level: 4,
+  level: COMPANION_LEVEL,
   clan: 'Ryusei',
   shinobiClass: 'Genjutsu Adept',
   stats: { str: 10, dex: 14, con: 13, int: 14, wis: 13, cha: 17 },
@@ -296,5 +273,20 @@ export const KENJI: ShinobiCharacter = companion(presetById('preset_storm'), {
   }),
 });
 
-/** Who can join a mission: the two prototype companions, then the legendary presets. */
-export const COMPANIONS: ShinobiCharacter[] = [HANA, KENJI, ...LEGENDARY_PRESETS.map((p) => p.character)];
+/** The companion made from each heroine's legend preset: one of the two in a party, not both. */
+export const COMPANION_PRESET: Readonly<Record<string, string>> = { companion_aurelia: 'preset_aurelia', companion_lyra: 'preset_lyra', companion_saya: 'preset_saya' };
+
+/** Whether `c` can join a party with `hero`: not the hero itself, nor the hero's own heroine as a companion. */
+export const canJoin = (c: Pick<ShinobiCharacter, 'id'>, hero: Pick<ShinobiCharacter, 'id'>): boolean => c.id !== hero.id && COMPANION_PRESET[c.id] !== hero.id;
+
+/**
+ * Who can join a mission: the heroines (the medic first), Kenji, then the legendary presets (a heroine's
+ * own preset is left out: she joins as her companion).
+ */
+export const COMPANIONS: ShinobiCharacter[] = [
+  AURELIA,
+  LYRA,
+  SAYA,
+  KENJI,
+  ...LEGENDARY_PRESETS.map((p) => p.character).filter((c) => !Object.values(COMPANION_PRESET).includes(c.id)),
+];

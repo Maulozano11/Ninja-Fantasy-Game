@@ -62,7 +62,7 @@ describe('natural 20 and natural 1', () => {
 describe('a natural 20 at camp gives an extra (C3)', () => {
   const site = { nodeId: 'clearing', zoneDanger: 30 };
   const hunter = ninja({ id: 'a', name: 'Ren', clan: 'Mirai', shinobiClass: 'Ninjutsu Specialist', level: 4 });
-  const medic = ninja({ id: 'c', name: 'Hana', clan: 'Northstar', shinobiClass: 'Medical Specialist', level: 4 });
+  const medic = ninja({ id: 'c', name: 'Mei', clan: 'Northstar', shinobiClass: 'Medical Specialist', level: 4 });
   const patient = ninja({ id: 'b', name: 'Saber', clan: 'Ryusei', shinobiClass: 'Taijutsu Master', level: 4, currentHp: 5 });
 
   const camp = (seed: number) => {

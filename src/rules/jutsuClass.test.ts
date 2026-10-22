@@ -5,7 +5,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { CLANS_DATA, DEFAULT_CHARACTER, JUTSUS_DATA, LEGENDARY_PRESETS, SHINOBI_CLASSES } from '../data/shinobiData';
-import { HANA, KENJI } from '../data/missions';
+import { AURELIA, KENJI, LYRA, SAYA } from '../data/missions';
 import { OFFERED_TYPES } from '../sprite/chakraNature';
 import type { ClanType, ShinobiCharacter, ShinobiClassType } from '../types/shinobi';
 import { classGated, classStyle, jutsuFitsClass, offClassJutsus, STYLE_CLASS } from './jutsuClass';
@@ -102,10 +102,11 @@ describe('the sheets keep their jutsu, marked when another class\'s', () => {
     for (const { character: c } of LEGENDARY_PRESETS) assert.deepEqual(offClassJutsus(c.selectedJutsus, c.shinobiClass), [], c.id);
   });
 
-  it('a companion\'s sheet stays as it is, marked: Hana (a medic) keeps Yasaka no Magatama (genjutsu)', () => {
-    assert.deepEqual(offClassJutsus(HANA.selectedJutsus, HANA.shinobiClass), ['yasaka_magatama']);
-    assert.deepEqual(offClassJutsus(KENJI.selectedJutsus, KENJI.shinobiClass), []);
-    assert.equal(migrateCharacter(HANA).selectedJutsus.slot5Ultimate, 'yasaka_magatama', 'loading keeps it');
+  it('the companions keep the rule too, and their sheets load as they are: Aurelia (the medic) learns none of the three', () => {
+    for (const c of [AURELIA, LYRA, SAYA, KENJI]) {
+      assert.deepEqual(offClassJutsus(c.selectedJutsus, c.shinobiClass), [], c.id);
+      assert.deepEqual(migrateCharacter(c).selectedJutsus, c.selectedJutsus, `${c.id}: loading keeps them`);
+    }
   });
 });
 

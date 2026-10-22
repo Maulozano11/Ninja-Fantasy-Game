@@ -3,13 +3,13 @@
 //
 //   npx tsx scripts/ai-battles.ts [battles per encounter = 100] [--party=3] [--only=cedar_rogues,night_raid]
 //
-// The party is Solen, Hana, Kenji and Hiro (--party=3: without Hiro, a mission's party), all on
+// The party is Solen, Aurelia (the medic), Kenji and Hiro (--party=3: without Hiro, a mission's party), all on
 // the AI and without their S-rank ultimates (which end most fights in the first round). Seeds run
 // from 1; the stealth patrol is fought in the open (the AI doesn't play the stealth phase). Each
 // line: in how many battles the move was used / how many times, for the enemies and for the party.
 
 import { LEGENDARY_PRESETS } from '../src/data/shinobiData';
-import { HANA, KENJI } from '../src/data/missions';
+import { AURELIA, KENJI } from '../src/data/missions';
 import type { ShinobiCharacter } from '../src/types/shinobi';
 import { ENCOUNTERS, encounterSetup } from '../src/battle/encounters';
 import type { EncounterId } from '../src/battle/encounters';
@@ -26,7 +26,7 @@ const noUlt = (c: ShinobiCharacter): ShinobiCharacter => ({ ...c, effects: [], s
 const preset = (id: string) => LEGENDARY_PRESETS.find((p) => p.character.id === id)!.character;
 const party = [
   { character: noUlt(preset('preset_founder')), controller: 'ai' as const, aiOrder: 'aggressive' as const },
-  { character: noUlt(HANA), controller: 'ai' as const, aiOrder: 'support' as const },
+  { character: noUlt(AURELIA), controller: 'ai' as const, aiOrder: 'support' as const },
   { character: noUlt(KENJI), controller: 'ai' as const, aiOrder: 'aggressive' as const },
   // Hiro since the owner discarded Shiori (2026-10-22): the party's fourth no longer plays the Northstar moves.
   { character: noUlt(preset('preset_sunburst')), controller: 'ai' as const, aiOrder: 'aggressive' as const },

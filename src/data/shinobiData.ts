@@ -1904,13 +1904,16 @@ export const LEGENDARY_PRESETS: { name: string; tag: string; nameEs?: string; ta
       capeStyle: 'None',
       dojutsu: 'None',
       selectedFeats: ['chakra_prodigy', 'sharingan_precog'],
-      // Light chakra: no element, so the jutsu with none (the healing palm, the feathers, the jewels).
+      // The medic, with Wind in yellow (the owner, 2026-10-22: "aurelia sera la nueva medica y con elemento
+      // viento amarillo"): the healing palm in the free Utility slot, Wind's rank D and C jutsu in the
+      // Element slots, Koton's chains, and Wind's rank S (a Medical Specialist learns no taijutsu,
+      // kenjutsu or genjutsu jutsu). Her S-rank and the two Wind jutsu are proposals for him to confirm.
       selectedJutsus: {
         slot1Utility: 'mystical_palm',
-        slot2Elemental: 'temple_of_nirvana',
-        slot3Elemental: 'leaf_hurricane_senpuu',
+        slot2Elemental: 'wind_whirl',
+        slot3Elemental: 'wind_blade_daitoppa',
         slot4Clan: 'adamantine_sealing_chains',
-        slot5Ultimate: 'yasaka_magatama',
+        slot5Ultimate: 'rasenshuriken_wind',
       },
       sheetVersion: 2,
       maxHp: 43,
@@ -1936,7 +1939,7 @@ export const LEGENDARY_PRESETS: { name: string; tag: string; nameEs?: string; ta
           feet: it('feet_dawn_boots'),
           held: it('held_dawn_staff'),
         },
-        chakra: { color: 'white', tint: '#fac856', onCharge: true, onCast: true, onVictory: true }, // Light, in her staff's gold
+        chakra: { color: 'green', tint: 'yellow', onCharge: true, onCast: true, onVictory: true }, // Wind, in yellow (the owner's choice)
       }),
     },
   },

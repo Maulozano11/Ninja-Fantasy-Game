@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { DEFAULT_CHARACTER, JUTSUS_DATA } from '../data/shinobiData';
-import { HANA, KENJI, MISSIONS } from '../data/missions';
+import { AURELIA, KENJI, MISSIONS } from '../data/missions';
 import { addEffect } from '../rules/effects';
 import type { ClanType, ShinobiCharacter } from '../types/shinobi';
 import type { Action, BattleEvent, BattleState, Pt, RollInfo, Unit, Wall, WeaponNode } from './types';
@@ -1934,7 +1934,7 @@ describe('enemy clans are mixed (docs/CLANS_DESIGN.md, D6)', () => {
     const noUlt = (c: ShinobiCharacter): ShinobiCharacter => ({ ...c, effects: [], selectedJutsus: { ...c.selectedJutsus, slot5Ultimate: '' } });
     const party = [
       { character: noUlt(hero({ id: 'a', name: 'Aki' })), controller: 'ai' as const },
-      { character: noUlt(HANA), controller: 'ai' as const, aiOrder: 'support' as const },
+      { character: noUlt(AURELIA), controller: 'ai' as const, aiOrder: 'support' as const },
       { character: noUlt(KENJI), controller: 'ai' as const },
       { character: noUlt(hero({ id: 'n', name: 'Yua', clan: 'Northstar' })), controller: 'ai' as const },
     ];
@@ -1963,7 +1963,7 @@ describe('enemy clans are mixed (docs/CLANS_DESIGN.md, D6)', () => {
     const noUlt = (c: ShinobiCharacter): ShinobiCharacter => ({ ...c, effects: [], selectedJutsus: { ...c.selectedJutsus, slot5Ultimate: '' } });
     const four = [
       { character: noUlt(hero({ id: 'a', name: 'Aki' })), controller: 'ai' as const },
-      { character: noUlt(HANA), controller: 'ai' as const, aiOrder: 'support' as const },
+      { character: noUlt(AURELIA), controller: 'ai' as const, aiOrder: 'support' as const },
       { character: noUlt(KENJI), controller: 'ai' as const },
       { character: noUlt(hero({ id: 'n', name: 'Yua', clan: 'Northstar' })), controller: 'ai' as const },
     ];
@@ -2054,7 +2054,7 @@ describe('the AI', () => {
         seed,
         party: [
           { character: hero({ id: 'a' }), pos: { x: 6, z: 9 }, controller: 'ai', aiOrder: 'aggressive' },
-          { character: { ...HANA, effects: [] }, pos: { x: 5, z: 12 }, controller: 'ai', aiOrder: 'support' },
+          { character: { ...AURELIA, effects: [] }, pos: { x: 5, z: 12 }, controller: 'ai', aiOrder: 'support' },
         ],
         enemies: [
           { kind: 'rogue', pos: { x: 18, z: 9 } },
@@ -2312,19 +2312,19 @@ describe('battle text in Spanish', () => {
     assert.equal(logLine({ t: 'turn', unit: 'raider_0', round: 1 }, s, 'en')?.text, 'Raider’s turn');
   });
 
-  it('a participle agrees with the one it is about: "la Sombra" and Hana are caught unaware, Akira too', () => {
+  it('a participle agrees with the one it is about: "la Sombra" and Aurelia are caught unaware, Akira too', () => {
     const s = createBattle(
       setup({
         party: [
           { character: hero({ id: 'a', name: 'Akira' }), pos: { x: 8, z: 10 } },
-          { character: { ...HANA, effects: [] }, pos: { x: 8, z: 12 } },
+          { character: { ...AURELIA, effects: [] }, pos: { x: 8, z: 12 } },
         ],
         enemies: [{ kind: 'raider', clan: 'Northstar', pos: { x: 16, z: 10 } }],
       }),
     ).state;
     const note = (name: string) => logLine({ t: 'note', key: 'surprisedSkip', params: { name } }, s, 'es')?.text;
     assert.equal(note('Shade'), 'La Sombra está desprevenida y pierde el turno');
-    assert.equal(note('Hana'), 'Hana está desprevenida y pierde el turno');
+    assert.equal(note('Aurelia'), 'Aurelia está desprevenida y pierde el turno');
     assert.equal(note('Akira'), 'Akira está desprevenido y pierde el turno');
     assert.equal(logLine({ t: 'pushed', unit: 'raider_0', from: { x: 16, z: 10 }, to: { x: 17.5, z: 10 }, fall: 0 }, s, 'es')?.text, 'La Sombra es empujada');
     assert.equal(logLine({ t: 'note', key: 'surprisedSkip', params: { name: 'Shade' } }, s, 'en')?.text, 'Shade is caught unaware and loses the turn');

@@ -20,6 +20,13 @@ for playtesting.
 - **Village:** pick the party (1–4 ninjas) and, among them, the **mission
   leader**, who breaks ties in votes. Buy supplies. The backpack has limited
   room.
+- **Companions** (the owner, 2026-10-22: *"borra a hana tambien entonces y pon
+  de nuevas compañeras a nuestras nuevas versiones femeninas de personajes"*):
+  his heroines Aurelia, Lyra and Saya, made from their legend presets at the
+  companions' level, Kenji, and the other legends. **Aurelia is the medic**
+  (*"aurelia sera la nueva medica y con elemento viento amarillo"*): Medical
+  Specialist, Wind in yellow, the healing palm. A heroine comes as her
+  companion or as her legend, not both.
 - **Road:** a branching map of 4–6 nodes. Each node shows its type (battle,
   trap, curio, scene or camp) and its danger.
 - **Zone:** a stretch of the road with several nodes and one terrain (forest,

@@ -20,7 +20,7 @@ const PLATE = '#ff00ff';
 const LEGACY_KEYS = ['slashed', 'emblem', 'plate'];
 
 const ENEMIES: ShinobiCharacter[] = (['rogue', 'hunter', 'jonin', 'raider'] as EnemyKind[]).flatMap((k) => [0, 1, 2, 3].map((n) => enemyCharacter(k, n)));
-// COMPANIONS holds Hana, Kenji and every legend preset
+// COMPANIONS holds the heroines, Kenji and every other legend preset
 const EVERYONE: ShinobiCharacter[] = [...COMPANIONS, ...ENEMIES];
 
 const withBand = (hb: Partial<HeadbandChoice>, base = defaultAppearance()): SpriteAppearance => ({ ...base, headband: { ...base.headband, ...hb } });
@@ -68,7 +68,6 @@ describe('the headband is plain cloth', () => {
     const pos = (id: string) => EVERYONE.find((c) => c.id === id)!.appearance!.headband.position;
     assert.equal(pos('preset_storm'), 'forehead');
     assert.equal(pos('preset_sunburst'), 'forehead');
-    assert.equal(pos('companion_hana'), 'forehead');
     assert.equal(pos('companion_kenji'), 'arm');
     for (const e of ENEMIES) assert.equal(e.appearance!.headband.position, 'forehead', e.id);
   });

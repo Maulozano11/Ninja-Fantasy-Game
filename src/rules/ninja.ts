@@ -250,7 +250,6 @@ export const LEGEND_BURST_CHANGE: Readonly<Record<string, { old: ChakraColorId; 
   preset_night: { old: 'blue', now: 'yellow' }, // Ren: Rising Tide, now Lightning
   preset_sunburst: { old: 'orange', now: 'green' }, // Hiro: Cinder Nova, now Wind
   preset_warlord: { old: 'violet', now: 'red' }, // Raiga: Spectral Guardian, now Fire
-  companion_hana: { old: 'green', now: 'blue' }, // Hana: Leafwind Spiral, now Water
   companion_kenji: { old: 'violet', now: 'brown' }, // Kenji: Spectral Guardian, now Earth
 };
 

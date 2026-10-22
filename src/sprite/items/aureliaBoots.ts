@@ -138,6 +138,74 @@ function closeKnee(g: DrawCtx, s: Side, boot: Uint8Array, knee: Vec): void {
 }
 
 /**
+ * Seals the boot's knee once the thigh's piece and the shin's are turned apart (the owner, 2026-10-22: "checa la
+ * rodilla izquierda del personaje en muchas poses se corta con pixeles blancos muertos"): where the two
+ * pieces meet, a pixel of his boot's light grey poked out past the line beside the knee, the line of one
+ * piece's end ran on across the leg inside the other, and a pixel was left out of the line in a notch. Round
+ * the knee (KNEE_REACH) a pixel standing out with only one neighbour goes, a notch with three drawn
+ * neighbours takes his line, his line inside the boot (all four neighbours drawn) takes the colour of the
+ * boot beside it, and the boot's edge is his line. At rest the pieces meet as he drew them, and the caller
+ * leaves them be.
+ */
+function sealKnee(g: DrawCtx, s: Side, knee: Vec): void {
+  const L = g.L(legDepth(s, 'feet'));
+  const line = g.m(DAWN_THIGH_N.colors.k, 'flat');
+  const kx = Math.floor(knee.x * RES);
+  const ky = Math.floor(knee.y * RES);
+  const x0 = Math.max(1, kx - KNEE_REACH);
+  const x1 = Math.min(GRID - 2, kx + KNEE_REACH);
+  const y0 = Math.max(1, ky - KNEE_REACH);
+  const y1 = Math.min(GRID - 2, ky + KNEE_REACH);
+  const on = (i: number) => L.mat[i] >= 0;
+  const around = (i: number) => [i - 1, i + 1, i - GRID, i + GRID];
+  const each = (f: (i: number) => void) => {
+    for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) f(y * GRID + x);
+  };
+  // a pixel standing out on its own (twice: a spur two pixels long)
+  for (let pass = 0; pass < 2; pass++) {
+    const off: number[] = [];
+    each((i) => on(i) && around(i).filter(on).length <= 1 && off.push(i));
+    for (const i of off) L.mat[i] = -1;
+  }
+  // a notch or a step in the boot's edge (the two pieces' ends side by side): the boot closed over it
+  // (every pixel whose 3 x 3 square lies inside the boot grown by a pixel), filled with the boot beside it
+  const grown = new Uint8Array(GRID * GRID);
+  for (let y = y0 - 1; y <= y1 + 1; y++)
+    for (let x = x0 - 1; x <= x1 + 1; x++) {
+      const i = y * GRID + x;
+      grown[i] = on(i) || [-GRID - 1, -GRID, -GRID + 1, -1, 1, GRID - 1, GRID, GRID + 1].some((d) => on(i + d)) ? 1 : 0;
+    }
+  const notch: [number, number][] = [];
+  each((i) => {
+    if (on(i) || ![-GRID - 1, -GRID, -GRID + 1, -1, 0, 1, GRID - 1, GRID, GRID + 1].every((d) => grown[i + d])) return;
+    const ns = around(i).filter(on);
+    if (ns.length) notch.push([i, ns.find((j) => L.mat[j] !== line) ?? ns[0]]);
+  });
+  for (const [i, j] of notch) L.set(i % GRID, (i / GRID) | 0, L.mat[j], L.shade[j], PARTS[L.part[j]], F_NO_TEXTURE | F_NO_OUTLINE);
+  // his line left inside the boot, and the boot's edge (again until nothing changes: an edge made line
+  // can leave the line beside it inside)
+  for (let pass = 0; pass < 4; pass++) {
+    const inside: [number, number][] = [];
+    const edge: number[] = [];
+    each((i) => {
+      if (!on(i)) return;
+      const ns = around(i);
+      if (ns.every(on)) {
+        if (L.mat[i] !== line) return;
+        const fill = ns.filter((j) => L.mat[j] !== line);
+        if (fill.length >= 2) inside.push([i, fill[0]]);
+      } else if (L.mat[i] !== line) edge.push(i);
+    });
+    if (!inside.length && !edge.length) break;
+    for (const [i, j] of inside) {
+      L.mat[i] = L.mat[j];
+      L.shade[i] = L.shade[j];
+    }
+    for (const i of edge) L.mat[i] = line;
+  }
+}
+
+/**
  * Fills a pixel left empty with all four of its neighbours drawn on these depths (a turned leg: his bare
  * woman's thigh, the lace top, the shin; and her skirt's panels over it): two of his pieces turned about
  * different joints can leave a single pixel between them, a hole in the leg. It takes the colour most of
@@ -189,6 +257,7 @@ export const FEET_DAWN_BOOTS: ItemDef = {
     // column beside her front panel, laid where he drew it, on his bare woman's far leg (the same
     // column): its lace top rides the far thigh, the rest the far shin. Each boot is drawn once, on its
     // own leg: our leg below the lace top is the boot's.
+    const sealed: [Side, Vec][] = [];
     for (const s of ['F', 'N'] as Side[]) {
       const { hip, knee, ankle } = legJoints(g.rig, s);
       const [thigh, shin, foot, join, cut] = s === 'N' ? [DAWN_THIGH_N, DAWN_SHIN_N, DAWN_FOOT_N, DAWN_FOOT_JOIN_N, DAWN_BOOT_CUT] : [DAWN_THIGH_F, DAWN_SHIN_F, DAWN_FOOT_F, DAWN_FOOT_JOIN_F, DAWN_BOOT_CUT_F];
@@ -216,7 +285,10 @@ export const FEET_DAWN_BOOTS: ItemDef = {
       // turned, an edge of his boot left open is closed in his line (at rest his line closes it)
       const turned = Math.abs(shinA - shin.angle) >= 0.5 || Math.abs(thighA - thigh.angle) >= 0.5 || footAt.x !== at.x;
       if (turned) closeOpen(g, d, boot, DAWN_THIGH_N.colors.k);
+      if (turned) sealed.push([s, knee]);
     }
     if (g.rig.pose !== 'idle') for (const s of ['F', 'N'] as Side[]) fillHoles(g, [legDepth(s, 'body'), legDepth(s, 'cloth'), legDepth(s, 'feet')]);
+    // and, last, each turned knee where the thigh's piece meets the shin's is sealed
+    for (const [s, knee] of sealed) sealKnee(g, s, knee);
   },
 };

@@ -136,6 +136,8 @@ for _y in range(52, 56):
     FAR_HIDDEN.update({(64, _y): 'w', (65, _y): 'w', (66, _y): 'c', (67, _y): LINE})
 # The lining: from this row of his (under the belt and the pouch) down to its hem.
 LINING_TOP = 51
+# His line inside the lining (a leg's or a panel's in front of it) is left the lining's grey (lining()).
+LINING_INNER_GREY = True
 # The belt behind his far sleeve could run on to a column of ours (BELT_TO); our far arm now hangs where
 # his does, so his belt ends at his far sleeve, where he drew it (None: not run on).
 BELT_TO = None
@@ -366,14 +368,22 @@ def lining(C, H, P):
     for x in cols:
         out[(x, hem[x] + 1)] = LINE
     # where his picture shows the lining's place (not hidden behind his legs or panels), it is his: his
-    # white ground stays empty and his line is his line (the continued hem ends where he drew it)
+    # white ground stays empty and his line is his line (the continued hem ends where he drew it). His
+    # line inside the lining (with lining beside it and under it) is the line of a leg or a panel in front
+    # of it, which draws it itself: there the lining is its own grey, or the line stayed on it where the
+    # leg had moved away, a leg's outline on the cloth (the owner, 2026-10-22: "esta poniendo como piernas
+    # o botas extra").
+    lines = []
     for (x, y) in list(out):
         hx, hy = x - DX, y - DY
         if 0 <= hx < C.shape[1] and 0 <= hy < C.shape[0]:
             if C[hy, hx] == '.':
                 del out[(x, y)]
             elif C[hy, hx] == LINE:
-                out[(x, y)] = LINE
+                lines.append((x, y))
+    for (x, y) in lines:
+        if not (LINING_INNER_GREY and all(q in out for q in ((x - 1, y), (x + 1, y), (x, y + 1)))):
+            out[(x, y)] = LINE
     return out
 
 

@@ -20,10 +20,15 @@ import { DAWN_BASE, DAWN_FAR, DAWN_FRONT, DAWN_LINE, DAWN_LINING, DAWN_NEAR, DAW
 
 /** How much a hanging piece follows its thigh (as armor.ts HANG_FOLLOW: skirts never bell out). */
 const FOLLOW = 0.22;
-/** The far panel is a narrow strip: it follows its thigh less, so it hangs down behind the far shin when the thigh swings out instead of jutting past it. */
-const FAR_FOLLOW = 0.06;
-/** Lowest a hem hangs (design y): the soles' row, so in a deep crouch it rests on the ground. */
-const HEM_FLOOR = GROUND + 1.5;
+/**
+ * Lowest a hem hangs (design y of its bottom edge): four rows above the soles' last row, as at rest (his
+ * front panel's point, the lowest of her hems, ends five rows above it). A hem that came down to the ground
+ * beside a boot stood there like a third leg (the owner, 2026-10-22: "tienes un bug en la falda que esta
+ * poniendo como piernas o botas extra en diferentes posiciones").
+ */
+const HEM_FLOOR = GROUND - 0.5;
+/** How far (degrees) a hem that would hang lower swings away first, toward where its cloth already points; past that it gathers. */
+const HEM_SWING = 40;
 /** Torso-local height of the line the bottoms hang from (as armor.ts hang()). */
 const HANG_Y = 0.5;
 
@@ -63,12 +68,12 @@ function fitLocal(body: BodyType, p: Vec): Vec {
 }
 
 /** The angle (radians) a piece hangs at, `w` of the way from the near thigh to the far one. */
-function hangAngle(r: Rig, w: number, follow = FOLLOW): number {
+function hangAngle(r: Rig, w: number): number {
   const tN = sub(r.kneeN, r.hipN);
   const tF = sub(r.kneeF, r.hipF);
   const t = v(tN.x + (tF.x - tN.x) * w, tN.y + (tF.y - tN.y) * w);
   const l = Math.hypot(t.x, t.y);
-  const d = v(t.x * follow, l + (t.y - l) * follow);
+  const d = v(t.x * FOLLOW, l + (t.y - l) * FOLLOW);
   return Math.atan2(d.y, d.x);
 }
 
@@ -79,7 +84,8 @@ function thighBlend(r: Rig, lx: number): number {
   return clamp((lx - xN) / (xF - xN), 0, 1);
 }
 
-type Col = { top: Vec; bot: Vec };
+/** A column a piece hangs from: its points top down (the top, the bottom; the far panel's also bends at the far knee). */
+type Col = Vec[];
 
 /**
  * A column end (fine pixels) kept off the floor when she lies down: a lying figure is drawn upright and
@@ -91,8 +97,16 @@ function floor(r: Rig, q: Vec): Vec {
   return r.lay ? v(Math.min(q.x, (r.lay.groundX + 1.5) * RES), q.y) : q;
 }
 
-/** A piece's columns at rest (fine pixels). */
-const restCols = (p: DawnPiece): Col[] => p.cols.map(([tx, ty, bx, by]) => ({ top: v(tx, ty), bot: v(bx, by) }));
+/**
+ * A piece's columns at rest (fine pixels). The far panel's also bend at the far knee's height (farOnLeg):
+ * at rest that is a point on the straight column, so the piece is as drawn.
+ */
+const restCols = (p: DawnPiece): Col[] =>
+  p.cols.map(([tx, ty, bx, by]) => {
+    if (p !== DAWN_FAR) return [v(tx, ty), v(bx, by)];
+    const k = clamp((rest().kneeF.y * RES - ty) / (by - ty), 0, 1);
+    return [v(tx, ty), v(tx + (bx - tx) * k, ty + (by - ty) * k), v(bx, by)];
+  });
 
 /** A piece's columns in this frame (fine pixels): the tops ride the torso; the bottoms hang, or ride it too. */
 function poseCols(g: DrawCtx, p: DawnPiece): Col[] {
@@ -105,22 +119,93 @@ function poseCols(g: DrawCtx, p: DawnPiece): Col[] {
     const P = r.T(l.x, l.y);
     return v(P.x * RES, P.y * RES);
   };
-  return restCols(p).map(({ top, bot }) => {
+  return restCols(p).map((col) => {
+    const top = col[0];
+    const bot = col[col.length - 1];
     const T = floor(r, at(top));
-    if (!p.hang) return { top: T, bot: at(bot) };
+    if (!p.hang) return [T, at(bot)];
+    // (lying down she is drawn upright and laid afterwards: there the floor is a column, see floor())
+    const end = (a: Vec, b: Vec, swing: boolean): Vec => floor(r, scaleRes(r.lay ? v(b.x, Math.min(b.y, GROUND + 1.5)) : hemAbove(a, b, swing)));
+    if (p === DAWN_FAR) {
+      // it bends at the far knee's height, riding the far thigh above and the far shin below
+      const knee = farOnLeg(R0, r, v(col[1].x / RES, col[1].y / RES), 'thigh');
+      return [T, floor(r, scaleRes(knee)), end(knee, farOnLeg(R0, r, v(bot.x / RES, bot.y / RES), 'shin'), true)];
+    }
     const lt = local(R0, v(top.x / RES, top.y / RES));
     const w = thighBlend(R0, lt.x);
     const a0 = R0.T(lt.x, HANG_Y);
     const lf = fitLocal(body, v(lt.x, HANG_Y));
     const a1 = r.T(lf.x, lf.y);
     const d = sub(v(bot.x / RES, bot.y / RES), a0);
-    const f = p === DAWN_FAR ? FAR_FOLLOW : FOLLOW;
-    const th = hangAngle(r, thighBlend(r, lf.x), f) - hangAngle(R0, w, f);
+    const th = hangAngle(r, thighBlend(r, lf.x)) - hangAngle(R0, w);
     const c = Math.cos(th);
     const s = Math.sin(th);
     const b = v(a1.x + (d.x * c - d.y * s) * legScale, a1.y + (d.x * s + d.y * c) * legScale);
-    return { top: T, bot: floor(r, v(b.x * RES, Math.min(b.y, HEM_FLOOR) * RES)) };
+    return [T, end(a1, b, p !== DAWN_LINING)];
   });
+}
+
+const scaleRes = (q: Vec): Vec => v(q.x * RES, q.y * RES);
+
+/**
+ * How far (design units) the far panel's middle hangs out past the far leg's bone once the leg moves: at
+ * rest he drew it beside the far boot (its middle about three and a half units out), a narrow white strip as
+ * long and as wide as the boot, so wherever the leg went without it the strip stood on its own like another
+ * leg. It is the far side's panel, on the far side of the far leg: moved, it hangs behind the leg (his far
+ * boot lies inside of its bone, its outer line on the bone), only its gold edge showing past the boot.
+ */
+const FAR_OUT = -1.25;
+
+/**
+ * Where a point of the far panel's column goes (design units): its bend rides the far thigh and its hem
+ * the far shin, each as far along the bone and as far out from it as at rest; once the leg has moved (the
+ * idle frames' legs do not) the panel comes in behind the leg, its middle FAR_OUT past the bone's line,
+ * the whole width of it together.
+ */
+function farOnLeg(R0: Rig, r: Rig, q: Vec, bone: 'thigh' | 'shin'): Vec {
+  const [a0, b0, a1, b1] = bone === 'thigh' ? [R0.hipF, R0.kneeF, r.hipF, r.kneeF] : [R0.kneeF, R0.ankleF, r.kneeF, r.ankleF];
+  const dir = (a: Vec, b: Vec): Vec => {
+    const l = Math.hypot(b.x - a.x, b.y - a.y) || 1;
+    return v((b.x - a.x) / l, (b.y - a.y) / l);
+  };
+  const s0 = dir(a0, b0);
+  const s1 = dir(a1, b1);
+  const n0 = v(s0.y, -s0.x);
+  const n1 = v(s1.y, -s1.x);
+  const along = (Math.hypot(b1.x - a1.x, b1.y - a1.y) || 1) / (Math.hypot(b0.x - a0.x, b0.y - a0.y) || 1);
+  // the middle of the panel's cloth on this point's row at rest (its last row for the hem), and how far it
+  // comes in (all of it once the knee and ankle moved half a unit between them)
+  const [ox, oy] = DAWN_FAR.origin;
+  const row = DAWN_FAR.rows[clamp(Math.floor(q.y * RES) - oy, 0, DAWN_FAR.rows.length - 1)];
+  const xs = [...row].flatMap((ch, x) => (ch === '.' ? [] : [x]));
+  const mid = sub(v((ox + (xs[0] + xs[xs.length - 1] + 1) / 2) / RES, q.y), a0);
+  const moved = Math.hypot(r.kneeF.x - R0.kneeF.x, r.kneeF.y - R0.kneeF.y) + Math.hypot(r.ankleF.x - R0.ankleF.x, r.ankleF.y - R0.ankleF.y);
+  const inward = Math.max(0, dot(mid, n0) - FAR_OUT) * clamp(moved * 2, 0, 1);
+  const rel = sub(q, a0);
+  const t = dot(rel, s0) * along;
+  const o = dot(rel, n0) - inward;
+  return v(a1.x + s1.x * t + n1.x * o, a1.y + s1.y * t + n1.y * o);
+}
+
+/**
+ * A hem kept off the ground (HEM_FLOOR): a column from `a` to `b` that would hang lower swings (`swing`)
+ * up to HEM_SWING degrees the nearer way (its cloth carried by the leg it hangs by), and what still reaches
+ * lower gathers above the ground. The lining behind the legs only gathers: swung out it lay along the
+ * ground past a foot, like another shoe. At rest every hem hangs above the ground, unmoved.
+ */
+function hemAbove(a: Vec, b: Vec, swing: boolean): Vec {
+  if (b.y <= HEM_FLOOR) return b;
+  if (!swing) return v(b.x, HEM_FLOOR);
+  const L = Math.hypot(b.x - a.x, b.y - a.y);
+  const phi = Math.atan2(b.y - a.y, b.x - a.x);
+  const dy = HEM_FLOOR - a.y;
+  if (dy <= 0 || L < 1e-6) return v(b.x, HEM_FLOOR);
+  // the two directions that reach the floor line, forward (under 90 degrees) and back (over)
+  const fwd = Math.asin(Math.min(1, dy / L));
+  const want = phi < Math.PI / 2 ? fwd : Math.PI - fwd;
+  const max = (HEM_SWING * Math.PI) / 180;
+  const to = phi + clamp(want - phi, -max, max);
+  return v(a.x + Math.cos(to) * L, Math.min(HEM_FLOOR, a.y + Math.sin(to) * L));
 }
 
 /** (u, v) of a point in the quad p00 p10 p01 p11 (bilinear), or null outside it. */
@@ -169,7 +254,7 @@ export function placePiece(g: DrawCtx, p: DawnPiece, rowsTo = Infinity): Map<num
   const H = p.rows.length;
   const W = p.rows[0].length;
   const out = new Map<number, string>();
-  const still = P.every((c, i) => Math.abs(c.top.x - R[i].top.x) + Math.abs(c.top.y - R[i].top.y) + Math.abs(c.bot.x - R[i].bot.x) + Math.abs(c.bot.y - R[i].bot.y) < 1e-6);
+  const still = P.every((c, i) => c.every((q, j) => Math.abs(q.x - R[i][j].x) + Math.abs(q.y - R[i][j].y) < 1e-6));
   if (still) {
     for (let j = 0; j < H; j++)
       for (let i = 0; i < W; i++) {
@@ -181,29 +266,32 @@ export function placePiece(g: DrawCtx, p: DawnPiece, rowsTo = Infinity): Map<num
     return out;
   }
   const src = new Map<number, [number, number]>();
-  for (let k = 0; k + 1 < P.length; k++) {
-    const [a, b] = [P[k], P[k + 1]];
-    const [ra, rb] = [R[k], R[k + 1]];
-    const x0 = Math.floor(Math.min(a.top.x, b.top.x, a.bot.x, b.bot.x));
-    const x1 = Math.ceil(Math.max(a.top.x, b.top.x, a.bot.x, b.bot.x));
-    const y0 = Math.floor(Math.min(a.top.y, b.top.y, a.bot.y, b.bot.y));
-    const y1 = Math.ceil(Math.max(a.top.y, b.top.y, a.bot.y, b.bot.y));
-    for (let y = Math.max(0, y0); y <= Math.min(GRID - 1, y1); y++)
-      for (let x = Math.max(0, x0); x <= Math.min(GRID - 1, x1); x++) {
-        const idx = y * GRID + x;
-        if (out.has(idx)) continue;
-        const uv = invBilinear(v(x + 0.5, y + 0.5), a.top, b.top, a.bot, b.bot);
-        if (!uv) continue;
-        const q = lerp2(ra.top, rb.top, ra.bot, rb.bot, uv[0], uv[1]);
-        const i = Math.floor(q.x) - ox;
-        const j = Math.floor(q.y) - oy;
-        if (i < 0 || j < 0 || i >= W || j >= H) continue;
-        const ch = p.rows[j][i];
-        if (ch === '.') continue;
-        out.set(idx, ch);
-        src.set(idx, [i, j]);
-      }
-  }
+  // each pair of columns, each stretch of them between two of their points (top and bottom; on the far
+  // panel also the bend at the knee)
+  for (let k = 0; k + 1 < P.length; k++)
+    for (let m = 0; m + 1 < P[k].length; m++) {
+      const [a0, b0, a1, b1] = [P[k][m], P[k + 1][m], P[k][m + 1], P[k + 1][m + 1]];
+      const [ra0, rb0, ra1, rb1] = [R[k][m], R[k + 1][m], R[k][m + 1], R[k + 1][m + 1]];
+      const x0 = Math.floor(Math.min(a0.x, b0.x, a1.x, b1.x));
+      const x1 = Math.ceil(Math.max(a0.x, b0.x, a1.x, b1.x));
+      const y0 = Math.floor(Math.min(a0.y, b0.y, a1.y, b1.y));
+      const y1 = Math.ceil(Math.max(a0.y, b0.y, a1.y, b1.y));
+      for (let y = Math.max(0, y0); y <= Math.min(GRID - 1, y1); y++)
+        for (let x = Math.max(0, x0); x <= Math.min(GRID - 1, x1); x++) {
+          const idx = y * GRID + x;
+          if (out.has(idx)) continue;
+          const uv = invBilinear(v(x + 0.5, y + 0.5), a0, b0, a1, b1);
+          if (!uv) continue;
+          const q = lerp2(ra0, rb0, ra1, rb1, uv[0], uv[1]);
+          const i = Math.floor(q.x) - ox;
+          const j = Math.floor(q.y) - oy;
+          if (i < 0 || j < 0 || i >= W || j >= H) continue;
+          const ch = p.rows[j][i];
+          if (ch === '.') continue;
+          out.set(idx, ch);
+          src.set(idx, [i, j]);
+        }
+    }
   // her line round the moved piece
   const fixed = new Map<number, string>();
   for (const [idx, ch] of out) {

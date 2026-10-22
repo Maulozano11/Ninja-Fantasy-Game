@@ -30,6 +30,13 @@ npm run sprites -- preset <presetId> out.png  # a preset in every pose
 - Where one layer overlaps another (arm over the chest, hair over the face), its outline shows as an inner line. That separation is part of the look.
 - Templates that already carry their own outline set `F_NO_OUTLINE`.
 - Outlines never stack into 2 px lines: where a layer's outline runs right next to the outline of a layer in front of it, the back one is dropped (`thinDoubleOutlines` in `compose.ts`).
+- No 1-pixel holes (the owner, 2026-10-22: *"si arregla el hueco de 1 pixel a todos"*). Turned pieces leave
+  pixels of background between them; once the figure is flat, `closePinholes` (`src/sprite/holes.ts`) closes
+  every hole of up to 3 pixels the figure walls in (with the line of the pieces round it, or inside one piece
+  with the colour most of its neighbours have), every nick in the silhouette where the line is missing (the
+  background with the figure on three sides, one of them not line), and takes away stray specks of 1–2 pixels.
+  Real gaps stay: anything bigger or open to the outside, a notch the line goes round, and what an effect
+  walls in. **Idle is left exactly as drawn** (it is the frame his pictures were copied into).
 
 ## 3. Light and values
 
@@ -71,6 +78,11 @@ The face is a template copied pixel by pixel from the reference (`FACE_MAIN` and
 - The crossguard shows just below the fist. Blades use `metal` materials so they get a dark outline.
 - Glow materials are only for energy techniques (spiral orb, lightning, palm glow), never for steel or crystal.
 - In idle the blade hangs across the legs about 50° below horizontal, like the reference.
+- A weapon stowed on the back (hand signs, the tackle, the combo, camp, or put away in battle) is strapped to
+  the back: it turns with the torso's lean in every pose, and nothing of it shows in front of the back below
+  the shoulders (the owner, 2026-10-22: *"haz el cambio en espada guardada"*; `clipStowed` in
+  `items/accessories.ts`). What would show there is cut away, a painted blade closed with its own black line,
+  and no sliver of it is left loose.
 - Blades stay slim (about 5 px plus outline) and taper to the tip; shading is a lit bevel, a centre ridge and a darker lower half, with only sparse facet lines.
 
 ## 8. Clothes

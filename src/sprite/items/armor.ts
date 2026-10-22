@@ -40,6 +40,7 @@ import { PTERUGES_DRAPE, PTERUGES_FRONT, PTERUGES_KIND, PTERUGES_LEATHER, PTERUG
 import { capeWind } from './capes';
 import { FOUNDER_CHEST, FOUNDER_CUIRASS_KIND, FOUNDER_SASH, FOUNDER_STEEL, FOUNDER_STRAP } from './founderCuirassArt';
 import { FOUNDER_SKIRT, FOUNDER_SKIRT_KIND, FOUNDER_SKIRT_LEATHER, FOUNDER_SKIRT_STUD, FOUNDER_SKIRT_TUNIC } from './founderSkirtArt';
+import { sealCloth } from '../seal';
 import { isFemaleBody, type BodyType } from '../types';
 
 
@@ -653,11 +654,14 @@ function spread(a: number, b: number, n: number): number[] {
  * already drew its tails into `torso.over`, so the skirt goes on top of them
  * there (the strips hang from the armor, over the coat).
  */
-function skirt(g: DrawCtx, draw: (L: Layer, top: (y: number) => number) => void): void {
+function skirt(g: DrawCtx, draw: (L: Layer, top: (y: number) => number) => void, also: Depth[] = []): void {
   const over = g.L('torso.over');
   // Over a coat the skirt is also above the armor layer, so it starts at the armor's lower edge.
-  if (over.used) stamp(over, (L) => draw(L, (y) => Math.min(y, 0.75)));
+  const coat = over.used;
+  if (coat) stamp(over, (L) => draw(L, (y) => Math.min(y, 0.75)));
   else draw(g.L('skirt'), (y) => y);
+  // no crack between its panels or between them and the panels it hangs elsewhere (`also`)
+  sealCloth(g, [...also, coat ? 'torso.over' : 'skirt']);
 }
 
 /**
@@ -1432,7 +1436,10 @@ function drawFounderSkirt(g: DrawCtx, tunic: string, strips: string, studs: stri
     if (k === 'gold') return retintHex(hex, FOUNDER_SKIRT_STUD, studs);
     return k === 'leather' ? retintHex(hex, FOUNDER_SKIRT_LEATHER, strips) : hex;
   };
-  stampLeaning(g, g.L('torso.over').used ? 'torso.over' : 'skirt', FOUNDER_SKIRT, r.pelvis, segAngle(r.pelvis, r.neck), 'pelvis', color, (hex) => FOUNDER_SKIRT_KIND[hex] === 'line');
+  const depth = g.L('torso.over').used ? 'torso.over' : 'skirt';
+  stampLeaning(g, depth, FOUNDER_SKIRT, r.pelvis, segAngle(r.pelvis, r.neck), 'pelvis', color, (hex) => FOUNDER_SKIRT_KIND[hex] === 'line');
+  // turned with a leaning body, his strips can leave a pixel open between them at the hem (seal.ts)
+  sealCloth(g, [depth], true);
 }
 
 // ---------------------------------------------------------------------------
@@ -3009,7 +3016,7 @@ export const SKIRT_ITEMS: ItemDef[] = [
         capsule(L, kp, add(kp, v(-0.6, 3.0)), 0.7, 0.9, band, (x) => (x + 0.5 < kp.x - 0.5 ? 2 : 1));
         ellipse(L, kp.x, kp.y, 1.25, 1.15, band, (x, y) => clamp(lit(x + 0.5 - kp.x, y + 0.5 - kp.y), 1, 3));
         put(L, fine(kp.x - 0.4), fine(kp.y - 0.4), band, 4);
-      });
+      }, ['farLeg.armor']);
     },
   },
 

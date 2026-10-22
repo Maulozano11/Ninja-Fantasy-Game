@@ -175,10 +175,11 @@ describe("Aurelia's knees", () => {
 
   // The owner, 2026-10-22: "corrige la rodilla en correr 2 se ve rara". Folded (the shin turned 90 degrees or
   // more past his drawing, under the thigh), the boot's knee stood out as a square block with a step and a
-  // hook. Round a folded knee the boot's outline is a knee's: no drop of two pixels or more between two
-  // longer flats (a stair step), no notch a pixel deep and up to three wide, and no bump a pixel high and one
-  // or two wide on a straight edge.
-  it('are round when folded: no stair step bigger than a pixel, no notch and no bump on the outline round the knee, in every pose and frame', () => {
+  // hook; and "si redondea las rodillas de aurelia donde quede muy cuadrada", however far it bends. Round
+  // every bent knee the boot's outline is a knee's: no drop of two pixels or more between two longer flats (a
+  // stair step), no notch a pixel deep and up to three wide, and no bump a pixel high and one or two wide on a
+  // straight edge.
+  it('are round however far they bend: no stair step bigger than a pixel, no notch and no bump on the outline round the knee, in every pose and frame', () => {
     const R = 5;
     let folded = 0;
     for (const [pose, fr] of frames()) {
@@ -188,8 +189,7 @@ describe("Aurelia's knees", () => {
         const [hip, knee, ankle] = s === 'N' ? [rig.hipN, rig.kneeN, rig.ankleN] : [rig.hipF, rig.kneeF, rig.ankleF];
         const [thigh, shin] = s === 'N' ? [DAWN_THIGH_N, DAWN_SHIN_N] : [DAWN_THIGH_F, DAWN_SHIN_F];
         const bend = segAngle(knee, ankle) - segAngle(hip, knee) - (shin.angle - thigh.angle);
-        if (Math.abs(((((bend + 180) % 360) + 360) % 360) - 180) < 90) continue;
-        folded++;
+        if (Math.abs(((((bend + 180) % 360) + 360) % 360) - 180) >= 90) folded++;
         const L = layers.get(legDepth(s, 'feet'))!;
         const kx = Math.floor(knee.x * RES);
         const ky = Math.floor(knee.y * RES);
@@ -247,6 +247,47 @@ describe("Aurelia's knees", () => {
       }
     }
     assert.ok(folded >= 10, `only ${folded} folded knees`);
+  });
+
+  // The owner, 2026-10-22: "si redondea las rodillas de aurelia donde quede muy cuadrada". A square knee is a
+  // block's corner on the boot's outline: a pixel of the thigh or the shin with nothing out past it either
+  // way (nor diagonally), where an edge two pixels long or more meets another two pixels long or more. A round
+  // knee turns in steps of a pixel. Her boots alone and under her skirt; under it a corner against the skirt
+  // is the skirt's edge, not the knee's (her skirt fills a pixel shut in between it and the boot).
+  it('are never square: no corner where two flat edges two pixels long meet round the knee, in every pose and frame', () => {
+    const REACH = 6;
+    let knees = 0;
+    for (const look of [noSkirt, aurelia])
+      for (const [pose, fr] of frames()) {
+        const { layers, rig } = spriteLayers(look, pose, fr);
+        const skirt = SKIRT_DEPTHS.map((d) => layers.get(d)).filter((L) => !!L);
+        for (const s of ['N', 'F'] as const) {
+          knees++;
+          const L = layers.get(legDepth(s, 'feet'))!;
+          const legParts = new Set([partIndex(`thigh${s}`), partIndex(`shin${s}`)]);
+          const knee = s === 'N' ? rig.kneeN : rig.kneeF;
+          const kx = Math.floor(knee.x * RES);
+          const ky = Math.floor(knee.y * RES);
+          const on = (x: number, y: number) => L.mat[y * GRID + x] >= 0;
+          const out = (x: number, y: number) => !on(x, y) && !skirt.some((M) => M.mat[y * GRID + x] >= 0);
+          for (let y = ky - REACH; y <= ky + REACH; y++)
+            for (let x = kx - REACH; x <= kx + REACH; x++) {
+              if (Math.hypot(x - kx, y - ky) > REACH || !on(x, y) || !legParts.has(L.part[y * GRID + x])) continue;
+              for (const [ax, ay] of [[0, -1], [0, 1]])
+                for (const [bx, by] of [[1, 0], [-1, 0]]) {
+                  if (!out(x + ax, y + ay) || !out(x + bx, y + by) || !out(x + ax + bx, y + ay + by)) continue;
+                  // the edge facing a runs back along -b, the edge facing b back along -a
+                  let e1 = 0;
+                  while (e1 < 3 && on(x - e1 * bx, y - e1 * by) && !on(x - e1 * bx + ax, y - e1 * by + ay)) e1++;
+                  let e2 = 0;
+                  while (e2 < 3 && on(x - e2 * ax, y - e2 * ay) && !on(x - e2 * ax + bx, y - e2 * ay + by)) e2++;
+                  const how = look === noSkirt ? 'without her skirt' : 'with her skirt';
+                  assert.ok(e1 < 2 || e2 < 2, `${pose} ${fr} ${s} (${how}): a square corner on the knee at ${x},${y}, edges of ${e1} and ${e2}`);
+                }
+            }
+        }
+      }
+    assert.ok(knees > 300, `only ${knees} knees`);
   });
 });
 

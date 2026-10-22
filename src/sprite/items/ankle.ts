@@ -2,7 +2,8 @@
 // piece; ours stands on the ground flat, like our feet, while its shin turns with our leg. These keep the
 // two together in every pose: the boot carried round with the shin, turned with it once the leg swings
 // the foot off the ground, and the ankle closed with his line where the two pieces part. Shared by his
-// Solen's and his Roman's sandals (feet_gladiator_sandals) and his Aiden's sabatons. The branch
+// Solen's and his Roman's sandals (feet_gladiator_sandals), his Aiden's sabatons (feet.ts) and his Ren's
+// Night Boots (night.ts; this file is the same on fix/boots-aiden and ren/owner-standard). The branch
 // body/male-skin-face carries its own copy for the Roman sandals (footTurns and closeAnkle in its feet.ts):
 // when it merges, it should switch to these.
 

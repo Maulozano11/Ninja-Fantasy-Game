@@ -3,13 +3,12 @@
 
 import type { PaintedPiece } from '../painted';
 
-/** The colours of hers the colour slots are matched to: her lit navy, her red, her lit skin. */
+/** The colours of hers the colour slots are matched to: her lit navy, her red. */
 export const SHADE_CLOTH = '#374061';
 export const SHADE_BAND = '#a63133';
-export const SHADE_SKIN = '#f4bd97';
 
-/** What each of her colours is: navy cloth (or shoe), red band, skin. Her black line and brown sole stay. */
-export const SHADE_KIND: Record<string, 'cloth' | 'band' | 'skin'> = {
+/** What each of her colours is: navy cloth (or shoe), red band. Her black line and brown sole stay. */
+export const SHADE_KIND: Record<string, 'cloth' | 'band'> = {
   '#111420': 'cloth',
   '#222238': 'cloth',
   '#282c49': 'cloth',
@@ -18,41 +17,19 @@ export const SHADE_KIND: Record<string, 'cloth' | 'band' | 'skin'> = {
   '#8b8d99': 'cloth',
   '#74292f': 'band',
   '#a63133': 'band',
-  '#cf856d': 'skin',
-  '#f4bd97': 'skin',
-};
-
-/** Her near bare thigh between her skirt and her leggings (drawn into the body's layer; her skin follows ours). */
-export const SHADE_SKIN_N: PaintedPiece = {
-  pivot: [8, 11],
-  angle: 87.21,
-  rows: [
-    'kzzzzzzzzzzzzzk',
-    'kzzSSSSSSSSzzzk',
-    'kzzSSSSSSSSzzzk',
-    'kzzSSSSSSS',
-  ],
-  colors: {
-    k: '#010102',
-    z: '#cf856d',
-    S: '#f4bd97',
-  },
 };
 
 /** Her near legging above the knee: her darkest navy band at the top. */
 export const SHADE_THIGH_N: PaintedPiece = {
-  pivot: [8, 8],
-  angle: 87.21,
+  pivot: [4, 6],
+  angle: 99.25,
   rows: [
     '..........KKKkk',
     'kKKKKKKKKKKKguuk',
     'kuuUkqkuuuuugguk',
-    'kukkqkkkkugguuk',
-    '.kkrUeeeukuuuk',
-    '.krUUeeeeqkuk',
-    'kkueeeeeUUqkk',
-    '.kuueeeeeUuk',
-    'kkuueeeeuuuk',
+    'ku.......ugguuk',
+    '..........uuuk',
+    '...........uk',
   ],
   colors: {
     k: '#010102',
@@ -60,16 +37,14 @@ export const SHADE_THIGH_N: PaintedPiece = {
     u: '#222238',
     U: '#282c49',
     g: '#383c48',
-    e: '#374061',
     q: '#74292f',
-    r: '#a63133',
   },
 };
 
 /** Her near round knee pad rimmed in red and her wrapped shin, red bands across. */
 export const SHADE_SHIN_N: PaintedPiece = {
-  pivot: [6, 20],
-  angle: 103.41,
+  pivot: [2, 18],
+  angle: 105.42,
   rows: [
     '....kkqkkkk',
     '...kkrUeeeuk',
@@ -106,8 +81,8 @@ export const SHADE_SHIN_N: PaintedPiece = {
 
 /** Her near armoured shoe: red trim over the instep, her brown sole. */
 export const SHADE_FOOT_N: PaintedPiece = {
-  pivot: [7, -2],
-  angle: 103.41,
+  pivot: [3, -4],
+  angle: 105.42,
   rows: [
     '.krkkkkruk',
     '.kkueeukrk',
@@ -125,53 +100,30 @@ export const SHADE_FOOT_N: PaintedPiece = {
   },
 };
 
-/** Her far bare thigh between her skirt and her leggings (drawn into the body's layer; her skin follows ours). */
-export const SHADE_SKIN_F: PaintedPiece = {
-  pivot: [11, 4],
-  angle: 106.19,
-  rows: [
-    'kzzzzzzzzk',
-    'kzzzzzzSzzk',
-    'kzzzzzSSSzk',
-    'kzzzSSSS',
-  ],
-  colors: {
-    k: '#010102',
-    z: '#cf856d',
-    S: '#f4bd97',
-  },
-};
-
 /** Her far legging above the knee: her darkest navy band at the top. */
 export const SHADE_THIGH_F: PaintedPiece = {
-  pivot: [11, 1],
-  angle: 106.19,
+  pivot: [3, 6],
+  angle: 91.36,
   rows: [
     '........KKk',
-    'kkKKKKKKgkkk',
-    '.kuuuuggkrrk',
-    'kkuugggkreekk',
-    '.kuuuukrueeek',
-    '.kuuuukrUeeek',
-    '.kuuuukueeeek',
-    '.kuuuukueeeuk',
-    '.kuuuuukkeek',
+    'kkKKKKKKg',
+    '.kuuuugg',
+    'kkuuggg',
+    '.kuuuu',
+    '.kuuuu',
   ],
   colors: {
     k: '#010102',
     K: '#111420',
     u: '#222238',
-    U: '#282c49',
     g: '#383c48',
-    e: '#374061',
-    r: '#a63133',
   },
 };
 
 /** Her far round knee pad rimmed in red and her wrapped shin, red bands across. */
 export const SHADE_SHIN_F: PaintedPiece = {
-  pivot: [5, 16],
-  angle: 106.19,
+  pivot: [3, 19],
+  angle: 88.03,
   rows: [
     '........kkk',
     '.......krrk',
@@ -206,8 +158,8 @@ export const SHADE_SHIN_F: PaintedPiece = {
 
 /** Her far armoured shoe: red trim over the instep, her brown sole. */
 export const SHADE_FOOT_F: PaintedPiece = {
-  pivot: [4, -4],
-  angle: 106.19,
+  pivot: [2, -1],
+  angle: 88.03,
   rows: [
     'kkukkrueek',
     'knkkrueerrk',

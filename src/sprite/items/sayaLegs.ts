@@ -5,7 +5,7 @@
 import { retintHex } from '../color';
 import { DrawCtx, ItemDef, legDepth, legJoints, Side } from '../ctx';
 import { PaintedPiece, segAngle, stampPiece } from '../painted';
-import { add, F_NO_EDGE, GRID, norm, partIndex, RES, sub, v, Vec } from '../raster';
+import { add, F_NO_EDGE, F_NO_OUTLINE, F_NO_TEXTURE, GRID, norm, partIndex, RES, sub, v, Vec } from '../raster';
 import {
   SHADE_BAND,
   SHADE_CLOTH,
@@ -14,20 +14,21 @@ import {
   SHADE_KIND,
   SHADE_SHIN_F,
   SHADE_SHIN_N,
-  SHADE_SKIN,
-  SHADE_SKIN_F,
-  SHADE_SKIN_N,
   SHADE_THIGH_F,
   SHADE_THIGH_N,
 } from './sayaLegsArt';
 
+/** Her main legging navy (sayaLegsArt.ts 'u'): the body's thigh under her legging is painted in it. */
+const LEGGING = '#222238';
+
 /**
- * Takes the leg (skin and trousers) off below the knee: the thigh below the line through the knee
- * across the thigh, the shin and the foot whole. The thigh above stays under her legging, so where
- * her turned pieces do not quite meet our leg shows through and not a hole. The leg is not outlined
- * along the cut, where her knee pad runs.
+ * Takes the leg (skin and trousers) off below the knee, the shin and the foot whole, and paints the
+ * body's thigh where her legging covers it (from `reach` rig units above the knee down) in her legging's
+ * navy, his line kept: at rest her legging lies over it; where a bent knee opens a gap between her
+ * thigh's piece and her shin's, or her legging is narrower than our thigh, the legging shows, never
+ * bare skin by the knee. `fill` is the navy's material.
  */
-function legOffBelow(g: DrawCtx, s: Side, cut: { at: Vec; down: Vec }): void {
+function leggingOnLeg(g: DrawCtx, s: Side, knee: Vec, up: Vec, reach: number, fill: number): void {
   const thigh = partIndex(`thigh${s}`);
   const shin = partIndex(`shin${s}`);
   const foot = partIndex(`foot${s}`);
@@ -37,9 +38,16 @@ function legOffBelow(g: DrawCtx, s: Side, cut: { at: Vec; down: Vec }): void {
       const p = L.part[i];
       if (L.mat[i] < 0 || (p !== thigh && p !== shin && p !== foot)) continue;
       if (p === thigh) {
-        const dx = ((i % GRID) + 0.5) / RES - cut.at.x;
-        const dy = (Math.floor(i / GRID) + 0.5) / RES - cut.at.y;
-        if (dx * cut.down.x + dy * cut.down.y <= 0) continue;
+        const dx = ((i % GRID) + 0.5) / RES - knee.x;
+        const dy = (Math.floor(i / GRID) + 0.5) / RES - knee.y;
+        const along = dx * up.x + dy * up.y;
+        if (along > reach) continue;
+        // above the knee: his line stays, the rest of the thigh is her legging; past the knee (the
+        // round of the knee the shin's piece carries, turned with the shin) it goes with the shin
+        if (along >= -0.5) {
+          if (L.shade[i] > 0 && Math.max(...[1, 3, 5].map((k) => parseInt(g.mats.ramps[L.mat[i]][3].slice(k, k + 2), 16))) >= 40) L.mat[i] = fill;
+          continue;
+        }
       }
       L.mat[i] = -1;
       L.flags[i] |= F_NO_EDGE;
@@ -48,48 +56,22 @@ function legOffBelow(g: DrawCtx, s: Side, cut: { at: Vec; down: Vec }): void {
 }
 
 /**
- * Stamps her bare thigh into the body's layer, but only over our thigh and the two pixels beside it:
- * at rest every pixel of hers is kept (her thigh is a little wider than ours), and when the leg turns
- * far from her pose none of it hangs off our thigh.
- */
-function stampOnThigh(g: DrawCtx, s: Side, piece: PaintedPiece, at: Vec, deg: number, color: (ch: string, hex: string) => string): void {
-  const L = g.L(legDepth(s, 'body'));
-  const thigh = partIndex(`thigh${s}`);
-  const near = new Uint8Array(GRID * GRID);
-  for (let i = 0; i < GRID * GRID; i++) {
-    if (L.mat[i] < 0 || L.part[i] !== thigh) continue;
-    const x = i % GRID;
-    const y = Math.floor(i / GRID);
-    for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) {
-      const X = x + dx;
-      const Y = y + dy;
-      if (X >= 0 && Y >= 0 && X < GRID && Y < GRID) near[Y * GRID + X] = 1;
-    }
-  }
-  const mat = L.mat.slice();
-  const shade = L.shade.slice();
-  const part = L.part.slice();
-  const flags = L.flags.slice();
-  stampPiece(g, legDepth(s, 'body'), piece, at, deg, `thigh${s}`, color);
-  for (let i = 0; i < GRID * GRID; i++) {
-    if (near[i]) continue;
-    L.mat[i] = mat[i];
-    L.shade[i] = shade[i];
-    L.part[i] = part[i];
-    L.flags[i] = flags[i];
-  }
-}
-
-/**
- * Where the shoe hangs: from the ankle, moved with the bottom of the wrapped shin (which reaches a few
- * pixels below our ankle) as the shin turns from her pose, so a leg stretched out (leaning on a tree)
- * keeps its shoe on the end of it. At her angle it is the ankle.
+ * Where the shoe hangs: from the ankle, moved as far as the middle of the wrapped shin's last row moves
+ * when the shin turns from her pose about the ankle (the shin reaches a few pixels below our ankle, and
+ * the ankle is at its back), so the shoe stays on the end of the shin: a leg stretched out (leaning on
+ * a tree) keeps its shoe on the end of it, and a step back opens no row between them. At her angle it
+ * is the ankle.
  */
 function footAt(shin: PaintedPiece, ankle: Vec, deg: number): Vec {
   if (Math.abs(deg - shin.angle) < 0.5) return ankle;
-  const reach = Math.max(0, shin.rows.length - shin.pivot[1] - 0.5) / RES;
-  const [a0, a1] = [(shin.angle * Math.PI) / 180, (deg * Math.PI) / 180];
-  return add(ankle, v(reach * (Math.cos(a1) - Math.cos(a0)), reach * (Math.sin(a1) - Math.sin(a0))));
+  const last = shin.rows[shin.rows.length - 1];
+  const cells = [...last].flatMap((ch, i) => (ch === '.' ? [] : [i]));
+  const bx = (cells[0] + cells[cells.length - 1]) / 2 - shin.pivot[0];
+  const by = shin.rows.length - 1 - shin.pivot[1];
+  const a = ((deg - shin.angle) * Math.PI) / 180;
+  const dx = bx * Math.cos(a) - by * Math.sin(a) - bx;
+  const dy = bx * Math.sin(a) + by * Math.cos(a) - by;
+  return add(ankle, v(dx / RES, dy / RES));
 }
 
 /** His black line (the pieces' 'k'). */
@@ -128,6 +110,34 @@ function stampClean(g: DrawCtx, d: Parameters<typeof stampPiece>[1], piece: Pain
   for (const i of loose) L.clear(i % GRID, (i / GRID) | 0);
 }
 
+/**
+ * Turned from his angles, her pieces can leave a single pixel open between them (at a bent knee, at the
+ * ankle over the flat shoe) or in a turned line: an empty pixel with her pieces on three or four of its
+ * sides is closed with his line, as the line runs there at rest.
+ */
+function closePinholes(g: DrawCtx, d: Parameters<typeof stampPiece>[1]): void {
+  const L = g.L(d);
+  const line = g.m(LINE, 'flat');
+  const at = (x: number, y: number) => (x < 0 || y < 0 || x >= GRID || y >= GRID ? -1 : L.mat[y * GRID + x]);
+  const close: [number, number, number][] = [];
+  for (let y = 1; y < GRID - 1; y++) {
+    for (let x = 1; x < GRID - 1; x++) {
+      if (at(x, y) >= 0) continue;
+      const n = [at(x - 1, y), at(x + 1, y), at(x, y - 1), at(x, y + 1)];
+      if (n.filter((m) => m >= 0).length < 3) continue;
+      const from = [[x - 1, y], [x + 1, y], [x, y - 1], [x, y + 1]].find(([X, Y]) => at(X, Y) >= 0)!;
+      close.push([x, y, L.part[from[1] * GRID + from[0]]]);
+    }
+  }
+  for (const [x, y, part] of close) {
+    const i = y * GRID + x;
+    L.mat[i] = line;
+    L.shade[i] = 3;
+    L.part[i] = part;
+    L.flags[i] = F_NO_TEXTURE | F_NO_OUTLINE;
+  }
+}
+
 export const SHADE_WRAPS: ItemDef = {
   id: 'feet_shade_wraps',
   slot: 'feet',
@@ -140,34 +150,34 @@ export const SHADE_WRAPS: ItemDef = {
   ],
   bodies: ['female', 'slender'],
   draw: (g, [cloth, band, boot]) => {
-    // Her legs from the owner's Saya picture at our scale, on our female leg: on the near leg the bare
-    // thigh and the legging above the knee turn with the thigh about the knee (on the far leg they lie
-    // about our knee, under her skirt's hem, so they turn with the shin), the knee
-    // pad and the wrapped shin turn with the shin about the ankle, and the shoe stays flat on the
-    // ground like our feet. The leg goes below the knee (trousers tuck in). The bare thigh is drawn into the
-    // body's layer over our thigh, in our skin, so trousers still cover it. His navy, red and the shoe's navy follow
-    // the colour slots; his black line and brown sole stay.
+    // Her legs from the owner's Saya picture at our scale, on our female leg: the legging above the
+    // knee turns with the thigh about the knee, the knee pad and the wrapped shin turn with the shin
+    // about the ankle, and the shoe stays flat on the ground like our feet. The leg goes below the knee
+    // (trousers tuck in). Her bare thighs between her skirt and her leggings are the body's own (the
+    // owner's bare woman, whom his Saya stands as). His navy, red and the shoe's navy follow the colour
+    // slots; his black line and brown sole stay.
     const tint = (main: string) => (_ch: string, hex: string) => {
       const k = SHADE_KIND[hex];
       if (k === 'cloth') return retintHex(hex, SHADE_CLOTH, main);
       if (k === 'band') return retintHex(hex, SHADE_BAND, band);
-      if (k === 'skin') return retintHex(hex, SHADE_SKIN, g.look.skin);
       return hex;
     };
     const leg = tint(cloth);
     const shoe = tint(boot);
+    const navy = g.m(retintHex(LEGGING, SHADE_CLOTH, cloth), 'flat');
     for (const s of ['F', 'N'] as Side[]) {
       const { hip, knee, ankle } = legJoints(g.rig, s);
       const thighA = segAngle(hip, knee);
       const shinA = segAngle(knee, ankle);
-      const [skin, thigh, shin, foot] = s === 'N' ? [SHADE_SKIN_N, SHADE_THIGH_N, SHADE_SHIN_N, SHADE_FOOT_N] : [SHADE_SKIN_F, SHADE_THIGH_F, SHADE_SHIN_F, SHADE_FOOT_F];
-      const upperA = s === 'N' ? thighA : shinA;
-      legOffBelow(g, s, { at: knee, down: norm(sub(knee, hip)) });
-      stampOnThigh(g, s, skin, knee, upperA, leg);
+      const [thigh, shin, foot] = s === 'N' ? [SHADE_THIGH_N, SHADE_SHIN_N, SHADE_FOOT_N] : [SHADE_THIGH_F, SHADE_SHIN_F, SHADE_FOOT_F];
+      // her legging reaches as far above the knee as his thigh piece's top row
+      leggingOnLeg(g, s, knee, norm(sub(hip, knee)), (thigh.pivot[1] + 0.5) / RES, navy);
       const d = legDepth(s, 'feet');
-      stampClean(g, d, thigh, knee, upperA, `thigh${s}`, leg);
+      stampClean(g, d, thigh, knee, thighA, `thigh${s}`, leg);
       stampClean(g, d, shin, ankle, shinA, `shin${s}`, leg);
       stampPiece(g, d, foot, footAt(shin, ankle, shinA), foot.angle, `foot${s}`, shoe);
+      // at rest every pixel is his
+      if (Math.abs(thighA - thigh.angle) >= 0.5 || Math.abs(shinA - shin.angle) >= 0.5) closePinholes(g, d);
     }
   },
 };

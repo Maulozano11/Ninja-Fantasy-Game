@@ -2,7 +2,6 @@
 // scale (2026-10-21: his heroines set the standard for women; tools/refs/saya-upper-from-ref.py and the
 // pieces it writes, sayaUpperArt.ts).
 
-import { SHOULDER_TURN } from '../body';
 import { retintHex } from '../color';
 import { armDepth, armJoints, Depth, DEPTHS, DrawCtx, handDraw, handPose, ItemDef, Side } from '../ctx';
 import { PaintedPiece, segAngle, stampPiece } from '../painted';
@@ -49,6 +48,14 @@ const shadeColor = (cloth: string, trim: string, plate: string, skin: string) =>
 };
 
 const ARMOR_ID = 'armor_crimson_shade';
+
+/**
+ * How far (degrees) her bare near shoulder turns with the upper arm: past it, it stays on the shoulder
+ * (drawShadeArmor). The owner's bare female body's own shoulder is the round of his arm piece and turns
+ * with it all the way (body.ts drawBaseBody); hers is the round of a hanging arm in her black line, which
+ * turned further stands off the shoulder.
+ */
+const SHOULDER_TURN = 30;
 
 /** An angle wrapped into -180..180 degrees. */
 const wrapDeg = (a: number) => ((a + 540) % 360) - 180;
@@ -116,11 +123,11 @@ function moveFarHand(L: Layer, out: Vec): void {
  * Her bare near shoulder is the round of a hanging arm. Turned all the way with the upper arm (flung up
  * and back to throw, raised in victory, swung across to thrust) its round came off the shoulder: a ball
  * of skin in its own line on her back or chest, beside the raised guard. So it turns with the arm only
- * as far as SHOULDER_TURN (the female body's own shoulder does no more, body.ts drawArm): further, it
- * stays on the shoulder, a round cap under the raised guard that closes her back's line. Turned that
- * far her top no longer covers the body's bandeau there either; she wears her top, not the bandeau, so
- * it is taken away (offBandeau) and her bare side shows. Within SHOULDER_TURN (standing, walking, at
- * rest) nothing changes: every pixel at rest is his.
+ * as far as SHOULDER_TURN: further, it stays on the shoulder, a round cap under the raised guard that
+ * closes her back's line, and the body's own shoulder turns on with the arm under the guard. Turned that
+ * far her top no longer covers an earlier body's bandeau there either (offBandeau; the owner's bare body
+ * has none: his sports top is under her top, its straps off). Within SHOULDER_TURN (standing, walking,
+ * at rest) nothing changes: every pixel at rest is his.
  */
 function drawShadeArmor(g: DrawCtx, cloth: string, trim: string, plate: string): void {
   const r = g.rig;
@@ -132,7 +139,7 @@ function drawShadeArmor(g: DrawCtx, cloth: string, trim: string, plate: string):
   put('farArm.armor', SAYA_FORE_F, add(r.elbowF, out), segAngle(r.elbowF, r.wristF), 'forearmF');
   put('farArm.armor', SAYA_UPPER_F, add(r.shoulderF, out), segAngle(r.shoulderF, r.elbowF), 'upperArmF');
   // the top in two pieces: over the hips (on the pelvis, under her belts) and from the collar to the
-  // waist (on the neck) over it; between them our longer torso shows more of her pipings
+  // waist (on the neck) over it; between them a torso longer than hers shows more of her pipings
   put('torso.top', SAYA_TOP_LOW, r.pelvis, segAngle(r.pelvis, r.neck), 'torso');
   put('torso.top', SAYA_TOP, r.neck, segAngle(r.pelvis, r.neck), 'torso');
   // the near forearm guard is pinned at the wrist, where his cuff and our wrist meet: our female's
@@ -174,7 +181,9 @@ function offBandeau(g: DrawCtx): void {
     if (dx * r.up.x + dy * r.up.y > 3) U.mat[i] = -1;
   }
   const line = g.m(SAYA_LINE, 'flat');
-  const bare = new Set([g.m(g.look.skin || SAYA_SKIN, 'flat'), g.m(retintHex(SAYA_SKIN_SHADOW, SAYA_SKIN, g.look.skin || SAYA_SKIN), 'flat')]);
+  const skin = g.look.skin || SAYA_SKIN;
+  const tones = [skin, retintHex(SAYA_SKIN_SHADOW, SAYA_SKIN, skin)];
+  const bare = new Set(tones.flatMap((h) => [g.m(h, 'flat'), g.m(h, 'painted')]));
   for (const d of ['torso.body', 'nearArm.body'] as Depth[]) {
     const L = g.L(d);
     const edge = outlinedEdge(L);
@@ -217,19 +226,52 @@ const SKIN_DEPTHS: Depth[] = ['farArm.body', 'nearArm.body', 'torso.body', 'neck
 function paintBodySkin(g: DrawCtx, cloth: string, farOut: boolean): void {
   const skin = g.look.skin || SAYA_SKIN;
   const line = g.m(SAYA_LINE, 'flat');
-  const shadow = g.m(retintHex(SAYA_SKIN_SHADOW, SAYA_SKIN, skin), 'flat');
-  const base = g.m(skin, 'flat');
-  const sleeve = g.m(retintHex(SAYA_SLEEVE, SAYA_CLOTH, cloth), 'flat');
+  // on the owner's bare body, in his 'painted' ramp: the outline pass still closes a bare edge off rest with his line
+  const kind = g.bp.fit ? 'painted' : 'flat';
+  const shadow = g.m(retintHex(SAYA_SKIN_SHADOW, SAYA_SKIN, skin), kind);
+  const base = g.m(skin, kind);
+  const sleeve = g.m(retintHex(SAYA_SLEEVE, SAYA_CLOTH, cloth), kind);
   const fore = [partIndex('forearmN'), partIndex('forearmF'), ...(farOut ? [partIndex('upperArmF')] : [])];
+  const painted = paintedSkin(g);
   for (const d of SKIN_DEPTHS) {
     const L = g.L(d);
     if (!L.used) continue;
     for (let i = 0; i < GRID * GRID; i++) {
-      if (L.mat[i] !== g.skin) continue;
       const sh = L.shade[i];
-      L.mat[i] = sh <= 0 ? line : fore.includes(L.part[i]) ? sleeve : sh <= 2 ? shadow : base;
+      if (L.mat[i] === g.skin) {
+        L.mat[i] = sh <= 0 ? line : fore.includes(L.part[i]) ? sleeve : sh <= 2 ? shadow : base;
+        continue;
+      }
+      // the owner's bare female body (body.ts drawBaseBody): his line, his skin's shades
+      const k = painted.get(L.mat[i]);
+      if (!k) continue;
+      L.mat[i] = sh <= 0 || k === 'line' ? line : fore.includes(L.part[i]) ? sleeve : k === 'shadow' ? shadow : base;
     }
   }
+}
+
+/**
+ * The materials of the owner's bare female body (body.ts drawBaseBody: his pieces in 'painted'
+ * colours) that are his line or his skin, by colour: his line is near black, his skin warm (red well
+ * over blue), lit as far as the player's skin or in shadow below it. His sports top and briefs (cool
+ * greys) are not skin.
+ */
+function paintedSkin(g: DrawCtx): Map<number, 'line' | 'shadow' | 'base'> {
+  const out = new Map<number, 'line' | 'shadow' | 'base'>();
+  if (!g.bp.fit) return out;
+  const lum = (hex: string) => {
+    const [r, gg, b] = [1, 3, 5].map((k) => parseInt(hex.slice(k, k + 2), 16));
+    return 0.299 * r + 0.587 * gg + 0.114 * b;
+  };
+  const skinLum = lum(g.look.skin || SAYA_SKIN);
+  g.mats.ramps.forEach((ramp, m) => {
+    if (g.mats.kinds[m] !== 'painted') return;
+    const hex = ramp[3];
+    const [r, gg, b] = [1, 3, 5].map((k) => parseInt(hex.slice(k, k + 2), 16));
+    if (Math.max(r, gg, b) < 40) out.set(m, 'line');
+    else if (r - b > 30 && r >= gg) out.set(m, lum(hex) >= skinLum * 0.9 ? 'base' : 'shadow');
+  });
+  return out;
 }
 
 /** The pixels a layer's outline pass will darken (Layer.applyOutline): its edge, next to an empty pixel. */
@@ -262,13 +304,15 @@ const GLOVES_ID = 'hands_shade_fingerless';
  * Her own fist on this hand, when the hand is a fist (holding her sword or not) on a female body: her
  * near glove or her far fist, his pixels, riding the forearm under its cuff as she drew them (the
  * near one pinned at the wrist, as her near forearm guard is; the far one at the elbow, as her far
- * forearm guard).
+ * forearm guard). A relaxed hand is one too: the owner's bare body closes it in his fist (body.ts
+ * drawBaseBody), so her glove painted on our small hand picture lay off it with his fist round it.
  */
 function ownFist(g: DrawCtx, s: Side): PaintedPiece | null {
   if (!isFemaleBody(g.rig.body)) return null;
   const { kind } = handPose(g, s);
-  if (s === 'N') return kind === 'grip' || kind === 'fist' ? SAYA_GLOVE_N : null;
-  return kind === 'fist' ? SAYA_HAND_F : null;
+  const closed = kind === 'fist' || (kind === 'relaxed' && !!g.bp.fit);
+  if (s === 'N') return kind === 'grip' || closed ? SAYA_GLOVE_N : null;
+  return closed ? SAYA_HAND_F : null;
 }
 
 /**

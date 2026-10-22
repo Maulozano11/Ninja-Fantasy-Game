@@ -110,8 +110,8 @@ export const SAYA_HAIR_BACK: SayaFacePart = {
 
 /** Down the back from the near side of the head, behind the body: its pivot is the cell on the neck, its angle the torso's (neck to pelvis) at idle. */
 export const SAYA_HAIR_LONG: PaintedPiece = {
-  pivot: [23, 6],
-  angle: 89.90,
+  pivot: [20, 6],
+  angle: 81.95,
   rows: [
     '...........kXhhzEyh',
     '...........kXhhqEyh',
@@ -148,7 +148,7 @@ export const SAYA_HAIR_LONG: PaintedPiece = {
 };
 
 /** Where the long hair's pivot (the neck) lies from the face anchor at idle, in cells: the game hangs it from the head there. */
-export const SAYA_HAIR_NECK: [number, number] = [3, 7];
+export const SAYA_HAIR_NECK: [number, number] = [0, 7];
 
 /** His far eye's distance from his near one (fx - ex in our face anchor's terms). */
 export const SAYA_HAIR_EYES = 9;

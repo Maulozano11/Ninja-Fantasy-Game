@@ -125,9 +125,11 @@ FAR_ARM = (0, -UPPER)
 # and our far hand with them. The female standard (body/female-v2: both arms where his game-scale
 # heroines hang them) lowered our far elbow 3.5 rows and moved it 0.9 out; his Saya holds her far arm
 # further from her torso than that standard does, so her far elbow, moved as her far arm is, is still
-# five pixels further out than ours and two rows higher: FAR_OUT is (5, -2) (it was (6, 1) on the
-# earlier female body). Rerun tools/refs/heroine-idle.mts into saya_rig.JOINTS and this script whenever
-# the female body changes: FAR_OUT follows.
+# five pixels further out than ours and two rows higher: FAR_OUT was (5, -2) (and (6, 1) on the
+# earlier female body). On the owner's bare female body (2026-10-21) his far elbow is four pixels nearer
+# the torso than his Saya's and a row lower than hers moved: FAR_OUT is (4, -1). Rerun
+# tools/refs/heroine-idle.mts into saya_rig.JOINTS and this script whenever the female body changes:
+# FAR_OUT follows.
 HER_ELBOW_F = (139.5, 166.5)
 FAR_OUT = tuple(int(round(h + m - j)) for h, m, j in zip(HER_ELBOW_F, FAR_ARM, JOINTS['elbowF']))
 FAR_PIECES = ('SAYA_UPPER_F', 'SAYA_FORE_F', 'SAYA_HAND_F')

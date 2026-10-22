@@ -265,8 +265,12 @@ export const sayaScarf = (wind: (g: DrawCtx) => Wind): ItemDef => ({
     // The wrap round the neck and its stretch on top of the near shoulder (over the arm's shoulder,
     // as he has it) turn no further than the end. The wrap stays under the chin: when a pose moves the
     // head off the neck (the throw's release puts it far forward), it moves with it, instead of
-    // staying on the shoulder and running up the raised arm like a sleeve. At rest it is on the neck.
-    const off = sub(r.head, add(r.neck, v(-0.4, -5.9 * g.bp.headScale)));
+    // staying on the shoulder and running up the raised arm like a sleeve. At rest it is on the neck:
+    // the head stands where it does at rest over the neck (on a fitted body his head over his neck,
+    // which leans back from it; on the others just above it).
+    const fit = g.bp.fit;
+    const rest = fit ? sub(fit.head, fit.neck) : v(-0.4, -5.9 * g.bp.headScale);
+    const off = sub(r.head, add(r.neck, rest));
     stampPiece(g, 'head.mask', SAYA_SCARF_WRAP, add(r.neck, v(Math.round(off.x), Math.round(off.y))), t.angle + twist, 'torso', tint);
     // The stretch over the shoulder joins the wrap to the end on the shoulder; with the head (and the
     // wrap) moved well off the neck it would be left lying alone on the raised arm, so it is left out.

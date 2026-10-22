@@ -6,13 +6,18 @@ bugeado"): one of his pixels is one of ours (1024 x 1024, 10.24 picture pixels e
 phase 0). So her legs are copied pixel for pixel, in his colours only (PALETTE: each one the colour he
 painted, read as the median of the middle of his pixel), with his black line:
 
-  the bare thigh   between her skirt and her leggings, lit to the right;
   the legging top  her darkest navy band;
   the thigh        her navy legging above the knee;
   the knee pad     round, lit navy, rimmed in red;
   the shin         her navy wraps with red bands across, dark lines between;
   the shoe         her navy armoured shoe: red trim over the instep, a lit toe, her brown sole and,
                    on the far foot, a brown heel.
+
+Her bare thighs between her skirt and her leggings are not copied: they are the body's own (the owner's
+bare female body, body/female-v2), as his Saya stands as his bare woman does. A bare thigh painted on
+her legging rode the leg when it turned and stood off our thigh as a patch of skin by the knee (seated,
+and drawing back to throw). The legging top is cut where his skin ends (piece_of's 'skin' cells are left
+out).
 
 What his picture hides and is filled here, continuing his pixels: the weapons he drew are bugged (two
 crossed blades and a scabbard), and they are taken out. Under them were most of the near thigh and the
@@ -25,15 +30,11 @@ skin. Everything else is his (check_his() checks it).
 
 The pieces ride our rig as the owner's sabatons do (src/sprite/items/feet.ts): his legs stand where
 ours do at idle frame 0 when his picture is moved by OFFSET (the near leg to our ground at row 218; on our
-female body, tools/refs/saya_rig.py, his near knee pad falls on our knee and his shoe on our foot below
-the lower ankle). His far leg is kept whole, as long as he drew it: our far knee (row 189.7) falls on
-the top of his far knee pad, just under her skirt's hem, and his far shoe stands where he drew it, its
-sole two rows above the near one, six rows below our far ankle (our body's far foot is taken away under
-it, as the whole leg below the knee is). On the near leg the bare thigh (drawn into the body's layer,
-so trousers cover it) and the legging above the knee turn with the thigh about the knee; on the far
-leg they lie about our knee and turn with the shin (RIDES). The knee pads and the wrapped shins turn
-with the shin about the ankle, and the shoe stays flat on the ground. At rest every pixel is where he
-drew it.
+female body, the owner's bare woman, tools/refs/saya_rig.py, his knee pads fall on our knees and his
+shoes on our feet: his Saya stands as his bare woman does). On both legs the legging above the knee
+turns with the thigh about the knee (RIDES); the knee pads and the wrapped shins turn with the shin
+about the ankle, and the shoe stays flat on the ground (our body's leg is taken away below the knee
+under them). At rest every pixel is where he drew it.
 
 It writes the pieces as TypeScript (src/sprite/items/sayaLegsArt.ts) and, in <out>, his legs as he drew
 them beside them without the weapons at 8x. The same picture always gives the same bytes:
@@ -72,7 +73,7 @@ PALETTE = {
     'n': '#3e2a25',  # brown: sole and far heel
 }
 KIND = {'K': 'cloth', 'u': 'cloth', 'U': 'cloth', 'g': 'cloth', 'e': 'cloth', '3': 'cloth', 'q': 'band', 'r': 'band', 'z': 'skin', 'S': 'skin'}
-CLOTH, BAND, SKIN = 'e', 'r', 'S'  # the colours the slots (and the skin) are matched to
+CLOTH, BAND = 'e', 'r'  # the colours the slots are matched to
 
 # Where his picture sits on our idle frame 0, per leg: our x, y = his + OFFSET (below LIFT's rows,
 # that many rows higher).
@@ -248,15 +249,17 @@ def angle(a, b):
     return math.degrees(math.atan2(OUR[b][1] - OUR[a][1], OUR[b][0] - OUR[a][0]))
 
 
-# The thigh piece carries the shin's rows down to here under it (his rows), against holes at the knee.
-BACKING = 75
 
-# Each piece: the joint it hangs from and the limb whose angle it keeps. The far leg's bare thigh and
-# legging top lie below our far knee: they turn with the shin (src/sprite/items/sayaLegs.ts does the same).
-RIDES = {'skin': ('knee', ('hip', 'knee')), 'thigh': ('knee', ('hip', 'knee')), 'shin': ('ankle', ('knee', 'ankle')), 'foot': ('ankle', ('knee', 'ankle'))}
-RIDES_OF = {'N': RIDES, 'F': {**RIDES, 'skin': ('knee', ('knee', 'ankle')), 'thigh': ('knee', ('knee', 'ankle'))}}
+# Each piece: the joint it hangs from and the limb whose angle it keeps. On the owner's bare female body
+# both legging tops lie above our knees and turn with the thigh (on the earlier body the far knee was
+# higher, so the far one turned with the shin). Her bare thighs ('skin') are the body's own: not written.
+# Where a bent knee opens a gap between the thigh's piece and the shin's, the body's thigh shows, painted
+# in her legging's navy (sayaLegs.ts): the thigh piece no longer carries the top of the knee pad under it
+# (turned with the thigh, a sharp bend stood it off the leg as a second pad).
+RIDES = {'thigh': ('knee', ('hip', 'knee')), 'shin': ('ankle', ('knee', 'ankle')), 'foot': ('ankle', ('knee', 'ankle'))}
+RIDES_OF = {'N': RIDES, 'F': RIDES}
+PIECE_NAMES = ('thigh', 'shin', 'foot')
 DOCS = {
-    'skin': 'bare thigh between her skirt and her leggings (drawn into the body\'s layer; her skin follows ours)',
     'thigh': 'legging above the knee: her darkest navy band at the top',
     'shin': 'round knee pad rimmed in red and her wrapped shin, red bands across',
     'foot': 'armoured shoe: red trim over the instep, her brown sole',
@@ -268,12 +271,8 @@ def pieces():
     out = {}
     for s in ('N', 'F'):
         ox, oy = OFFSET[s]
-        for name in ('skin', 'thigh', 'shin', 'foot'):
+        for name in PIECE_NAMES:
             px = [(x, yd, ch) for x, y, yd, ch in placed(s) if piece_of(s, x, y) == name]
-            if name == 'thigh':
-                # backing: the top of the knee pad again under it, so where the turned shin does not
-                # quite meet the thigh no hole opens (the shin is drawn over it: at rest it is not seen)
-                px += [(x, yd, ch) for x, y, yd, ch in placed(s) if piece_of(s, x, y) == 'shin' and y <= BACKING]
             x0, y0 = min(p[0] for p in px), min(p[1] for p in px)
             x1, y1 = max(p[0] for p in px), max(p[1] for p in px)
             grid = [['.'] * (x1 - x0 + 1) for _ in range(y1 - y0 + 1)]
@@ -298,19 +297,18 @@ def write_ts(path, ps):
         '',
         "import type { PaintedPiece } from '../painted';",
         '',
-        '/** The colours of hers the colour slots are matched to: her lit navy, her red, her lit skin. */',
+        '/** The colours of hers the colour slots are matched to: her lit navy, her red. */',
         f"export const SHADE_CLOTH = '{PALETTE[CLOTH]}';",
         f"export const SHADE_BAND = '{PALETTE[BAND]}';",
-        f"export const SHADE_SKIN = '{PALETTE[SKIN]}';",
         '',
-        '/** What each of her colours is: navy cloth (or shoe), red band, skin. Her black line and brown sole stay. */',
-        "export const SHADE_KIND: Record<string, 'cloth' | 'band' | 'skin'> = {",
+        '/** What each of her colours is: navy cloth (or shoe), red band. Her black line and brown sole stay. */',
+        "export const SHADE_KIND: Record<string, 'cloth' | 'band'> = {",
     ]
     out += [f"  '{PALETTE[c]}': '{KIND[c]}'," for c in used if c in KIND]
     out += ['};', '']
     colors = [f"    {c}: '{PALETTE[c]}'," if c.isalpha() else f"    '{c}': '{PALETTE[c]}',"for c in used]
     for s in ('N', 'F'):
-        for name in ('skin', 'thigh', 'shin', 'foot'):
+        for name in PIECE_NAMES:
             p = ps[name + s]
             here = {ch for r in p['rows'] for ch in r}
             out += [f'/** Her {SIDE[s]} {DOCS[name]}. */', f'export const SHADE_{name.upper()}_{s}: PaintedPiece = {{',

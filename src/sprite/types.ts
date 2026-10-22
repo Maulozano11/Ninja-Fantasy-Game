@@ -58,6 +58,12 @@ export type EyeShape = 'standard' | 'sharp' | 'round' | 'calm' | 'fierce' | 'bri
 export type NeckType = 'slim' | 'strong';
 
 /**
+ * Hand size on the female bodies: the body's own (default), or small: his Aurelia's smaller hands in his
+ * pixels (body.ts smallHand). Ignored on the male and bulky bodies.
+ */
+export type HandSize = 'normal' | 'small';
+
+/**
  * Near-side cheek and jaw: V-line (default), fuller, or a strong flat jaw; or the owner's own head
  * from his Aiden picture (valiant: his skull, ear, cheeks, jaw and chin in his pixels).
  */
@@ -142,6 +148,8 @@ export interface SpriteAppearance {
   neck?: NeckType;
   /** Missing on older saves; treated as 'tapered'. */
   faceShape?: FaceShape;
+  /** Missing on older saves; treated as 'normal'. */
+  hands?: HandSize;
   /** How jutsus are cast. Missing on older saves; treated as 'runes'. */
   cast?: CastChoice;
   slots: Partial<Record<SlotId, ItemChoice>>;

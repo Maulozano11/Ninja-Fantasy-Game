@@ -6,13 +6,14 @@ import { EMBLEMS } from '../../sprite/items/headband';
 import { CHAKRA_CHOICES, chakraChoice, chakraHex } from '../../sprite/chakraInfo';
 import { CHAKRA_TYPES, chakraNature, chakraType, withNature } from '../../sprite/chakraNature';
 import { CAST_STYLE_INFO, defaultCastStyle } from '../../sprite/castInfo';
-import { CAST_STYLES } from '../../sprite/types';
+import { CAST_STYLES, isFemaleBody } from '../../sprite/types';
 import { CLOTH_COLORS, CLOTH_FAMILIES, EYE_COLORS, HAIR_COLORS, SKIN_TONES } from '../../sprite/palettes';
 import type {
   BodyType,
   EyeShape,
   EyeSpecial,
   FaceShape,
+  HandSize,
   HeadbandPosition,
   ItemChoice,
   NeckType,
@@ -131,6 +132,11 @@ const FACE_SHAPES: { id: FaceShape; label: string; sub: string }[] = [
 const NECKS: { id: NeckType; label: string; sub: string }[] = [
   { id: 'slim', label: 'Slim', sub: 'Slender' },
   { id: 'strong', label: 'Strong', sub: 'Thick, muscular' },
+];
+
+const HANDS: { id: HandSize; label: string; sub: string }[] = [
+  { id: 'normal', label: 'Normal hands', sub: "The body's own" },
+  { id: 'small', label: 'Small hands', sub: "Aurelia's hands" },
 ];
 
 const EYE_SHAPES: { id: EyeShape; label: string; sub?: string }[] = [
@@ -356,6 +362,27 @@ export const AppearanceEditor: React.FC<{
                 ))}
               </div>
             </div>
+            {isFemaleBody(look.body) && (
+              <div>
+                <SectionLabel>Hands</SectionLabel>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {HANDS.map((h) => (
+                    <OptionCard
+                      key={h.id}
+                      selected={(look.hands || 'normal') === h.id}
+                      label={h.label}
+                      sub={h.sub}
+                      onClick={() => {
+                        soundManager.playSelect();
+                        onChange({ ...look, hands: h.id });
+                      }}
+                    >
+                      <SpriteThumb look={{ ...look, hands: h.id }} eye={eye} />
+                    </OptionCard>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
 

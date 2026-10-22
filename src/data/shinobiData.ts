@@ -1535,6 +1535,8 @@ export const LEGENDARY_PRESETS: { name: string; tag: string; nameEs?: string; ta
         skin: '#f4c6a5',
         eyeShape: 'dawn',
         eyeColor: '#235384',
+        // his Aurelia's own small hands (the owner, 2026-10-22: "las manos mas pequeñas ponlas como opcion")
+        hands: 'small',
         slots: {
           hair: it('hair_dawn_bun'),
           armor: it('armor_dawn_vestment'),

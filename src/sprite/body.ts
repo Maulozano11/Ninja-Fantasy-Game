@@ -11,6 +11,7 @@ import { type BasePiece, FEMALE_BASE, FEMALE_BASE_CLOTH, FEMALE_BASE_JOINTS, FEM
 import { FEMALE_SHOULDER_N } from './femaleBodyArt';
 import { type PaintedEye, VALIANT_BROW_HAIR, VALIANT_EYE_COLORS, VALIANT_EYES, VALIANT_IRIS } from './eyeArt';
 import { VALIANT_HEAD, VALIANT_SKIN } from './headArt';
+import { DAWN_HAND_FIST, DAWN_HAND_LINE, DAWN_HAND_NEAR, DAWN_HAND_SKIN } from './aureliaHandsArt';
 import { DAWN_EYE_COLORS, DAWN_EYES, DAWN_IRIS } from './aureliaEyeArt';
 import { segAngle, stampPiece } from './painted';
 import { rotateTemplate, stampTemplate, type TemplatePalette } from './rotsprite';
@@ -204,7 +205,8 @@ function drawBaseBody(g: DrawCtx): void {
       stampBase(g, depth, forePiece, on, fore, s === 'N' ? 'forearmN' : 'forearmF', undefined, undefined, false, true);
     }
     const kind = handPose(g, s).kind;
-    if (kind === 'fist' || kind === 'relaxed') stampBase(g, depth, s === 'N' ? P.handN : P.handF, j.wrist, fore, s === 'N' ? 'handN' : 'handF');
+    if ((kind === 'fist' || kind === 'relaxed') && g.look.hands === 'small') smallHand(g, depth, s, kind, j.wrist, fore);
+    else if (kind === 'fist' || kind === 'relaxed') stampBase(g, depth, s === 'N' ? P.handN : P.handF, j.wrist, fore, s === 'N' ? 'handN' : 'handF');
     else {
       // his wrist under the small hand, so it stays on the forearm
       stampBase(g, depth, s === 'N' ? P.wristN : P.wristF, j.wrist, fore, s === 'N' ? 'handN' : 'handF');
@@ -231,6 +233,31 @@ function drawBaseBody(g: DrawCtx): void {
   stampBase(g, 'torso.body', P.chest, r.neck, up, 'torso', undefined, undefined, dressed);
   drawHead(g);
   arm('N');
+}
+
+/**
+ * The 'small' hands (appearance `hands`): his Aurelia's (aureliaHandsArt.ts, by
+ * tools/refs/aurelia-hands-from-ref.py), smaller than his bare woman's, in place of his open hand and fist:
+ * her open near hand hangs from the near wrist, her fist closes either arm's. His skin follows the body's
+ * skin, his line stays his; on her at rest every pixel is his, where he drew it.
+ */
+function smallHand(g: DrawCtx, depth: Depth, s: Side, kind: 'fist' | 'relaxed', wrist: Vec, deg: number): void {
+  const piece = s === 'N' && kind === 'relaxed' ? DAWN_HAND_NEAR : DAWN_HAND_FIST;
+  const L = g.L(depth);
+  const part: PartId = s === 'N' ? 'handN' : 'handF';
+  const line = g.m(DAWN_HAND_LINE, 'flat');
+  const mat = new Map(Object.entries(piece.colors).map(([ch, hex]) => [ch, hex === DAWN_HAND_LINE ? line : g.m(skinTone(hex, g.look.skin, DAWN_HAND_SKIN), 'flat')]));
+  const ax = Math.floor(wrist.x * RES);
+  const ay = Math.floor(wrist.y * RES);
+  const cells = rotateTemplate(piece, deg - piece.angle).filter((q) => mat.has(q.ch));
+  const at = new Set(cells.map((q) => (ay + q.dy) * GRID + ax + q.dx));
+  for (const q of cells) {
+    const x = ax + q.dx;
+    const y = ay + q.dy;
+    // turned, a pixel of his skin left on the hand's edge (where his cuff closed it at rest) is his line
+    const open = g.rig.pose !== 'idle' && [-1, 1, -GRID, GRID].some((d) => !at.has(y * GRID + x + d));
+    L.set(x, y, open ? line : mat.get(q.ch)!, 3, part, F_NO_OUTLINE | F_NO_TEXTURE);
+  }
 }
 
 /** Torso-local coordinates of a design point: x along the shoulders (toward the face), y up from the pelvis. */

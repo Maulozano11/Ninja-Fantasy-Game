@@ -225,8 +225,107 @@ function kneeEnd(piece: PaintedPiece, rows: number[], ly: number, at: Vec, deg: 
   return { c: v(px + lx * Math.cos(r) - ly * Math.sin(r), py + lx * Math.sin(r) + ly * Math.cos(r)), r: (b - a + 1) / 2 };
 }
 
+/** The boot's width at the knee (fine pixels): the widest of his rows of the thigh's piece just above it. */
+const kneeWidth = (thigh: PaintedPiece): number => 2 * kneeEnd(thigh, [thigh.pivot[1] - 3, thigh.pivot[1] - 2, thigh.pivot[1] - 1], 0, v(0, 0), thigh.angle).r;
+
 /** How far a knee bends (degrees past his drawing) before roundKnee counts it folded: the shin under the thigh. */
 const FOLD = 90;
+
+/**
+ * A corner of the boot's outline round the knee (within KNEE_REACH of it), where two flat edges of the thigh
+ * or the shin, each two pixels long or more, meet: square (`cut` 0: the pixel where they meet is drawn), or
+ * cut by a single pixel (`cut` 1: that pixel is empty, the two edges' ends beside it drawn). `a` and `b` are
+ * the two ways out of it; `e1` is how far the edge facing `a` runs from it (along -b), `e2` the edge facing
+ * `b` (along -a), both counted from the corner's pixel whether drawn or not; `f1` and `f2` are as long as
+ * that edge's face, when it ends turning out again (cut there by a pixel or not), else 0.
+ */
+type KneeCorner = { x: number; y: number; cut: 0 | 1; a: [number, number]; b: [number, number]; e1: number; e2: number; f1: number; f2: number };
+
+/** The corners of the boot's outline round the knee (`on`: drawn on the boot's layer, `leg`: and the thigh's or the shin's). */
+function kneeCorners(on: (x: number, y: number) => boolean, leg: (x: number, y: number) => boolean, kx: number, ky: number): KneeCorner[] {
+  const out: KneeCorner[] = [];
+  for (let y = ky - KNEE_REACH; y <= ky + KNEE_REACH; y++)
+    for (let x = kx - KNEE_REACH; x <= kx + KNEE_REACH; x++) {
+      if (Math.hypot(x - kx, y - ky) > KNEE_REACH) continue;
+      for (const a of [[0, -1], [0, 1]] as [number, number][])
+        for (const b of [[1, 0], [-1, 0]] as [number, number][]) {
+          if (on(x + a[0], y + a[1]) || on(x + b[0], y + b[1]) || on(x + a[0] + b[0], y + a[1] + b[1])) continue;
+          const cut = on(x, y) ? 0 : 1;
+          if (cut ? !leg(x - b[0], y - b[1]) || !leg(x - a[0], y - a[1]) || !on(x - a[0] - b[0], y - a[1] - b[1]) : !leg(x, y)) continue;
+          // how far an edge facing `o` runs along `d` from the corner, and the face it makes if it turns out at
+          // its far end (one longer when that end is cut by a pixel too: the pixel in from it is drawn)
+          const edge = (o: [number, number], d: [number, number]): [number, number] => {
+            let n = cut;
+            while (n < 14 && on(x + n * d[0], y + n * d[1]) && !on(x + n * d[0] + o[0], y + n * d[1] + o[1])) n++;
+            const [ex, ey] = [x + n * d[0], y + n * d[1]];
+            if (on(ex, ey)) return [n, 0];
+            return [n, on(ex - o[0], ey - o[1]) ? n + 1 : n];
+          };
+          const [e1, f1] = edge(a, [-b[0], -b[1]]);
+          const [e2, f2] = edge(b, [-a[0], -a[1]]);
+          if (e1 - cut < 2 || e2 - cut < 2) continue;
+          out.push({ x, y, cut, a, b, e1, e2, f1, f2 });
+        }
+    }
+  return out;
+}
+
+/**
+ * Rounds the boot's knee wherever it is left square (the owner, 2026-10-22: "si redondea las rodillas de
+ * aurelia donde quede muy cuadrada"). However far the knee bends, the end of the thigh's piece (square, his
+ * boot running on into the shin there) or the step between the thigh's piece and the shin's can leave the
+ * knee a block's corner, two flat edges meeting square. Each such corner is cut on the slant, steps of a
+ * pixel, as deep as a third of the boot's width (`w`: two pixels on her far boot, three on her near one). So
+ * a boot ending square past a folded knee ends in a round cap as wide as the boot (its face, cut at both
+ * ends, keeps two pixels in the middle; an end his sweep already cut by a pixel is cut as deep), and a corner
+ * on a gentler knee loses its point. A cut never takes a whole edge that turns in after it. The pixels a cut
+ * lays bare take his line. Again until no square corner is left. A corner already cut by a pixel is cut
+ * deeper only at the end of a face: elsewhere it already reads round.
+ */
+function roundCorners(g: DrawCtx, s: Side, knee: Vec, w: number): void {
+  const L = g.L(legDepth(s, 'feet'));
+  const line = g.m(DAWN_THIGH_N.colors.k, 'flat');
+  const parts = new Set([partIndex(`thigh${s}`), partIndex(`shin${s}`)]);
+  const on = (x: number, y: number) => x >= 0 && y >= 0 && x < GRID && y < GRID && L.mat[y * GRID + x] >= 0;
+  const leg = (x: number, y: number) => on(x, y) && parts.has(L.part[y * GRID + x]);
+  const kx = Math.floor(knee.x * RES);
+  const ky = Math.floor(knee.y * RES);
+  const deep = Math.max(1, Math.floor(w / 3));
+  for (let pass = 0; pass < 6; pass++) {
+    const off = new Set<number>();
+    for (const c of kneeCorners(on, leg, kx, ky)) {
+      // An edge turning in after the corner keeps a pixel. A face, cut at both ends, keeps two in the middle
+      // (its top or left end, `first`, cut a pixel deeper when they cannot share alike); a face of four (a
+      // knee standing out two pixels wide past its corners) goes whole, the boot's next pixels its face.
+      const room = (e: number, f: number, first: boolean) => (!f ? e - 1 : f === 4 ? 2 : f < 4 ? 1 : first ? Math.ceil((f - 2) / 2) : Math.floor((f - 2) / 2));
+      const n = Math.min(deep, room(c.e1, c.f1, c.b[0] < 0), room(c.e2, c.f2, c.a[1] < 0));
+      if (n <= c.cut || (c.cut && !c.f1 && !c.f2)) continue;
+      // the corner's triangle: i pixels in from the edge facing b, j in from the edge facing a
+      for (let i = 0; i < n; i++)
+        for (let j = 0; i + j < n; j++) {
+          const x = c.x - i * c.b[0] - j * c.a[0];
+          const y = c.y - i * c.b[1] - j * c.a[1];
+          if (leg(x, y)) off.add(y * GRID + x);
+        }
+    }
+    if (!off.size) break;
+    // and a pixel the cuts leave standing out on its own (a face of four cut at one end only) goes with them
+    for (let more = off; more.size; ) {
+      for (const i of more) {
+        L.mat[i] = -1;
+        L.flags[i] |= F_NO_EDGE;
+      }
+      for (const i of more) for (const j of [i - 1, i + 1, i - GRID, i + GRID]) if (L.mat[j] >= 0) L.mat[j] = line;
+      const next = new Set<number>();
+      for (const i of more)
+        for (const j of [i - 1, i + 1, i - GRID, i + GRID]) {
+          const [x, y] = [j % GRID, (j / GRID) | 0];
+          if (leg(x, y) && Math.hypot(x - kx, y - ky) <= KNEE_REACH && [j - 1, j + 1, j - GRID, j + GRID].filter((n) => L.mat[n] >= 0).length <= 1) next.add(j);
+        }
+      more = next;
+    }
+  }
+}
 
 /**
  * Rounds a bent knee (the owner, 2026-10-22: "corrige la rodilla en correr 2 se ve rara"). The thigh's
@@ -236,8 +335,9 @@ const FOLD = 90;
  * square block, a step at its top and a pixel hanging from its bottom like a hook. A knee is the two tubes
  * of the boot ending in round caps: past the end of both the thigh and the shin, only the cap of one of
  * them (a disc on the middle of its end, as wide as the boot there) is boot, and what lies beyond goes.
- * sealKnee then draws his line round what is left. Only a folded knee (FOLD) is rounded: bent less, the
- * sweep gives the knee the point a knee has, and at rest the caller leaves the knee be.
+ * sealKnee then draws his line round what is left. Only a folded knee (FOLD) is capped so; any square
+ * corner left on a knee however far it bends, this one too, roundCorners cuts after sealKnee. At rest the
+ * caller leaves the knee be.
  */
 function roundKnee(g: DrawCtx, s: Side, hip: Vec, knee: Vec, ankle: Vec, thigh: PaintedPiece, shin: PaintedPiece, thighA: number, shinA: number): void {
   if (Math.abs(kneeBend(thighA, shinA, thigh, shin)) < FOLD) return;
@@ -386,7 +486,7 @@ export const FEET_DAWN_BOOTS: ItemDef = {
     // column beside her front panel, laid where he drew it, on his bare woman's far leg (the same
     // column): its lace top rides the far thigh, the rest the far shin. Each boot is drawn once, on its
     // own leg: our leg below the lace top is the boot's.
-    const sealed: [Side, Vec, () => void][] = [];
+    const sealed: [Side, Vec, () => void, number][] = [];
     for (const s of ['F', 'N'] as Side[]) {
       const { hip, knee, ankle } = legJoints(g.rig, s);
       const [thigh, shin, foot, join, cut] = s === 'N' ? [DAWN_THIGH_N, DAWN_SHIN_N, DAWN_FOOT_N, DAWN_FOOT_JOIN_N, DAWN_BOOT_CUT] : [DAWN_THIGH_F, DAWN_SHIN_F, DAWN_FOOT_F, DAWN_FOOT_JOIN_F, DAWN_BOOT_CUT_F];
@@ -414,13 +514,15 @@ export const FEET_DAWN_BOOTS: ItemDef = {
       // turned, an edge of his boot left open is closed in his line (at rest his line closes it)
       const turned = Math.abs(shinA - shin.angle) >= 0.5 || Math.abs(thighA - thigh.angle) >= 0.5 || footAt.x !== at.x;
       if (turned) closeOpen(g, d, boot, DAWN_THIGH_N.colors.k);
-      if (turned) sealed.push([s, knee, () => roundKnee(g, s, hip, knee, ankle, thigh, shin, thighA, shinA)]);
+      if (turned) sealed.push([s, knee, () => roundKnee(g, s, hip, knee, ankle, thigh, shin, thighA, shinA), kneeWidth(thigh)]);
     }
     if (g.rig.pose !== 'idle') for (const s of ['F', 'N'] as Side[]) fillHoles(g, [legDepth(s, 'body'), legDepth(s, 'cloth'), legDepth(s, 'feet')]);
-    // and, last, each turned knee where the thigh's piece meets the shin's is rounded and sealed
-    for (const [s, knee, round] of sealed) {
+    // and, last, each turned knee where the thigh's piece meets the shin's is rounded and sealed, and no
+    // square corner is left on it
+    for (const [s, knee, round, w] of sealed) {
       round();
       sealKnee(g, s, knee);
+      roundCorners(g, s, knee, w);
     }
   },
 };

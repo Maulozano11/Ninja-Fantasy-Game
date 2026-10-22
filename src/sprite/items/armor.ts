@@ -1103,12 +1103,12 @@ const LEAN_SHEAR = 20;
 /**
  * Stamps his piece leaning `deg` about its pivot. A small lean shears it, each row moved across whole
  * (so his ab plates and strips stay his pixels, only stepped), as far as a turn would move it; a large
- * one turns it with RotSprite.
+ * one turns it with RotSprite (with `line`, his black line kept whole: rotateLined).
  */
-export function stampLeaning(g: DrawCtx, depth: Depth, piece: PaintedPiece, at: Vec, deg: number, part: PartId, color: (ch: string, hex: string) => string): void {
+export function stampLeaning(g: DrawCtx, depth: Depth, piece: PaintedPiece, at: Vec, deg: number, part: PartId, color: (ch: string, hex: string) => string, line?: (hex: string) => boolean): void {
   const d = deg - piece.angle;
   if (Math.abs(d) > LEAN_SHEAR) {
-    stampPiece(g, depth, piece, at, deg, part, color);
+    stampPiece(g, depth, piece, at, deg, part, color, line);
     return;
   }
   const pens: Record<string, number> = {};
@@ -1420,7 +1420,7 @@ function drawFounderCuirass(g: DrawCtx, steel: string, sash: string, strap: stri
     return;
   }
   clearUnderCuirass(g);
-  stampLeaning(g, 'torso.armor', r.body === 'bulky' ? FOUNDER_CHEST_BULKY : FOUNDER_CHEST, r.neck, segAngle(r.pelvis, r.neck), 'torso', founderCuirassColor(steel, sash, strap));
+  stampLeaning(g, 'torso.armor', r.body === 'bulky' ? FOUNDER_CHEST_BULKY : FOUNDER_CHEST, r.neck, segAngle(r.pelvis, r.neck), 'torso', founderCuirassColor(steel, sash, strap), (hex) => FOUNDER_CUIRASS_KIND[hex] === 'line');
 }
 
 /** Draws his skirt over the thighs, leaning with the torso about the pelvis: red follows Tunic, the leather Strips, his gold studs Studs; his black line and grey studs stay. */
@@ -1432,7 +1432,7 @@ function drawFounderSkirt(g: DrawCtx, tunic: string, strips: string, studs: stri
     if (k === 'gold') return retintHex(hex, FOUNDER_SKIRT_STUD, studs);
     return k === 'leather' ? retintHex(hex, FOUNDER_SKIRT_LEATHER, strips) : hex;
   };
-  stampLeaning(g, g.L('torso.over').used ? 'torso.over' : 'skirt', FOUNDER_SKIRT, r.pelvis, segAngle(r.pelvis, r.neck), 'pelvis', color);
+  stampLeaning(g, g.L('torso.over').used ? 'torso.over' : 'skirt', FOUNDER_SKIRT, r.pelvis, segAngle(r.pelvis, r.neck), 'pelvis', color, (hex) => FOUNDER_SKIRT_KIND[hex] === 'line');
 }
 
 // ---------------------------------------------------------------------------

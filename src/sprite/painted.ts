@@ -4,7 +4,7 @@
 
 import type { Depth, DrawCtx } from './ctx';
 import { F_NO_OUTLINE, F_NO_TEXTURE, GRID, PartId, RES, v, Vec } from './raster';
-import { PixelTemplate, rotateTemplate, stampTemplate, TemplatePalette } from './rotsprite';
+import { PixelTemplate, rotateLined, rotateTemplate, stampTemplate, TemplatePalette } from './rotsprite';
 
 export interface PaintedPiece extends PixelTemplate {
   /** One character per colour of his; '.' is empty. */
@@ -18,12 +18,13 @@ export const segAngle = (a: Vec, b: Vec): number => (Math.atan2(b.y - a.y, b.x -
 
 /**
  * Stamps a painted piece with its pivot on `at`, its limb now pointing along `deg`: at his angle
- * every pixel is his. `color` recolours a character's colour (for the item's colour slots).
+ * every pixel is his. `color` recolours a character's colour (for the item's colour slots). With
+ * `line` (which of his colours are his black line), turned it keeps his line whole (rotateLined).
  */
-export function stampPiece(g: DrawCtx, depth: Depth, piece: PaintedPiece, at: Vec, deg: number, part: PartId, color?: (ch: string, hex: string) => string): void {
+export function stampPiece(g: DrawCtx, depth: Depth, piece: PaintedPiece, at: Vec, deg: number, part: PartId, color?: (ch: string, hex: string) => string, line?: (hex: string) => boolean): void {
   const pal: TemplatePalette = {};
   for (const [ch, hex] of Object.entries(piece.colors)) pal[ch] = [g.m(color ? color(ch, hex) : hex, 'flat'), 3];
-  stampTemplate(g.L(depth), piece, at, deg - piece.angle, pal, part, { flags: F_NO_TEXTURE | F_NO_OUTLINE });
+  stampTemplate(g.L(depth), piece, at, deg - piece.angle, pal, part, { flags: F_NO_TEXTURE | F_NO_OUTLINE, line: line && ((ch) => line(piece.colors[ch])) });
 }
 
 const LIMB_ONLY = new WeakMap<PaintedPiece, PaintedPiece>();
@@ -125,7 +126,7 @@ const BEND_STEP = 5;
  * the limb bends past the way he drew it), so the outside of a bent elbow or knee or a raised shoulder is
  * his limb turned there, never a hole or another limb. A copy's inside covers his black line where the
  * limb bends (no line crosses the joint); where it would lie bare (outside the piece and outside
- * `covered`, the pieces drawn over it), it takes his line. With no bend it is stampPiece exactly. `line`
+ * `covered`, the pieces drawn over it), it takes his line. With no bend it is stampPiece given `line`. `line`
  * says which of his colours are his black line.
  */
 export function stampBent(
@@ -145,14 +146,16 @@ export function stampBent(
   const put = (t: PixelTemplate, a: Vec, d: number, first: boolean) => {
     const ax = Math.floor(a.x * RES);
     const ay = Math.floor(a.y * RES);
-    for (const p of rotateTemplate(t, d - piece.angle)) {
+    // His line kept whole as the piece turns (rotateLined): what it puts back goes only where nothing is.
+    const own = rotateTemplate(t, d - piece.angle).length;
+    rotateLined(t, d - piece.angle, isLine).forEach((p, k) => {
       const x = ax + p.dx;
       const y = ay + p.dy;
-      if (x < 0 || y < 0 || x >= GRID || y >= GRID) continue;
+      if (x < 0 || y < 0 || x >= GRID || y >= GRID) return;
       const i = y * GRID + x;
       const was = px.get(i);
-      if (first || !was || (isLine(was.ch) && !isLine(p.ch))) px.set(i, { ch: p.ch, added: !first });
-    }
+      if (k >= own ? !was : first || !was || (isLine(was.ch) && !isLine(p.ch))) px.set(i, { ch: p.ch, added: !first });
+    });
   };
   /** The piece turned by `d` about `about`: where its pivot lands. */
   const turned = (about: Vec, d: number): Vec => {

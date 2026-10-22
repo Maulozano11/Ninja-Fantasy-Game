@@ -21,7 +21,7 @@ import { dojutsuToEye, getAppearance } from './legacy';
 import { continuedTo, limbOnly, type PaintedPiece } from './painted';
 import { GRID, MaterialTable, partIndex, RES } from './raster';
 import type { DrawCtx } from './ctx';
-import { founderFarOut, founderFarReach, founderLegOut } from './items/founderOut';
+import { founderArmAtRest, founderFarOut, founderFarReach, founderLegOut } from './items/founderOut';
 import { buildRig, frameCount, rigPoseFor } from './rig';
 import { CAMP_POSES, MOVE_POSES, SPRITE_POSES, type BodyType, type SpriteAppearance, type SpritePose } from './types';
 
@@ -205,9 +205,11 @@ describe("the owner's Solen", () => {
         const fr = render(look(body), 'handsigns', f);
         const at = (p: number) => [...fr.part.keys()].filter((i) => fr.part[i] === p && opaque(fr.rgba, i)).map((i) => [i % GRID, Math.floor(i / GRID)]);
         const near = at(partIndex('handN'));
-        const far = at(partIndex('handF'));
-        // (the far fist mostly behind the near one)
-        assert.ok(near.length > 20 && far.length > 0, `${body} ${f}: both fists drawn`);
+        // The far fist mostly (in frame 1 wholly) behind the near one: where it shows, else its wrist.
+        const r = buildRig(body, 'handsigns', f);
+        const shown = at(partIndex('handF'));
+        const far = shown.length ? shown : [[r.wristF.x * RES, r.wristF.y * RES]];
+        assert.ok(near.length > 20, `${body} ${f}: the near fist drawn`);
         // They touch: at most his black line between them.
         const gap = Math.min(...near.map(([x, y]) => Math.min(...far.map(([u, w]) => Math.hypot(x - u, y - w)))));
         assert.ok(gap < 3, `${body} ${f}: fists ${gap.toFixed(1)} px apart`);
@@ -266,6 +268,7 @@ describe("the owner's Solen", () => {
         assert.ok(n >= 0.85 * cells, `${body} ${pose} ${f}: far forearm ${n} px, his near bracer ${cells}`);
       }
   });
+
   it("gives the far calf a little more, his own columns repeated, tapering to the ankle", () => {
     // The owner on combo frame 2: "le falta más pantorrilla a la pierna izquierda ponla un poco más gruesa
     // solo un poco" (tools/refs/solen-sandals-from-ref.py CALF_ROWS, CALF_COL).
@@ -288,4 +291,99 @@ describe("the owner's Solen", () => {
       }
   });
 
+  it('draws one figure in every pose and frame: no speck apart from it, no limb or sandal come loose', () => {
+    // Without his chakra and the cast's runes (effects drawn apart from him on purpose).
+    const still = (body: BodyType): SpriteAppearance => ({ ...look(body), chakra: { ...look(body).chakra!, onCharge: false, onCast: false, onVictory: false } });
+    for (const body of ['male', 'bulky'] as BodyType[]) {
+      const l = still(body);
+      for (const pose of POSES) {
+        const rp = rigPoseFor(pose, l.cast?.style, l.slots.held?.id);
+        for (let f = 0; f < frameCount(rp); f++) {
+          const fr = render(l, pose, f);
+          const lab = new Int32Array(GRID * GRID);
+          const sizes: number[] = [0];
+          for (let i = 0; i < GRID * GRID; i++) {
+            if (!opaque(fr.rgba, i) || lab[i]) continue;
+            const id = sizes.length;
+            let n = 0;
+            const stack = [i];
+            lab[i] = id;
+            while (stack.length) {
+              const j = stack.pop()!;
+              n++;
+              const x = j % GRID;
+              const y = Math.floor(j / GRID);
+              for (let dy = -1; dy <= 1; dy++)
+                for (let dx = -1; dx <= 1; dx++) {
+                  const k = (y + dy) * GRID + x + dx;
+                  if (x + dx >= 0 && x + dx < GRID && y + dy >= 0 && y + dy < GRID && !lab[k] && opaque(fr.rgba, k)) {
+                    lab[k] = id;
+                    stack.push(k);
+                  }
+                }
+            }
+            sizes.push(n);
+          }
+          const main = sizes.indexOf(Math.max(...sizes));
+          const loose = new Map<string, number>();
+          for (let i = 0; i < GRID * GRID; i++) {
+            if (!lab[i] || lab[i] === main || (pose === 'cast' && fr.part[i] === partIndex('handF'))) continue;
+            const p = `${lab[i]}`;
+            loose.set(p, (loose.get(p) ?? 0) + 1);
+          }
+          assert.equal(loose.size, 0, `${body} ${pose} ${f}: ${[...loose.values()].join(', ')} px apart from the figure`);
+        }
+      }
+    }
+  });
+
+  it('keeps his black line round his turned legs and fists: none of their colour lies bare against the air', () => {
+    const limbs = new Set((['shinN', 'shinF', 'footN', 'footF'] as const).map((p) => partIndex(p)));
+    for (const body of ['male', 'bulky'] as BodyType[]) {
+      for (const pose of POSES) {
+        const lb = look(body);
+        const rp = rigPoseFor(pose, lb.cast?.style, lb.slots.held?.id);
+        for (let f = 0; f < frameCount(rp); f++) {
+          const fr = render(lb, pose, f);
+          const r = buildRig(body, rp, f);
+          // His fists as they turn (at rest each lies as he drew it, against what he drew beside it), not a
+          // pointing hand or one cradling a book (our hand pictures), and not the cast's runes.
+          const g = { rig: r, has: (slot: string, id?: string) => (lb.slots as Record<string, { id: string }>)[slot]?.id === id } as unknown as DrawCtx;
+          const fist = (s: 'N' | 'F') => !['point', 'cradle'].includes((s === 'N' ? r.shapeN : r.shapeF) ?? '') && !founderArmAtRest(g, s) && !(s === 'F' && pose === 'cast');
+          const fists = new Set([...limbs, ...(fist('N') ? [partIndex('handN')] : []), ...(fist('F') ? [partIndex('handF')] : [])]);
+          const air = outside(fr.rgba);
+          const bare: string[] = [];
+          for (let i = 0; i < GRID * GRID; i++) {
+            if (!opaque(fr.rgba, i) || !fists.has(fr.part[i]) || luma(fr.rgba, i) <= 70) continue;
+            if ([i - 1, i + 1, i - GRID, i + GRID].some((j) => air[j])) bare.push(`${i % GRID},${Math.floor(i / GRID)}`);
+          }
+          assert.deepEqual(bare, [], `${body} ${pose} ${f}`);
+        }
+      }
+    }
+  });
 });
+
+/** Light of a pixel (0-255). */
+function luma(rgba: Uint8ClampedArray, i: number): number {
+  return 0.299 * rgba[i * 4] + 0.587 * rgba[i * 4 + 1] + 0.114 * rgba[i * 4 + 2];
+}
+
+/** The air round the figure: the transparent pixels reached from the frame's edge (not a hole inside it). */
+function outside(rgba: Uint8ClampedArray): Uint8Array {
+  const air = new Uint8Array(GRID * GRID);
+  const stack: number[] = [];
+  for (let k = 0; k < GRID; k++) stack.push(k, (GRID - 1) * GRID + k, k * GRID, k * GRID + GRID - 1);
+  while (stack.length) {
+    const i = stack.pop()!;
+    if (air[i] || rgba[i * 4 + 3] > 0) continue;
+    air[i] = 1;
+    const x = i % GRID;
+    if (x > 0) stack.push(i - 1);
+    if (x < GRID - 1) stack.push(i + 1);
+    if (i >= GRID) stack.push(i - GRID);
+    if (i < GRID * (GRID - 1)) stack.push(i + GRID);
+  }
+  return air;
+}
+

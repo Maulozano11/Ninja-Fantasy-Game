@@ -363,9 +363,11 @@ export const HELD_ITEMS: ItemDef[] = [
       // saved characters carry, now means his.
       const blade = c.toLowerCase() === '#74aac4' ? ICE_SWORD_BLADE : c;
       const tint = (_ch: string, hex: string) => (ICE_SWORD_KIND[hex] === 'line' ? hex : retintHex(hex, ICE_SWORD_BLADE, blade));
-      if (handsBusy(g)) drawPaintedWeapon(g, 'backGear', ICE_SWORD, backGrip(g, 48), backAngle(g, 48), tint);
-      else if (handsLimp(g)) drawPaintedWeapon(g, 'nearArm.held', ICE_SWORD, droppedGrip(g, 0.7), -86, tint);
-      else if (!handsReleased(g)) drawPaintedWeapon(g, 'nearArm.held', ICE_SWORD, g.rig.handN, swordAngle(g), tint);
+      // His black line kept whole as the sword turns (rotateLined).
+      const iceLine = (hex: string) => ICE_SWORD_KIND[hex] === 'line';
+      if (handsBusy(g)) drawPaintedWeapon(g, 'backGear', ICE_SWORD, backGrip(g, 48), backAngle(g, 48), tint, iceLine);
+      else if (handsLimp(g)) drawPaintedWeapon(g, 'nearArm.held', ICE_SWORD, droppedGrip(g, 0.7), -86, tint, iceLine);
+      else if (!handsReleased(g)) drawPaintedWeapon(g, 'nearArm.held', ICE_SWORD, g.rig.handN, swordAngle(g), tint, iceLine);
     },
   },
   {
@@ -1122,9 +1124,10 @@ export const ACCESSORY_ITEMS: ItemDef[] = [
         if (k === 'white' || k === 'stud' || k === 'steel') return retintHex(hex, FOUNDER_COWL_STUD, stud);
         return retintHex(hex, FOUNDER_COWL, c);
       };
-      stampLeaning(g, 'capeFront', FOUNDER_COWL_NECK, r.neck, torso, 'torso', tint);
-      stampLeaning(g, 'capeFront', FOUNDER_COWL_STUD_F, r.shoulderF, torso, 'upperArmF', tint);
-      stampLeaning(g, 'nearArm.over', FOUNDER_COWL_NEAR, r.shoulderN, torso, 'upperArmN', tint);
+      const cowlLine = (hex: string) => FOUNDER_COWL_KIND[hex] === 'line';
+      stampLeaning(g, 'capeFront', FOUNDER_COWL_NECK, r.neck, torso, 'torso', tint, cowlLine);
+      stampLeaning(g, 'capeFront', FOUNDER_COWL_STUD_F, r.shoulderF, torso, 'upperArmF', tint, cowlLine);
+      stampLeaning(g, 'nearArm.over', FOUNDER_COWL_NEAR, r.shoulderN, torso, 'upperArmN', tint, cowlLine);
     },
   },
   {

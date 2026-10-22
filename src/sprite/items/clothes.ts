@@ -880,7 +880,7 @@ function founderFist(g: DrawCtx, s: Side, p: PaintedPiece, out: Vec, depth: Dept
   const turn = ((segAngle(j.wrist, j.hand) - drawn + 540) % 360) - 180;
   const pal: TemplatePalette = {};
   for (const [ch, hex] of Object.entries(p.colors)) pal[ch] = [g.m(color(ch, hex), 'flat'), 3];
-  stampTemplate(g.L(depth), p, add(j.wrist, out), Math.abs(turn) <= 30 ? 0 : turn, pal, prt('hand', s), { flipX, flags: F_NO_TEXTURE | F_NO_OUTLINE });
+  stampTemplate(g.L(depth), p, add(j.wrist, out), Math.abs(turn) <= 30 ? 0 : turn, pal, prt('hand', s), { flipX, flags: F_NO_TEXTURE | F_NO_OUTLINE, line: (ch) => tunicLine(p.colors[ch]) });
 }
 
 /**
@@ -1030,7 +1030,7 @@ function founderLegs(g: DrawCtx, color: (ch: string, hex: string) => string): vo
       for (const d of layers) clipParts(g.L(d), leg, shape);
       // Over the leg's footwear (its armour layer): his trouser leg ends on his sandal's strap band below the knee, over
       // whatever a boot or sandal shows above it.
-      stampPiece(g, legDepth(s, 'armor'), thigh, add(knee, out), segAngle(hip, knee), prt('thigh', s), color);
+      stampPiece(g, legDepth(s, 'armor'), thigh, add(knee, out), segAngle(hip, knee), prt('thigh', s), color, trousersLine);
       continue;
     }
     const sandals = g.has('feet', 'feet_gladiator_sandals');
@@ -2150,7 +2150,7 @@ export const HAND_ITEMS: ItemDef[] = liftMain([
       const { out } = founderFarOut(g);
       for (const s of SIDES) {
         const j = armJoints(g.rig, s);
-        stampPiece(g, armDepth(s, 'armor'), founderBracer(g, s), s === 'F' ? add(j.elbow, out) : j.elbow, segAngle(j.elbow, j.wrist), prt('forearm', s), tint);
+        stampPiece(g, armDepth(s, 'armor'), founderBracer(g, s), s === 'F' ? add(j.elbow, out) : j.elbow, segAngle(j.elbow, j.wrist), prt('forearm', s), tint, (hex) => STEEL_BRACER_KIND[hex] === 'line');
       }
     },
   },

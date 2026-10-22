@@ -7,9 +7,9 @@ import { retintHex } from '../color';
 import { DrawCtx, FootArt, footDraw, ItemDef, legDepth, legJoints, legPoint, Side } from '../ctx';
 import type { BodyType } from '../types';
 import { continuedTo, limbOnly, type PaintedPiece, segAngle, stampPiece } from '../painted';
-import { add, along, ellipse, GRID, norm, partIndex, Pen, RES, seam, sub, v } from '../raster';
+import { add, along, ellipse, GRID, norm, partIndex, Pen, RES, seam, sub, v, type Vec } from '../raster';
 import { across, crease, fpx, limb, limbR, stitch, stud, tube, wrapStripes } from './clothes';
-import { founderLegLen, founderLegOut, founderLegsStill } from './founderOut';
+import { founderFootTurn, founderLegLen, founderLegOut, founderLegsStill } from './founderOut';
 import { FOUNDER_SANDAL_FOOT_F, FOUNDER_SANDAL_FOOT_N, FOUNDER_SANDAL_KIND, FOUNDER_SANDAL_LEATHER, FOUNDER_SANDAL_SHIN_F, FOUNDER_SANDAL_SHIN_N, FOUNDER_SANDAL_SKIN } from './founderSandalsArt';
 import { ROMAN_KIT_KIND, SANDAL_FOOT_F, SANDAL_FOOT_N, SANDAL_LEATHER, SANDAL_SHIN_F, SANDAL_SHIN_N, SANDAL_SKIN } from './bracersSandalsArt';
 import { BOOT_STEEL, BOOT_TRIM, crimsonKind, SABATON_FOOT_F, SABATON_FOOT_N, SABATON_SHIFT, SABATON_SHIN_F, SABATON_SHIN_N } from './sabatonsGauntletsArt';
@@ -311,6 +311,35 @@ function sandalShinMoving(body: BodyType, s: Side): PaintedPiece {
   return p;
 }
 
+/** How near the ankle (fine pixels) his laced shin and his sandal meet. */
+const ANKLE_R = 5;
+
+/**
+ * His line round the ankle of a moving leg. He drew his laced shin and his sandal as one: the shin's foot
+ * end and the sandal's top are open, each covering the other. As the shin turns away from the sandal (a
+ * step, a kick), their open corners come out beside each other bare; there they take his line, as the
+ * rest of the leg is closed.
+ */
+function closeAnkle(g: DrawCtx, s: Side, at: Vec, shin: PaintedPiece, tint: (ch: string, hex: string) => string): void {
+  const L = g.L(legDepth(s, 'feet'));
+  const lineCh = Object.keys(shin.colors).filter((ch) => FOUNDER_SANDAL_KIND[shin.colors[ch]] === 'line');
+  if (!lineCh.length) return;
+  const lines = new Set(lineCh.map((ch) => g.m(tint(ch, shin.colors[ch]), 'flat')));
+  const edge = g.m(tint(lineCh[0], shin.colors[lineCh[0]]), 'flat');
+  const ids = new Set([partIndex(`shin${s}`), partIndex(`foot${s}`)]);
+  const ax = Math.floor(at.x * RES);
+  const ay = Math.floor(at.y * RES);
+  const open: number[] = [];
+  for (let y = ay - ANKLE_R; y <= ay + ANKLE_R; y++)
+    for (let x = ax - ANKLE_R; x <= ax + ANKLE_R; x++) {
+      if (x < 1 || y < 1 || x >= GRID - 1 || y >= GRID - 1) continue;
+      const i = y * GRID + x;
+      if (L.mat[i] >= 0 && ids.has(L.part[i]) && !lines.has(L.mat[i]) && [i - 1, i + 1, i - GRID, i + GRID].some((j) => L.mat[j] < 0)) open.push(i);
+    }
+  // The open corner itself takes his line (a line put outside it would stick out of the leg).
+  for (const i of open) L.mat[i] = edge;
+}
+
 export const FEET_ITEMS: ItemDef[] = [
   {
     id: 'feet_leather',
@@ -525,14 +554,17 @@ export const FEET_ITEMS: ItemDef[] = [
       // Moving, his Solen's laced shin goes alone (not what was lifted beside it) and laced on up to the knee
       // (his far one is drawn short: at rest his trouser leg and the sword hide the rest).
       const moving = parts.paint !== 'roman' && !founderLegsStill(g);
+      // His Solen's laced shin keeps its line whole as it turns (rotateLined).
+      const line = parts.paint !== 'roman' ? (hex: string) => pieces.kind[hex] === 'line' : undefined;
       for (const s of SIDES) {
         const { knee, ankle } = legJoints(g.rig, s);
         bareFootOff(g, s);
         const shin = moving ? sandalShinMoving(g.rig.body, s) : pieces[s].shin;
         const foot = pieces[s].foot;
         const at = add(ankle, founderLegOut(g, s).out);
-        stampPiece(g, legDepth(s, 'feet'), shin, at, segAngle(knee, ankle), `shin${s}`, tint);
-        stampPiece(g, legDepth(s, 'feet'), foot, at, foot.angle, `foot${s}`, tint);
+        stampPiece(g, legDepth(s, 'feet'), shin, at, segAngle(knee, ankle), `shin${s}`, tint, line);
+        stampPiece(g, legDepth(s, 'feet'), foot, at, foot.angle + (moving ? founderFootTurn(g, s) : 0), `foot${s}`, tint, line);
+        if (moving) closeAnkle(g, s, at, shin, tint);
       }
     },
   },

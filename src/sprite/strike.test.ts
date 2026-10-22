@@ -84,7 +84,9 @@ describe('throw and pierce poses', () => {
   });
 
   it('hangs the head ahead of the chest and below the shoulders at the release, like the reference', () => {
-    for (const body of BODIES) {
+    // The female bodies follow the owner's own repaint of this moment on his heroine (Lyra) instead: the
+    // head up on the neck at its length (femaleBase.test.ts checks them).
+    for (const body of BODIES.filter((b) => !BODY_PARAMS[b].fit)) {
       const r = drawRig(body, 'throw', THROW_RELEASE_FRAME);
       const below = (Math.atan2(r.head.y - r.neck.y, r.head.x - r.neck.x) * 180) / Math.PI;
       assert.ok(below > 20 && below < 45, `${body}: neck to head ${below.toFixed(1)} degrees below level (his 33)`);

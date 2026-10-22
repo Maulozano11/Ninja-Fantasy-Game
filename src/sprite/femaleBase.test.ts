@@ -275,6 +275,36 @@ describe('the neck, shoulders and back in every pose (the throw\'s "hombro espal
     }),
   ];
 
+  it('keeps the head on his neck at its length in every pose and frame', () => {
+    // The throw once moved the head by a fixed offset, twice his neck's length from the neck's foot, and
+    // his neck was drawn on to reach it: a long ramp of skin, the head apart from the shoulders (the
+    // owner: "es el cuello lo que se ve raro"). The head comes to whole design units, so it may sit up
+    // to 1.5 fine px off his length.
+    const [hx, hy] = FEMALE_BASE_JOINTS.head;
+    const [nx, ny] = FEMALE_BASE_JOINTS.neck;
+    const his = Math.hypot(hx - nx, hy - ny);
+    for (const body of BODIES) {
+      for (const [pose, fr] of frames()) {
+        const r = drawRig(body, pose, fr);
+        const d = Math.hypot(r.head.x - r.neck.x, r.head.y - r.neck.y) * RES;
+        assert.ok(Math.abs(d - his) <= 1.5, `${body} ${pose} ${fr}: the head is ${d.toFixed(1)} px from the neck's foot (his ${his.toFixed(1)})`);
+      }
+    }
+  });
+
+  it('holds the head up on the neck through the throw, above the shoulders, as he repainted it', () => {
+    // docs/reference/poses/lyra-throw-owner-reference.jpg: the body pitched far forward, the head up on
+    // the neck looking at the target, the neck 14-24 degrees forward of upright (his at rest 16).
+    for (const body of BODIES) {
+      for (let fr = 2; fr < frameCount('throw'); fr++) {
+        const r = drawRig(body, 'throw', fr);
+        const deg = (Math.atan2(r.head.x - r.neck.x, r.neck.y - r.head.y) * 180) / Math.PI;
+        assert.ok(deg >= 10 && deg <= 30, `${body} throw ${fr}: the neck leans ${deg.toFixed(1)} degrees forward`);
+        assert.ok(r.head.y < Math.min(r.shoulderN.y, r.shoulderF.y) - 2, `${body} throw ${fr}: the head sits above the shoulders`);
+      }
+    }
+  });
+
   it('keeps the neck on the head, and opens no slab of one skin colour on the chest, neck or back', () => {
     for (const [name, look, poses] of looks) {
       const rest = torsoSlab(renderSprite(look, 'idle', 0));

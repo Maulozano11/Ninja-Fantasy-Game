@@ -253,6 +253,14 @@ interface PoseFrame {
   chestDy?: number;
   headDx?: number;
   headDy?: number;
+  /**
+   * On a body fitted to the owner's joints (BodyParams.fit) the head stays on his neck at his neck's
+   * length, the neck turned this many degrees forward from his at rest; headDx/headDy are not used
+   * there. The throw pitches the body far forward and his heroines keep the head up on the neck, looking
+   * at the target (docs/reference/poses/lyra-throw-owner-reference.jpg): a head moved by a fixed offset
+   * stretched his neck to twice its length.
+   */
+  neckPitch?: number;
   handN: HandTarget;
   handF: HandTarget;
   /** Ankle positions relative to each hip, in leg-length units. */
@@ -691,7 +699,9 @@ const TRAIN_FIST: PoseFrame[] = [
  * would sit under the throwing elbow, like a second hand on that arm). From the release on the
  * weapon is out of the hand (PoseFrame.released): the battle draws it in flight from where the
  * throw flung it (throwRelease() in grip.ts). Bare hands throw a kunai from the pouch (grip.ts
- * throwsKunai).
+ * throwsKunai). The female bodies keep the head up on the neck instead, as the owner repainted the
+ * release and follow-through on his heroine Lyra (docs/reference/poses/lyra-throw-owner-reference.jpg):
+ * the neck turned only a little forward of his at rest (neckPitch), the head above the shoulders.
  */
 const THROW: PoseFrame[] = [
   // Coil: crouched over the front foot, the weapon drawn back low behind the hip, the free hand out at the target.
@@ -700,11 +710,11 @@ const THROW: PoseFrame[] = [
   { lean: 9, footN: v(-0.46, 0.91), footF: v(0.4, 0.88), handN: arm(-0.42, -0.6), bendN: -1, handF: arm(0.96, -0.1), shapeN: 'grip', shapeF: 'point' },
   // Throw: the arm whips forward under the chin and flings the weapon level at the target, the body
   // pitching after it halfway to the release, the free arm swinging back.
-  { lean: 21, pelvisDx: 1.5, headDx: 3, headDy: 4.5, footN: v(-0.52, 0.87), footF: v(0.25, 0.8), handN: arm(0.78, 0.68), handF: arm(-0.55, 0.5), shapeN: 'grip', shapeF: 'fist' },
+  { lean: 21, pelvisDx: 1.5, headDx: 3, headDy: 4.5, neckPitch: 4, footN: v(-0.52, 0.87), footF: v(0.25, 0.8), handN: arm(0.78, 0.68), handF: arm(-0.55, 0.5), shapeN: 'grip', shapeF: 'fist' },
   // RELEASE: the owner's reference; the phase starts here.
-  { lean: 32, pelvisDx: 2, headDx: 6, headDy: 8, footN: v(-0.56, 0.83), footF: v(0.087, 0.637), handN: arm(-0.73, -0.62), handF: arm(-0.62, 0.55), shapeN: 'open', shapeF: 'open', released: true, streamBack: true },
+  { lean: 32, pelvisDx: 2, headDx: 6, headDy: 8, neckPitch: 6, footN: v(-0.56, 0.83), footF: v(0.087, 0.637), handN: arm(-0.73, -0.62), handF: arm(-0.62, 0.55), shapeN: 'open', shapeF: 'open', released: true, streamBack: true },
   // Follow-through: carried on into the leap, both feet leaving the ground.
-  { lean: 34, pelvisDx: 2.5, headDx: 6, headDy: 8, lift: 1.5, footN: v(-0.6, 0.78), footF: v(0.1, 0.6), handN: arm(-0.77, -0.6), handF: arm(-0.66, 0.5), shapeN: 'open', shapeF: 'open', released: true, streamBack: true },
+  { lean: 34, pelvisDx: 2.5, headDx: 6, headDy: 8, neckPitch: 8, lift: 1.5, footN: v(-0.6, 0.78), footF: v(0.1, 0.6), handN: arm(-0.77, -0.6), handF: arm(-0.66, 0.5), shapeN: 'open', shapeF: 'open', released: true, streamBack: true },
 ];
 
 /**
@@ -1427,9 +1437,18 @@ function solveFit(body: BodyType, bp: BodyParams, pose: RigPose, frame: number, 
   const aN = solveArm(shoulderN, f.handN, f.bendN ?? 1, len.upperArmN, len.forearmN, outN);
   const aF = solveArm(shoulderF, f.handF, 1, len.upperArmF, len.forearmF, -outF);
 
-  const headX = neck.x + loc.head.x + (f.headDx || 0);
-  const headY = neck.y + loc.head.y + (f.headDy || 0);
-  const head = f.snap ? v(Math.round(headX * RES) / RES, Math.round(headY * RES) / RES) : v(Math.round(headX), Math.round(headY));
+  let head: Vec;
+  if (f.neckPitch !== undefined) {
+    // His head on his neck at its length, the neck turned forward (PoseFrame.neckPitch), on whole fine
+    // pixels so the length stays his.
+    const a = (f.neckPitch * Math.PI) / 180;
+    const at = add(neck, v(loc.head.x * Math.cos(a) - loc.head.y * Math.sin(a), loc.head.x * Math.sin(a) + loc.head.y * Math.cos(a)));
+    head = v(Math.round(at.x * RES) / RES, Math.round(at.y * RES) / RES);
+  } else {
+    const headX = neck.x + loc.head.x + (f.headDx || 0);
+    const headY = neck.y + loc.head.y + (f.headDy || 0);
+    head = f.snap ? v(Math.round(headX * RES) / RES, Math.round(headY * RES) / RES) : v(Math.round(headX), Math.round(headY));
+  }
 
   return {
     body,

@@ -89,6 +89,7 @@ const g: DrawCtx = {
   pen: (hex, kind, part, bias = 0, flags = 0) => ({ mat: mats.get(hex, kind), part, bias, flags }),
   skin: mats.get(look.skin, 'skin'),
   has: () => false,
+  after: () => {},
 };
 drawBody(g);
 const rgb = new Uint8Array(N * 3);

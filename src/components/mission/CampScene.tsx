@@ -5,18 +5,21 @@ import { STICKS_PER_CAMP } from '../../data/campActivities';
 import { isUnconscious } from '../../rules/ninja';
 import { subscribeTick, TICK_FPS } from '../../sprite/ticker';
 import { GRID } from '../../sprite/raster';
-import type { SpritePose } from '../../sprite/types';
+import { seatFor, type SeatId } from '../../sprite/seats';
+import type { BodyType, SpritePose } from '../../sprite/types';
 import { useLang } from '../../i18n';
 import { Gauge } from '../ui/Ornate';
 import { T } from './campText';
 import {
   airGlow,
   backdrop,
+  bodyOf,
   FEET,
   FIRE,
   FireLight,
   footShadow,
   gradedMember,
+  gradedSeat,
   gradedSprite,
   GradedSprite,
   knownPose,
@@ -60,13 +63,25 @@ const seatPose = (i: number): CampSeatPose => {
 };
 
 /**
+ * The seat prop (sprite/seats.ts) a seat's pose sits on: the one the scene picks for the spot, else the
+ * default (the owner's rock). Drawn at the member's origin, under it; it stays when another pose is asked
+ * for, as the supports do. (The read sits on it on the male bodies, `body`.)
+ */
+function seatOf(i: number, body?: BodyType): SeatId | null {
+  const spot = SPOTS[i];
+  return spot ? seatFor(seatPose(i), spot.seat, body) : null;
+}
+
+/**
  * The prop a seat's pose rests on, placed from the pose rig: a seat under the hips (sit, read) or a
  * rock behind the back (lean). It stays when another pose is asked for (a jutsu's hand signs).
  */
-function supportOf(i: number): ScenePropDef | null {
+function supportOf(i: number, body?: BodyType): ScenePropDef | null {
   const spot = SPOTS[i];
   if (!spot?.support) return null;
   const pose = seatPose(i);
+  // a pose that sits on a seat prop (seatOf) has it instead
+  if (seatOf(i, body)) return null;
   const dx = pose === 'lean' ? LEAN_DX : pose === 'sit' || pose === 'read' ? SEAT_DX : null;
   if (dx === null) return null;
   const back = spot.flip ? 1 : -1;
@@ -211,9 +226,22 @@ export function CampScene({ members, fire, asleep, dawn, alarm, shrine, danger, 
       } else if (p.name === 'stone_lantern') prop(p, 'lit', { emissive: true });
       else prop(p, p.anim);
     }
-    seats.forEach((_, i) => {
-      const s = supportOf(i);
+    seats.forEach((m, i) => {
+      const body = bodyOf(m);
+      const s = supportOf(i, body);
       if (s) prop(s, undefined);
+      const seat = seatOf(i, body);
+      const spot = SPOTS[i];
+      if (seat)
+        out.push({
+          z: spot.y - 0.25,
+          key: `${seat}@${spot.x},${spot.y}`,
+          frameAt: () => 0,
+          draw: (ctx) => {
+            const c = gradedSeat(seat, spot.x, spot.y, spot.flip, light);
+            if (c) ctx.drawImage(c.canvas, spot.x - (spot.flip ? GRID - 1 - FEET.x : FEET.x) + c.ox, spot.y - FEET.y + c.oy);
+          },
+        });
     });
     seats.forEach((m, i) => {
       const spot = SPOTS[i];

@@ -20,7 +20,7 @@ npm run sprites -- preset <presetId> out.png  # a preset in every pose
 | Head | Shrunk by `headScale` (about 0.78). The face from the lash row down is a fixed pixel template. |
 | Bodies | Male, female, bulky. Every item must work on all three. |
 | Poses | idle, handsigns, attack (3 frames), cast, hurt, victory, charge. Every item must work in all of them. |
-| Posture | Upright: chest slightly out, head over the shoulders. Never hunched. In idle the legs are straight under the hips and the arms hang relaxed and nearly straight, fists at hip height. |
+| Posture | Upright: chest slightly out, head over the shoulders. Never hunched. Even with the body pitched far forward (the throw's release and follow-through) the head stays up on the neck at its rest length, the neck turned 10-30 degrees forward of upright, above the shoulders, looking at the target (`PoseFrame.neckPitch` in `rig.ts`; the owner: *"hay que arreglarle el cuello y la cabeza a las ultimas 2 poses de arrojar"*, as on his heroine's throw: *"es el cuello lo que se ve raro"*). In idle the legs are straight under the hips and the arms hang relaxed and nearly straight, fists at hip height. |
 | Depth | 3/4 front ground plane: the near foot stands lower on screen, the far hip and foot sit higher (`ANKLE_N`, `FAR_LIFT` in `rig.ts`). |
 | Hips and legs | Waist, hips and pelvis line up straight under the torso: the hip sides follow the thighs' outer edges (`torsoPoly`), never wider, so there is no bell. A narrow crotch splits the legs, which read as two separate tapered columns down to the feet. |
 
@@ -63,6 +63,35 @@ The face is a template copied pixel by pixel from the reference (`FACE_MAIN` and
 - **Skin ramp** (`makeRamp` kind `skin`): the chosen skin color is the broad lit tone. Shadows turn rose and muted (never bright orange); there are no near-white highlights.
 - **Limbs** use cylinder bands (`cylShade` in `raster.ts`): a darker rim on the lit edge, a wide base core, a shadow band, and a dark far edge, with jittered band edges so the shading breaks into clusters.
 - **Arms are as wide as the reference's and tapered** (`ARM_PROFILE` in `ctx.ts`): about 9 px with the outline through the upper arm and the forearm swell just below the elbow, a slight pinch at the elbow, tapering to about 6 px at the wrist (male body). Never straight, even-width tubes. Forearm and biceps carry a lit muscle crest and a shadow line. Legs follow `LEG_PROFILE` (full thigh, narrower knee, calf swell, slim ankle).
+- **The extended forearm** (the owner, 2026-10-22, on Ren's combo: *"su antebrazo izquierdo en el combo se ve
+  aun flaco pon como el antebrazo del modelo de lanzar jutsu y haz una regla para que se vea asi todos los lanzar
+  jutsu de los personajes de la forma correcta y toda pose que tenga el brazo extendido de esa forma se vea
+  asi"*). The model is Ren's far forearm casting the runes (`items/nightCastArmsArt.ts`, made 2 px thinner at
+  his request: *"1-2 pixels less"*). Every arm reaching out (`armReaches` in `ctx.ts`: straight, the upper arm
+  within 45 degrees of level once the torso's lean is taken off; the cast at the runes in every cast style, the
+  combo's jab and cross, the attack's follow-through, the pierce, the throw's pointing arm, the tackle) has
+  this forearm:
+
+  | Body | Rows across, his line included (elbow to two-thirds down) | At the wrist | Measured on |
+  |---|---|---|---|
+  | Male | 8 | 6 | Ren's casting forearm (8, 6 at its end) and his near forearm (8 to 6); Aiden's vambrace and Solen's bracer are armour over it (10-11) |
+  | Bulky | 10 | 7 | No picture of his: his 8 and 6 grown as our bulky arm is from the male (`armR` 2.75 / 2.25 and 1.85 / 1.5) |
+  | Female | 7 | 5 | The bare female forearm he drew (`body/female-v2`, `femaleBaseArt.ts`: 7 to 5) |
+
+  - Straight from the elbow to two-thirds of the way down, then tapering to the wrist (`FOREARM_RULE`,
+    `FOREARM_TAPER`): no swell, never a stick. One row more or less is the tolerance (a turned piece steps
+    along its slant).
+  - His line is 1 px on both sides, top and bottom (the outline pass on our arms; his own line on his pieces).
+  - His shading across it, top to bottom (Ren's skin): line `#000116`, two lit rows `#e8a883`, a mid crease row
+    `#c0765e`, two lit rows again, one dark row under it `#7f4643`, line. Our drawn forearms keep the cylinder
+    shading of `cylShade` (lit top, shadow below, dark far edge), the same order.
+  - Where it is drawn: our skin arm (`armSpan`, `armRadius`), every cloth or armour that runs down the forearm
+    (`limbR` in `clothes.ts`, `forearmR` for bracers and sleeves in `armor.ts`), so a sleeve keeps its own cloth
+    over the rule's forearm. His painted arms: Ren's far arm reaching out is his casting forearm in every pose
+    (`nightArmStamps`; on the longer bulky forearm its wrist end is carried on to the wrist); Solen's far arm
+    reaching out is his near arm mirrored (`founderFarReach`, same test). His painted pieces keep his rows on
+    every body they are carried on.
+  - An arm at rest is left as drawn (idle is his picture); `src/sprite/forearm.test.ts` checks the rule.
 - **Contact shadows:** skin is one shade darker for two rows under any sleeve, hem, collar or chin drawn over it (`castShadows` in `compose.ts`).
 - **Hands** are pixel templates (`HAND_*` in `ctx.ts`, about 9-10 px across like the reference's fist) rotated with RotSprite: lit knuckle pixels, shadow on the side away from the light, and near-black finger creases. A weapon hand wraps the grip with distinct 1 px fingers and a thumb crease, with the pommel and guard showing on either side of the fist. A free hand is small and relaxed (`hold` and `relaxed` shapes).
 - **Male skin: the owner's shading (decided 2026-10-21).** His Roman paint-over (`docs/reference/roman-owner-reference.jpg`) painted our male's arms, legs and face with stronger muscle shading than our body. Shown the proposal (`cuerpo-masculino-propuesta.png`), he answered, verbatim: "1 apruevo coraza falda brazaletes y sandalias 2 si 3 si copia la cara". So every male body (male and bulky) takes his skin; the female bodies (female, slender) keep theirs exactly. What it is:

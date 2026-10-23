@@ -9,10 +9,12 @@ import { isLine, makeRamp, mixHex, retintHex, retintSkin, retintSkinLifted } fro
 import { armPoint, armRadius, armSpan, DrawCtx, fillTorso, FOOT_BARE, footDraw, handDraw, legSpan, Side, torsoPoly } from './ctx';
 import { type PaintedEye, VALIANT_BROW_HAIR, VALIANT_EYE_COLORS, VALIANT_EYES, VALIANT_IRIS } from './eyeArt';
 import { VALIANT_HEAD, VALIANT_SKIN } from './headArt';
+import { NIGHT_EYE_COLORS, NIGHT_EYES, NIGHT_IRIS } from './nightEyeArt';
+import { NIGHT_HEAD, NIGHT_SKIN } from './nightHeadArt';
+import { type PaintedPiece, stampPiece } from './painted';
 import { FOUNDER_FACE_KIND, FOUNDER_HEAD, FOUNDER_IRIS, FOUNDER_SKIN } from './founderFaceArt';
 import { NOBLE_EYE_COLORS, NOBLE_EYES, NOBLE_IRIS } from './nobleEyeArt';
 import { NOBLE_HEAD, NOBLE_SKIN } from './nobleHeadArt';
-import { type PaintedPiece, stampPiece } from './painted';
 import { ROMAN_EYE_COLORS, ROMAN_EYES, ROMAN_IRIS } from './romanEyeArt';
 import { ROMAN_HEAD, ROMAN_SKIN } from './romanHeadArt';
 import { ballShade, capsule, ellipse, F_NO_OUTLINE, F_NO_TEXTURE, GRID, Layer, PartId, Pen, poly, RES, seam, v, Vec } from './raster';
@@ -261,7 +263,7 @@ function muscleLine(g: DrawCtx, L: Layer, s: Side, mat: number, t0: number, t1: 
     const ln = Math.hypot(n.x, n.y) || 1;
     n = v(n.x / ln, n.y / ln);
     if (n.x * -0.72 + n.y * -0.69 < 0) n = v(-n.x, -n.y); // toward the light
-    const r = armRadius(g, t);
+    const r = armRadius(g, t, s);
     const fx = Math.floor((p.x + n.x * r * off) * RES);
     const fy = Math.floor((p.y + n.y * r * off) * RES);
     const i = fy * GRID + fx;
@@ -355,6 +357,8 @@ const PAINTED_HEADS: Partial<Record<FaceShape, PaintedHead>> = {
   // Scarlet's (src/sprite/nobleHeadArt.ts): his near eye a column further in, past his bangs, his far
   // one where ours is (his face runs a column wider there); his smile his own.
   noble: { piece: NOBLE_HEAD, skin: NOBLE_SKIN, tint: retintSkin, mouth: false, ex: 1, fx: 9 },
+  // His Ren's (src/sprite/nightHeadArt.ts): his narrower face with his own mouth.
+  night: { piece: NIGHT_HEAD, skin: NIGHT_SKIN, tint: retintSkin, mouth: false, ex: 1, fx: 9 },
 };
 
 /** The owner's head for the character's face shape, if it is one of his. */
@@ -362,7 +366,7 @@ const paintedHead = (g: DrawCtx): PaintedHead | undefined => (g.look.faceShape ?
 
 /**
  * One of the owner's heads (face shape 'valiant', src/sprite/headArt.ts, from his Aiden picture;
- * 'roman', src/sprite/romanHeadArt.ts, from his Roman paint-over; 'noble', src/sprite/nobleHeadArt.ts,
+ * 'roman', src/sprite/romanHeadArt.ts, from his Roman paint-over; 'night', nightHeadArt.ts, from his Ren; 'noble', src/sprite/nobleHeadArt.ts,
  * from his Scarlet picture): his pixels, skull to chin, stamped on
  * the face anchor as they are. They are already the final on-screen pixels, so the head group's scale
  * does not touch them; the eye options draw the eyes on them (and the face template the mouth on his
@@ -403,10 +407,10 @@ function drawFounderHead(g: DrawCtx): void {
  *   then the jaw tapers to the chin so the lower face stays small.
  * soft: a fuller cheek, three rows straight before a gentle taper.
  * square: the reference's original strong jaw, with a flat jaw line.
- * (valiant, noble, founder and roman, the owner's heads, are his pixels whole: see drawPaintedHead,
+ * (valiant, noble, night, founder and roman, the owner's heads, are his pixels whole: see drawPaintedHead,
  * drawFounderHead.)
  */
-const FACE_LEFT: Record<Exclude<FaceShape, 'valiant' | 'noble' | 'founder' | 'roman'>, string[]> = {
+const FACE_LEFT: Record<Exclude<FaceShape, 'valiant' | 'noble' | 'night' | 'founder' | 'roman'>, string[]> = {
   tapered: ['osbbbbb', 'ossbbbb', '.osbbbb', '..osbbb', '...osbb', '....osb', '.....os', '......o', '.......', '.......'],
   soft: ['osbbbbb', 'ossbbbb', 'ossbbbb', '.osbbbb', '..osbbb', '...osbb', '....osb', '.....oo', '.......', '.......'],
   square: ['osbbbbb', 'ossbbbb', 'osDsbbb', 'ossbbbb', '.osbbbs', '..osbbs', '...osbs', '....ooo', '.......', '.......'],
@@ -414,7 +418,7 @@ const FACE_LEFT: Record<Exclude<FaceShape, 'valiant' | 'noble' | 'founder' | 'ro
 
 const faceLeft = (g: DrawCtx): string[] => {
   const s = g.look.faceShape;
-  return (s && s !== 'valiant' && s !== 'noble' && s !== 'founder' && s !== 'roman' && FACE_LEFT[s]) || FACE_LEFT.tapered;
+  return (s && s !== 'valiant' && s !== 'noble' && s !== 'night' && s !== 'founder' && s !== 'roman' && FACE_LEFT[s]) || FACE_LEFT.tapered;
 };
 
 const FACE_MAIN: Record<string, string[]> = {
@@ -478,6 +482,9 @@ const EYE_ROWS: Record<string, { near: string[]; far: string[] }> = {
   // His Roman eyes (src/sprite/romanEyeArt.ts), where his Aiden eyes sit: a heavy black line, brow and
   // lash in one, and a single row of white and red iris under it. Drawn in his pixels.
   roman: { near: ROMAN_EYES.open.near.letters, far: ROMAN_EYES.open.far.letters },
+  // The owner's eyes on his Ren (src/sprite/nightEyeArt.ts): his lash line on the anchor row, his white
+  // and blue iris in the two rows under it. Drawn in his pixels.
+  night: { near: NIGHT_EYES.open.near.letters, far: NIGHT_EYES.open.far.letters },
 };
 
 /** An eye shape drawn in the owner's own pixels. */
@@ -500,6 +507,7 @@ const PAINTED_EYES: Partial<Record<EyeShape, PaintedEyeShape>> = {
   // Scarlet's brown lines round his eyes (over the lash, at its inner end, under its outer corner)
   // are drawn in his skin's browns, not his hair's crimson (his brows are under his bangs).
   noble: { states: NOBLE_EYES, colors: NOBLE_EYE_COLORS, iris: NOBLE_IRIS, browSkin: NOBLE_SKIN },
+  night: { states: NIGHT_EYES, colors: NIGHT_EYE_COLORS, iris: NIGHT_IRIS },
 };
 
 /** The column of a painted eye's dark iris on the row under its lash (where the clan's marks go). */

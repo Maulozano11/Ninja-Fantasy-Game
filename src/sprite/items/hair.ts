@@ -20,6 +20,7 @@ import { ellipse, F_NO_OUTLINE, F_NO_TEXTURE, GRID, Layer, Pen, poly, v, Vec } f
 import type { PaintedPart } from './capeArt';
 import { braid, BraidArt, hairTemplate, hd, hlock, lock, LockOpts } from './hairkit';
 import { SCARLET_HAIR_BACK, SCARLET_HAIR_BASE, SCARLET_HAIR_FRONT, SCARLET_HAIR_LINE } from './scarletHairArt';
+import { NIGHT_HAIR_BACK, NIGHT_HAIR_BASE, NIGHT_HAIR_FRONT, NIGHT_HAIR_LINE } from './nightHairArt';
 import { VALIANT_HAIR_BACK, VALIANT_HAIR_BASE, VALIANT_HAIR_FRONT, VALIANT_HAIR_LINE } from './valiantHairArt';
 import { FOUNDER_HAIR_BACK, FOUNDER_HAIR_BASE, FOUNDER_HAIR_FRONT, FOUNDER_HAIR_LINE } from './founderHairArt';
 
@@ -1607,7 +1608,7 @@ const hairStyle = (id: string, name: string, desc: string, def: string, body?: (
 });
 
 /**
- * Stamps a part of the owner's painted hair (his pixels and colours, valiantHairArt.ts and
+ * Stamps a part of the owner's painted hair (his pixels and colours, valiantHairArt.ts, nightHairArt.ts and
  * scarletHairArt.ts, the latter brought down to our scale) with its pivot
  * on the face anchor, the near eye's lash start, so it frames the eyes as he drew it on every body and
  * in every pose. His pixels are already the final on-screen pixels: they go in unscaled, like the
@@ -1650,6 +1651,9 @@ const valiantHairColor = (hair: string) => (ch: string, hex: string) => (VALIANT
 
 /** His Scarlet's hair recoloured: his line stays, his crimsons move the way his base crimson does. */
 const scarletHairColor = (hair: string) => (ch: string, hex: string) => (SCARLET_HAIR_LINE.includes(ch) ? hex : retintHex(hex, SCARLET_HAIR_BASE, hair));
+
+/** His Ren's hair recoloured: his black line stays, his blue-greys move the way his middle one does. */
+const nightHairColor = (hair: string) => (ch: string, hex: string) => (NIGHT_HAIR_LINE.includes(ch) ? hex : retintHex(hex, NIGHT_HAIR_BASE, hair));
 
 export const HAIR_ITEMS: ItemDef[] = [
   {
@@ -1841,6 +1845,23 @@ export const HAIR_ITEMS: ItemDef[] = [
       paintedHair(g, g.L('hairBack'), SCARLET_HAIR_BACK, tint);
       paintedHair(g, g.L('hairFront'), SCARLET_HAIR_FRONT, tint);
       trimSkull(g, SCARLET_HAIR_BACK);
+    },
+  },
+  {
+    id: 'hair_night',
+    slot: 'hair',
+    name: 'Night Spikes',
+    desc: 'Spiky black-blue hair: spikes standing up from the crown and fanning out to both sides, a long fringe of strands between the eyes, a lock down the cheek over the ear.',
+    colors: hairColor(NIGHT_HAIR_BASE),
+    draw: (g, [c]) => {
+      // The owner's hair on his Ren, his pixels (the new standard for characters, 2026-10-21; tools/refs/
+      // ren-hair-from-ref.py): every strand, light and line of his over the head, and behind the head the
+      // same hair with what his face hides filled in. Where his picture shows forehead or ear, the head
+      // shows.
+      const tint = nightHairColor(c);
+      paintedHair(g, g.L('hairBack'), NIGHT_HAIR_BACK, tint);
+      paintedHair(g, g.L('hairFront'), NIGHT_HAIR_FRONT, tint);
+      trimSkull(g, NIGHT_HAIR_BACK);
     },
   },
   {

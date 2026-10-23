@@ -14,8 +14,8 @@
 // crests, never stripe patterns.
 
 import { hexToRgb, retintHex } from '../color';
-import { armDepth, armJoints, Depth, DEPTHS, DrawCtx, ItemDef, legDepth, legJoints, Side, torsoPoly } from '../ctx';
-import { clearArmPast, clearTorsoPast, PaintedPiece, PaintedSheet, pieceCover, segAngle, stampPiece, stampSheet, stretchPiece, widenPiece } from '../painted';
+import { armDepth, armJoints, Depth, DEPTHS, DrawCtx, forearmR, ItemDef, legDepth, legJoints, Side, torsoPoly } from '../ctx';
+import { clearArmPast, clearTorsoPast, PaintedPiece, PaintedSheet, pieceCover, segAngle, stampLeaning, stampPiece, stampSheet, stretchPiece, widenPiece } from '../painted';
 import { add, capsule, ellipse, F_NO_OUTLINE, F_NO_TEXTURE, fine, GRID, Layer, len, lerp, norm, partIndex, PartId, Pen, perp, poly, RES, scale, sub, v, Vec } from '../raster';
 import { drawRig, GROUND, Rig, rigPoseFor, turnPoint } from '../rig';
 import {
@@ -450,7 +450,7 @@ function bracer(g: DrawCtx, pen: Pen, o: BracerOpts = {}): void {
     const L = g.L(armDepth(s, 'armor'));
     const f = armFrame(g, s, 1);
     const p = onLimb(pen, s, 'forearm');
-    const rad = (t: number) => R[2] + (R[3] - R[2]) * t + grow;
+    const rad = (t: number) => forearmR(g, s, t) + grow;
     const at = (a: number) => a / Math.max(0.01, f.len);
     /** Which side of the forearm (+1 outer, -1 inner) faces the light. */
     const ls = limbDot(f, 1, 2) > limbDot(f, -1, 2) ? 1 : -1;
@@ -855,7 +855,7 @@ function sleeves(g: DrawCtx, pen: Pen, grow = 0.45): void {
       const p = onLimb(pen, s, seg ? 'forearm' : 'upperArm');
       const rad = (a: number) => {
         const t = clamp(a / Math.max(0.01, f.len), 0, 1);
-        return (seg ? R[2] + (R[3] - R[2]) * t : R[0] + (R[1] - R[0]) * t) + grow;
+        return (seg ? forearmR(g, s, t) : R[0] + (R[1] - R[0]) * t) + grow;
       };
       lfill(A, f, p, R[0] + 1.5, (a, bb) => {
         if (a < (seg ? -0.6 : -1.2) || a > f.len + (seg ? -0.3 : 0.6)) return null;
@@ -1438,32 +1438,6 @@ const ROMAN_OLD_DEFAULTS: Record<string, string> = {
   '#d4a531': PTERUGES_STUD,
 };
 const romanSlot = (hex: string): string => ROMAN_OLD_DEFAULTS[hex.toLowerCase()] ?? hex;
-
-/** Past this lean (degrees from his picture) a piece is turned with RotSprite; up to it, sheared. */
-const LEAN_SHEAR = 20;
-
-/**
- * Stamps his piece leaning `deg` about its pivot. A small lean shears it, each row moved across whole
- * (so his ab plates and strips stay his pixels, only stepped), as far as a turn would move it; a large
- * one turns it with RotSprite (with `line`, his black line kept whole: rotateLined).
- */
-export function stampLeaning(g: DrawCtx, depth: Depth, piece: PaintedPiece, at: Vec, deg: number, part: PartId, color: (ch: string, hex: string) => string, line?: (hex: string) => boolean): void {
-  const d = deg - piece.angle;
-  if (Math.abs(d) > LEAN_SHEAR) {
-    stampPiece(g, depth, piece, at, deg, part, color, line);
-    return;
-  }
-  const pens: Record<string, number> = {};
-  for (const [ch, hex] of Object.entries(piece.colors)) pens[ch] = g.m(color(ch, hex), 'flat');
-  const L = g.L(depth);
-  const ax = Math.floor(at.x * RES) - piece.pivot[0];
-  const ay = Math.floor(at.y * RES) - piece.pivot[1];
-  const s = Math.sin((d * Math.PI) / 180);
-  piece.rows.forEach((row, j) => {
-    const dx = -Math.round((j - piece.pivot[1]) * s);
-    for (let i = 0; i < row.length; i++) if (row[i] !== '.') L.set(ax + i + dx, ay + j, pens[row[i]], 3, part, F_NO_TEXTURE | F_NO_OUTLINE);
-  });
-}
 
 /** A shoulder guard's angle: it rides the torso and follows the upper arm part of the way, like the plate's pauldrons. */
 function guardAngle(piece: PaintedPiece, torso: number, arm: number): number {
@@ -3104,7 +3078,7 @@ export const ARMOR_ITEMS: ItemDef[] = [
           const tp = onLimb(trim, s, seg ? 'forearm' : 'upperArm');
           const rad = (a: number) => {
             const t = clamp(a / Math.max(0.01, f.len), 0, 1);
-            return (seg ? R[2] + (R[3] - R[2]) * t : R[0] + (R[1] - R[0]) * t) + 0.45;
+            return (seg ? forearmR(g, s, t) : R[0] + (R[1] - R[0]) * t) + 0.45;
           };
           lfill(A, f, p, R[0] + 1.5, (a, bb) => {
             if (a < (seg ? -0.6 : -1.2) || a > f.len + (seg ? -0.2 : 0.6)) return null;
@@ -3266,7 +3240,7 @@ export const ARMOR_ITEMS: ItemDef[] = [
           const tp = onLimb(trim, s, seg ? 'forearm' : 'upperArm');
           const rad = (a: number) => {
             const t = clamp(a / Math.max(0.01, f.len), 0, 1);
-            return (seg ? R[2] + (R[3] - R[2]) * t : R[0] + (R[1] - R[0]) * t) + 0.45;
+            return (seg ? forearmR(g, s, t) : R[0] + (R[1] - R[0]) * t) + 0.45;
           };
           lfill(A, f, p, R[0] + 1.5, (a, bb) => {
             if (a < (seg ? -0.6 : -1.2) || a > f.len + (seg ? -0.2 : 0.6)) return null;

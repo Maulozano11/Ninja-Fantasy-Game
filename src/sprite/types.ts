@@ -54,18 +54,19 @@ export interface CastChoice {
 }
 
 /**
- * The eye options; valiant and roman are the owner's own eyes from his Aiden and Roman pictures, in his
- * pixels, and noble his Scarlet's, from his Scarlet picture in his colours.
+ * The eye options; valiant, roman and night are the owner's own eyes from his Aiden, Roman and Ren
+ * pictures, in his pixels, and noble his Scarlet's, from his Scarlet picture in his colours.
  */
-export type EyeShape = 'standard' | 'sharp' | 'round' | 'calm' | 'fierce' | 'bright' | 'piercing' | 'valiant' | 'noble' | 'roman';
+export type EyeShape = 'standard' | 'sharp' | 'round' | 'calm' | 'fierce' | 'bright' | 'piercing' | 'valiant' | 'noble' | 'roman' | 'night';
 
 /**
  * Near-side cheek and jaw: V-line (default), fuller, or a strong flat jaw; or one of the owner's own
  * heads in his pixels: valiant from his Aiden picture (his skull, ear, cheeks, jaw and chin), roman from
- * his Roman paint-over (his whole face with his nose and mouth), founder from his Solen, or his Scarlet's
- * (noble: his face, pointed chin and smile, from his Scarlet picture in his colours).
+ * his Roman paint-over (his whole face with his nose and mouth), night from his Ren picture (his narrower
+ * face with his own mouth), founder from his Solen, or his Scarlet's (noble: his face, pointed chin and
+ * smile, from his Scarlet picture in his colours).
  */
-export type FaceShape = 'tapered' | 'soft' | 'square' | 'valiant' | 'noble' | 'founder' | 'roman';
+export type FaceShape = 'tapered' | 'soft' | 'square' | 'valiant' | 'noble' | 'founder' | 'roman' | 'night';
 
 /** Single-choice equipment slots, drawn back-to-front by depth (see compose.ts). */
 export type SlotId =

@@ -9,7 +9,7 @@ import { hexToRgb } from './color';
 import { GRID } from './raster';
 import { SIT_SEAT_TOP } from './rig';
 import { SEAT_BOULDER } from './seatBoulderArt';
-import type { SpritePose } from './types';
+import { isFemaleBody, type BodyType, type SpritePose } from './types';
 
 export type SeatId = 'seat_boulder' | 'seat_none';
 
@@ -34,12 +34,21 @@ export const SEATS: Record<SeatId, SeatDef> = {
 /** The seat a scene gets when it does not pick one. */
 export const DEFAULT_SEAT: SeatId = 'seat_boulder';
 
-/** The seated poses that sit on a seat prop, at SIT_SEAT_TOP. ('read' keeps the camp's seat until it moves to his read.) */
-export const SEATED_POSES: SpritePose[] = ['sit'];
+/**
+ * The seated poses that sit on a seat prop: 'sit' (every body, at SIT_SEAT_TOP) and 'read' (the male bodies'
+ * read, his Trunks read, rig.ts READ_MALE: the hips where he drew them, at READ_SEAT_TOP, the rock behind them
+ * as his rock is behind his Trunks). The female bodies' read keeps the camp's seat until her read moves to a
+ * seat prop (heroine/lyra-v2).
+ */
+export const SEATED_POSES: SpritePose[] = ['sit', 'read'];
 
-/** The seat a pose sits on in a scene that picks `scene` (its own choice, else the default); none for a pose that is not seated. */
-export function seatFor(pose: SpritePose, scene?: SeatId): SeatId | null {
+/**
+ * The seat a pose sits on in a scene that picks `scene` (its own choice, else the default); none for a pose that
+ * is not seated on a seat prop (for `body`, when given: the female bodies' read is not).
+ */
+export function seatFor(pose: SpritePose, scene?: SeatId, body?: BodyType): SeatId | null {
   if (!SEATED_POSES.includes(pose)) return null;
+  if (pose === 'read' && body && isFemaleBody(body)) return null;
   return scene ?? DEFAULT_SEAT;
 }
 

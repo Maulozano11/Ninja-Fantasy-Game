@@ -227,6 +227,47 @@ describe('the Roman set', () => {
     }
   });
 
+  it('keeps the body in one piece at the waist in every pose and frame: no gap between the cuirass and the skirt', () => {
+    // The owner, on the victory: "victoria se corta el cuerpo por la mitad". His cuirass rides the neck and the
+    // skirt's strips hang from the pelvis, so a chest lifted off the hips (victory's second frame) opened a gap
+    // between them. Up lines along the torso's axis, through its middle (6 px either side of the pelvis), from
+    // below the hips into the chest: the first of the torso's pixels after the skirt's comes right after it,
+    // with no background between.
+    const torso = partIndex('torso');
+    const pelvis = partIndex('pelvis');
+    for (const body of ['male', 'bulky', 'female', 'slender'] as BodyType[]) {
+      for (const pose of ALL_POSES) {
+        for (let f = 0; f < frameCount(rigPoseFor(pose)); f++) {
+          const fr = dressed(body, pose, f);
+          const r = fr.rig;
+          const n = Math.hypot(r.up.x, r.up.y);
+          const up = { x: r.up.x / n, y: r.up.y / n };
+          const gaps: string[] = [];
+          for (let o = -6; o <= 6; o++) {
+            let skirtSeen = false;
+            let open = false;
+            for (let k = -8; k <= 24; k++) {
+              const x = Math.floor(r.pelvis.x * RES - up.y * o + up.x * k);
+              const y = Math.floor(r.pelvis.y * RES + up.x * o + up.y * k);
+              const i = y * GRID + x;
+              const empty = !opaque(fr.rgba, i);
+              if (!empty && fr.part[i] === pelvis) {
+                skirtSeen = true;
+                open = false;
+              } else if (empty) {
+                open ||= skirtSeen;
+              } else if (fr.part[i] === torso) {
+                if (open) gaps.push(`${x},${y}`);
+                break;
+              } else open = false;
+            }
+          }
+          assert.equal(gaps.length, 0, `${body} ${pose} ${f}: the body cut at the waist, the gap under ${gaps.join(' ')}`);
+        }
+      }
+    }
+  });
+
   it('turns the sandal with its shin when the leg swings the foot off the ground', () => {
     // He drew the sandal under his laced shin as one: wherever the shin is turned well away from rest (past
     // 45 degrees) with the foot lifted, the sandal stays where it is on the shin at rest (measured along and

@@ -10,7 +10,8 @@ import { defaultAppearance } from './legacy';
 import { GRID, partIndex, RES } from './raster';
 import { stretchPiece } from './painted';
 import { SKIN_THIGH_F, SKIN_THIGH_N } from './maleSkinArt';
-import { BODY_PARAMS, buildRig, drawRig, frameCount, rigPoseFor, SIT_SEAT_TOP } from './rig';
+import { ANKLE_N, BODY_PARAMS, buildRig, drawRig, FAR_LIFT, frameCount, READ_JOINTS, READ_KEYS, READ_SEAT_TOP, rigPoseFor, SIT_SEAT_TOP } from './rig';
+import { READ_BOOK, READ_HAND_F, READ_HAND_N, READ_SKIN_BASE, type ReadPiece } from './maleReadArt';
 import { DEFAULT_SEAT, onSeat, renderSeat, SEATS, seatFor, type SeatId } from './seats';
 import { CAMP_POSES, MOVE_POSES, SPRITE_POSES, type BodyType, type SpriteAppearance } from './types';
 
@@ -146,5 +147,113 @@ describe('the sit on a seat', () => {
       const both = onSeat(f, id);
       for (let i = 0; i < GRID * GRID; i++) if (f[i * 4 + 3]) assert.equal(both[i * 4 + 3], f[i * 4 + 3]);
     }
+  });
+});
+
+/** The male read: the owner's two frames of his Trunks reading on a rock (docs/reference/trunks-read-owner-reference.jpg). */
+describe('the male read on a seat', () => {
+  const hex = (rgba: Uint8ClampedArray, i: number) => '#' + [0, 1, 2].map((k) => rgba[i * 4 + k].toString(16).padStart(2, '0')).join('');
+  /** The pixels of one of his pieces: [frame index, his colour]. */
+  const cells = (p: ReadPiece) => {
+    const out: [number, string][] = [];
+    p.rows.forEach((row, j) => {
+      for (let i = 0; i < row.length; i++) if (row[i] !== '.') out.push([(p.at[1] + j) * GRID + p.at[0] + i, p.colors[row[i]]]);
+    });
+    return out;
+  };
+
+  it('is his two frames over the loop: reading, then the book shut at the chest', () => {
+    assert.equal(READ_KEYS.length, frameCount(rigPoseFor('read')));
+    assert.deepEqual([...new Set(READ_KEYS)], [0, 1]);
+  });
+
+  it('poses the male toward his joints in both of his frames', () => {
+    // His hands within 4 px (our hand point lands a little short along the forearm, as in the sit; his hand
+    // itself is drawn where he drew it, campfx.ts, so this is where our forearm ends under it); his neck's line
+    // and his ankles on the ground under his boots. Our shins are longer than his (15.4 px, his about 11), so the
+    // knees stand higher than his, within 6.5 px; the thighs keep their length (his hips are low enough for
+    // our legs to reach his ankles).
+    for (let f = 0; f < READ_KEYS.length; f++) {
+      const j = READ_JOINTS[READ_KEYS[f]];
+      const r = buildRig('male', rigPoseFor('read'), f);
+      const d = (p: { x: number; y: number }, x: number, y: number) => Math.hypot(p.x * RES - x, p.y * RES - y);
+      assert.ok(d(r.handN, j.handN[0], j.handN[1]) <= 4, `read ${f} handN: ${d(r.handN, j.handN[0], j.handN[1]).toFixed(1)} px from his`);
+      // (in his second frame his far hand is behind the book, his arm folded tighter than ours folds: only his
+      // fingertip beside the book is drawn, our far hand is taken off; seats.test 'draws his book')
+      if (READ_KEYS[f] === 0) assert.ok(d(r.handF, j.handF[0], j.handF[1]) <= 4, `read ${f} handF: ${d(r.handF, j.handF[0], j.handF[1]).toFixed(1)} px from his`);
+      assert.ok(d(r.kneeN, j.kneeN[0], j.kneeN[1]) <= 6.5, `read ${f} kneeN: ${d(r.kneeN, j.kneeN[0], j.kneeN[1]).toFixed(1)} px from his`);
+      assert.ok(d(r.kneeF, j.kneeF[0], j.kneeF[1]) <= 6.5, `read ${f} kneeF: ${d(r.kneeF, j.kneeF[0], j.kneeF[1]).toFixed(1)} px from his`);
+      // the neck on the line from the hips to his neck
+      const a = Math.atan2(r.neck.x - r.pelvis.x, r.pelvis.y - r.neck.y) - Math.atan2(j.neck[0] / RES - r.pelvis.x, r.pelvis.y - j.neck[1] / RES);
+      assert.ok(Math.abs(a) < 0.06, `read ${f}: the neck ${((a * 180) / Math.PI).toFixed(1)} degrees off his`);
+      assert.ok(Math.abs(r.ankleN.x * RES - j.ankleN) < 0.01 && Math.abs(r.ankleN.y - ANKLE_N) < 0.01, `read ${f}: the near ankle`);
+      assert.ok(Math.abs(r.ankleF.x * RES - j.ankleF) < 0.01 && Math.abs(r.ankleF.y - (ANKLE_N - FAR_LIFT)) < 0.01, `read ${f}: the far ankle`);
+    }
+  });
+
+  it('sits the male bodies on his rock, the hips where he drew them; the female bodies keep their read', () => {
+    const footN = partIndex('footN');
+    const footF = partIndex('footF');
+    for (const body of ['male', 'bulky'] as const) {
+      const idle = renderSprite(roman(body), 'idle', 0).part;
+      assert.equal(seatFor('read', undefined, body), 'seat_boulder');
+      for (let f = 0; f < READ_KEYS.length; f++) {
+        const r = buildRig(body, rigPoseFor('read'), f);
+        assert.ok(Math.abs(r.pelvis.y * RES - (READ_SEAT_TOP - 5.4)) < 0.01, `${body} read ${f}: pelvis at ${r.pelvis.y * RES}`);
+        const part = renderSprite(roman(body), 'read', f).part;
+        assert.ok(Math.abs(lowest(part, footN) - lowest(idle, footN)) <= 1, `${body} read ${f}: near sole on row ${lowest(part, footN)}`);
+        assert.ok(Math.abs(lowest(part, footF) - lowest(idle, footF)) <= 1, `${body} read ${f}: far sole on row ${lowest(part, footF)}`);
+      }
+    }
+    // his rock is under the hips: its top in the pelvis's column at most 6 rows above the hips' seat (it stands
+    // behind them, as his rock behind his Trunks), never below it
+    const rock = renderSeat('seat_boulder');
+    const x = Math.round(buildRig('male', rigPoseFor('read'), 0).pelvis.x * RES);
+    let top = 0;
+    while (!rock[(top * GRID + x) * 4 + 3]) top++;
+    assert.ok(top <= READ_SEAT_TOP && top >= READ_SEAT_TOP - 6, `his rock's top at row ${top} under the hips`);
+    // the female bodies keep their own read on the camp's seat (until her read, heroine/lyra-v2)
+    for (const body of ['female', 'slender'] as const) {
+      assert.equal(seatFor('read', undefined, body), null);
+      const r = buildRig(body, rigPoseFor('read'), 0);
+      assert.ok(Math.hypot(r.handF.x * RES - READ_JOINTS[0].handF[0], r.handF.y * RES - READ_JOINTS[0].handF[1]) > 3, `${body}: her own read`);
+    }
+  });
+
+  it('draws his book where he drew it, and his hands over it in the Roman skin', () => {
+    const look = roman('male');
+    look.skin = READ_SKIN_BASE;
+    for (let f = 0; f < READ_KEYS.length; f++) {
+      const k = READ_KEYS[f];
+      const fr = renderSprite(look, 'read', f).rgba;
+      const hands = [READ_HAND_N[k], READ_HAND_F[k]].filter((p): p is ReadPiece => !!p);
+      const under = new Set(hands.flatMap((p) => cells(p).map(([i]) => i)));
+      // every pixel of his book that his hands leave in sight is his
+      const book = cells(READ_BOOK[k]).filter(([i]) => !under.has(i));
+      const off = book.filter(([i, c]) => hex(fr, i) !== c);
+      assert.equal(off.length, 0, `read ${f}: ${off.length} of ${book.length} pixels of his book not his`);
+      // his hands: his shape, his Roman fists' tones in the skin he painted the Roman in, his black line; and
+      // none of our hand's pixels beside them
+      const all = renderSprite(look, 'read', f);
+      for (const [p, part] of [
+        [READ_HAND_N[k], 'handN'],
+        [READ_HAND_F[k], 'handF'],
+      ] as const) {
+        if (!p) continue;
+        const bad = cells(p).filter(([i, c]) => hex(fr, i) !== c);
+        assert.equal(bad.length, 0, `read ${f}: ${bad.length} pixels of his ${part} not his`);
+        const his = new Set(cells(p).map(([i]) => i));
+        let ours = 0;
+        for (let i = 0; i < GRID * GRID; i++) if (all.part[i] === partIndex(part) && all.rgba[i * 4 + 3] && !his.has(i)) ours++;
+        assert.equal(ours, 0, `read ${f}: ${ours} pixels of our ${part} beside his`);
+      }
+    }
+    // in another skin his hands take it, his line stays black
+    const dark = roman('male');
+    dark.skin = '#8d5524';
+    const fr = renderSprite(dark, 'read', 0).rgba;
+    const near = cells(READ_HAND_N[0]!);
+    assert.ok(near.filter(([i, c]) => hex(fr, i) !== c).length > near.length / 2, 'his near hand in the darker skin');
+    for (const [i, c] of near) if (c === '#000000') assert.equal(hex(fr, i), '#000000');
   });
 });

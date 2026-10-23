@@ -7,7 +7,7 @@
 // (screen-left, drawn in front); "far" limbs are on screen-right, behind.
 
 import { add, len, norm, PAD, RES, scale, sub, v, Vec } from './raster';
-import type { BodyType, CastStyle, SpritePose } from './types';
+import { isFemaleBody, type BodyType, type CastStyle, type SpritePose } from './types';
 
 export const GROUND = PAD.y + 60; // ground line under the body (shadow centre)
 /** The design x the feet stand on (the middle of the figure's box). */
@@ -496,8 +496,9 @@ const DOWNED: PoseFrame[] = [DOWNED_BASE, { ...DOWNED_BASE, lean: -6.5 }];
 /**
  * Where the camp props go, for the scene that places them (design units from
  * the feet anchor at x FEET_X, y GROUND; fine pixels are twice these).
- * - SEAT_TOP: the top of the log seat under 'read' (26 px above the feet; 'sit' sits on a seat prop,
- *   seats.ts, whose top is SIT_SEAT_TOP, 6 px higher, his rock's).
+ * - SEAT_TOP: the top of the log seat under the female bodies' 'read' (26 px above the feet; 'sit' sits on a
+ *   seat prop, seats.ts, whose top is SIT_SEAT_TOP, 6 px higher, his rock's; the male read sits on it too,
+ *   its hips at READ_SEAT_TOP, this row).
  * - SEAT_X: the middle of the seat under the hips, behind the feet.
  * - LEAN_X: the front face of the trunk, rock or pole a 'lean' rests against.
  */
@@ -595,6 +596,60 @@ const READ: PoseFrame[] = Array.from({ length: 12 }, (_, i) => {
   // the far hand lifts the page corner as it turns
   const turn = i === 9 ? -1 : i === 10 ? -0.6 : 0;
   return { ...READ_BASE, chestDy: breath, handF: chest(7.4, 5.8 + turn) };
+});
+
+/**
+ * Read on the male bodies (male, bulky), 12 frames: the owner's two frames of his Trunks reading on a rock
+ * (docs/reference/trunks-read-owner-reference.jpg), his answer for the Roman: "leer mira la referencia de
+ * trunks y copiala a leer de romano". He painted them over our read at our scale (one of his pixels is one
+ * fine pixel: his cell (x, y) is our pixel (x + 83, y + 130), in his second frame (x + 84, y + 130)), so his
+ * joints are read off his figure one for one (READ_JOINTS, fine pixels of our frame):
+ * - frame 1, "Leyendo": the open book held up before him in both hands, the fingers over its lower edge, both
+ *   arms bent, the far forearm coming up from the lap;
+ * - frame 2, "Libro cerrado": the book shut in the near hand at the chest, the near forearm across the body,
+ *   the far hand behind the book.
+ * His hips are where our read had them, on a seat whose top is READ_SEAT_TOP (row 190, the camp seat's: the
+ * rock under him, seats.ts, keeps its place, so its top shows behind his hips as his rock does behind his
+ * Trunks). The thighs lengthen to reach his knees (kneeLeg) and the feet stand on the ground under his boots.
+ * His book and his hands, in the Roman's skin, are campfx.ts's (maleReadArt.ts). The female bodies keep READ
+ * until her own read (heroine/lyra-v2).
+ */
+export const READ_SEAT_TOP = 190;
+/**
+ * His neck, hands, knees and ankles in his two read frames (fine pixels of our frame), that READ_MALE poses
+ * toward (seats.test.ts); `head`: how far (fine px) his head is lowered and moved forward from where our neck
+ * puts it, so that our eyes are on his.
+ */
+export const READ_JOINTS = [
+  { neck: [120, 157.4], head: [1, 2], handN: [118.5, 175], handF: [134, 176.5], kneeN: [114, 198], kneeF: [129, 193], ankleN: 115.5, ankleF: 129 },
+  { neck: [118, 157.4], head: [1, 3], handN: [122, 173.5], handF: [129, 168], kneeN: [114, 198], kneeF: [129, 193], ankleN: 115.5, ankleF: 129 },
+] as const;
+/** His two frames over the loop (12 frames at POSE_FPS.read, 4 seconds): reading for 8 frames, then the book shut at the chest for 4. */
+export const READ_KEYS = [0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1] as const;
+const READ_MALE: PoseFrame[] = READ_KEYS.map((k) => {
+  const j = READ_JOINTS[k];
+  return {
+    lean: 0,
+    footN: v(0, 1),
+    footF: v(0, 1),
+    snap: true,
+    headDx: j.head[0] / RES,
+    headDy: j.head[1] / RES,
+    shapeN: 'cradle',
+    shapeF: 'cradle',
+    at: {
+      pelvis: fp(110, READ_SEAT_TOP),
+      seated: true,
+      neck: fp(j.neck[0], j.neck[1]),
+      ankleN: fp(j.ankleN, 0),
+      ankleF: fp(j.ankleF, 0),
+      ground: true,
+      kneeN: fp(j.kneeN[0], j.kneeN[1]),
+      kneeF: fp(j.kneeF[0], j.kneeF[1]),
+    },
+    handN: at(j.handN[0], j.handN[1]),
+    handF: at(j.handF[0], j.handF[1]),
+  };
 });
 
 /** Stance for the drills: feet apart, the near foot back. */
@@ -1047,8 +1102,11 @@ export function buildRig(body: BodyType, pose: RigPose, frame: number): Rig {
 }
 
 /** The upright rig every layer is drawn with (compose.ts lays a 'downed' figure down afterwards). */
+/** Poses the male bodies (male, bulky) play in place of POSES' own: the owner's male standard where the female bodies keep theirs. */
+const MALE_POSES: Partial<Record<RigPose, PoseFrame[]>> = { read: READ_MALE };
+
 export function drawRig(body: BodyType, pose: RigPose, frame: number): Rig {
-  const frames = POSES[pose] || POSES.idle;
+  const frames = (!isFemaleBody(body) && MALE_POSES[pose]) || POSES[pose] || POSES.idle;
   const f = frames[((frame % frames.length) + frames.length) % frames.length];
   const r = solveRig(body, pose, frame, f);
   if (f.lie) r.lay = layFor(solveRig(body, pose, 0, frames[0]));

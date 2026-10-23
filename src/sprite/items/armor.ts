@@ -1147,13 +1147,14 @@ function guardAt(r: Rig, side: Side, torso: number): Vec {
 /**
  * A piece stretched by repeating single columns and rows spread evenly over it (never side by side, so
  * no flat band appears): `left` columns between its second column and the pivot, `right` between the
- * pivot and its second last, `down` rows between its third row and its third last.
+ * pivot and its second last, `down` rows between its third row and its third last (or between the rows
+ * `from` and `to`).
  */
-function stretched(p: PaintedPiece, left: number, right: number, down: number): PaintedPiece {
+function stretched(p: PaintedPiece, left: number, right: number, down: number, from = 2, to = p.rows.length - 3): PaintedPiece {
   const w = Math.max(...p.rows.map((r) => r.length));
   const spread = (a: number, b: number, n: number) => new Set(Array.from({ length: n }, (_, k) => Math.round(a + ((b - a) * (k + 0.5)) / n)));
   const cols = new Set([...spread(2, p.pivot[0] - 1, left), ...spread(p.pivot[0] + 1, w - 3, right)]);
-  const rows = spread(2, p.rows.length - 3, down);
+  const rows = spread(from, to, down);
   const out: string[] = [];
   p.rows.forEach((r, j) => {
     const row = r.padEnd(w, '.').split('').map((ch, i) => (cols.has(i) ? ch + ch : ch)).join('');
@@ -1173,6 +1174,30 @@ function stretched(p: PaintedPiece, left: number, right: number, down: number): 
  * near side, so it meets the near arm), covering that torso with his relief only a little broader.
  */
 const CUIRASS_CHEST_BULKY = stretched(CUIRASS_CHEST, 4, 5, 1);
+
+/** His abdomen's rows on the chest (below the pectorals' undercurve, above the lower lip), per body's chest. */
+const CUIRASS_ABS = { male: [12, 19], bulky: [13, 20] } as const;
+const CUIRASS_LONGER = new Map<string, PaintedPiece>();
+
+/**
+ * His chest on a torso `extra` fine pixels longer than at rest. The cuirass rides the neck, and the torso
+ * under it is taken away, but the skirt's strips hang from the pelvis: where a pose lifts the chest off
+ * the hips (victory's second frame, chestDy -1) a rigid chest would leave the strips and open a gap at
+ * the waist, the body cut in two. So the chest lengthens as our torso does, by repeating rows of his
+ * abdomen spread evenly (stretched), and its lower lip stays on the strips. Every pixel is his; at rest
+ * and in every pose whose torso is not longer than at rest (all but that frame) it is his chest unchanged.
+ */
+function cuirassChest(r: Rig): PaintedPiece {
+  const base = r.body === 'bulky' ? CUIRASS_CHEST_BULKY : CUIRASS_CHEST;
+  const torso = (r.neck.x - r.pelvis.x) * r.up.x + (r.neck.y - r.pelvis.y) * r.up.y;
+  const extra = Math.round((torso - r.bp.torsoLen) * RES);
+  if (extra <= 0) return base;
+  const key = `${r.body}|${extra}`;
+  let p = CUIRASS_LONGER.get(key);
+  const [from, to] = CUIRASS_ABS[r.body === 'bulky' ? 'bulky' : 'male'];
+  if (!p) CUIRASS_LONGER.set(key, (p = stretched(base, 0, 0, extra, from, to)));
+  return p;
+}
 
 /**
  * The torso under the cuirass is taken away below the neck, so our skin never shows past his chest
@@ -1304,7 +1329,7 @@ function drawBronzeCuirass(g: DrawCtx, bc: string, sc: string): void {
   const metal = romanColor(CUIRASS_KIND, CUIRASS_BRONZE, bronze);
   const leather = romanColor(CUIRASS_KIND, CUIRASS_LEATHER, strap);
   stampPiece(g, 'farArm.armor', CUIRASS_GUARD_F, guardAt(r, 'F', torso), guardAngle(CUIRASS_GUARD_F, torso, segAngle(r.shoulderF, r.elbowF)), 'upperArmF', leather);
-  stampLeaning(g, 'torso.armor', r.body === 'bulky' ? CUIRASS_CHEST_BULKY : CUIRASS_CHEST, r.neck, torso, 'torso', metal);
+  stampLeaning(g, 'torso.armor', cuirassChest(r), r.neck, torso, 'torso', metal);
   stampPiece(g, 'nearArm.armor', CUIRASS_GUARD_N, guardAt(r, 'N', torso), guardAngle(CUIRASS_GUARD_N, torso, segAngle(r.shoulderN, r.elbowN)), 'upperArmN', leather);
 }
 

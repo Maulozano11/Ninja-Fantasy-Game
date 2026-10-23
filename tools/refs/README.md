@@ -152,3 +152,13 @@ folders.
   (`rig.ts` SIT) takes his joints off the same frames, scaled the same way.
 
       python3 -I tools/refs/roman-sit-rock-from-ref.py [src/sprite/seatBoulderArt.ts] [study.png]
+- `roman-read-from-ref.py`: the book and hands of the owner's two frames of his Trunks reading
+  (`docs/reference/trunks-read-owner-reference.jpg`, about 17.3 picture px across and 16.8 down per pixel of his)
+  for the male read (`src/sprite/maleReadArt.ts`, drawn by `campfx.ts`), his answer "leer mira la referencia de
+  trunks y copiala a leer de romano". He painted over our read at our scale (one of his pixels is one fine pixel),
+  so every piece lands where he drew it. The book is his pixels; the hands are his hands' shape (gloved) with their
+  tones matched by brightness to his Roman fists' tones (the Roman's hands are bare), his black line kept. The
+  read pose (`rig.ts` READ_JOINTS) takes his joints off the same frames. His grid is found by
+  `owner_paintover.py` (copied byte for byte from `heroine/lyra-v2`), with a pitch per axis.
+
+      python3 -I tools/refs/roman-read-from-ref.py [src/sprite/maleReadArt.ts] [study.png]

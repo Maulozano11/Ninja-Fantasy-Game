@@ -213,6 +213,8 @@ describe("the owner's skin on the male bodies", () => {
     fist.delete(skin.MALE_SKIN_DARK);
     let open = 0;
     for (const pose of POSES) {
+      // (the male read's hands are his Trunks read hands in his Roman fists' tones, campfx.ts: seats.test.ts)
+      if (pose === 'read') continue;
       for (const frame of [0, 1, 2]) {
         const f = renderSprite(bare('male'), pose, frame);
         for (const [side, part] of [['N', 'handN'], ['F', 'handF']] as const) {

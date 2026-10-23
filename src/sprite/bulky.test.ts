@@ -241,18 +241,19 @@ describe("the owner's bare broad man (the bulky body)", () => {
 });
 
 describe('the other bodies are unchanged', () => {
-  // Frames of the integration branch before the bulky rebuild (sha1 of the RGBA buffer).
+  // Frames with the integration branch and body/male-skin-face (the Roman's skin on the male) merged in
+  // (sha1 of the RGBA buffer); the female ones are the integration branch's own, byte for byte.
   const PINNED: [BodyType, string, SpritePose, number, string][] = [
-    ['male', 'default', 'idle', 0, '0e7daef9090c1425c069d3b872066c02b20a62a8'],
-    ['male', 'preset_reference_aiden', 'attack', 1, 'fc7f8e09115839246c81b0b465dbfc1aa5c6a320'],
-    ['male', 'preset_founder', 'run', 3, '887c77a246274ac6179b3565d54b7b8965b38182'],
-    ['male', 'default', 'sit', 0, '544add88a0867679e1fa9dcb8265b33c1de32f21'],
-    ['female', 'default', 'walk', 3, '75b83c19c8372cafe1064579d1cb364881fadf55'],
-    ['female', 'preset_reference_aiden', 'throw', 2, '33d41606d71890ee99479738f73e2e2623235f03'],
-    ['slender', 'default', 'cast', 0, '9b90c2c39509bd0d09b28c5f21c988093468ad02'],
-    ['slender', 'preset_founder', 'downed', 0, 'c2f8c0a4a994462bf82ac88b90137b341f819c86'],
+    ['male', 'default', 'idle', 0, '62337f02cc29dbfd3eaa1c80fffd8e22c039c535'],
+    ['male', 'preset_reference_aiden', 'attack', 1, '432511738c2d728185d2e8d8c4b7f3615407421f'],
+    ['male', 'preset_founder', 'run', 3, '8a8e42a06e724ebe63414725cb1365d2693455a2'],
+    ['male', 'default', 'sit', 0, '40f7e5a7e74aaf803f6a9dfb6b0be414a1bcadeb'],
+    ['female', 'default', 'walk', 3, 'c71b371beba31db791f6cc1e8e82a6c80fdc964c'],
+    ['female', 'preset_reference_aiden', 'throw', 2, '7b413fc24f3a1a81f0de8b6ef8c64a5467125a99'],
+    ['female', 'default', 'cast', 0, 'b57a8d0369a49d5a0e8f17caa34d5e5447254eb6'],
+    ['female', 'preset_founder', 'downed', 0, '123e04f18944ac9c22e35bf39439c5045c0c2979'],
   ];
-  it('male, female and slender frames are byte for byte what they were', () => {
+  it('male and female frames are byte for byte what they were', () => {
     for (const [body, name, pose, frame, sha] of PINNED) {
       const base = name === 'default' ? defaultAppearance() : LEGENDARY_PRESETS.find((p) => p.character.id === name)!.character.appearance!;
       const f = renderSprite({ ...base, body }, pose, frame);

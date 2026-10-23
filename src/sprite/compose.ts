@@ -14,6 +14,7 @@ import { drawRig, Lay, layRig, Rig, rigPoseFor, turnPoint, turnRig } from './rig
 import { drawCampFx } from './campfx';
 import { drawCastFx } from './castfx';
 import { sealCloth } from './seal';
+import { maleSkinRamp, paintMaleSkin } from './maleSkin';
 import { applyTexture, frayHair } from './texture';
 import type { EyeSpecial, PixelEdit, SlotId, SpriteAppearance, SpritePose } from './types';
 
@@ -288,6 +289,7 @@ export function renderSprite(
     if (def && def.slot === slot && fitsBody(def, look.body)) equipped.set(slot, def);
   }
   const hideHair = [...equipped.values()].some((d) => d.hidesHair);
+  const late: ((layers: ReadonlyMap<Depth, Layer>) => void)[] = [];
 
   const g: DrawCtx = {
     rig,
@@ -311,6 +313,7 @@ export function renderSprite(
       const d = equipped.get(slot);
       return !!d && (id === undefined || d.id === id);
     },
+    after: (fn) => late.push(fn),
   };
 
   if (opts.heldOnly) {
@@ -319,6 +322,7 @@ export function renderSprite(
     if (def && choice && !look.stowed) def.draw(g, resolveColors(def, choice.colors), resolveParts(def, choice.parts));
     drawThrowKunai(g);
   } else {
+    maleSkinRamp(g);
     drawBody(g);
     for (const slot of SLOT_ORDER) {
       const def = equipped.get(slot);
@@ -351,7 +355,9 @@ export function renderSprite(
     if (bottom && resolveParts(bottom, look.slots.bottom?.parts).boots === 'tucked') tuckBoots(layers);
     if (rig.farHandFront) farHandToFront(layers, g);
     guardFace(g, layers);
+    paintMaleSkin(g, layers);
   }
+  for (const fn of late) fn(layers);
 
   // Outline and flatten
   const rgba = new Uint8ClampedArray(GRID * GRID * 4);

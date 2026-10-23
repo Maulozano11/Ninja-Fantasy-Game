@@ -53,15 +53,16 @@ export interface CastChoice {
   jutsu?: Record<string, CastStyle>;
 }
 
-/** The eye options; valiant and stern are the owner's own eyes from his Aiden and broad man pictures, in his pixels. */
-export type EyeShape = 'standard' | 'sharp' | 'round' | 'calm' | 'fierce' | 'bright' | 'piercing' | 'valiant' | 'stern';
+/** The eye options; valiant, roman and stern are the owner's own eyes from his Aiden, Roman and broad man pictures, in his pixels. */
+export type EyeShape = 'standard' | 'sharp' | 'round' | 'calm' | 'fierce' | 'bright' | 'piercing' | 'valiant' | 'roman' | 'stern';
 
 /**
- * Near-side cheek and jaw: V-line (default), fuller, or a strong flat jaw; or the owner's own head
- * from his Aiden picture (valiant: his skull, ear, cheeks, jaw and chin in his pixels), or his broad
+ * Near-side cheek and jaw: V-line (default), fuller, or a strong flat jaw; or one of the owner's own
+ * heads in his pixels: valiant from his Aiden picture (his skull, ear, cheeks, jaw and chin), roman from
+ * his Roman paint-over (his whole face with his nose and mouth), founder from his Solen, or his broad
  * man's face (stern: his ear, cheeks, nose, mouth and jaw in his pixels, under our skull).
  */
-export type FaceShape = 'tapered' | 'soft' | 'square' | 'valiant' | 'founder' | 'stern';
+export type FaceShape = 'tapered' | 'soft' | 'square' | 'valiant' | 'roman' | 'founder' | 'stern';
 
 /** Single-choice equipment slots, drawn back-to-front by depth (see compose.ts). */
 export type SlotId =

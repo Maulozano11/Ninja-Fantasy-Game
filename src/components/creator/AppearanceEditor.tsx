@@ -123,6 +123,7 @@ const FACE_SHAPES: { id: FaceShape; label: string; sub: string }[] = [
   { id: 'soft', label: 'Soft', sub: 'Fuller cheeks' },
   { id: 'square', label: 'Square', sub: 'Strong jaw' },
   { id: 'valiant', label: 'Valiant', sub: "Aiden's face" },
+  { id: 'roman', label: 'Roman', sub: "The Roman's face" },
   { id: 'founder', label: 'Founder', sub: "Solen's face" },
   { id: 'stern', label: 'Stern', sub: "The broad man's face" },
 ];
@@ -136,6 +137,7 @@ const EYE_SHAPES: { id: EyeShape; label: string; sub?: string }[] = [
   { id: 'bright', label: 'Bright' },
   { id: 'piercing', label: 'Piercing' },
   { id: 'valiant', label: 'Valiant', sub: "Aiden's eyes" },
+  { id: 'roman', label: 'Roman', sub: "The Roman's eyes" },
   { id: 'stern', label: 'Stern', sub: "The broad man's eyes" },
 ];
 

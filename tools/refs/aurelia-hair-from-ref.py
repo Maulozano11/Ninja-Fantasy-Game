@@ -120,6 +120,10 @@ SHIFT = [(11, 1), (13, 2)]
 LOCK_FROM = 16
 # His bangs show his brow between their strands from this row of his down to the lash row.
 FILL_FROM = 13
+# On her own face (the face shape 'aurelia', tools/refs/aurelia-face-from-ref.py) the hair is his, where he
+# drew it: nothing moves (her face is his width), and the brown tip of the bang strand between his eyes is
+# taken too (it lies beside her near eye, as he drew it).
+HIS_ONLY = {(55, 16)}
 
 
 def native(path):
@@ -174,6 +178,10 @@ def build():
                 worst = max(worst, int(dist[y, x]))
                 hers[y, x] = ch
                 lock[y, x] = len(rg) > 2
+    exact = hers.copy()
+    for x, y in sorted(HIS_ONLY):
+        assert lab[y, x] in HAIR, (x, y)
+        exact[y, x] = lab[y, x]
     for y in rows:
         s = shift_at(y)
         for x in range(W):
@@ -187,7 +195,14 @@ def build():
             for k in range(s):
                 if hers[y, FAR_COL - s + k] != '.':
                     moved[y, FAR_COL + k] = hers[y, FAR_COL - s + k]
-    back = moved.copy()
+    back, filled = fill_back(moved)
+    exact_back, _ = fill_back(exact)
+    return N, hers, moved, back, filled, worst, exact, exact_back
+
+
+def fill_back(front):
+    """The front with the skin between her bang strands filled: each such cell the nearest of her colours above it."""
+    back = front.copy()
     back[np.isin(back, list(SKIN))] = '.'
     filled = np.zeros(back.shape, bool)
     for y in range(FILL_FROM, HIS_ANCHOR[1]):
@@ -199,13 +214,21 @@ def build():
             assert above, f'nothing above ({x}, {y})'
             back[y, x] = above
             filled[y, x] = True
-    return N, hers, moved, back, filled, worst
+    return back, filled
 
 
 def main():
     out = sys.argv[1]
     os.makedirs(os.path.join(out, 'study'), exist_ok=True)
-    N, hers, front, back, filled, worst = build()
+    N, hers, front, back, filled, worst, exact, exact_back = build()
+    # his own, where he drew it (her face): its box and pivot (his lash's first cell)
+    ey, ex = np.nonzero(exact_back != '.')
+    ey0, ey1, ex0, ex1 = ey.min(), ey.max() + 1, ex.min(), ex.max() + 1
+    his_meta = {
+        'pivot': [HIS_ANCHOR[0] - int(ex0), HIS_ANCHOR[1] - int(ey0)],
+        'front': [''.join(r) for r in exact[ey0:ey1, ex0:ex1]],
+        'back': [''.join(r) for r in exact_back[ey0:ey1, ex0:ex1]],
+    }
     yy, xx = np.nonzero(back != '.')
     y0, y1, x0, x1 = yy.min(), yy.max() + 1, xx.min(), xx.max() + 1
     front, back, filled, hers = front[y0:y1, x0:x1], back[y0:y1, x0:x1], filled[y0:y1, x0:x1], hers[y0:y1, x0:x1]
@@ -224,6 +247,7 @@ def main():
         'skinBase': KEY[SKIN_BASE],
         'hairBase': KEY[HAIR_BASE],
         'ornamentBase': KEY[ORNAMENT_BASE],
+        'his': his_meta,
     }
     tmp = os.path.join(out, 'hair.json.tmp')
     with open(tmp, 'w') as f:
@@ -271,6 +295,14 @@ def write_ts(meta, path):
     ):
         out += [f'/** {doc} */', f'export const {name}: PaintedPart = {{', f'  pivot: [{px}, {py}],', '  rows: [']
         out += [f"    '{rw}'," for rw in meta[part]]
+        out += ['  ],', '  colors: AURELIA_HAIR_COLORS,', '};', '']
+    hx, hy = meta['his']['pivot']
+    for part, name, doc in (
+        ('front', 'AURELIA_HAIR_FRONT_HIS', "On her own face (the face shape 'aurelia'): every pixel of her hair where he drew it, nothing moved for a wider face, with the bang tip beside her near eye. Its pivot is the cell on the face anchor."),
+        ('back', 'AURELIA_HAIR_BACK_HIS', 'Her own front with the skin between her bang strands filled: drawn behind the head, and her head\'s outline above the eyes.'),
+    ):
+        out += [f'/** {doc} */', f'export const {name}: PaintedPart = {{', f'  pivot: [{hx}, {hy}],', '  rows: [']
+        out += [f"    '{rw}'," for rw in meta['his'][part]]
         out += ['  ],', '  colors: AURELIA_HAIR_COLORS,', '};', '']
     out += [
         '/** His black line: kept as he drew it when the hair is recoloured. */',

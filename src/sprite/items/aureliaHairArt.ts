@@ -84,6 +84,70 @@ export const AURELIA_HAIR_BACK: PaintedPart = {
   colors: AURELIA_HAIR_COLORS,
 };
 
+/** On her own face (the face shape 'aurelia'): every pixel of her hair where he drew it, nothing moved for a wider face, with the bang tip beside her near eye. Its pivot is the cell on the face anchor. */
+export const AURELIA_HAIR_FRONT_HIS: PaintedPart = {
+  pivot: [13, 13],
+  rows: [
+    '....kkkkk................',
+    '...kuzwwnkkkkkkkk........',
+    '..knnnwnenwwxzunwkkk.....',
+    '.knwzwegwzzwnnnnnnwnk....',
+    '.kgwwnewwwwewwwwwnnwwe...',
+    'knewnenwzwewwwnwwwwwwwe..',
+    'kweuencccczwwnwwwwwznwwe.',
+    'kwnnectctczzzewwzwwzewze.',
+    'knwggcccccwwwnwzzuzzewzxe',
+    'kenccwctctcwenuwwezwenzne',
+    'knectccccccwennweewneewne',
+    'knncclcnnewwennepeuepenne',
+    'kgnneccncewweneepeeppbnne',
+    '.kgnenn..ewwe....e....ene',
+    '..keeeg..ewne.........eee',
+    '..knkkg..ewne.........ne.',
+    '..knk.kekewne........ene.',
+    '...kgkkkeenwne.......ene.',
+    '....keeekenwe.........e..',
+    '.....kkk.knwe........ne..',
+    '.........kewe.......ne...',
+    '........kkene......ene...',
+    '...........ee.......ee...',
+    '....................e....',
+  ],
+  colors: AURELIA_HAIR_COLORS,
+};
+
+/** Her own front with the skin between her bang strands filled: drawn behind the head, and her head's outline above the eyes. */
+export const AURELIA_HAIR_BACK_HIS: PaintedPart = {
+  pivot: [13, 13],
+  rows: [
+    '....kkkkk................',
+    '...kuzwwnkkkkkkkk........',
+    '..knnnwnenwwxzunwkkk.....',
+    '.knwzwegwzzwnnnnnnwnk....',
+    '.kgwwnewwwwewwwwwnnwwe...',
+    'knewnenwzwewwwnwwwwwwwe..',
+    'kweuencccczwwnwwwwwznwwe.',
+    'kwnnectctczzzewwzwwzewze.',
+    'knwggcccccwwwnwzzuzzewzxe',
+    'kenccwctctcwenuwwezwenzne',
+    'knectccccccwennweewneewne',
+    'knncclcnnewwenneeeueeenne',
+    'kgnneccncewweneeeeeeebnne',
+    '.kgnenn..ewwe....e....ene',
+    '..keeeg..ewne.........eee',
+    '..knkkg..ewne.........ne.',
+    '..knk.kekewne........ene.',
+    '...kgkkkeenwne.......ene.',
+    '....keeekenwe.........e..',
+    '.....kkk.knwe........ne..',
+    '.........kewe.......ne...',
+    '........kkene......ene...',
+    '...........ee.......ee...',
+    '....................e....',
+  ],
+  colors: AURELIA_HAIR_COLORS,
+};
+
 /** His black line: kept as he drew it when the hair is recoloured. */
 export const AURELIA_HAIR_LINE = 'k';
 

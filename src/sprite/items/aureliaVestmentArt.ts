@@ -15,7 +15,7 @@ export const AURELIA_CLOTH_CHARS = 'abcdefhijlmn';
 export const AURELIA_GOLD_CHARS = 'ABCDEFHJ';
 export const AURELIA_GEM_CHARS = 'GI';
 /** His skin (the keyhole, the armpit): drawn in the body's skin, at these shades of it. */
-export const AURELIA_SKIN_SHADES: Record<string, number> = { 0: 1, S: 3, T: 2, U: 2 };
+export const AURELIA_SKIN_SHADES: Record<string, number> = { S: 3, T: 2, U: 1 };
 /** His black line. */
 export const AURELIA_LINE = '#030518';
 
@@ -34,14 +34,14 @@ export const AURELIA_BODICE: PaintedPiece = {
     '....kkkk..........',
     '..kkEEEEkkkk......',
     '..kFbJJHDkDk......',
-    '...kDbJbDkDkk.....',
-    '....kDbaJJJAk.....',
-    '....kDaDJIGJDk....',
+    '...kDbJbDkDkkk....',
+    '....kDbaJJJAkTk...',
+    '....kDaDJIGJDkTk..',
     '....kDaDDJIJJDkk..',
     '....kDaaDDJSSJBk..',
     '....kDDDDDDJSJDDk.',
-    '.k0kHDaDaaDDJDDaDk',
-    'k00kHbaaDaaDDDaDak',
+    '.kUkHDaDaaDDJDDaDk',
+    'kUUkHbaaDaaDDDaDak',
     'kkkHHbbaaDaaDaDabk',
     '.kHbbHbbbbHbHHbb.k',
     '.kebbbHbbbbHHbbck.',
@@ -68,7 +68,8 @@ export const AURELIA_BODICE: PaintedPiece = {
     G: '#d7e7e9',
     I: '#5eacc8',
     S: '#f6c9a7',
-    0: '#c17067',
+    T: '#eaa085',
+    U: '#c17067',
   },
 };
 
@@ -105,13 +106,13 @@ export const AURELIA_SLEEVE_UPPER_N: PaintedPiece = {
   angle: 107.10,
   rows: [
     '...........kkk.',
-    '.........kkTUUk',
-    '........kUSSSS.',
-    '.......kUSSSSS.',
-    '.......kUSSSSS.',
-    '......kkSSSSSU.',
-    '......kDUSSSU..',
-    '......kDkSSUk..',
+    '.........kkTTTk',
+    '........kTSSSS.',
+    '.......kTSSSSS.',
+    '.......kTSSSSS.',
+    '......kkSSSSST.',
+    '......kDTSSST..',
+    '......kDkSSTk..',
     '.....kHDCkkk...',
     '.....kDDCCHk...',
     '....kDDnnnnk...',
@@ -135,8 +136,7 @@ export const AURELIA_SLEEVE_UPPER_N: PaintedPiece = {
     D: '#f5bc47',
     H: '#bb852d',
     S: '#f6c9a7',
-    T: '#ecab8e',
-    U: '#ea9e83',
+    T: '#eaa085',
   },
 };
 

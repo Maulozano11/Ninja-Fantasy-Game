@@ -54,6 +54,8 @@ const ES: Record<string, string> = {
   "Lyra's eyes": 'Los ojos de Lyra',
   Fine: 'Fina',
   "Lyra's face": 'La cara de Lyra',
+  Serene: 'Serena',
+  "Aurelia's face": 'La cara de Aurelia',
   Long: 'Largo',
   Arms: 'Brazos',
   "The body's own": 'Los del cuerpo',

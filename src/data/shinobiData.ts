@@ -1903,6 +1903,8 @@ export const LEGENDARY_PRESETS: { name: string; tag: string; nameEs?: string; ta
         skin: '#f4c6a5',
         eyeShape: 'dawn',
         eyeColor: '#235384',
+        // her face and head where the owner drew them (2026-10-23: "copia la forma de cara cuello y peinado pixel a pixel")
+        faceShape: 'aurelia',
         // his Aurelia's own small hands (the owner, 2026-10-22: "las manos mas pequeñas ponlas como opcion")
         hands: 'small',
         slots: {

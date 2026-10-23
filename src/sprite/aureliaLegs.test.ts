@@ -132,30 +132,35 @@ describe("Aurelia's legs", () => {
   });
 });
 
-/** Her rest and walk frames as approved at ae89802 (sha256 of the frame's pixels, its first 16 hex digits). */
+/**
+ * Her rest and walk frames as approved at ae89802 (sha256 of the frame's pixels, its first 16 hex digits), with
+ * two of his later decisions in them: the 1-pixel holes closed for every character (holes.ts, "si arregla el
+ * hueco de 1 pixel a todos": walk only, idle stays as drawn) and her head, neck and hair as he drew them
+ * ("copia la forma de cara cuello y peinado pixel a pixel", 2026-10-23: aureliaHead.ts; her legs unchanged).
+ */
 const APPROVED: Record<string, string> = {
-  'idle 1 bare': 'cd94e1c3d96db231',
-  'idle 2 bare': '4d8c252bd8e0617a',
-  'idle 3 bare': '4e2257ff0a10225e',
-  'idle 4 bare': 'f0b25fe9285e41dd',
-  'walk 1 bare': '611cb49dc23c7c9c',
-  'walk 2 bare': '467eb67cbb3d3190',
-  'walk 3 bare': '74276c584414ffec',
-  'walk 4 bare': '0dbef55f63332f44',
-  'walk 5 bare': 'dd1a503541b98244',
-  'walk 6 bare': '83482150cd4606cc',
-  'walk 7 bare': 'e1b0ebc4baa2990f',
-  'walk 8 bare': '2ed1c3f6bcacd214',
-  'idle 1 skirt': 'b11ac196211e5473',
-  'idle 2 skirt': 'cd8449a395e90589',
-  'idle 3 skirt': '00121780b7066713',
-  'idle 4 skirt': '86543a1824bbf096',
-  'walk 1 skirt': 'f70a836461915f7f',
-  'walk 2 skirt': 'e5c793672e7d0ecd',
-  'walk 3 skirt': '44207254ad215c3c',
-  'walk 4 skirt': 'c5a76fd48a688985',
-  'walk 5 skirt': '91e297bca2a605cf',
-  'walk 6 skirt': 'f84d3aafdb47b502',
-  'walk 7 skirt': '77c2c70957945dcc',
-  'walk 8 skirt': 'e8a730b640635419',
+  'idle 1 bare': '78d596d157037e42',
+  'idle 2 bare': '3cd737a6ea799137',
+  'idle 3 bare': '86d7426bd49de764',
+  'idle 4 bare': '66f1b48fb238a07c',
+  'walk 1 bare': '32132a085e59984e',
+  'walk 2 bare': 'ac33a5877705d339',
+  'walk 3 bare': 'e279dd96f2d03d4f',
+  'walk 4 bare': '29eadb7d6fe3ecc4',
+  'walk 5 bare': '376ccd8bf0834e2a',
+  'walk 6 bare': 'd105c64cfc2cf6c8',
+  'walk 7 bare': '2e63f300f75b5b94',
+  'walk 8 bare': '6c44b1782d00c006',
+  'idle 1 skirt': '1d72ca9509229e91',
+  'idle 2 skirt': '1ff8d5c5696f97c8',
+  'idle 3 skirt': '578b949ac4d90672',
+  'idle 4 skirt': '10fcf5525f168b01',
+  'walk 1 skirt': 'f28c1fca5f5ff57a',
+  'walk 2 skirt': 'd84d40535ee7adeb',
+  'walk 3 skirt': '221bbd106b28fe75',
+  'walk 4 skirt': '6c30223743a335f5',
+  'walk 5 skirt': '78767ac618ea479c',
+  'walk 6 skirt': '1084e0286a202dc6',
+  'walk 7 skirt': '986a0ce8db21c218',
+  'walk 8 skirt': 'da770b84151962ae',
 };

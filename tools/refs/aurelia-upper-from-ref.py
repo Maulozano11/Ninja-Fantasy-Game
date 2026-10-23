@@ -81,12 +81,14 @@ NEAR = 9
 # his white ground and (but where SKIN_CELLS says) his skin are left out; his line is then taken back
 # where it touches the piece (outline()).
 BODICE_ROWS = {
-    24: (51, 51), 25: (47, 54), 26: (48, 54), 27: (49, 55), 28: (49, 56), 29: (49, 57), 30: (49, 58),
+    24: (51, 51), 25: (47, 54), 26: (48, 54), 27: (49, 58), 28: (49, 59), 29: (49, 57), 30: (49, 58),
     31: (49, 59), 32: (45, 60), 33: (45, 60), 34: (47, 60), 35: (46, 59), 36: (46, 59), 37: (47, 58),
     38: (47, 58), 39: (48, 58), 40: (49, 58), 41: (52, 57),
 }
-# The bodice's skin: the keyhole under the gem and the armpit by the near arm, in the body's skin.
-SKIN_CELLS = {(55, 30), (56, 30), (56, 31), (45, 32), (46, 32), (45, 33), (46, 33)}
+# The bodice's skin: the keyhole under the gem and the armpit by the near arm, in the body's skin; and his
+# bare far shoulder past the collar's far edge (57, 27) and (58, 28), his line round it, under her far lock
+# where he drew her head (her face 'aurelia' stands it there: tools/refs/aurelia-face-from-ref.py).
+SKIN_CELLS = {(55, 30), (56, 30), (56, 31), (45, 32), (46, 32), (45, 33), (46, 33), (57, 27), (58, 28)}
 # His bare near shoulder over the near sleeve's band (his rows 26-32, up to the bodice's armpit), in the
 # body's skin as the keyhole: it rides the upper arm with the sleeve.
 SHOULDER_ROWS = {26: (41, 46), 27: (41, 46), 28: (41, 46), 29: (41, 46), 30: (41, 46), 31: (41, 45), 32: (41, 44)}

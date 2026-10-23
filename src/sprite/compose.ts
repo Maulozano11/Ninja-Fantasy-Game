@@ -13,6 +13,7 @@ import { drawHeadband } from './items/headband';
 import { add, F_NO_OUTLINE, F_NO_TEXTURE, GRID, Layer, MaterialTable, norm, PAD, PartId, partIndex, PARTS, perp, RES, scale, sub, v, Vec } from './raster';
 import { drawRig, Lay, layRig, Rig, rigPoseFor, turnPoint, turnRig } from './rig';
 import { carryHead } from './neck';
+import { aureliaRig } from './aureliaHead';
 import { drawCampFx } from './campfx';
 import { drawCastFx } from './castfx';
 import { sealCloth } from './seal';
@@ -269,9 +270,10 @@ export function spriteLayers(look: SpriteAppearance, pose: SpritePose, frame: nu
 
 function drawLayers(look: SpriteAppearance, pose: SpritePose, frame: number, eyeSpecial: EyeSpecial, heldOnly?: Rig) {
   // heldOnly: just the held item (or the kunai bare hands throw) on that rig, no body (sprite/thrown.ts).
-  // (the long neck carries the head higher and further forward: neck.ts)
+  // (the long neck carries the head higher and further forward: neck.ts; Aurelia's face stands her head
+  // where the owner drew it: aureliaHead.ts)
   // (his own figure in his painted frames sits on his joints; any other look holds its hands from its own neck: rig.ts PoseAt.hisNeck)
-  const rig = heldOnly ?? carryHead(drawRig(look.body, rigPoseFor(pose, look.cast?.style, look.stowed ? undefined : look.slots.held?.id), frame, look.arms, wearsHisFigure(look)), look.neck);
+  const rig = heldOnly ?? aureliaRig(carryHead(drawRig(look.body, rigPoseFor(pose, look.cast?.style, look.stowed ? undefined : look.slots.held?.id), frame, look.arms, wearsHisFigure(look)), look.neck), look);
   const mats = new MaterialTable();
   const layers = new Map<Depth, Layer>();
   const equipped = new Map<SlotId, ItemDef>();

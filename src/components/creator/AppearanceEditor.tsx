@@ -127,6 +127,7 @@ const FACE_SHAPES: { id: FaceShape; label: string; sub: string }[] = [
   { id: 'valiant', label: 'Valiant', sub: "Aiden's face" },
   { id: 'founder', label: 'Founder', sub: "Solen's face" },
   { id: 'fine', label: 'Fine', sub: "Lyra's face" },
+  { id: 'aurelia', label: 'Serene', sub: "Aurelia's face" },
 ];
 
 const ARMS: { id: ArmType; label: string; sub: string }[] = [

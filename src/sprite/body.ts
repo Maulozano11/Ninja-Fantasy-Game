@@ -17,6 +17,8 @@ import { FOUNDER_FACE_KIND, FOUNDER_HEAD, FOUNDER_IRIS, FOUNDER_SKIN } from './f
 import { KEEN_BROW_HAIR, KEEN_BROWS, KEEN_EYE_COLORS, KEEN_EYES, KEEN_IRIS } from './lyraEyeArt';
 import { LONG_NAPE, LONG_NECK_BACK, LONG_NECK_W } from './neck';
 import { LYRA_FACE_FAR_LINE, lyraFaceCells, stampLyraFace } from './lyraFace';
+import { AURELIA_FACE, AURELIA_FACE_FAR_EYE, AURELIA_FACE_FAR_LINE, AURELIA_FACE_LINE, AURELIA_FACE_SKIN } from './aureliaFaceArt';
+import { AURELIA_NECK_BACK, bodyHead, onAureliaHead } from './aureliaHead';
 import { LYRA_FACE_FAR_EYE } from './lyraFaceArt';
 import { drawOwner, slotTint } from './ownerFrames';
 import { segAngle, stampPiece } from './painted';
@@ -245,7 +247,31 @@ function drawBaseBody(g: DrawCtx): void {
   // His neck rides the bone from its foot to the head, so a head pitched forward (the throw) takes the
   // neck with it. The rig keeps the head at his neck's length in every pose (rig.ts solveFit,
   // PoseFrame.neckPitch), so his neck is only turned, never drawn longer.
-  stampBase(g, 'torso.body', P.neck, r.neck, segAngle(r.neck, r.head), 'torso');
+  // (Aurelia's face carries her head higher than the body's, aureliaHead.ts: his neck turns toward the body's
+  // own head, as on every female body, under her collar and chin.)
+  const neckL = g.L('torso.body');
+  const was = onAureliaHead(g.look) ? { mat: neckL.mat.slice(), shade: neckL.shade.slice(), part: neckL.part.slice(), flags: neckL.flags.slice() } : undefined;
+  const own = bodyHead(r, g.look);
+  stampBase(g, 'torso.body', P.neck, r.neck, segAngle(r.neck, own), 'torso');
+  if (was) {
+    // Her head stands higher (aureliaHead.ts): his neck is drawn on up to it, so it closes the space between her
+    // chin and her collar in every pose (at rest her collar and chin cover it, as he drew her).
+    stampBase(g, 'torso.body', P.neck, v(r.neck.x + r.head.x - own.x, r.neck.y + r.head.y - own.y), segAngle(r.neck, own), 'torso');
+    // He drew her neck slimmer than his bare woman's: behind her near lock (his column 47 on, four before
+    // the near eye's) is the gap between her lock and her bun, so his neck stops there.
+    const { nx, ny } = faceAnchor(g);
+    for (let i = 0; i < GRID * GRID; i++) {
+      if (neckL.mat[i] === was.mat[i] && neckL.shade[i] === was.shade[i]) continue;
+      const dx = (i % GRID) - nx;
+      const dy = Math.floor(i / GRID) - ny;
+      if (dx * r.right.x + dy * r.right.y < AURELIA_NECK_BACK) {
+        neckL.mat[i] = was.mat[i];
+        neckL.shade[i] = was.shade[i];
+        neckL.part[i] = was.part[i];
+        neckL.flags[i] = was.flags[i];
+      }
+    }
+  }
   drawHead(g);
   arm('N');
 }
@@ -576,6 +602,8 @@ function drawHead(g: DrawCtx): void {
   // Lyra's face ('fine') is narrower than the template: the skull stops short of his far face line, so
   // its outline runs on up from his line.
   if (g.look.faceShape === 'fine') for (let y = 0; y < ny; y++) for (let x = nx + LYRA_FACE_FAR_LINE; x < GRID; x++) L.mat[y * GRID + x] = -1;
+  // Aurelia's face ('aurelia') too: the skull stops at his far line (her lash closes the face there).
+  if (g.look.faceShape === 'aurelia') for (let y = 0; y < ny; y++) for (let x = nx + AURELIA_FACE_FAR_LINE; x < GRID; x++) L.mat[y * GRID + x] = -1;
   drawFace(g);
 }
 
@@ -639,7 +667,7 @@ export function skinTone(hex: string, skin: string, base: string = VALIANT_SKIN)
  * square: the reference's original strong jaw, with a flat jaw line.
  * (valiant and founder, the owner's heads, are his pixels whole: see drawValiantHead, drawFounderHead.)
  */
-const FACE_LEFT: Record<Exclude<FaceShape, 'valiant' | 'founder' | 'fine'>, string[]> = {
+const FACE_LEFT: Record<Exclude<FaceShape, 'valiant' | 'founder' | 'fine' | 'aurelia'>, string[]> = {
   tapered: ['osbbbbb', 'ossbbbb', '.osbbbb', '..osbbb', '...osbb', '....osb', '.....os', '......o', '.......', '.......'],
   soft: ['osbbbbb', 'ossbbbb', 'ossbbbb', '.osbbbb', '..osbbb', '...osbb', '....osb', '.....oo', '.......', '.......'],
   square: ['osbbbbb', 'ossbbbb', 'osDsbbb', 'ossbbbb', '.osbbbs', '..osbbs', '...osbs', '....ooo', '.......', '.......'],
@@ -648,8 +676,21 @@ const FACE_LEFT: Record<Exclude<FaceShape, 'valiant' | 'founder' | 'fine'>, stri
 const faceLeft = (g: DrawCtx): string[] => {
   const s = g.look.faceShape;
   // (Lyra's face, 'fine', has the default near cheek under her hair)
-  return (s && s !== 'valiant' && s !== 'founder' && s !== 'fine' && FACE_LEFT[s]) || FACE_LEFT.tapered;
+  return (s && s !== 'valiant' && s !== 'founder' && s !== 'fine' && s !== 'aurelia' && FACE_LEFT[s]) || FACE_LEFT.tapered;
 };
+
+/** Aurelia's face (aureliaFaceArt.ts) in fine pixels, its pivot on the face anchor. */
+function aureliaFaceCells(nx: number, ny: number): { x: number; y: number; hex: string }[] {
+  const out: { x: number; y: number; hex: string }[] = [];
+  const [px, py] = AURELIA_FACE.pivot;
+  AURELIA_FACE.rows.forEach((row, r) => {
+    for (let c = 0; c < row.length; c++) if (row[c] !== '.') out.push({ x: nx - px + c, y: ny - py + r, hex: AURELIA_FACE.colors[row[c]] });
+  });
+  return out;
+}
+
+/** Her face's lines: they stay his whatever the skin. */
+const AURELIA_LINES = new Set([...AURELIA_FACE_LINE].map((ch) => AURELIA_FACE.colors[ch]));
 
 const FACE_MAIN: Record<string, string[]> = {
   male: [
@@ -767,6 +808,12 @@ export function faceCells(g: DrawCtx, skipBack = 0): Set<number> {
   faceLeft(g).forEach((row, r) => {
     for (let c = skipBack; c < row.length; c++) if (row[c] !== '.') add(nx - 7 + c, ny + r);
   });
+  if (g.look.faceShape === 'aurelia') {
+    // Aurelia's face from the lash row down: his pixels only (her near lock covers his near cheek).
+    out.clear();
+    for (const c of aureliaFaceCells(nx, ny)) if (c.y >= ny && c.x >= nx - 7 + skipBack) add(c.x, c.y);
+    return out;
+  }
   if (g.look.faceShape === 'fine') {
     // Lyra's face from the lash row down, over the template's near cheek.
     for (const c of lyraFaceCells(nx, ny)) if (c.y >= ny) add(c.x, c.y);
@@ -790,7 +837,8 @@ export function faceAnchor(g: DrawCtx): { nx: number; ny: number; ex: number; fx
   const ny = Math.floor((g.rig.head.y + 1.0 * k) * RES);
   const valiant = g.look.faceShape === 'valiant';
   // (Lyra's face, 'fine': her far eye where he drew it, closer in on her narrower face)
-  const far = g.look.faceShape === 'fine' ? LYRA_FACE_FAR_EYE : 9;
+  // (Aurelia's, 'aurelia': hers where he drew it too)
+  const far = g.look.faceShape === 'fine' ? LYRA_FACE_FAR_EYE : g.look.faceShape === 'aurelia' ? AURELIA_FACE_FAR_EYE : 9;
   return { nx, ny, ex: valiant ? nx + 1 : nx, fx: valiant ? nx + 8 : nx + far, fy: ny };
 }
 
@@ -861,6 +909,13 @@ function drawFace(g: DrawCtx): void {
     main.forEach((row, r) => {
       for (let c = 0; c < row.length; c++) if (row[c] === 'm' || row[c] === 'M') put(ex + c, ny + r, row[c]);
     });
+  } else if (g.look.faceShape === 'aurelia') {
+    // Aurelia's face (aureliaFaceArt.ts): his pixels from the lash row down, her mouth his own; only the
+    // eyes from the template, where he drew them (her far eye closer in: faceAnchor).
+    for (const { x, y, hex } of aureliaFaceCells(nx, ny)) L.set(x, y, flat(AURELIA_LINES.has(hex) ? hex : skinTone(hex, g.look.skin, AURELIA_FACE_SKIN)), 3, 'head', F_NO_TEXTURE | F_NO_OUTLINE);
+    for (const [side, x0] of [['near', ex], ['far', fx]] as const) {
+      eyes[side].forEach((row, r) => [...row].forEach((ch, c) => !(ch in skinShade) && put(x0 + c, ny + r, ch)));
+    }
   } else if (g.look.faceShape === 'fine') {
     // Lyra's face (lyraFace.ts): the template's near cheek where her hair hides hers, her pixels over
     // it, and only the eyes from the template (her mouth is her own).

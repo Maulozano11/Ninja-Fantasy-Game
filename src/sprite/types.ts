@@ -76,9 +76,11 @@ export type HandSize = 'normal' | 'small';
 /**
  * Near-side cheek and jaw: V-line (default), fuller, or a strong flat jaw; or the owner's own head
  * from his Aiden picture (valiant: his skull, ear, cheeks, jaw and chin in his pixels); or his Lyra's
- * face (fine: her narrower face, mouth and chin in his pixels, under our skull).
+ * face (fine: her narrower face, mouth and chin in his pixels, under our skull); or his Aurelia's face
+ * (aurelia: her ear, cheeks, mouth, jaw and chin in his pixels from his game-scale picture, under our skull;
+ * on a female body her head stands where he drew it, src/sprite/aureliaHead.ts).
  */
-export type FaceShape = 'tapered' | 'soft' | 'square' | 'valiant' | 'founder' | 'fine';
+export type FaceShape = 'tapered' | 'soft' | 'square' | 'valiant' | 'founder' | 'fine' | 'aurelia';
 
 /** Single-choice equipment slots, drawn back-to-front by depth (see compose.ts). */
 export type SlotId =

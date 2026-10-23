@@ -16,6 +16,15 @@ import { strings, useLang } from '../../i18n';
 import { BattleScreen } from './BattleScreen';
 import { Portrait } from './hud';
 import { unitFrom } from '../../battle/units';
+import { withPouches } from '../../rules/pouch';
+import { natureOf } from '../../rules/ninja';
+
+/**
+ * Water's rank S, the Dragon Tsunami (the owner, 2026-10-22), castable in practice by every water
+ * ninja so it can be tried: a ninja learns it only at level 10, and Hana's S-rank slot keeps her
+ * Yasaka no Magatama (his open question, docs/STATUS.md).
+ */
+const PRACTICE_PREVIEW = 'water_tide_s';
 
 const S = strings({
   title: { en: 'Battle practice', es: 'Práctica de batalla' },
@@ -65,13 +74,17 @@ export const BattleDemo: React.FC<BattleDemoProps> = ({ character, start }) => {
 
   const initial = useMemo(() => {
     if (!battle) return null;
-    return createBattle(
+    const s = createBattle(
       encounterSetup(
         battle.id,
         party.map((c) => ({ character: c })),
-        { seed: battle.seed, difficulty, supplies: { soldierPills: 2, bandages: 3, antidotes: 1, explosiveTags: 2 } },
+        // The practice backpack, plus the explosive tags in each ninja's own pouch.
+        { seed: battle.seed, difficulty, supplies: withPouches({ soldierPills: 2, bandages: 3, antidotes: 1, explosiveTags: 2 }, party) },
       ),
     );
+    // Practice only: the water ninjas can try the Dragon Tsunami whatever their level (missions untouched).
+    for (const u of Object.values(s.state.units)) if (u.team === 'party' && u.character && natureOf(u.character) === 'Water' && !u.jutsus.includes(PRACTICE_PREVIEW)) u.jutsus.push(PRACTICE_PREVIEW);
+    return s;
   }, [battle, party, difficulty]);
 
   if (battle && initial) {

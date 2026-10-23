@@ -1,9 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { ChevronLeft, ChevronRight, Flame, Paintbrush, PersonStanding, ScanFace, Shield, Shirt, Sword } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Flame, Lock, Paintbrush, PersonStanding, ScanFace, Shield, Shirt, Sword } from 'lucide-react';
 import { fitsBody, itemsForSlot, getItem } from '../../sprite/catalog';
 import { resolveParts, type ItemDef } from '../../sprite/ctx';
-import { EMBLEMS } from '../../sprite/items/headband';
-import { CHAKRA_CHOICES, chakraChoice, chakraHex } from '../../sprite/chakraInfo';
+import { CHAKRA_CHOICES, TINT_CHOICES, chakraChoice, chakraHex } from '../../sprite/chakraInfo';
 import { CHAKRA_TYPES, chakraNature, chakraType, withNature } from '../../sprite/chakraNature';
 import { CAST_STYLE_INFO, defaultCastStyle } from '../../sprite/castInfo';
 import { CAST_STYLES } from '../../sprite/types';
@@ -15,7 +14,6 @@ import type {
   FaceShape,
   HeadbandPosition,
   ItemChoice,
-  NeckType,
   SlotId,
   SpriteAppearance,
   SpritePose,
@@ -117,7 +115,6 @@ const SLOT_PARTS: Partial<Record<Part, { slot: SlotId; crop: 'full' | 'head' }>>
 const BODIES: { id: BodyType; label: string }[] = [
   { id: 'male', label: 'Male' },
   { id: 'female', label: 'Female' },
-  { id: 'slender', label: 'Slender' },
   { id: 'bulky', label: 'Bulky' },
 ];
 
@@ -127,11 +124,7 @@ const FACE_SHAPES: { id: FaceShape; label: string; sub: string }[] = [
   { id: 'square', label: 'Square', sub: 'Strong jaw' },
   { id: 'valiant', label: 'Valiant', sub: "Aiden's face" },
   { id: 'noble', label: 'Noble', sub: "Scarlet's face" },
-];
-
-const NECKS: { id: NeckType; label: string; sub: string }[] = [
-  { id: 'slim', label: 'Slim', sub: 'Slender' },
-  { id: 'strong', label: 'Strong', sub: 'Thick, muscular' },
+  { id: 'founder', label: 'Founder', sub: "Solen's face" },
 ];
 
 const EYE_SHAPES: { id: EyeShape; label: string; sub?: string }[] = [
@@ -242,7 +235,9 @@ export const AppearanceEditor: React.FC<{
   onGroup?: (g: AppearanceGroup) => void;
   /** What the last change of chakra type did to the jutsu (already in the screen's language). */
   chakraNote?: string;
-}> = ({ look, eye, character, onChange, onPreviewStance, onGroup, chakraNote }) => {
+  /** The ninja has been made: its chakra type can no longer change (rules/progression.ts). */
+  typeFixed?: boolean;
+}> = ({ look, eye, character, onChange, onPreviewStance, onGroup, chakraNote, typeFixed }) => {
   useLang();
   const [group, setGroup] = useState<AppearanceGroup>('body');
   const [parts, setParts] = useState<Partial<Record<AppearanceGroup, Part>>>({});
@@ -338,25 +333,6 @@ export const AppearanceEditor: React.FC<{
               </div>
             </div>
             <ColorRow label="Skin Tone" value={look.skin} swatches={SKIN_TONES} onChange={(skin) => onChange({ ...look, skin })} />
-            <div>
-              <SectionLabel>Neck</SectionLabel>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                {NECKS.map((n) => (
-                  <OptionCard
-                    key={n.id}
-                    selected={(look.neck || 'slim') === n.id}
-                    label={n.label}
-                    sub={n.sub}
-                    onClick={() => {
-                      soundManager.playSelect();
-                      onChange({ ...look, neck: n.id });
-                    }}
-                  >
-                    <SpriteThumb look={{ ...look, neck: n.id }} eye={eye} crop="head" />
-                  </OptionCard>
-                ))}
-              </div>
-            </div>
           </div>
         )}
 
@@ -438,34 +414,10 @@ export const AppearanceEditor: React.FC<{
             </div>
             <div className="flex flex-wrap gap-2">
               <Toggle
-                label="Slashed (rogue)"
-                value={look.headband.slashed}
-                onChange={(slashed) => onChange({ ...look, headband: { ...look.headband, slashed } })}
-              />
-              <Toggle
                 label="Long cloth tails"
                 value={look.headband.tails}
                 onChange={(tails) => onChange({ ...look, headband: { ...look.headband, tails } })}
               />
-            </div>
-            <div>
-              <SectionLabel>Emblem</SectionLabel>
-              <div className="flex flex-wrap gap-2">
-                {EMBLEMS.map((e) => (
-                  <button
-                    key={e.id}
-                    type="button"
-                    onClick={() => onChange({ ...look, headband: { ...look.headband, emblem: e.id } })}
-                    className={`px-2.5 py-1.5 text-xs rounded-lg border transition ${
-                      look.headband.emblem === e.id
-                        ? 'bg-cyan-600 border-cyan-500 text-white'
-                        : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:text-slate-200'
-                    }`}
-                  >
-                    {e.name}
-                  </button>
-                ))}
-              </div>
             </div>
             <ColorRow
               label="Cloth"
@@ -473,12 +425,6 @@ export const AppearanceEditor: React.FC<{
               swatches={CLOTH_COLORS}
               families={CLOTH_FAMILIES}
               onChange={(cloth) => onChange({ ...look, headband: { ...look.headband, cloth } })}
-            />
-            <ColorRow
-              label="Plate"
-              value={look.headband.plate}
-              swatches={['#cbd5e1', '#9ca3af', '#d4af37', '#b87333', '#4b5563', '#f8fafc']}
-              onChange={(plate) => onChange({ ...look, headband: { ...look.headband, plate } })}
             />
           </div>
         )}
@@ -494,6 +440,13 @@ export const AppearanceEditor: React.FC<{
                 </div>
               </div>
               <p className="text-[11px] text-slate-500 -mt-1 mb-2">{L('Your chakra type is your elemental nature: it decides your elemental jutsu.')}</p>
+              {/* The owner (2026-10-21): the type can't be changed once the ninja is made; a second element comes at level 5 (rules/natureGrowth.ts). */}
+              {typeFixed && (
+                <p data-type-fixed className="flex items-start gap-1.5 text-[11px] text-[#f2c46d] border border-[#6b5434] bg-[#2b1f0d] px-2 py-1.5 mb-2">
+                  <Lock className="w-3.5 h-3.5 mt-px shrink-0" />
+                  <span>{L('Your chakra type was fixed when this ninja was made: it can no longer change. At level 5 it may take a second element (Jutsu step).')}</span>
+                </p>
+              )}
               {[true, false].map((elemental) => (
                 <div key={String(elemental)} className="mb-2">
                   <div className="text-[10px] uppercase tracking-wider text-slate-500 mb-1">{L(elemental ? 'Elements' : 'No element')}</div>
@@ -502,19 +455,25 @@ export const AppearanceEditor: React.FC<{
                     {CHAKRA_TYPES.filter((t) => t.elemental === elemental && (!t.pending || t.nature === nature)).map((t) => {
                       const on = t.nature === nature;
                       const burst = on ? look.chakra.color : t.bursts[0];
+                      // A made ninja's other types are shown, out of reach.
+                      const locked = !!typeFixed && !on;
                       return (
                         <button
                           key={t.nature}
                           type="button"
+                          disabled={locked}
+                          title={locked ? L('Fixed when the ninja was made') : undefined}
                           onClick={() => {
+                            if (locked) return;
                             soundManager.playChakraSurge();
                             onChange({ ...look, chakra: withNature(look.chakra, t.nature) });
                             onPreviewStance('charge');
                           }}
-                          className={`flex flex-col items-center w-[80px] pt-1 pb-1.5 border transition ${
-                            on ? 'border-[#f2c46d] bg-[#3a2a12]/70 ring-1 ring-[#f2c46d]/50' : 'border-slate-800 bg-slate-950/60 hover:border-slate-600'
+                          className={`relative flex flex-col items-center w-[80px] pt-1 pb-1.5 border transition ${
+                            on ? 'border-[#f2c46d] bg-[#3a2a12]/70 ring-1 ring-[#f2c46d]/50' : locked ? 'border-slate-900 bg-slate-950/60 opacity-35 grayscale cursor-not-allowed' : 'border-slate-800 bg-slate-950/60 hover:border-slate-600'
                           }`}
                         >
+                          {on && typeFixed && <Lock className="absolute right-1 top-1 w-3 h-3 text-[#f2c46d]" />}
                           <BurstThumb look={look} burst={burst} eye={eye} />
                           <span style={serif} className={`text-[13px] font-bold leading-tight ${on ? 'text-[#f2c46d]' : 'text-slate-200'}`}>
                             {L(t.nature)}
@@ -528,7 +487,7 @@ export const AppearanceEditor: React.FC<{
                   {!elemental && <p className="text-[11px] text-slate-400 mt-1">{L('Light and Void: their own jutsu will come later. For now they learn no elemental jutsu.')}</p>}
                 </div>
               ))}
-              {chakraType(nature).pending && (
+              {chakraType(nature).pending && !typeFixed && (
                 <p className="text-[11px] text-amber-300/90 border border-amber-900/60 bg-amber-950/30 px-2 py-1.5">
                   {L('This type is pending: it can no longer be picked. Your ninja keeps it until you choose another one.')}
                 </p>
@@ -557,7 +516,7 @@ export const AppearanceEditor: React.FC<{
                 >
                   {L('Natural')}
                 </button>
-                {CHAKRA_CHOICES.map((c) => (
+                {TINT_CHOICES.map((c) => (
                   <button
                     key={c.id}
                     type="button"

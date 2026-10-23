@@ -30,6 +30,7 @@ export type EffectId =
   | 'poisoned'
   | 'wounded_leg'
   | 'numb'
+  | 'jolted'
   | 'hungry'
   | 'crash'
   | 'fever'

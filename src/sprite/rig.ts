@@ -92,29 +92,6 @@ export const BODY_PARAMS: Record<BodyType, BodyParams> = {
     crotch: -1.9,
     headScale: 0.76,
   },
-  // Slimmer and curvier than 'female': narrow shoulders and waist, fuller bust
-  // and hips, slender arms and long legs with a full thigh and fine ankles.
-  slender: {
-    torsoLen: 13.8,
-    shoulderHalf: 5.3,
-    chestHalf: 5.4,
-    waistHalf: 2.9,
-    hipHalf: 7.0,
-    upperArm: 6.0,
-    forearm: 5.2,
-    thigh: 8.3,
-    shin: 7.8,
-    armR: [1.7, 1.4, 1.6, 1.05],
-    legR: [3.2, 1.75, 1.7, 1.0],
-    headRx: 6,
-    headRy: 7,
-    neckW: 1.15,
-    handR: 1.55,
-    footLen: 3.6,
-    bust: 2.2,
-    crotch: -1.7,
-    headScale: 0.76,
-  },
   bulky: {
     torsoLen: 15.2,
     shoulderHalf: 9.6,
@@ -636,6 +613,61 @@ const PIERCE: PoseFrame[] = [
   { lean: 8, pelvisDx: 1, footN: v(-0.42, 0.9), footF: v(0.42, 0.91), handN: arm(0.7, 0.4), handF: chest(3, 0), shapeN: 'grip', shapeF: 'fist' },
 ];
 
+/**
+ * Tackle, 5 frames: the Rush (Taijutsu Technique: Rush; the owner, 2026-10-21: the weapon is put
+ * away and the ninja tackles). Set (dropped low, fists tucked before the chest), the drive
+ * (pitched forward off the back foot, the head tucked down behind the leading shoulder, the arms
+ * braced in), THE IMPACT (shoulder first, the body at its longest, the front knee driving, both feet
+ * off the ground), a hold on it, and the recovery back onto both feet. The hands are busy (grip.ts):
+ * a held weapon is drawn stowed.
+ */
+const TACKLE: PoseFrame[] = [
+  // Set: low over the front foot, the fists tucked in before the chest.
+  { lean: 20, sink: 1.5, headDx: 1, headDy: 1.5, footN: v(-0.44, 0.88), footF: v(0.36, 0.88), handN: chest(4, 1.5), handF: chest(5, -0.5), shapeN: 'fist', shapeF: 'fist', farHandFront: true },
+  // Drive: off the back foot, pitched forward, the head down behind the shoulder.
+  { lean: 32, pelvisDx: 2.5, headDx: 1.5, headDy: 6.5, footN: v(-0.62, 0.8), footF: v(0.3, 0.72), handN: chest(3.5, 2.5), handF: arm(0.42, 0.55), shapeN: 'fist', shapeF: 'fist', streamBack: true },
+  // IMPACT: shoulder first, the body long, the front knee driving, off the ground.
+  { lean: 38, pelvisDx: 4.5, headDx: 1, headDy: 8.5, lift: 1.5, footN: v(-0.68, 0.74), footF: v(0.2, 0.62), handN: chest(3, 3), handF: arm(0.36, 0.6), shapeN: 'fist', shapeF: 'fist', streamBack: true },
+  // Hold on the hit.
+  { lean: 38, pelvisDx: 5, headDx: 1, headDy: 8.5, lift: 1, chestDy: 0.5, footN: v(-0.68, 0.75), footF: v(0.2, 0.64), handN: chest(3, 3), handF: arm(0.36, 0.6), shapeN: 'fist', shapeF: 'fist', streamBack: true },
+  // Recovery: back onto both feet, guard up.
+  { lean: 14, pelvisDx: 2, headDx: 1, headDy: 1, footN: v(-0.42, 0.9), footF: v(0.38, 0.9), handN: chest(4.5, -1.5), handF: chest(3, -3), shapeN: 'fist', shapeF: 'fist', farHandFront: true },
+];
+
+/** The tackle's frame where the shoulder hits (the battle lands the blow on it). */
+export const TACKLE_IMPACT_FRAME = 2;
+
+/**
+ * Combo, 8 frames: the Leaf Hurricane (the owner, 2026-10-21: "este ataque no es con arma es un
+ * combo cuerpo a cuerpo que debería tener animación"), struck with the weapon put away. Guard, a jab,
+ * a cross, the spin (COMBO_TURNED: the battle shows these two frames mirrored, the back to the
+ * target) into a spinning back kick, coming round, a high finishing kick, and back to guard. The
+ * wind crescents go out on the kicks (COMBO_KICKS).
+ */
+const COMBO: PoseFrame[] = [
+  // Guard: fists up before the chin, the near one drawn back to throw the jab.
+  { lean: 6, footN: v(-0.36, 0.93), footF: v(0.38, 0.93), handN: chest(1.5, -2.5), handF: chest(2.5, -4), shapeN: 'fist', shapeF: 'fist', farHandFront: true },
+  // Jab: the near fist straight out at the target.
+  { lean: 12, pelvisDx: 1.5, footN: v(-0.42, 0.9), footF: v(0.4, 0.92), handN: arm(0.98, -0.12), handF: chest(2.5, -3.5), shapeN: 'fist', shapeF: 'fist', farHandFront: true },
+  // Cross: the far fist follows through, the hips turned into it.
+  { lean: 15, pelvisDx: 2, footN: v(-0.46, 0.88), footF: v(0.4, 0.92), handN: chest(3, -1.5), handF: arm(0.98, -0.06), shapeN: 'fist', shapeF: 'fist' },
+  // The spin (shown mirrored): turned away, the near knee drawn up behind, fists tucked.
+  { lean: 10, sink: 1, footN: v(-0.32, 0.55), footF: v(0.14, 0.96), handN: chest(3.5, -1.5), handF: chest(2, -3), shapeN: 'fist', shapeF: 'fist', farHandFront: true },
+  // Spinning back kick (shown mirrored): the body pitched away, the near heel driven back into the target.
+  { lean: 26, pelvisDx: 2, headDy: 3, footN: v(-0.97, -0.08), footF: v(0.2, 0.95), handN: arm(0.62, 0.48), handF: chest(3, -2), shapeN: 'fist', shapeF: 'fist', streamBack: true },
+  // Coming round to face the target, the near knee chambered high.
+  { lean: -4, footN: v(0.36, 0.5), footF: v(0.12, 0.97), handN: chest(4, -2), handF: chest(2, -3.5), shapeN: 'fist', shapeF: 'fist', farHandFront: true },
+  // Finishing kick: the near foot high at the target's head, leaning back from it.
+  { lean: -20, pelvisDx: -2, footN: v(0.8, -0.58), footF: v(0.08, 0.97), handN: arm(-0.42, 0.6), handF: chest(3, -3), shapeN: 'fist', shapeF: 'fist', farHandFront: true },
+  // Back to guard.
+  { lean: 6, footN: v(-0.36, 0.93), footF: v(0.38, 0.93), handN: chest(4.5, -2.5), handF: chest(2.5, -4), shapeN: 'fist', shapeF: 'fist', farHandFront: true },
+];
+
+/** The combo's frames the battle shows mirrored (the spin: the back to the target). */
+export const COMBO_TURNED: readonly number[] = [3, 4];
+/** The combo's kicks (the spinning back kick, the finishing kick): the wind crescents go out on them. */
+export const COMBO_KICKS: readonly number[] = [4, 6];
+
 export const POSES: Record<RigPose, PoseFrame[]> = {
   idle: [IDLE, IDLE, { ...IDLE, chestDy: 1 }, { ...IDLE, chestDy: 1 }],
   handsigns: [
@@ -792,6 +824,8 @@ export const POSES: Record<RigPose, PoseFrame[]> = {
   // Weapon techniques.
   throw: THROW,
   pierce: PIERCE,
+  tackle: TACKLE,
+  combo: COMBO,
   // Battle-map movement poses.
   walk: WALK,
   run: RUN,
@@ -817,6 +851,8 @@ export const POSE_FPS: Record<SpritePose, number> = {
   charge: 10,
   throw: 8,
   pierce: 8,
+  tackle: 10,
+  combo: 10,
   walk: 10,
   run: 12,
   crouch: 3,
@@ -865,6 +901,11 @@ export interface Rig {
   T: (x: number, y: number) => Vec;
   /** Set for poses laid on the ground for display ('downed', see PoseFrame.lie). */
   lay?: Lay;
+  /**
+   * The held weapon's angle, in place of the pose's (grip.ts swordAngle and poleAngle): the
+   * battle's thrown weapon is drawn alone at any angle of its flight (sprite/thrown.ts).
+   */
+  aim?: number;
 }
 
 /**

@@ -1,0 +1,80 @@
+{
+ "group": "vfx_blood",
+ "pxPerMeter": 57,
+ "sprites": {
+  "spray": {
+   "label": "Blood spray: thrown out of the cut toward the side it travels (drawn going right), the drops arc and fall and fade on the ground; a drip when Bleeding hurts",
+   "file": "spray.png",
+   "frameW": 128,
+   "frameH": 96,
+   "anchor": [
+    26,
+    84
+   ],
+   "meters": [
+    2.25,
+    1.68
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "burst": {
+     "row": 0,
+     "frames": 12,
+     "fps": 12,
+     "loop": false
+    },
+    "drip": {
+     "row": 1,
+     "frames": 8,
+     "fps": 10,
+     "loop": false
+    }
+   }
+  },
+  "screen": {
+   "label": "Blood on the screen: four splats that land on the lens when the cut leaves Bleeding, then run down (screen pixels)",
+   "file": "screen.png",
+   "frameW": 56,
+   "frameH": 72,
+   "anchor": [
+    28,
+    24
+   ],
+   "meters": [
+    0.98,
+    1.26
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "a": {
+     "row": 0,
+     "frames": 7,
+     "fps": 12,
+     "loop": false
+    },
+    "b": {
+     "row": 1,
+     "frames": 7,
+     "fps": 12,
+     "loop": false
+    },
+    "c": {
+     "row": 2,
+     "frames": 7,
+     "fps": 12,
+     "loop": false
+    },
+    "d": {
+     "row": 3,
+     "frames": 7,
+     "fps": 12,
+     "loop": false
+    }
+   }
+  }
+ }
+}

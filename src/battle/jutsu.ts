@@ -15,6 +15,77 @@ export type VfxRole = 'bolt' | 'beast' | 'stream' | 'breath' | 'sphere' | 'slash
 /** `node`: one of the caster's own Weapon Nodes; `onNode`: a unit standing on one (Ryusei). */
 export type JutsuShape = 'single' | 'circle' | 'selfCircle' | 'cone' | 'line' | 'wall' | 'self' | 'ally' | 'point' | 'node' | 'onNode';
 
+/**
+ * How the screen stages a jutsu around its effect: the proposal's piece P3 (an aura before, an impact
+ * on each one reached, a slower flight, a faster run...) and P4, with the owner's answers of
+ * 2026-10-21 (docs/GAMEPLAY_DESIGN.md, "Rank D and C jutsu"). Data for the screen only: the engine
+ * never reads it.
+ */
+export interface JutsuSeq {
+  /** Its projectiles fly one by one, each on its own path to the target (a high arc, a straight line, a low curve) and with its own impact, `stagger` ms apart. */
+  volley?: { paths: ('high' | 'straight' | 'low')[]; stagger: number };
+  /** The caster's element aura (aura and aura_back) rises while it casts, for `ms`. */
+  castAura?: number;
+  /** An impact on every unit the jutsu reaches, one after another, `stagger` ms apart. */
+  hitEach?: { stagger: number };
+  /** A cone's bolts are drawn joined, from the hand to each one reached: one branching fan. */
+  connected?: boolean;
+  /** The flight takes this many times as long (a dream's drift). */
+  slowFlight?: number;
+  /** The run in (a flash-in or a charge) goes this many times as fast. */
+  fastRun?: number;
+  /** A flash of the element's aura where the caster sets off. */
+  launchFlash?: boolean;
+  /** No projectile: the effect rises from the ground at the point (P4, like the Kirin's storm), after a warning splash of `warn` ms. */
+  fromGround?: { warn: number };
+  /** The screen shakes as it lands (strength). */
+  shake?: number;
+  /** The aura stays on the caster, at this opacity, for as long as its condition lasts (the Breeze Mantle's 'mantle'). */
+  lingerAura?: number;
+  /** The element's aura wraps whoever is healed, for `ms`, once the heal lands. */
+  healAura?: number;
+  /**
+   * Staged its own way with the effect pieces of the owner's first round of answers (2026-10-21;
+   * docs/GAMEPLAY_DESIGN.md, "Jutsu effects, round 1"): his fire dragon head spitting fireballs over
+   * the cone ('dragonHead'), the half head spitting the stream to the line's end ('dragonStream'),
+   * the water dragon's head on its stream on a varied path ('waterDragon'), three volleys of rock
+   * bullets on varied paths along the line ('rockVolleys'), the chain and the seal circle
+   * ('sealChain'), three crescents of chakra ('crescents'), the crows out of the vortex
+   * ('crowDive'), the unarmed combo with wind crescents ('hurricane'); and the two new effects,
+   * his wood dragon rising out of the ground at the target after a row of roots ('woodDragon'), and
+   * lightning gathered in the bare hand, then a thrust with it ('handLightning').
+   */
+  stage?: StageKind;
+  /**
+   * The Devouring Tide: a wave runs out along the cone, a row of the element's water columns
+   * (wall_depth; its wall seen from the side when the cone points into the depth) with `rows` rows
+   * fading behind its crest and the element's breath as foam before it, in `ms`.
+   */
+  wave?: {
+    rows: number;
+    ms: number;
+    /**
+     * The Dragon Tsunami, Water's rank S (the owner's paint-over of the wave, approved 2026-10-22):
+     * his curl, his water dragon and his kanji 水 ride the crest (vfx_tide_s).
+     */
+    dragon?: boolean;
+  };
+  /**
+   * The Whirlwind Tower: a warning impact at the point, then the element's column (wall_depth)
+   * rises there, turns with `minis` small whirlwinds (multi) circling it, and fades.
+   */
+  tower?: { warn: number; minis: number };
+  /** A cone's breath laid along it (the Rubble Gust's dust), for `ms`. */
+  breathMs?: number;
+  /**
+   * Blood (the owner, 2026-10-21): a hit bursts a spray of it out of the target toward the side the
+   * cut travels, and a cut that leaves Bleeding splashes drops onto the screen. Never in a chakra colour.
+   */
+  blood?: boolean;
+}
+
+export type StageKind = 'dragonHead' | 'dragonStream' | 'waterDragon' | 'rockVolleys' | 'sealChain' | 'crescents' | 'crowDive' | 'hurricane' | 'woodDragon' | 'handLightning';
+
 export interface JutsuSpec {
   id: string;
   name: string;
@@ -24,6 +95,8 @@ export interface JutsuSpec {
   nameEnh?: string;
   nameEnhEs?: string;
   rank: string;
+  /** The jutsu's nature as its data says it (Fire, Taijutsu…); the hydra's attacks and the clan abilities have none. */
+  nature?: string;
   element: VfxElement;
   cost: number;
   enhCost: number;
@@ -40,17 +113,60 @@ export interface JutsuSpec {
   save?: Ability;
   /** On a successful save: half damage, or nothing. */
   saveHalf: boolean;
-  special?: 'heal' | 'flicker' | 'clone' | 'trap' | 'kawarimi' | 'earthWall' | 'waterWall' | 'seal' | 'confuse' | 'evasion' | 'metalBlock' | 'metalWall' | 'warp' | 'swap' | 'command' | 'submission';
+  special?: 'heal' | 'flicker' | 'clone' | 'kawarimi' | 'earthWall' | 'waterWall' | 'seal' | 'confuse' | 'evasion' | 'metalBlock' | 'metalWall' | 'warp' | 'swap' | 'command' | 'submission' | 'mantle' | 'galeZone';
   /** The projectile or effect the screen plays. */
   vfx: VfxRole;
   /** A signature effect of its own (vfx_<element>/<sig>, and <sig>_great or <sig>_enh enhanced). */
   sig?: string;
+  /**
+   * A fire, water, wind, lightning or earth jutsu (by its nature, and its effects are that
+   * element's): the screen plays its effects, its beast and its wall in the caster's chakra colour
+   * (the owner, 2026-10-21). A sword art that borrows the wind's slash is not one. A heal drawn in
+   * its element plays in green instead, whoever casts it (the owner: "la curacion siempre se vera verde").
+   */
+  elemental?: boolean;
+  /**
+   * The effect set it is drawn from when not its element's: 'neutral', the white wind cut of a
+   * sword art with no element (the owner, 2026-10-21: the Bleeding Cut).
+   */
+  vfxSet?: 'neutral';
+  /** The pose the caster strikes it in, when not the usual one (cast, or attack for melee): the charge pose's stomp, a shoulder tackle. */
+  pose?: 'charge' | 'tackle';
+  /** How the screen stages it (data for the screen only). */
+  seq?: JutsuSeq;
   /** Taijutsu and kenjutsu strikes are delivered in person (the caster dashes in). */
   melee: boolean;
-  /** Loud: casting it in the stealth phase starts the battle. */
+  /**
+   * A melee strike that charges in a straight line to its target (up to its range) instead of
+   * flashing in: nothing may stand in the way (a wall, a tree), and it provokes no opportunity
+   * attacks (the Rush).
+   */
+  charge?: boolean;
+  /**
+   * What the caster's hands do with a held weapon: a sword art draws it, a tackle, the Leaf
+   * Hurricane's combo and the Chidori's bare-hand thrust stow it (free, once a turn, like stowing it
+   * for hand seals).
+   */
+  weapon?: 'draw' | 'stow';
+  /**
+   * Loud: casting it in the stealth phase starts the battle. A silent one that wounds a foe counts
+   * as an attack there instead (the proposal's piece P6): the target that lives shouts, one that
+   * falls unseen leaves a body.
+   */
   loud: boolean;
   /** Left on a failed save (or a hit). */
   effect?: EffectId;
+  /** A failed save knocks the target down (a ninja; big creatures don't fall). */
+  prone?: boolean;
+  /**
+   * A failed save moves the target `m` meters: away from the caster (a wave), or toward the
+   * circle's middle (a tornado). A ninja; big creatures don't move.
+   */
+  push?: { m: number; toward?: boolean };
+  /** Water that puts out the flames on everyone it reaches (every water jutsu that strikes). */
+  douse?: boolean;
+  /** How long the ground it soaks stays wet, in rounds (a water jutsu; WET_ROUNDS when unset). */
+  wetRounds?: number;
   /** What it does to the ground around it. */
   env?: 'ignite' | 'electrify' | 'clearFoliage';
   /** A failed save adds Tension (the hydra's roar). */
@@ -78,29 +194,38 @@ const ELEMENT: Record<string, VfxElement> = {
   Taijutsu: 'chakra',
   Kenjutsu: 'wind',
 };
+const ELEMENTAL_NATURES = ['Fire', 'Water', 'Wind', 'Lightning', 'Earth'];
 
 /** Per-jutsu touches the data can't say (the screen's effect, special behavior). */
 const OVERRIDE: Record<string, Partial<JutsuSpec>> = {
   shadow_clone: { shape: 'self', special: 'clone', vfx: 'aura', loud: false },
   body_flicker: { shape: 'point', special: 'flicker', vfx: 'aura', loud: false },
-  trap_setter_tag: { shape: 'point', special: 'trap', vfx: 'hit', loud: false, radius: 1.5 },
-  mystical_palm: { shape: 'ally', special: 'heal', vfx: 'aura', range: 1.6, loud: false },
+  // Water by nature, and drawn in it: the water aura wraps the friend as it heals (the owner: the
+  // Healing Dew's aura goes on the Palm too), in green like every heal, never the chakra colour (the
+  // owner: "la curacion siempre se vera verde").
+  mystical_palm: { shape: 'ally', special: 'heal', vfx: 'aura', range: 1.6, loud: false, seq: { healAura: 800 } },
   substitution_kawarimi: { shape: 'self', special: 'kawarimi', cast: 'reaction', vfx: 'hit', loud: false },
   fireball_goukakyu: { vfx: 'sphere', effect: 'burning', sig: 'fireball' },
-  dragon_fire_stream: { vfx: 'stream', effect: 'burning' },
-  water_dragon_suiryuudan: { vfx: 'beast' },
+  // The owner's first round of effect answers (2026-10-21; docs/GAMEPLAY_DESIGN.md, "Jutsu effects,
+  // round 1"): data for the screen only.
+  dragon_fire_stream: { vfx: 'stream', effect: 'burning', seq: { stage: 'dragonStream' } },
+  // No beast (the owner: the elemental beasts will be summons): his dragon head in water on his stream.
+  water_dragon_suiryuudan: { vfx: 'stream', seq: { stage: 'waterDragon' } },
   water_shield_suijinheki: { shape: 'wall', special: 'waterWall', vfx: 'wall', length: 4.5 },
   earth_wall_doryuheki: { shape: 'wall', special: 'earthWall', vfx: 'wall', length: 4.5 },
-  earth_spear_doryuudan: { shape: 'line', width: 1.2, vfx: 'stream' },
+  earth_spear_doryuudan: { shape: 'line', width: 1.2, vfx: 'multi', seq: { stage: 'rockVolleys' } },
   wind_blade_daitoppa: { vfx: 'slash' },
-  chidori_lightning_blade: { vfx: 'hit', melee: true },
+  // A thrust of the bare hand with the lightning gathered in it (the owner's answer 11): the weapon is put away.
+  chidori_lightning_blade: { vfx: 'hit', melee: true, weapon: 'stow', seq: { stage: 'handLightning' } },
   lightning_hound_raidon: { vfx: 'beast' },
-  leaf_hurricane_senpuu: { shape: 'selfCircle', vfx: 'aura', melee: true },
-  crescent_moon_dance: { vfx: 'slash', melee: true },
-  temple_of_nirvana: { special: 'confuse', vfx: 'blast', saveHalf: false, effect: 'confused' },
-  dragon_fire_bomb: { vfx: 'breath', effect: 'burning' },
-  wood_dragon_jutsu: { element: 'earth', vfx: 'beast' },
-  adamantine_sealing_chains: { element: 'chakra', special: 'seal', vfx: 'stream', effect: 'chakra_sealed' },
+  // Not a weapon attack (the owner): the weapon is put away for an unarmed combo.
+  leaf_hurricane_senpuu: { shape: 'selfCircle', vfx: 'slash', melee: true, weapon: 'stow', seq: { stage: 'hurricane' } },
+  crescent_moon_dance: { vfx: 'slash', melee: true, seq: { stage: 'crescents' } },
+  temple_of_nirvana: { special: 'confuse', vfx: 'blast', saveHalf: false, effect: 'confused', seq: { stage: 'crowDive' } },
+  dragon_fire_bomb: { vfx: 'breath', effect: 'burning', seq: { stage: 'dragonHead' } },
+  // His wood dragon out of his icon strikes out of the ground (the owner's answer 4): no beast flies.
+  wood_dragon_jutsu: { element: 'earth', vfx: 'hit', seq: { stage: 'woodDragon' } },
+  adamantine_sealing_chains: { element: 'chakra', special: 'seal', vfx: 'stream', effect: 'chakra_sealed', seq: { stage: 'sealChain' } },
   taki_sixtyfour_palms: { vfx: 'multi', melee: true },
   kirin_thunder: { vfx: 'blast', sig: 'kirin' },
   rasenshuriken_wind: { vfx: 'sphere' },
@@ -108,6 +233,47 @@ const OVERRIDE: Record<string, Partial<JutsuSpec>> = {
   wood_golem_titan: { element: 'earth', vfx: 'blast' },
   yasaka_magatama: { element: 'chakra', vfx: 'multi', width: 1.5 },
   night_guy_dragon: { element: 'chakra', vfx: 'beast', melee: true },
+  // The rank D and C jutsu (the owner's answers of 2026-10-21; docs/GAMEPLAY_DESIGN.md, "Rank D and C
+  // jutsu"). The projectiles fly apart, on three paths, to reach the target from different angles.
+  fire_three_embers: { vfx: 'multi', seq: { volley: { paths: ['high', 'straight', 'low'], stagger: 110 } } },
+  wind_whirl: { vfx: 'bolt' },
+  wind_breeze_mantle: { shape: 'self', special: 'mantle', vfx: 'aura', loud: false, seq: { lingerAura: 0.4 } },
+  lightning_jolt: { vfx: 'multi', effect: 'jolted', seq: { volley: { paths: ['high', 'straight', 'low'], stagger: 110 } } },
+  lightning_spark_fan: { vfx: 'breath', seq: { connected: true, hitEach: { stagger: 80 } } },
+  earth_pebble_shot: { vfx: 'multi', seq: { volley: { paths: ['high', 'straight', 'low'], stagger: 110 }, castAura: 560 } },
+  // A stomp, no seals: the weapon stays in hand.
+  earth_spike_crown: { vfx: 'hit', melee: true, pose: 'charge', seq: { castAura: 400, hitEach: { stagger: 80 } } },
+  // The water orb and aura, in green like every heal (the owner).
+  water_healing_dew: { shape: 'ally', special: 'heal', vfx: 'bolt', loud: false, seq: { healAura: 800 } },
+  water_geyser: { vfx: 'blast', seq: { fromGround: { warn: 300 }, shake: 2 } },
+  // Silent (the owner): a silent jutsu that wounds counts as an attack in the stealth phase (P6).
+  genjutsu_mirage: { vfx: 'sphere', effect: 'confused', loud: false, seq: { slowFlight: 1.5 } },
+  // A sword art with no element: its own cut, the wind's crescent in white (the owner), and the
+  // blood it draws thrown the way the cut goes.
+  kenjutsu_bleeding_cut: { vfx: 'slash', vfxSet: 'neutral', melee: true, effect: 'bleeding', loud: false, seq: { blood: true } },
+  // A shoulder tackle with the weapon put away (the owner): a straight run in, then the blow.
+  taijutsu_rush: { vfx: 'hit', melee: true, charge: true, weapon: 'stow', pose: 'tackle', seq: { launchFlash: true, fastRun: 2 } },
+  // The gaps in the elements (the owner's answers of 2026-10-21; docs/GAMEPLAY_DESIGN.md, "Jutsu for
+  // the gaps"). Water's rank A (the owner's second round: "ola devoradora es rango a"): a 9 m cone
+  // that sweeps the ones who fail 3 m away, knocks them down and puts their fire out.
+  water_devouring_tide: { vfx: 'breath', push: { m: 3 }, prone: true, douse: true, seq: { castAura: 560, wave: { rows: 3, ms: 1900 }, hitEach: { stagger: 90 }, shake: 6 } },
+  // Water's rank S, the Dragon Tsunami (the owner's paint-over of our wave, 2026-10-22; "rango S ola
+  // si me gusta la animacion ... la rango s es dragon tsunami"): the Tsunami plus his curl, his water
+  // dragon and his kanji, run a little slower so the dragon can rise and roar (2200 ms and the 900 ms
+  // break). Its numbers approved by the owner for now (2026-10-22): «aprovado los numeros de la ola
+  // por ahora»: the enhanced Tsunami's reach (11.25 m, 80 degrees), and the ground it soaks stays
+  // wet a round longer than the Tsunami's (ground.ts WET_ROUNDS, 3, and one more; not imported,
+  // ground.ts imports this module).
+  water_tide_s: { vfx: 'breath', length: 11.25, angle: 80, push: { m: 3 }, prone: true, douse: true, wetRounds: 4, seq: { castAura: 560, wave: { rows: 3, ms: 2200, dragon: true }, hitEach: { stagger: 90 }, shake: 7 } },
+  // Wind's rank A: a tornado that drags the ones who fail 1.5 m toward its middle and knocks them down.
+  wind_whirlwind_tower: { vfx: 'blast', push: { m: 1.5, toward: true }, prone: true, seq: { tower: { warn: 300, minis: 6 }, shake: 3 } },
+  // The Gale Curtain, made an area by the owner: a gale on the ground that fans the fire jutsu
+  // crossing it (fannedBy below). It hurts nobody and is silent.
+  wind_gale_curtain: { special: 'galeZone', vfx: 'wall', loud: false },
+  // A straight bolt along the line, a spark on each one it runs through.
+  lightning_thunder_beam: { vfx: 'stream', width: 1.2, seq: { hitEach: { stagger: 80 } } },
+  // Dust and stones along the cone: whoever fails ends up on the ground.
+  earth_rubble_gust: { vfx: 'breath', prone: true, seq: { castAura: 560, breathMs: 1400, hitEach: { stagger: 80 } } },
 };
 
 function specOf(j: JutsuDefinition): JutsuSpec {
@@ -124,6 +290,7 @@ function specOf(j: JutsuDefinition): JutsuSpec {
     ...(j.nameEs ? { nameEs: j.nameEs } : {}),
     ...(j.nameEnh ? { nameEnh: j.nameEnh, nameEnhEs: j.nameEnhEs ?? j.nameEnh } : {}),
     rank: j.rank,
+    nature: j.nature,
     element: ELEMENT[j.nature] ?? 'chakra',
     cost: j.chakraCost,
     enhCost: j.enhancementChakraCost,
@@ -140,10 +307,19 @@ function specOf(j: JutsuDefinition): JutsuSpec {
     saveHalf: j.saveEffect !== 'Negates' && j.saveEffect !== 'Break Illusion',
     vfx: shape === 'circle' ? 'sphere' : shape === 'cone' ? 'breath' : shape === 'line' ? 'stream' : 'bolt',
     melee: false,
+    // Sword arts draw the blade by themselves (the proposal's piece P8).
+    ...(j.nature === 'Kenjutsu' ? { weapon: 'draw' as const } : {}),
     loud: true,
     env: j.environmentalEffect === 'Ignites Wood' ? 'ignite' : j.environmentalEffect === 'Electrifies Water' ? 'electrify' : j.environmentalEffect === 'Clears Foliage' ? 'clearFoliage' : undefined,
   };
-  return { ...base, ...OVERRIDE[j.id] };
+  const spec = { ...base, ...OVERRIDE[j.id] };
+  // Elemental by nature, and still drawn as that element (the Adamantine Chains are Water but chakra;
+  // an override can say no, for the ones drawn as something else).
+  if (spec.elemental === undefined && ELEMENTAL_NATURES.includes(j.nature) && spec.element === ELEMENT[j.nature]) spec.elemental = true;
+  // Water puts out the flames of whoever it reaches (the owner, 2026-10-21: "el agua apaga el fuego"):
+  // every water jutsu that strikes, not only the Tide.
+  if (spec.elemental && spec.element === 'water' && spec.dmgType) spec.douse = true;
+  return spec;
 }
 
 /** The hydra heads' own attacks (not in the jutsu list a ninja learns from). */
@@ -232,6 +408,7 @@ const CLAN_SPECS: JutsuSpec[] = [
     saveHalf: true,
     saveAdv: 'disadvantage',
     vfx: 'bolt',
+    elemental: true,
     melee: false,
     loud: true,
   },
@@ -278,9 +455,10 @@ const CLAN_SPECS: JutsuSpec[] = [
   },
   // Ryusei. Weapon Nodes are passive (clans.ts): kunai and missed blows leave them.
   {
+    // The owner's name (2026-10-21), after the clan (Ryusei, a shooting star); once Warp Strike / Golpe Warp. The id stays.
     id: 'ryusei_warp',
-    name: 'Warp Strike',
-    nameEs: 'Golpe Warp',
+    name: 'Shooting-Star Thrust',
+    nameEs: 'Estocada Fugaz',
     clan: 'Ryusei',
     ability: true,
     rank: '',
@@ -418,4 +596,66 @@ export function inArea(area: AreaShape, p: Pt, pad = 0.25): boolean {
   let diff = Math.abs(deg(Math.atan2(dz, dx)) - area.dir) % 360;
   if (diff > 180) diff = 360 - diff;
   return diff <= area.angle / 2 + deg(Math.atan2(pad, Math.max(d, 0.5)));
+}
+
+// --- the Gale Curtain: fire through the wind ---------------------------------------------------
+
+/** How near (m) a point is to the segment from a to b, and where along it (0..1) the nearest point is. */
+export function nearSegment(a: Pt, b: Pt, p: Pt): { d: number; t: number; at: Pt } {
+  const dx = b.x - a.x;
+  const dz = b.z - a.z;
+  const L2 = dx * dx + dz * dz;
+  const t = L2 > 0 ? Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.z - a.z) * dz) / L2)) : 0;
+  const at = { x: a.x + dx * t, z: a.z + dz * t };
+  return { d: Math.hypot(p.x - at.x, p.z - at.z), t, at };
+}
+
+/** An area reaches into a circle on the ground (sampled over the circle: its middle, two rings). */
+export function areaTouchesCircle(area: AreaShape, center: Pt, radius: number): boolean {
+  if (area.kind === 'circle') return Math.hypot(area.center.x - center.x, area.center.z - center.z) <= area.radius + radius;
+  const pts: Pt[] = [center];
+  for (const [k, n] of [[0.5, 8], [1, 16]] as const)
+    for (let i = 0; i < n; i++) pts.push({ x: center.x + Math.cos((i * 2 * Math.PI) / n) * radius * k, z: center.z + Math.sin((i * 2 * Math.PI) / n) * radius * k });
+  return pts.some((p) => inArea(area, p, 0));
+}
+
+/**
+ * The gale a fire jutsu goes through on its way, if any (the Gale Curtain, the owner's answer of
+ * 2026-10-21: "que potencie las técnicas de fuego que pasen por ahí"), and where the fire meets the
+ * wind. Whoever casts the fire, a friend or a foe of the gale's maker, the wind doesn't choose. The
+ * fire's path is its flight from the caster to its target or point (a single target, a ball that
+ * bursts in a circle), and its area (a cone, a line, a circle). The first gale it meets counts; two
+ * gales fan it once.
+ */
+export function fannedBy(spec: JutsuSpec, from: Pt, at: Pt, zones: readonly { id: string; center: Pt; radius: number }[]): { zone: string; at: Pt } | null {
+  if (spec.dmgType !== 'Fire' || spec.special || !zones.length) return null;
+  const area = areaOf(spec, from, at);
+  // Its flight: from the caster to where it lands. A cone or a line runs from the caster to its own
+  // end, wherever the point was aimed (a cone aimed past its length stops at its length).
+  const end = area && area.kind !== 'circle' ? areaEnd(area) : area?.kind === 'circle' ? area.center : at;
+  let best: { zone: string; at: Pt; t: number } | null = null;
+  for (const z of zones) {
+    const n = nearSegment(from, end, z.center);
+    if (n.d <= z.radius) {
+      if (!best || n.t < best.t) best = { zone: z.id, at: n.at, t: n.t };
+      continue;
+    }
+    if (area && areaTouchesCircle(area, z.center, z.radius) && !best) best = { zone: z.id, at: { ...z.center }, t: 1 };
+  }
+  return best && { zone: best.zone, at: best.at };
+}
+
+/** The far end of a cone's or a line's middle (the screen draws a beam to it, not to the point aimed at). */
+export function areaEnd(area: Extract<AreaShape, { kind: 'cone' | 'line' }>): Pt {
+  const a = (area.dir * Math.PI) / 180;
+  return { x: area.origin.x + Math.cos(a) * area.length, z: area.origin.z + Math.sin(a) * area.length };
+}
+
+/** How many damage dice a gale adds to a fire jutsu: one, two for a rank S. */
+export const fanDice = (spec: Pick<JutsuSpec, 'rank'>): number => (spec.rank === 'S' ? 2 : 1);
+
+/** A fanned fire burns harder: one more damage die (two for rank S), the area as it was aimed. */
+export function fanned(spec: JutsuSpec): JutsuSpec {
+  const more = fanDice(spec);
+  return { ...spec, dice: spec.dice?.replace(/^(\d+)d/, (_, n) => `${Number(n) + more}d`) };
 }

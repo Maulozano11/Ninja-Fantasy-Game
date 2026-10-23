@@ -1,9 +1,9 @@
 import React, { useEffect, useMemo, useRef } from 'react';
 import { ShinobiCharacter } from '../types/shinobi';
 import { renderSpriteCached } from '../sprite/compose';
-import { CHAKRA_LOOP, ChakraMode, renderChakra } from '../sprite/chakra';
+import { ChakraMode, chakraLoop, renderChakra } from '../sprite/chakra';
 import { dojutsuToEye, getAppearance } from '../sprite/legacy';
-import { frameCount, GROUND, POSE_FPS, rigPoseFor } from '../sprite/rig';
+import { COMBO_TURNED, FEET, frameCount, GROUND, POSE_FPS, rigPoseFor } from '../sprite/rig';
 import { BOX, GRID, RES } from '../sprite/raster';
 import { subscribeTick, TICK_FPS } from '../sprite/ticker';
 import type { CastStyle, SpriteAppearance, SpritePose } from '../sprite/types';
@@ -53,6 +53,21 @@ export function blendOver(dst: Uint8ClampedArray, src: Uint8ClampedArray): void 
   }
 }
 
+/** Mirrors a GRID x GRID RGBA buffer left to right about the column `cx` (fine px), in place. */
+function mirrorAbout(buf: Uint8ClampedArray, cx: number): void {
+  const row = new Uint8ClampedArray(GRID * 4);
+  for (let y = 0; y < GRID; y++) {
+    const o = y * GRID * 4;
+    row.set(buf.subarray(o, o + GRID * 4));
+    buf.fill(0, o, o + GRID * 4);
+    for (let x = 0; x < GRID; x++) {
+      const m = 2 * cx - 1 - x;
+      if (m < 0 || m >= GRID) continue;
+      buf.set(row.subarray(x * 4, x * 4 + 4), o + m * 4);
+    }
+  }
+}
+
 /** Soft pixel ellipse under the feet; `cx` in fine pixels. */
 function drawShadow(dst: Uint8ClampedArray, cx: number): void {
   const g = GROUND * RES;
@@ -92,6 +107,8 @@ export const ShinobiSpriteCanvas: React.FC<ShinobiSpriteCanvasProps> = ({
     return castStyle ? { ...base, cast: { ...(base.cast ?? { style: castStyle }), style: castStyle } } : base;
   }, [appearance, character, castStyle]);
   const eye = dojutsuToEye(character.dojutsu);
+  // when Battle Static's loop started: kept across appearance edits, so only a new stance or burst restarts it
+  const fxStart = useRef({ key: '', t0: 0 });
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -109,9 +126,13 @@ export const ShinobiSpriteCanvas: React.FC<ShinobiSpriteCanvasProps> = ({
       else if (isEnhanced) mode = 'aura';
     }
     let lastKey = '';
+    // Battle Static's loop starts when the stance does, so a victory opens with its burst of bolts;
+    // the other bursts keep running on the shared tick as before
+    const startKey = c.color === 'cyan' && mode ? `${stance}|${mode}|${isEnhanced}` : '';
     return subscribeTick((tick) => {
       const frame = Math.floor((tick * POSE_FPS[stance]) / TICK_FPS) % frameCount(rigPoseFor(stance, look.cast?.style));
-      const fxTick = tick % CHAKRA_LOOP;
+      if (fxStart.current.key !== startKey) fxStart.current = { key: startKey, t0: tick };
+      const fxTick = (startKey ? tick - fxStart.current.t0 : tick) % chakraLoop(c.color);
       const key = mode ? `${frame}|${fxTick}` : `${frame}`;
       if (key === lastKey) return;
       lastKey = key;
@@ -119,10 +140,13 @@ export const ShinobiSpriteCanvas: React.FC<ShinobiSpriteCanvasProps> = ({
       const out = img.data;
       out.fill(0);
       if (showShadow) drawShadow(out, spr.rig.pelvis.x * RES + 1);
-      const fx = mode ? renderChakra(c.color, mode, fxTick, spr.rgba, spr.rig, c.tint) : null;
+      // with the chakra aura on, a charge, a cast or a victory plays empowered too (Battle Static crackles harder)
+      const fx = mode ? renderChakra(c.color, mode, fxTick, spr.rgba, spr.rig, c.tint, isEnhanced) : null;
       if (fx) blendOver(out, fx.back);
       blendOver(out, spr.rgba);
       if (fx) blendOver(out, fx.front);
+      // The combo's spin shows the ninja turned away for a moment, as in battle (renderer.ts: about the feet's column).
+      if (stance === 'combo' && COMBO_TURNED.includes(frame)) mirrorAbout(out, FEET.x);
       ctx.putImageData(img, -win.x, -win.y, win.x, win.y, win.w, win.h);
     });
   }, [look, stance, eye, isEnhanced, showAura, showShadow, win]);

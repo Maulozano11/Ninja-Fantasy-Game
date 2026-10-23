@@ -1,0 +1,232 @@
+{
+ "group": "vfx_dragon",
+ "pxPerMeter": 57,
+ "sprites": {
+  "fire_head": {
+   "label": "Fire dragon head: the head of his enhanced Great Fire Annihilation alone; fade burns it as there (anchor: the mouth)",
+   "file": "fire_head.png",
+   "frameW": 319,
+   "frameH": 345,
+   "anchor": [
+    284,
+    170
+   ],
+   "meters": [
+    5.6,
+    6.05
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 1,
+     "fps": 0,
+     "loop": true
+    },
+    "fade": {
+     "row": 1,
+     "frames": 8,
+     "fps": 12,
+     "loop": false
+    }
+   }
+  },
+  "fire_head_half": {
+   "label": "Fire dragon head at half size (his colours, his outline; anchor: the mouth)",
+   "file": "fire_head_half.png",
+   "frameW": 160,
+   "frameH": 173,
+   "anchor": [
+    142,
+    85
+   ],
+   "meters": [
+    2.81,
+    3.04
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 1,
+     "fps": 0,
+     "loop": true
+    },
+    "fade": {
+     "row": 1,
+     "frames": 8,
+     "fps": 12,
+     "loop": false
+    }
+   }
+  },
+  "fire_wall_half": {
+   "label": "Fire wall at half size (his rise and idle, his colours, his outline)",
+   "file": "fire_wall_half.png",
+   "frameW": 170,
+   "frameH": 81,
+   "anchor": [
+    82,
+    67
+   ],
+   "meters": [
+    2.98,
+    1.42
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "rise": {
+     "row": 0,
+     "frames": 12,
+     "fps": 12,
+     "loop": false
+    },
+    "idle": {
+     "row": 1,
+     "frames": 8,
+     "fps": 10,
+     "loop": true
+    }
+   }
+  },
+  "water_head": {
+   "label": "Water dragon head: his fire dragon head (no neck) in his water colours at half size, turned to every flight angle (a0 is his; anchor: the middle of the head)",
+   "file": "water_head.png",
+   "frameW": 156,
+   "frameH": 161,
+   "anchor": [
+    86,
+    86
+   ],
+   "meters": [
+    2.74,
+    2.82
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "a-90": {
+     "row": 0,
+     "frames": 1,
+     "fps": 0,
+     "loop": true
+    },
+    "a-80": {
+     "row": 1,
+     "frames": 1,
+     "fps": 0,
+     "loop": true
+    },
+    "a-70": {
+     "row": 2,
+     "frames": 1,
+     "fps": 0,
+     "loop": true
+    },
+    "a-60": {
+     "row": 3,
+     "frames": 1,
+     "fps": 0,
+     "loop": true
+    },
+    "a-50": {
+     "row": 4,
+     "frames": 1,
+     "fps": 0,
+     "loop": true
+    },
+    "a-40": {
+     "row": 5,
+     "frames": 1,
+     "fps": 0,
+     "loop": true
+    },
+    "a-30": {
+     "row": 6,
+     "frames": 1,
+     "fps": 0,
+     "loop": true
+    },
+    "a-20": {
+     "row": 7,
+     "frames": 1,
+     "fps": 0,
+     "loop": true
+    },
+    "a-10": {
+     "row": 8,
+     "frames": 1,
+     "fps": 0,
+     "loop": true
+    },
+    "a0": {
+     "row": 9,
+     "frames": 1,
+     "fps": 0,
+     "loop": true
+    },
+    "a10": {
+     "row": 10,
+     "frames": 1,
+     "fps": 0,
+     "loop": true
+    },
+    "a20": {
+     "row": 11,
+     "frames": 1,
+     "fps": 0,
+     "loop": true
+    },
+    "a30": {
+     "row": 12,
+     "frames": 1,
+     "fps": 0,
+     "loop": true
+    },
+    "a40": {
+     "row": 13,
+     "frames": 1,
+     "fps": 0,
+     "loop": true
+    },
+    "a50": {
+     "row": 14,
+     "frames": 1,
+     "fps": 0,
+     "loop": true
+    },
+    "a60": {
+     "row": 15,
+     "frames": 1,
+     "fps": 0,
+     "loop": true
+    },
+    "a70": {
+     "row": 16,
+     "frames": 1,
+     "fps": 0,
+     "loop": true
+    },
+    "a80": {
+     "row": 17,
+     "frames": 1,
+     "fps": 0,
+     "loop": true
+    },
+    "a90": {
+     "row": 18,
+     "frames": 1,
+     "fps": 0,
+     "loop": true
+    }
+   }
+  }
+ }
+}

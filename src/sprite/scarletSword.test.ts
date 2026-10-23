@@ -35,7 +35,7 @@ describe('scarlet sword', () => {
 
   it('hangs at rest exactly as drawn: the blade below the fist is every pixel the template, on every body', () => {
     const t = SCARLET_SWORD;
-    for (const body of ['male', 'female', 'bulky', 'slender'] as const) {
+    for (const body of ['male', 'female', 'bulky'] as const) {
       const f = renderSprite(look(body), 'idle', 0);
       const p = gripPoint({ rig: f.rig } as DrawCtx);
       const ax = Math.floor(p.x * RES);

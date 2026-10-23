@@ -29,7 +29,7 @@ const HIS = new Set<string>([PIN_LINE, ...PIN_CLOTH_TONES, ...PIN_STRIPE_TONES])
 describe('pinstripe trousers', () => {
   it('cover both legs in his colours in every pose on every body: no skin shows through', () => {
     const poses: SpritePose[] = [...SPRITE_POSES, ...MOVE_POSES, ...CAMP_POSES];
-    for (const body of ['male', 'female', 'bulky', 'slender'] as BodyType[])
+    for (const body of ['male', 'female', 'bulky'] as BodyType[])
       for (const pose of poses) {
         const f = renderSprite(look(body, { bottom: { id: 'bottom_pinstripe', colors: [] } }), pose, 0);
         // the hem stops at the ankle: the bare foot (and the leg's end round the joint) shows below it

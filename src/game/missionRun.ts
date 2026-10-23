@@ -8,6 +8,7 @@ import { MISSIONS, MissionBattle, MissionDef, nextPos, nodeAt, RoadPos } from '.
 import { applyBattleResult, enterNextZone, newMission, travelLeg } from '../rules/mission';
 import { CampState, morning, Outcome, StopState } from '../rules/rest';
 import { migrateCharacter, returnToVillage, sanitizeMissionFields } from '../rules/ninja';
+import { pouchTags } from '../rules/pouch';
 import { pick, strings } from '../i18n';
 import { both, describeEvent, LogLine, LogText } from './eventText';
 import type { PartyBattleResult } from '../battle/result';
@@ -204,9 +205,19 @@ export function resolvePartyBattle(run: MissionRun, result: PartyBattleResult): 
 
 const SAVE_KEY = 'shinobi5e.mission.v1';
 
-/** A run saved before the clans were converted: its ninjas load with today's clans (rules/ninja.ts, migrateCharacter). */
+/**
+ * A run saved before the clans were converted: its ninjas load with today's clans (rules/ninja.ts,
+ * migrateCharacter). A ninja whose explosive tag jutsu becomes tags in its pouch (rules/pouch.ts) set
+ * out without them in the backpack: they join it now, as they would have at the mission's start.
+ */
 export function migrateRun(r: MissionRun): MissionRun {
-  const party = (p: PartyState): PartyState => ({ ...p, members: p.members.map(migrateCharacter), dead: (p.dead ?? []).map(migrateCharacter) });
+  const party = (p: PartyState): PartyState => {
+    const was = [...p.members, ...(p.dead ?? [])];
+    const members = p.members.map(migrateCharacter);
+    const dead = (p.dead ?? []).map(migrateCharacter);
+    const grew = [...members, ...dead].reduce((n, now, i) => n + Math.max(0, pouchTags(now) - pouchTags(was[i])), 0);
+    return { ...p, members, dead, ...(grew ? { supplies: { ...p.supplies, explosiveTags: p.supplies.explosiveTags + grew } } : {}) };
+  };
   return { ...r, party: party(r.party), entry: party(r.entry ?? r.party) };
 }
 

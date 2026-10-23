@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { DEFAULT_CHARACTER, LEGENDARY_PRESETS } from '../data/shinobiData';
 import type { ShinobiCharacter } from '../types/shinobi';
+import type { SpriteAppearance } from '../sprite/types';
 import type { PartyState } from '../types/mission';
 import { abilityScores, cannotBeSurprised, clanBonus, proficiencyBonus, rollCheck, saveModifier, skillModifier, successChance } from './checks';
 import { deriveStats } from './derived';
@@ -12,6 +13,7 @@ import { addEffect, effectMods, endBattle, morningAfter, tickRound, treat } from
 import { applyBattleResult, enterNextZone, flankWear, newMission, rollDeathSaves, takeSoldierPill, travelLeg } from './mission';
 import { changeExhaustion, changeTension, countClanBonus, hitDiceLeft, migrateCharacter, migrateClan, returnToVillage, sanitizeMissionFields } from './ninja';
 import { ambushChance, chooseFire, doActivity, morning, rollNight, serveFood, spendHitDie, startCamp, startShortStop, stopActivity } from './rest';
+import { asMade, isLegend, learnsAsNew } from './progression';
 import { hashString, mulberry32, rngFor } from './rng';
 
 const ninja = (over: Partial<ShinobiCharacter>): ShinobiCharacter => ({
@@ -193,7 +195,8 @@ describe('clans', () => {
   });
 
   it('the presets keep the owner\'s hand-made numbers plus exactly what their clan\'s bonus adds', () => {
-    // His numbers before the bonus counted: max HP, max chakra, AC, jutsu DC, jutsu attack.
+    // His numbers before the bonus counted: max HP, max chakra, AC, jutsu DC, jutsu attack. Seven
+    // presets: the owner discarded Shiori (preset_gentle) on 2026-10-22, "shiori desechala esta horrible ese diseño".
     const owner: Record<string, number[]> = {
       preset_founder: [56, 44, 19, 17, 9],
       preset_ember: [38, 30, 18, 15, 7],
@@ -202,7 +205,6 @@ describe('clans', () => {
       preset_storm: [32, 28, 15, 15, 7],
       preset_sunburst: [44, 42, 14, 14, 6],
       preset_warlord: [42, 36, 17, 16, 8],
-      preset_gentle: [38, 32, 16, 15, 7],
       preset_night: [44, 38, 16, 16, 8],
     };
     assert.deepEqual(LEGENDARY_PRESETS.map((p) => p.character.id).sort(), Object.keys(owner).sort());
@@ -217,6 +219,50 @@ describe('clans', () => {
     }
     // Solen (the default hero, a Ryusei Bukijutsu Master) plays DEX 14 as 16: +1 AC, DC and attack.
     assert.deepEqual([DEFAULT_CHARACTER.armorClass, DEFAULT_CHARACTER.jutsuSaveDC, DEFAULT_CHARACTER.jutsuAttackBonus], [20, 18, 10]);
+  });
+
+  it('a saved copy of a discarded preset (Shiori, preset_gentle) loads as a normal made ninja, with its own data', () => {
+    // The owner discarded her on 2026-10-22 ("shiori desechala esta horrible ese diseño"); a hero, roster
+    // entry or mission companion saved from her sheet is a full sheet and keeps working.
+    const saved: ShinobiCharacter = {
+      ...DEFAULT_CHARACTER,
+      id: 'preset_gentle',
+      name: 'Shiori',
+      title: 'The Gentle Fist',
+      level: 4,
+      clan: 'Northstar',
+      shinobiClass: 'Taijutsu Master',
+      stats: { str: 14, dex: 18, con: 14, int: 14, wis: 16, cha: 10 },
+      dojutsu: 'Byakugan (Active Veined)',
+      weaponStyle: 'Gentle Fist Palm',
+      selectedFeats: ['tenketsu_lockout', 'iron_skin'],
+      selectedJutsus: { slot1Utility: 'body_flicker', slot2Elemental: 'water_shield_suijinheki', slot3Elemental: 'leaf_hurricane_senpuu', slot4Clan: 'taki_sixtyfour_palms', slot5Ultimate: 'night_guy_dragon' },
+      extraNatures: undefined,
+      natureGrowth: undefined,
+      sheetVersion: 2,
+      maxHp: 38, currentHp: 30, maxChakra: 32, currentChakra: 20, armorClass: 16, speed: 7, jutsuSaveDC: 15, jutsuAttackBonus: 7,
+      appearance: {
+        ...DEFAULT_CHARACTER.appearance!,
+        body: 'female',
+        slots: { hair: { id: 'hair_long', colors: ['#1d1a2e'] }, top: { id: 'top_kimono', colors: ['#dcd6ee', '#3b3561'] }, held: { id: 'held_palm', colors: [] } },
+        // A save from before the headband was plain cloth still has the plate's fields.
+        headband: { position: 'neck', tails: false, cloth: '#1e3a8a', plate: '#cbd5e1' } as SpriteAppearance['headband'],
+        chakra: { color: 'blue', onCharge: true, onCast: true, onVictory: false },
+      },
+    };
+    assert.ok(!LEGENDARY_PRESETS.some((p) => p.character.id === 'preset_gentle'), 'she is gone');
+    const now = migrateCharacter(saved);
+    assert.equal(isLegend(now), false);
+    const { appearance: lookNow, ...sheetNow } = now;
+    const { appearance: lookThen, ...sheetThen } = saved;
+    assert.deepEqual(sheetNow, sheetThen, 'every number, jutsu and feat kept');
+    assert.ok(!('plate' in lookNow!.headband) && lookNow!.headband.position === 'neck', 'only the old plate is dropped');
+    assert.deepEqual({ ...lookNow, headband: lookThen!.headband }, lookThen);
+    assert.equal(learnsAsNew(asMade(now)), false, 'loaded: a made ninja, whose jutsu stay');
+    // A sheet from before the clan bonus counted (version 1) gets it once, like any other.
+    const old = migrateCharacter({ ...saved, sheetVersion: undefined, appearance: undefined });
+    assert.equal(old.sheetVersion, 2);
+    assert.deepEqual([old.id, old.selectedJutsus, old.selectedFeats], [saved.id, saved.selectedJutsus, saved.selectedFeats]);
   });
 
   it('only Watchful prevents surprise', () => {

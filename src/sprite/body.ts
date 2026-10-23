@@ -9,6 +9,7 @@ import { hexToRgb, hslToHex, makeRamp, mixHex, retintHex, rgbToHsl } from './col
 import { armPoint, armRadius, armSpan, DrawCtx, fillTorso, FOOT_BARE, footDraw, handDraw, legSpan, Side, torsoPoly } from './ctx';
 import { type PaintedEye, VALIANT_BROW_HAIR, VALIANT_EYE_COLORS, VALIANT_EYES, VALIANT_IRIS } from './eyeArt';
 import { VALIANT_HEAD, VALIANT_SKIN } from './headArt';
+import { FOUNDER_FACE_KIND, FOUNDER_HEAD, FOUNDER_IRIS, FOUNDER_SKIN } from './founderFaceArt';
 import { NOBLE_EYE_COLORS, NOBLE_EYES, NOBLE_IRIS } from './nobleEyeArt';
 import { NOBLE_HEAD, NOBLE_SKIN } from './nobleHeadArt';
 import { type PaintedPiece, stampPiece } from './painted';
@@ -46,17 +47,16 @@ export function drawBody(g: DrawCtx): void {
   capsule(torso, r.neck, neckTop, b.neckW, b.neckW * 0.95, skin('torso'), (x) => (x < r.neck.x - 0.6 ? 3 : 2));
   // Nape: the back of the neck, from under the skull down to the shoulders.
   // It fills the gap behind the tapered jaw when the hair doesn't hang there;
-  // hair drawn over the head still covers it. 'slim' (default) starts well
-  // inside the skull's back edge and stays in shadow; 'strong' is a thick
-  // neck flush with the back of the skull, with a lit nape.
+  // hair drawn over the head still covers it. It starts well inside the
+  // skull's back edge and stays in shadow: the slim nape of the owner's Aiden,
+  // the one neck every character has (the owner, 2026-10-22, removed the thick one).
   const fa = faceAnchor(g);
-  const strong = g.look.neck === 'strong';
-  const napeX = (fa.nx - (strong ? 5.5 : 3.5)) / RES;
+  const napeX = (fa.nx - 3.5) / RES;
   poly(
     torso,
     [v(napeX, (fa.ny + 1) / RES), v(napeX, r.neck.y + 0.2), v(napeX - 0.8, r.neck.y + 1.2), v(r.neck.x, r.neck.y + 1.2), v(neckTop.x, (fa.ny + 1) / RES)],
     skin('torso'),
-    strong ? (x) => (x < napeX + 1 ? 3 : 2) : 2,
+    2,
   );
 
   // Simple form shading only (no muscle lines): a soft chest shadow and collarbone light.
@@ -283,6 +283,11 @@ function drawHead(g: DrawCtx): void {
     drawFace(g);
     return;
   }
+  if (g.look.faceShape === 'founder') {
+    drawFounderHead(g);
+    drawFace(g);
+    return;
+  }
   const L = g.L('head.body');
   const H = (dx: number, dy: number) => headAt(g, dx, dy);
   const pen: Pen = { mat: g.skin, part: 'head' };
@@ -364,6 +369,20 @@ function drawPaintedHead(g: DrawCtx, his: PaintedHead): void {
 }
 
 /**
+ * The owner's face on his Solen (face shape 'founder', src/sprite/founderFaceArt.ts): his pixels, skull to
+ * chin, with his eyes and mouth, stamped on the face anchor as they are (he kept our face template's place).
+ * His skin follows the character's skin as his Aiden head's does; his eyes' reds follow the eye colour. The
+ * face template draws only what his picture does not show (closed or lowered lids, another eye shape, the
+ * clans' special eyes: see drawFace).
+ */
+function drawFounderHead(g: DrawCtx): void {
+  const { nx, ny } = faceAnchor(g);
+  const at = v((nx + 0.5) / RES, (ny + 0.5) / RES);
+  const iris = g.look.eyeColor || FOUNDER_IRIS;
+  stampPiece(g, 'head.body', FOUNDER_HEAD, at, FOUNDER_HEAD.angle, 'head', (_ch, hex) => (FOUNDER_FACE_KIND[hex] === 'red' ? retintHex(hex, FOUNDER_IRIS, iris) : FOUNDER_FACE_KIND[hex] === 'line' || FOUNDER_FACE_KIND[hex] === 'white' ? hex : skinTone(hex, g.look.skin, FOUNDER_SKIN)));
+}
+
+/**
  * A colour of the owner's head in the character's skin: the hue turned and the saturation scaled
  * from the skin he painted it in, as retintHex turns his cloth, but the lightness scaled so that his
  * skin lands exactly on the character's (the rest of the body is drawn in that skin), his shadows
@@ -394,9 +413,10 @@ function skinTone(hex: string, skin: string, from: string): string {
  *   then the jaw tapers to the chin so the lower face stays small.
  * soft: a fuller cheek, three rows straight before a gentle taper.
  * square: the reference's original strong jaw, with a flat jaw line.
- * (valiant and noble, the owner's heads, are his pixels whole: see drawPaintedHead.)
+ * (valiant, noble and founder, the owner's heads, are his pixels whole: see drawPaintedHead,
+ * drawFounderHead.)
  */
-const FACE_LEFT: Record<Exclude<FaceShape, 'valiant' | 'noble'>, string[]> = {
+const FACE_LEFT: Record<Exclude<FaceShape, 'valiant' | 'noble' | 'founder'>, string[]> = {
   tapered: ['osbbbbb', 'ossbbbb', '.osbbbb', '..osbbb', '...osbb', '....osb', '.....os', '......o', '.......', '.......'],
   soft: ['osbbbbb', 'ossbbbb', 'ossbbbb', '.osbbbb', '..osbbb', '...osbb', '....osb', '.....oo', '.......', '.......'],
   square: ['osbbbbb', 'ossbbbb', 'osDsbbb', 'ossbbbb', '.osbbbs', '..osbbs', '...osbs', '....ooo', '.......', '.......'],
@@ -404,7 +424,7 @@ const FACE_LEFT: Record<Exclude<FaceShape, 'valiant' | 'noble'>, string[]> = {
 
 const faceLeft = (g: DrawCtx): string[] => {
   const s = g.look.faceShape;
-  return (s && s !== 'valiant' && s !== 'noble' && FACE_LEFT[s]) || FACE_LEFT.tapered;
+  return (s && s !== 'valiant' && s !== 'noble' && s !== 'founder' && FACE_LEFT[s]) || FACE_LEFT.tapered;
 };
 
 const FACE_MAIN: Record<string, string[]> = {
@@ -533,12 +553,12 @@ export function faceCells(g: DrawCtx, skipBack = 0): Set<number> {
   const add = (x: number, y: number) => {
     if (x >= 0 && y >= 0 && x < GRID && y < GRID) out.add(y * GRID + x);
   };
-  const his = paintedHead(g);
-  if (his) {
+  const head = g.look.faceShape === 'founder' ? FOUNDER_HEAD : paintedHead(g)?.piece;
+  if (head) {
     // The owner's head from the lash row down, from the column the other shapes' near side starts at.
-    const ox = nx - his.piece.pivot[0];
-    const oy = ny - his.piece.pivot[1];
-    his.piece.rows.forEach((row, r) => {
+    const ox = nx - head.pivot[0];
+    const oy = ny - head.pivot[1];
+    head.rows.forEach((row, r) => {
       if (oy + r < ny) return;
       for (let c = 0; c < row.length; c++) if (row[c] !== '.' && ox + c >= nx - 7 + skipBack) add(ox + c, oy + r);
     });
@@ -614,7 +634,15 @@ function drawFace(g: DrawCtx): void {
     else if (ch in colors) L.set(x, y, colors[ch], 3, 'head', F_NO_OUTLINE);
   };
   const head = paintedHead(g);
-  if (head) {
+  if (g.look.faceShape === 'founder') {
+    // His Solen's eyes and mouth are in his head's pixels. The template draws his eyes over only when
+    // his picture does not show them: shut or lowered lids, another eye shape, the clans' special eyes
+    // (in full, its skin letters in the character's skin, so his open eye never shows under a lid).
+    if (closed || lowered || shape !== 'standard' || (sp && sp !== 'none')) {
+      eyes.near.forEach((row, r) => [...row].forEach((ch, c) => put(ex + c, ny + r, ch)));
+      eyes.far.forEach((row, r) => [...row].forEach((ch, c) => put(fx + c, ny + r, ch)));
+    }
+  } else if (head) {
     // On the owner's heads the template gives only the eyes, and on Aiden's the mouth, where he
     // painted his (Scarlet's smile is his own pixels): his skin, shading and line stay wherever the
     // template has skin.
@@ -710,8 +738,9 @@ function drawFace(g: DrawCtx): void {
     }
   }
 
-  // Brows (hair-colored), two rows above the lash; most bangs cover them. His eyes bring their own.
-  if (his) return;
+  // Brows (hair-colored), two rows above the lash; most bangs cover them. His eyes bring their own, and
+  // his Solen's head has his brows in its pixels.
+  if (his || g.look.faceShape === 'founder') return;
   const br = makeRamp(hairChoice?.colors[0] || '#2a2230', 'hair');
   // Sharp and fierce eyes get brows angled down toward the nose.
   const sharp = shape === 'sharp' || shape === 'fierce';

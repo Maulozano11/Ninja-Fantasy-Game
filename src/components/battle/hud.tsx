@@ -15,6 +15,7 @@ import {
   Footprints,
   Hand,
   HeartPulse,
+  LandPlot,
   LogOut,
   Package,
   Pill,
@@ -46,6 +47,8 @@ import { homeTeam } from '../../battle/types';
 import { clanName } from '../../data/shinobiData';
 import { CLASS_ES } from '../../game/ruleText';
 import type { Lang } from '../../i18n';
+import { pick } from '../../i18n';
+import { EFFECTS } from '../../rules/effects';
 import { T } from './battleText';
 import type { TKey } from './battleText';
 import { unitName } from './battleLog';
@@ -91,6 +94,7 @@ export const ACTION_ICON: Record<string, React.FC<{ size?: number; className?: s
   bandage: Bandage,
   antidote: FlaskConical,
   tag: Bomb,
+  tagTrap: LandPlot,
   stabilize: HeartPulse,
   flee: DoorOpen,
   stone: CircleDot,
@@ -181,11 +185,18 @@ export function UnitCard({ u, hp, chakra, lang }: { u: Unit; hp: number; chakra:
         )}
         {u.effects.length > 0 && (
           <div className="mt-1 flex flex-wrap gap-1">
-            {u.effects.slice(0, 5).map((e) => (
-              <span key={e.id} className="text-[9px] px-1.5 py-0.5 rounded bg-fuchsia-950/70 text-fuchsia-200 border border-fuchsia-800/50">
-                {e.id.replace(/_/g, ' ')}
-              </span>
-            ))}
+            {u.effects.slice(0, 5).map((e) => {
+              // Its name in the language, and the rounds left for a short one (the Jolt's Numb, Confused).
+              const d = EFFECTS[e.id];
+              const name = d ? pick(d.name, d.nameEs, lang) : e.id.replace(/_/g, ' ');
+              const left = d?.duration === 'rounds' ? e.remaining : undefined;
+              return (
+                <span key={e.id} title={left ? T(left === 1 ? 'effectRound' : 'effectRounds', { e: name, n: left }, lang) : name} className="text-[9px] px-1.5 py-0.5 rounded bg-fuchsia-950/70 text-fuchsia-200 border border-fuchsia-800/50">
+                  {name}
+                  {left ? <span className="ml-1 tabular-nums text-fuchsia-300/80">{left}</span> : null}
+                </span>
+              );
+            })}
           </div>
         )}
       </div>

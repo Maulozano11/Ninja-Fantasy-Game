@@ -8,7 +8,8 @@ import { abilityMod, successChance } from '../rules/checks';
 import { effectMods, hasEffect } from '../rules/effects';
 import type { BattleEvent, BattleState, Cell, Intent, Pt, Unit } from './types';
 import { homeTeam } from './types';
-import { cellCenter, cellOf, coverBetween, dist, fullCoverBetween, gridFor, levelAtPt, lineOfSight, sameCell } from './map';
+import { cellCenter, cellOf, clearRun, coverBetween, dist, fullCoverBetween, gridFor, levelAtPt, lineOfSight, sameCell, steamAt, steamHides } from './map';
+import { lightningSeeds, unitsOnPatch, wetPatch } from './ground';
 import { canStop, occupancy, reachable } from './nav';
 import { JUTSU, MIN_AIM, areaOf, inArea } from './jutsu';
 import type { JutsuSpec } from './jutsu';
@@ -24,10 +25,19 @@ const avg = (dice?: string): number => {
 
 export const standingUnit = (u: Unit): boolean => !u.down && !u.head?.severed;
 
-/** Foes a unit knows about: standing, and not hidden from it. */
+/**
+ * Foes a unit knows about: standing, not hidden from it, and no steam between them: not lost in it,
+ * nor outside it while the unit stands in it (unless right beside it, steamHides). An enemy in the
+ * steam still remembers the plan it made (its intent) and goes on with it, or walks out (ai.ts).
+ */
 export function visibleFoes(s: BattleState, u: Unit): Unit[] {
   return Object.values(s.units).filter(
-    (f) => f.team !== u.team && standingUnit(f) && f.kind !== 'hydra_body' && (f.cond.hidden === undefined || passivePerception(u) >= f.cond.hidden),
+    (f) =>
+      f.team !== u.team &&
+      standingUnit(f) &&
+      f.kind !== 'hydra_body' &&
+      (f.cond.hidden === undefined || passivePerception(u) >= f.cond.hidden) &&
+      !steamHides(s, u.pos, f.pos),
   );
 }
 
@@ -43,7 +53,7 @@ export interface Option {
   value: number;
   /** A jutsu that reaches just one foe (the clan's own move can take its place). */
   single?: boolean;
-  /** A Ryusei's own move: a Warp Strike in beside the foe, or a kunai that leaves a Node near it. */
+  /** A Ryusei's own move: a Shooting-Star Thrust in beside the foe, or a kunai that leaves a Node near it. */
   way?: 'warp' | 'plant';
 }
 
@@ -58,7 +68,7 @@ function focus(u: Unit, f: Unit): number {
 /** Foes and friends an area would hit (1 for a jutsu with no area). */
 export function areaValue(s: BattleState, u: Unit, j: JutsuSpec, at: Unit): number {
   const area = areaOf(j, u.pos, at.pos);
-  if (!area) return 1;
+  if (!area) return 1 + conductValue(s, u, j, at, null);
   let v = 0;
   for (const o of Object.values(s.units)) {
     if (!standingUnit(o) || o.kind === 'hydra_body') continue;
@@ -66,6 +76,22 @@ export function areaValue(s: BattleState, u: Unit, j: JutsuSpec, at: Unit): numb
     if (!inArea(area, o.pos)) continue;
     // Friends caught in the blast weigh more than foes: the AI only risks it for a crowd.
     v += o.team === u.team ? -2.5 : 1;
+  }
+  return v + conductValue(s, u, j, at, area);
+}
+
+/**
+ * Lightning on wet ground (ground.ts): what the wet patch it touches adds, half a foe for each one
+ * standing on it (they take half, and may save for less), a friend there counting against it.
+ */
+function conductValue(s: BattleState, u: Unit, j: JutsuSpec, at: Unit, area: ReturnType<typeof areaOf>): number {
+  if (j.dmgType !== 'Lightning' || !s.wet) return 0;
+  const struck = area ? Object.values(s.units).filter((o) => standingUnit(o) && o.id !== u.id && inArea(area, o.pos)) : [at];
+  const patch = wetPatch(s, lightningSeeds(s, area, [...struck.map((o) => o.pos), ...(area?.kind === 'circle' ? [area.center] : [])]));
+  let v = 0;
+  for (const o of unitsOnPatch(s, patch, [...struck.map((x) => x.id)])) {
+    if (!standingUnit(o) || o.kind === 'hydra_body') continue;
+    v += o.team === u.team ? -1.25 : 0.5;
   }
   return v;
 }
@@ -82,7 +108,7 @@ export const WALL = 'koton_wall';
  * which he opens with (the owner, 2026-10-20).
  */
 const FLAME_FOR = 2.5;
-/** A blow from behind (Warp Strike): advantage, and nothing blocks it. Worth half again a plain blow. */
+/** A blow from behind (Shooting-Star Thrust): advantage, and nothing blocks it. Worth half again a plain blow. */
 const EDGE = 1.5;
 
 /** Chakra sealed: no jutsu, no clan ability. */
@@ -104,14 +130,14 @@ export function threat(u: Unit): number {
 }
 
 /**
- * A Ryusei can Warp Strike on its turn: it has the ability, its chakra isn't sealed, 2 chakra and,
+ * A Ryusei can make a Shooting-Star Thrust on its turn: it has the ability, its chakra isn't sealed, 2 chakra and,
  * planning the turn it is in, its bonus action left (`next`: planning its next turn, fresh).
  */
 export const canWarp = (u: Unit, next = false): boolean =>
   u.jutsus.includes(WARP) && !noJutsu(u) && u.chakra >= JUTSU[WARP].cost && (next || u.turn.bonus);
 
 /**
- * Where a Ryusei's Warp Strike lands to strike `t` from behind at once: the landing nearest `t` of
+ * Where a Ryusei's Shooting-Star Thrust lands to strike `t` from behind at once: the landing nearest `t` of
  * its own Nodes (within 18 m and in sight) that has `t` in reach with no metal wall between. Null
  * if none does (or it is in reach already: it just strikes).
  */
@@ -149,7 +175,7 @@ export function swapValue(s: BattleState, u: Unit, t: Unit | undefined): number 
   }
   const mine = Object.values(s.units).filter((o) => o.id !== u.id && o.team === u.team && o.kind === 'ninja' && standingUnit(o) && dist(o.pos, u.pos) <= 2.5);
   const theirs = Object.values(s.units).filter((o) => o.id !== t.id && o.team === t.team && standingUnit(o) && dist(o.pos, u.pos) <= 3);
-  const fails = 1 - successChance(saveMod(t, 'str'), u.saveDC);
+  const fails = 1 - successChance(saveMod(t, 'str'), u.saveDC, 'none', true);
   if (mine.length < 2 || theirs.length || fails < 0.5) return 0;
   return fails * mine.reduce((v, o) => v + threat(o), 0);
 }
@@ -240,6 +266,10 @@ export function ninjaOptions(s: BattleState, u: Unit, next = false): Option[] {
     for (const id of u.jutsus) {
       const j = JUTSU[id];
       if (!j || !offensive(j) || u.chakra < j.cost) continue;
+      // A sword art needs a blade (engine.ts handsBlocker: palms and fists hold none).
+      if (j.weapon === 'draw' && u.kind === 'ninja' && !u.weapon.held) continue;
+      // A bonus-action jutsu needs the bonus action (planning the next turn, it will have it).
+      if (j.cast === 'bonus' && !next && !u.turn.bonus) continue;
       if (d > j.range + u.speed + (f.bulk ?? 0)) continue;
       const hits = areaValue(s, u, j, f);
       if (hits <= 0) continue;
@@ -253,7 +283,7 @@ export function ninjaOptions(s: BattleState, u: Unit, next = false): Option[] {
     for (const [id, refused] of [[COMMAND, commandRefused], [SUBMISSION, submissionRefused]] as const) {
       const j = JUTSU[id];
       if (!u.jutsus.includes(id) || noJutsu(u) || u.chakra < j.cost || d > j.range + u.speed || refused(s, u, f)) continue;
-      const fails = 1 - successChance(saveMod(f, 'wis'), u.saveDC);
+      const fails = 1 - successChance(saveMod(f, 'wis'), u.saveDC, 'none', true);
       out.push({ intent: { kind: 'command', what: id, target: f.id }, value: fails * 2 * threat(f) * fx });
     }
   }
@@ -319,7 +349,7 @@ function clanWays(s: BattleState, u: Unit, out: Option[]): void {
     const best = Math.max(0, ...out.filter(single).map((o) => o.value));
     for (const o of out) {
       const t = o.intent.kind === 'command' && o.intent.what === COMMAND ? s.units[o.intent.target!] : undefined;
-      if (t && 1 - successChance(saveMod(t, 'wis'), u.saveDC) >= 0.5) o.value = Math.max(o.value, best + o.value * 0.001);
+      if (t && 1 - successChance(saveMod(t, 'wis'), u.saveDC, 'none', true) >= 0.5) o.value = Math.max(o.value, best + o.value * 0.001);
     }
   }
 }
@@ -393,7 +423,8 @@ export function goalOf(s: BattleState, u: Unit, i: Intent): Goal | null {
       if (i.what === WALL) return { at: u.pos, good: () => false, ready: !!wallCover(s, u, t) };
       if (i.what === SWAP) return { at: u.pos, good: () => false, ready: swapValue(s, u, t) > 0 };
       const reach = j.range + (t.bulk ?? 0) + (j.shape === 'single' && t.kind === 'hydra_head' ? 2.5 : 0);
-      return goal((p) => dist(p, t.pos) <= reach && (j.melee ? !fullCoverBetween(s, p, t.pos) : lineOfSight(s, p, t.pos)), t);
+      // A charge needs a clear straight run to its target.
+      return goal((p) => dist(p, t.pos) <= reach && (j.melee ? !fullCoverBetween(s, p, t.pos) && (!j.charge || clearRun(s, p, t.pos)) : lineOfSight(s, p, t.pos)), t);
     }
     case 'heal':
       return goal((p) => dist(p, t.pos) <= 1.6, undefined);
@@ -417,7 +448,8 @@ export function bestCell(s: BattleState, u: Unit, good: (p: Pt) => boolean, scor
     const c = { c: i % g.cols, r: Math.floor(i / g.cols) };
     const p = cellCenter(c);
     if (!good(p) || !canStop(s, u, c, occ)) continue;
-    const v = cost * 0.3 + score(p);
+    // Nobody means to stop in steam (it burns and blinds).
+    const v = cost * 0.3 + score(p) + (steamAt(s, p) ? 8 : 0);
     if (v < bestV) {
       best = c;
       bestV = v;
@@ -461,7 +493,7 @@ export function planEnemy(s: BattleState, u: Unit): void {
   if (i && warp) i.to = warp;
   else if (i && g && !g.ready) {
     const taken = Object.values(s.units).flatMap((o) => (o.id !== u.id && o.team === u.team && !o.down && o.intent?.to ? [cellOf(o.intent.to)] : []));
-    const c = stepToward(s, u, g, u.cond.prone ? u.speed / 2 : u.speed, (p) => !taken.some((t) => sameCell(t, cellOf(p))));
+    const c = stepToward(s, u, g, u.cond.prone ? u.speed / 2 : u.speed, (p) => !steamAt(s, p) && !taken.some((t) => sameCell(t, cellOf(p))));
     if (c) i.to = cellCenter(c);
   }
   u.intent = i;

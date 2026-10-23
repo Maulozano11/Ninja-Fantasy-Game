@@ -7,7 +7,8 @@ import { rollDie } from '../rules/rng';
 import type { BattleEvent, BattleState, Unit } from './types';
 import { homeTeam } from './types';
 import { check, damage, deathSave, nextRng, releaseCommand, rollDiceExpr } from './combat';
-import { waterAtPt } from './map';
+import { dampAt } from './map';
+import { steamBurns, tickGround } from './ground';
 import { planEnemy, replanAgainst } from './intent';
 
 /** Whether a unit takes turns (heads of the hydra act on their own; fallen ninjas roll death saves). */
@@ -60,10 +61,20 @@ export function beginTurn(s: BattleState, ev: BattleEvent[]): void {
     }
     u.turn = { move: u.speed, action: true, bonus: true, reaction: true, moved: 0 };
     u.cond.dodging = false;
+    // The Breeze Mantle lasts until the start of its next turn: the screen hears it end.
+    if (u.cond.mantle) {
+      u.cond.mantle = false;
+      ev.push({ t: 'condition', unit: u.id, cond: 'mantle', on: false });
+    }
     u.cond.focusing = false;
     u.cond.disengaged = false;
     u.cond.waterWalk = false;
     u.cond.ninjaJump = false;
+    // A perfect hide (a natural 20) lasted until now: back to the roll's real total.
+    if (u.cond.perfectHide !== undefined) {
+      if (u.cond.hidden !== undefined) u.cond.hidden = u.cond.perfectHide;
+      u.cond.perfectHide = undefined;
+    }
     ev.push({ t: 'turn', unit: u.id, round: s.round });
     if (u.down === 'downed') {
       deathSave(s, u, ev);
@@ -84,13 +95,14 @@ export function beginTurn(s: BattleState, ev: BattleEvent[]): void {
       advance(s, ev);
       continue;
     }
-    // Water puts out the flames; wounds hurt at the start of a turn.
-    if (waterAtPt(s, u.pos) > 0 && u.effects.some((e) => e.id === 'burning')) {
+    // Water (and wet ground) puts out the flames; wounds and steam hurt at the start of a turn.
+    if (dampAt(s, u.pos) && u.effects.some((e) => e.id === 'burning')) {
       u.effects = removeEffect(u.effects, 'burning');
       ev.push({ t: 'effect', unit: u.id, effect: 'burning', on: false });
     }
     if (u.effects.some((e) => e.id === 'bleeding')) damage(s, u, rollDie(nextRng(s), 4), 'Slashing', {}, ev);
     if (u.effects.some((e) => e.id === 'burning')) damage(s, u, rollDie(nextRng(s), 6), 'Fire', {}, ev);
+    steamBurns(s, u, ev);
     if (u.down) {
       advance(s, ev);
       continue;
@@ -130,7 +142,7 @@ export function endTurn(s: BattleState, ev: BattleEvent[]): void {
     const tick = tickRound(u.effects);
     u.effects = tick.effects;
     for (const id of tick.expired) ev.push({ t: 'effect', unit: u.id, effect: id, on: false });
-    if (u.cond.hidden !== undefined && !u.cond.crouched) u.cond.hidden = undefined;
+    if (u.cond.hidden !== undefined && !u.cond.crouched && u.cond.perfectHide === undefined) u.cond.hidden = undefined;
     // A warp edge not struck with is gone.
     if (u.cond.warpEdge) u.cond.warpEdge = false;
     if (u.commanded) spendCommandTurn(s, u, ev);
@@ -173,6 +185,16 @@ function advance(s: BattleState, ev: BattleEvent[]): void {
       ev.push({ t: 'wall', wall: w, on: false });
       return false;
     });
+    // Wet ground dries and steam thins away.
+    tickGround(s, ev);
+    // Gales on the ground die down.
+    if (s.zones?.length)
+      s.zones = s.zones.filter((z) => {
+        z.rounds -= 1;
+        if (z.rounds > 0) return true;
+        ev.push({ t: 'zone', zone: z, on: false });
+        return false;
+      });
   }
 }
 

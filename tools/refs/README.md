@@ -79,6 +79,20 @@ folders.
 
       python3 -I tools/refs/water-from-ref.py docs/reference/water-set-owner-reference.jpg tools/world-sprites/vfx-water-v3-refdata.ts <character.png> [reviewDir]
 
+- `tide-s-from-ref.py`: the S-rank Devouring Tide from his paint-over of our widest wave
+  (`docs/reference/tide-s-owner-reference.jpg`; a proposal). His picture is one 320x240 pixel-art
+  canvas at 3.2x; each of his pixels is 2x2 game px (his trailing lanes match ours at 2.04 x 1.95,
+  IoU 0.967). It lifts his new layers: the curl wave (what the dragon and the kanji's strokes hide of
+  it continued by turning his own curl about the spiral's eye), the dragon's head, horns, whiskers and
+  jaw (separate, to animate), the kanji 水 and its glow, and his loose spray; one palette of 64 of
+  his colours. It writes `tools/world-sprites/vfx-tide-s-refdata.ts` (with probes of his pixels for
+  `src/battle/tideS.test.ts`), which `vfx-tide-s.ts` animates (`vfx_tide_s`: curl, dragon, kanji).
+  With a third argument, a folder, it also writes his canvas, every layer and the masks over his
+  picture.
+
+      python3 -I tools/refs/tide-s-from-ref.py docs/reference/tide-s-owner-reference.jpg tools/world-sprites/vfx-tide-s-refdata.ts [reviewDir]
+      WORLD_OUT=<staging dir> npx tsx tools/world-sprites/vfx-tide-s.ts
+
 - `wind-from-ref.py`: the whole wind set (`vfx_wind_v3`) from his wind sheet. It writes
   `tools/world-sprites/vfx-wind-v3-refdata.ts` (his key frames cut into the pieces that
   `vfx-wind-v3.ts` animates, one palette per sprite from his pixels). With a third argument, a
@@ -180,3 +194,64 @@ folders.
   drawn by hand at our scale after his pixels (`HILT`). `--rows` prints his rows beside ours.
 
       python3 -I tools/refs/scarlet-sword-from-ref.py docs/reference/scarlet-owner-reference.jpg <out> src/sprite/items/scarletSwordArt.ts
+- `wood-dragon-from-ref.py`: his wood dragon out of his Wood Dragon hotbar icon (sheet 10), for the Wood Dragon's battle effect (a proposal, waiting for his yes). It takes his pixels with the same grid functions as `icons-from-ref-23.py`, keeps his dragon and his leaves without his green ground (his loose leaves apart), groups his colours into 40 of his (the JPEG gives each pixel a slightly different one) and adds his dark line where the cut edge meets the air. It writes `tools/world-sprites/vfx-wood-refdata.ts`, which `tools/world-sprites/vfx-new-r1.ts` animates (`vfx_wood`, with `vfx_hand` for the Chidori's lightning in the hand); a third argument writes a check sheet (his window, our cut, his leaves at 6x).
+
+      python3 -I tools/refs/wood-dragon-from-ref.py docs/reference/icons-owner-reference-10.jpg tools/world-sprites/vfx-wood-refdata.ts [check.png]
+      WORLD_OUT=<staging dir> npx tsx tools/world-sprites/vfx-new-r1.ts
+- `roman_ref.py` + `roman-cuirass-from-ref.py`, `roman-skirt-from-ref.py`, `roman-bracers-sandals-from-ref.py`: the
+  owner's Roman paint-over (`docs/reference/roman-owner-reference.jpg`, pitch 10.24, our male idle frame 0 at
+  offset (74, 120)), copied like Aiden: each script writes painted pieces (`src/sprite/painted.ts`) that ride the
+  rig. `roman_ref.pieces()` cuts his figure into pieces by region polygons (`REGIONS`) and colour kinds, keeps only
+  the black line next to each piece's own colours, continues the chest under the near shoulder guard and fills the
+  red drape behind each of his legs by cloning the visible inside of the drape next to it (one shift per leg, so
+  his folds run on), closed by his black line on a hem drawn across the leg. He tucked the far arm in, so the far
+  bracer is moved `FAR_ARM_IN` (3) px out onto our forearm; the sandals are moved onto our legs. His JPEG has many
+  near colours, so the modules use a longer palette alphabet (Latin-1, Greek, Cyrillic letters). Each module also
+  exports what every colour of his is (`*_KIND`: line, skin, red, stud, bronze, leather), which the items use to
+  follow the colour slots, and where each piece lands in our idle (`*_REST`), which `src/sprite/roman.test.ts`
+  checks. With a second argument, a folder, each writes his figure beside the pieces at 8x.
+
+      python3 -I tools/refs/roman-cuirass-from-ref.py src/sprite/items/bronzeCuirassArt.ts [studyDir]
+      python3 -I tools/refs/roman-skirt-from-ref.py src/sprite/items/pterugesArt.ts [studyDir]
+      python3 -I tools/refs/roman-bracers-sandals-from-ref.py src/sprite/items/bracersSandalsArt.ts [studyDir]
+- `solen_ref.py` + `solen-*-from-ref.py`: the owner's Solen (`docs/reference/solen-owner-reference.jpg`, the new
+  standard, 2026-10-21; pitch 20, our male idle frame 0 at offset (74, 120), the Roman picture's window). It is a
+  repaint of his Roman picture. `solen_ref.pieces()` cuts his figure by region polygons (`REGIONS`) and colour kinds
+  (`kind`: line, skin, red, gold, leather, steel, stud, white, grey, navy, ice; regions tell his hair's navy from his
+  trousers' and his cowl's grey from his cape's), keeps the black line that bounds each piece (a piece behind the
+  others, the cape, only the line that bounds it alone), and continues what he hid with his own pixels: the cape
+  behind his arm, sword, legs and body (`fill_cape`: folds followed up and down, the hem drawn straight across
+  behind each leg, the back edge behind the bracer and the hilt), the skirt, trousers and far sandal behind the
+  sword and the hand (`clone_fill`: cloned from his visible pixels one shift away, his studs never cloned). Inside
+  his figure every white is his (no paper gaps). He drew the far arm thinner and nearer the body than ours
+  (`FAR_OUT`) and the legs wider (`LEG_OUT`, measured on his sandals): those pieces stay where he drew them and
+  turn about our joints moved that far; `src/sprite/items/founderOut.ts` moves our limbs under them while they
+  hang or stand as at rest (`src/sprite/solen.test.ts`). One script per creator option, each writing a module with
+  `*_KIND`, `*_REST` and the bases its colour slots recolour from (at those, every pixel is his):
+
+      python3 -I tools/refs/solen-hair-from-ref.py src/sprite/items/founderHairArt.ts [studyDir]
+      python3 -I tools/refs/solen-face-from-ref.py src/sprite/founderFaceArt.ts [studyDir]
+      python3 -I tools/refs/solen-cowl-from-ref.py src/sprite/items/founderCowlArt.ts [studyDir]
+      python3 -I tools/refs/solen-cape-from-ref.py src/sprite/items/founderCapeArt.ts [studyDir]
+      python3 -I tools/refs/solen-cuirass-from-ref.py src/sprite/items/founderCuirassArt.ts [studyDir]
+      python3 -I tools/refs/solen-tunic-from-ref.py src/sprite/items/founderTunicArt.ts [studyDir]
+      python3 -I tools/refs/solen-bracers-from-ref.py src/sprite/items/steelBracersArt.ts [studyDir]
+      python3 -I tools/refs/solen-skirt-from-ref.py src/sprite/items/founderSkirtArt.ts [studyDir]
+      python3 -I tools/refs/solen-trousers-from-ref.py src/sprite/items/founderTrousersArt.ts [studyDir]
+      python3 -I tools/refs/solen-sandals-from-ref.py src/sprite/items/founderSandalsArt.ts [studyDir]
+      python3 -I tools/refs/solen-sword-from-ref.py src/sprite/items/iceSwordArt.ts [studyDir]
+
+  With a study folder each writes his picture, the piece and the continued pixels (magenta) at 8x.
+
+  His far laced shin is a pixel thicker at the calf than he drew it (the owner, 2026-10-21: "le falta más
+  pantorrilla a la pierna izquierda ponla un poco más gruesa solo un poco"): `solen-sandals-from-ref.py` draws
+  his column `CALF_COL` twice on the calf's rows (`CALF_ROWS`), his back line and the laces behind it moved
+  1 px back, so every pixel is still one of his and it tapers to the ankle as he drew it.
+
+  His far arm hangs in shadow and thin (a 2 px strip of skin, a thin bracer, a small fist): stretched out it reads
+  as a line. His repaint of Ren casting shows the far arm stretched out as thick as the near one, so while Solen's
+  far arm reaches out (straight and near level: the cast, the throw's pointing arm, the combo's cross, the camp
+  sit; `founderFarReach` in `src/sprite/items/founderOut.ts`) it is his near sleeve, upper arm, bracer and fist
+  mirrored left to right (rows reversed, joint and angle mirrored: his pixels and colours, his lit side up):
+
+      python3 -I tools/refs/solen-reach-from-ref.py src/sprite/items/founderReachArt.ts

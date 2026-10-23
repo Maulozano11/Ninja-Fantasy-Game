@@ -77,7 +77,7 @@ describe('the Scarlet legend', () => {
   it('keeps his far hand in sight beside the coat on every body', () => {
     // the curled fingertips of his far fist
     const tips = new Set(['#b27758', '#be8867', '#9e654b']);
-    for (const body of ['male', 'female', 'bulky', 'slender']) {
+    for (const body of ['male', 'female', 'bulky']) {
       const f = frame(body, 'idle', 0);
       let n = 0;
       for (let i = 0; i < GRID * GRID; i++) {

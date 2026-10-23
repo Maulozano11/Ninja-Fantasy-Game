@@ -18,7 +18,7 @@ import { aiAction, runAi } from './ai';
 import { battleResult } from './result';
 import { HYDRA_ID } from './hydra';
 import { JUTSU, enhanced } from './jutsu';
-import { hitStructuresIn, structureAttack } from './structures';
+import { breakable, hitStructuresIn, ownStructures, structureAttack } from './structures';
 import { electrify } from './hazards';
 import { ENCOUNTERS, encounterSetup } from './encounters';
 import type { EncounterId } from './encounters';
@@ -288,6 +288,12 @@ describe('jutsu', () => {
     for (const jutsu of ['earth_wall_doryuheki', 'water_shield_suijinheki']) {
       const out = ok(applyAction(s, { type: 'jutsu', unit: 'a', jutsu, at: { x: 11.25, z: 10.25 } }));
       assert.equal(out.state.walls.length, 1);
+      // It knows who raised it (it stands in that ninja's chakra colour), and stays unbreakable:
+      // no Kōton structure of theirs, nothing to strike.
+      const w = out.state.walls[0];
+      assert.equal(w.owner, 'a');
+      assert.ok(!breakable(w));
+      assert.deepEqual(ownStructures(out.state, 'a'), []);
       // Over the rogue: refused before paying.
       const over = applyAction(s, { type: 'jutsu', unit: 'a', jutsu, at: { ...s.units.rogue_0.pos } });
       assert.equal(over.reason, 'occupied');
@@ -324,8 +330,10 @@ describe('the hydra', () => {
     const h2 = head(s, 1);
     damage(s, h2, 999, 'Fire', {}, ev);
     assert.ok(h2.head!.severed && !h2.head!.sealed);
-    damage(s, h2, 1, 'Lightning', {}, ev);
+    damage(s, h2, 1, 'Lightning', { source: 'a' }, ev);
     assert.ok(h2.head!.sealed);
+    // The seal names whose lightning it was (its flare plays in their chakra colour).
+    assert.ok(ev.some((e) => e.t === 'seal' && e.unit === h2.id && e.how === 'lightning' && e.source === 'a'));
     const h3 = head(s, 2);
     damage(s, h3, 999, 'Piercing', {}, ev);
     damage(s, h3, 5, 'Bludgeoning', { explosion: true }, ev);
@@ -766,8 +774,11 @@ describe('clans: phase 1 foundation', () => {
       // behind a metal wall.
       const river = createBattle(setup({ enemies: [{ kind: 'rogue', pos: { x: 25.25, z: 11.25 } }, { kind: 'rogue', pos: { x: 25.25, z: 14.75 } }] })).state;
       assert.ok(waterAtPt(river, river.units.rogue_0.pos) && waterAtPt(river, river.units.rogue_1.pos));
-      const zap = (t: BattleState) => electrify(t, [{ x: 25.25, z: 12.25 }], 10, 13, 'a', [], []).map((h) => h.unit);
+      const zapped: BattleEvent[] = [];
+      const zap = (t: BattleState) => electrify(t, [{ x: 25.25, z: 12.25 }], 10, 13, 'a', [], zapped).map((h) => h.unit);
       assert.deepEqual(zap(river), ['rogue_0', 'rogue_1']);
+      // The water lights up in the caster's lightning (its chakra colour on the screen).
+      assert.ok(zapped.some((e) => e.t === 'electrified' && e.source === 'a'));
       river.walls.push({ id: 'w1', kind: 'metal', a: { x: 23.5, z: 13.5 }, b: { x: 27, z: 13.5 }, hp: 20, maxHp: 20 });
       assert.deepEqual(zap(river), ['rogue_0']);
       // A blast reaching two structures dents the near one; the one sheltered behind it is spared.
@@ -1038,7 +1049,7 @@ describe('Kōton: Modular Architecture', () => {
   });
 });
 
-describe('Ryusei: Weapon Nodes, Warp Strike, Spatial Swap', () => {
+describe('Ryusei: Weapon Nodes, Shooting-Star Thrust, Spatial Swap', () => {
   const ryusei = (over: Partial<ShinobiCharacter> = {}) => hero({ id: 'r', name: 'Solen', clan: 'Ryusei', ...over });
   /** A Ryusei at (8.25, 10.25) on its turn, the rogue 6 m away at (14.25, 10.25). */
   const ryuseiTurn = (over: Partial<BattleSetup> = {}): BattleState => turnOf(createBattle(setup({ party: [{ character: ryusei(), pos: { x: 8, z: 10 } }], ...over })).state, 'r');
@@ -1096,7 +1107,7 @@ describe('Ryusei: Weapon Nodes, Warp Strike, Spatial Swap', () => {
     assert.deepEqual(ok(warp(atBlock, atBlock.nodes[0].pos)).state.units.r.pos, { x: 11.25, z: 10.25 });
   });
 
-  it('Warp Strike: bonus action, 2 chakra, to its own Node within 18 m in sight, even through a metal wall', () => {
+  it('Shooting-Star Thrust: bonus action, 2 chakra, to its own Node within 18 m in sight, even through a metal wall', () => {
     const s = ryuseiTurn();
     s.nodes.push(node('n1', { x: 12.25, z: 13.25 }));
     // A click near the Node is enough.
@@ -1134,7 +1145,7 @@ describe('Ryusei: Weapon Nodes, Warp Strike, Spatial Swap', () => {
     assert.equal(warp(tent, { x: 43.2, z: 0.1 }).reason, 'noSight');
   });
 
-  it('Warp Strike lands at least 1 m from whoever stands on the Node, within 1.5 m of it (D15)', () => {
+  it('Shooting-Star Thrust lands at least 1 m from whoever stands on the Node, within 1.5 m of it (D15)', () => {
     const s = ryuseiTurn();
     const foe = s.units.rogue_0.pos;
     // A foe on the Node, on its centre or off it (within 0.75 m): the landing keeps 1 m from the foe,
@@ -1217,7 +1228,7 @@ describe('Ryusei: Weapon Nodes, Warp Strike, Spatial Swap', () => {
       assert.equal(out.state.units[id].cond.hidden, undefined, id);
       assert.ok(out.events.some((e) => e.t === 'condition' && e.unit === id && e.cond === 'hidden' && !e.on), id);
     };
-    // Warp Strike beside the rogue: the blow comes from behind, but not from hiding.
+    // Shooting-Star Thrust beside the rogue: the blow comes from behind, but not from hiding.
     const beside = structuredClone(s);
     beside.nodes.push(node('n1', s.units.rogue_0.pos));
     const warped = ok(warp(beside, s.units.rogue_0.pos));
@@ -1302,7 +1313,7 @@ describe('Ryusei: Weapon Nodes, Warp Strike, Spatial Swap', () => {
     assert.equal(swap(sneaking, 'rogue_0').reason, 'combatOnly');
   });
 
-  it('a Warp Strike and a Spatial Swap are played as a phase (the owner, 2026-10-21); a Body Flicker is not', () => {
+  it('a Shooting-Star Thrust and a Spatial Swap are played as a phase (the owner, 2026-10-21); a Body Flicker is not', () => {
     const s = ryuseiTurn({ party: [
       { character: ryusei(), pos: { x: 8, z: 10 } },
       { character: hero({ id: 'b', name: 'Bo' }), pos: { x: 11, z: 13 } },
@@ -1431,7 +1442,7 @@ describe('Ryusei: Weapon Nodes, Warp Strike, Spatial Swap', () => {
 });
 
 describe('Northstar: Aura of Sovereignty, Command, Natural Submission', () => {
-  const northstar = (over: Partial<ShinobiCharacter> = {}) => hero({ id: 'n', name: 'Shiori', clan: 'Northstar', ...over });
+  const northstar = (over: Partial<ShinobiCharacter> = {}) => hero({ id: 'n', name: 'Yua', clan: 'Northstar', ...over });
   /** A Northstar at (8.25, 10.25) on its turn, the enemies 6 m away or as given. */
   const northstarTurn = (over: Partial<BattleSetup> = {}): BattleState => turnOf(createBattle(setup({ party: [{ character: northstar(), pos: { x: 8, z: 10 } }], ...over })).state, 'n');
   const cast = (s: BattleState, target: string, o: { jutsu?: string; target2?: string } = {}) =>
@@ -1529,7 +1540,7 @@ describe('Northstar: Aura of Sovereignty, Command, Natural Submission', () => {
     assert.ok(a.turn.move < 0.71);
     // The move event comes before the slow, so the screen shows it at the edge.
     assert.ok(kinds(run.events).indexOf('move') < kinds(run.events).indexOf('slowed'));
-    // Warp Strike into it: from 9 m of movement to 4.5.
+    // Shooting-Star Thrust into it: from 9 m of movement to 4.5.
     const warp = start();
     warp.nodes.push({ id: 'n1', owner: 'a', pos: { x: 17.25, z: 10.25 } });
     const warped = ok(applyAction(warp, { type: 'jutsu', unit: 'a', jutsu: 'ryusei_warp', at: { x: 17.25, z: 10.25 } }));
@@ -1792,7 +1803,7 @@ describe('the counter cycle (docs/CLANS_DESIGN.md)', () => {
     assert.equal(foreseen(walled).rogue_0, undefined);
   });
 
-  it('Ryusei beats Kōton: Warp Strike goes through a metal wall', () => {
+  it('Ryusei beats Kōton: Shooting-Star Thrust goes through a metal wall', () => {
     const s = turnOf(createBattle(setup()).state, 'a');
     assert.equal(s.units.a.character?.clan, 'Ryusei');
     s.walls.push({ id: 'w1', kind: 'metal', a: { x: 10.5, z: 11 }, b: { x: 10.5, z: 15.5 }, hp: 20, maxHp: 20, owner: 'rogue_0' });
@@ -1816,7 +1827,7 @@ describe('the counter cycle (docs/CLANS_DESIGN.md)', () => {
     assert.equal(pv.adv, 'none');
   });
 
-  it('and Warp Strike\'s blow can\'t be evaded by a Mirai', () => {
+  it('and Shooting-Star Thrust\'s blow can\'t be evaded by a Mirai', () => {
     const s = turnOf(createBattle(setup()).state, 'a');
     s.nodes.push(node('n1', s.units.rogue_0.pos, 'a'));
     const warped = ok(applyAction(s, { type: 'jutsu', unit: 'a', jutsu: 'ryusei_warp', at: { ...s.units.rogue_0.pos } })).state;
@@ -1914,7 +1925,7 @@ describe('enemy clans are mixed (docs/CLANS_DESIGN.md, D6)', () => {
     assert.ok(pv.reasons.includes('aura'));
     assert.equal(applyAction(s, { type: 'jutsu', unit: 'rogue_1', jutsu: 'northstar_command', at: { ...s.units.a.pos }, target: 'a' }).reason, 'cantCommand');
     // A party Northstar can take the lookout and the raider, but not the Mirai rogue.
-    const n = battleOf('cedar_rogues', 7, [{ character: hero({ id: 'n', name: 'Shiori', clan: 'Northstar' }) }]);
+    const n = battleOf('cedar_rogues', 7, [{ character: hero({ id: 'n', name: 'Yua', clan: 'Northstar' }) }]);
     assert.deepEqual(['rogue_0', 'rogue_1', 'raider_0'].map((id) => commandRefused(n, n.units.n, n.units[id])), ['mindImmune', null, null]);
   });
 
@@ -1925,7 +1936,7 @@ describe('enemy clans are mixed (docs/CLANS_DESIGN.md, D6)', () => {
       { character: noUlt(hero({ id: 'a', name: 'Aki' })), controller: 'ai' as const },
       { character: noUlt(HANA), controller: 'ai' as const, aiOrder: 'support' as const },
       { character: noUlt(KENJI), controller: 'ai' as const },
-      { character: noUlt(hero({ id: 'n', name: 'Shiori', clan: 'Northstar' })), controller: 'ai' as const },
+      { character: noUlt(hero({ id: 'n', name: 'Yua', clan: 'Northstar' })), controller: 'ai' as const },
     ];
     for (const id of Object.keys(ENCOUNTERS) as EncounterId[]) {
       for (const seed of [1, 2]) {
@@ -1954,7 +1965,7 @@ describe('enemy clans are mixed (docs/CLANS_DESIGN.md, D6)', () => {
       { character: noUlt(hero({ id: 'a', name: 'Aki' })), controller: 'ai' as const },
       { character: noUlt(HANA), controller: 'ai' as const, aiOrder: 'support' as const },
       { character: noUlt(KENJI), controller: 'ai' as const },
-      { character: noUlt(hero({ id: 'n', name: 'Shiori', clan: 'Northstar' })), controller: 'ai' as const },
+      { character: noUlt(hero({ id: 'n', name: 'Yua', clan: 'Northstar' })), controller: 'ai' as const },
     ];
     const runs: [EncounterId, number, typeof four][] = [];
     for (const id of ['river_patrol', 'cedar_rogues', 'night_raid'] as EncounterId[]) for (const seed of [1, 2, 3, 4]) runs.push([id, seed, four]);
@@ -2246,10 +2257,11 @@ describe('clan playtest fixes: what the screen shows matches the engine', () => 
       assert.match(j.name, /^[A-Z][a-z]+ Technique: /, j.id);
       assert.ok(j.descriptionEs, j.id);
     }
-    // Warp Strike and Command take the owner's Spanish names from his icon sheets (2026-10-21).
-    assert.equal(es('ryusei_warp'), 'Golpe Warp');
+    // Command takes the owner's Spanish name from his icon sheets (2026-10-21); the Ryusei's warp
+    // is his Shooting-Star Thrust, Estocada Fugaz (2026-10-21, once Warp Strike / Golpe Warp).
+    assert.equal(es('ryusei_warp'), 'Estocada Fugaz');
     assert.equal(es('northstar_command'), 'Comando');
-    assert.equal(JUTSU.ryusei_warp.name, 'Warp Strike');
+    assert.equal(JUTSU.ryusei_warp.name, 'Shooting-Star Thrust');
     assert.equal(JUTSU.northstar_command.name, 'Command');
     // No "Estilo X:" prefix is left on any jutsu.
     assert.ok(Object.values(JUTSU).every((j) => !/^Estilo /.test(j.nameEs ?? '')));

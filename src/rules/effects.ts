@@ -72,6 +72,8 @@ export const EFFECTS: Record<EffectId, EffectDef> = {
   poisoned: def({ id: 'poisoned', name: 'Poisoned', nameEs: 'Envenenado', kind: 'debuff', duration: 'untilCamp', curedBy: ['antidote', 'seal_poison'], description: 'Disadvantage on attacks and checks.', mods: { disadvAttacks: true, disadvChecks: true } }),
   wounded_leg: def({ id: 'wounded_leg', name: 'Wounded leg', nameEs: 'Pierna herida', kind: 'debuff', duration: 'untilCamp', description: '−3 m speed.', mods: { speedM: -3 } }),
   numb: def({ id: 'numb', name: 'Numb', nameEs: 'Entumecido', kind: 'debuff', duration: 'untilCamp', description: '−2 to DEX rolls.', mods: { dexRolls: -2 } }),
+  // The Jolt's numbness (the owner: 2 rounds): the same −2 as Numb, gone after two of the bearer's turns.
+  jolted: def({ id: 'jolted', name: 'Numb', nameEs: 'Entumecido', kind: 'debuff', duration: 'rounds', count: 2, description: '−2 to DEX rolls (DEX saves, ranged attacks, DEX checks) for 2 rounds.', mods: { dexRolls: -2 } }),
   hungry: def({ id: 'hungry', name: 'Hungry', nameEs: 'Hambriento', kind: 'debuff', duration: 'untilTreated', curedBy: ['food'], description: 'Disadvantage on CON saves; eating removes it.', mods: { disadvConSaves: true } }),
   crash: def({ id: 'crash', name: 'Crash', nameEs: 'Bajón', kind: 'debuff', duration: 'untilCamp', description: '−2 to all rolls (after a soldier pill).', mods: { allRolls: -2 } }),
   fever: def({ id: 'fever', name: 'Fever', nameEs: 'Fiebre', kind: 'debuff', duration: 'untilTreated', curedBy: ['field_surgery'], description: 'No HP back from rests.', mods: { noRestHp: true } }),
@@ -105,9 +107,11 @@ function addMods(into: EffectMods, m: Partial<EffectMods>): void {
 /** Sum of every effect's numbers and flags. */
 export function effectMods(effects: readonly StatusEffect[] = []): EffectMods {
   const out = { ...ZERO };
+  // Numb twice over (a cold night and a Jolt) is still one numbness: the −2 counts once.
+  const numb = effects.some((e) => e.id === 'numb');
   for (const e of effects) {
     const d = EFFECTS[e.id];
-    if (!d) continue;
+    if (!d || (e.id === 'jolted' && numb)) continue;
     if (d.mods) addMods(out, d.mods);
     if (e.id === 'breakdown' && e.detail && BREAKDOWN_MODS[e.detail]) addMods(out, BREAKDOWN_MODS[e.detail]);
   }

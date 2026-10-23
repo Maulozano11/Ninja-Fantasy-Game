@@ -346,6 +346,8 @@ interface PaintedHead {
   mouth: boolean;
   ex: number;
   fx: number;
+  /** His bottom rows that are the top of the neck under the chin, left off when the head is turned forward on the neck (Rig.neckPitch), where his collar no longer covers them. */
+  neckRows?: number;
 }
 
 const PAINTED_HEADS: Partial<Record<FaceShape, PaintedHead>> = {
@@ -358,7 +360,9 @@ const PAINTED_HEADS: Partial<Record<FaceShape, PaintedHead>> = {
   // are, its mouth his own.
   noble: { piece: NOBLE_HEAD, skin: NOBLE_SKIN, tint: retintSkin, mouth: false, ex: 1, fx: 8 },
   // His Ren's (src/sprite/nightHeadArt.ts): his narrower face with his own mouth.
-  night: { piece: NIGHT_HEAD, skin: NIGHT_SKIN, tint: retintSkin, mouth: false, ex: 1, fx: 9 },
+  // His Ren's last row is the top of his neck: with the head turned forward in the throw it hung under the
+  // jaw on its own line (the owner: "la papada debajo del cuello esta mal").
+  night: { piece: NIGHT_HEAD, skin: NIGHT_SKIN, tint: retintSkin, mouth: false, ex: 1, fx: 9, neckRows: 1 },
 };
 
 /** The owner's head for the character's face shape, if it is one of his. */
@@ -372,11 +376,12 @@ const paintedHead = (g: DrawCtx): PaintedHead | undefined => (g.look.faceShape ?
  * does not touch them; the eye options draw the eyes on them (and the face template the mouth on his
  * Aiden head), and the hair covers the skull as it covers ours.
  */
-function drawPaintedHead(g: DrawCtx, { piece, skin, tint }: PaintedHead): void {
+function drawPaintedHead(g: DrawCtx, { piece, skin, tint, neckRows }: PaintedHead): void {
   const { nx, ny } = faceAnchor(g);
   const at = v((nx + 0.5) / RES, (ny + 0.5) / RES);
-  // His black line keeps its colour in every skin.
-  stampPiece(g, 'head.body', piece, at, piece.angle, 'head', (_ch, hex) => (isLine(hex) ? hex : tint(hex, skin, g.look.skin)));
+  // His black line keeps its colour in every skin. `neckRows` are left off when the head is turned forward.
+  const head = neckRows && g.rig.neckPitch !== undefined ? { ...piece, rows: piece.rows.slice(0, -neckRows) } : piece;
+  stampPiece(g, 'head.body', head, at, head.angle, 'head', (_ch, hex) => (isLine(hex) ? hex : tint(hex, skin, g.look.skin)));
 }
 
 /**

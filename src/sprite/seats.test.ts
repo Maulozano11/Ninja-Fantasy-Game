@@ -150,7 +150,10 @@ describe('the sit on a seat', () => {
   });
 });
 
-/** The male read: the owner's two frames of his Trunks reading on a rock (docs/reference/trunks-read-owner-reference.jpg). */
+/**
+ * The male read: the owner's Trunks reading on a rock (docs/reference/trunks-read-owner-reference.jpg), his frame 2
+ * (the book raised in one hand toward his face) in every frame, his decision of 2026-10-23.
+ */
 describe('the male read on a seat', () => {
   const hex = (rgba: Uint8ClampedArray, i: number) => '#' + [0, 1, 2].map((k) => rgba[i * 4 + k].toString(16).padStart(2, '0')).join('');
   /** The pixels of one of his pieces: [frame index, his colour]. */
@@ -162,13 +165,18 @@ describe('the male read on a seat', () => {
     return out;
   };
 
-  it('is his two frames over the loop: reading, then the book shut at the chest', () => {
+  it('holds his frame 2 over the whole loop: the book raised in one hand, the other forearm across', () => {
     assert.equal(READ_KEYS.length, frameCount(rigPoseFor('read')));
-    assert.deepEqual([...new Set(READ_KEYS)], [0, 1]);
+    assert.deepEqual([...new Set(READ_KEYS)], [1]);
+    // held still: every frame of the loop is the same picture, on both male bodies
+    for (const body of ['male', 'bulky'] as const) {
+      const first = renderSprite(roman(body), 'read', 0).rgba;
+      for (let f = 1; f < READ_KEYS.length; f++) assert.deepEqual(renderSprite(roman(body), 'read', f).rgba, first, `${body} read ${f}`);
+    }
   });
 
-  it('poses the male toward his joints in both of his frames', () => {
-    // His hands within 4 px (our hand point lands a little short along the forearm, as in the sit; his hand
+  it('poses the male toward his joints in his frame', () => {
+    // His near hand within 4 px (our hand point lands a little short along the forearm, as in the sit; his hand
     // itself is drawn where he drew it, campfx.ts, so this is where our forearm ends under it); his neck's line
     // and his ankles on the ground under his boots. Our shins are longer than his (15.4 px, his about 11), so the
     // knees stand higher than his, within 6.5 px; the thighs keep their length (his hips are low enough for
@@ -178,9 +186,8 @@ describe('the male read on a seat', () => {
       const r = buildRig('male', rigPoseFor('read'), f);
       const d = (p: { x: number; y: number }, x: number, y: number) => Math.hypot(p.x * RES - x, p.y * RES - y);
       assert.ok(d(r.handN, j.handN[0], j.handN[1]) <= 4, `read ${f} handN: ${d(r.handN, j.handN[0], j.handN[1]).toFixed(1)} px from his`);
-      // (in his second frame his far hand is behind the book, his arm folded tighter than ours folds: only his
-      // fingertip beside the book is drawn, our far hand is taken off; seats.test 'draws his book')
-      if (READ_KEYS[f] === 0) assert.ok(d(r.handF, j.handF[0], j.handF[1]) <= 4, `read ${f} handF: ${d(r.handF, j.handF[0], j.handF[1]).toFixed(1)} px from his`);
+      // (his far hand is behind the book, his arm folded tighter than ours folds: only his fingertip beside the
+      // book is drawn, our far hand is taken off; 'draws his book' below)
       assert.ok(d(r.kneeN, j.kneeN[0], j.kneeN[1]) <= 6.5, `read ${f} kneeN: ${d(r.kneeN, j.kneeN[0], j.kneeN[1]).toFixed(1)} px from his`);
       assert.ok(d(r.kneeF, j.kneeF[0], j.kneeF[1]) <= 6.5, `read ${f} kneeF: ${d(r.kneeF, j.kneeF[0], j.kneeF[1]).toFixed(1)} px from his`);
       // the neck on the line from the hips to his neck
@@ -216,7 +223,8 @@ describe('the male read on a seat', () => {
     for (const body of ['female', 'slender'] as const) {
       assert.equal(seatFor('read', undefined, body), null);
       const r = buildRig(body, rigPoseFor('read'), 0);
-      assert.ok(Math.hypot(r.handF.x * RES - READ_JOINTS[0].handF[0], r.handF.y * RES - READ_JOINTS[0].handF[1]) > 3, `${body}: her own read`);
+      const j = READ_JOINTS[READ_KEYS[0]];
+      assert.ok(Math.hypot(r.handN.x * RES - j.handN[0], r.handN.y * RES - j.handN[1]) > 3, `${body}: her own read`);
     }
   });
 
@@ -252,7 +260,7 @@ describe('the male read on a seat', () => {
     const dark = roman('male');
     dark.skin = '#8d5524';
     const fr = renderSprite(dark, 'read', 0).rgba;
-    const near = cells(READ_HAND_N[0]!);
+    const near = cells(READ_HAND_N[READ_KEYS[0]]!);
     assert.ok(near.filter(([i, c]) => hex(fr, i) !== c).length > near.length / 2, 'his near hand in the darker skin');
     for (const [i, c] of near) if (c === '#000000') assert.equal(hex(fr, i), '#000000');
   });

@@ -606,8 +606,11 @@ const READ: PoseFrame[] = Array.from({ length: 12 }, (_, i) => {
  * joints are read off his figure one for one (READ_JOINTS, fine pixels of our frame):
  * - frame 1, "Leyendo": the open book held up before him in both hands, the fingers over its lower edge, both
  *   arms bent, the far forearm coming up from the lap;
- * - frame 2, "Libro cerrado": the book shut in the near hand at the chest, the near forearm across the body,
- *   the far hand behind the book.
+ * - frame 2 (labelled "Libro cerrado", but its pages face him: he reads it): the book raised in the near hand,
+ *   tilted toward his face, the near forearm across the body, the far hand behind the book.
+ * His decision (2026-10-23): "pon como estas poniendo (libro cerrado) en todas las poses de leer esa es la
+ * idea": the read is his frame 2 in every frame (READ_KEYS), the male read standard. His frame 1 stays in
+ * READ_JOINTS and maleReadArt.ts, unused, in case he wants it later as a pose of its own.
  * His hips are where our read had them, on a seat whose top is READ_SEAT_TOP (row 190, the camp seat's: the
  * rock under him, seats.ts, keeps its place, so its top shows behind his hips as his rock does behind his
  * Trunks). The thighs lengthen to reach his knees (kneeLeg) and the feet stand on the ground under his boots.
@@ -624,8 +627,11 @@ export const READ_JOINTS = [
   { neck: [120, 157.4], head: [1, 2], handN: [118.5, 175], handF: [134, 176.5], kneeN: [114, 198], kneeF: [129, 193], ankleN: 115.5, ankleF: 129 },
   { neck: [118, 157.4], head: [1, 3], handN: [122, 173.5], handF: [129, 168], kneeN: [114, 198], kneeF: [129, 193], ankleN: 115.5, ankleF: 129 },
 ] as const;
-/** His two frames over the loop (12 frames at POSE_FPS.read, 4 seconds): reading for 8 frames, then the book shut at the chest for 4. */
-export const READ_KEYS = [0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1] as const;
+/**
+ * His frame 2 over the whole loop (12 frames at POSE_FPS.read, 4 seconds), held still: he drew one pose for it,
+ * and the loop holds it as the sit of his Lyra holds her one frame (no breathing or page turn he did not draw).
+ */
+export const READ_KEYS = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1] as const;
 const READ_MALE: PoseFrame[] = READ_KEYS.map((k) => {
   const j = READ_JOINTS[k];
   return {

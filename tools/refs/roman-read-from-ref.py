@@ -7,6 +7,8 @@ His picture (2000 x 1493) holds two frames, split at picture column 1007 (the wh
 - frame 1, "Leyendo": the open book held up before him in both gloved hands, the fingers over its lower edge;
 - frame 2, "Libro cerrado": the book shut and tilted in the near hand at the chest, the near forearm across the
   body, the fingertips round the book's front.
+Both are lifted, but the read plays only frame 2 (his decision, 2026-10-23: "pon como estas poniendo (libro
+cerrado) en todas las poses de leer esa es la idea"; rig.ts READ_KEYS). Frame 1 is kept for a later pose.
 His cells are about 17.3 picture pixels across and 16.8 down (the picture was stretched a little more across
 than down); owner_paintover.py finds his grid where it drifts (native_xy below is its native() with a pitch per
 axis). He painted over our read at our scale: one of his cells is one fine pixel of our sprite, his cell (x, y)

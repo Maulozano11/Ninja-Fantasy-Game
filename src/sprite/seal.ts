@@ -23,8 +23,13 @@ const BODY: Depth[] = ['farArm.body', 'farLeg.body', 'nearLeg.body', 'torso.body
  * the chin on purpose. With `bodyGaps` (the owner's painted capes and skirt), never where the bare body
  * shows between his painted pixels only either: at rest his cloth shows our body in its gaps where his
  * picture shows his figure, and his pixels at rest stay as he drew them.
+ *
+ * Idle is left exactly as drawn, as closePinholes leaves it (holes.ts): it is the frame the owner's
+ * pictures were copied into, so a gap that shows at rest is one he drew or accepted. Only the frames
+ * that move the cloth (where turned and swung pieces part) are sealed.
  */
 export function sealCloth(g: DrawCtx, depths: Depth[], bodyGaps = false): void {
+  if (g.rig.pose === 'idle') return;
   const Ls = depths.map((d) => g.L(d)).filter((L) => L.used);
   if (!Ls.length) return;
   const head = g.L('head.body');

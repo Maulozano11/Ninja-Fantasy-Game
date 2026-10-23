@@ -135,9 +135,29 @@ describe("the owner's Trunks clothes", () => {
           const n = frameCount(rigPoseFor(pose, l.cast?.style, l.slots.held?.id));
           for (let fr = 0; fr < n; fr++) {
             const f = renderSprite(l, pose, fr);
+            // A pinhole (up to 3 px) between his piece and another (the blade it holds, the head) is closed with
+            // the other's line (holes.ts closePinholes, "si arregla el hueco de 1 pixel a todos"): that colour,
+            // running on into the piece it came from, is not ours.
+            const fromBeside = (i: number, c: string) => {
+              const seen = new Set([i]);
+              const todo = [i];
+              while (todo.length && seen.size <= 4) {
+                const k = todo.pop()!;
+                const x = k % GRID;
+                for (const d of [-GRID - 1, -GRID, -GRID + 1, -1, 1, GRID - 1, GRID, GRID + 1]) {
+                  const j = k + d;
+                  if (j < 0 || j >= GRID * GRID || Math.abs((j % GRID) - x) > 1 || seen.has(j) || !opaque(f.rgba, j) || hex(f.rgba, j) !== c) continue;
+                  if (!limbs.has(f.part[j])) return true;
+                  seen.add(j);
+                  todo.push(j);
+                }
+              }
+              return false;
+            };
             const ours: string[] = [];
             for (let i = 0; i < GRID * GRID; i++) {
-              if (opaque(f.rgba, i) && limbs.has(f.part[i]) && !his.has(hex(f.rgba, i))) ours.push(`${i % GRID},${Math.floor(i / GRID)}`);
+              const c = opaque(f.rgba, i) ? hex(f.rgba, i) : '';
+              if (c && limbs.has(f.part[i]) && !his.has(c) && !fromBeside(i, c)) ours.push(`${i % GRID},${Math.floor(i / GRID)}`);
             }
             assert.ok(ours.length === 0, `${body} ${l.slots.top!.id} ${pose} ${fr}: not his at ${ours.join(' ')}`);
           }

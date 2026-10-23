@@ -10,7 +10,8 @@ import { continuedTo, limbOnly, type PaintedPiece, segAngle, stampPiece } from '
 import { add, along, ellipse, GRID, norm, partIndex, PARTS, Pen, RES, seam, sub, v, type Vec } from '../raster';
 import { sealAgainstFigure } from '../seal';
 import { across, crease, fpx, limb, limbR, stitch, stud, tube, wrapStripes } from './clothes';
-import { founderFootTurn, founderLegLen, founderLegOut, founderLegsStill } from './founderOut';
+import { closeAnkle, footTurn, shinCarried } from './ankle';
+import { founderLegLen, founderLegOut, founderLegsStill } from './founderOut';
 import { FOUNDER_SANDAL_FOOT_F, FOUNDER_SANDAL_FOOT_N, FOUNDER_SANDAL_KIND, FOUNDER_SANDAL_LEATHER, FOUNDER_SANDAL_SHIN_F, FOUNDER_SANDAL_SHIN_N, FOUNDER_SANDAL_SKIN } from './founderSandalsArt';
 import { ROMAN_KIT_KIND, SANDAL_FOOT_F, SANDAL_FOOT_N, SANDAL_LEATHER, SANDAL_SHIN_F, SANDAL_SHIN_N, SANDAL_SKIN } from './bracersSandalsArt';
 import { BOOT_STEEL, BOOT_TRIM, crimsonKind, SABATON_FOOT_F, SABATON_FOOT_N, SABATON_SHIFT, SABATON_SHIN_F, SABATON_SHIN_N } from './sabatonsGauntletsArt';
@@ -340,42 +341,14 @@ function sandalShinMoving(body: BodyType, s: Side): PaintedPiece {
   return p;
 }
 
-/** How near the ankle (fine pixels) his laced shin and his sandal meet. */
-const ANKLE_R = 5;
-
-/**
- * His line round the ankle of a moving leg. He drew his laced shin and his sandal as one: the shin's foot
- * end and the sandal's top are open, each covering the other. As the shin turns away from the sandal (a
- * step, a kick), their open corners come out beside each other bare; there they take his line, as the
- * rest of the leg is closed.
- */
-function closeAnkle(g: DrawCtx, s: Side, at: Vec, shin: PaintedPiece, tint: (ch: string, hex: string) => string): void {
-  const L = g.L(legDepth(s, 'feet'));
-  const lineCh = Object.keys(shin.colors).filter((ch) => FOUNDER_SANDAL_KIND[shin.colors[ch]] === 'line');
-  if (!lineCh.length) return;
-  const lines = new Set(lineCh.map((ch) => g.m(tint(ch, shin.colors[ch]), 'flat')));
-  const edge = g.m(tint(lineCh[0], shin.colors[lineCh[0]]), 'flat');
-  const ids = new Set([partIndex(`shin${s}`), partIndex(`foot${s}`)]);
-  const ax = Math.floor(at.x * RES);
-  const ay = Math.floor(at.y * RES);
-  const open: number[] = [];
-  for (let y = ay - ANKLE_R; y <= ay + ANKLE_R; y++)
-    for (let x = ax - ANKLE_R; x <= ax + ANKLE_R; x++) {
-      if (x < 1 || y < 1 || x >= GRID - 1 || y >= GRID - 1) continue;
-      const i = y * GRID + x;
-      if (L.mat[i] >= 0 && ids.has(L.part[i]) && !lines.has(L.mat[i]) && [i - 1, i + 1, i - GRID, i + GRID].some((j) => L.mat[j] < 0)) open.push(i);
-    }
-  // The open corner itself takes his line (a line put outside it would stick out of the leg).
-  for (const i of open) L.mat[i] = edge;
-}
-
 /** How near the ankle (fine pixels) his Trunks boots' turned shaft and flat foot are closed. */
 const BOOT_ANKLE_R = 6;
 
 /**
  * His Trunks boot on a leg: the laced shaft turned with the shin about the ankle, the foot flat on the
- * ground. Turned, the shaft keeps his black line whole (rotateLined: at some angles a cell of his line fell
- * between the turned samples and the leather lay bare against the air), and where the turned shaft and
+ * ground, or turned with the shaft once the shin swings far from rest (footTurn). Turned, the shaft keeps
+ * his black line whole (rotateLined: at some angles a cell of his line fell between the turned samples
+ * and the leather lay bare against the air), and where the turned shaft and
  * the flat foot part at the ankle, the cut is closed with his line: a leather pixel there left bare
  * against the air takes his line, and a notch the two leave between them (an empty pixel walled in on
  * three sides) is filled with it. Unturned (at rest) it is his boot exactly. The owner on Trunks 3,
@@ -387,7 +360,9 @@ function stampBoot(g: DrawCtx, s: Side, shaft: PaintedPiece, foot: PaintedPiece,
   const line = (hex: string) => slot[hex] === 'line';
   const deg = segAngle(knee, ankle);
   stampPiece(g, legDepth(s, 'feet'), shaft, ankle, deg, `shin${s}`, tint, line);
-  stampPiece(g, legDepth(s, 'feet'), foot, ankle, foot.angle, `foot${s}`, tint);
+  // Swung far from rest (a kick, combo 5/8, the run's back leg) the foot turns with the shaft, as he drew
+  // them as one (footTurn: flat at rest, standing and in the lean).
+  stampPiece(g, legDepth(s, 'feet'), foot, ankle, foot.angle + footTurn(g, s), `foot${s}`, tint, line);
   if (Math.round(deg - shaft.angle) % 360 === 0) return;
   const L = g.L(legDepth(s, 'feet'));
   const lineCh = Object.keys(shaft.colors).find((ch) => line(shaft.colors[ch]));
@@ -571,12 +546,14 @@ export const FEET_ITEMS: ItemDef[] = [
       for (const s of SIDES) {
         const { knee, ankle } = legJoints(g.rig, s);
         lowerLegOff(g, s);
+        // His ankle, carried round with the shin (shinCarried): his greave, turned about our knee, and his
+        // sabaton meet there in every pose as at rest; lifted well off the ground the sabaton turns with the shin.
         const [dx, dy] = SABATON_SHIFT[s];
-        const at = add(ankle, v(dx / RES, dy / RES));
+        const at = add(ankle, shinCarried(g, s, dx, dy));
         const shin = s === 'N' ? SABATON_SHIN_N : SABATON_SHIN_F;
         const foot = s === 'N' ? SABATON_FOOT_N : SABATON_FOOT_F;
         stampPiece(g, legDepth(s, 'feet'), shin, at, segAngle(knee, ankle), `shin${s}`, tint);
-        stampPiece(g, legDepth(s, 'feet'), foot, at, foot.angle, `foot${s}`, tint);
+        stampPiece(g, legDepth(s, 'feet'), foot, at, foot.angle + footTurn(g, s, true), `foot${s}`, tint);
       }
     },
   },
@@ -614,18 +591,26 @@ export const FEET_ITEMS: ItemDef[] = [
       };
       // Moving, his Solen's laced shin goes alone (not what was lifted beside it) and laced on up to the knee
       // (his far one is drawn short: at rest his trouser leg and the sword hide the rest).
-      const moving = parts.paint !== 'roman' && !founderLegsStill(g);
+      const roman = parts.paint === 'roman';
+      const moving = !roman && !founderLegsStill(g);
       // His Solen's laced shin keeps its line whole as it turns (rotateLined).
-      const line = parts.paint !== 'roman' ? (hex: string) => pieces.kind[hex] === 'line' : undefined;
+      const line = !roman ? (hex: string) => pieces.kind[hex] === 'line' : undefined;
       for (const s of SIDES) {
         const { knee, ankle } = legJoints(g.rig, s);
         bareFootOff(g, s);
         const shin = moving ? sandalShinMoving(g.rig.body, s) : pieces[s].shin;
         const foot = pieces[s].foot;
         const at = add(ankle, founderLegOut(g, s).out);
+        // Lifted well off the ground (a kick, the run's back leg), either sandal turns with its laced shin about
+        // the ankle, as he drew them as one (footTurn: 0 standing, so at rest every pixel is his).
+        const turn = moving || roman ? footTurn(g, s) : 0;
         stampPiece(g, legDepth(s, 'feet'), shin, at, segAngle(knee, ankle), `shin${s}`, tint, line);
-        stampPiece(g, legDepth(s, 'feet'), foot, at, foot.angle + (moving ? founderFootTurn(g, s) : 0), `foot${s}`, tint, line);
-        if (moving) closeAnkle(g, s, at, shin, tint);
+        stampPiece(g, legDepth(s, 'feet'), foot, at, foot.angle + turn, `foot${s}`, tint, line);
+        if (moving || turn) {
+          // His line round the ankle: the pieces' line colours (his line is never tinted).
+          const lineHex = [...Object.values(shin.colors), ...(roman ? Object.values(foot.colors) : [])].filter((hex) => pieces.kind[hex] === 'line');
+          if (lineHex.length) closeAnkle(g, s, at, g.m(lineHex[0], 'flat'), new Set(lineHex.map((hex) => g.m(hex, 'flat'))));
+        }
       }
     },
   },

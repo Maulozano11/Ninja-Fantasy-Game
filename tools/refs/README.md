@@ -79,6 +79,20 @@ folders.
 
       python3 -I tools/refs/water-from-ref.py docs/reference/water-set-owner-reference.jpg tools/world-sprites/vfx-water-v3-refdata.ts <character.png> [reviewDir]
 
+- `tide-s-from-ref.py`: the S-rank Devouring Tide from his paint-over of our widest wave
+  (`docs/reference/tide-s-owner-reference.jpg`; a proposal). His picture is one 320x240 pixel-art
+  canvas at 3.2x; each of his pixels is 2x2 game px (his trailing lanes match ours at 2.04 x 1.95,
+  IoU 0.967). It lifts his new layers: the curl wave (what the dragon and the kanji's strokes hide of
+  it continued by turning his own curl about the spiral's eye), the dragon's head, horns, whiskers and
+  jaw (separate, to animate), the kanji 水 and its glow, and his loose spray; one palette of 64 of
+  his colours. It writes `tools/world-sprites/vfx-tide-s-refdata.ts` (with probes of his pixels for
+  `src/battle/tideS.test.ts`), which `vfx-tide-s.ts` animates (`vfx_tide_s`: curl, dragon, kanji).
+  With a third argument, a folder, it also writes his canvas, every layer and the masks over his
+  picture.
+
+      python3 -I tools/refs/tide-s-from-ref.py docs/reference/tide-s-owner-reference.jpg tools/world-sprites/vfx-tide-s-refdata.ts [reviewDir]
+      WORLD_OUT=<staging dir> npx tsx tools/world-sprites/vfx-tide-s.ts
+
 - `wind-from-ref.py`: the whole wind set (`vfx_wind_v3`) from his wind sheet. It writes
   `tools/world-sprites/vfx-wind-v3-refdata.ts` (his key frames cut into the pieces that
   `vfx-wind-v3.ts` animates, one palette per sprite from his pixels). With a third argument, a

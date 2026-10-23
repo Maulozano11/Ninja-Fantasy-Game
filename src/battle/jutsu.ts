@@ -61,7 +61,15 @@ export interface JutsuSeq {
    * (wall_depth; its wall seen from the side when the cone points into the depth) with `rows` rows
    * fading behind its crest and the element's breath as foam before it, in `ms`.
    */
-  wave?: { rows: number; ms: number };
+  wave?: {
+    rows: number;
+    ms: number;
+    /**
+     * The Dragon Tsunami, Water's rank S (the owner's paint-over of the wave, approved 2026-10-22):
+     * his curl, his water dragon and his kanji 水 ride the crest (vfx_tide_s).
+     */
+    dragon?: boolean;
+  };
   /**
    * The Whirlwind Tower: a warning impact at the point, then the element's column (wall_depth)
    * rises there, turns with `minis` small whirlwinds (multi) circling it, and fades.
@@ -157,6 +165,8 @@ export interface JutsuSpec {
   push?: { m: number; toward?: boolean };
   /** Water that puts out the flames on everyone it reaches (every water jutsu that strikes). */
   douse?: boolean;
+  /** How long the ground it soaks stays wet, in rounds (a water jutsu; WET_ROUNDS when unset). */
+  wetRounds?: number;
   /** What it does to the ground around it. */
   env?: 'ignite' | 'electrify' | 'clearFoliage';
   /** A failed save adds Tension (the hydra's roar). */
@@ -247,6 +257,14 @@ const OVERRIDE: Record<string, Partial<JutsuSpec>> = {
   // the gaps"). Water's rank A (the owner's second round: "ola devoradora es rango a"): a 9 m cone
   // that sweeps the ones who fail 3 m away, knocks them down and puts their fire out.
   water_devouring_tide: { vfx: 'breath', push: { m: 3 }, prone: true, douse: true, seq: { castAura: 560, wave: { rows: 3, ms: 1900 }, hitEach: { stagger: 90 }, shake: 6 } },
+  // Water's rank S, the Dragon Tsunami (the owner's paint-over of our wave, 2026-10-22; "rango S ola
+  // si me gusta la animacion ... la rango s es dragon tsunami"): the Tsunami plus his curl, his water
+  // dragon and his kanji, run a little slower so the dragon can rise and roar (2200 ms and the 900 ms
+  // break). Its numbers approved by the owner for now (2026-10-22): «aprovado los numeros de la ola
+  // por ahora»: the enhanced Tsunami's reach (11.25 m, 80 degrees), and the ground it soaks stays
+  // wet a round longer than the Tsunami's (ground.ts WET_ROUNDS, 3, and one more; not imported,
+  // ground.ts imports this module).
+  water_tide_s: { vfx: 'breath', length: 11.25, angle: 80, push: { m: 3 }, prone: true, douse: true, wetRounds: 4, seq: { castAura: 560, wave: { rows: 3, ms: 2200, dragon: true }, hitEach: { stagger: 90 }, shake: 7 } },
   // Wind's rank A: a tornado that drags the ones who fail 1.5 m toward its middle and knocks them down.
   wind_whirlwind_tower: { vfx: 'blast', push: { m: 1.5, toward: true }, prone: true, seq: { tower: { warn: 300, minis: 6 }, shake: 3 } },
   // The Gale Curtain, made an area by the owner: a gale on the ground that fans the fire jutsu

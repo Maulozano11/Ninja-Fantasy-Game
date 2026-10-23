@@ -26,7 +26,8 @@ import {
 } from './raster';
 import { BodyParams, Rig } from './rig';
 import { gripAngle } from './grip';
-import { PixelTemplate, stampTemplate, TemplatePalette } from './rotsprite';
+import { PixelTemplate, rotateTemplate, stampTemplate, TemplatePalette } from './rotsprite';
+import { footTurn } from './items/ankle';
 import { isFemaleBody, type BodyType, type EyeSpecial, type SlotId, type SpriteAppearance } from './types';
 
 /**
@@ -612,20 +613,26 @@ export function footDraw(
 ): void {
   const t = footWidth(art[s], g.rig.body);
   const a = legJoints(g.rig, s).ankle;
+  const part: PartId = s === 'N' ? 'footN' : 'footF';
+  const put = (x: number, y: number, ch: string) => {
+    let mat: number | undefined;
+    let shade = 0;
+    if (ch >= '0' && ch <= '5') [mat, shade] = [mats.main, +ch];
+    else if (ch >= 'a' && ch <= 'f') [mat, shade] = [mats.second, ch.charCodeAt(0) - 97];
+    else if (ch >= 'p' && ch <= 'u') [mat, shade] = [g.skin, ch.charCodeAt(0) - 112];
+    else if (ch >= 'v' && ch <= 'z') [mat, shade] = [mats.third, ch.charCodeAt(0) - 117];
+    if (mat !== undefined) L.set(x, y, mat, shade, part, flags);
+  };
+  // A foot turns with a shin swung far from rest (a kick, a raised knee, the run's back leg), about the
+  // ankle (the template's pivot), so it stays under the shin as at rest (items/ankle.ts footTurn).
+  const turn = footTurn(g, s);
+  if (turn) {
+    for (const p of rotateTemplate(t, turn)) put(Math.floor(a.x * RES) + p.dx, Math.floor(a.y * RES) + p.dy, p.ch);
+    return;
+  }
   const ax = Math.floor(a.x * RES) - t.pivot[0];
   const ay = Math.floor(a.y * RES) - t.pivot[1];
-  const part: PartId = s === 'N' ? 'footN' : 'footF';
   t.rows.forEach((row, y) => {
-    for (let x = 0; x < row.length; x++) {
-      const ch = row[x];
-      let mat: number | undefined;
-      let shade = 0;
-      if (ch >= '0' && ch <= '5') [mat, shade] = [mats.main, +ch];
-      else if (ch >= 'a' && ch <= 'f') [mat, shade] = [mats.second, ch.charCodeAt(0) - 97];
-      else if (ch >= 'p' && ch <= 'u') [mat, shade] = [g.skin, ch.charCodeAt(0) - 112];
-      else if (ch >= 'v' && ch <= 'z') [mat, shade] = [mats.third, ch.charCodeAt(0) - 117];
-      if (mat === undefined) continue;
-      L.set(ax + x, ay + y, mat, shade, part, flags);
-    }
+    for (let x = 0; x < row.length; x++) put(ax + x, ay + y, row[x]);
   });
 }

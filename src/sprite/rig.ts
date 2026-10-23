@@ -122,29 +122,6 @@ export const BODY_PARAMS: Record<BodyType, BodyParams> = {
     crotch: -1.9,
     headScale: 0.76,
   },
-  // Slimmer and curvier than 'female': narrow shoulders and waist, fuller bust
-  // and hips, slender arms and long legs with a full thigh and fine ankles.
-  slender: {
-    torsoLen: 13.8,
-    shoulderHalf: 5.3,
-    chestHalf: 5.4,
-    waistHalf: 2.9,
-    hipHalf: 7.0,
-    upperArm: 6.0,
-    forearm: 5.2,
-    thigh: 8.3,
-    shin: 7.8,
-    armR: [1.7, 1.4, 1.6, 1.05],
-    legR: [3.2, 1.75, 1.7, 1.0],
-    headRx: 6,
-    headRy: 7,
-    neckW: 1.15,
-    handR: 1.55,
-    footLen: 3.6,
-    bust: 2.2,
-    crotch: -1.7,
-    headScale: 0.76,
-  },
   // The owner's broad, muscular man (docs/reference/bulky-owner-reference.jpg, 2026-10-21): "este
   // seria la base para cuerpo masculino mas grueso". Measured on his picture, one of his pixels one
   // fine pixel of ours: a long torso with the shoulders well below its top, broad shoulders, long

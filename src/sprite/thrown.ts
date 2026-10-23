@@ -4,7 +4,7 @@
 // Pure pixels, no canvas: the battle turns each angle into a canvas once and keeps it.
 
 import { renderSprite } from './compose';
-import { isWeapon } from './grip';
+import { HAND_JOINT_SWORDS, isWeapon } from './grip';
 import { add, GRID, norm, RES, scale, sub, v, type Vec } from './raster';
 import { drawRig, THROW_RELEASE_FRAME } from './rig';
 import type { SpriteAppearance } from './types';
@@ -50,8 +50,8 @@ export interface Thrown {
  */
 export function renderThrown(look: SpriteAppearance, angle: number): Thrown {
   const base = drawRig(look.body, 'throw', THROW_RELEASE_FRAME - 1);
-  // The flame longsword is held at the hand joint, the others at the fist's middle (grip.ts gripPoint).
-  const anchor = thrownItem(look) === 'held_flame_sword' ? base.handN : add(base.handN, scale(norm(sub(base.handN, base.wristN)), 0.9));
+  // The owner's longswords are held at the hand joint, the others at the fist's middle (grip.ts gripPoint).
+  const anchor = HAND_JOINT_SWORDS.has(thrownItem(look)) ? base.handN : add(base.handN, scale(norm(sub(base.handN, base.wristN)), 0.9));
   // The arm moved by whole fine pixels (so even a weapon drawn with shapes, the naginata, comes out
   // the same) to put the anchor near THROWN_GRIP, the weapon turned to `angle`.
   const D = v(Math.round(THROWN_GRIP.x - anchor.x * RES), Math.round(THROWN_GRIP.y - anchor.y * RES));

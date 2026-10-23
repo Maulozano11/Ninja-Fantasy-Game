@@ -3,10 +3,10 @@
 
 import type { PartId } from './raster';
 
-export type BodyType = 'male' | 'female' | 'bulky' | 'slender';
+export type BodyType = 'male' | 'female' | 'bulky';
 
 /** Bodies drawn with the female face, lashes, lips and slimmer feet. */
-export const isFemaleBody = (b: BodyType | string): boolean => b === 'female' || b === 'slender';
+export const isFemaleBody = (b: BodyType | string): boolean => b === 'female';
 
 export type SpritePose = 'idle' | 'handsigns' | 'attack' | 'cast' | 'hurt' | 'victory' | 'charge' | StrikePose | MovePose | CampPose;
 
@@ -56,15 +56,12 @@ export interface CastChoice {
 /** The eye options; valiant and stern are the owner's own eyes from his Aiden and broad man pictures, in his pixels. */
 export type EyeShape = 'standard' | 'sharp' | 'round' | 'calm' | 'fierce' | 'bright' | 'piercing' | 'valiant' | 'stern';
 
-/** Back of the neck behind the jaw: slender (default) or thick. */
-export type NeckType = 'slim' | 'strong';
-
 /**
  * Near-side cheek and jaw: V-line (default), fuller, or a strong flat jaw; or the owner's own head
  * from his Aiden picture (valiant: his skull, ear, cheeks, jaw and chin in his pixels), or his broad
  * man's face (stern: his ear, cheeks, nose, mouth and jaw in his pixels, under our skull).
  */
-export type FaceShape = 'tapered' | 'soft' | 'square' | 'valiant' | 'stern';
+export type FaceShape = 'tapered' | 'soft' | 'square' | 'valiant' | 'founder' | 'stern';
 
 /** Single-choice equipment slots, drawn back-to-front by depth (see compose.ts). */
 export type SlotId =
@@ -92,15 +89,22 @@ export interface ItemChoice {
 
 export type HeadbandPosition = 'none' | 'forehead' | 'neck' | 'arm' | 'waist';
 
-export type EmblemId = 'crescent' | 'wave' | 'peak' | 'bolt' | 'sun' | 'spiral' | 'blank';
-
+/**
+ * The headband: plain cloth only (the owner, 2026-10-22: "deja la pura bandana la pura tela"). It had a
+ * metal plate with an engraved emblem, which could be slashed; those are gone. Older saves and looks may
+ * still carry `slashed`, `emblem` and `plate`: nothing reads them, and migrateAppearance (legacy.ts)
+ * drops them on load.
+ */
 export interface HeadbandChoice {
   position: HeadbandPosition;
-  slashed: boolean;
   tails: boolean;
-  emblem: EmblemId;
   cloth: string;
-  plate: string;
+  /** Legacy, ignored (the scratch across the old plate). */
+  slashed?: boolean;
+  /** Legacy, ignored (the old plate's emblem). */
+  emblem?: string;
+  /** Legacy, ignored (the old plate's colour). */
+  plate?: string;
 }
 
 export type ChakraColorId = 'red' | 'orange' | 'yellow' | 'green' | 'blue' | 'indigo' | 'violet' | 'white' | 'black' | 'brown' | 'cyan';
@@ -141,8 +145,6 @@ export interface SpriteAppearance {
   skin: string;
   eyeShape: EyeShape;
   eyeColor: string;
-  /** Missing on older saves; treated as 'slim'. */
-  neck?: NeckType;
   /** Missing on older saves; treated as 'tapered'. */
   faceShape?: FaceShape;
   /** How jutsus are cast. Missing on older saves; treated as 'runes'. */

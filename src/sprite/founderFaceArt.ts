@@ -1,0 +1,108 @@
+// The owner's face on his Solen, his pixels (tools/refs/solen-face-from-ref.py from
+// docs/reference/solen-owner-reference.jpg). Generated: rerun the script to change it.
+
+import type { PaintedPiece } from './painted';
+
+/** The skin he painted it in (his skin pieces' base): a player's skin moves every colour of it as far. */
+export const FOUNDER_SKIN = '#f1b792';
+
+/** His iris red: the eye colour moves his eyes' reds as far. */
+export const FOUNDER_IRIS = '#8b1f2e';
+
+/** What each of his colours is (tools/refs/solen_ref.py kind). */
+export const FOUNDER_FACE_KIND: Record<string, 'line' | 'skin' | 'red' | 'gold' | 'leather' | 'steel' | 'stud' | 'white' | 'grey' | 'navy' | 'ice'> = {
+  '#000211': 'line',
+  '#01010d': 'line',
+  '#010217': 'line',
+  '#1a1821': 'line',
+  '#571123': 'red',
+  '#5d1025': 'red',
+  '#681728': 'red',
+  '#803f41': 'leather',
+  '#85202c': 'red',
+  '#8b1f2e': 'red',
+  '#8e4749': 'leather',
+  '#914d4b': 'skin',
+  '#9f5751': 'skin',
+  '#a95a53': 'skin',
+  '#ac5f56': 'skin',
+  '#b06256': 'skin',
+  '#b06659': 'skin',
+  '#c6755d': 'skin',
+  '#cb7b64': 'skin',
+  '#cc8068': 'skin',
+  '#d07e63': 'skin',
+  '#d0836b': 'skin',
+  '#d48166': 'skin',
+  '#d48569': 'skin',
+  '#d6d8d8': 'white',
+  '#ebab87': 'skin',
+  '#f0b48d': 'skin',
+  '#f1b792': 'skin',
+  '#f4c7a2': 'skin',
+  '#f8dbbd': 'skin',
+  '#fdfef8': 'white',
+};
+
+/** The owner's head on his Solen (the 'founder' face shape), his pixels: his ear, cheeks, jaw and chin, his eyes and mouth, his skin shading and black line; under his hair the face and our skull go on in his skin. Its pivot is the cell on the face anchor. */
+export const FOUNDER_HEAD: PaintedPiece = {
+  pivot: [7, 12],
+  angle: 0.00,
+  rows: [
+    '.....aaaaaaaa.....',
+    '...aabbbbbbbbaa...',
+    '..abbbbbbbbbbbba..',
+    '.abbbbbbbbbbbbbba.',
+    '.abbbbbbbbbbbbbba.',
+    'abbbbbbbbbbbbbbbba',
+    'abbbbbbbbbbbbbbbba',
+    'abbbbbbbbbbbbbbbba',
+    'abbbbbbbbabbbbbbba',
+    'abbbbbbbacbbbbbaaa',
+    'abbbbbbbadbabbbaef',
+    'abbbbbbfhaaijbfcja',
+    '.akdcccaaaajcacaaa',
+    '.fblmmaanpqmfrsata',
+    '.akuavjvwxxkkkypza',
+    '..akaAAkkkbbkkBvia',
+    '...favvkkkkbbkliij',
+    '....ajikkkkkkkviaj',
+    '.....CakkkkDuEiif.',
+    '.....lmjckkkkkij..',
+    '.....ajhjFvkbGaa..',
+    '.......aaaaajaf...',
+  ],
+  colors: {
+    a: '#000211',
+    b: '#f1b792',
+    c: '#cc8068',
+    d: '#cb7b64',
+    e: '#9f5751',
+    f: '#01010d',
+    h: '#a95a53',
+    i: '#d0836b',
+    j: '#010217',
+    k: '#f0b48d',
+    l: '#8e4749',
+    m: '#c6755d',
+    n: '#d6d8d8',
+    p: '#5d1025',
+    q: '#571123',
+    r: '#ebab87',
+    s: '#1a1821',
+    t: '#681728',
+    u: '#ac5f56',
+    v: '#d48166',
+    w: '#fdfef8',
+    x: '#8b1f2e',
+    y: '#f8dbbd',
+    z: '#85202c',
+    A: '#d48569',
+    B: '#f4c7a2',
+    C: '#914d4b',
+    D: '#b06256',
+    E: '#b06659',
+    F: '#803f41',
+    G: '#d07e63',
+  },
+};

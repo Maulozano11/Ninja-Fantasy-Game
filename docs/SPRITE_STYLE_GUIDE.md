@@ -30,6 +30,20 @@ npm run sprites -- preset <presetId> out.png  # a preset in every pose
 - Where one layer overlaps another (arm over the chest, hair over the face), its outline shows as an inner line. That separation is part of the look.
 - Templates that already carry their own outline set `F_NO_OUTLINE`.
 - Outlines never stack into 2 px lines: where a layer's outline runs right next to the outline of a layer in front of it, the back one is dropped (`thinDoubleOutlines` in `compose.ts`).
+- No 1-pixel holes (the owner, 2026-10-22: *"si arregla el hueco de 1 pixel a todos"*). Turned pieces leave
+  pixels of background between them; once the figure is flat, `closePinholes` (`src/sprite/holes.ts`) closes
+  every hole of up to 3 pixels the figure walls in (with the line of the pieces round it, or inside one piece
+  with the colour most of its neighbours have), every nick in the silhouette where the line is missing (the
+  background with the figure on three sides, one of them not line), and takes away stray specks of 1–2 pixels.
+  Real gaps stay: anything bigger or open to the outside, a notch the line goes round, and what an effect
+  walls in. **Idle is left exactly as drawn** (it is the frame his pictures were copied into).
+- No background in the seam beside a clasp (the owner, 2026-10-22: *"aqui tiene unos aun en la hebilla o
+  medallon de la capa"*, then *"1 arreglar igual capa 2 solen rellenar"*). Painted pieces on different joints
+  (a mantle on the neck, its shoulder piece on the shoulder, the hair on the head) part as they move; the piece
+  says what fills its seam (`addSeam`, `src/sprite/seams.ts`): his cloth drawn beside it (Solen's cowl) or its
+  own cloth continued round its studs (`clothSeam`: the Shadow Half-Cloak). Once the figure is drawn it goes
+  in behind everything, only where nothing is drawn and the figure stands round it on all four sides. Idle
+  only where he left the seam open: Solen's cowl on the bulky body (every other idle frame is byte-identical).
 
 ## 3. Light and values
 
@@ -42,7 +56,7 @@ npm run sprites -- preset <presetId> out.png  # a preset in every pose
 
 ## 4. Face (fixed)
 
-The face is a template copied pixel by pixel from the reference (`FACE_MAIN` and `FACE_LEFT` in `body.ts`). It has a 4 px lash bar, a 2x2 iris (a dark top row over a mid-tone row, never the brightest tone, so the gaze stays focused), a 1 px far eye, a single nose pixel, a 3 px mouth and a tapered 1 px chin. The near cheek and jaw come in three face shapes (`FACE_LEFT`): `tapered` (default) drops straight for only two rows below the eye, then tapers diagonally into the chin, so the lower face stays small; `soft` is a fuller cheek; `square` is the reference's original strong, flat jaw. Behind the jaw the nape (back of the neck) runs from under the skull down to the shoulders, so short or swept-back hair never leaves a gap there: `slim` (default) starts well inside the skull's back edge and stays in shadow; `strong` is flush with the back of the skull, with a lit nape. It recolors by skin tone and eye color, and has female and bulky variants, seven eye shapes (standard, sharp, round, calm, fierce, bright, piercing; `EYE_ROWS`, which may also replace the row under the eye), three face shapes and two necks. Don't change it without comparing at 10x against the reference.
+The face is a template copied pixel by pixel from the reference (`FACE_MAIN` and `FACE_LEFT` in `body.ts`). It has a 4 px lash bar, a 2x2 iris (a dark top row over a mid-tone row, never the brightest tone, so the gaze stays focused), a 1 px far eye, a single nose pixel, a 3 px mouth and a tapered 1 px chin. The near cheek and jaw come in three face shapes (`FACE_LEFT`): `tapered` (default) drops straight for only two rows below the eye, then tapers diagonally into the chin, so the lower face stays small; `soft` is a fuller cheek; `square` is the reference's original strong, flat jaw. Behind the jaw the nape (back of the neck) runs from under the skull down to the shoulders, so short or swept-back hair never leaves a gap there: it starts well inside the skull's back edge and stays in shadow, the slim nape of his Aiden. Every character has this one neck (the owner, 2026-10-22: "quitar el cuello del creador y dejar a todos con el cuello de hoy"; the thick `strong` neck is gone, and a saved one loads as slim). It recolors by skin tone and eye color, and has female and bulky variants, seven eye shapes (standard, sharp, round, calm, fierce, bright, piercing; `EYE_ROWS`, which may also replace the row under the eye), three face shapes and one neck. Don't change it without comparing at 10x against the reference.
 
 ## 5. Skin, arms, hands and feet
 
@@ -52,6 +66,8 @@ The face is a template copied pixel by pixel from the reference (`FACE_MAIN` and
 - **Contact shadows:** skin is one shade darker for two rows under any sleeve, hem, collar or chin drawn over it (`castShadows` in `compose.ts`).
 - **Hands** are pixel templates (`HAND_*` in `ctx.ts`, about 9-10 px across like the reference's fist) rotated with RotSprite: lit knuckle pixels, shadow on the side away from the light, and near-black finger creases. A weapon hand wraps the grip with distinct 1 px fingers and a thumb crease, with the pommel and guard showing on either side of the fist. A free hand is small and relaxed (`hold` and `relaxed` shapes).
 - **Feet** are pixel templates in 3/4 front view (`FootArt`, `footDraw` in `ctx.ts`). The near foot faces the viewer with the toes at the bottom; the far foot points right and is authored a shade darker. Each footwear item supplies its own `FootArt` (legend: `0-5` main, `a-f` sole/straps, `p-u` skin, `v-z` metal or stitching); shafts stay procedural.
+
+**The far (left) shoulder and arm** (the owner, 2026-10-21: "no te olvides de el hombro y brazo izquierdo de el diseño de los personajes masculinos", after the same fix on the heroines). In the 3/4 view facing right the character's left shoulder and arm are the far ones. When copying his picture, read that side cell by cell (bare shoulder, sleeve, bracer, fist): at rest every pixel is his and where he drew it, pinned with an offset that follows the far-arm joints when our joint sits elsewhere (`FAR_OUT`, tools/refs/saya-upper-from-ref.py). Nothing on that side may be cut off or hidden behind the torso in any pose; check throw-prepare, throw-release, cast and handsigns in particular, and report the pixels that still differ.
 
 ## 6. Hair
 
@@ -69,6 +85,11 @@ The face is a template copied pixel by pixel from the reference (`FACE_MAIN` and
 - The crossguard shows just below the fist. Blades use `metal` materials so they get a dark outline.
 - Glow materials are only for energy techniques (spiral orb, lightning, palm glow), never for steel or crystal.
 - In idle the blade hangs across the legs about 50° below horizontal, like the reference.
+- A weapon stowed on the back (hand signs, the tackle, the combo, camp, or put away in battle) is strapped to
+  the back: it turns with the torso's lean in every pose, and nothing of it shows in front of the back below
+  the shoulders (the owner, 2026-10-22: *"haz el cambio en espada guardada"*; `clipStowed` in
+  `items/accessories.ts`). What would show there is cut away, a painted blade closed with its own black line,
+  and no sliver of it is left loose.
 - Blades stay slim (about 5 px plus outline) and taper to the tip; shading is a lit bevel, a centre ridge and a darker lower half, with only sparse facet lines.
 
 ## 8. Clothes
@@ -146,6 +167,8 @@ que las botas vayan por fuera".
 ## 11. Names
 
 All item and preset names are original. Never use names, symbols or logos from existing franchises.
+
+The headband is plain cloth only (the owner, 2026-10-22: "deja la pura bandana la pura tela"): no metal plate, no emblem or engraved village symbol, no slash across it (`items/headband.ts`). It replaced his earlier "quita las bandanas". Don't add a plate or symbol back.
 
 ## Checklist for a new item
 

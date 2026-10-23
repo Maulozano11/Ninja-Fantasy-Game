@@ -317,12 +317,16 @@ describe("Weapon Element Enhancement: the second element too (the owner: \"tambi
     return s;
   }
 
-  it('both elements once the second is unlocked: its chakra type first; not before, and never a third', () => {
+  it('both elements once the second is unlocked, the third with Triple Nature: its chakra type first; not before', () => {
     const at = { team: 'party' as const, pos: { x: 0, z: 0 } };
     assert.deepEqual(unitImbueElements(unitFrom(two('Lightning'), at)), ['Fire', 'Lightning']);
     assert.deepEqual(unitImbueElements(unitFrom(two('Lightning', false), at)), ['Fire']);
+    // The third element too once Triple Nature opens it (the owner: "si el triple naturaleza tambien cuenta"):
+    // the feat, level 9 and a second element; without the feat or below level 9, two.
     const third = { ...two('Lightning'), level: 9, extraNatures: ['Lightning', 'Earth'] as ChakraNature[], selectedFeats: ['triple_nature'] };
-    assert.deepEqual(unitImbueElements(unitFrom(third, at)), ['Fire', 'Lightning']);
+    assert.deepEqual(unitImbueElements(unitFrom(third, at)), ['Fire', 'Lightning', 'Earth']);
+    assert.deepEqual(unitImbueElements(unitFrom({ ...third, selectedFeats: [] }, at)), ['Fire', 'Lightning']);
+    assert.deepEqual(unitImbueElements(unitFrom({ ...third, level: 8 }, at)), ['Fire', 'Lightning']);
     // A ninja whose type has no element (Light) puts its second element on the weapon.
     const light = unitFrom(two('Wind', true, 'Light'), at);
     assert.ok(light.jutsus.includes(WEAPON_ELEMENT));
@@ -334,6 +338,9 @@ describe("Weapon Element Enhancement: the second element too (the owner: \"tambi
   it('the player chooses which, one at a time; an element it does not have is refused', () => {
     const s = setup2(two('Lightning'));
     const out = act(s, { type: 'jutsu', unit: 'a', jutsu: WEAPON_ELEMENT, at: { ...s.units.a.pos }, element: 'Lightning' });
+    // With Triple Nature the third is chosen the same way.
+    const t3 = setup2({ ...two('Lightning'), level: 9, extraNatures: ['Lightning', 'Earth'] as ChakraNature[], selectedFeats: ['triple_nature'] });
+    assert.equal(act(t3, { type: 'jutsu', unit: 'a', jutsu: WEAPON_ELEMENT, at: { ...t3.units.a.pos }, element: 'Earth' }).state.units.a.imbued?.element, 'Earth');
     assert.equal(out.state.units.a.imbued?.element, 'Lightning');
     assert.ok(out.events.some((e) => e.t === 'imbue' && e.element === 'Lightning' && e.on));
     // One at a time: the other is refused while it holds.
@@ -353,6 +360,11 @@ describe("Weapon Element Enhancement: the second element too (the owner: \"tambi
     assert.equal(imbueChoice(s, s.units.a, foe), 'Fire');
     foe.effects = [{ id: 'burning', remaining: 2 }];
     assert.equal(imbueChoice(s, s.units.a, foe), 'Lightning');
+    // Three (Triple Nature): past a burning foe's fire, its second; never water at a burning foe.
+    const three = setup2({ ...two('Water'), level: 9, extraNatures: ['Water', 'Wind'] as ChakraNature[], selectedFeats: ['triple_nature'] });
+    foeOf(three).effects = [{ id: 'burning', remaining: 2 }];
+    assert.deepEqual(unitImbueElements(three.units.a), ['Fire', 'Water', 'Wind']);
+    assert.equal(imbueChoice(three, three.units.a, foeOf(three)), 'Wind');
     // One element: that one, whatever the foe.
     const one = setup2(two('Lightning', false));
     foeOf(one).effects = [{ id: 'burning', remaining: 2 }];

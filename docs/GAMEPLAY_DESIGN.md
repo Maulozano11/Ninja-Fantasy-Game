@@ -314,13 +314,15 @@ que hiciste para la hotbar no me gustaron los mejorare"*.
    back 1.5 m, water +1.5 m reach and puts out flames, earth's obsidian crits on a natural 19).
 2. The Spanish name *Potenciación elemental del arma*, button *Arma elemental*: **approved**.
 3. **The second element too, once it is unlocked** (the level-5 choice of a second element,
-   `rules/natureGrowth.ts`; never the third of Triple Nature): a Bukijutsu Master with a second element can
-   put either of its elements on the weapon, one at a time. The hotbar shows a button for each ("Arma
+   `rules/natureGrowth.ts`): a Bukijutsu Master with a second element can put either of its elements on the
+   weapon, one at a time. Then his *"si el triple naturaleza tambien cuenta"* (2026-10-23): the third
+   element that Triple Nature opens (the feat, level 9 and a second element) counts too, a third button,
+   the same rules. The hotbar shows a button for each ("Arma
    elemental · Fuego", "Arma elemental · Rayo"), in its element's colour; with one element, one button as
    before. A ninja whose type has no element (Light, Void) but whose second element is one has it for that
-   one. The AI picks: water when
-   only its longer reach brings the foe within a blow this turn; not fire at a foe already burning or
-   standing in the wet, nor water at a burning foe; otherwise its chakra type's (`imbueChoice` in
+   one. The AI picks among them: water when only its longer reach brings the foe within a blow this turn;
+   not fire at a foe already burning or standing in the wet, nor water at a burning foe; otherwise the first
+   left of its chakra type's, its second, its third (`imbueChoice` in
    `src/battle/ai.ts`; `unitImbueElements`, `imbueNaturesOf` in `src/battle/imbue.ts`).
 4. Thrown weapons: **no** (as built).
 

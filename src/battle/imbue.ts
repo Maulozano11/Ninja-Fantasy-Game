@@ -60,10 +60,10 @@ export const IMBUE_DAMAGE: Record<ImbueElement, DamageType> = {
 /**
  * The elements whose effect on the weapon waits for the owner's yes: not offered (no button) until he
  * approves it. The owner (2026-10-23): "me gusta las armas con mejora elemental metelas en el juego
- * menos la de agua se ve mal y no de calidad mejorala para que se ve mas epica y proporcional". Its
- * rules stay (the longer reach, the flames put out) for when it comes back.
+ * menos la de agua se ve mal y no de calidad mejorala para que se ve mas epica y proporcional". Water's
+ * new effect is on this branch (vfx/weapon-water-v2, waiting for his yes): with it, water is offered again.
  */
-export const IMBUE_PENDING: readonly ImbueElement[] = ['Water'];
+export const IMBUE_PENDING: readonly ImbueElement[] = [];
 
 /** An element the ninja can put on its weapon: its chakra type, if it is one of the five elements and not waiting for approval. */
 export const imbueElementOf = (nature: ChakraNature | string | undefined): ImbueElement | null =>

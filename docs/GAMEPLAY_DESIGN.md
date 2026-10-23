@@ -298,6 +298,11 @@ que hiciste para la hotbar no me gustaron los mejorare"*.
 - Water is **not approved**: until he approves a better one (more epic, in proportion to the weapon and the
   character; redone on `vfx/weapon-water-v2`), a Water Bukijutsu Master has no button for it
   (`IMBUE_PENDING` in `src/battle/imbue.ts`); its rules (the longer reach, the flames put out) stay for then.
+  The new water (`vfx/weapon-water-v2`, waiting for his yes): a torrent drawn as his water stream is (his
+  water sheet: his blues, a light strand running along it, white foam caps breaking on the crests of waves
+  that run along its upper edge, a rounded head of foam, his spray dots, drops falling), his dark water
+  line round it; past the tip about half the blade again (16 to 24 px, was up to 34), so the weapon stays
+  in proportion. That branch offers water again.
 - The hotbar icons: he did not like ours (the element icons the button shows); **he will paint them himself**.
   Ours stay on the button only until his arrive.
 - The numbers and the Spanish name below are still our proposal; he has not changed them.
@@ -365,9 +370,8 @@ tongues of flame rise off the blade's upper edge and sway, the steel glows under
 embers fly up. Lightning: two bolts fork along the blade and crackle off it, new forks
 every tick, his deep-blue ring and glow. Wind: two strands turn round the blade like a
 helix (the far half behind the figure), dashes running to the tip, small crescents
-flicked off it. Water: a sheath of water along the blade, then a longer blade of water
-past the tip (about two thirds of the blade again: the longer reach, not to scale),
-with his water line, bands of light flowing to the tip and drops falling. Earth: teeth
+flicked off it. Water (not approved; redone on `vfx/weapon-water-v2`): a sheath of water along the blade,
+then a longer blade of water past the tip (the longer reach, not to scale), with his water line. Earth: teeth
 of black obsidian along both edges and a point past the tip, glass catching the light
 on their edges, a glint running along them. Energy carries his element's darkest tone
 at its edge, no black line; the obsidian is solid and carries the characters' black

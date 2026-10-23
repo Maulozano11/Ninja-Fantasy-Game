@@ -376,61 +376,142 @@ function drawWind(b: Blade, k: number, back: Paint, front: Paint): void {
   }
 }
 
-/** How far past the tip the water reaches (fine pixels): about two thirds of the blade again (the owner: the reach grows). */
-export const waterReachPx = (b: Pick<Blade, 'start' | 'tip'>): number => Math.round(Math.max(16, Math.min(34, (b.tip - b.start) * 0.7 + 6)));
+/** How far past the tip the water reaches (fine pixels): about half the blade again, so the weapon stays in proportion (the owner: the reach grows, "proporcional"). */
+export const waterReachPx = (b: Pick<Blade, 'start' | 'tip'>): number => Math.round(Math.max(16, Math.min(24, (b.tip - b.start) * 0.45 + 4)));
 
-/** Water: a sheath of water runs along the blade and past its tip, a longer blade of water: the longer reach. */
+/**
+ * Water: a torrent runs along the blade and on past its tip as a longer blade of water with a foaming head
+ * (the longer reach), drawn as his water stream is (docs/reference/water-set-owner-reference.jpg, his
+ * "stream" and "streak head"): his deep and middle blues, light strands running along it to the tip, white
+ * foam caps breaking on its upper edge, a head of foam where it ends and spray thrown off it, drops falling
+ * off the underside; his dark water line round the water. The owner on the first water (2026-10-23): "se ve
+ * mal y no de calidad mejorala para que se ve mas epica y proporcional". Past the tip it is about half the
+ * blade again, so the weapon stays in proportion.
+ */
 function drawWater(b: Blade, k: number, front: Paint): void {
   const ext = waterReachPx(b);
   const end = b.tip + ext;
-  const box = around(b, ext + 4, 8, 2);
-  const wTip = Math.max(width(b.pos, b.tip - 2), width(b.neg, b.tip - 2), 1.5) + 1.5;
-  const body = new Uint8Array(GRID * GRID);
+  const ph = (k / IMBUE_LOOP) * Math.PI * 2;
+  // The side of the blade that faces up (as the fire's): the foam breaks on it.
+  const nUp = b.dx >= 0 ? -1 : 1;
+  const base = Math.max(width(b.pos, b.tip - 2), width(b.neg, b.tip - 2), 1.5) + WATER_SHEATH;
+  /** Where the water is across the blade at a point along it, [lo, hi] on the (−dy, dx) side; null off its ends. */
+  const span = (t: number): [number, number] | null => {
+    if (t < b.start - 1 || t > end) return null;
+    // The upper edge rises and falls in waves running to the tip; the lower one only swells a little.
+    const wave = 1.1 * (0.5 + 0.5 * Math.sin(t * 0.7 - ph * 2));
+    const swell = 0.35 * Math.sin(t * 0.4 - ph);
+    let up: number;
+    let down: number;
+    if (t <= b.tip) {
+      up = (nUp > 0 ? width(b.pos, t) : width(b.neg, t)) + WATER_SHEATH + wave;
+      down = (nUp > 0 ? width(b.neg, t) : width(b.pos, t)) + WATER_SHEATH - 0.4 + swell;
+    } else {
+      // The water blade narrows to two thirds and ends in a rounded head of foam.
+      const f = (t - b.tip) / ext;
+      const w = f < 0.8 ? base * (1 - 0.35 * f) : base * 0.72 * Math.sqrt(Math.max(0, 1 - ((f - 0.8) / 0.2) ** 2));
+      up = w + wave * (1 - f);
+      down = w - 0.4 + swell;
+    }
+    // By the guard it rounds off, so it starts as water and not as a cut.
+    const start = Math.min(1, (t - b.start + 1.5) / 3.5);
+    up *= start;
+    down *= start;
+    return nUp > 0 ? [-down, up] : [-up, down];
+  };
+  const water = new Map<number, [string, number]>();
+  const put = (x: number, y: number, hex: string, a = 255) => {
+    x = Math.floor(x);
+    y = Math.floor(y);
+    if (x >= 1 && y >= 1 && x < GRID - 1 && y < GRID - 1) water.set(y * GRID + x, [hex, a]);
+  };
+  const box = around(b, ext + 12, base + 12, 12);
+  const inBody = new Uint8Array(GRID * GRID);
+  const U = new Float32Array(GRID * GRID);
+  const T = new Float32Array(GRID * GRID);
   for (let y = box.y0; y <= box.y1; y++)
     for (let x = box.x0; x <= box.x1; x++) {
       const px = x + 0.5 - b.hx;
       const py = y + 0.5 - b.hy;
       const t = px * b.dx + py * b.dy;
-      const s = -px * b.dy + py * b.dx;
-      if (t < b.start || t > end) continue;
-      // Along the blade: its own width and a pixel and a half more; past the tip: tapering to a point, waving.
-      const wave = Math.sin(t * 0.45 - k * (Math.PI / 2)) * 0.8;
-      let lo: number;
-      let hi: number;
-      if (t <= b.tip) {
-        lo = -width(b.neg, t) - 1.6;
-        hi = width(b.pos, t) + 1.6;
-      } else {
-        const f = (t - b.tip) / ext;
-        const w = wTip * Math.pow(1 - f, 1.25);
-        lo = -w + wave * f;
-        hi = w + wave * f;
-      }
-      if (s < lo || s > hi) continue;
-      body[y * GRID + x] = t <= b.tip ? 1 : 2;
-      const across = (s - lo) / Math.max(0.5, hi - lo);
-      // Bands of light flow toward the tip.
-      const band = (((t - k * 3) % 9) + 9) % 9;
-      let tone = across < 0.3 ? WATER.deep : across > 0.72 ? WATER.light : WATER.mid;
-      if (band < 1.6 && across > 0.35) tone = t > b.tip ? WATER.foam : WATER.pale;
-      if (t > end - 3) tone = WATER.pale;
-      front.put(x, y, tone, t <= b.tip ? 150 : 235);
+      const sc = -px * b.dy + py * b.dx;
+      const sp = span(t);
+      if (!sp || sc < sp[0] || sc > sp[1]) continue;
+      const i = y * GRID + x;
+      inBody[i] = 1;
+      T[i] = t;
+      const u = (sc - sp[0]) / Math.max(0.5, sp[1] - sp[0]);
+      // 0 on the lower edge, 1 on the upper one.
+      U[i] = nUp < 0 ? 1 - u : u;
     }
-  // His water line round the water past the tip (along the blade the steel shows through).
+  const body = (x: number, y: number) => x >= 0 && y >= 0 && x < GRID && y < GRID && inBody[y * GRID + x] === 1;
   for (let y = box.y0; y <= box.y1; y++)
     for (let x = box.x0; x <= box.x1; x++) {
-      if (body[y * GRID + x]) continue;
-      const nb = [body[y * GRID + x + 1], body[y * GRID + x - 1], body[(y + 1) * GRID + x], body[(y - 1) * GRID + x]];
-      if (nb.includes(2)) front.put(x, y, WATER.line, 230);
-      else if (nb.includes(1)) front.put(x, y, WATER.body, 110);
+      const i = y * GRID + x;
+      if (!inBody[i]) continue;
+      const t = T[i];
+      const u = U[i];
+      let tone = u < 0.22 ? WATER.deep : u < 0.62 ? WATER.body : WATER.mid;
+      // A light strand running along it to the tip, waving, broken into long runs.
+      const c = 0.5 + 0.1 * Math.sin(t * 0.25 - ph);
+      const run = (((t - k * 3) % 16) + 16) % 16;
+      if (Math.abs(u - c) < 0.08 && run < 11) tone = run < 3 ? WATER.pale : WATER.light;
+      // The upper edge: foam breaking in caps that run to the tip, the light just under it.
+      if (!body(x, y + nUp)) tone = Math.sin(t * 0.75 - ph * 2) > -0.1 ? WATER.foam : WATER.pale;
+      else if (!body(x, y + 2 * nUp) && tone !== WATER.pale) tone = WATER.light;
+      // The head: foam where it ends.
+      if (t > end - 5) tone = hash(x, y, k) < 0.6 ? WATER.foam : WATER.pale;
+      else if (t > end - 8 && u > 0.4) tone = WATER.light;
+      put(x, y, tone, b.mask[i] && tone !== WATER.foam ? 225 : 255);
     }
-  // Drops falling off the water blade.
-  for (let d = 0; d < 3; d++) {
-    const life = ((k + d * 3) % IMBUE_LOOP) / IMBUE_LOOP;
-    const [x, y] = at(b, b.tip + ext * (0.35 + 0.25 * d), 0);
-    front.put(x + d - 1, y + 2 + life * 9, life < 0.5 ? WATER.pale : WATER.light, 255 * (1 - life * 0.7));
+  // Caps of foam breaking off the crests of the waves, running to the tip with them.
+  for (let c = 0; ; c++) {
+    // The crests: where the upper edge's wave is highest (t * 0.7 - 2 ph = pi / 2 + 2 pi c).
+    const t = (Math.PI / 2 + Math.PI * 2 * c + ph * 2) / 0.7;
+    if (t > end - 4) break;
+    if (t < b.start + 2) continue;
+    const sp = span(t)!;
+    const [x, y] = at(b, t, nUp < 0 ? sp[0] : sp[1]);
+    put(x, y + nUp, WATER.foam);
+    put(x - 1, y + nUp, WATER.pale);
+    put(x + 1, y, WATER.foam);
+  }
+  // Drops falling off the underside of the blade (in his line).
+  for (let d = 0; d < 2; d++) {
+    const life = ((k + d * 4) % IMBUE_LOOP) / IMBUE_LOOP;
+    const t = b.start + (b.tip - b.start) * (0.4 + 0.35 * d);
+    const sp = span(t)!;
+    const [x, y] = at(b, t, nUp < 0 ? sp[0] : sp[1]);
+    put(x, y + 2 + life * 9, WATER.pale);
+    if (life < 0.5) put(x, y + 3 + life * 9, WATER.light);
+  }
+  // The water and his line round it.
+  for (const [i, [hex, a]] of water) front.put(i % GRID, (i / GRID) | 0, hex, a);
+  for (const i of water.keys()) for (const j of [i - 1, i + 1, i - GRID, i + GRID]) if (!water.has(j)) front.put(j % GRID, (j / GRID) | 0, WATER.line);
+  // Spray thrown off the head and the crest: his light dots, no line (as round his stream).
+  const [ex, ey] = at(b, end - 2, 0);
+  for (let d = 0; d < 9; d++) {
+    const life = ((k + d * 5) % IMBUE_LOOP) / IMBUE_LOOP;
+    const ang = (hash(d, 11) - 0.5) * 2.2 + (d % 3 === 0 ? nUp * 0.9 : 0);
+    const dist = 3 + life * (8 + 5 * hash(d, 12));
+    const ca = Math.cos(ang);
+    const sa = Math.sin(ang);
+    const x = ex + (b.dx * ca - b.dy * sa) * dist;
+    const y = ey + (b.dy * ca + b.dx * sa) * dist + life * life * 4;
+    front.put(x, y, life < 0.5 ? WATER.foam : WATER.light, 255 * (1 - life * 0.55));
+  }
+  for (let d = 0; d < 4; d++) {
+    const life = ((k + d * 2) % IMBUE_LOOP) / IMBUE_LOOP;
+    const t = b.start + hash(d, 21) * (end - b.start);
+    const sp = span(t);
+    if (!sp) continue;
+    const [x, y] = at(b, t, nUp < 0 ? sp[1] : sp[0]);
+    front.put(x + (hash(d, 22) - 0.5) * 3, y + nUp * (2 + life * 5), WATER.pale, 255 * (1 - life * 0.6));
   }
 }
+
+/** Water: how far (fine px) the torrent stands off the blade on each side. */
+const WATER_SHEATH = 1.8;
 
 /** Earth: teeth of sharp obsidian set along both edges of the blade and a point past its tip; a glint runs along them. */
 function drawEarth(b: Blade, k: number, front: Paint): void {

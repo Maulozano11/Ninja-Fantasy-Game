@@ -166,6 +166,34 @@ function closeElbow(g: DrawCtx, d: Depth, sleeve: Uint8Array, elbow: Vec): void 
 }
 
 /**
+ * Fills the dents a turned piece's edge is left with: RotSprite can leave one pixel of the piece's outline
+ * out (in the throw's release, at the bodice's front under her collar), a pixel the piece does not cover
+ * with the piece on all four sides of it. Left empty, closeOpen would run his line round it and leave a
+ * pocket of background inside her dress; it takes the piece's own colour from its neighbours instead (the
+ * one most of them have, her line only when all of them are), so the edge stays his.
+ */
+function fillDents(g: DrawCtx, d: Depth, cover: Uint8Array): void {
+  const L = g.L(d);
+  const line = g.m(AURELIA_LINE, 'flat');
+  const layers = DEPTHS.map((x) => g.L(x)).filter((l) => l.used);
+  for (let y = 1; y < GRID - 1; y++) {
+    for (let x = 1; x < GRID - 1; x++) {
+      const i = y * GRID + x;
+      const around = [i - 1, i + 1, i - GRID, i + GRID];
+      if (cover[i] || layers.some((l) => l.mat[i] >= 0) || around.some((j) => !cover[j] || L.mat[j] < 0)) continue;
+      const count = new Map<number, number>();
+      for (const j of around) if (L.mat[j] !== line) count.set(L.mat[j], (count.get(L.mat[j]) || 0) + 1);
+      const best = [...count].sort((a, b) => b[1] - a[1])[0];
+      const from = best ? around.find((j) => L.mat[j] === best[0])! : around[0];
+      L.mat[i] = L.mat[from];
+      L.shade[i] = L.shade[from];
+      L.part[i] = L.part[from];
+      L.flags[i] = L.flags[from];
+    }
+  }
+}
+
+/**
  * Closes a piece's edge left open when it turns: a pixel of the piece (`cover`) that is not her line and has
  * an empty neighbour (nothing of the figure drawn there) takes his line (`lineHex`), as his line runs round
  * her bodice, sleeves and boots (turned, his bare shoulder on the near sleeve's band came out with its
@@ -244,7 +272,11 @@ function drawDawnVestment(g: DrawCtx, cloth: string, gold: string, gem: string):
   }
   clearTorso(g, bodice);
   sleeves.forEach(([s, , , span], k) => clearArm(g, s, covers[k], span));
-  for (const [d, c] of turned) closeOpen(g, d, c);
+  for (const [d, c] of turned) {
+    // only the bodice: the sleeves' turns are his approved walk, pixel for pixel
+    if (d === 'torso.armor') fillDents(g, d, c);
+    closeOpen(g, d, c);
+  }
   // her hands come out of the cuffs: a wrist the cuff does not cover is closed in his line (his bare
   // woman's fists, the female body's hands, are bigger than the hands he drew her with, so even at rest
   // the fist's top shows past the cuff)

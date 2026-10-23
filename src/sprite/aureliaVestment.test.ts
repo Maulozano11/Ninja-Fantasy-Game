@@ -156,4 +156,48 @@ describe("Aurelia's vestment", () => {
       }
     }
   });
+
+  it("keeps her head on her neck through the throw, with no pocket of background under her chin", () => {
+    // The owner: "aurelia falta arreglarle el cuello y cabeza como los otros arreglalo en arrojar". The
+    // throw hung her head ahead of the chest and below the shoulders, 17 px from the neck's foot (8.9 at
+    // rest); now it stays at the neck's length, above the shoulders (rig.ts PoseFrame.neckPitch). Her
+    // turned bodice also left a dent at its front under the collar that her line closed round: a pixel of
+    // background inside her dress. Near the neck the only enclosed empty pixels allowed are her hair's
+    // own, which his picture has at rest too (carried with the head).
+    const look0 = LEGENDARY_PRESETS.find((p) => p.character.id === 'preset_aurelia')!.character.appearance!;
+    const head = partIndex('head');
+    /** The empty pixels a frame encloses (not reached from its border). */
+    const pockets = (f: ReturnType<typeof renderSprite>): number[] => {
+      const empty = (i: number) => f.rgba[i * 4 + 3] === 0;
+      const outside = new Uint8Array(GRID * GRID);
+      const stack: number[] = [];
+      for (let k = 0; k < GRID; k++) for (const i of [k, (GRID - 1) * GRID + k, k * GRID, k * GRID + GRID - 1]) if (empty(i) && !outside[i]) (outside[i] = 1), stack.push(i);
+      while (stack.length) {
+        const i = stack.pop()!;
+        const x = i % GRID;
+        for (const j of [x > 0 ? i - 1 : -1, x < GRID - 1 ? i + 1 : -1, i - GRID, i + GRID]) if (j >= 0 && j < GRID * GRID && empty(j) && !outside[j]) (outside[j] = 1), stack.push(j);
+      }
+      return [...Array(GRID * GRID).keys()].filter((i) => empty(i) && !outside[i]);
+    };
+    const idle = renderSprite(look0, 'idle', 0);
+    const rest = idle.rig;
+    const neckLen = Math.hypot(rest.head.x - rest.neck.x, rest.head.y - rest.neck.y) * RES;
+    // his hair's own pockets at rest: enclosed by the head alone
+    const hairPockets = new Set(pockets(idle).filter((i) => [i - 1, i + 1, i - GRID, i + GRID].every((j) => idle.part[j] === head)));
+    for (let fr = 2; fr < frameCount('throw'); fr++) {
+      const f = renderSprite(look0, 'throw', fr);
+      const r = f.rig;
+      const len = Math.hypot(r.head.x - r.neck.x, r.head.y - r.neck.y) * RES;
+      assert.ok(Math.abs(len - neckLen) <= 1.5, `throw ${fr}: head ${len.toFixed(1)} px from the neck's foot (${neckLen.toFixed(1)} at rest)`);
+      assert.ok(r.head.y < Math.min(r.shoulderN.y, r.shoulderF.y), `throw ${fr}: the head below the shoulders`);
+      const dx = Math.round((r.head.x - rest.head.x) * RES);
+      const dy = Math.round((r.head.y - rest.head.y) * RES);
+      const near = pockets(f).filter((i) => {
+        const x = i % GRID;
+        const y = (i - x) / GRID;
+        return Math.hypot(x + 0.5 - r.neck.x * RES, y + 0.5 - r.neck.y * RES) <= 16 && !hairPockets.has((y - dy) * GRID + x - dx);
+      });
+      assert.deepEqual(near.map((i) => `${i % GRID},${Math.floor(i / GRID)}`), [], `throw ${fr}: background enclosed by her neck, collar or dress`);
+    }
+  });
 });

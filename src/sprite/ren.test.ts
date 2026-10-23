@@ -16,7 +16,6 @@ import { nightArmStamps, nightSkirtStamps, sitsReachingOut } from './items/night
 import * as kit from './items/nightBootsGlovesArt';
 import * as belt from './items/nightBeltArt';
 import * as cast from './items/nightCastArmsArt';
-import * as palm from './items/nightSitPalmArt';
 import * as hair from './items/nightHairArt';
 import * as jacket from './items/nightJacketArt';
 import * as katana from './items/katanaV2Art';
@@ -271,8 +270,6 @@ describe("the owner's Ren", () => {
           const g = { rig, look: l, has: (slot: string, id: string) => (l.slots as Record<string, { id: string } | undefined>)[slot]?.id === id } as unknown as DrawCtx;
           const hold = s === 'N' ? paintedGrip(g) : null;
           const fists = nightFistStamps(rig, s, hold);
-          // (the throw's far hand aimed at the target is his casting fist, cuff and all: see the throw's test)
-          if (fists[0].piece === cast.NIGHT_CAST_FIST_F) continue;
           const cuff = fists.find((t) => t.name === 'cuff')!;
           const turn = (cuff.mirror ? 180 - cuff.piece.angle : cuff.piece.angle) + cuff.turn - fore.deg;
           assert.ok(Math.abs(((turn % 360) + 540) % 360 - 180) < 1, `${where}: the cuff leaves the forearm`);
@@ -365,49 +362,9 @@ describe("the owner's Ren", () => {
     }
   });
 
-  it("throwing, aims his far arm as he casts: his casting forearm and fist, whole, at his size", () => {
-    // the owner on the throw: "en arrojar el brazo y mano izquierdo del personaje se ve mal copia el que tiene
-    // para lanzar jutsu o el jab en el combo"
-    const cells = (p: PaintedPiece) => p.rows.join('').replace(/\./g, '').length;
-    for (const body of ['male', 'bulky'] as BodyType[]) {
-      for (let frame = 0; frame < frameCount('throw'); frame++) {
-        const rig = drawRig(body, 'throw', frame);
-        const where = `${body} throw ${frame}`;
-        const fore = nightArmStamps(rig, 'F').filter((t) => t.name === 'fore');
-        const fists = nightFistStamps(rig, 'F', null);
-        if (rig.shapeF !== 'point') {
-          // swung back behind him (the throw, the release): not his casting arm
-          assert.ok(!fists.some((t) => t.piece === cast.NIGHT_CAST_FIST_F), where);
-          continue;
-        }
-        assert.equal(fore[0].piece, cast.NIGHT_CAST_FORE_F, where);
-        assert.equal(whole(fore[0].piece, fore[0].deg - fore[0].piece.angle), null, `${where} forearm`);
-        assert.deepEqual(fists.map((t) => t.piece), [cast.NIGHT_CAST_FIST_F], where);
-        assert.equal(fists[0].at, undefined, `${where}: on the wrist`);
-        assert.equal(whole(fists[0].piece, fists[0].turn), null, `${where} fist`);
-        // his fist at his size, not our open hand: the far hand drawn is about his fist's cells, all his colours
-        const fr = renderSprite({ ...look(), body }, 'throw', frame, dojutsuToEye(REN.dojutsu));
-        const hand = partIndex('handF');
-        const his = new Set(Object.values(cast.NIGHT_CAST_FIST_F.colors).map((h) => h.toLowerCase()));
-        let n = 0;
-        let mine = 0;
-        for (let i = 0; i < GRID * GRID; i++) {
-          if (fr.part[i] !== hand || !opaque(fr.rgba, i)) continue;
-          n++;
-          if (his.has(hex(fr.rgba, i)) || cast.NIGHT_CAST_KIND[hex(fr.rgba, i)] !== undefined) mine++;
-        }
-        const size = cells(cast.NIGHT_CAST_FIST_F);
-        assert.ok(n >= 0.8 * size && n <= 1.15 * size, `${where}: the far hand ${n} pixels, his fist ${size}`);
-        assert.ok(mine >= 0.9 * n, `${where}: ${n - mine} of the far hand's pixels not his`);
-      }
-    }
-  });
-
-  it('seated, reaches his far arm out: his casting forearm, the open palm up at his size, the figure whole on the rock', () => {
-    // the owner on Ren's sit: "la pose de sentado y su brazo izquierdo cunado esta sentado ya tienes las bases y
-    // respuestas en los otros personajes"; the others' answer: the far arm forward, the open palm up (his Trunks
-    // sit picture, the hands' standard), the far forearm his thick casting one (the forearm rule)
-    const cells = (p: PaintedPiece) => p.rows.join('').replace(/\./g, '').length;
+  it('seated, reaches his far arm out as he aims the throw: his casting forearm and his glove, the figure whole on the rock', () => {
+    // the owner on Ren's sit: "intenta copiar ese brazo extendido izquierdo de antes para la pose de sentado la que
+    // tiene ahora se ve muy flaca y rara" (the throw's reaching arm, not an open palm)
     const rock = renderSeat(seatFor('sit')!);
     for (const body of ['male', 'bulky'] as BodyType[]) {
       for (let frame = 0; frame < frameCount('sit'); frame++) {
@@ -416,19 +373,7 @@ describe("the owner's Ren", () => {
         const fore = nightArmStamps(rig, 'F').filter((t) => t.name === 'fore');
         assert.equal(fore[0].piece, cast.NIGHT_CAST_FORE_F, `${where}: his casting forearm`);
         for (const t of fore) assert.equal(whole(t.piece, t.deg - t.piece.angle), null, `${where} forearm`);
-        assert.equal(whole(palm.NIGHT_SIT_PALM_F, 0), null);
         const fr = renderSprite({ ...look(), body }, 'sit', frame, dojutsuToEye(REN.dojutsu));
-        // the far hand is his open palm, as many pixels as he drew it (turned whole), none of our hand beside it
-        const hand = partIndex('handF');
-        let n = 0;
-        for (let i = 0; i < GRID * GRID; i++) if (fr.part[i] === hand && opaque(fr.rgba, i)) n++;
-        const size = cells(palm.NIGHT_SIT_PALM_F);
-        assert.ok(n >= 0.85 * size && n <= 1.1 * size, `${where}: the far hand ${n} pixels, his palm ${size}`);
-        // his black line stays his black
-        const lines = new Set(Object.entries(palm.NIGHT_SIT_PALM_KIND).filter(([, k]) => k === 'line').map(([h]) => h));
-        let black = 0;
-        for (let i = 0; i < GRID * GRID; i++) if (fr.part[i] === hand && opaque(fr.rgba, i) && lines.has(hex(fr.rgba, i))) black++;
-        assert.ok(black >= 0.3 * n, `${where}: ${black} of the palm's ${n} pixels his line`);
         // one piece, on the rock: the hips on its top, nothing apart from the body
         assert.ok(Math.abs(rig.pelvis.y * RES - (SIT_SEAT_TOP - 5.4)) < 0.01, `${where}: the hips on the rock (${rig.pelvis.y * RES})`);
         assert.deepEqual(apart(fr.rgba), [], `${where}: pixels apart from the body`);

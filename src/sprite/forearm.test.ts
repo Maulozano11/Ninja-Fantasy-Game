@@ -153,7 +153,7 @@ describe('the extended forearm (the owner\'s rule)', () => {
       const l = { ...ren.appearance!, body };
       const cross = across(l, 'combo', 2, 'F', [0.25, 0.4, 0.55], dojutsuToEye(ren.dojutsu));
       assert.ok(cross.every((n) => n >= HIS_ROWS - 1 && n <= HIS_ROWS + 1), `${body} combo 2: ${cross.join(', ')} rows across (his ${HIS_ROWS})`);
-      // seated, his far arm reaching forward to the open palm is his casting forearm too, at its width
+      // seated, his far arm reaching forward is his casting forearm too, at its width
       for (let f = 0; f < frameCount('sit'); f++) {
         const fore = nightArmStamps(drawRig(body, 'sit', f), 'F').filter((t) => t.name === 'fore');
         assert.equal(fore[0].piece, NIGHT_CAST_FORE_F, `${body} sit ${f}: his far forearm`);

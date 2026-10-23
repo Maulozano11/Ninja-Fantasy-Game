@@ -19,8 +19,7 @@ import { BRACER_BRONZE, BRACER_F, BRACER_N, ROMAN_KIT_KIND } from './bracersSand
 import { NIGHT_GLOVE, NIGHT_GLOVE_F, NIGHT_GLOVE_N, NIGHT_GLOVE_PLATE, NIGHT_KIT_KIND } from './nightBootsGlovesArt';
 import { NIGHT_CAST_FIST_F, NIGHT_CAST_FIST_N, NIGHT_CAST_FORE_N, NIGHT_CAST_GRIP_N, NIGHT_CAST_KIND } from './nightCastArmsArt';
 import { NIGHT_SKIN } from '../nightHeadArt';
-import { farForeEnd, sitsReachingOut, throwAimsCast } from './night';
-import { NIGHT_SIT_PALM_F, NIGHT_SIT_PALM_GLOVE, NIGHT_SIT_PALM_KIND, NIGHT_SIT_PALM_SKIN } from './nightSitPalmArt';
+import { sitsReachingOut } from './night';
 import { isFemaleBody } from '../types';
 import { sandalPieces } from './feet';
 import { clearParts, clipParts, founderArmAtRest, founderArmBends, founderFarOut, founderFarReach, founderLegBends, founderLegLen, founderLegOut, moveParts } from './founderOut';
@@ -2074,11 +2073,10 @@ export interface FistStamp {
  * the near one closed round the sword's grip at the chest, sitting where the grip is held and turned with
  * the fist (grip.ts paintedGrip); with the hand `empty` (the sword put away to cast, as the battle does) the
  * same fist closing on nothing, riding the forearm where he drew it; the far one at the runes on the wrist,
- * turned with the hand. Whole, glove and cuff in one. The throw's far hand aimed at the target is the same
- * far casting fist (night.ts throwAimsCast). Null where the pose or the hand is not that one.
+ * turned with the hand. Whole, glove and cuff in one. Null where the pose or the hand is not that one.
  */
 function castFist(r: Rig, s: Side, hold: PaintedGrip | null, empty: boolean): FistStamp | null {
-  if (r.pose !== 'cast' && !throwAimsCast(r, s)) return null;
+  if (r.pose !== 'cast') return null;
   if (s === 'F') return { piece: NIGHT_CAST_FIST_F, turn: segAngle(r.wristF, r.handF) - NIGHT_CAST_FIST_F.angle, mirror: false, name: 'fist' };
   if (hold && !hold.mirror) return { piece: NIGHT_CAST_FIST_N, turn: hold.fist - NIGHT_CAST_FIST_N.angle, mirror: false, name: 'fist', at: hold.at };
   if (hold || !empty) return null;
@@ -2179,22 +2177,21 @@ export const HAND_ITEMS: ItemDef[] = liftMain([
       for (const s of SIDES) {
         const hold = s === 'N' && male ? paintedGrip(g) : null;
         // (casting the runes he drew both fists closed, the near one round the grip or on nothing: castFist)
-        const castHand = (g.rig.pose === 'cast' && (s === 'F' || gripAngle(g) === null)) || throwAimsCast(g.rig, s);
+        const castHand = g.rig.pose === 'cast' && (s === 'F' || gripAngle(g) === null);
         if (male && sitsReachingOut(g.rig, s)) {
-          // Seated, his far hand open, palm up, reaching forward: the owner's standard open hand (his Trunks
-          // sit picture, a black fingerless glove as Ren's), on the wrist, turned with the forearm as his was:
-          // his line kept, his fingers in the character's skin, his glove in the glove's colour.
-          if (g.has('top', 'top_night_jacket')) handOff(g, s);
-          else bareHandOff(g, s);
-          const palm = (_ch: string, hex: string) => {
-            const k = NIGHT_SIT_PALM_KIND[hex];
-            if (k === 'line') return hex;
-            return k === 'skin' ? skinTone(hex, NIGHT_SIT_PALM_SKIN, g.look.skin) : retintHex(hex, NIGHT_SIT_PALM_GLOVE, c);
-          };
-          // (on his casting forearm's end, as his casting fist sits back over it: the forearm under the jacket)
+          // Seated, his far hand reaching out points the way as when he aims the throw: our hand drawn
+          // pointing in his skin, then his glove on it as below (night.ts sitsReachingOut).
+          handOff(g, s);
+          const point: DrawCtx = Object.create(g);
+          point.rig = { ...g.rig, shapeF: 'point' };
+          handDraw(point, g.L(armDepth(s, 'body')), s, { mat: g.skin, part: prt('hand', s), bias: sb(s) });
           const j = armJoints(g.rig, s);
-          const at = g.has('top', 'top_night_jacket') ? farForeEnd(g.rig) : j.wrist;
-          stampPiece(g, armDepth(s, 'armor'), NIGHT_SIT_PALM_F, at, segAngle(j.elbow, j.wrist), prt('hand', s), palm);
+          glove(point, s, clothPen(g, c, prt('hand', s), sb(s)), 0.2, true);
+          stampPiece(g, armDepth(s, 'armor'), nightCuff(NIGHT_GLOVE_F), j.wrist, segAngle(j.wrist, j.hand), prt('hand', s), tint);
+          const { at } = handFrame(point, s);
+          const pm = clothPen(g, pl, prt('hand', s), sb(s), 'metal');
+          tube(g.L(armDepth(s, 'armor')), at(-0.55, -0.3), at(0.15, -0.3), 0.6, 0.6, pm, 4);
+          fpx(g.L(armDepth(s, 'armor')), at(-0.45, -0.45), pm.mat, prt('hand', s), 5 + sb(s));
           continue;
         }
         if (male && (hold || !nightPalm(g, s) || castHand)) {

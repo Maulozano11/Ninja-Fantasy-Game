@@ -89,7 +89,10 @@ Boss. Paths of Mastery: designed, not built.
   (beasts, rock, crystal, the poison and chakra walls' frames, wood, dragon heads) carry the
   characters' black line, energy none (2026-10-22, `vfx/solid-outline-apply`).
 - Hotbar icons from the owner's sheets 1–7 and 12 (`src/assets/ui_icons/`): 10 jutsu, 3 for jutsu
-  not built yet (Rasengan, Venom Surge, Water Stream), 17 actions, great_fireball.
+  not built yet (Rasengan, Venom Surge, Water Stream), 17 actions, great_fireball. Sheets 13–22
+  (2026-10-22, on `icons/sheet-13`): 27 more jutsu, the four item buttons (pill, bandage, antidote,
+  explosive tag, which now sit in the steel skill slots) and Hide Tag, Throw Stone and Drag Body;
+  `tools/refs/icons-from-ref-13.py`, manifests `manifest_13.json` to `manifest_22.json`.
 
 **Battle** (engine `src/battle/`, screen `src/components/battle/`)
 - 2.5D side view in metres, no visible grid. River Forest map, 60 × 20 m (river, bridge, stepping
@@ -125,6 +128,7 @@ screens (`CampaignMode.tsx`, `ArenaSandbox.tsx`) are English only.
 | `claude/eloquent-noether-ix51z1` | `8dfd107` | Everything approved | **Integration**, live |
 | `aiden/*` (8 branches) | `aiden/integration` `995be5d`; parts `armor` `dee8d17`, `boots-gloves` `c5dec79`, `cape` `ad183d4`, `eyes` `313d514`, `flame-sword` `4052fef`, `hair` `201cb44`, `head-shape` `930d3ad` | The owner's Aiden, part by part | Merged (`c2b84f5`) |
 | `icons/sheet-12`, `icons/sheet-12-fix` | `cd8e07b`, `b8dd15c` | Sabueso rayo, Luna creciente, Nirvana | Merged (`8dfd107`) |
+| `icons/sheet-13` | see the branch | His icon sheets 13–22 (34 icons: earth, fire, lightning, water, wind, taijutsu and genjutsu jutsu, the items, Hide Tag and the stealth actions); copies of his pictures | **Pushed, to merge** |
 | `camp/owner-ref` | `70293ba` | Read, lean and sit camp poses from his picture (`camp-poses-owner-reference.webp` on that branch); touches `rig.ts`, `compose.ts`, `ctx.ts`, `campfx.ts` | **WIP, being redone**: copy his book and both hands exactly; show Aiden reading |
 | `camp/hands-book` | `a3ae184` | Earlier pass, already inside `camp/owner-ref` | Superseded |
 | `ryusei/phase` | `1bd38c9` | Warp Strike (now Shooting-Star Thrust) and Spatial Swap carry the ninja as a see-through electric-blue light body (`src/sprite/phase.ts` + tests, renderer, playback) | **Waiting for approval.** The Shooting-Star Thrust choreography is on `ryusei/warp-throw`. Swap stays |
@@ -484,9 +488,13 @@ remove the AI Studio leftovers (`README.md`, `metadata.json`, package name, unus
 `express`, `dotenv`).
 
 ### 4f. Other
-- Battle abilities with no owner icon even after sheets 8–11: body flicker, explosive tag, mystical
-  palm, Kawarimi, wind blade, leaf hurricane, Hurricane Star, wood golem, Night Guy,
-  Pursuing Flame.
+- Jutsu with no owner icon after sheets 13–22: Night Guy (`night_guy_dragon`, he renames it later).
+  Yasaka no Magatama is removed from the game. The icons he turned down are not used: his first golem
+  (sheet 13), his first Espejismo (sheet 15), his first Whirlwind Tower (sheet 18) and his first
+  Rasenshuriken (sheet 21); each was replaced by a later one of his (golem sheet 14, Mind Twist as
+  Espejismo sheet 21, tower sheet 21, Rasenshuriken sheet 22).
+- His labels on sheets 20–21 are now our names: "Desvanecer" (Body Flicker), "Patada huracán" (Leaf
+  Hurricane), "Estrella Huracán" (Rasenshuriken); "Mind Twist" is the Espejismo.
 - Clan Paths of Mastery; clan reference pictures (CLANS_DESIGN: mechanics first, art after).
 - World sprites are paused (`tools/world-sprites/README.md`); the hydra art (`world/creatures/`)
   is not in the repo yet.

@@ -1052,7 +1052,8 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
       add({ id: 'tagTrap', label: t('act_tagTrap'), icon: ACTION_ICON.tagTrap, badge: s.supplies.explosiveTags, disabled: !can.action || s.supplies.explosiveTags < 1, active: mode.k === 'item' && mode.item === 'tagTrap', help: t('help_tagTrap') });
       if (downedAlly) add({ id: 'stabilize', label: t('act_stabilize'), icon: ACTION_ICON.stabilize, disabled: !can.action, active: mode.k === 'stabilize', help: t('help_stabilize') });
       if (stealth) add({ id: 'stone', label: t('act_stone'), icon: ACTION_ICON.stone, disabled: !can.action, active: mode.k === 'stone', help: t('help_stone') });
-      if (stealth && body) add({ id: `drag:${body.unit}`, label: t('act_drag'), icon: ACTION_ICON.shove, active: mode.k === 'drag' });
+      // Its id carries the body; its painted icon is the owner's drag (sheet 19).
+      if (stealth && body) add({ id: `drag:${body.unit}`, label: t('act_drag'), iconId: 'drag', icon: ACTION_ICON.shove, active: mode.k === 'drag' });
       if (edge) add({ id: 'flee', label: t('act_flee'), icon: ACTION_ICON.flee, disabled: s.phase === 'combat' && !can.action, help: t('help_flee') });
       add({ id: 'more', label: '←', icon: ACTION_ICON.items, active: true });
     }

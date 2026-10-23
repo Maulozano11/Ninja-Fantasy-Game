@@ -63,7 +63,7 @@ import {
 } from './clans';
 import { reachTo, replanAgainst } from './intent';
 import { chargedFoe, chargeHolds, crackUnder, endCharge } from './charged';
-import { activeImbue, EARTH_CRIT, IMBUE_DAMAGE, IMBUE_DICE, imbueBlocker, imbueHolds, startImbue, unitImbueElement, WIND_PUSH } from './imbue';
+import { activeImbue, EARTH_CRIT, IMBUE_DAMAGE, IMBUE_DICE, imbueBlocker, imbueHolds, startImbue, unitImbueElement, WIND_PUSH, type ImbueElement } from './imbue';
 
 // --- setup ---------------------------------------------------------------------------------
 
@@ -259,7 +259,7 @@ function dispatch(s: BattleState, a: Action, ev: BattleEvent[]): string | null {
     case 'attack':
       return doAttack(s, u, a.target, !!a.ranged, !!a.knockout, ev);
     case 'jutsu':
-      return doJutsu(s, u, a.jutsu, a.at, a.target, !!a.enhanced, ev, a.target2);
+      return doJutsu(s, u, a.jutsu, a.at, a.target, !!a.enhanced, ev, a.target2, a.element);
     case 'dash':
     case 'disengage':
     case 'dodge':
@@ -859,7 +859,7 @@ export function jutsuCost(u: Unit, spec: JutsuSpec, enh: boolean): number {
   return jutsuCostParts(u, spec, enh).cost;
 }
 
-function doJutsu(s: BattleState, u: Unit, id: string, atIn: Pt, targetId: string | undefined, enh: boolean, ev: BattleEvent[], target2Id?: string): string | null {
+function doJutsu(s: BattleState, u: Unit, id: string, atIn: Pt, targetId: string | undefined, enh: boolean, ev: BattleEvent[], target2Id?: string, element?: ImbueElement): string | null {
   const base = JUTSU[id];
   if (!base || !u.jutsus.includes(id)) return 'unknownJutsu';
   if (base.cast === 'reaction') return 'reactionOnly';
@@ -873,7 +873,7 @@ function doJutsu(s: BattleState, u: Unit, id: string, atIn: Pt, targetId: string
   if (base.handCharge && u.charged) return 'alreadyCharged';
   // Weapon Element Enhancement: one of the five elements, a weapon to hold, not on it already.
   if (base.special === 'imbue') {
-    const why = imbueBlocker(u);
+    const why = imbueBlocker(u, element);
     if (why) return why;
   }
   // Hand seals need both hands, and a tackle is thrown with empty ones: the weapon is stowed for
@@ -974,7 +974,8 @@ function doJutsu(s: BattleState, u: Unit, id: string, atIn: Pt, targetId: string
   }
   // The element goes onto the weapon (drawn above, for free, if it was put away).
   if (base.special === 'imbue') {
-    startImbue(u, unitImbueElement(u)!, ev);
+    // Its chakra type's element, or the other one it chose (its second element).
+    startImbue(u, element ?? unitImbueElement(u)!, ev);
     return null;
   }
   if (spec.melee && spec.shape === 'single' && target) {

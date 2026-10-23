@@ -17,7 +17,7 @@ import { limbRefit, refit } from '../fit';
 import { BOOTS_PART } from './bootsPart';
 import { clothPen, limb } from './clothes';
 import { segAngle, type PaintedPiece } from '../painted';
-import { F_NO_OUTLINE, F_NO_TEXTURE, F_OWNER, F_SEAL, GRID, Layer, partIndex, PartId, RES, Vec } from '../raster';
+import { F_NO_OUTLINE, F_NO_TEXTURE, F_OWNER, F_SEAL, GRID, Layer, partIndex, PartId, PARTS, RES, Vec } from '../raster';
 import { BODY_PARAMS, type BodyParams } from '../rig';
 import { stampTemplate, type TemplatePalette } from '../rotsprite';
 import { BULKY_BASE_BRIEFS } from '../bulkyBaseArt';
@@ -26,6 +26,8 @@ import { BOOT_F, BOOT_KIND, BOOT_LEATHER, BOOT_N } from './brawlerBootsArt';
 import { BRACER_BAND, BRACER_KIND, BRACER_SKIN, BRACER_STEEL, BRACER_WRAP, STEEL_BRACER_N, STEEL_FIST_N, WRAP_BRACER_F, WRAP_FIST_F } from './brawlerBracersArt';
 import { JEANS_DENIM, JEANS_HIPS, JEANS_KIND, JEANS_SHIN_F, JEANS_SHIN_N, JEANS_THIGH_F, JEANS_THIGH_N } from './jeansArt';
 import { SHIRT_CAP_F, SHIRT_CAP_N, SHIRT_CLOTH, SHIRT_KIND, SHIRT_SEAM, SHIRT_SLEEVE_F, SHIRT_SLEEVE_N, SHIRT_TORSO } from './seamShirtArt';
+import { SHIRT_MALE_CHEST, SHIRT_MALE_GUARD_F, SHIRT_MALE_GUARD_N, SHIRT_MALE_KIND } from './seamShirtMaleArt';
+import { guardAngle, guardAt, romanChestLonger } from './armor';
 
 type Kind = 'cloth' | 'leather' | 'metal';
 const col = (key: string, label: string, def: string, kind: Kind = 'cloth') => ({ key, label, default: def, kind });
@@ -237,6 +239,55 @@ const torsoAngle = (g: DrawCtx) => segAngle(g.rig.pelvis, g.rig.neck);
 /** Where his shirt's hem meets his jeans' waistband, above the hips (torso-local design units). */
 const SHIRT_HEM = 2.8;
 
+/**
+ * A pixel a turned piece leaves open inside itself (three or four of its four neighbours the piece's, on this
+ * layer) takes the colour most of those neighbours have: our arm under a turned shoulder guard does not show
+ * through it in a single pixel. Unturned, his pieces have none.
+ */
+function closePiece(L: Layer, part: number): void {
+  const fill: [number, number][] = [];
+  for (let y = 1; y < GRID - 1; y++)
+    for (let x = 1; x < GRID - 1; x++) {
+      const i = y * GRID + x;
+      if (L.mat[i] >= 0) continue;
+      const nb = [i - 1, i + 1, i - GRID, i + GRID].filter((j) => L.mat[j] >= 0 && L.part[j] === part && L.flags[j] & F_OWNER);
+      if (nb.length < 3) continue;
+      const count = new Map<number, number>();
+      for (const j of nb) count.set(L.mat[j], (count.get(L.mat[j]) ?? 0) + 1);
+      const best = nb.reduce((a, j) => (count.get(L.mat[j])! > count.get(L.mat[a])! ? j : a));
+      fill.push([i, best]);
+    }
+  for (const [i, j] of fill) L.set(i % GRID, (i / GRID) | 0, L.mat[j], L.shade[j], PARTS[part], L.flags[j]);
+}
+
+/**
+ * His shirt on the normal male, in his Roman's style (the owner, 2026-10-23: "copia el estilo que tiene romano
+ * y pasa los colores de pixel a ese y pasa los brazos de romano a ese ya que tambien esta sin mangas"): the
+ * Roman's chest and shoulder guards in the shirt's colours with its seams (seamShirtMaleArt.ts), hung where
+ * the Bronze Cuirass hangs his (the chest leaning with the torso from the neck, each guard on its shoulder
+ * following the arm part of the way), and below the guards the male's own bare arms in the Roman's skin. The
+ * torso under it goes, as under the cuirass, down to where the jeans begin.
+ */
+function drawShirtMale(g: DrawCtx, cloth: string, seam: string): void {
+  const r = g.rig;
+  const tint = byKind(SHIRT_MALE_KIND, { cloth: [SHIRT_CLOTH, cloth], seam: [SHIRT_SEAM, seam] });
+  torsoOff(g, SHIRT_HEM, g.bp.torsoLen);
+  const torso = torsoAngle(g);
+  // Stamped as his other pieces are (the same turn and shear as the cuirass's), so a seam a turn breaks into
+  // a dot is mended as his are (compose.ts); turned, a guard keeps the Roman's black line whole (rotateLined),
+  // so no seam or arm shows past it.
+  const guard = (s: Side, p: PaintedPiece) => {
+    const line = (ch: string) => SHIRT_MALE_KIND[p.colors[ch]] === 'line';
+    const deg = guardAngle(p, torso, segAngle(s === 'N' ? r.shoulderN : r.shoulderF, s === 'N' ? r.elbowN : r.elbowF));
+    const L = g.L(armDepth(s, 'cloth'));
+    stampTemplate(L, p, guardAt(r, s, torso), deg - p.angle, pens(g, p, tint), prt('upperArm', s), { flags: F_NO_TEXTURE | F_NO_OUTLINE | F_OWNER, line });
+    closePiece(L, partIndex(prt('upperArm', s)));
+  };
+  guard('F', SHIRT_MALE_GUARD_F);
+  onTorso(g, g.L('torso.top'), romanChestLonger(r, SHIRT_MALE_CHEST), r.neck, torso, 'torso', tint);
+  guard('N', SHIRT_MALE_GUARD_N);
+}
+
 // ---------------------------------------------------------------------------
 // The items
 // ---------------------------------------------------------------------------
@@ -251,6 +302,10 @@ export const BRAWLER_TOPS: ItemDef[] = [
     bodies: MALE_BODIES,
     draw: (g, [cloth, seam]) => {
       const r = g.rig;
+      if (r.body === 'male') {
+        drawShirtMale(g, cloth, seam);
+        return;
+      }
       const tint = byKind(SHIRT_KIND, { cloth: [SHIRT_CLOTH, cloth], seam: [SHIRT_SEAM, seam] });
       // Under his shirt our torso goes, up to the neck: the shirt is his figure there.
       torsoOff(g, SHIRT_HEM, g.bp.torsoLen);

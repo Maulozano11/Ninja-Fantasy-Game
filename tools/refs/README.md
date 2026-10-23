@@ -179,6 +179,14 @@ folders.
       python3 -I tools/refs/brawler-belt-from-ref.py src/sprite/items/brawlerBeltArt.ts [studyDir]
       python3 -I tools/refs/jeans-from-ref.py src/sprite/items/jeansArt.ts [studyDir]
       python3 -I tools/refs/brawler-boots-from-ref.py src/sprite/items/brawlerBootsArt.ts [studyDir]
+- `seam-shirt-male-from-ref.py`: the broad man's shirt on the normal male in his Roman's style (the owner, 2026-10-23:
+  "copia el estilo que tiene romano y pasa los colores de pixel a ese y pasa los brazos de romano a ese"). The pieces
+  are the Roman's chest and shoulder guards (`roman_ref.pieces()`, cell for cell, his black line kept); each other
+  colour of his takes the shirt colour of the same lightness rank (`seam-shirt-from-ref.py`'s `lift()`), and the
+  shirt's silver seams are carried onto them, each measured along and across its bone in both pictures, touching
+  seam pixels kept joined. The arms below the guards are the male's own (the Roman skin).
+
+      python3 -I tools/refs/seam-shirt-male-from-ref.py src/sprite/items/seamShirtMaleArt.ts [studyDir]
 - `solen_ref.py` + `solen-*-from-ref.py`: the owner's Solen (`docs/reference/solen-owner-reference.jpg`, the new
   standard, 2026-10-21; pitch 20, our male idle frame 0 at offset (74, 120), the Roman picture's window). It is a
   repaint of his Roman picture. `solen_ref.pieces()` cuts his figure by region polygons (`REGIONS`) and colour kinds

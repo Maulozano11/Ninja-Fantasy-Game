@@ -14,6 +14,8 @@ import * as bracers from './items/brawlerBracersArt';
 import * as jeans from './items/jeansArt';
 import * as hair from './items/lockHairArt';
 import * as shirt from './items/seamShirtArt';
+import * as shirtMale from './items/seamShirtMaleArt';
+import * as cuirass from './items/bronzeCuirassArt';
 import { LEGENDARY_PRESETS } from '../data/shinobiData';
 import { defaultAppearance } from './legacy';
 import type { PaintedPiece } from './painted';
@@ -450,3 +452,75 @@ describe('fitting his pieces to another body', () => {
     assert.equal(skin, 0);
   });
 });
+
+describe("his shirt on the normal male, in the Roman's style", () => {
+  // The owner (2026-10-23): "copia el estilo que tiene romano y pasa los colores de pixel a ese y pasa los
+  // brazos de romano a ese" (tools/refs/seam-shirt-male-from-ref.py).
+  const pieces: [string, PaintedPiece, PaintedPiece][] = [
+    ['SHIRT_MALE_CHEST', shirtMale.SHIRT_MALE_CHEST, cuirass.CUIRASS_CHEST],
+    ['SHIRT_MALE_GUARD_N', shirtMale.SHIRT_MALE_GUARD_N, cuirass.CUIRASS_GUARD_N],
+    ['SHIRT_MALE_GUARD_F', shirtMale.SHIRT_MALE_GUARD_F, cuirass.CUIRASS_GUARD_F],
+  ];
+
+  it("each piece is the Roman's piece cell for cell, hung where his hangs, his black line where he drew it", () => {
+    for (const [name, mine, his] of pieces) {
+      assert.deepEqual(shirtMale.SHIRT_MALE_REST[name], cuirass.CUIRASS_REST[name.replace('SHIRT_MALE', 'CUIRASS')], name);
+      assert.deepEqual(mine.pivot, his.pivot, name);
+      assert.equal(mine.angle, his.angle, name);
+      assert.equal(mine.rows.length, his.rows.length, name);
+      mine.rows.forEach((row, j) => {
+        assert.equal(row.length, his.rows[j].length, `${name} row ${j}`);
+        for (let i = 0; i < row.length; i++) {
+          assert.equal(row[i] === '.', his.rows[j][i] === '.', `${name} ${i},${j}`);
+          if (row[i] === '.') continue;
+          const line = cuirass.CUIRASS_KIND[his.colors[his.rows[j][i]]] === 'line';
+          assert.equal(shirtMale.SHIRT_MALE_KIND[mine.colors[row[i]]] === 'line', line, `${name} ${i},${j}: his line stays his line`);
+          if (line) assert.equal(mine.colors[row[i]], his.colors[his.rows[j][i]], `${name} ${i},${j}`);
+        }
+      });
+    }
+  });
+
+  it("every other colour is one of his shirt's (within 3, as the converters pack his colours)", () => {
+    const his = [...new Set([shirt.SHIRT_TORSO, shirt.SHIRT_SLEEVE_N, shirt.SHIRT_SLEEVE_F, shirt.SHIRT_CAP_N, shirt.SHIRT_CAP_F].flatMap((p) => Object.values(p.colors)))].map(hexRgb);
+    for (const [name, mine] of pieces)
+      for (const hex of Object.values(mine.colors)) {
+        if (shirtMale.SHIRT_MALE_KIND[hex] === 'line') continue;
+        const c = hexRgb(hex);
+        assert.ok(
+          his.some((h) => h.every((v, k) => Math.abs(v - c[k]) <= 3)),
+          `${name} ${hex}`,
+        );
+      }
+  });
+
+  it("below the guards the arms are the male's own bare arms, in the Roman's skin", () => {
+    // At rest every pixel of the upper arms is the bare male's or the shirt's guard over it: no sleeve of
+    // the broad man's refitted, no arm of ours cut away under it.
+    const dressed = renderSprite(his('male'), 'idle', 0);
+    const bare = renderSprite({ ...his('male'), slots: { ...his('male').slots, top: undefined } }, 'idle', 0);
+    const guard = new Set([shirtMale.SHIRT_MALE_GUARD_N, shirtMale.SHIRT_MALE_GUARD_F].flatMap((p) => Object.values(p.colors)).map((h) => h.toLowerCase()));
+    const hexAt = (i: number) => '#' + [0, 1, 2].map((c) => dressed.rgba[i * 4 + c].toString(16).padStart(2, '0')).join('');
+    const isArm = (i: number) => ['upperArmN', 'upperArmF'].includes(PARTS[dressed.part[i]]);
+    // Below the guards (and the row or two of his skin shading under their lower edge): the bare male's arm.
+    let below = 0;
+    for (let i = 0; i < GRID * GRID; i++) if (isArm(i) && guard.has(hexAt(i))) below = Math.max(below, ((i / GRID) | 0) + 3);
+    let arm = 0;
+    for (let i = below * GRID; i < GRID * GRID; i++) {
+      if (!isArm(i)) continue;
+      assert.ok(!guard.has(hexAt(i)), `guard pixel below the guards at ${i % GRID},${(i / GRID) | 0}`);
+      assert.ok([0, 1, 2, 3].every((c) => dressed.rgba[i * 4 + c] === bare.rgba[i * 4 + c]), `upper arm pixel ${i % GRID},${(i / GRID) | 0}`);
+      arm++;
+    }
+    assert.ok(arm > 12, `${arm} bare upper arm pixels`);
+  });
+
+  it('the bulky body keeps his own shirt (seamShirtArt.ts), unchanged', () => {
+    const f = renderSprite(his('bulky'), 'idle', 0);
+    assert.equal(createHash('sha1').update(f.rgba).digest('hex'), 'efd752489ece1ee928ada887a7732c2d957e6728');
+  });
+});
+
+function hexRgb(h: string): number[] {
+  return [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+}

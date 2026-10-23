@@ -1129,7 +1129,7 @@ export function stampLeaning(g: DrawCtx, depth: Depth, piece: PaintedPiece, at: 
 }
 
 /** A shoulder guard's angle: it rides the torso and follows the upper arm part of the way, like the plate's pauldrons. */
-function guardAngle(piece: PaintedPiece, torso: number, arm: number): number {
+export function guardAngle(piece: PaintedPiece, torso: number, arm: number): number {
   const rest = piece.angle - CUIRASS_CHEST.angle;
   return torso + rest + 0.45 * (((arm - torso - rest + 540) % 360) - 180);
 }
@@ -1142,7 +1142,7 @@ const IDLE_RIGS = new Map<BodyType, Rig>();
  * his guard is laced to the cuirass, so it stays on the chest's corner over the top of the arm. At rest
  * both are the same point, so the guard is where he drew it.
  */
-function guardAt(r: Rig, side: Side, torso: number): Vec {
+export function guardAt(r: Rig, side: Side, torso: number): Vec {
   let idle = IDLE_RIGS.get(r.body);
   if (!idle) IDLE_RIGS.set(r.body, (idle = drawRig(r.body, 'idle', 0)));
   const sh = side === 'N' ? r.shoulderN : r.shoulderF;
@@ -1203,6 +1203,24 @@ function cuirassChest(r: Rig): PaintedPiece {
   let p = CUIRASS_LONGER.get(key);
   const [from, to] = CUIRASS_ABS[r.body === 'bulky' ? 'bulky' : 'male'];
   if (!p) CUIRASS_LONGER.set(key, (p = stretched(base, 0, 0, extra, from, to)));
+  return p;
+}
+
+const ROMAN_LONGER = new Map<PaintedPiece, Map<number, PaintedPiece>>();
+
+/**
+ * A piece cut to his Roman chest's shape on the male body (the broad man's shirt in the Roman's style,
+ * brawler.ts) on a torso longer than at rest: lengthened as cuirassChest lengthens his chest, by repeating
+ * rows of the abdomen, so its lower edge stays at the waist. Unchanged in every other pose.
+ */
+export function romanChestLonger(r: Rig, base: PaintedPiece): PaintedPiece {
+  const torso = (r.neck.x - r.pelvis.x) * r.up.x + (r.neck.y - r.pelvis.y) * r.up.y;
+  const extra = Math.round((torso - r.bp.torsoLen) * RES);
+  if (extra <= 0) return base;
+  let byExtra = ROMAN_LONGER.get(base);
+  if (!byExtra) ROMAN_LONGER.set(base, (byExtra = new Map()));
+  let p = byExtra.get(extra);
+  if (!p) byExtra.set(extra, (p = stretched(base, 0, 0, extra, CUIRASS_ABS.male[0], CUIRASS_ABS.male[1])));
   return p;
 }
 

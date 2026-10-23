@@ -45,9 +45,11 @@ def shirt_kind(h):
     return 'seam' if L > 120 else 'cloth'
 
 
-def main():
-    out_ts = sys.argv[1] if len(sys.argv) > 1 else None
-    study = sys.argv[2] if len(sys.argv) > 2 else None
+def lift():
+    """His shirt lifted out of his picture: his picture `a`, the torso's colours `col` and mask `tm` (his
+    shirt continued under the lock, `got` what was continued), what continues it under the near sleeve
+    (`under`, `got_n`), and the parts' masks and kinds (`masks`, the sleeves among them; `K`). Also used by
+    seam-shirt-male-from-ref.py, which passes his shirt onto the Roman's chest."""
     a = R.native()
     masks, K = R.labels(a)
     black = R.his_line(a, K)
@@ -77,6 +79,15 @@ def main():
     # hole between them. Added after the torso's colours are packed, so those pack as before.
     under, got_n = R.continue_along(R.packed(col, tm), tm & (K != 'line'), masks['sleeve_n'] & ~tm, np.array([1.0, 0.0]), reach=3)
     got_n &= ~tm
+    return {'a': a, 'masks': masks, 'K': K, 'col': col, 'tm': tm, 'got': got, 'under': under, 'got_n': got_n}
+
+
+def main():
+    out_ts = sys.argv[1] if len(sys.argv) > 1 else None
+    study = sys.argv[2] if len(sys.argv) > 2 else None
+    S = lift()
+    a, masks, col, tm, got, under, got_n = S['a'], S['masks'], S['col'], S['tm'], S['got'], S['under'], S['got_n']
+    J = R.JOINTS
     pieces = [
         R.piece('SHIRT_TORSO', 'The shirt from collar to hem, its seams and his muscle shading; his shirt goes on under the long lock and under the near sleeve. It rides the torso about the neck.', col, tm, J['neck'], R.joint_angle('pelvis', 'neck'), seal=True, extra=got_n, extra_col=under),
     ]

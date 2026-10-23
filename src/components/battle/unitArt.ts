@@ -11,6 +11,8 @@ import { GRID, opaqueBox, RES } from '../../sprite/raster';
 import { phaseBody, phaseFrame } from '../../sprite/phase';
 import { catchLook, releaseClear, renderThrown, thrownItem } from '../../sprite/thrown';
 import { throwRelease } from '../../sprite/grip';
+import { imbueLayers } from '../../sprite/imbue';
+import type { ImbueFx } from '../../sprite/imbue';
 import type { ChakraColorId, SpriteAppearance, SpritePose } from '../../sprite/types';
 import type { Unit } from '../../battle/types';
 
@@ -112,9 +114,31 @@ function toCanvas(rgba: Uint8ClampedArray, layers?: { back: Uint8ClampedArray; f
   return { canvas: c, ox: box.x, oy: box.y };
 }
 
+/** Layer `b` drawn over layer `a` (both GRID x GRID RGBA), as a new buffer. */
+function over(a: Uint8ClampedArray, b: Uint8ClampedArray): Uint8ClampedArray {
+  const out = new Uint8ClampedArray(a);
+  for (let i = 0; i < out.length; i += 4) {
+    const sa = b[i + 3] / 255;
+    if (!sa) continue;
+    const da = out[i + 3] / 255;
+    const oa = sa + da * (1 - sa);
+    for (let c = 0; c < 3; c++) out[i + c] = (b[i + c] * sa + out[i + c] * da * (1 - sa)) / oa;
+    out[i + 3] = oa * 255;
+  }
+  return out;
+}
+
+/** The element on a unit's weapon (Weapon Element Enhancement): which, the tick of its loop, and the chakra colour its energy takes. */
+export interface ImbueView {
+  fx: ImbueFx;
+  tick: number;
+  tint?: string;
+}
+
 /**
  * One frame of a unit's sprite as a canvas. `aura` adds the chakra burst of a cast or a charge
  * (only if the player turned it on for that moment in the creator), `empowered` for an enhanced jutsu.
+ * `imbue` draws the element on the weapon in hand (sprite/imbue.ts; nothing when the frame holds none).
  */
 export function unitFrame(
   u: Unit,
@@ -122,6 +146,7 @@ export function unitFrame(
   pose: SpritePose,
   frame: number,
   aura?: { mode: ChakraMode; tick: number; empowered?: boolean; burst?: { color: ChakraColorId; tint?: string } },
+  imbue?: ImbueView,
 ): Cached {
   const n = framesOf(look, pose);
   const f = ((frame % n) + n) % n;
@@ -131,7 +156,7 @@ export function unitFrame(
   const tint = aura?.burst ? aura.burst.tint : look.chakra.tint;
   const wantAura = aura && (!!aura.burst || (aura.mode === 'cast' && look.chakra.onCast) || (aura.mode === 'charge' && look.chakra.onCharge) || aura.mode === 'aura');
   const fxTick = wantAura ? aura!.tick % chakraLoop(color) : -1;
-  const key = `${idOf(look)}|${eye}|${pose}|${f}|${wantAura ? `${aura!.mode}${aura!.empowered ? '+' : ''}${fxTick}${aura!.burst ? `|${color}:${tint ?? ''}` : ''}` : ''}`;
+  const key = `${idOf(look)}|${eye}|${pose}|${f}|${wantAura ? `${aura!.mode}${aura!.empowered ? '+' : ''}${fxTick}${aura!.burst ? `|${color}:${tint ?? ''}` : ''}` : ''}${imbue ? `|w:${imbue.fx}${imbue.tick}:${imbue.tint ?? ''}` : ''}`;
   let c = frames.get(key);
   if (c) {
     frames.delete(key);
@@ -139,7 +164,9 @@ export function unitFrame(
     return c;
   }
   const spr = renderSpriteCached(look, pose, f, eye);
-  const fx = wantAura ? renderChakra(color, aura!.mode, fxTick, spr.rgba, spr.rig, tint, aura!.empowered) : null;
+  let fx = wantAura ? renderChakra(color, aura!.mode, fxTick, spr.rgba, spr.rig, tint, aura!.empowered) : null;
+  const w = imbue ? imbueLayers(look, pose, f, imbue.fx, imbue.tick, imbue.tint, eye) : null;
+  if (w) fx = fx ? { back: over(fx.back, w.back), front: over(fx.front, w.front) } : w;
   c = { ...toCanvas(spr.rgba, fx), rig: spr.rig };
   frames.set(key, c);
   if (frames.size > MAX) frames.delete(frames.keys().next().value as string);

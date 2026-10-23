@@ -8,7 +8,8 @@ import { ICE_SWORD } from './items/iceSwordArt';
 import { add, norm, RES, scale, sub, Vec } from './raster';
 import { LYRA_RAPIER } from './items/lyraSwordArt';
 import { drawRig, THROW_RELEASE_FRAME } from './rig';
-import type { BodyType } from './types';
+import type { Rig } from './rig';
+import type { BodyType, SpriteAppearance } from './types';
 
 /**
  * Weapon angles through 'throw' (rig.ts THROW): coiled with the weapon drawn back low behind the
@@ -143,6 +144,13 @@ export const isWeapon = (held: string | undefined): boolean => !!held && WEAPONS
  */
 export const throwsKunai = (g: DrawCtx): boolean =>
   !g.rig.released && !handsLimp(g) && (g.rig.pose === 'throw' ? !!g.look.stowed || !isWeapon(g.look.slots.held?.id) : !!g.look.pouchKunai && !BUSY.has(g.rig.pose));
+
+/**
+ * The look's weapon is in the hand in this frame of the rig (drawn there, not stowed, not dropped,
+ * not thrown): where a weapon's element is drawn on it (sprite/imbue.ts).
+ */
+export const weaponInHand = (look: SpriteAppearance, rig: Rig): boolean =>
+  isWeapon(look.slots.held?.id) && !look.stowed && !BUSY.has(rig.pose) && rig.pose !== 'downed' && !rig.released;
 
 /** Angle of the handle the near hand wraps, or null when it holds nothing with a handle. */
 export function gripAngle(g: DrawCtx): number | null {

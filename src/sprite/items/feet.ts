@@ -248,6 +248,9 @@ export function boot(g: DrawCtx, hex: string, from: number, art: FootArt, opts: 
   const grow = opts.grow ?? 0.6;
   for (const s of SIDES) {
     const L = g.L(legDepth(s, 'feet'));
+    // A closed boot is the whole foot: our bare foot under it (the owner's feet, longer at the toe and
+    // higher at the instep than the boot's own foot) would poke out past its toe and over its instep.
+    bareFootOff(g, s);
     limb(g, L, 'leg', s, from, 2, grow, bootPen(g, hex, s, 'shin', opts.kind), { round1: true });
     footDraw(g, L, s, art, {
       main: g.m(hex, opts.kind ?? 'leather'),

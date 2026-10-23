@@ -151,12 +151,13 @@ export function getAppearance(c: ShinobiCharacter): SpriteAppearance {
  * position, tails and cloth stay. The slender body is gone (the owner, 2026-10-22, "elimina el tipo
  * de cuerpo delgado"): a look saved on it is drawn on the female body. The neck option is gone (the
  * owner, 2026-10-22, "quitar el cuello del creador y dejar a todos con el cuello de hoy"): a saved
- * `neck` ('slim' or the thick 'strong') is dropped, and every look has today's slim nape. A look
- * with none of these comes back as it is.
+ * `neck` ('slim' or the thick 'strong') is dropped, and every look has today's slim nape; his Lyra's
+ * long neck (`neck: 'long'`, her preset's, not a creator option) is the neck she has today and stays.
+ * A look with none of these comes back as it is.
  */
 export function migrateAppearance(look: SpriteAppearance): SpriteAppearance {
   if ((look.body as string) === 'slender') look = { ...look, body: 'female' };
-  if ('neck' in look) {
+  if ('neck' in look && look.neck !== 'long') {
     const { neck: _neck, ...rest } = look as SpriteAppearance & { neck?: unknown };
     look = rest;
   }

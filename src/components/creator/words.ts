@@ -43,6 +43,14 @@ const ES: Record<string, string> = {
   Bright: 'Brillantes',
   Piercing: 'Penetrantes',
   "Aiden's eyes": 'Los ojos de Aiden',
+  Keen: 'Decididos',
+  "Lyra's eyes": 'Los ojos de Lyra',
+  Fine: 'Fina',
+  "Lyra's face": 'La cara de Lyra',
+  Long: 'Largo',
+  Arms: 'Brazos',
+  "The body's own": 'Los del cuerpo',
+  "Lyra's arms": 'Los brazos de Lyra',
   None: 'Ninguno',
   Forehead: 'Frente',
   Arm: 'Brazo',
@@ -157,6 +165,7 @@ const ES: Record<string, string> = {
   Studs: 'Tachas',
   Sole: 'Suela',
   Lining: 'Forro',
+  Blouse: 'Blusa',
   Gold: 'Oro',
   Dress: 'Vestido',
   Cape: 'Capa',
@@ -269,6 +278,15 @@ const ES: Record<string, string> = {
   "Silk cord crossed over white ray skin, a gold ornament under the middle diamond.": "Cordón de seda cruzado sobre piel de raya blanca, con un adorno de oro bajo el rombo central.",
   "The bare white ray skin of a court sword, gold fittings and a red silk tassel.": "La piel de raya blanca de una espada de la corte, herrajes de oro y una borla de seda roja.",
   "A red and white twisted cord like a shrine's sacred rope, hung with folded paper (shide) that purifies.": "Un cordón trenzado rojo y blanco como la cuerda sagrada de un santuario, con papel doblado (shide) que purifica.",
+  // Lyra's hair (hair_copper_braid)
+  'Copper Braid': 'Trenza cobriza',
+  Ornament: 'Adorno',
+  // Lyra's skirt (items/lyraLower.ts)
+  Stripes: 'Rayas',
+  'Thigh-high dark leather boots with gold cuffs, small round knee guards and studded ankle straps, the thigh bare above them.': 'Botas altas de cuero oscuro hasta el muslo, con puños de oro, rodilleras redondas pequeñas y correas con tachas en el tobillo; el muslo queda desnudo encima.',
+  // Lyra's sword
+  'Gilded Rapier': 'Estoque Dorado',
+  'Blade glow': 'Brillo de la hoja',
 };
 
 /** An editor label in the screen's language. */

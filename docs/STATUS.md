@@ -20,9 +20,10 @@ clean.
 
 **Character creator** (`src/components/CharacterCreator.tsx`, laid out like Baldur's Gate 3)
 - Steps: Origin, Clan, Class, Appearance, Abilities, Jutsu. Plus a pixel-paint editor.
-- 7 legend presets (`LEGENDARY_PRESETS`): Solen the Founder King (default sheet), Akira the Ember
+- 8 legend presets (`LEGENDARY_PRESETS`): Solen the Founder King (default sheet), Akira the Ember
   Ronin, **Aiden the Crimson Knight (the owner's art standard)**, Kaien the Storm Avenger, Hiro the
-  Sunburst Hero, Raiga the Warlord of Ash, Ren the Night Prince.
+  Sunburst Hero, Raiga the Warlord of Ash, Ren the Night Prince, **Lyra the Gilded Blade (the owner's first
+  heroine, on his bare female body)**.
 - Companions: Hana (Kōton, Medical), Kenji (Ryusei, Genjutsu), and every preset.
 - 5 classes (Ninjutsu, Taijutsu, Genjutsu, Medical, Bukijutsu) and 9 feats.
 - Appearance (`src/sprite/catalog.ts`):
@@ -169,7 +170,28 @@ Merge checks (`git merge-tree` on the origin tips, nothing changed):
 
 - Decided 2026-10-23: the map quality standard is `docs/reference/map-quality-owner-reference.png` ("el standard de calidad que quiero llegar del mapa es este"); his paint-over of our camp battle (`map-height-owner-reference.jpg`, on `battle/height-test`) shows how height and depth go in: terraces with rock cliff faces and stairs between levels. He will edit the world himself.
 
-- Decided 2026-10-23: the owner approved Lyra's sit pose ("lyra pose sentada aprovada": his sit picture on his sit rock, `heroine/lyra-v2` 6646042). The rest of Lyra waits for his yes.
+- Decided 2026-10-23: the owner approved Lyra's sit pose ("lyra pose sentada aprovada": his sit picture on his sit rock, `heroine/lyra-v2` 6646042), then the rest of her.
+
+- Decided 2026-10-23: Lyra approved 100% ('lyra aprovada 100%'); merged (`heroine/lyra-v2` at `6646042`,
+  through `merge/lyra-approved`). What came in: the legend preset `preset_lyra` (Lyra, the Gilded Blade), every
+  part lifted from his game-scale picture (hair `hair_copper_braid`, eyes `keen`, face `fine`, blouse, corset,
+  skirt, tabard, pouch belt, thigh-high boots, the Gilded Rapier with its long blade); the owner's bare female
+  body (`body/female-v2` as Lyra's branch has it, 7fbba79: his pieces on a rig fitted to his joints, the sports
+  top and briefs as items, the Messy Ponytail hair); her long arms (`arms: 'long'`, "Brazos: Largos" in the
+  creator); her long neck (`neck: 'long'`, on her preset only: the neck picker stays removed, so she keeps the
+  neck she has today, and `migrateAppearance` keeps it while it drops the old slim and strong ones); his read
+  (three frames), sit (one frame) and throw frames 3-4 painted on her, every pixel his (`ownerFrames.ts`); her
+  far leg whole in read; the fitted female bodies' sit is his Lyra sit (`rig.ts` FIT_SIT; male and bulky keep
+  theirs); his two rocks as seat props for every character (`seats.ts`: `seat_rock` under read, `seat_rock_sit`
+  under sit; the camp shows the rocks under its read and sit spots). The neck fix he approved on
+  `body/female-v2` (f84e80e, the head on the neck through the throw) is not on Lyra's branch and is not in
+  yet. His read pose is now every body's read (male and bulky too); male and bulky keep their own sit. The
+  integration's later checks find four small things on the new female body, named in the tests as known and
+  open (the owner said the old women's clothing and armour are not refitted to it): the Shadow Half-Cloak's
+  slit (2 px, tackle 4) and 2 px beside its stud in Aiden's downed 0; Solen's cowl clasp, 1 px in combo 0 and
+  7; Aiden's sabaton a pixel short of the thigh in the throw's and the combo's back kick. Still open from her
+  branch: the male and bulky feet hang above his rock when they read; whether the other characters' throw
+  should follow his release.
 
 ## 3. Waiting for the owner
 
@@ -272,7 +294,7 @@ Merge checks (`git merge-tree` on the origin tips, nothing changed):
 - Decided 2026-10-22: **Aurelia stays in our format; small hands become a creator option for women.** He first said *"la referencia es una version nueva copiala las manos mas pequeñas ponlas como opcion en el juego para personajes femeninos"*, then, seeing that his new picture is about 4 rows taller than the female base body, cancelled the re-scale: *"no esta bien deja tu diseño a nuestro formato esta bien cancela la reescala esta bien como esta"*. So Aurelia keeps the pieces from the game-scale picture on the female base body; "Manos: Normales / Pequeñas" is offered on the female and slender bodies, Pequeñas from her picture. Being built on `heroine/aurelia-v2` with the skirt and far-knee fixes.
 - Decided 2026-10-22: **the S-rank Tide is approved, and the names**: *"rango S ola si me gusta la animacion la ola normal se llama tsunami y la rango s es dragon tsunami"*. The rank-A Tide is now *Técnica de Agua: Tsunami* / *Water Technique: Tsunami*; his dragon-and-kanji version is Water's S-rank jutsu *Técnica de Agua: Dragón Tsunami* / *Water Technique: Dragon Tsunami* (Water S is no longer empty: this replaces his "vacio por ahora"). Ids unchanged. Its numbers approved by the owner for now: *"aprovado los numeros de la ola por ahora"* (12 chakra +4; 6d8, STR half, enhanced 8d8; 11.25 m 80-degree cone; knock-down and 3 m sweep; douses; ground wet one round longer). Built on `jutsu/tide-s` (`docs/GAMEPLAY_DESIGN.md`, "The Tsunami and the Dragon Tsunami").
 - Decided 2026-10-22: **the Roman sit is built at game scale from his pose** (*"romano sentado a"*). His sit picture is drawn at 0.80 of our scale; option A keeps his pose as the exact guide (legs, arms, drape, rock, frame by frame) built with the Roman set's own pieces at our size, so a seated character is as tall as a standing one. His rock is the seat prop, scaled to fit. On `body/male-skin-face`.
-- Decided 2026-10-22: **his Lyra sitting and reading pictures are the new standard sit and read poses** for every character: *"copialo exacto me encanta estas poses nuevas de sentado y leyendo es el nuevo standard"*. She sits on a rock that is its own object and changes with the scene (*"puedes usar la piedra tambien como objeto pero ese objeto cambiara dependiendo del escenario"*); her hands are copied exactly (*"mira como estan sus manos se ven excelentes copialo igual"*). Being copied on `heroine/lyra-v2` (read in 3 frames, his throw frames 3-4); the sit picture is still to come as a file.
+- Decided 2026-10-22: **his Lyra sitting and reading pictures are the new standard sit and read poses** for every character: *"copialo exacto me encanta estas poses nuevas de sentado y leyendo es el nuevo standard"*. She sits on a rock that is its own object and changes with the scene (*"puedes usar la piedra tambien como objeto pero ese objeto cambiara dependiendo del escenario"*); her hands are copied exactly (*"mira como estan sus manos se ven excelentes copialo igual"*). Copied on `heroine/lyra-v2` (read in 3 frames, sit in 1, his throw frames 3-4, his two rocks as the read and sit seats) and merged with Lyra (2026-10-23, above).
 - Decided 2026-10-22: **the gap round 2 is approved and merged** (`jutsu/gap-set-2`): *"la ola torre suelo mojado ,vapor se ve bien aprovado"*. He will paint an S-rank upgraded Tide over our widest wave frame: *"a la ola pasame el sprite donde se ven mas olas para agregarle un kanji y una bestia animada que sera el jutsu en version mejorada clase s"*.
 - Decided 2026-10-22: **the slender body is removed** (`cleanup/remove-slender`): *"elimina el tipo de cuerpo delgado se ve horrible y ya no cumple nuestros standares y para que ya no gastes recursos en ese estilo"*. The creator offers male, female and bulky; no preset, companion or enemy used it. A saved look on it loads on the female body (`migrateAppearance`, `src/sprite/bodies.test.ts`). Male, female and bulky renders are byte-identical to before. Don't build or test new art for it; the open branches that still test it drop those cases when they merge.
 - Decided 2026-10-22: **Shiori is discarded, with everything about her** (`cleanup/remove-shiori`): *"shiori desechala esta horrible ese diseño"*, then *"todo lo que tenga que ver con ella"*. Her legend preset (`preset_gentle`, "Shiori, el Puño Suave") is gone, so 7 legends remain; this also drops one of the Naruto-derived designs (a Hinata copy, 4a). Hana, who was built on her sheet, keeps her own legacy fields and is unchanged in play. The items, feats and jutsu she wore are everyone's creator options and stay. A saved hero, roster entry or mission member made from her loads as a normal made ninja with its own data (test in `rules.test.ts`). `scripts/ai-battles.ts` plays Hiro fourth instead, so party A has no Northstar member now (D21's numbers were measured with her).

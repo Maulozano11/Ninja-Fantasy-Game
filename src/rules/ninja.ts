@@ -343,7 +343,7 @@ export function dropRemovedJutsus(c: ShinobiCharacter): ShinobiCharacter {
  * - the clan's ability bonus counted in its numbers, once (countClanBonus);
  * - its headband as plain cloth: the old plate's fields dropped (sprite/legacy.ts, migrateAppearance);
  * - a look on the slender body, which is gone, on the female body (migrateAppearance);
- * - a saved neck choice dropped: every look has today's slim nape (migrateAppearance).
+ * - a saved neck choice dropped: every look has today's slim nape, Lyra's long neck kept (migrateAppearance).
  * Hand-made numbers (the presets) keep their hand-made part; the other jutsu stay as they are, and of
  * the look only that old burst, the headband plate, the slender body and the neck change. A sheet that is already today's comes back as it is.
  */

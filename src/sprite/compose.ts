@@ -6,16 +6,18 @@ import { hexToRgb } from './color';
 import { Depth, DEPTHS, DrawCtx, ItemDef, NO_OUTLINE_DEPTHS, resolveParts } from './ctx';
 import { closePinholes } from './holes';
 import { fillSeams } from './seams';
+import { paintedFrame, wearsHisFigure } from './ownerFrames';
 import { clipStowed, drawThrowKunai } from './items/accessories';
 import { CAPE_DEPTHS } from './items/capes';
 import { drawHeadband } from './items/headband';
-import { add, F_NO_OUTLINE, GRID, Layer, MaterialTable, norm, PAD, PartId, partIndex, PARTS, perp, RES, scale, sub, v, Vec } from './raster';
+import { add, F_NO_OUTLINE, F_NO_TEXTURE, GRID, Layer, MaterialTable, norm, PAD, PartId, partIndex, PARTS, perp, RES, scale, sub, v, Vec } from './raster';
 import { drawRig, Lay, layRig, Rig, rigPoseFor, turnPoint, turnRig } from './rig';
+import { carryHead } from './neck';
 import { drawCampFx } from './campfx';
 import { drawCastFx } from './castfx';
 import { sealCloth } from './seal';
 import { applyTexture, frayHair } from './texture';
-import type { EyeSpecial, PixelEdit, SlotId, SpriteAppearance, SpritePose } from './types';
+import { isFemaleBody, type EyeSpecial, type PixelEdit, type SlotId, type SpriteAppearance, type SpritePose } from './types';
 
 export interface SpriteFrame {
   rgba: Uint8ClampedArray;
@@ -226,9 +228,11 @@ function restore(L: Layer, s: ReturnType<typeof snapshot>): void {
  * is drawn over another (arm over the chest, belt over the shirt, scarf over
  * the armor, torso over the far arm, near leg over the far leg), the back part
  * is one shade darker for a pixel to the right and two rows below the front
- * part's outline. Skips outlines, flat and glowing colors, and the face.
+ * part's outline. Skips outlines, flat and glowing colors, and the face; with `keepPainted` (the female
+ * bodies, the owner's standard) also every hand-painted pixel (F_NO_TEXTURE: his hands, his shoulder, a
+ * heroine's skin pieces), whose shades are his.
  */
-function dropShadows(top: Int16Array, mat: Int16Array, shade: Uint8Array, flags: Uint8Array, mats: MaterialTable): void {
+function dropShadows(top: Int16Array, mat: Int16Array, shade: Uint8Array, flags: Uint8Array, mats: MaterialTable, keepPainted = false): void {
   const noCast = DEPTHS.map((d) => NO_CAST.has(d));
   const headBody = DEPTHS.indexOf('head.body');
   const headFace = DEPTHS.indexOf('head.face');
@@ -239,6 +243,7 @@ function dropShadows(top: Int16Array, mat: Int16Array, shade: Uint8Array, flags:
       const d = top[i];
       if (d < 0 || shade[i] < 2 || d === headFace) continue;
       if (d === headBody && flags[i] & F_NO_OUTLINE) continue; // the face template
+      if (keepPainted && flags[i] & F_NO_TEXTURE) continue;
       const kind = mats.kinds[mat[i]];
       if (kind === 'flat' || kind === 'glow') continue;
       for (const [dx, dy] of SHADOW_FROM) {
@@ -253,16 +258,19 @@ function dropShadows(top: Int16Array, mat: Int16Array, shade: Uint8Array, flags:
   for (const i of marks) shade[i] -= 1;
 }
 
-export function renderSprite(
-  look: SpriteAppearance,
-  pose: SpritePose,
-  frame: number,
-  eyeSpecial: EyeSpecial = 'none',
-  opts: { skipEdits?: boolean; heldOnly?: Rig; depths?: ReadonlySet<Depth> } = {},
-): SpriteFrame {
+/**
+ * Every layer of a frame as drawn, before the outlines and the flattening (renderSprite does those):
+ * for tests that look at one part of the figure on its own (an arm, a leg) whatever covers it.
+ */
+export function spriteLayers(look: SpriteAppearance, pose: SpritePose, frame: number, eyeSpecial: EyeSpecial = 'none'): { layers: Map<Depth, Layer>; rig: Rig; mats: MaterialTable } {
+  const { layers, rig, mats } = drawLayers(look, pose, frame, eyeSpecial);
+  return { layers, rig, mats };
+}
+
+function drawLayers(look: SpriteAppearance, pose: SpritePose, frame: number, eyeSpecial: EyeSpecial, heldOnly?: Rig) {
   // heldOnly: just the held item (or the kunai bare hands throw) on that rig, no body (sprite/thrown.ts).
-  // depths: only these layers are shown (tests look at one limb alone, nothing in front of it).
-  const rig = opts.heldOnly ?? drawRig(look.body, rigPoseFor(pose, look.cast?.style, look.stowed ? undefined : look.slots.held?.id), frame);
+  // (the long neck carries the head higher and further forward: neck.ts)
+  const rig = heldOnly ?? carryHead(drawRig(look.body, rigPoseFor(pose, look.cast?.style, look.stowed ? undefined : look.slots.held?.id), frame, look.arms), look.neck);
   const mats = new MaterialTable();
   const layers = new Map<Depth, Layer>();
   const equipped = new Map<SlotId, ItemDef>();
@@ -290,14 +298,14 @@ export function renderSprite(
     },
     m: (hex, kind = 'cloth') => mats.get(hex, kind),
     pen: (hex, kind, part, bias = 0, flags = 0) => ({ mat: mats.get(hex, kind), part, bias, flags }),
-    skin: mats.get(look.skin, 'skin'),
+    skin: mats.get(look.skin, isFemaleBody(look.body) ? 'skinF' : 'skin'),
     has: (slot, id) => {
       const d = equipped.get(slot);
       return !!d && (id === undefined || d.id === id);
     },
   };
 
-  if (opts.heldOnly) {
+  if (heldOnly) {
     const def = equipped.get('held');
     const choice = look.slots.held;
     if (def && choice && !look.stowed) def.draw(g, resolveColors(def, choice.colors), resolveParts(def, choice.parts));
@@ -334,6 +342,18 @@ export function renderSprite(
     if (rig.farHandFront) farHandToFront(layers, g);
     guardFace(g, layers);
   }
+  return { layers, rig, mats };
+}
+
+export function renderSprite(
+  look: SpriteAppearance,
+  pose: SpritePose,
+  frame: number,
+  eyeSpecial: EyeSpecial = 'none',
+  opts: { skipEdits?: boolean; heldOnly?: Rig; depths?: ReadonlySet<Depth> } = {},
+): SpriteFrame {
+  // depths: only these layers are shown (tests look at one limb alone, nothing in front of it).
+  const { layers, rig, mats } = drawLayers(look, pose, frame, eyeSpecial, opts.heldOnly);
 
   // Outline and flatten
   const rgba = new Uint8ClampedArray(GRID * GRID * 4);
@@ -369,7 +389,7 @@ export function renderSprite(
       part[i] = L.part[i];
     }
   });
-  dropShadows(top, topMat, topShade, topFlags, mats);
+  dropShadows(top, topMat, topShade, topFlags, mats, isFemaleBody(look.body));
   const isLine = new Uint8Array(N);
   for (let i = 0; i < N; i++) {
     if (topMat[i] < 0) continue;
@@ -382,8 +402,9 @@ export function renderSprite(
   }
   thinDoubleOutlines(rgba, top, isLine);
   // The 1-pixel holes turned pieces leave (sprite/holes.ts), each closed with its neighbours' line or
-  // colour. Idle is left exactly as drawn: it is the frame the owner's pictures were copied into.
-  if (pose !== 'idle') closePinholes(rgba, part, top, (i) => top[i] === FX, (i) => (topMat[i] < 0 ? 0x07060b : parseInt(mats.ramps[topMat[i]][0].slice(1), 16)));
+  // colour. Idle is left exactly as drawn: it is the frame the owner's pictures were copied into; so are
+  // the frames he painted himself (his Lyra reading, sitting and throwing, ownerFrames.ts).
+  if (pose !== 'idle' && !(wearsHisFigure(look) && paintedFrame(rig.pose, rig.frame))) closePinholes(rgba, part, top, (i) => top[i] === FX, (i) => (topMat[i] < 0 ? 0x07060b : parseInt(mats.ramps[topMat[i]][0].slice(1), 16)));
   const hair = new Uint8Array(N >> 3);
   const fx = new Uint8Array(N >> 3);
   for (let i = 0; i < N; i++) {

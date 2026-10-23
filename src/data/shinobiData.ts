@@ -1763,6 +1763,84 @@ export const LEGENDARY_PRESETS: { name: string; tag: string; nameEs?: string; ta
       }),
     },
   },
+  // ── Heroine: Lyra (begin) ──────────────────────────────────────────────────────────────────────
+  // The owner's first heroine, copied 1:1 from his picture of her at our scale
+  // (docs/reference/lyra-game-scale-owner-reference.jpg) part by part: hair, eyes, blouse, corset,
+  // skirt, tabard, belt, boots and rapier, each its own creator item in his colours (her skin is his,
+  // so the bare thigh above the boots is his pixels). Name and title are provisional (the owner will
+  // rename her). Her numbers are the creator's formula; Koton's bonus (CON, INT) adds 5 max HP and 1
+  // max chakra. Wind chakra (a cutting wind, like her kenjutsu) in the cyan of her blade.
+  {
+    name: 'Lyra, the Gilded Blade',
+    tag: 'Gilded Corset · Gilded Rapier',
+    nameEs: 'Lyra, la Espada Dorada',
+    tagEs: 'Corsé dorado · Estoque dorado',
+    character: {
+      id: 'preset_lyra',
+      name: 'Lyra',
+      title: 'The Gilded Blade',
+      level: 5,
+      clan: 'Koton',
+      shinobiClass: 'Bukijutsu Master',
+      stats: { str: 13, dex: 18, con: 14, int: 12, wis: 12, cha: 14 },
+      palette: {
+        skinTone: '#fbc9aa',
+        hairColor: '#a33f27',
+        eyeColor: '#45b476',
+        armorPrimary: '#362324',
+        armorSecondary: '#db9b41',
+        clothColor: '#f2e2c0',
+        headbandCloth: '#454350',
+        headbandPlate: '#cbd5e1',
+        chakraAuraColor: '#40cccb',
+        accentColor: '#81152c',
+      },
+      hairstyle: 'Sephiroth Parted Flow',
+      armorStyle: 'Samurai O-Yoroi',
+      headbandPosition: 'Forehead',
+      weaponStyle: 'Katana Blade',
+      capeStyle: 'None',
+      dojutsu: 'None',
+      selectedFeats: ['one_handed_seals', 'sharingan_precog'],
+      selectedJutsus: {
+        slot1Utility: 'substitution_kawarimi',
+        slot2Elemental: 'wind_blade_daitoppa',
+        slot3Elemental: 'crescent_moon_dance',
+        slot4Clan: 'adamantine_sealing_chains',
+        slot5Ultimate: 'rasenshuriken_wind',
+      },
+      sheetVersion: 2,
+      maxHp: 49,
+      currentHp: 49,
+      maxChakra: 33,
+      currentChakra: 33,
+      armorClass: 18,
+      speed: 6,
+      jutsuSaveDC: 15,
+      jutsuAttackBonus: 7,
+      appearance: spriteLook({
+        body: 'female',
+        skin: '#fbc9aa',
+        eyeShape: 'keen',
+        eyeColor: '#45b476',
+        neck: 'long',
+        arms: 'long',
+        faceShape: 'fine',
+        slots: {
+          hair: it('hair_copper_braid'),
+          top: it('top_offshoulder_blouse'),
+          armor: it('armor_gilded_corset'),
+          bottom: it('bottom_striped_pleats'),
+          skirt: it('skirt_gilded_tabard'),
+          waist: it('waist_pouch_belt'),
+          feet: it('feet_gilded_thigh_boots'),
+          held: it('held_gilded_rapier'),
+        },
+        chakra: { color: 'green', tint: '#40cccb', onCharge: true, onCast: true, onVictory: true }, // Wind, in the cyan of her blade
+      }),
+    },
+  },
+  // ── Heroine: Lyra (end) ────────────────────────────────────────────────────────────────────────
 ];
 
 export const DEFAULT_CHARACTER: ShinobiCharacter = LEGENDARY_PRESETS[0].character;

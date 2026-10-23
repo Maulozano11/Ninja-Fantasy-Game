@@ -7,12 +7,14 @@ import { retintHex } from '../color';
 import { DrawCtx, FootArt, footDraw, ItemDef, legDepth, legJoints, legPoint, Side } from '../ctx';
 import type { BodyType } from '../types';
 import { continuedTo, limbOnly, type PaintedPiece, segAngle, stampPiece } from '../painted';
+import { ankleLiftOf } from '../rig';
 import { add, along, ellipse, GRID, norm, partIndex, Pen, RES, seam, sub, v, type Vec } from '../raster';
 import { across, crease, fpx, limb, limbR, stitch, stud, tube, wrapStripes } from './clothes';
 import { closeAnkle, footTurn, shinCarried } from './ankle';
 import { founderLegLen, founderLegOut, founderLegsStill } from './founderOut';
 import { FOUNDER_SANDAL_FOOT_F, FOUNDER_SANDAL_FOOT_N, FOUNDER_SANDAL_KIND, FOUNDER_SANDAL_LEATHER, FOUNDER_SANDAL_SHIN_F, FOUNDER_SANDAL_SHIN_N, FOUNDER_SANDAL_SKIN } from './founderSandalsArt';
 import { ROMAN_KIT_KIND, SANDAL_FOOT_F, SANDAL_FOOT_N, SANDAL_LEATHER, SANDAL_SHIN_F, SANDAL_SHIN_N, SANDAL_SKIN } from './bracersSandalsArt';
+import { LYRA_BOOTS } from './lyraBoots';
 import { BOOT_STEEL, BOOT_TRIM, crimsonKind, SABATON_FOOT_F, SABATON_FOOT_N, SABATON_SHIFT, SABATON_SHIN_F, SABATON_SHIN_N } from './sabatonsGauntletsArt';
 
 type Kind = 'cloth' | 'leather' | 'metal';
@@ -485,7 +487,8 @@ export const FEET_ITEMS: ItemDef[] = [
         // His ankle, carried round with the shin (shinCarried): his greave, turned about our knee, and his
         // sabaton meet there in every pose as at rest; lifted well off the ground the sabaton turns with the shin.
         const [dx, dy] = SABATON_SHIFT[s];
-        const at = add(ankle, shinCarried(g, s, dx, dy));
+        // A body standing on lower ankles (the female bodies' small feet) keeps his sabaton on the ground.
+        const at = add(ankle, add(shinCarried(g, s, dx, dy), v(0, -ankleLiftOf(g.bp, s))));
         const shin = s === 'N' ? SABATON_SHIN_N : SABATON_SHIN_F;
         const foot = s === 'N' ? SABATON_FOOT_N : SABATON_FOOT_F;
         stampPiece(g, legDepth(s, 'feet'), shin, at, segAngle(knee, ankle), `shin${s}`, tint);
@@ -550,4 +553,6 @@ export const FEET_ITEMS: ItemDef[] = [
       }
     },
   },
+  // Lyra's thigh-high boots, the owner's pixels (items/lyraBoots.ts)
+  LYRA_BOOTS,
 ];

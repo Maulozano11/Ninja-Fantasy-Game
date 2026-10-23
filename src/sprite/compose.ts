@@ -4,6 +4,7 @@ import { drawBody, faceCells, sculptClothes } from './body';
 import { fitsBody, getItem } from './catalog';
 import { hexToRgb } from './color';
 import { Depth, DEPTHS, DrawCtx, ItemDef, NO_OUTLINE_DEPTHS, resolveParts } from './ctx';
+import { mendGlitches } from './glitches';
 import { closePinholes } from './holes';
 import { clipStowed, drawThrowKunai } from './items/accessories';
 import { joinFlat, openJoint } from './items/ankle';
@@ -386,7 +387,17 @@ export function renderSprite(
   thinDoubleOutlines(rgba, top, isLine);
   // The 1-pixel holes turned pieces leave (sprite/holes.ts), each closed with its neighbours' line or
   // colour. Idle is left exactly as drawn: it is the frame the owner's pictures were copied into.
-  if (pose !== 'idle') closePinholes(rgba, part, top, (i) => top[i] === FX, (i) => (topMat[i] < 0 ? 0x07060b : parseInt(mats.ramps[topMat[i]][0].slice(1), 16)));
+  const lineOf = (i: number) => (topMat[i] < 0 ? 0x07060b : parseInt(mats.ramps[topMat[i]][0].slice(1), 16));
+  if (pose !== 'idle') closePinholes(rgba, part, top, (i) => top[i] === FX, lineOf);
+  // The owner's standard characters (2026-10-23: "quiero que arregles solo los de la calidad standard"): off
+  // his pictures, the pockets, cracks and light edge pixels their moved pieces open are closed (glitches.ts).
+  if (pose !== 'idle' && standardLook(look)) {
+    // (his open-toed boots' bare toes are light to their tip as he drew them: kept)
+    const toes = look.slots.feet?.id === 'feet_cowboy' ? new Set([partIndex('footN'), partIndex('footF')]) : new Set<number>();
+    mendGlitches(rgba, part, top, (i) => top[i] === FX, lineOf, (i) => toes.has(part[i]));
+    hisLine(rgba, part, top);
+    dropLooseBits(rgba, part, top);
+  }
   const hair = new Uint8Array(N >> 3);
   const fx = new Uint8Array(N >> 3);
   for (let i = 0; i < N; i++) {
@@ -440,6 +451,81 @@ function layFrame(rgba: Uint8ClampedArray, part: Uint8Array, hair: Uint8Array, l
  * layer's own fill, so the two never stack into a 2px dark line. Silhouette
  * outlines (next to transparency) are always kept.
  */
+/** A look of the owner's standard characters on this branch: his Trunks 2 (shirt, cargo trousers) and Trunks 3 (bomber, belted trousers). */
+function standardLook(look: SpriteAppearance): boolean {
+  const top = look.slots.top?.id;
+  const bottom = look.slots.bottom?.id;
+  return (top === 'top_highcollar' && bottom === 'bottom_cargo') || (top === 'top_bomber' && bottom === 'bottom_leggings');
+}
+
+/**
+ * The pixels of the figure the mends gave our outline (closing a hole or an edge with no line beside it)
+ * take his line instead: the nearest pixel of his black line up to 4 px away (on the same part first), so
+ * his pieces stay in his colours. The effects, the held weapon and our head are left as they are.
+ */
+function hisLine(rgba: Uint8ClampedArray, part: Uint8Array, top: Int16Array): void {
+  const ours = (i: number) => rgba[i * 4] === 0x07 && rgba[i * 4 + 1] === 0x06 && rgba[i * 4 + 2] === 0x0b;
+  const dark = (i: number) => rgba[i * 4 + 3] > 0 && Math.max(rgba[i * 4], rgba[i * 4 + 1], rgba[i * 4 + 2]) + Math.min(rgba[i * 4], rgba[i * 4 + 1], rgba[i * 4 + 2]) <= 102;
+  // (our own outline round the held weapon and our head stays ours)
+  const keep = new Set(['held', 'head', 'none'].map((p) => partIndex(p as PartId)));
+  const todo: number[] = [];
+  for (let i = 0; i < GRID * GRID; i++) if (rgba[i * 4 + 3] && top[i] !== FX && !keep.has(part[i]) && ours(i)) todo.push(i);
+  // (a run of them takes his line from its ends inward: a few rounds, each from what the last one left)
+  for (let round = 0; round < 4 && todo.length; round++) {
+    const done: [number, number][] = [];
+    for (const i of todo) {
+      const x0 = i % GRID;
+      const y0 = Math.floor(i / GRID);
+      let best = -1;
+      let bd = Infinity;
+      for (let y = Math.max(0, y0 - 4); y <= Math.min(GRID - 1, y0 + 4); y++)
+        for (let x = Math.max(0, x0 - 4); x <= Math.min(GRID - 1, x0 + 4); x++) {
+          const j = y * GRID + x;
+          // (a line of another part counts a pixel further off than one of its own)
+          const d = Math.hypot(x - x0, y - y0) + (part[j] === part[i] ? 0 : 1);
+          if (j !== i && dark(j) && !ours(j) && d < bd) (best = j), (bd = d);
+        }
+      if (best >= 0) done.push([i, best]);
+    }
+    for (const [i, j] of done) for (let c = 0; c < 3; c++) rgba[i * 4 + c] = rgba[j * 4 + c];
+    const left = new Set(done.map(([i]) => i));
+    todo.splice(0, todo.length, ...todo.filter((i) => !left.has(i)));
+  }
+}
+
+/** The biggest bit of a piece left loose from the figure that is taken away (a cuff's corner cut off by its turn). */
+const LOOSE_BIT = 6;
+
+/** Takes away the few-pixel bits apart from the figure (8-connected), but the held weapon's (a blade's glints) and the effects'. */
+function dropLooseBits(rgba: Uint8ClampedArray, part: Uint8Array, top: Int16Array): void {
+  const N = GRID * GRID;
+  const seen = new Uint8Array(N);
+  const held = partIndex('held');
+  const pieces: number[][] = [];
+  for (let i = 0; i < N; i++) {
+    if (seen[i] || !rgba[i * 4 + 3]) continue;
+    const g: number[] = [];
+    const stack = [i];
+    seen[i] = 1;
+    while (stack.length) {
+      const j = stack.pop()!;
+      g.push(j);
+      const x = j % GRID;
+      for (let dy = -1; dy <= 1; dy++)
+        for (let dx = -1; dx <= 1; dx++) {
+          const k = j + dy * GRID + dx;
+          if ((!dx && !dy) || x + dx < 0 || x + dx >= GRID || k < 0 || k >= N || seen[k] || !rgba[k * 4 + 3]) continue;
+          seen[k] = 1;
+          stack.push(k);
+        }
+    }
+    pieces.push(g);
+  }
+  const main = pieces.reduce((m, g) => (g.length > m.length ? g : m), pieces[0] ?? []);
+  for (const g of pieces)
+    if (g !== main && g.length <= LOOSE_BIT && !g.some((i) => part[i] === held || top[i] === FX)) for (const i of g) rgba[i * 4 + 3] = 0;
+}
+
 function thinDoubleOutlines(rgba: Uint8ClampedArray, top: Int16Array, isLine: Uint8Array): void {
   const N = GRID * GRID;
   const fixes: [number, number][] = [];

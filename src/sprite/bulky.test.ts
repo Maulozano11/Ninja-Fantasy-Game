@@ -583,6 +583,49 @@ describe("his shirt on the normal male, in the Roman's style", () => {
   });
 });
 
+describe('the read on the bulky body', () => {
+  /**
+   * The top of the near upper arm (his shoulder and the shirt's sleeve over it) in each column of the
+   * torso's frame: columns across the torso and heights up it, both from the neck, in fine pixels.
+   */
+  const shoulderTop = (look: SpriteAppearance, pose: SpritePose, fr: number) => {
+    const f = renderSprite(look, pose, fr);
+    const r = f.rig;
+    const u = Math.hypot(r.up.x, r.up.y);
+    const [ux, uy] = [r.up.x / u, r.up.y / u];
+    const top = new Map<number, number>();
+    for (let i = 0; i < GRID * GRID; i++) {
+      if (!f.rgba[i * 4 + 3] || PARTS[f.part[i]] !== 'upperArmN') continue;
+      const x = (i % GRID) - r.neck.x * RES;
+      const y = Math.floor(i / GRID) - r.neck.y * RES;
+      const col = Math.round(-x * uy + y * ux);
+      top.set(col, Math.max(top.get(col) ?? -Infinity, Math.round(x * ux + y * uy)));
+    }
+    return { top, rig: r };
+  };
+  it("the near shoulder sits on the torso: behind its joint it rises no higher than at rest (the owner, 2026-10-23: 'desfasado del cuerpo para arriba')", () => {
+    for (const look of [his('bulky'), bare()]) {
+      const rest = [shoulderTop(look, 'idle', 0), shoulderTop(look, 'sit', 0)];
+      // the column of the shoulder joint at rest: from just before it back lies the back of his shoulder
+      const r0 = rest[0].rig;
+      const u0 = Math.hypot(r0.up.x, r0.up.y);
+      const joint = Math.round((-(r0.shoulderN.x - r0.neck.x) * r0.up.y + (r0.shoulderN.y - r0.neck.y) * r0.up.x) * (RES / u0));
+      for (let fr = 0; fr < frameCount(rigPoseFor('read')); fr++) {
+        const { top } = shoulderTop(look, 'read', fr);
+        let back = 0;
+        for (const [col, h] of top) {
+          if (col > joint + 2) continue;
+          const atRest = Math.max(...rest.map((m) => m.top.get(col) ?? -Infinity));
+          if (atRest === -Infinity) continue;
+          back++;
+          assert.ok(h <= atRest + 1, `${look.slots.top ? 'dressed' : 'bare'} read ${fr}: ${h} px up the torso ${-col} px behind the neck, ${atRest} at rest`);
+        }
+        assert.ok(back >= 3, `read ${fr}: ${back} columns of the back of the shoulder compared`);
+      }
+    }
+  });
+});
+
 function hexRgb(h: string): number[] {
   return [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
 }

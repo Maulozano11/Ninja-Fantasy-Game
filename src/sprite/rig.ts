@@ -1367,7 +1367,14 @@ function solveRig(body: BodyType, pose: RigPose, frame: number, f: PoseFrame): R
   const chestDy = f.chestDy || 0;
   const neck = add(T(0.6, bp.torsoLen), v(0, chestDy));
   const drop = bp.shoulderDrop ?? 2.2;
-  const shoulderN = add(T(-bp.shoulderHalf * 0.82, bp.torsoLen - drop), v(0, chestDy));
+  // Reading on a body of `readShift`, the near shoulder comes forward with the book as far as the book came
+  // (along the torso): reaching across the chest to it from where it rests, the upper arm would swing so far
+  // forward that the back of its shoulder rose off the torso (the owner on the bulky read, 2026-10-23: "tiene
+  // el hombro derecho del personaje desfasado del cuerpo para arriba"); from there its upper arm leans as far
+  // forward of the torso as the male's does under his book (about 7 degrees), and the shoulder sits on the
+  // torso as in his sit.
+  const readReach = pose === 'read' && bp.readShift ? bp.readShift[0] / RES : 0;
+  const shoulderN = add(T(-bp.shoulderHalf * 0.82 + readReach, bp.torsoLen - drop), v(0, chestDy));
   const shoulderF = add(T(bp.shoulderHalf * 0.55, bp.torsoLen - drop), v(0, chestDy));
   const chestFront = add(T(bp.chestHalf * 0.5, bp.torsoLen - 6), v(0, chestDy));
 

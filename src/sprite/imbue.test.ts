@@ -6,7 +6,9 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { DEFAULT_CHARACTER } from '../data/shinobiData';
 import { getAppearance } from './legacy';
-import { bladeOf, IMBUE_FX, IMBUE_LOOP, renderImbue, waterReachPx } from './imbue';
+import { bladeOf, IMBUE_FX, IMBUE_LOOP, imbueLayers, renderImbue, waterReach, waterReachPx } from './imbue';
+import { frameCount, rigPoseFor } from './rig';
+import { CAMP_POSES, MOVE_POSES, SPRITE_POSES } from './types';
 import { GRID } from './raster';
 
 const look = getAppearance(DEFAULT_CHARACTER);
@@ -55,8 +57,11 @@ describe('the five elements on it', () => {
 
   it('water reaches past the tip: the longer reach', () => {
     const w = renderImbue('water', 0, b).front;
-    const ext = waterReachPx(b);
-    assert.ok(ext >= 16);
+    // the owner: "hazlo unos 1.35 mas largo": the whole water 1.35 times its first length (half the blade past the tip)
+    const len = b.tip - b.start;
+    assert.equal(waterReachPx(b), Math.round(1.35 * (len + Math.max(16, Math.min(24, len * 0.45 + 4))) - len));
+    const ext = waterReach(b);
+    assert.ok(ext >= 30 && ext <= waterReachPx(b), `${ext}`);
     let far = 0;
     for (let i = 0; i < GRID * GRID; i++) {
       if (!w[i * 4 + 3]) continue;
@@ -69,6 +74,29 @@ describe('the five elements on it', () => {
     let farFire = 0;
     for (let i = 0; i < GRID * GRID; i++) if (fire[i * 4 + 3]) farFire = Math.max(farFire, ((i % GRID) + 0.5 - b.hx) * b.dx + (((i / GRID) | 0) + 0.5 - b.hy) * b.dy);
     assert.ok(farFire < b.tip + 8);
+  });
+
+  it('the longer water stays inside the frame in every pose and frame, one length where the blade barely turns', () => {
+    for (const pose of [...SPRITE_POSES, ...MOVE_POSES, ...CAMP_POSES]) {
+      for (let f = 0; f < frameCount(rigPoseFor(pose)); f++) {
+        const w = imbueLayers(look, pose, f, 'water', 3);
+        if (!w) continue;
+        for (let x = 0; x < GRID; x++)
+          for (const y of [0, GRID - 1]) {
+            assert.equal(w.front[(y * GRID + x) * 4 + 3], 0, `${pose} ${f}: water on the frame's edge`);
+            assert.equal(w.front[(x * GRID + y) * 4 + 3], 0, `${pose} ${f}: water on the frame's edge`);
+          }
+      }
+    }
+    // walking, Solen's sword keeps one length of water (the frame's edge near its tip in some frames)
+    const walk = [0, 1, 2, 3].map((f) => {
+      const b = bladeOf(look, 'walk', f)!;
+      const w = imbueLayers(look, 'walk', f, 'water', 0)!.front;
+      let far = 0;
+      for (let i = 0; i < GRID * GRID; i++) if (w[i * 4 + 3]) far = Math.max(far, ((i % GRID) + 0.5 - b.hx) * b.dx + (((i / GRID) | 0) + 0.5 - b.hy) * b.dy - b.tip);
+      return Math.round(far);
+    });
+    assert.ok(Math.max(...walk) - Math.min(...walk) <= 2, walk.join(' '));
   });
 
   it('obsidian is solid: the characters\' black line round it, and it keeps its colours in any chakra colour', () => {

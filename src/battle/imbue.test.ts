@@ -90,10 +90,9 @@ const damages = (ev: BattleEvent[], unit: string) => ev.filter((e): e is Extract
 
 describe('Weapon Element Enhancement: who has it', () => {
   it('a Bukijutsu Master of one of the five elements, never another class or a nature with no element (no genjutsu)', () => {
-    for (const n of ['Fire', 'Wind', 'Lightning', 'Earth'] as const) assert.deepEqual(classAbilities('Bukijutsu Master', n), [WEAPON_ELEMENT], n);
-    // water waits for the owner's yes on its effect ("menos la de agua")
-    assert.deepEqual(classAbilities('Bukijutsu Master', 'Water'), []);
-    assert.deepEqual([...IMBUE_PENDING], ['Water']);
+    for (const n of ['Fire', 'Water', 'Wind', 'Lightning', 'Earth'] as const) assert.deepEqual(classAbilities('Bukijutsu Master', n), [WEAPON_ELEMENT], n);
+    // water's new effect comes with it (vfx/weapon-water-v2): no element waits
+    assert.deepEqual([...IMBUE_PENDING], []);
     for (const n of ['Light', 'Void', 'Shadow', 'Spirit', 'Genjutsu'] as const) assert.deepEqual(classAbilities('Bukijutsu Master', n), [], n);
     for (const c of ['Ninjutsu Specialist', 'Taijutsu Master', 'Genjutsu Adept', 'Medical Specialist']) assert.deepEqual(classAbilities(c, 'Fire'), [], c);
     assert.equal(imbueElementOf('Genjutsu'), null);
@@ -328,8 +327,8 @@ describe("Weapon Element Enhancement: the second element too (the owner: \"tambi
     const light = unitFrom(two('Wind', true, 'Light'), at);
     assert.ok(light.jutsus.includes(WEAPON_ELEMENT));
     assert.deepEqual(unitImbueElements(light), ['Wind']);
-    // Water waits for the owner's yes on its effect (IMBUE_PENDING) as a second element too.
-    if (IMBUE_PENDING.includes('Water')) assert.deepEqual(unitImbueElements(unitFrom(two('Water'), at)), ['Fire']);
+    // Water, approved ("me gusta agua aprovado"), as a second element too.
+    assert.deepEqual(unitImbueElements(unitFrom(two('Water'), at)), ['Fire', 'Water']);
   });
 
   it('the player chooses which, one at a time; an element it does not have is refused', () => {

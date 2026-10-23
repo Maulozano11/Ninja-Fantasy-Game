@@ -289,15 +289,21 @@ D21 and D24 there):
 
 ## Class abilities in battle
 
-### Weapon Element Enhancement (the owner, 2026-10-23; in the game since 2026-10-23, water held back)
+### Weapon Element Enhancement (the owner, 2026-10-23; in the game since 2026-10-23, every element)
 
 **His answer on the effects (2026-10-23), verbatim:** *"me gusta las armas con mejora elemental metelas en el
 juego menos la de agua se ve mal y no de calidad mejorala para que se ve mas epica y proporcional y los iconos
 que hiciste para la hotbar no me gustaron los mejorare"*.
 - Lightning, wind, fire and earth on the weapon are **approved** and in the game.
-- Water is **not approved**: until he approves a better one (more epic, in proportion to the weapon and the
-  character; redone on `vfx/weapon-water-v2`), a Water Bukijutsu Master has no button for it
-  (`IMBUE_PENDING` in `src/battle/imbue.ts`); its rules (the longer reach, the flames put out) stay for then.
+- Water: the first one was **not approved**; redone on `vfx/weapon-water-v2` as a torrent drawn as his water
+  stream is (his water sheet: his blues, a light strand running along it, white foam caps breaking on the
+  crests of waves that run along its upper edge, a rounded head of foam, his spray dots, drops falling), his
+  dark water line round it. Then his *"al de agua hazlo mas largo para que se entienda la extension de alcance
+  hazlo unos 1.35 mas largo"*: the whole water 1.35 times as long, past the tip about the blade again (46 to
+  48 px on Solen's and Ren's blades), short of the frame's edge where the blade points near it (the lunge, a
+  cut, hurt), one length over a pose where the blade barely turns (at rest, walking, running). **Approved**
+  (2026-10-23, *"me gusta agua aprovado"*) and in the game: water is offered again (`IMBUE_PENDING` in
+  `src/battle/imbue.ts` is empty), as a main or a second element.
 - The hotbar icons: he did not like ours (the element icons the button shows); **he will paint them himself**.
   Ours stay on the button only until his arrive.
 
@@ -312,7 +318,7 @@ que hiciste para la hotbar no me gustaron los mejorare"*.
    put either of its elements on the weapon, one at a time. The hotbar shows a button for each ("Arma
    elemental · Fuego", "Arma elemental · Rayo"), in its element's colour; with one element, one button as
    before. A ninja whose type has no element (Light, Void) but whose second element is one has it for that
-   one. Water stays held back as a second element too while it waits for his yes. The AI picks: water when
+   one. The AI picks: water when
    only its longer reach brings the foe within a blow this turn; not fire at a foe already burning or
    standing in the wet, nor water at a burning foe; otherwise its chakra type's (`imbueChoice` in
    `src/battle/ai.ts`; `unitImbueElements`, `imbueNaturesOf` in `src/battle/imbue.ts`).
@@ -382,9 +388,8 @@ tongues of flame rise off the blade's upper edge and sway, the steel glows under
 embers fly up. Lightning: two bolts fork along the blade and crackle off it, new forks
 every tick, his deep-blue ring and glow. Wind: two strands turn round the blade like a
 helix (the far half behind the figure), dashes running to the tip, small crescents
-flicked off it. Water: a sheath of water along the blade, then a longer blade of water
-past the tip (about two thirds of the blade again: the longer reach, not to scale),
-with his water line, bands of light flowing to the tip and drops falling. Earth: teeth
+flicked off it. Water (approved after its redo, above): a torrent along the blade and a longer blade of water
+past the tip (the longer reach, not to scale), with his water line. Earth: teeth
 of black obsidian along both edges and a point past the tip, glass catching the light
 on their edges, a glint running along them. Energy carries his element's darkest tone
 at its edge, no black line; the obsidian is solid and carries the characters' black

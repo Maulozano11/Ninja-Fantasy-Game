@@ -5,7 +5,7 @@
 
 import type { BattleEvent, BattleState, Cell, Pt, Unit } from './types';
 import { cellCenter, cellOf, dist, gridFor, hideSpotAt, lineOfSight, getMap, propRules, levelAtPt } from './map';
-import { pathCost, reachable, canStop, pathTo, stepCost } from './nav';
+import { countStep, reachable, canStop, pathTo, unitStepCost, walkCost } from './nav';
 import { passivePerception } from './combat';
 import { startCombat } from './turns';
 
@@ -137,7 +137,8 @@ export function stealthMove(s: BattleState, u: Unit, path: Cell[], ev: BattleEve
   let cost = 0;
   let stopped = false;
   for (const c of path) {
-    cost += stepCost(s, at, c, at.c !== c.c && at.r !== c.r, rules);
+    cost += unitStepCost(s, u, at, c, rules);
+    countStep(u, at, c);
     at = c;
     const p = cellCenter(c);
     if (p.x !== u.pos.x) u.facing = p.x > u.pos.x ? 1 : -1;
@@ -231,8 +232,10 @@ export function dragBody(s: BattleState, u: Unit, bodyId: string, to: Cell, ev: 
   if (!canStop(s, u, to)) return 'blocked';
   const path = pathTo(s, reach, to);
   if (!path || !path.length) return 'tooFar';
-  const cost = pathCost(s, u, path, { dragging: true });
+  const { total: cost, odd } = walkCost(s, u, path, { dragging: true });
   if (cost > u.turn.move + 1e-6) return 'tooFar';
+  if (odd) u.turn.diag = 1;
+  else delete u.turn.diag;
   const pts = path.map(cellCenter);
   u.pos = pts[pts.length - 1];
   u.turn.move -= cost;

@@ -10,7 +10,7 @@ import { Rng, rngFor, rollDie } from '../rules/rng';
 import { SHINOBI_CLASSES } from '../data/shinobiData';
 import type { BattleEvent, BattleState, DamageType, Pt, RollInfo, Unit } from './types';
 import { homeTeam } from './types';
-import { coverBetween, dist, fullCoverBetween, hideSpotAt, levelAtPt, lineOfSight, steamAt } from './map';
+import { coverBetween, dist, fullCoverBetween, heightReach, hideSpotAt, levelAtPt, lineOfSight, steamAt, tooHigh } from './map';
 import { KUNAI, KUNAI_LONG, wielded } from './units';
 
 /** The next dice stream of the battle. */
@@ -126,7 +126,7 @@ export interface AttackPreview {
 function flanked(s: BattleState, attacker: Unit, target: Unit): boolean {
   for (const ally of Object.values(s.units)) {
     if (ally.id === attacker.id || ally.team !== attacker.team || !standing(ally)) continue;
-    if (dist(ally.pos, target.pos) > wielded(ally).reach + 0.1) continue;
+    if (dist(ally.pos, target.pos) > wielded(ally).reach + 0.1 || tooHigh(s, ally.pos, target.pos)) continue;
     // An ally behind a metal wall can't strike the target.
     if (fullCoverBetween(s, ally.pos, target.pos)) continue;
     const a1 = Math.atan2(attacker.pos.z - target.pos.z, attacker.pos.x - target.pos.x);
@@ -174,12 +174,16 @@ export function attackPreview(s: BattleState, a: Unit, t: Unit, kind: AttackKind
     const w = kind === 'ranged' ? KUNAI : wielded(a);
     const ab = kind === 'ranged' ? abilityMod(a.stats.dex) : w.finesse ? Math.max(abilityMod(a.stats.str), abilityMod(a.stats.dex)) : abilityMod(a.stats.str);
     mod = a.prof + ab + am.allRolls - 2 * (a.character?.exhaustion ?? 0) + (kind === 'ranged' ? am.dexRolls : 0);
-    inRange = kind === 'ranged' ? d <= KUNAI_LONG + 0.1 : d <= w.reach + 0.1 + (t.kind === 'hydra_head' ? 2.5 : 0) + (t.bulk ?? 0);
-    if (kind === 'ranged' && d > KUNAI.reach + 0.1) {
+    // A kunai thrown from high ground carries further.
+    const up = kind === 'ranged' ? heightReach(s, a.pos, t.pos) : 0;
+    inRange = kind === 'ranged' ? d <= KUNAI_LONG + up + 0.1 : d <= w.reach + 0.1 + (t.kind === 'hydra_head' ? 2.5 : 0) + (t.bulk ?? 0);
+    if (kind === 'ranged' && d > KUNAI.reach + up + 0.1) {
       advs.push('disadvantage');
       reasons.push('longRange');
     }
   }
+  // A blow doesn't reach two levels up or down (a tower over the ground).
+  if (close && tooHigh(s, a.pos, t.pos)) inRange = false;
   const cover = close ? 0 : coverBetween(s, a.pos, t.pos, [a.id, t.id]);
   const dl = unitLevel(s, a) - unitLevel(s, t);
   const height = dl >= 0.9 ? 2 : dl <= -0.9 ? -2 : 0;

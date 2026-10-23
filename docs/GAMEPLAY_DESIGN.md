@@ -151,6 +151,65 @@ elements.
 - Falling deals damage; enemies can be shoved off ledges.
 - Climbing: ramps, stairs and vines, plus ninja jumps and wall runs paid with
   movement or chakra.
+- How it looks (the owner, 2026-10-22, his paint-over
+  `docs/reference/map-height-owner-reference.jpg`: "mira asi le pienso dar altura y profundidad
+  al mapa y claro el mayor detalle al pasto arboles etc para que entiendas hacia donde vamos"):
+  the ground is split into **terraces**, a raised level with a visible earth-and-stone **cliff
+  face** below its edge (about 1.5 m on screen), **stone stairs** climbing from one level to the
+  next, trees at different depths. A higher level is drawn higher on screen. He paints the final
+  maps himself ("el mundo lo voy a editar yo").
+
+### Height in play (being tried, 2026-10-22; built on `battle/height-test`)
+
+His answer on the Y axis: *"si a eso me referia con eje y, si me gustaria darle alguna clase de
+altura pero dando entender que alguien esta en terreno elevado o que estas trepando una colina
+bajando un colina o que alguien subio a una torre"*. Y (depth) already worked; this adds the
+sense of height. One level is 1.5 m (one 5 ft square). Proposals marked **(P)** wait for his yes.
+
+- **Drawing.** A ninja is drawn as high as the ground under its feet (one level = 86 px). Walking
+  up a ramp, stairs, a ledge or a ladder moves the sprite up smoothly, step by step; a climb plays
+  at a walk, slower than the ground it covers (the height counts double), so it is seen. While a
+  ninja is off the ground (on a ladder, halfway up a ledge) its shadow stays on the ground below,
+  smaller and fainter, with a faint dotted line down to it.
+- **Stairs and ramps** cost only the ground covered.
+- **Climbing (P, 5e: climbing costs double).** Up a cliff face one level high (a terrace's edge, a
+  rock ledge): the step plus **3 m** (1.5 m of height at half speed); down: the step plus **1.5 m**.
+  A **ladder** (or vines) is paid the same way for every bit of height: up a 3 m tower's ladder,
+  6 m on top of the steps. Nobody stops on a ladder's rungs. (Before: 4 m up, 1 m down, a guess
+  never written here.)
+- **Walls of 2 levels or more (P)** (a 3 m cliff, a tower's sides) can't be climbed: take the
+  stairs or the ladder, or the **ninja jump** (bonus action: a level up costs 0.5 m, down 0.25 m;
+  this is the "wall run" above).
+- **High ground (as written above, unchanged):** +2 to hit from a level or more above the target,
+  −2 from below. **Thrown weapons reach further (P):** a kunai or shuriken gets **+1.5 m** of
+  normal and long range for each full level above the target.
+- **Reach (P).** A blade, a shove, a takedown or a melee jutsu doesn't reach **two levels** (3 m)
+  up or down: the rogue on the watch tower can't be stabbed from its foot. One level (a man on a
+  1.5 m ledge) is still in reach. No flanking across two levels.
+- **Looking down (P).** From **two levels** above a thing (a watch tower over the field): half
+  cover from it doesn't count, three-quarters counts as half, and a tent, a stack of crates or a
+  bamboo fence no longer blocks sight. Trees and jutsu walls still do. The same works the other
+  way: a low crate can't cover a ninja on the tower.
+- **The ground blocks sight (P).** Sight runs from eye to eye, a level (1.5 m) over each one's feet:
+  where the ground between them rises above that line (a cliff face, a 3 m wall, the tower's
+  block), they don't see each other. A guard's vision cone, kunai and jutsu that need sight follow
+  it. A ninja at the foot of a 1.5 m terrace still sees one on top.
+- **Falling (open).** Today a ninja falls only when shoved or swept off a ledge: 1d6 a level, and
+  prone. 5e gives no damage for a 5 ft (one level) fall: keep 1d6 for one level? And should
+  stepping off a two-level edge without the jump be allowed, as a fall?
+
+### Diagonals: 5-10-5 (being tried, 2026-10-22)
+
+His answer: *"vamos a probar 5-10-5"*. The 5e variant: diagonal steps alternate between costing
+one square and two. Our hidden grid is 0.5 m, a third of a 5 ft square (1.5 m), so the rule is
+counted in our cells: diagonal steps cost **0.5 m, 1 m, 0.5 m, 1 m...** (one cell, then two),
+straight steps 0.5 m. On average a diagonal costs 1.5 times a straight step, as in 5e (6 diagonal
+cells, two 5e squares, cost 4.5 m = 5 + 10 ft). The count runs over the **whole turn** (splitting a
+move saves nothing; a dash carries it on) and starts again each turn. Paths, the reach shown, the
+metres in the move preview, dashing and the AI all use it. The move preview also shows the same
+path at true length, to compare ("diagonales 5-10-5 · longitud real 5.7 m"). One switch in the
+engine, `DIAGONAL_RULE` in `src/battle/nav.ts`: `'5-10-5'` (now) or `'true'` (before: a diagonal
+cell costs its true length, 0.71 m).
 
 ## Cover
 
@@ -997,6 +1056,15 @@ folder (`WORLD_OUT`) until then. Approved so far: the river bridge.
 
   It was drawn because Earth had none; Kenji is Earth (his answer 1), but the
   art itself waits for his yes.
+- **Height (2026-10-22, "Height in play" under Elevation):** keep or change each proposal: climbing
+  at half speed (3 m a level up, 1.5 m down; ladders the same); walls of 2 levels only by stairs,
+  ladder or the ninja jump; kunai +1.5 m of range a level above; no blow across 2 levels; from 2
+  levels up low cover counts less and tents and crate stacks don't block sight; the ground blocks
+  sight above the eye line. Falling: 1d6 for a one-level fall (5e: none under 10 ft)? May a ninja
+  step off a two-level edge without the jump, as a fall? Should the AI value high ground more (it
+  now walks down from the tower to fight)?
+- **5-10-5 (2026-10-22):** after trying it, keep it or go back to true-length diagonals
+  (`DIAGONAL_RULE`, `src/battle/nav.ts`)?
 - Lightning's second burst (*Estática de batalla* / Battle Static, his request
   and his name, 2026-10-21): approve or redo the art, now with bolts at every
   frame and more while empowered.

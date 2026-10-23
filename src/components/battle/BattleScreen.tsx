@@ -13,8 +13,8 @@ import { current } from '../../battle/turns';
 import { AURA_RADIUS, attackPreview, sovereign } from '../../battle/combat';
 import { JUTSU, areaOf, enhanced as enhancedSpec, fanDice, fannedBy } from '../../battle/jutsu';
 import type { JutsuSpec } from '../../battle/jutsu';
-import { cellCenter, cellOf, dist, fullCoverBetween, getMap, gridFor, idx, lineOfSight, sameCell, steamAt, steamBetween, steamHides } from '../../battle/map';
-import { canStop, occupancy, pathCost, pathTo, reachable } from '../../battle/nav';
+import { LEVEL_M, cellCenter, cellOf, dist, fullCoverBetween, getMap, gridFor, idx, levelAtPt, lineOfSight, sameCell, steamAt, steamBetween, steamHides } from '../../battle/map';
+import { DIAGONAL_RULE, canStop, occupancy, pathTo, reachable, walkCost } from '../../battle/nav';
 import { foreseen } from '../../battle/intent';
 import { MAX_STRUCTURES, STRUCTURE_AC, breakable, jutsuWallAt, ownStructures, structureAt, structureAttack, structureBlocker, structureDist } from '../../battle/structures';
 import { auraEntered, commandBlocker, edgeFoe, nodeInSight, nodeUnder, ownNodeAt, ownNodes, submissionBlocker, submissionRefused, swapBlocker, warpBlocker, warpLanding } from '../../battle/clans';
@@ -467,9 +467,14 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
         const c = cellOf(hover.pt);
         const path = pathTo(s, reach.r, c);
         if (path && path.length) {
-          const cost = pathCost(s, actor, path);
+          const { total: cost, climb } = walkCost(s, actor, path);
           o.path = { pts: [actor.pos, ...path.map(cellCenter)], ok: canStop(s, actor, c) };
-          label = T('aimMove', { m: cost.toFixed(1) });
+          // The height gained or lost, and what of the cost is climbing; with 5-10-5 diagonals, the
+          // same path at true length beside it (the owner compares the two).
+          const rise = (levelAtPt(s, cellCenter(c)) - levelAtPt(s, actor.pos)) * LEVEL_M;
+          label = [T('aimMove', { m: cost.toFixed(1) }), Math.abs(rise) >= 0.75 ? T(rise > 0 ? 'aimClimbUp' : 'aimClimbDown', { h: Math.abs(rise).toFixed(1) }) : ''].filter(Boolean).join(' · ');
+          const trueLength = walkCost(s, actor, path, { diagonals: 'true' }).total;
+          sub = [climb > 0.05 ? T('aimClimbPart', { m: climb.toFixed(1) }) : '', DIAGONAL_RULE === '5-10-5' && Math.abs(trueLength - cost) > 0.05 ? T('aimDiag', { m: trueLength.toFixed(1) }) : ''].filter(Boolean).join(' · ') || null;
           // A dash into a Northstar's aura is cut short there (D17).
           if (actor.turn.dashed) {
             const pts = [actor.pos, ...path.map(cellCenter)];

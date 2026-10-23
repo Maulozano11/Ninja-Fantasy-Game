@@ -104,6 +104,11 @@ export interface TurnBudget {
   /** Meters moved this turn (running in the stealth phase is noisy). */
   moved: number;
   dashed?: boolean;
+  /**
+   * 5-10-5 diagonals (nav.ts, DIAGONAL_RULE): an odd number of diagonal steps was taken this turn,
+   * so the next one costs double. Kept across the moves of a turn, so splitting a move saves nothing.
+   */
+  diag?: 1;
   /** The free object interaction of the turn (drawing or stowing the weapon) was used. */
   interacted?: boolean;
 }

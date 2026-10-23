@@ -11,6 +11,13 @@ export interface MapDef {
   px: { perM: number; perMDepth: number; level: number; backY: number; width: number; height: number };
   levelAt(x: number, z: number): number;
   isRamp(x: number, z: number): boolean;
+  /**
+   * A ladder or a climbing wall (vines): ground where the level rises steeply, climbed at half speed
+   * (nav.ts), where nobody may stop. Its level is that of the climber's feet.
+   */
+  isClimb?(x: number, z: number): boolean;
+  /** The ground under a point, where its shadow falls (below a ladder: the foot of it). Default: levelAt. */
+  floorAt?(x: number, z: number): number;
   waterAt(x: number, z: number): WaterKind;
   walkable(x: number, z: number): boolean;
   props: PropDef[];
@@ -81,6 +88,8 @@ export interface Grid {
   rows: number;
   level: Float32Array;
   ramp: Uint8Array;
+  /** A ladder or climbing wall (MapDef.isClimb). */
+  climb: Uint8Array;
   /** 0 none, 1 shallow, 2 deep. */
   water: Uint8Array;
   /** Inside the playable ground. */
@@ -173,6 +182,7 @@ export function gridFor(mapId: string): Grid {
     rows,
     level: new Float32Array(n),
     ramp: new Uint8Array(n),
+    climb: new Uint8Array(n),
     water: new Uint8Array(n),
     inside: new Uint8Array(n),
     block: new Int16Array(n).fill(-1),
@@ -184,6 +194,7 @@ export function gridFor(mapId: string): Grid {
       const { x, z } = cellCenter({ c, r });
       g.level[i] = map.levelAt(x, z);
       g.ramp[i] = map.isRamp(x, z) ? 1 : 0;
+      g.climb[i] = map.isClimb?.(x, z) ? 1 : 0;
       const w = map.waterAt(x, z);
       g.water[i] = w === 'deep' ? 2 : w === 'shallow' ? 1 : 0;
       g.inside[i] = map.walkable(x, z) ? 1 : 0;
@@ -223,6 +234,27 @@ export const levelAtPt = (s: BattleState, p: Pt): number => {
   const c = cellOf(p);
   return inGrid(g, c) ? g.level[idx(g, c)] : 0;
 };
+
+/** One terrain level is 1.5 m high (one of the owner's squares, 5 ft). */
+export const LEVEL_M = 1.5;
+
+/**
+ * Levels apart at which a blow, a shove or a touch can't reach (a ninja on a tower over one on the
+ * ground): 2 levels, 3 m. One level (a ledge as high as a man) is still in reach.
+ */
+export const REACH_LEVELS = 2;
+export const tooHigh = (s: BattleState, a: Pt, b: Pt): boolean => Math.abs(levelAtPt(s, a) - levelAtPt(s, b)) >= REACH_LEVELS - 0.1;
+
+/** Thrown weapons carry further from high ground (GAMEPLAY_DESIGN, Elevation): 1.5 m more range for each full level above the target. */
+export const heightReach = (s: BattleState, from: Pt, to: Pt): number => Math.max(0, Math.floor(levelAtPt(s, from) - levelAtPt(s, to) + 0.1)) * LEVEL_M;
+
+/**
+ * Levels above a thing from which one sees over it (proposal): from 2 levels up (a watch tower)
+ * low cover (half) gives none, three-quarters gives half, and a tent, a stack of crates or a bamboo
+ * fence no longer blocks sight. Trees and jutsu walls still do.
+ */
+export const OVERLOOK_LEVELS = 2;
+const overlooks = (high: number, thing: number): boolean => high - thing >= OVERLOOK_LEVELS - 0.1;
 
 export const waterAtPt = (s: BattleState, p: Pt): 0 | 1 | 2 => {
   const g = gridFor(s.mapId);
@@ -283,11 +315,15 @@ function circleHitsSegment(c: Pt, r: number, a: Pt, b: Pt): boolean {
  */
 export function lineOfSight(s: BattleState, a: Pt, b: Pt, opts: { structures?: boolean; into?: boolean } = {}): boolean {
   if (steamBetween(s, a, b, opts.into)) return false;
+  if (terrainBlocks(s, a, b)) return false;
   const map = getMap(s.mapId);
+  const high = Math.max(levelAtPt(s, a), levelAtPt(s, b));
   for (let i = 0; i < map.props.length; i++) {
     const p = map.props[i];
     const rules = propRules(p);
     if (!rules.blocksSight || s.props[i]?.destroyed) continue;
+    // Seen over from high above (a watch tower): everything but a tree.
+    if (p.group !== 'trees' && overlooks(high, p.level)) continue;
     if (dist(p, a) < rules.radius + 0.1 || dist(p, b) < rules.radius + 0.1) continue;
     if (rules.halfLen) {
       // A bamboo fence: a segment along x.
@@ -299,6 +335,39 @@ export function lineOfSight(s: BattleState, a: Pt, b: Pt, opts: { structures?: b
   if (opts.structures === false) return true;
   for (const w of s.walls) if ((w.kind === 'earth' || w.kind === 'metal') && segmentsCross(a, b, w.a, w.b)) return false;
   return true;
+}
+
+/** The highest ground of each map (levels), so flat ground skips the terrain sight test. */
+const topLevel = new Map<string, number>();
+
+/**
+ * The ground itself hides two points from each other (the owner's terraces: a cliff face, a rock,
+ * the tower's block): somewhere between them it rises above the line joining their eyes, a level
+ * (1.5 m) over each one's feet. A ninja at a cliff's foot still sees one on the terrace above; two
+ * ninjas on the field don't see each other through the tower.
+ */
+export function terrainBlocks(s: BattleState, a: Pt, b: Pt): boolean {
+  const g = gridFor(s.mapId);
+  let top = topLevel.get(s.mapId);
+  if (top === undefined) {
+    top = 0;
+    for (const l of g.level) top = Math.max(top, l);
+    topLevel.set(s.mapId, top);
+  }
+  const ea = levelAtPt(s, a) + 1;
+  const eb = levelAtPt(s, b) + 1;
+  if (top <= Math.min(ea, eb)) return false;
+  const ca = cellOf(a);
+  const cb = cellOf(b);
+  const n = Math.ceil(dist(a, b) / (CELL / 2));
+  for (let k = 1; k < n; k++) {
+    const t = k / n;
+    const p = { x: a.x + (b.x - a.x) * t, z: a.z + (b.z - a.z) * t };
+    const c = cellOf(p);
+    if (sameCell(c, ca) || sameCell(c, cb)) continue;
+    if (levelAtPt(s, p) > ea + (eb - ea) * t + 0.05) return true;
+  }
+  return false;
 }
 
 /** Full cover: a Kōton metal wall stands between two points, and nothing gets past it. */
@@ -368,6 +437,8 @@ export function coverBetween(s: BattleState, from: Pt, to: Pt, ignore: string[] 
   const map = getMap(s.mapId);
   let cover: 0 | 2 | 5 = 0;
   const near = (p: Pt) => dist(p, from) < 0.9;
+  // From high above (or onto a target high above) low things cover less (OVERLOOK_LEVELS).
+  const high = Math.max(levelAtPt(s, from), levelAtPt(s, to));
   for (let i = 0; i < map.props.length; i++) {
     const p = map.props[i];
     const rules = propRules(p);
@@ -375,18 +446,19 @@ export function coverBetween(s: BattleState, from: Pt, to: Pt, ignore: string[] 
     const hit = rules.halfLen
       ? segmentsCross(from, to, { x: p.x - rules.halfLen, z: p.z }, { x: p.x + rules.halfLen, z: p.z }) || segDist(to, { x: p.x - rules.halfLen, z: p.z }, { x: p.x + rules.halfLen, z: p.z }) < 0.6
       : circleHitsSegment(p, rules.radius + 0.15, from, to);
-    if (hit && rules.cover > cover) cover = rules.cover;
+    const c = overlooks(high, p.level) ? (rules.cover === 5 ? 2 : 0) : rules.cover;
+    if (hit && c > cover) cover = c;
   }
   for (const w of s.walls) {
     if (w.kind === 'metalBlock') {
-      // Half cover, unless the attacker stands right behind the block itself.
-      if (dist(w.a, from) >= 1.2 && segmentHitsSquare(from, to, w.a, BLOCK_HALF)) cover = Math.max(cover, 2) as 0 | 2 | 5;
+      // Half cover, unless the attacker stands right behind the block itself (or looks down on it).
+      if (dist(w.a, from) >= 1.2 && !overlooks(high, levelAtPt(s, w.a)) && segmentHitsSquare(from, to, w.a, BLOCK_HALF)) cover = Math.max(cover, 2) as 0 | 2 | 5;
     } else if (segmentsCross(from, to, w.a, w.b)) cover = Math.max(cover, w.kind === 'earth' || w.kind === 'metal' ? 5 : 2) as 0 | 2 | 5;
   }
   if (cover < 2) {
     for (const u of Object.values(s.units)) {
       if (ignore.includes(u.id) || u.down === 'fled' || u.down === 'dead' || (u.down && u.down !== 'downed')) continue;
-      if (dist(u.pos, from) < 0.6 || dist(u.pos, to) < 0.6) continue;
+      if (dist(u.pos, from) < 0.6 || dist(u.pos, to) < 0.6 || overlooks(high, levelAtPt(s, u.pos))) continue;
       if (segDist(u.pos, from, to) < 0.35) {
         cover = 2;
         break;

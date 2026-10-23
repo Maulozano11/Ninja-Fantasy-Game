@@ -12,7 +12,7 @@ import type { Difficulty } from '../types/mission';
 import type { AiOrder, BattleSupplies, Pt, TimeOfDay, Trap } from './types';
 import type { BattleSetup, EnemySetup } from './engine';
 
-export type EncounterId = 'river_patrol' | 'cedar_rogues' | 'night_raid' | 'hydra' | 'depth_test';
+export type EncounterId = 'river_patrol' | 'cedar_rogues' | 'night_raid' | 'hydra' | 'depth_test' | 'height_test';
 
 export interface Encounter {
   id: EncounterId;
@@ -119,6 +119,28 @@ export const ENCOUNTERS: Record<EncounterId, Encounter> = {
       { kind: 'rogue', pos: { x: 11, z: 3.2 } },
       { kind: 'raider', clan: 'Koton', pos: { x: 14.5, z: 2.4 } },
       { kind: 'rogue', clan: 'Northstar', pos: { x: 17.5, z: 3.4 } },
+    ],
+  },
+  // Practice only, never on a mission: the owner's height test (2026-10-22, "darle alguna clase de
+  // altura ... terreno elevado ... trepando una colina ... alguien subio a una torre"). Its own
+  // placeholder map (maps/heightTest.ts), terraces with cliff faces and stairs as on his paint-over:
+  // the party starts at the front left, one rogue keeps the upper terrace, one the rock ledge and
+  // one the watch tower's platform.
+  height_test: {
+    id: 'height_test',
+    mapId: 'height_test',
+    time: 'day',
+    stealth: false,
+    partyAt: [
+      { x: 3.25, z: 12.25 },
+      { x: 4.75, z: 14.25 },
+      { x: 2.25, z: 14.75 },
+      { x: 5.75, z: 11.75 },
+    ],
+    enemies: [
+      { kind: 'rogue', pos: { x: 12.75, z: 3.25 } },
+      { kind: 'raider', clan: 'Koton', pos: { x: 21.25, z: 11.75 } },
+      { kind: 'rogue', clan: 'Northstar', pos: { x: 29.25, z: 4.75 } },
     ],
   },
 };

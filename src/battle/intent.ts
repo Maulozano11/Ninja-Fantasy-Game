@@ -8,7 +8,7 @@ import { abilityMod, successChance } from '../rules/checks';
 import { effectMods, hasEffect } from '../rules/effects';
 import type { BattleEvent, BattleState, Cell, Intent, Pt, Unit } from './types';
 import { homeTeam } from './types';
-import { cellCenter, cellOf, clearRun, coverBetween, dist, fullCoverBetween, gridFor, levelAtPt, lineOfSight, sameCell, steamAt, steamHides } from './map';
+import { cellCenter, cellOf, clearRun, coverBetween, dist, fullCoverBetween, gridFor, heightReach, levelAtPt, lineOfSight, sameCell, steamAt, steamHides, tooHigh } from './map';
 import { lightningSeeds, unitsOnPatch, wetPatch } from './ground';
 import { canStop, occupancy, reachable } from './nav';
 import { JUTSU, MIN_AIM, areaOf, inArea } from './jutsu';
@@ -411,11 +411,12 @@ export function goalOf(s: BattleState, u: Unit, i: Intent): Goal | null {
   switch (i.kind) {
     case 'melee': {
       // No blow lands across a metal wall: it has to go around (or break through).
-      const good = (p: Pt) => dist(p, t.pos) <= reachTo(u, t) && !fullCoverBetween(s, p, t.pos);
-      return { ...goal(good, t), ready: dist(u.pos, t.pos) <= reachTo(u, t) + 0.1 && !fullCoverBetween(s, u.pos, t.pos) };
+      // Nor two levels up or down: it has to climb (or come down) to it.
+      const good = (p: Pt) => dist(p, t.pos) <= reachTo(u, t) && !tooHigh(s, p, t.pos) && !fullCoverBetween(s, p, t.pos);
+      return { ...goal(good, t), ready: dist(u.pos, t.pos) <= reachTo(u, t) + 0.1 && !tooHigh(s, u.pos, t.pos) && !fullCoverBetween(s, u.pos, t.pos) };
     }
     case 'ranged':
-      return goal((p) => dist(p, t.pos) <= KUNAI.reach && lineOfSight(s, p, t.pos), t);
+      return goal((p) => dist(p, t.pos) <= KUNAI.reach + heightReach(s, p, t.pos) && lineOfSight(s, p, t.pos), t);
     case 'jutsu': {
       const j = JUTSU[i.what];
       if (!j) return null;
@@ -424,7 +425,7 @@ export function goalOf(s: BattleState, u: Unit, i: Intent): Goal | null {
       if (i.what === SWAP) return { at: u.pos, good: () => false, ready: swapValue(s, u, t) > 0 };
       const reach = j.range + (t.bulk ?? 0) + (j.shape === 'single' && t.kind === 'hydra_head' ? 2.5 : 0);
       // A charge needs a clear straight run to its target.
-      return goal((p) => dist(p, t.pos) <= reach && (j.melee ? !fullCoverBetween(s, p, t.pos) && (!j.charge || clearRun(s, p, t.pos)) : lineOfSight(s, p, t.pos)), t);
+      return goal((p) => dist(p, t.pos) <= reach && (j.melee ? !tooHigh(s, p, t.pos) && !fullCoverBetween(s, p, t.pos) && (!j.charge || clearRun(s, p, t.pos)) : lineOfSight(s, p, t.pos)), t);
     }
     case 'heal':
       return goal((p) => dist(p, t.pos) <= 1.6, undefined);

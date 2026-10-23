@@ -824,8 +824,10 @@ type FrameCanvas = { canvas: HTMLCanvasElement; ox: number; oy: number };
 function drawUnit(ctx: CanvasRenderingContext2D, sc: Scene, u: Unit, pos: Pt): void {
   const v = sc.pb.views.get(u.id)!;
   const { map, now } = sc;
-  const lvl = map.levelAt(pos.x, pos.z);
-  const s = project(map, pos, lvl);
+  // Drawn as high as its feet stand (rising smoothly up a ledge or a ladder); its shadow on the ground below.
+  const h = sc.pb.heightOf(u.id, now, map);
+  const s = project(map, pos, h.level);
+  const ground = project(map, pos, h.floor);
   const alpha = unitAlpha(sc, u, v);
   if (alpha <= 0) return;
   const water = map.waterAt(pos.x, pos.z);
@@ -837,11 +839,26 @@ function drawUnit(ctx: CanvasRenderingContext2D, sc: Scene, u: Unit, pos: Pt): v
 
   // Shadow, and the ring of the selected or acting ninja.
   ctx.save();
-  ctx.globalAlpha = alpha * 0.35 * (1 - 0.75 * lit);
+  // Off the ground (on a ladder, halfway up a ledge) the shadow is smaller and fainter the higher it climbs.
+  const up = Math.max(0, h.level - h.floor);
+  const shrink = Math.max(0.55, 1 - 0.2 * up);
+  ctx.globalAlpha = alpha * 0.35 * (1 - 0.75 * lit) * shrink;
   ctx.fillStyle = '#000';
   ctx.beginPath();
-  ctx.ellipse(Math.round(s.X), Math.round(s.Y) - 1, v.pose === 'downed' ? 30 : 20, 5, 0, 0, Math.PI * 2);
+  ctx.ellipse(Math.round(ground.X), Math.round(ground.Y) - 1, (v.pose === 'downed' ? 30 : 20) * shrink, 5 * shrink, 0, 0, Math.PI * 2);
   ctx.fill();
+  if (up > 0.2) {
+    // A faint plumb line from the feet down to the shadow, so the height reads.
+    ctx.globalAlpha = alpha * 0.4;
+    ctx.strokeStyle = '#0b0f14';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([3, 3]);
+    ctx.beginPath();
+    ctx.moveTo(Math.round(s.X) + 0.5, Math.round(s.Y));
+    ctx.lineTo(Math.round(ground.X) + 0.5, Math.round(ground.Y) - 1);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
   ctx.restore();
   const acting = sc.pb.turnUnit === u.id && sc.state.phase === 'combat';
   if (acting || sc.selected === u.id || sc.hover === u.id || sc.overlay.targets?.includes(u.id) || sc.overlay.warn?.includes(u.id)) {
@@ -2026,7 +2043,7 @@ function drawMarks(ctx: CanvasRenderingContext2D, sc: Scene): void {
       const hp = project(map, pos, 0);
       top = { X: hp.X, Y: hp.Y - 110 };
     } else {
-      const s = project(map, pos);
+      const s = project(map, pos, sc.pb.heightOf(u.id, now, map).level);
       top = { X: s.X, Y: s.Y - (v.pose === 'downed' ? 40 : 108) };
     }
     const s = toScreen(top.X, top.Y);

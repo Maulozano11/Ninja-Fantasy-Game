@@ -3,7 +3,7 @@
 // one-fighter combat screen.
 
 import React, { useMemo, useState } from 'react';
-import { Swords, Moon, Eye, Skull, RotateCcw, MoveVertical } from 'lucide-react';
+import { Swords, Moon, Eye, Skull, RotateCcw, MoveVertical, Mountain } from 'lucide-react';
 import type { ShinobiCharacter } from '../../types/shinobi';
 import type { Difficulty } from '../../types/mission';
 import { createBattle } from '../../battle/engine';
@@ -48,12 +48,14 @@ const S = strings({
   hydra_d: { en: 'Seven heads. Cut one, then burn, electrify or blow up the stump, or it grows back.', es: 'Siete cabezas. Corta una y luego quema, electrocuta o haz estallar el muñón, o vuelve a crecer.' },
   depth_test: { en: 'Y-axis test', es: 'Prueba del eje Y' },
   depth_test_d: { en: 'A test: the fight runs up and down the screen. You start at the front edge of the clearing, the rogues wait at the back.', es: 'Una prueba: la pelea va de arriba abajo en la pantalla. Empiezas en el borde de delante del claro y los renegados esperan al fondo.' },
+  height_test: { en: 'Height test', es: 'Prueba de altura' },
+  height_test_d: { en: 'A test on a placeholder field: a hill with ramps, a rock ledge and a watch tower with a ladder. Climb, fight from high ground, see over cover from the tower.', es: 'Una prueba en un campo provisional: una colina con rampas, una roca elevada y una torre de vigía con escalera. Trepa, pelea desde lo alto y mira por encima de la cobertura desde la torre.' },
   victory: { en: 'Victory', es: 'Victoria' },
   defeat: { en: 'Defeat', es: 'Derrota' },
   fled: { en: 'Retreat', es: 'Retirada' },
 });
 
-const ENCOUNTER_ICON: Record<EncounterId, React.FC<{ size?: number }>> = { river_patrol: Eye, cedar_rogues: Swords, night_raid: Moon, hydra: Skull, depth_test: MoveVertical };
+const ENCOUNTER_ICON: Record<EncounterId, React.FC<{ size?: number }>> = { river_patrol: Eye, cedar_rogues: Swords, night_raid: Moon, hydra: Skull, depth_test: MoveVertical, height_test: Mountain };
 
 export interface BattleDemoProps {
   character: ShinobiCharacter;
@@ -103,7 +105,7 @@ export const BattleDemo: React.FC<BattleDemoProps> = ({ character, start }) => {
     );
   }
 
-  const ids: EncounterId[] = ['cedar_rogues', 'river_patrol', 'night_raid', 'hydra', 'depth_test'];
+  const ids: EncounterId[] = ['cedar_rogues', 'river_patrol', 'night_raid', 'hydra', 'depth_test', 'height_test'];
   return (
     <div className="max-w-5xl mx-auto px-4 py-8">
       <h1 className="text-2xl font-black text-white">{S('title')}</h1>

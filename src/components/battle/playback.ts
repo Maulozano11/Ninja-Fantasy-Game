@@ -13,7 +13,8 @@ import { COMBO_KICKS, COMBO_TURNED, POSE_FPS, TACKLE_IMPACT_FRAME } from '../../
 import { BLOW_MS, CONDUCT_MS, DOUSE_MS, FAN_MS, FAN_ROLL, GROUND_FADE, TOWER_MS, TOWER_RISE, WAVE_CREST, WAVE_HOLD, blastMs, impactMs, keyCenter, signatureMs, skySignature } from './vfxSprites';
 import { jutsuTint, unitTint } from './vfxTintPlan';
 import { DRIP_MS, SCREEN_MS, SPRAY_DELAY, SPRAY_LANDED, SPRAY_MS, bleedingStarts, isBleedTick } from './bloodPlan';
-import { dist } from '../../battle/map';
+import { LEVEL_M, dist, getMap } from '../../battle/map';
+import type { MapDef } from '../../battle/map';
 import { closestPoint } from '../../battle/structures';
 import { midpoint } from '../../battle/combat';
 import type { Bend } from './paths';
@@ -284,6 +285,25 @@ export type SoundName =
 const RUN = 5.5;
 const WALK = 3.2;
 const SNEAK = 2.4;
+
+/** The ground under a point, where a shadow falls (below a ladder: its foot). */
+const floorOf = (map: MapDef, p: Pt): number => map.floorAt?.(p.x, p.z) ?? map.levelAt(p.x, p.z);
+
+/** A step up or down a ledge or along a ladder (not a ramp): the climber's feet leave the ground. */
+function steepStep(map: MapDef, a: Pt, b: Pt): boolean {
+  const la = map.levelAt(a.x, a.z);
+  const lb = map.levelAt(b.x, b.z);
+  return Math.abs(lb - la) >= 0.6 || floorOf(map, a) !== la || floorOf(map, b) !== lb;
+}
+
+/**
+ * How long a step of a walk lasts, in meters walked: a climb (a ledge, a ladder) takes the height
+ * twice more (half speed, as it costs), so the sprite is seen going up or down.
+ */
+export function walkLength(map: MapDef, a: Pt, b: Pt): number {
+  const d = dist(a, b);
+  return steepStep(map, a, b) ? d + 2 * LEVEL_M * Math.abs(map.levelAt(b.x, b.z) - map.levelAt(a.x, a.z)) : d;
+}
 /** How long a Kōton structure takes to rise out of the ground, and to sink back when it goes (ms). */
 export const RISE_MS = 320;
 export const FALL_MS = 450;
@@ -707,6 +727,39 @@ export class Playback {
       prev = p;
     }
     return w.path[w.path.length - 1];
+  }
+
+  /**
+   * How high a unit is drawn right now (in levels) and the ground its shadow falls on. Along a walk
+   * the height goes smoothly from one step's end to the next, so a climb up a ledge or a ladder is
+   * seen rising; while climbing, the shadow stays on the ground below.
+   */
+  heightOf(id: string, now: number, map: MapDef): { level: number; floor: number } {
+    const v = this.views.get(id);
+    const pos = this.posOf(id, now);
+    const still = (): { level: number; floor: number } => {
+      const level = map.levelAt(pos.x, pos.z);
+      return { level, floor: Math.min(level, floorOf(map, pos)) };
+    };
+    const w = v?.walk;
+    if (!v || !w || v.phase || v.warp) return still();
+    const travelled = Math.max(0, Math.min(w.total, (((now - w.t0) * this.speed) / 1000) * w.speed));
+    let acc = 0;
+    let prev = v.pos;
+    for (let i = 0; i < w.path.length; i++) {
+      const seg = w.lengths[i];
+      const p = w.path[i];
+      if (acc + seg >= travelled) {
+        const t = seg > 0 ? (travelled - acc) / seg : 1;
+        const l0 = map.levelAt(prev.x, prev.z);
+        const l1 = map.levelAt(p.x, p.z);
+        const level = l0 + (l1 - l0) * t;
+        return { level, floor: steepStep(map, prev, p) ? Math.min(floorOf(map, prev), floorOf(map, p), level) : level };
+      }
+      acc += seg;
+      prev = p;
+    }
+    return still();
   }
 
   /** Walls already gone from the state whose breaking (or fading) hasn't played yet: they still show. */
@@ -1749,13 +1802,17 @@ export class Playback {
         v.pos = start;
         const lengths: number[] = [];
         let prev = start;
+        // A climb takes longer than its ground (half speed), so it is seen.
+        const map = getMap(state.mapId);
         for (const p of ev.path) {
-          lengths.push(dist(prev, p));
+          lengths.push(walkLength(map, prev, p));
           prev = p;
         }
         const total = lengths.reduce((a, b) => a + b, 0);
         const sneaking = state.phase === 'stealth' && !ev.run;
-        const pose: SpritePose = ev.run ? 'run' : sneaking && u?.cond.crouched ? 'sneak' : total > 3 ? 'run' : 'walk';
+        // Up or down a ledge or a ladder it goes at a walk, hand over hand, never at a run.
+        const climbing = ev.path.some((p, i) => steepStep(map, i ? ev.path[i - 1] : start, p));
+        const pose: SpritePose = sneaking && u?.cond.crouched ? 'sneak' : climbing ? 'walk' : ev.run ? 'run' : total > 3 ? 'run' : 'walk';
         // The run in of a melee jutsu staged its own way (the Rush): a flash of chakra where it sets
         // off, a beat, then the run at its own pace.
         const seq = ev.jutsu ? JUTSU[ev.jutsu]?.seq : undefined;

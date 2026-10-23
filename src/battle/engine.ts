@@ -29,8 +29,8 @@ import type {
   Unit,
 } from './types';
 import { homeTeam } from './types';
-import { cellBlocked, cellCenter, cellOf, clearRun, coverBetween, dampAt, dist, fullCoverBetween, getMap, gridFor, hideSpotAt, idx, inGrid, levelAtPt, lineOfSight, propRules, sameCell, segmentsCross, waterAtPt } from './map';
-import { canStop, freeSpot, occupancy, pathTo, pathTouchesDeep, reachable, stepCost } from './nav';
+import { cellBlocked, cellCenter, cellOf, clearRun, coverBetween, dampAt, dist, fullCoverBetween, getMap, gridFor, hideSpotAt, idx, inGrid, levelAtPt, lineOfSight, propRules, sameCell, segmentsCross, tooHigh, waterAtPt } from './map';
+import { canStop, countStep, freeSpot, occupancy, pathTo, pathTouchesDeep, reachable, unitStepCost } from './nav';
 import type { AttackPreview } from './combat';
 import { attackPreview, check, damage, heal, hostileAura, passivePerception, PERFECT_HIDE, reveal, revealOutOfHiding, rollDiceExpr, skillMod } from './combat';
 import { JUTSU, MIN_AIM, areaOf, enhanced, fanDice, fanned, fannedBy } from './jutsu';
@@ -360,7 +360,7 @@ function provoker(s: BattleState, u: Unit, hop: Pt[], skip: string[]): Unit | un
     // A hidden mover it can't see slips past.
     if (u.cond.hidden !== undefined && passivePerception(r) < u.cond.hidden) continue;
     const reach = wielded(r).reach + 0.1;
-    if (dist(r.pos, u.pos) <= reach && hop.some((p) => dist(r.pos, p) > reach)) return r;
+    if (dist(r.pos, u.pos) <= reach && !tooHigh(s, r.pos, u.pos) && hop.some((p) => dist(r.pos, p) > reach)) return r;
   }
   return undefined;
 }
@@ -388,8 +388,9 @@ function walk(s: BattleState, u: Unit, path: Cell[], from: number, ev: BattleEve
   for (let i = from; i < path.length; i++) {
     const c = path[i];
     const next = cellCenter(c);
-    const cost = stepCost(s, at, c, at.c !== c.c && at.r !== c.r, rules);
-    const standing = !taken(at);
+    const cost = unitStepCost(s, u, at, c, rules);
+    // Halfway up a ladder nobody stops either: like a cell someone stands on, it is mid-hop.
+    const standing = !taken(at) && !g.climb[idx(g, at)];
     // Only a dash slowed by an aura can run short of the path it was given (never mid-hop).
     if (standing && u.turn.dashed && cost > u.turn.move + 1e-6) break;
     // Mid-hop, nothing is asked: it was asked before the hop.
@@ -411,6 +412,7 @@ function walk(s: BattleState, u: Unit, path: Cell[], from: number, ev: BattleEve
     }
     u.turn.move = Math.max(0, u.turn.move - cost);
     u.turn.moved += cost;
+    countStep(u, at, c);
     if (next.x !== u.pos.x) u.facing = next.x > u.pos.x ? 1 : -1;
     const was = u.pos;
     u.pos = next;
@@ -843,6 +845,7 @@ function doJutsu(s: BattleState, u: Unit, id: string, atIn: Pt, targetId: string
     case 'single':
       if (!target || !targetable(target)) return 'needTarget';
       if (d > spec.range + 0.1 + (target.bulk ?? 0) + (target.kind === 'hydra_head' ? 2.5 : 0)) return 'outOfRange';
+      if (spec.melee && tooHigh(s, u.pos, target.pos)) return 'outOfRange';
       if (!spec.melee && !lineOfSight(s, u.pos, target.pos)) return 'noSight';
       if (spec.melee && fullCoverBetween(s, u.pos, target.pos)) return 'blocked';
       if (spec.charge && !(land = chargeLanding(s, u, target))) return 'blocked';
@@ -1250,7 +1253,7 @@ function doShove(s: BattleState, u: Unit, targetId: string, mode: 'prone' | 'pus
   const t = s.units[targetId];
   if (!t || t.down || t.team === u.team) return 'badTarget';
   if (t.kind !== 'ninja') return 'tooBig';
-  if (dist(u.pos, t.pos) > 1.6) return 'outOfRange';
+  if (dist(u.pos, t.pos) > 1.6 || tooHigh(s, u.pos, t.pos)) return 'outOfRange';
   if (fullCoverBetween(s, u.pos, t.pos)) return 'blocked';
   u.turn.action = false;
   const def = check(s, 'check', Math.max(skillMod(t, 'athletics'), skillMod(t, 'acrobatics')), 0);

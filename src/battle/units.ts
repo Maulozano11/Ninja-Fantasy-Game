@@ -9,6 +9,8 @@ import { getItem } from '../sprite/catalog';
 import { abilityMod, abilityScores, proficiencyBonus, skillsOf } from '../rules/checks';
 import { deriveStats, effectiveAC, effectiveMaxHp, SHEET_VERSION } from '../rules/derived';
 import { effectMods } from '../rules/effects';
+import { naturesOf, thirdElementOpen } from '../rules/natureGrowth';
+import { natureOf } from '../rules/ninja';
 import type { AiOrder, Pt, Rank, Team, Unit, Weapon } from './types';
 import { JUTSU, clanAbilities } from './jutsu';
 
@@ -36,6 +38,8 @@ export function weaponOf(c: ShinobiCharacter): Weapon {
       return W('Quarterstaff', '1d6', 'Bludgeoning', 1.5, false, true);
     case 'held_kunai':
       return W('Kunai', '1d6', 'Piercing', 1.5, true, true);
+    case 'held_gilded_rapier':
+      return W('Rapier', '1d8', 'Piercing', 1.5, true, true);
     case 'held_palm':
       return W('Gentle fist', '1d8', 'Force');
     case 'held_lightning':
@@ -130,6 +134,8 @@ export function unitFrom(c: ShinobiCharacter, o: UnitOptions): Unit {
     power,
     stats2: { critsTaken: 0, critsLanded: 0, pills: 0, fell: false, fellToCrit: false, tension: 0, jutsuCast: 0 },
     skills: skillsOf(c),
+    // Triple Nature's discount, once per long rest: spent already if it was used since the last camp.
+    ...(thirdElementOpen(c) ? { tripleNature: { natures: naturesOf(c, natureOf(c)), spent: c.tripleNatureSpent === true } } : {}),
   };
 }
 
@@ -148,7 +154,7 @@ function look(o: Partial<SpriteAppearance>): SpriteAppearance {
     eyeColor: '#7a1f2a',
     slots: {},
     accessories: [],
-    headband: { position: 'forehead', slashed: true, tails: true, emblem: 'crescent', cloth: '#2a2d3a', plate: '#9aa3ad' },
+    headband: { position: 'forehead', tails: true, cloth: '#2a2d3a' },
     chakra: { color: 'red', onCharge: true, onCast: true, onVictory: false },
     pixelEdits: [],
     ...o,

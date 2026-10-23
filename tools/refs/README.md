@@ -121,6 +121,20 @@ folders.
 
       python3 -I tools/refs/water-from-ref.py docs/reference/water-set-owner-reference.jpg tools/world-sprites/vfx-water-v3-refdata.ts <character.png> [reviewDir]
 
+- `tide-s-from-ref.py`: the S-rank Devouring Tide from his paint-over of our widest wave
+  (`docs/reference/tide-s-owner-reference.jpg`; a proposal). His picture is one 320x240 pixel-art
+  canvas at 3.2x; each of his pixels is 2x2 game px (his trailing lanes match ours at 2.04 x 1.95,
+  IoU 0.967). It lifts his new layers: the curl wave (what the dragon and the kanji's strokes hide of
+  it continued by turning his own curl about the spiral's eye), the dragon's head, horns, whiskers and
+  jaw (separate, to animate), the kanji 水 and its glow, and his loose spray; one palette of 64 of
+  his colours. It writes `tools/world-sprites/vfx-tide-s-refdata.ts` (with probes of his pixels for
+  `src/battle/tideS.test.ts`), which `vfx-tide-s.ts` animates (`vfx_tide_s`: curl, dragon, kanji).
+  With a third argument, a folder, it also writes his canvas, every layer and the masks over his
+  picture.
+
+      python3 -I tools/refs/tide-s-from-ref.py docs/reference/tide-s-owner-reference.jpg tools/world-sprites/vfx-tide-s-refdata.ts [reviewDir]
+      WORLD_OUT=<staging dir> npx tsx tools/world-sprites/vfx-tide-s.ts
+
 - `wind-from-ref.py`: the whole wind set (`vfx_wind_v3`) from his wind sheet. It writes
   `tools/world-sprites/vfx-wind-v3-refdata.ts` (his key frames cut into the pieces that
   `vfx-wind-v3.ts` animates, one palette per sprite from his pixels). With a third argument, a
@@ -152,6 +166,131 @@ folders.
 
       python3 -I tools/refs/poison-from-ref.py docs/reference/poison-set-owner-reference.jpg tools/world-sprites/vfx-poison-v3-refdata.ts <character.png> [reviewDir]
 
+- `wood-dragon-from-ref.py`: his wood dragon out of his Wood Dragon hotbar icon (sheet 10), for the Wood Dragon's battle effect (a proposal, waiting for his yes). It takes his pixels with the same grid functions as `icons-from-ref-23.py`, keeps his dragon and his leaves without his green ground (his loose leaves apart), groups his colours into 40 of his (the JPEG gives each pixel a slightly different one) and adds his dark line where the cut edge meets the air. It writes `tools/world-sprites/vfx-wood-refdata.ts`, which `tools/world-sprites/vfx-new-r1.ts` animates (`vfx_wood`, with `vfx_hand` for the Chidori's lightning in the hand); a third argument writes a check sheet (his window, our cut, his leaves at 6x).
+
+      python3 -I tools/refs/wood-dragon-from-ref.py docs/reference/icons-owner-reference-10.jpg tools/world-sprites/vfx-wood-refdata.ts [check.png]
+
+- `chidori-hand-from-ref.py`: his lightning in the hand out of his two silver-haired paint-overs
+  (the tactical vest's ring and thin bolts, the coat's burst of sparks), for the activated Chidori (a
+  proposal, waiting for his yes). It finds each picture's grid from his black outline (the vest's
+  pixel is about 17.9 x 18.0 picture px, the coat's 20), takes each of his pixels as its cell's
+  median, and keeps only the lightning in a box round the near forearm and fist (not the white
+  around him, nor his white seen between the arm and the vest, his skin, green cloth or anything
+  darker than luma 115). It writes `tools/world-sprites/vfx-chidori-refdata.ts`, which
+  `tools/world-sprites/vfx-chidori.ts` (WORLD_OUT only) turns into `vfx_charged/chidori_hand` (his
+  two drawings flickering, one of his pixels each, anchored on his fist) with the new
+  `vfx_charged/ground_crack`; a fourth argument writes a check sheet (his box, the kept lightning, at 8x).
+
+      python3 -I tools/refs/chidori-hand-from-ref.py docs/reference/tactico-chaleco-owner-reference.jpg docs/reference/tactico-abrigo-owner-reference.jpg tools/world-sprites/vfx-chidori-refdata.ts [check.png]
+      WORLD_OUT=<staging dir> npx tsx tools/world-sprites/vfx-chidori.ts
+      WORLD_OUT=<staging dir> npx tsx tools/world-sprites/vfx-new-r1.ts
+- `roman_ref.py` + `roman-cuirass-from-ref.py`, `roman-skirt-from-ref.py`, `roman-bracers-sandals-from-ref.py`: the
+  owner's Roman paint-over (`docs/reference/roman-owner-reference.jpg`, pitch 10.24, our male idle frame 0 at
+  offset (74, 120)), copied like Aiden: each script writes painted pieces (`src/sprite/painted.ts`) that ride the
+  rig. `roman_ref.pieces()` cuts his figure into pieces by region polygons (`REGIONS`) and colour kinds, keeps only
+  the black line next to each piece's own colours, continues the chest under the near shoulder guard and fills the
+  red drape behind each of his legs by cloning the visible inside of the drape next to it (one shift per leg, so
+  his folds run on), closed by his black line on a hem drawn across the leg. He tucked the far arm in, so the far
+  bracer is moved `FAR_ARM_IN` (3) px out onto our forearm; the sandals are moved onto our legs. His JPEG has many
+  near colours, so the modules use a longer palette alphabet (Latin-1, Greek, Cyrillic letters). Each module also
+  exports what every colour of his is (`*_KIND`: line, skin, red, stud, bronze, leather), which the items use to
+  follow the colour slots, and where each piece lands in our idle (`*_REST`), which `src/sprite/roman.test.ts`
+  checks. With a second argument, a folder, each writes his figure beside the pieces at 8x.
+
+      python3 -I tools/refs/roman-cuirass-from-ref.py src/sprite/items/bronzeCuirassArt.ts [studyDir]
+      python3 -I tools/refs/roman-skirt-from-ref.py src/sprite/items/pterugesArt.ts [studyDir]
+      python3 -I tools/refs/roman-bracers-sandals-from-ref.py src/sprite/items/bracersSandalsArt.ts [studyDir]
+- `solen_ref.py` + `solen-*-from-ref.py`: the owner's Solen (`docs/reference/solen-owner-reference.jpg`, the new
+  standard, 2026-10-21; pitch 20, our male idle frame 0 at offset (74, 120), the Roman picture's window). It is a
+  repaint of his Roman picture. `solen_ref.pieces()` cuts his figure by region polygons (`REGIONS`) and colour kinds
+  (`kind`: line, skin, red, gold, leather, steel, stud, white, grey, navy, ice; regions tell his hair's navy from his
+  trousers' and his cowl's grey from his cape's), keeps the black line that bounds each piece (a piece behind the
+  others, the cape, only the line that bounds it alone), and continues what he hid with his own pixels: the cape
+  behind his arm, sword, legs and body (`fill_cape`: folds followed up and down, the hem drawn straight across
+  behind each leg, the back edge behind the bracer and the hilt), the skirt, trousers and far sandal behind the
+  sword and the hand (`clone_fill`: cloned from his visible pixels one shift away, his studs never cloned). Inside
+  his figure every white is his (no paper gaps). He drew the far arm thinner and nearer the body than ours
+  (`FAR_OUT`) and the legs wider (`LEG_OUT`, measured on his sandals): those pieces stay where he drew them and
+  turn about our joints moved that far; `src/sprite/items/founderOut.ts` moves our limbs under them while they
+  hang or stand as at rest (`src/sprite/solen.test.ts`). One script per creator option, each writing a module with
+  `*_KIND`, `*_REST` and the bases its colour slots recolour from (at those, every pixel is his):
+
+      python3 -I tools/refs/solen-hair-from-ref.py src/sprite/items/founderHairArt.ts [studyDir]
+      python3 -I tools/refs/solen-face-from-ref.py src/sprite/founderFaceArt.ts [studyDir]
+      python3 -I tools/refs/solen-cowl-from-ref.py src/sprite/items/founderCowlArt.ts [studyDir]
+      python3 -I tools/refs/solen-cape-from-ref.py src/sprite/items/founderCapeArt.ts [studyDir]
+      python3 -I tools/refs/solen-cuirass-from-ref.py src/sprite/items/founderCuirassArt.ts [studyDir]
+      python3 -I tools/refs/solen-tunic-from-ref.py src/sprite/items/founderTunicArt.ts [studyDir]
+      python3 -I tools/refs/solen-bracers-from-ref.py src/sprite/items/steelBracersArt.ts [studyDir]
+      python3 -I tools/refs/solen-skirt-from-ref.py src/sprite/items/founderSkirtArt.ts [studyDir]
+      python3 -I tools/refs/solen-trousers-from-ref.py src/sprite/items/founderTrousersArt.ts [studyDir]
+      python3 -I tools/refs/solen-sandals-from-ref.py src/sprite/items/founderSandalsArt.ts [studyDir]
+      python3 -I tools/refs/solen-sword-from-ref.py src/sprite/items/iceSwordArt.ts [studyDir]
+
+  With a study folder each writes his picture, the piece and the continued pixels (magenta) at 8x.
+
+  His far laced shin is a pixel thicker at the calf than he drew it (the owner, 2026-10-21: "le falta más
+  pantorrilla a la pierna izquierda ponla un poco más gruesa solo un poco"): `solen-sandals-from-ref.py` draws
+  his column `CALF_COL` twice on the calf's rows (`CALF_ROWS`), his back line and the laces behind it moved
+  1 px back, so every pixel is still one of his and it tapers to the ankle as he drew it.
+
+  His far arm hangs in shadow and thin (a 2 px strip of skin, a thin bracer, a small fist): stretched out it reads
+  as a line. His repaint of Ren casting shows the far arm stretched out as thick as the near one, so while Solen's
+  far arm reaches out (straight and near level: the cast, the throw's pointing arm, the combo's cross, the camp
+  sit; `founderFarReach` in `src/sprite/items/founderOut.ts`) it is his near sleeve, upper arm, bracer and fist
+  mirrored left to right (rows reversed, joint and angle mirrored: his pixels and colours, his lit side up):
+
+      python3 -I tools/refs/solen-reach-from-ref.py src/sprite/items/founderReachArt.ts
+
+- `lyra-upper-from-ref.py` → `src/sprite/items/lyraUpperArt.ts`: Lyra's blouse (`top_offshoulder_blouse`)
+  and her corset, pauldron and bracers (`armor_gilded_corset`), lifted 1:1 from the owner's picture of her
+  at our game's scale (`docs/reference/lyra-game-scale-owner-reference.jpg`: 19.32 picture pixels to one of
+  ours, phase 0; his pixel (x, y) is our (x + 74, y + 121)). `OWN` says per row which of his pixels each
+  piece takes; the parts his picture hides (under the braid, the blouse under the corset, the sleeves under
+  the bracers, the far forearm behind the pouch) continue his pixels. The bare top of the near shoulder and
+  the skin in the V (`K`, `V`) are his skin, drawn in the player's (`LYRA_SKIN`). One painted piece per segment of our
+  female rig with his Lyra's long arms (appearance `arms: 'long'`, `rig.ts` LONG_ARMS: on the owner's bare
+  female body his bare woman's elbows, her forearms longer and turned out at rest to his Lyra's wrists), pivot
+  on its joint at idle (the forearm pieces on the wrist, so on the body's own shorter
+  arms the cuff still ends at the wrist). Every piece is where he drew it, her far arm cell by cell: the
+  pauldron, the far puff, the far bracer's top under the puff and its foot under the pouch, the far cuff
+  and its line over his far hand; only the far forearm behind his pouch is run on (`FAR_BRACER`). Where
+  our body's arm comes out from under his sleeves, bracers and cuffs at idle the pieces take it off
+  (`BLOUSE_SLEEVE_N_CUT`, `BLOUSE_FOREARM_N_CUT`, `BLOUSE_FOREARM_F_CUT`, from `NEAR_UPPER_ARM`,
+  `NEAR_FOREARM`, `FAR_FOREARM`, which `heroine-idle.mts` prints), and the chest's shoulder round above her
+  bare shoulder (`BLOUSE_SHOULDER_CUT`). Under the blouse the body's sports top is her skin. It checks that every pixel of his is where it is laid at idle and
+  writes `hers-vs-pieces@8.png` into `<out>`.
+
+      python3 -I tools/refs/lyra-upper-from-ref.py docs/reference/lyra-game-scale-owner-reference.jpg <out> src/sprite/items/lyraUpperArt.ts
+
+- `owner_paintover.py`, `owner_frames.py`: shared helpers for the owner's paint-overs of our frames. His
+  2000 px pictures have a pixel grid that drifts over the picture; `native()` finds it per panel (a cubic
+  fit of his pixel edges plus a local correction) and reads each of his pixels. `keep()` brings a figure he
+  drew larger than ours down to our scale by keeping his least repeated rows and columns. `owner_frames.py`
+  cuts a frame by owner (the option of hers that draws it) and part into pieces pinned to rig joints
+  (`src/sprite/ownerFrames.ts`), and checks the pieces laid together are his frame pixel for pixel.
+- `lyra-read-from-ref.py` (with `lyra_read_ref.py`) → `src/sprite/items/lyraReadArt.ts`: Lyra reading, his
+  three frames (`docs/reference/lyra-read-owner-reference.jpg`, at our scale, one for one), the read pose's
+  keys; the book for every reader is his. `seat-rock-from-ref.py` → `src/sprite/seatRockArt.ts`: his rock as
+  a seat prop of its own (`src/sprite/seats.ts`), what she hides continued from his pixels.
+  `lyra-throw-from-ref.py` (with `lyra_throw_ref.py`) → `src/sprite/items/lyraThrowArt.ts`: her throw frames
+  3 and 4 (`docs/reference/lyra-throw-owner-reference.jpg`, his figure 1.35 times ours, brought down).
+  `lyra_sit_ref.py` → `src/sprite/items/lyraSitArt.ts`: Lyra sitting, his one frame
+  (`docs/reference/lyra-sit-owner-reference.jpg`, 20 picture pixels to one of ours, phase 0, at our scale, one
+  for one), every frame of the sit pose; the rock and the earth round her boots are not hers (the seat prop is
+  under her). It also gives the read frames their blade: `lyra_read_ref.sword_blade()` keeps each read
+  frame's guard and grip and lays his sit blade, whole and unturned, where his sit guard falls on the frame's.
+  `seat-rock-sit-from-ref.py` → `src/sprite/seatRockSitArt.ts`: his sit rock as the sit seat prop (his read
+  rock is the read seat), what she hides continued from his pixels.
+  `lyra-pose-joints.mts` prints the joints the pieces are pinned to; paste them into the scripts' `JOINTS`
+  when the rig changes.
+
+      python3 -I tools/refs/lyra-read-from-ref.py
+      python3 -I tools/refs/seat-rock-from-ref.py
+      python3 -I tools/refs/lyra-throw-from-ref.py
+      python3 -I tools/refs/lyra_sit_ref.py
+      python3 -I tools/refs/seat-rock-sit-from-ref.py
+
 - `heroine_ref.py`, `heroine-study.py`, `heroine_paint.py`, `heroine-proportions.py`,
   `heroine-idle.mts`: the study of the owner's four heroines (`docs/reference/{lyra,elise,saya,aurelia}-owner-reference.jpg`),
   the base every heroine part builds on. His pictures are his own pixel art at 2.2 to 2.8 of his
@@ -168,6 +307,65 @@ folders.
   `reduced_layers(which)` (each part alone). `heroine-proportions.py` draws `proporciones.png`: the
   template at our height beside its reduced reference and our female body, with the measurements.
 
-      npx tsx tools/refs/heroine-idle.mts <out>
+      npx tsx tools/refs/heroine-idle.mts <out>     (also prints the joints with Lyra's long arms)
       python3 -I tools/refs/heroine-study.py <out> <out>/female-idle.png --write
       python3 -I tools/refs/heroine-proportions.py <out> <out>/female-idle.png
+
+- `lyra-eyes-from-ref.py` → `src/sprite/lyraEyeArt.ts`: Lyra's eyes and brows as the `keen` eye
+  shape, lifted 1:1 from his picture of her at our game's scale (19.32 picture pixels to one of ours,
+  phase 0, the same grid as his Aiden): her two-row eye (black lash over her lash's brown corner, white,
+  green and dark green) on the template's eye cells, her brows on the row over the lash. The lowered and
+  closed lids are made of his pixels. Writes `eyes@16.png` (open, lowered, closed) and `hers@16.png`.
+
+      python3 -I tools/refs/lyra-eyes-from-ref.py docs/reference/lyra-game-scale-owner-reference.jpg <out> src/sprite/lyraEyeArt.ts
+
+- `lyra-sword-from-ref.py` → `src/sprite/items/lyraSwordArt.ts`: Lyra's sword (`held_gilded_rapier`),
+  lifted 1:1 from the owner's picture of her at our game's scale
+  (`docs/reference/lyra-game-scale-owner-reference.jpg`, 19.32 picture pixels to one of ours, his
+  pixel (x, y) at our (x + 74, y + 121)): his steel pommel, knuckle bow and cross-guard with gold
+  tips, gold collar and shell and cyan gem, his cyan blade (every cyan pixel within 2.6 px of its
+  fitted line, with the black beside it) and his sparkles (the cyan further out, twinkling in the
+  game). The grip his hand hides is his pommel's steel carried on. The female body's fist round a grip
+  is his own near hand on this sword, and with her long arms (`arms: 'long'`) our fist at idle is where
+  he drew his, so the sword is his as he drew it, no pixel moved (`STRETCH` 0, `HAND_SHIFT` 0); it pivots
+  on the cell our grip point (`grip.ts` gripPoint, printed by `heroine-idle.mts`) falls on, beside his
+  grip under the fist. Drawn at his blade's angle (42.7) at rest. Writes `his@8.png` and `kinds@8.png`
+  into `<out>`.
+
+      python3 -I tools/refs/lyra-sword-from-ref.py docs/reference/lyra-game-scale-owner-reference.jpg <out> src/sprite/items/lyraSwordArt.ts
+
+- `lyra-hair-from-ref.py` → `src/sprite/items/lyraHairArt.ts`: Lyra's hair (`hair_copper_braid`), lifted
+  1:1 from his picture of her at our scale (same grid and colour merge as her face, lower body): `HEAD`
+  over the head (crown, fringe, far lock, pin, bow, her ear in the player's skin), `HEAD_FINE` the same
+  unmoved for her own face (face shape `fine`; `HEAD` moves its far side 2 px out for our wider face
+  template), `LONG` behind the body (hidden strands run on down) and `BRAID` over the near shoulder (with
+  the hair over its root, his row 27, which the female body's higher shoulders would hide). The pieces
+  ride the face anchor; with her long neck (`src/sprite/neck.ts`, on the female bodies one unit forward)
+  they land on his picture laid at (x + 74, y + 121). Writes `pieces@8.png`.
+
+      python3 -I tools/refs/lyra-hair-from-ref.py <out> src/sprite/items/lyraHairArt.ts
+
+- `lyra-face-from-ref.py` → `src/sprite/lyraFaceArt.ts`: Lyra's face as the face shape `fine`
+  (`src/sprite/lyraFace.ts`): his forehead, cheeks, nose shade, mouth, chin and line, narrower than our
+  face template (his far eye 6 columns after the near one, ours 9), with the skin under his eyes and
+  brows run on from below (the eye shapes draw those). Drawn in the player's skin (his colours in his
+  skin). Writes `face@12.png` (his crop | the piece | the piece with his eyes back on).
+
+      python3 -I tools/refs/lyra-face-from-ref.py <out> src/sprite/lyraFaceArt.ts
+
+- `lyra-lower-from-ref.py` → `src/sprite/items/lyraLowerArt.ts`: Lyra's skirt (`bottom_striped_pleats`),
+  tabard (`skirt_gilded_tabard`) and belt with pouch (`waist_pouch_belt`), his pixels laid at
+  (x + 74, y + 121) with her blouse and boots; what his tabard, hand and sword hide is run on from his
+  pixels. `src/sprite/items/lyraLower.ts` drapes them onto any pose (above the attach line on the torso,
+  below it hanging as our skirts do, never past her soles). Writes `pieces@8.png`.
+
+      python3 -I tools/refs/lyra-lower-from-ref.py <out> src/sprite/items/lyraLowerArt.ts
+
+- `lyra-boots-from-ref.py` → `src/sprite/items/lyraBootsArt.ts`: Lyra's thigh-high boots
+  (`feet_gilded_thigh_boots`) and the bare thigh above them, his pixels at (x + 74, y + 121) riding a
+  leg of his proportions from our hip to his ankle, which stands off ours as at idle so his soles keep to
+  our feet (`src/sprite/items/lyraBoots.ts`; `OUR` holds the female body's hips and ankles at idle); what
+  her sword hides continues his gold and leather. Writes
+  `hers-vs-pieces@8.png`.
+
+      python3 -I tools/refs/lyra-boots-from-ref.py docs/reference/lyra-game-scale-owner-reference.jpg <out> src/sprite/items/lyraBootsArt.ts

@@ -40,3 +40,13 @@ export function formatDice(e: DiceExpr): string {
   const bonus = e.bonus > 0 ? `+${e.bonus}` : e.bonus < 0 ? `${e.bonus}` : '';
   return `${e.count}d${e.sides}${bonus}`;
 }
+
+/**
+ * A critical's damage (owner's rule, docs/GAMEPLAY_DESIGN.md "Dice"): every die at its highest
+ * face, the critical's doubled dice too, plus the bonus once. 2d6+3 → 4×6+3 = 27.
+ */
+export function maxCritDamage(dice: DiceExpr | string): number {
+  const e = typeof dice === 'string' ? parseDice(dice) : dice;
+  if (!e) return 0;
+  return Math.max(0, 2 * e.count * e.sides + e.bonus);
+}

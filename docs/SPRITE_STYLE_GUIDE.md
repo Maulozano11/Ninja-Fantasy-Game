@@ -18,7 +18,7 @@ npm run sprites -- preset <presetId> out.png  # a preset in every pose
 | Height | About 94 px from the top of the hair to the soles, like the reference. |
 | View | 3/4, facing right. The near arm and leg (screen-left) are drawn in front; the far ones are behind and one shade darker. |
 | Head | Shrunk by `headScale` (about 0.78). The face from the lash row down is a fixed pixel template. |
-| Bodies | Male, female, bulky, slender. Every item must work on all of them. The female and slender bodies follow the owner's heroines drawn at our scale (proposal on `body/female-v2`, waiting for his approval): 92 px tall without hair, a longer torso and neck with the waist higher (`waistY`), narrow shoulders, a slim knee and fuller calf, his hands (5-7 px, cut 1:1 from his pictures) and Aurelia's bare shoulder (`femaleBodyArt.ts`), feet 4 rows shorter (the ankles stand lower, `ankleLift`; every foot template and boot is shortened by `shortFoot`), flat skin with a one-pixel shadow rim inside his near-black line (`skinF` ramp, `flatSkin`). Slender keeps narrower shoulders and waist and fuller hips. Hand size is a creator option on the female bodies (the owner, 2026-10-22: "las manos mas pequeñas ponlas como opcion en el juego para personajes femeninos"): "Manos: Normales" (the body's own, default) or "Pequeñas" (his game-scale Aurelia's open hand and fist, his pixels: `tools/refs/aurelia-hands-from-ref.py` -> `src/sprite/aureliaHandsArt.ts`, appearance `hands: 'small'`); Aurelia's preset uses Pequeñas. |
+| Bodies | Male, female, bulky (the slender body was removed by the owner, 2026-10-22). Every item must work on all three. The female body follows the owner's heroines drawn at our scale (`body/female-v2`, in the game with Lyra, approved 2026-10-23): 92 px tall without hair, a longer torso and neck with the waist higher (`waistY`), narrow shoulders, a slim knee and fuller calf, his hands (5-7 px, cut 1:1 from his pictures) and Aurelia's bare shoulder (`femaleBodyArt.ts`), feet 4 rows shorter (the ankles stand lower, `ankleLift`; every foot template and boot is shortened by `shortFoot`), flat skin with a one-pixel shadow rim inside his near-black line (`skinF` ramp, `flatSkin`). Hand size is a creator option on the female bodies (the owner, 2026-10-22: "las manos mas pequeñas ponlas como opcion en el juego para personajes femeninos"): "Manos: Normales" (the body's own, default) or "Pequeñas" (his game-scale Aurelia's open hand and fist, his pixels: `tools/refs/aurelia-hands-from-ref.py` -> `src/sprite/aureliaHandsArt.ts`, appearance `hands: 'small'`); Aurelia's preset uses Pequeñas. |
 | Poses | idle, handsigns, attack (3 frames), cast, hurt, victory, charge. Every item must work in all of them. |
 | Posture | Upright: chest slightly out, head over the shoulders. Never hunched. In idle the legs are straight under the hips and the arms hang relaxed and nearly straight, fists at hip height. |
 | Depth | 3/4 front ground plane: the near foot stands lower on screen, the far hip and foot sit higher (`ANKLE_N`, `FAR_LIFT` in `rig.ts`). |
@@ -30,6 +30,30 @@ npm run sprites -- preset <presetId> out.png  # a preset in every pose
 - Where one layer overlaps another (arm over the chest, hair over the face), its outline shows as an inner line. That separation is part of the look.
 - Templates that already carry their own outline set `F_NO_OUTLINE`.
 - Outlines never stack into 2 px lines: where a layer's outline runs right next to the outline of a layer in front of it, the back one is dropped (`thinDoubleOutlines` in `compose.ts`).
+- No 1-pixel holes (the owner, 2026-10-22: *"si arregla el hueco de 1 pixel a todos"*). Turned pieces leave
+  pixels of background between them; once the figure is flat, `closePinholes` (`src/sprite/holes.ts`) closes
+  every hole of up to 3 pixels the figure walls in (with the line of the pieces round it, or inside one piece
+  with the colour most of its neighbours have), every nick in the silhouette where the line is missing (the
+  background with the figure on three sides, one of them not line), and takes away stray specks of 1–2 pixels.
+  Real gaps stay: anything bigger or open to the outside, a notch the line goes round, and what an effect
+  walls in. **Idle is left exactly as drawn** (it is the frame his pictures were copied into).
+- No background in the seam beside a clasp (the owner, 2026-10-22: *"aqui tiene unos aun en la hebilla o
+  medallon de la capa"*, then *"1 arreglar igual capa 2 solen rellenar"*). Painted pieces on different joints
+  (a mantle on the neck, its shoulder piece on the shoulder, the hair on the head) part as they move; the piece
+  says what fills its seam (`addSeam`, `src/sprite/seams.ts`): his cloth drawn beside it (Solen's cowl) or its
+  own cloth continued round its studs (`clothSeam`: the Shadow Half-Cloak). Once the figure is drawn it goes
+  in behind everything, only where nothing is drawn and the figure stands round it on all four sides. Idle
+  only where he left the seam open: Solen's cowl on the bulky body (every other idle frame is byte-identical).
+- Jutsu effects (decided 2026-10-22, the owner: *"1 si 2 cambia 3 si"*): **solid jutsu get the characters'
+  black line, energy gets none.** Solid: the beasts, rock (earth walls, thrown rocks, spikes, rubble),
+  crystal walls, the poison walls' stone frame, the chakra barriers' gold frame, the wood dragon and roots,
+  the dragon heads. Energy: fire, lightning, wind, water, chakra, poison and genjutsu bolts and streams,
+  auras, blasts, smoke, dust, mist, slime, glow, spray. The line is 1 px outside the silhouette in the
+  characters' colour rule (never over a pixel of his, never a second line outside his own dark line), and
+  where his line is not dark (the raiju's brown, the crane's teal) it is recoloured to it. No line where an
+  effect comes out of something else (a head out of the fire, a dragon out of the wave, a root out of the
+  ground). The generators lay it with `tools/world-sprites/solid-outline.ts`; a new solid effect's generator
+  must too (`outlineSprite`, naming its own energy colours with `particleColour`).
 
 ## 3. Light and values
 
@@ -42,7 +66,7 @@ npm run sprites -- preset <presetId> out.png  # a preset in every pose
 
 ## 4. Face (fixed)
 
-The face is a template copied pixel by pixel from the reference (`FACE_MAIN` and `FACE_LEFT` in `body.ts`). It has a 4 px lash bar, a 2x2 iris (a dark top row over a mid-tone row, never the brightest tone, so the gaze stays focused), a 1 px far eye, a single nose pixel, a 3 px mouth and a tapered 1 px chin. The near cheek and jaw come in three face shapes (`FACE_LEFT`): `tapered` (default) drops straight for only two rows below the eye, then tapers diagonally into the chin, so the lower face stays small; `soft` is a fuller cheek; `square` is the reference's original strong, flat jaw. Behind the jaw the nape (back of the neck) runs from under the skull down to the shoulders, so short or swept-back hair never leaves a gap there: `slim` (default) starts well inside the skull's back edge and stays in shadow; `strong` is flush with the back of the skull, with a lit nape. It recolors by skin tone and eye color, and has female and bulky variants, seven eye shapes (standard, sharp, round, calm, fierce, bright, piercing; `EYE_ROWS`, which may also replace the row under the eye), three face shapes and two necks. Don't change it without comparing at 10x against the reference.
+The face is a template copied pixel by pixel from the reference (`FACE_MAIN` and `FACE_LEFT` in `body.ts`). It has a 4 px lash bar, a 2x2 iris (a dark top row over a mid-tone row, never the brightest tone, so the gaze stays focused), a 1 px far eye, a single nose pixel, a 3 px mouth and a tapered 1 px chin. The near cheek and jaw come in three face shapes (`FACE_LEFT`): `tapered` (default) drops straight for only two rows below the eye, then tapers diagonally into the chin, so the lower face stays small; `soft` is a fuller cheek; `square` is the reference's original strong, flat jaw. Behind the jaw the nape (back of the neck) runs from under the skull down to the shoulders, so short or swept-back hair never leaves a gap there: it starts well inside the skull's back edge and stays in shadow, the slim nape of his Aiden. Every character has this one neck (the owner, 2026-10-22: "quitar el cuello del creador y dejar a todos con el cuello de hoy"; the thick `strong` neck is gone, and a saved one loads as slim), except his Lyra, who keeps the long neck she has today (`neck: 'long'` on her preset only, `neck.ts`; not a creator option). It recolors by skin tone and eye color, and has female and bulky variants, seven eye shapes (standard, sharp, round, calm, fierce, bright, piercing; `EYE_ROWS`, which may also replace the row under the eye), three face shapes and one neck. Don't change it without comparing at 10x against the reference.
 
 ## 5. Skin, arms, hands and feet
 
@@ -53,9 +77,11 @@ The face is a template copied pixel by pixel from the reference (`FACE_MAIN` and
 - **Hands** are pixel templates (`HAND_*` in `ctx.ts`, about 9-10 px across like the reference's fist) rotated with RotSprite: lit knuckle pixels, shadow on the side away from the light, and near-black finger creases. A weapon hand wraps the grip with distinct 1 px fingers and a thumb crease, with the pommel and guard showing on either side of the fist. A free hand is small and relaxed (`hold` and `relaxed` shapes).
 - **Feet** are pixel templates in 3/4 front view (`FootArt`, `footDraw` in `ctx.ts`). The near foot faces the viewer with the toes at the bottom; the far foot points right and is authored a shade darker. Each footwear item supplies its own `FootArt` (legend: `0-5` main, `a-f` sole/straps, `p-u` skin, `v-z` metal or stitching); shafts stay procedural.
 
+**The far (left) shoulder and arm** (the owner, 2026-10-21: "no te olvides de el hombro y brazo izquierdo de el diseño de los personajes masculinos", after the same fix on the heroines). In the 3/4 view facing right the character's left shoulder and arm are the far ones. When copying his picture, read that side cell by cell (bare shoulder, sleeve, bracer, fist): at rest every pixel is his and where he drew it, pinned with an offset that follows the far-arm joints when our joint sits elsewhere (`FAR_OUT`, tools/refs/saya-upper-from-ref.py). Nothing on that side may be cut off or hidden behind the torso in any pose; check throw-prepare, throw-release, cast and handsigns in particular, and report the pixels that still differ.
+
 ### The female standard (bodies, animations and sprites)
 
-**The female body is his bare female body** (`docs/reference/female-base-owner-reference.jpg`, 2026-10-21). The owner, verbatim: "sigue teniendo las manos separadas en arrojada, en arrojada preparar falta el hombro, sentada, caida y varios mas tienes bugeada las piernas y estas poniendo 3 piernas o 3 botas corrige eso aqui tienes una base del cuerpo femenino sin ropa para que entiendas la base del cuerpo". On the female and slender bodies (slender is his body too until he draws a slender one), in every pose and frame:
+**The female body is his bare female body** (`docs/reference/female-base-owner-reference.jpg`, 2026-10-21). The owner, verbatim: "sigue teniendo las manos separadas en arrojada, en arrojada preparar falta el hombro, sentada, caida y varios mas tienes bugeada las piernas y estas poniendo 3 piernas o 3 botas corrige eso aqui tienes una base del cuerpo femenino sin ropa para que entiendas la base del cuerpo". On the female body, in every pose and frame:
 
 - **His body, piece by piece.** Chest (neck, shoulders and his sports top), pelvis (belly and his briefs), each upper arm, forearm and hand, each thigh, shin and foot are his pixels (`src/sprite/femaleBaseArt.ts`, from `tools/refs/female-base-body-from-ref.py`): his skin and shading, his proportions, his arm and hand shapes and his black line. They ride the rig the way Aiden's plate does (`body.ts` `drawBaseBody`): at his angle every pixel is his, turned with RotSprite as the limb turns. His skin follows the character's skin (in his own skin, `#f6d1b0`, his colours exactly); his line never changes.
 - **The rig is fitted to his joints** (`rig.ts` `BodyFit`, `solveFit`): at idle every joint is his, so frame 0 of idle is his picture, every pixel of the body below the head (`femaleBase.test.ts`). In every other pose the torso keeps his neck, shoulders and hips and each limb his length on its side (his far arm and leg are drawn shorter on screen, so the far foot stands higher without a lift of its own). His thigh is much longer than his shin: a foot asked to come in under the hip goes forward until the knee can fold over it.
@@ -88,6 +114,11 @@ The earlier review (2026-10-21), on the body built from his heroines at our scal
 - The crossguard shows just below the fist. Blades use `metal` materials so they get a dark outline.
 - Glow materials are only for energy techniques (spiral orb, lightning, palm glow), never for steel or crystal.
 - In idle the blade hangs across the legs about 50° below horizontal, like the reference.
+- A weapon stowed on the back (hand signs, the tackle, the combo, camp, or put away in battle) is strapped to
+  the back: it turns with the torso's lean in every pose, and nothing of it shows in front of the back below
+  the shoulders (the owner, 2026-10-22: *"haz el cambio en espada guardada"*; `clipStowed` in
+  `items/accessories.ts`). What would show there is cut away, a painted blade closed with its own black line,
+  and no sliver of it is left loose.
 - Blades stay slim (about 5 px plus outline) and taper to the tip; shading is a lit bevel, a centre ridge and a darker lower half, with only sparse facet lines.
 
 ## 8. Clothes
@@ -120,6 +151,8 @@ The earlier review (2026-10-21), on the body built from his heroines at our scal
 ## 11. Names
 
 All item and preset names are original. Never use names, symbols or logos from existing franchises.
+
+The headband is plain cloth only (the owner, 2026-10-22: "deja la pura bandana la pura tela"): no metal plate, no emblem or engraved village symbol, no slash across it (`items/headband.ts`). It replaced his earlier "quita las bandanas". Don't add a plate or symbol back.
 
 ## Checklist for a new item
 

@@ -31,11 +31,16 @@
 // WORLD_OUT, so it never writes into src/assets; every file is written whole (temp, then rename);
 // the output is deterministic (no Math.random). `beast` (the crow swarm) belongs to another artist:
 // its sheet and manifest entry are copied through unchanged from <dir>/vfx_genjutsu/.
+// The three crystal walls carry the characters' black line round their crystal, thorns and vines
+// (solid-outline.ts, the owner's decision of 2026-10-22, "1 si"), never round his smoke, glow or the
+// 3/4 wall's shadow on the ground; the rest of the set is energy and gets none. SOLID_OUTLINE=0
+// leaves it off.
 
 import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { Canvas, Color, PX_PER_M, WorldSprite, hash, writeGroup } from './kit';
 import { GJ_PAL, GJ_REF, GjKind } from './vfx-genjutsu-v3-refdata';
+import { outlineSprite, solidOutlineOn, type SolidOutlineOptions } from './solid-outline';
 
 const GROUP = 'vfx_genjutsu_v3';
 const OLD_GROUP = 'vfx_genjutsu';
@@ -2105,6 +2110,28 @@ export function genjutsuV3Sprites(only?: string[]): WorldSprite[] {
   return out;
 }
 
+/** The walls: solid crystal. */
+const LINED = new Set(['wall', 'wall_diag', 'wall_depth']);
+const rgbaKey = (r: number, g: number, b: number, a: number): number => ((r << 24) | (g << 16) | (b << 8) | a) >>> 0;
+/** His smoke, glow and ground shadow (palette kinds from genjutsu-from-ref.py), at their own alpha; a colour also used for crystal counts as crystal. */
+const SOFT = (() => {
+  const soft = new Set<number>(), hard = new Set<number>();
+  PAL.forEach((c, i) => (KIND[i] === 'smoke' || KIND[i] === 'glow' || KIND[i] === 'ground' ? soft : hard).add(rgbaKey(c[0], c[1], c[2], c[3])));
+  for (const k of hard) soft.delete(k);
+  return soft;
+})();
+
+/** The line's options for a sprite of the set (null: energy, no line). */
+export function genjutsuLineOptions(name: string): SolidOutlineOptions | null {
+  return LINED.has(name) ? { particleColour: (r, g, b, a) => SOFT.has(rgbaKey(r, g, b, a)) } : null;
+}
+
+/** The characters' line round a wall's crystal; every other sprite unchanged. */
+export function genjutsuLine(s: WorldSprite): WorldSprite {
+  const opts = genjutsuLineOptions(s.name);
+  return opts ? outlineSprite(s, opts) : s;
+}
+
 /** For debugging scripts in a scratch folder only (nothing in the build uses it). */
 export const __gjDebug = { key, piece, pillarClusters, underThorns, thornGrowth, render, bounds, parts, holes, toneMap, PAL, KIND, LAB };
 
@@ -2144,9 +2171,11 @@ if (process.argv[1] && /vfx-genjutsu-v3\.ts$/.test(process.argv[1])) {
   const worldOut = process.env.WORLD_OUT;
   if (!worldOut) throw new Error('vfx-genjutsu-v3: set WORLD_OUT to the staging folder (this generator never writes into src/assets)');
   const only = process.env.GJ_SPRITES ? process.env.GJ_SPRITES.split(',') : undefined;
-  const sprites = genjutsuV3Sprites(only);
-  const bad = sprites.flatMap(borderCheck);
+  // The border check is on his art; the line may then take the clear pixel round it.
+  const art = genjutsuV3Sprites(only);
+  const bad = art.flatMap(borderCheck);
   if (bad.length) throw new Error('vfx-genjutsu-v3: art on the frame border:\n  ' + bad.join('\n  '));
+  const sprites = solidOutlineOn() ? art.map(genjutsuLine) : art;
   writeGroupWhole(sprites, worldOut, !!only);
   for (const s of sprites) {
     const f = Object.values(s.anims)[0].frames[0];

@@ -19,9 +19,11 @@ import type { DrawCtx, ItemDef } from '../ctx';
 import { ellipse, F_NO_OUTLINE, F_NO_TEXTURE, GRID, Layer, Pen, poly, v, Vec } from '../raster';
 import type { PaintedPart } from './capeArt';
 import { braid, BraidArt, hairTemplate, hd, hlock, lock, LockOpts } from './hairkit';
+import { HAIR_COPPER_BRAID } from './lyraHair';
 import { BASE_HAIR, BASE_HAIR_BASE, BASE_HAIR_LINE, BASE_HAIR_SKULL } from './baseHairArt';
 import { VALIANT_HAIR_BACK, VALIANT_HAIR_BASE, VALIANT_HAIR_FRONT, VALIANT_HAIR_LINE } from './valiantHairArt';
 import { AURELIA_HAIR_BACK, AURELIA_HAIR_BASE, AURELIA_HAIR_FRONT, AURELIA_HAIR_LINE, AURELIA_HAIR_ORNAMENT, AURELIA_HAIR_SKIN, AURELIA_ORNAMENT_BASE, AURELIA_SKIN_BASE } from './aureliaHairArt';
+import { FOUNDER_HAIR_BACK, FOUNDER_HAIR_BASE, FOUNDER_HAIR_FRONT, FOUNDER_HAIR_LINE } from './founderHairArt';
 
 const hairColor = (def: string) => [{ key: 'hair', label: 'Hair', default: def, kind: 'hair' as const }];
 
@@ -1846,6 +1848,24 @@ export const HAIR_ITEMS: ItemDef[] = [
       trimSkull(g, AURELIA_HAIR_BACK);
     },
   },
+  {
+    id: 'hair_founder_spikes',
+    slot: 'hair',
+    name: "Founder's Spikes",
+    desc: 'Spiky dark slate hair: short spikes all round the crown, locks over the brow with a long one between the eyes, a sideburn before the ear and locks beside the far cheek. Painted by the owner for Solen.',
+    colors: hairColor(FOUNDER_HAIR_BASE),
+    draw: (g, [c]) => {
+      // The owner's hair on his Solen, his pixels (the new standard, 2026-10-21; tools/refs/
+      // solen-hair-from-ref.py), drawn as his Aiden's hair is: over the head every lock and line of his,
+      // behind it the same hair with what his face hides filled in.
+      const tint = (ch: string, hex: string) => (FOUNDER_HAIR_LINE.includes(ch) ? hex : retintHex(hex, FOUNDER_HAIR_BASE, c));
+      paintedHair(g, g.L('hairBack'), FOUNDER_HAIR_BACK, tint);
+      paintedHair(g, g.L('hairFront'), FOUNDER_HAIR_FRONT, tint);
+      trimSkull(g, FOUNDER_HAIR_BACK);
+    },
+  },
+  // Lyra's hair, after the owner's first heroine picture (lyraHair.ts).
+  HAIR_COPPER_BRAID,
   {
     id: 'hair_messy_ponytail',
     slot: 'hair',

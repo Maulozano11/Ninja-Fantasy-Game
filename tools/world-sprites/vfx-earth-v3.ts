@@ -35,6 +35,11 @@
 // Same sprite names and anims as vfx_earth, plus `multi_hit` (the rock bullets' impact, his
 // unlabelled panel) and `aura_back`. Frames are sized to his art and the anchors moved with it.
 // The earth beast is out of scope: beast.png is copied through from vfx_earth unchanged.
+// The rock carries the characters' black line (solid-outline.ts, the owner's decision of 2026-10-22,
+// "1 si"): the walls, the thrown rocks (bolt, sphere, slash, multi), the spikes of the stream and the
+// rocks of the hit, the blast and the aura's back layer; never his dust or his ground shadow (the
+// palette kinds earth-from-ref.py gives each colour tell them apart). The breath, the bullets' impact
+// and the aura's front layer are dust and get none. SOLID_OUTLINE=0 builds the set without it.
 // Deterministic: no Math.random.
 
 import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync } from 'node:fs';
@@ -42,6 +47,7 @@ import { join } from 'node:path';
 import { Canvas, Color, PX_PER_M, WorldSprite, hex, writeGroup } from './kit';
 import { TAU, clamp, fract, pnoise, rr, smooth, vfxSprite } from './vfx-a-lib';
 import { EV3_REF } from './vfx-earth-v3-refdata';
+import { outlineSprite, solidOutlineOn, type SolidOutlineOptions } from './solid-outline';
 
 // --- his key frames -------------------------------------------------------------------------------
 
@@ -3065,7 +3071,46 @@ function lineUp(tile: WorldSprite, head: WorldSprite): WorldSprite[] {
   return [pad(tile), pad(head)];
 }
 
-export function earthV3Sprites(): WorldSprite[] {
+/**
+ * The rock sprites and the key frames whose palettes tell their rock from their dust: body and
+ * outline are rock, dust and shade are not (earth-from-ref.py's class map).
+ */
+const LINED: Record<string, string[]> = {
+  bolt: ['bolt'], sphere: ['sphere'], slash: ['slash'], multi: ['multi'], stream: ['stream', 'stream_head'], stream_head: ['stream', 'stream_head'],
+  hit: ['hit'], blast: ['blast'], aura_back: ['aura_back'], wall: ['wall'], wall_diag: ['wall_diag'], wall_depth: ['wall_depth'],
+};
+
+const rgbaKey = (r: number, g: number, b: number, a: number): number => ((r << 24) | (g << 16) | (b << 8) | a) >>> 0;
+
+/** His dust and ground shadow in these key frames' palettes, at their own alpha (a colour that is also his rock counts as rock). */
+export function earthSoft(names: string[]): (r: number, g: number, b: number, a: number) => boolean {
+  const soft = new Set<number>(), rock = new Set<number>();
+  for (const n of names) {
+    const pal = key(n).pal;
+    pal.cols.forEach((c, i) => (pal.kinds[i] === 'dust' || pal.kinds[i] === 'shade' ? soft : rock).add(rgbaKey(c[0], c[1], c[2], c[3])));
+  }
+  for (const k of rock) soft.delete(k);
+  return (r, g, b, a) => soft.has(rgbaKey(r, g, b, a));
+}
+
+/** The line's options for a sprite of the set (null: energy, no line). */
+export function earthLineOptions(name: string): SolidOutlineOptions | null {
+  return LINED[name] ? { particleColour: earthSoft(LINED[name]) } : null;
+}
+
+/** The characters' line round a rock sprite's rock (the stream tile as the repeating tile it is); other sprites unchanged. */
+export function earthLine(s: WorldSprite): WorldSprite {
+  const opts = earthLineOptions(s.name);
+  return opts ? outlineSprite(s, opts, { wrapX: s.name === 'stream' }) : s;
+}
+
+/** The rock bullets as his art, without the line (vfx-dc.ts cuts them apart and lays the line after turning them). */
+export function earthMultiArt(): WorldSprite {
+  return fit([multi()])[0];
+}
+
+/** The set as his art, before the line. */
+export function earthV3Art(): WorldSprite[] {
   const [tile, head] = stream();
   return [
     ...fit([bolt()]), ...lineUp(tile, fit([head], true)[0]), ...fit([breath()]), ...fit([sphere()]), ...fit([slash()]), ...fit([multi()]),
@@ -3078,6 +3123,12 @@ export function earthV3Sprites(): WorldSprite[] {
   ];
 }
 
+/** The set as it ships: his art with the characters' line round the rock. */
+export function earthV3Sprites({ outline = solidOutlineOn() }: { outline?: boolean } = {}): WorldSprite[] {
+  const art = earthV3Art();
+  return outline ? art.map(earthLine) : art;
+}
+
 function main(): void {
   // Staging only: refuse to run without WORLD_OUT, so nothing is ever written into src/assets.
   const worldOut = process.env.WORLD_OUT;
@@ -3086,11 +3137,13 @@ function main(): void {
   const beastSrc = join(worldOut, 'vfx_earth', 'beast.png');
   const oldManifest = join(worldOut, 'vfx_earth', 'manifest.json');
   if (!existsSync(beastSrc) || !existsSync(oldManifest)) throw new Error(`vfx-earth-v3: the earth beast is copied from ${beastSrc}; it is missing`);
-  const sprites = earthV3Sprites();
-  const bad = sprites.flatMap(borderCheck);
-  const nFrames = sprites.reduce((n, s) => n + Object.values(s.anims).reduce((m, a) => m + a.frames.length, 0), 0);
-  console.log(bad.length ? `border check FAILED:\n  ${bad.join('\n  ')}` : `border check: ${sprites.length} sprites, ${nFrames} frames, no pixel on any frame border (stream tiles and the head joint excepted)`);
+  // The border check is on his art; the line may then take the clear pixel round it.
+  const art = earthV3Art();
+  const bad = art.flatMap(borderCheck);
+  const nFrames = art.reduce((n, s) => n + Object.values(s.anims).reduce((m, a) => m + a.frames.length, 0), 0);
+  console.log(bad.length ? `border check FAILED:\n  ${bad.join('\n  ')}` : `border check: ${art.length} sprites, ${nFrames} frames, no pixel on any frame border (stream tiles and the head joint excepted)`);
   if (bad.length) process.exitCode = 1;
+  const sprites = solidOutlineOn() ? art.map(earthLine) : art;
   for (const s of sprites) console.log(flashReport(s));
   // Every file is written whole under a temp folder, then moved in: PNGs first, the manifest last.
   const tmpRoot = join(worldOut, '.vfx-earth-v3-tmp');
@@ -3115,4 +3168,5 @@ function main(): void {
   }
 }
 
-main();
+// Run as a script only (vfx-dc.ts imports the rock bullets).
+if (process.argv[1] && /vfx-earth-v3\.ts$/.test(process.argv[1])) main();

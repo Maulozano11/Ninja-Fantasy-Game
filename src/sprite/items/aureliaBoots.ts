@@ -661,7 +661,7 @@ export const FEET_DAWN_BOOTS: ItemDef = {
   name: 'Dawn Boots',
   desc: 'Thigh-high white boots with gold lace tops, a gold seam down the front and gold heeled shoes. Women only.',
   colors: [col('cloth', 'Cloth', DAWN_BOOT_CLOTH), col('gold', 'Gold', DAWN_BOOT_GOLD, 'metal')],
-  bodies: ['female', 'slender'],
+  bodies: ['female'],
   draw: (g, [cloth, gold]) => {
     // His whites, creams and greys follow Cloth and his golds follow Gold, each shade as far from the
     // slot's colour as his was from his own; his black line and his brown soles and heel stay.

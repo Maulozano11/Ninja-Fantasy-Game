@@ -7,18 +7,18 @@ import { Volume2, VolumeX, Sun, Moon, CloudRain, ScrollText } from 'lucide-react
 import type { Action, AiOrder, BattleEvent, BattleState, Cell, Intent, Pt, RollInfo, Unit } from '../../battle/types';
 import { homeTeam } from '../../battle/types';
 import { applyAction } from '../../battle/engine';
-import { jutsuCost, needsSeals } from '../../battle/engine';
+import { chargeLanding, handsBlocker, jutsuCost, needsSeals } from '../../battle/engine';
 import { aiAction, aiToAct } from '../../battle/ai';
 import { current } from '../../battle/turns';
 import { AURA_RADIUS, attackPreview, sovereign } from '../../battle/combat';
-import { JUTSU, areaOf, enhanced as enhancedSpec } from '../../battle/jutsu';
+import { JUTSU, areaOf, enhanced as enhancedSpec, fanDice, fannedBy } from '../../battle/jutsu';
 import type { JutsuSpec } from '../../battle/jutsu';
-import { cellCenter, cellOf, dist, fullCoverBetween, getMap, gridFor, idx, lineOfSight, sameCell } from '../../battle/map';
+import { cellCenter, cellOf, dist, fullCoverBetween, getMap, gridFor, idx, lineOfSight, sameCell, steamAt, steamBetween, steamHides } from '../../battle/map';
 import { canStop, occupancy, pathCost, pathTo, reachable } from '../../battle/nav';
 import { foreseen } from '../../battle/intent';
 import { MAX_STRUCTURES, STRUCTURE_AC, breakable, jutsuWallAt, ownStructures, structureAt, structureAttack, structureBlocker, structureDist } from '../../battle/structures';
 import { auraEntered, commandBlocker, edgeFoe, nodeInSight, nodeUnder, ownNodeAt, ownNodes, submissionBlocker, submissionRefused, swapBlocker, warpBlocker, warpLanding } from '../../battle/clans';
-import { KUNAI, KUNAI_LONG, handsFree, wielded } from '../../battle/units';
+import { KUNAI, KUNAI_LONG, wielded } from '../../battle/units';
 import { STONE_RANGE } from '../../battle/stealth';
 import { TAG } from '../../battle/hazards';
 import { battleResult } from '../../battle/result';
@@ -31,6 +31,9 @@ import { Playback } from './playback';
 import { drawBattle, image, pickGround, pickStructure, pickUnit, project, screenToWorld } from './renderer';
 import type { Camera, Overlay, Rect } from './renderer';
 import { playSound, startAmbience } from './battleSound';
+import { drawDiceLayer } from './diceLayer';
+import { preloadDice } from '../dice/diceDraw';
+import { getDiceStyle } from '../dice/diceStyle';
 import { floatLabel, jutsuName, logLine, structureName, unitName, unitRef } from './battleLog';
 import type { LogLine } from './battleLog';
 import { DMG_ES, SAVE_EN, SAVE_ES, T } from './battleText';
@@ -42,13 +45,15 @@ import { ActionDock, MiniRing, PartyDock, TopPlaque, plaqueUnit } from './hudKit
 import { Anchor, Piece, kitText, useHudScale } from './kit';
 import { appNavigate } from '../../appNav';
 import { preloadWorldGroups } from '../world/WorldSpriteView';
+import { prepareVfxTints, releaseVfxTints, tintStats } from './vfxTintCache';
+import { unitTint, unitTintSheets } from './vfxTintPlan';
 
 type Mode =
   | { k: 'move' }
   | { k: 'attack'; ranged: boolean }
   /** `picked`: Command from level 9, the first of its two targets. */
   | { k: 'jutsu'; id: string; enhanced: boolean; picked?: string }
-  | { k: 'item'; item: 'bandage' | 'antidote' | 'tag' }
+  | { k: 'item'; item: 'bandage' | 'antidote' | 'tag' | 'tagTrap' }
   | { k: 'shove'; mode: 'push' | 'prone' }
   | { k: 'stone' }
   | { k: 'stabilize' }
@@ -67,6 +72,8 @@ type TipKey = (typeof TIP_KEYS)[number];
 export const ZOOMS = [2, 1, 2 / 3, 1 / 2, 1 / 3] as const;
 
 /** Canvas pixels per map pixel: whole steps from 1 up (crisp pixel art), the plain fraction below. */
+/** How long after the dice (ms) Space and Enter only skip them and never end the turn. */
+const DICE_KEY_GRACE = 700;
 const camScale = (zoom: number, dpr: number): number => (zoom * dpr >= 1 ? Math.max(1, Math.round(zoom * dpr)) : zoom * dpr);
 
 function tipSeen(k: string): boolean {
@@ -126,6 +133,14 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
   /** The map pixels the round minimap shows (its square around the camera). */
   const miniView = useRef({ x: 0, y: 0, w: 1 });
   const hudK = useHudScale(wrapRef);
+  const hudKRef = useRef(hudK);
+  hudKRef.current = hudK;
+  /** Dice are in the air: the skip button shows. */
+  const [diceRolling, setDiceRolling] = useState(false);
+  const diceRollingRef = useRef(false);
+  /** When dice were last rolling or skipped (screen time): a late Space must not end the turn. */
+  const diceSeenRef = useRef(0);
+  useEffect(() => preloadDice(getDiceStyle()), []);
   const [tip, setTip] = useState<TipKey | null>(null);
   const [speed, setSpeed] = useState<1 | 2 | 3>(() => {
     try {
@@ -248,8 +263,24 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
     };
   }, []);
 
-  // The jutsu effects' sheets load now, so the first cast already plays from its sheet.
-  useEffect(() => preloadWorldGroups('vfx_'), []);
+  // The jutsu effects' sheets load now, so the first cast already plays from its sheet. The
+  // elemental ones its ninjas can cast are recoloured in their chakra colours in the background
+  // (vfxTintCache.ts), and let go when the battle ends.
+  useEffect(() => {
+    preloadWorldGroups('vfx_');
+    return releaseVfxTints;
+  }, []);
+  // What to recolour: each ninja's colour and jutsu, so one who joins later (or whose colour
+  // changes) is prepared too. It starts a moment after the battle opens, when its own art is up.
+  const tintKey = Object.values(state.units)
+    .map((u) => `${u.id}:${unitTint(u) ?? ''}:${u.jutsus.join(',')}`)
+    .join('|');
+  const openedAt = useRef(performance.now());
+  useEffect(() => {
+    const go = () => prepareVfxTints(Object.values(stateRef.current.units).flatMap((u) => unitTintSheets(u, (id) => JUTSU[id])));
+    const t = window.setTimeout(go, Math.max(0, 800 - (performance.now() - openedAt.current)));
+    return () => window.clearTimeout(t);
+  }, [tintKey]);
 
   useEffect(() => {
     // Start centred on the party.
@@ -359,6 +390,8 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
       state: () => stateRef.current,
       act,
       busy: () => pbRef.current?.busy,
+      /** How the jutsu frames in chakra colours were made (vfxTintCache.ts). */
+      tints: () => ({ ...tintStats }),
       /** Where a unit is drawn right now (it trails the state while its walk plays). */
       shownAt: (id: string) => pbRef.current?.posOf(id, performance.now()),
       /** After a check edits the state in place: the screen takes it up and the views snap to it. */
@@ -369,6 +402,9 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
         pbRef.current?.sync(s, performance.now());
       },
       centerOn: (x: number, z: number) => centerOn({ x, z }, true),
+      /** What an action would do, without doing it (a check can look for the seed of a natural 20). */
+      dryRun: (a: Action) => applyAction(structuredClone(stateRef.current), a),
+      skipDice: () => pbRef.current?.skipDice(performance.now()),
       screenOf: (x: number, z: number) => {
         const p = project(map, { x, z });
         return { x: (p.X - cam.current.x) * cam.current.zoom, y: (p.Y - cam.current.y) * cam.current.zoom + (canvasRef.current?.getBoundingClientRect().top ?? 0) };
@@ -416,7 +452,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
         const pv = attackPreview(s, striker, hu, 'melee');
         if (pv.inRange) {
           o.targets = [hu.id];
-          label = pv.blocked ? reasonLine(pv.blocked) : T('aimChance', { p: Math.round(pv.chance * 100), dice: wielded(striker).dice });
+          label = pv.blocked ? reasonLine(pv.blocked === 'noSight' ? sightWhy(s, striker.pos, hu.pos) : pv.blocked) : T('aimChance', { p: Math.round(pv.chance * 100), dice: wielded(striker).dice });
           sub = pv.blocked ? null : reasonsText(pv, lang);
         } else label = planLine;
         if (pv.inRange && planLine) sub = sub ? `${sub} · ${planLine}` : planLine;
@@ -444,7 +480,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
         o.targets = [hu.id];
         // The engine's refusals first: out of reach, out of sight or walled off, hands busy.
         const busyHands = mode.ranged && actor.armed && actor.weapon.twoHanded && actor.turn.interacted;
-        label = !pv.inRange ? T('aimNoReach') : pv.blocked ? reasonLine(pv.blocked) : busyHands ? reasonLine('handsBusy') : T('aimChance', { p: Math.round(pv.chance * 100), dice: mode.ranged ? KUNAI.dice : wielded(striker).dice });
+        label = !pv.inRange ? T('aimNoReach') : pv.blocked ? reasonLine(pv.blocked === 'noSight' ? sightWhy(s, striker.pos, hu.pos) : pv.blocked) : busyHands ? reasonLine('handsBusy') : T('aimChance', { p: Math.round(pv.chance * 100), dice: mode.ranged ? KUNAI.dice : wielded(striker).dice });
         sub = pv.inRange && !pv.blocked && !busyHands ? reasonsText(pv, lang) : null;
         if (planLine) sub = sub ? `${sub} · ${planLine}` : planLine;
       } else if (hw) {
@@ -456,7 +492,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
         sub = [structureName(hw, lang), T('ac', { n: STRUCTURE_AC }), ...adv].join(' · ');
       }
     } else if (mode.k === 'jutsu' && spec && spec.shape === 'node') {
-      // Warp Strike: the Nodes it can jump to light up; the one under the cursor shows where it lands.
+      // Shooting-Star Thrust: the Nodes it can jump to light up; the one under the cursor shows where it lands.
       o.range = { at: actor.pos, radius: spec.range };
       o.nodes = { valid: ownNodes(s, actor).filter((n) => !warpBlocker(s, actor, n)).map((n) => n.id) };
       const n = (hu && ownNodeAt(s, actor, hu.pos)) || (hover?.pt && ownNodeAt(s, actor, hover.pt)) || undefined;
@@ -502,7 +538,12 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
       const at = self ? actor.pos : hu ? hu.pos : hover?.pt;
       if (at) {
         const area = areaOf(spec, actor.pos, at);
-        if (area) {
+        if (area && spec.special === 'galeZone') {
+          // The Gale Curtain hurts nobody: where the gale will turn, and what it does.
+          o.area = { shape: area, tone: 'heal' };
+          label = jutsuName(spec.id, lang);
+          sub = T('aimGale');
+        } else if (area) {
           o.area = { shape: area, tone: spec.special === 'heal' ? 'heal' : 'enemy' };
           // As the engine reaches them: nobody behind a metal wall from where it bursts (D13).
           const origin = spec.shape === 'selfCircle' || spec.shape === 'cone' || spec.shape === 'line' ? actor.pos : at;
@@ -521,18 +562,23 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
           const line = T('aimSave', { save: sv, dc: actor.saveDC }) + (spec.saveAdv === 'disadvantage' ? ` · ${T('saveDisadv')}` : '');
           sub = sub ? `${line} · ${sub}` : line;
         }
+        // A fire aimed through a gale on the ground burns harder (the Gale Curtain).
+        if (fannedBy(spec, actor.pos, at, s.zones ?? [])) {
+          const fan = T(fanDice(spec) > 1 ? 'aimFanned2' : 'aimFanned');
+          sub = sub ? `${sub} · ${fan}` : fan;
+        }
         if (!self && dist(actor.pos, at) > spec.range + 0.1 + (hu?.bulk ?? 0) + (hu?.kind === 'hydra_head' ? 2.5 : 0)) label = T('aimNoReach');
         // Then sight, as the engine refuses it: a jutsu at one target needs to see it (a strike, no
         // metal wall between); an area or a point needs to see where it goes.
-        else if (spec.shape === 'single' && hu && (spec.melee ? fullCoverBetween(s, actor.pos, hu.pos) : !lineOfSight(s, actor.pos, hu.pos))) label = reasonLine(spec.melee ? 'blocked' : 'noSight');
-        else if ((spec.shape === 'circle' || spec.shape === 'point' || spec.shape === 'wall') && !lineOfSight(s, actor.pos, at)) label = reasonLine('noSight');
+        else if (spec.shape === 'single' && hu && (spec.melee ? fullCoverBetween(s, actor.pos, hu.pos) || (!!spec.charge && !chargeLanding(s, actor, hu)) : !lineOfSight(s, actor.pos, hu.pos))) label = reasonLine(spec.melee ? 'blocked' : sightWhy(s, actor.pos, hu.pos));
+        else if ((spec.shape === 'circle' || spec.shape === 'point' || spec.shape === 'wall') && !lineOfSight(s, actor.pos, at, { into: true })) label = reasonLine(sightWhy(s, actor.pos, at, true));
         if (spec.shape === 'point' || spec.shape === 'wall') o.point = { at, ok: dist(actor.pos, at) <= spec.range + 0.1 };
         if (spec.special === 'metalBlock' || spec.special === 'metalWall' || spec.special === 'earthWall' || spec.special === 'waterWall') {
           // A wall or a Kōton structure: where it would stand and why it can't (never over anyone);
           // for a Kōton, how many already stand.
           const koton = spec.special === 'metalBlock' || spec.special === 'metalWall';
           const w = koton ? structureAt(spec, actor.pos, at, actor.id, 'preview') : jutsuWallAt(spec, actor.pos, at, 'preview');
-          const why = dist(actor.pos, at) > spec.range + 0.1 ? 'outOfRange' : !lineOfSight(s, actor.pos, at) ? 'noSight' : structureBlocker(s, w);
+          const why = dist(actor.pos, at) > spec.range + 0.1 ? 'outOfRange' : !lineOfSight(s, actor.pos, at, { into: true }) ? sightWhy(s, actor.pos, at, true) : structureBlocker(s, w);
           const n = ownStructures(s, actor.id).length;
           o.point = undefined;
           o.footprint = { wall: w, ok: !why };
@@ -544,10 +590,19 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
     } else if (mode.k === 'item' && mode.item === 'tag') {
       o.range = { at: actor.pos, radius: TAG.range };
       if (hover?.pt) o.area = { shape: { kind: 'circle', center: hover.pt, radius: TAG.radius }, tone: 'enemy' };
+    } else if (mode.k === 'item' && mode.item === 'tagTrap') {
+      // Hidden on the ground nearby: where it goes and the blast it waits with.
+      o.range = { at: actor.pos, radius: TAG.plant };
+      if (hover?.pt) {
+        const ok = dist(actor.pos, hover.pt) <= TAG.plant + 0.1;
+        o.point = { at: hover.pt, ok };
+        o.area = { shape: { kind: 'circle', center: hover.pt, radius: TAG.radius }, tone: 'enemy' };
+        label = ok ? (lineOfSight(s, actor.pos, hover.pt, { into: true }) ? T('aimTagTrap') : reasonLine(sightWhy(s, actor.pos, hover.pt, true))) : T('aimNoReach');
+      }
     } else if (mode.k === 'stone') {
       o.range = { at: actor.pos, radius: STONE_RANGE };
       if (hover?.pt) o.point = { at: hover.pt, ok: dist(actor.pos, hover.pt) <= STONE_RANGE };
-    } else if (mode.k === 'shove' || mode.k === 'stabilize' || (mode.k === 'item' && mode.item !== 'tag')) {
+    } else if (mode.k === 'shove' || mode.k === 'stabilize' || (mode.k === 'item' && mode.item !== 'tag' && mode.item !== 'tagTrap')) {
       o.range = { at: actor.pos, radius: 1.5 };
       if (hu) o.targets = [hu.id];
     } else if (mode.k === 'drag') {
@@ -566,6 +621,14 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
   selectedRef.current = selected;
   const foreseenRef = useRef(foreseenNow);
   foreseenRef.current = foreseenNow;
+  // The acting ninja stands in steam: the foes outside it vanish from its sight (the owner:
+  // "que los enemigos desaparezcan de la visión de ese personaje"), drawn as a hidden foe is.
+  const unseen = useMemo(() => {
+    if (!actor || !steamAt(state, actor.pos)) return undefined;
+    return new Set(Object.values(state.units).filter((u) => u.team !== actor.team && steamHides(state, actor.pos, u.pos)).map((u) => u.id));
+  }, [actor, state]);
+  const unseenRef = useRef(unseen);
+  unseenRef.current = unseen;
 
   useEffect(() => {
     let raf = 0;
@@ -628,7 +691,27 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
         team: 'party',
         lang: langRef.current,
         avoid: panelRects(canvas, dpr),
+        unseen: unseenRef.current,
       });
+      // The dice over the fight: the quick d20s, the big window, a critical's impact.
+      drawDiceLayer(ctx, {
+        pb: p,
+        state: s,
+        map,
+        cam: camera,
+        now,
+        W: canvas.width,
+        H: canvas.height,
+        s: Math.max(1, Math.round(2 * hudKRef.current * dpr)),
+        lang: langRef.current,
+        style: getDiceStyle(),
+      });
+      const rolling = p.diceRolling(now);
+      if (rolling) diceSeenRef.current = now;
+      if (rolling !== diceRollingRef.current) {
+        diceRollingRef.current = rolling;
+        setDiceRolling(rolling);
+      }
       void w;
       void h;
       drawMinimap(now);
@@ -675,7 +758,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
       if (gr.complete && gr.naturalWidth) g.drawImage(gr, 0, 0);
       for (const u of Object.values(s.units)) {
         if (u.down === 'dead' || u.down === 'fled' || u.kind === 'hydra_head') continue;
-        if (u.team === 'enemy' && u.cond.hidden !== undefined) continue;
+        if (u.team === 'enemy' && (u.cond.hidden !== undefined || unseenRef.current?.has(u.id))) continue;
         const p = project(map, pbRef.current!.posOf(u.id, now));
         g.fillStyle = homeTeam(u) === 'party' ? '#38bdf8' : '#f87171';
         g.beginPath();
@@ -835,8 +918,8 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
         return;
       }
       case 'item':
-        if (mode.item === 'tag') {
-          if (pt) act({ type: 'item', unit: actor.id, item: 'tag', at: pt });
+        if (mode.item === 'tag' || mode.item === 'tagTrap') {
+          if (pt) act({ type: 'item', unit: actor.id, item: mode.item, at: pt });
         } else if (u) act({ type: 'item', unit: actor.id, item: mode.item, target: u.id });
         return;
       case 'shove':
@@ -899,7 +982,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
           continue;
         }
         const cost = jutsuCost(u, sp, false);
-        const busyHands = needsSeals(u, sp) && !handsFree(u) && !!u.turn.interacted;
+        const busyHands = handsBlocker(u, sp);
         // Clan abilities with nothing to work on: Command, Submission and Swap before the fighting,
         // Warp and Swap with no Node down, Submission with no beast or summon on the field.
         const idle =
@@ -911,7 +994,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
                 ? t('why_noBeast')
                 : null;
         const spent = sp.cast === 'bonus' ? (can.bonus ? null : t('r_noBonus')) : noAction;
-        const why = idle ?? spent ?? (u.chakra < cost ? t('r_noChakra') : busyHands ? t('r_handsBusy') : null);
+        const why = idle ?? spent ?? (u.chakra < cost ? t('r_noChakra') : busyHands ? t(`r_${busyHands}` as TKey) : null);
         add({
           id: `jutsu:${id}`,
           label: jutsuShort(id, lang),
@@ -952,9 +1035,12 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
       add({ id: 'bandage', label: t('act_bandage'), icon: ACTION_ICON.bandage, badge: s.supplies.bandages, disabled: !can.action || s.supplies.bandages < 1, active: mode.k === 'item' && mode.item === 'bandage', help: t('help_bandage') });
       add({ id: 'antidote', label: t('act_antidote'), icon: ACTION_ICON.antidote, badge: s.supplies.antidotes, disabled: !can.action || s.supplies.antidotes < 1, active: mode.k === 'item' && mode.item === 'antidote', help: t('help_antidote') });
       add({ id: 'tag', label: t('act_tag'), icon: ACTION_ICON.tag, badge: s.supplies.explosiveTags, disabled: !can.action || s.supplies.explosiveTags < 1, active: mode.k === 'item' && mode.item === 'tag', help: t('help_tag') });
+      // The same tags, hidden on the ground: the explosive tag's old jutsu, now a use of the item.
+      add({ id: 'tagTrap', label: t('act_tagTrap'), icon: ACTION_ICON.tagTrap, badge: s.supplies.explosiveTags, disabled: !can.action || s.supplies.explosiveTags < 1, active: mode.k === 'item' && mode.item === 'tagTrap', help: t('help_tagTrap') });
       if (downedAlly) add({ id: 'stabilize', label: t('act_stabilize'), icon: ACTION_ICON.stabilize, disabled: !can.action, active: mode.k === 'stabilize', help: t('help_stabilize') });
       if (stealth) add({ id: 'stone', label: t('act_stone'), icon: ACTION_ICON.stone, disabled: !can.action, active: mode.k === 'stone', help: t('help_stone') });
-      if (stealth && body) add({ id: `drag:${body.unit}`, label: t('act_drag'), icon: ACTION_ICON.shove, active: mode.k === 'drag' });
+      // Its id carries the body; its painted icon is the owner's drag (sheet 19).
+      if (stealth && body) add({ id: `drag:${body.unit}`, label: t('act_drag'), iconId: 'drag', icon: ACTION_ICON.shove, active: mode.k === 'drag' });
       if (edge) add({ id: 'flee', label: t('act_flee'), icon: ACTION_ICON.flee, disabled: s.phase === 'combat' && !can.action, help: t('help_flee') });
       add({ id: 'more', label: '←', icon: ACTION_ICON.items, active: true });
     }
@@ -1016,6 +1102,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
         case 'bandage':
         case 'antidote':
         case 'tag':
+        case 'tagTrap':
           setMode({ k: 'item', item: id });
           return;
         case 'shove':
@@ -1062,6 +1149,19 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
       if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'w', 'a', 's', 'd'].includes(key)) {
         keys.current.add(key);
         cam.current.follow = false;
+        e.preventDefault();
+        return;
+      }
+      // Space or Enter while the dice roll: they land at once (the skip button's key).
+      if ((key === ' ' || key === 'Enter') && pb.diceRolling(performance.now())) {
+        e.preventDefault();
+        pb.skipDice(performance.now());
+        diceSeenRef.current = performance.now();
+        return;
+      }
+      // Space is also End turn: a press meant for the dice that comes a moment late (they had just
+      // landed), or a held key repeating, must not end the turn too.
+      if ((key === ' ' || key === 'Enter') && (e.repeat || performance.now() - diceSeenRef.current < DICE_KEY_GRACE)) {
         e.preventDefault();
         return;
       }
@@ -1409,6 +1509,19 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
         </div>
       )}
 
+      {/* The dice are rolling: a button (or Space) lands them at once. */}
+      {diceRolling && !ended && (
+        <button
+          type="button"
+          onClick={() => pb.skipDice(performance.now())}
+          className="absolute left-1/2 -translate-x-1/2 px-3 py-1 rounded-sm border text-[12px] font-bold"
+          style={{ ...kitText, bottom: Math.round(250 * hudK), background: 'rgba(22,18,12,0.88)', borderColor: '#8a6a3a', color: '#f5d9a8', zIndex: 30 }}
+          title={T('diceSkipTip')}
+        >
+          {T('diceSkip')} ▸▸
+        </button>
+      )}
+
       {/* Banners. */}
       {!ended && banners.map((b, i) => {
         const t = (nowMs - b.t0) / b.dur;
@@ -1443,8 +1556,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
 
 const SHORT: Record<string, [string, string]> = {
   shadow_clone: ['Clone', 'Clon'],
-  body_flicker: ['Flicker', 'Shunshin'],
-  trap_setter_tag: ['Trap tag', 'Trampa'],
+  body_flicker: ['Vanish', 'Desvanecer'],
   mystical_palm: ['Heal palm', 'Palma'],
   substitution_kawarimi: ['Kawarimi', 'Kawarimi'],
   fireball_goukakyu: ['Fireball', 'Bola de fuego'],
@@ -1464,19 +1576,36 @@ const SHORT: Record<string, [string, string]> = {
   adamantine_sealing_chains: ['Chains', 'Cadenas'],
   taki_sixtyfour_palms: ['64 palms', '64 palmas'],
   kirin_thunder: ['Kirin', 'Kirin'],
-  rasenshuriken_wind: ['Rasenshuriken', 'Rasenshuriken'],
+  rasenshuriken_wind: ['Hurricane star', 'Estrella Huracán'],
   great_fire_annihilation: ['Annihilation', 'Aniquilación'],
   wood_golem_titan: ['Golem', 'Gólem'],
-  yasaka_magatama: ['Magatama', 'Magatama'],
   night_guy_dragon: ['Night dragon', 'Dragón noche'],
   katon_pursuing_flame: ['Pursuing', 'Persigue'],
   koton_block: ['Block', 'Bloque'],
   koton_wall: ['Metal wall', 'Muro metal'],
-  ryusei_warp: ['Warp', 'Golpe Warp'],
+  ryusei_warp: ['Star thrust', 'Estocada Fugaz'],
   ryusei_swap: ['Swap', 'Cambio'],
   northstar_command: ['Command', 'Comando'],
   northstar_submission: ['Submit', 'Sumisión'],
   mirai_evasion: ['Evasion', 'Evasión'],
+  fire_three_embers: ['Embers', 'Brasas'],
+  wind_whirl: ['Whirl', 'Remolino'],
+  wind_breeze_mantle: ['Mantle', 'Manto'],
+  lightning_jolt: ['Jolt', 'Calambre'],
+  lightning_spark_fan: ['Spark fan', 'Abanico'],
+  earth_pebble_shot: ['Pebbles', 'Guijarros'],
+  earth_spike_crown: ['Spike crown', 'Corona'],
+  water_healing_dew: ['Dew', 'Rocío'],
+  water_geyser: ['Geyser', 'Géiser'],
+  genjutsu_mirage: ['Mind twist', 'Mente retorcida'],
+  kenjutsu_bleeding_cut: ['Bleeding cut', 'Tajo'],
+  taijutsu_rush: ['Rush', 'Embestida'],
+  water_devouring_tide: ['Tsunami', 'Tsunami'],
+  water_tide_s: ['Dragon Tsunami', 'Dragón Tsunami'],
+  wind_whirlwind_tower: ['Whirlwind tower', 'Torre'],
+  wind_gale_curtain: ['Gale curtain', 'Cortina'],
+  lightning_thunder_beam: ['Thunder beam', 'Haz de trueno'],
+  earth_rubble_gust: ['Rubble gust', 'Polvareda'],
 };
 
 const fmtM = (m: number, lang: ReturnType<typeof useLang>): string => (Math.round(m * 10) / 10).toString().replace('.', lang === 'es' ? ',' : '.');
@@ -1523,6 +1652,11 @@ function jutsuTip(sp: JutsuSpec, cost: number, lang: ReturnType<typeof useLang>)
 function jutsuShort(id: string, lang: ReturnType<typeof useLang>): string {
   const s = SHORT[id];
   return s ? s[lang === 'es' ? 1 : 0] : jutsuName(id, lang).split(/[\s:(]/)[0];
+}
+
+/** Why there is no line of sight: the steam named when it is what hides the target (it "nubla la visión"). */
+function sightWhy(s: BattleState, a: Pt, b: Pt, into = false): string {
+  return steamBetween(s, a, b, into) ? 'noSightSteam' : 'noSight';
 }
 
 /** What an engine reason key says (the generic line for a key without text). */

@@ -30,7 +30,7 @@ function rows(body: BodyType, pose: SpritePose = 'idle', frame = 0): [number, nu
 describe('female bodies at the owner\'s game scale', () => {
   it('stand 92 px tall on the same ground as the male body', () => {
     const male = rows('male');
-    for (const body of ['female', 'slender'] as BodyType[]) {
+    for (const body of ['female'] as BodyType[]) {
       const [top, bot] = rows(body);
       assert.equal(bot, male[1], `${body} sole`);
       assert.equal(bot - top + 1, 92, `${body} height`);
@@ -42,7 +42,7 @@ describe('female bodies at the owner\'s game scale', () => {
       assert.equal(BODY_PARAMS[body].ankleLift, undefined);
       assert.ok(Math.abs(drawRig(body, 'idle', 0).ankleN.y - ANKLE_N) < 0.6, body);
     }
-    for (const body of ['female', 'slender'] as BodyType[]) {
+    for (const body of ['female'] as BodyType[]) {
       // his near ankle on his row 89, nine rows over his sole (row 98, our 218)
       const lift = GROUND - drawRig(body, 'idle', 0).ankleN.y;
       assert.ok(Math.abs(lift - 3.5) < 1e-6, `${body} ankle ${lift} above the ground`);
@@ -52,16 +52,20 @@ describe('female bodies at the owner\'s game scale', () => {
   it('keeps a seated body\'s hips on the camp seat and its soles on the camp ground', () => {
     for (const pose of ['sit', 'read'] as SpritePose[]) {
       for (let f = 0; f < frameCount(pose); f++) {
-        const male = rows('male', pose, f)[1];
-        for (const body of ['female', 'slender'] as BodyType[]) {
-          const m = drawRig('male', pose, f).pelvis.y;
+        for (const body of ['female'] as BodyType[]) {
+          // (the fitted bodies sit on his rock as they read, the male body's reading hips on it; the male
+          // and bulky sit keeps the camp's log)
+          const m = drawRig('male', 'read', pose === 'read' ? f : 0).pelvis.y;
           // the female hips settle up to two pixels further into the seat (rig.ts SEAT_SINK)
           assert.ok(Math.abs(drawRig(body, pose, f).pelvis.y - m) * RES <= 4, `${body} ${pose} ${f} hips`);
-          assert.ok(Math.abs(rows(body, pose, f)[1] - male) <= 1, `${body} ${pose} ${f} soles`);
+          // (sitting and reading, on the owner's rock, the male legs are too short to reach the ground and
+          // his feet hang: the female soles are on the ground she stands on)
+          const ground = rows(body, 'idle', 0)[1];
+          assert.ok(Math.abs(rows(body, pose, f)[1] - ground) <= 1, `${body} ${pose} ${f} soles`);
         }
       }
     }
-    for (const body of ['female', 'slender'] as BodyType[]) assert.ok(Math.abs(rows(body, 'lean')[1] - rows('male', 'lean')[1]) <= 1, `${body} lean`);
+    for (const body of ['female'] as BodyType[]) assert.ok(Math.abs(rows(body, 'lean')[1] - rows('male', 'lean')[1]) <= 1, `${body} lean`);
   });
 
   it('draws no bare foot out from under a closed boot', () => {
@@ -69,7 +73,7 @@ describe('female bodies at the owner\'s game scale', () => {
     const ramp = makeRamp(SKIN, 'skinF').slice(1, 4);
     const skin = new Set(ramp.map((h) => h.toLowerCase()));
     for (const feet of ['feet_leather', 'feet_greaves', 'feet_cowboy', 'feet_crimson_sabatons']) {
-      for (const body of ['female', 'slender'] as BodyType[]) {
+      for (const body of ['female'] as BodyType[]) {
         const f = renderSprite(bare(body, feet), 'idle', 0);
         let n = 0;
         for (let y = 204; y < GRID; y++) {
@@ -106,7 +110,7 @@ describe('female bodies at the owner\'s game scale', () => {
     // A pixel of a hand or of the near shoulder on the figure's edge is his line, never skin left
     // open (the throw's release hand came out a cut-off stub, the raised arm's shoulder broke its line).
     const parts = new Set(['handN', 'handF', 'upperArmN'].map((p) => partIndex(p as Parameters<typeof partIndex>[0])));
-    for (const body of ['female', 'slender'] as BodyType[]) {
+    for (const body of ['female'] as BodyType[]) {
       for (const pose of [...SPRITE_POSES, ...MOVE_POSES, ...CAMP_POSES] as SpritePose[]) {
         if (pose === 'cast') continue; // the cast effect's runes sit over the hands
         for (let fr = 0; fr < frameCount(pose); fr++) {

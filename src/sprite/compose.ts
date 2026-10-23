@@ -4,12 +4,18 @@ import { drawBody, faceCells, sculptClothes } from './body';
 import { fitsBody, getItem } from './catalog';
 import { hexToRgb } from './color';
 import { Depth, DEPTHS, DrawCtx, ItemDef, NO_OUTLINE_DEPTHS, resolveParts } from './ctx';
-import { drawThrowKunai } from './items/accessories';
+import { closePinholes } from './holes';
+import { fillSeams } from './seams';
+import { paintedFrame, wearsHisFigure } from './ownerFrames';
+import { clipStowed, drawThrowKunai } from './items/accessories';
+import { CAPE_DEPTHS } from './items/capes';
 import { drawHeadband } from './items/headband';
 import { add, F_NO_OUTLINE, F_NO_TEXTURE, GRID, Layer, MaterialTable, norm, PAD, PartId, partIndex, PARTS, perp, RES, scale, sub, v, Vec } from './raster';
 import { drawRig, Lay, layRig, Rig, rigPoseFor, turnPoint, turnRig } from './rig';
+import { carryHead } from './neck';
 import { drawCampFx } from './campfx';
 import { drawCastFx } from './castfx';
+import { sealCloth } from './seal';
 import { applyTexture, frayHair } from './texture';
 import { isFemaleBody, type EyeSpecial, type PixelEdit, type SlotId, type SpriteAppearance, type SpritePose } from './types';
 
@@ -19,6 +25,8 @@ export interface SpriteFrame {
   part: Uint8Array;
   /** One bit per pixel (byte i >> 3, bit i & 7): the top-most pixel is hair (the Ryusei's phase lights it up). */
   hair?: Uint8Array;
+  /** One bit per pixel, as `hair`: the top-most pixel is an effect drawn over the figure (depth 'top': cast runes, a palm's glow). */
+  fx?: Uint8Array;
   rig: Rig;
 }
 
@@ -26,6 +34,7 @@ export interface SpriteFrame {
 const HEAD_GROUP = new Set<Depth>(['hairBack', 'head.body', 'head.face', 'head.mask', 'hairFront', 'head.gear']);
 const HAIR_BACK = DEPTHS.indexOf('hairBack');
 const HAIR_FRONT = DEPTHS.indexOf('hairFront');
+const FX = DEPTHS.indexOf('top');
 
 // Slots are drawn in this order; within a depth, later items cover earlier ones.
 const SLOT_ORDER: SlotId[] = ['cape', 'hair', 'face', 'bottom', 'feet', 'top', 'skirt', 'armor', 'waist', 'hands', 'held'];
@@ -148,6 +157,9 @@ function drawPitchedCape(g: DrawCtx, layers: Map<Depth, Layer>, draw: (g: DrawCt
     }
   }
   capeBehindBack(g.L('capeBack'), rig, g.mats);
+  // Turning the cloth over and cutting it behind the back leave cracks along its edges, between its
+  // pieces and against what the cape puts on the pitched shoulders: close them (seal.ts).
+  sealCloth(g, CAPE_DEPTHS, true);
 }
 
 /**
@@ -255,8 +267,10 @@ export function spriteLayers(look: SpriteAppearance, pose: SpritePose, frame: nu
   return { layers, rig, mats };
 }
 
-function drawLayers(look: SpriteAppearance, pose: SpritePose, frame: number, eyeSpecial: EyeSpecial) {
-  const rig = drawRig(look.body, rigPoseFor(pose, look.cast?.style, look.stowed ? undefined : look.slots.held?.id), frame);
+function drawLayers(look: SpriteAppearance, pose: SpritePose, frame: number, eyeSpecial: EyeSpecial, heldOnly?: Rig) {
+  // heldOnly: just the held item (or the kunai bare hands throw) on that rig, no body (sprite/thrown.ts).
+  // (the long neck carries the head higher and further forward: neck.ts)
+  const rig = heldOnly ?? carryHead(drawRig(look.body, rigPoseFor(pose, look.cast?.style, look.stowed ? undefined : look.slots.held?.id), frame, look.arms), look.neck);
   const mats = new MaterialTable();
   const layers = new Map<Depth, Layer>();
   const equipped = new Map<SlotId, ItemDef>();
@@ -291,32 +305,43 @@ function drawLayers(look: SpriteAppearance, pose: SpritePose, frame: number, eye
     },
   };
 
-  drawBody(g);
-  for (const slot of SLOT_ORDER) {
-    const def = equipped.get(slot);
-    if (!def) continue;
-    if (slot === 'hair' && hideHair) continue;
-    const choice = look.slots[slot]!;
-    const colors = resolveColors(def, choice.colors);
-    const parts = resolveParts(def, choice.parts);
-    if (slot === 'cape' && rig.streamBack) drawPitchedCape(g, layers, (gg) => def.draw(gg, colors, parts));
-    else def.draw(g, colors, parts);
+  if (heldOnly) {
+    const def = equipped.get('held');
+    const choice = look.slots.held;
+    if (def && choice && !look.stowed) def.draw(g, resolveColors(def, choice.colors), resolveParts(def, choice.parts));
+    drawThrowKunai(g);
+  } else {
+    drawBody(g);
+    for (const slot of SLOT_ORDER) {
+      const def = equipped.get(slot);
+      if (!def) continue;
+      if (slot === 'hair' && hideHair) continue;
+      const choice = look.slots[slot]!;
+      const colors = resolveColors(def, choice.colors);
+      const parts = resolveParts(def, choice.parts);
+      if (slot === 'cape' && rig.streamBack) drawPitchedCape(g, layers, (gg) => def.draw(gg, colors, parts));
+      else def.draw(g, colors, parts);
+    }
+    for (const acc of look.accessories) {
+      const def = getItem(acc.id);
+      if (def && def.slot === 'accessory') def.draw(g, resolveColors(def, acc.colors), resolveParts(def, acc.parts));
+    }
+    drawHeadband(g);
+    drawThrowKunai(g);
+    // clothes over a female torso follow the bust (fitted armors shape their own plates)
+    for (const d of ['torso.top', 'torso.over'] as const) {
+      const L = layers.get(d);
+      if (L) sculptClothes(g, L);
+    }
+    clipStowed(g, layers);
+    // Seams a painted piece opens as it moves from its neighbour, filled from behind; at rest only a seam
+    // he left open there (sprite/seams.ts).
+    fillSeams(g, layers, pose === 'idle');
+    drawCastFx(g);
+    drawCampFx(g);
+    if (rig.farHandFront) farHandToFront(layers, g);
+    guardFace(g, layers);
   }
-  for (const acc of look.accessories) {
-    const def = getItem(acc.id);
-    if (def && def.slot === 'accessory') def.draw(g, resolveColors(def, acc.colors), resolveParts(def, acc.parts));
-  }
-  drawHeadband(g);
-  drawThrowKunai(g);
-  // clothes over a female torso follow the bust (fitted armors shape their own plates)
-  for (const d of ['torso.top', 'torso.over'] as const) {
-    const L = layers.get(d);
-    if (L) sculptClothes(g, L);
-  }
-  drawCastFx(g);
-  drawCampFx(g);
-  if (rig.farHandFront) farHandToFront(layers, g);
-  guardFace(g, layers);
   return { layers, rig, mats };
 }
 
@@ -325,9 +350,10 @@ export function renderSprite(
   pose: SpritePose,
   frame: number,
   eyeSpecial: EyeSpecial = 'none',
-  opts: { skipEdits?: boolean } = {},
+  opts: { skipEdits?: boolean; heldOnly?: Rig; depths?: ReadonlySet<Depth> } = {},
 ): SpriteFrame {
-  const { layers, rig, mats } = drawLayers(look, pose, frame, eyeSpecial);
+  // depths: only these layers are shown (tests look at one limb alone, nothing in front of it).
+  const { layers, rig, mats } = drawLayers(look, pose, frame, eyeSpecial, opts.heldOnly);
 
   // Outline and flatten
   const rgba = new Uint8ClampedArray(GRID * GRID * 4);
@@ -350,7 +376,7 @@ export function renderSprite(
   const topFlags = new Uint8Array(N);
   DEPTHS.forEach((depth, d) => {
     const L = layers.get(depth);
-    if (!L || !L.used) return;
+    if (!L || !L.used || (opts.depths && !opts.depths.has(depth))) return;
     if ((depth === 'hairFront' || depth === 'hairBack') && !L.noFray) frayHair(L, rig.head, rig.bp.headScale, depth === 'hairFront' ? 11 : 23);
     L.applyOutline();
     if (L.outline) applyTexture(L, mats, frames);
@@ -375,12 +401,34 @@ export function renderSprite(
     isLine[i] = topShade[i] === 0 ? 1 : 0;
   }
   thinDoubleOutlines(rgba, top, isLine);
+  // The 1-pixel holes turned pieces leave (sprite/holes.ts), each closed with its neighbours' line or
+  // colour. Idle is left exactly as drawn: it is the frame the owner's pictures were copied into; so are
+  // the frames he painted himself (his Lyra reading, sitting and throwing, ownerFrames.ts).
+  if (pose !== 'idle' && !(wearsHisFigure(look) && paintedFrame(rig.pose, rig.frame))) closePinholes(rgba, part, top, (i) => top[i] === FX, (i) => (topMat[i] < 0 ? 0x07060b : parseInt(mats.ramps[topMat[i]][0].slice(1), 16)));
   const hair = new Uint8Array(N >> 3);
-  for (let i = 0; i < N; i++) if (top[i] === HAIR_BACK || top[i] === HAIR_FRONT) hair[i >> 3] |= 1 << (i & 7);
+  const fx = new Uint8Array(N >> 3);
+  for (let i = 0; i < N; i++) {
+    if (top[i] === HAIR_BACK || top[i] === HAIR_FRONT) hair[i >> 3] |= 1 << (i & 7);
+    if (top[i] === FX) fx[i >> 3] |= 1 << (i & 7);
+  }
 
-  if (!opts.skipEdits && look.pixelEdits?.length) applyEdits(look.pixelEdits, rig, rgba, part);
-  if (rig.lay) return { ...layFrame(rgba, part, hair, rig.lay), rig: layRig(rig) };
-  return { rgba, part, hair, rig };
+  if (!opts.skipEdits && !opts.heldOnly && look.pixelEdits?.length) applyEdits(look.pixelEdits, rig, rgba, part);
+  if (rig.lay) return { ...layFrame(rgba, part, hair, rig.lay), fx: layBits(fx, rig.lay), rig: layRig(rig) };
+  return { rgba, part, hair, fx, rig };
+}
+
+/** A bit mask (one bit per pixel) laid down as layFrame lays the figure. */
+function layBits(bits: Uint8Array, lay: Lay): Uint8Array {
+  const out = new Uint8Array(bits.length);
+  for (let i = 0; i < GRID * GRID; i++) {
+    if (!(bits[i >> 3] & (1 << (i & 7)))) continue;
+    const X = ((i / GRID) | 0) + lay.dx;
+    const Y = (i % GRID) + lay.dy;
+    if (X < 0 || Y < 0 || X >= GRID || Y >= GRID) continue;
+    const j = Y * GRID + X;
+    out[j >> 3] |= 1 << (j & 7);
+  }
+  return out;
 }
 
 /** Lays a figure drawn upright on the ground: the transpose described by Lay (exact, no resampling). */

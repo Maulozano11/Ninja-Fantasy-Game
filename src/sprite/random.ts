@@ -1,12 +1,11 @@
 // Random appearance for the creator's Randomize button.
 
 import { fitsBody, itemsForSlot } from './catalog';
-import { CHAKRA_CHOICES } from './chakraInfo';
+import { TINT_CHOICES } from './chakraInfo';
 import { OFFERED_TYPES } from './chakraNature';
 import type { ItemDef } from './ctx';
-import { EMBLEMS } from './items/headband';
 import { CLOTH_PALETTE, EYE_COLORS, HAIR_COLORS, SKIN_TONES } from './palettes';
-import { CAST_STYLES, type BodyType, type EyeShape, type FaceShape, type HeadbandPosition, type ItemChoice, type NeckType, type SlotId, type SpriteAppearance } from './types';
+import { CAST_STYLES, type BodyType, type EyeShape, type FaceShape, type HeadbandPosition, type ItemChoice, type SlotId, type SpriteAppearance } from './types';
 
 const pick = <T,>(list: T[]): T => list[Math.floor(Math.random() * list.length)];
 const chance = (p: number) => Math.random() < p;
@@ -29,7 +28,7 @@ function slotItem(slot: SlotId, body: BodyType): ItemChoice | undefined {
 }
 
 export function randomAppearance(): SpriteAppearance {
-  const body = pick<BodyType>(['male', 'female', 'bulky', 'slender']);
+  const body = pick<BodyType>(['male', 'female', 'bulky']);
   const slots: SpriteAppearance['slots'] = {};
   const put = (slot: SlotId, p: number) => {
     if (!chance(p)) return;
@@ -56,23 +55,19 @@ export function randomAppearance(): SpriteAppearance {
     version: 1,
     body,
     skin: pick(SKIN_TONES.slice(0, 9)),
-    eyeShape: pick<EyeShape>(['standard', 'sharp', 'round', 'calm', 'fierce', 'bright', 'piercing', 'valiant', 'dawn']),
-    faceShape: pick<FaceShape>(['tapered', 'tapered', 'soft', 'square', 'valiant']),
-    neck: pick<NeckType>(['slim', 'slim', 'strong']),
+    eyeShape: pick<EyeShape>(['standard', 'sharp', 'round', 'calm', 'fierce', 'bright', 'piercing', 'valiant', 'dawn', 'keen']),
+    faceShape: pick<FaceShape>(['tapered', 'tapered', 'soft', 'square', 'valiant', 'founder', 'fine']),
     cast: { style: pick(CAST_STYLES) },
     eyeColor: pick(EYE_COLORS),
     slots,
     accessories,
     headband: {
       position: pick(positions),
-      slashed: chance(0.15),
       tails: chance(0.4),
-      emblem: pick(EMBLEMS).id,
       cloth: pick(CLOTH_PALETTE),
-      plate: '#cbd5e1',
     },
     // a type the player could pick (its nature), one of its bursts, and now and then another color: the color never changes the type
-    chakra: { color: pick(pick(OFFERED_TYPES).bursts), tint: chance(0.25) ? pick(CHAKRA_CHOICES).id : undefined, onCharge: true, onCast: true, onVictory: chance(0.5) },
+    chakra: { color: pick(pick(OFFERED_TYPES).bursts), tint: chance(0.25) ? pick(TINT_CHOICES).id : undefined, onCharge: true, onCast: true, onVictory: chance(0.5) },
     pixelEdits: [],
   };
 }

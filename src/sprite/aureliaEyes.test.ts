@@ -79,7 +79,7 @@ describe("Aurelia's eyes", () => {
 
   it('draw on every body in every pose', () => {
     const poses: SpritePose[] = [...SPRITE_POSES, ...MOVE_POSES, ...CAMP_POSES];
-    for (const body of ['female', 'slender', 'male', 'bulky'] as BodyType[])
+    for (const body of ['female', 'male', 'bulky'] as BodyType[])
       for (const pose of poses) assert.ok(colours(look({ body }), pose).has('#070c24'), `${body} ${pose}`);
   });
 });

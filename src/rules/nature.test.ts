@@ -61,6 +61,7 @@ describe('chakra types', () => {
   it('the bursts stand for what they show: fire is Fire, the electric one is Lightning', () => {
     for (const [id, nature] of Object.entries(OLD_COLOURS)) assert.equal(chakraNature(chakra(id)), nature, id);
     assert.equal(chakraNature(chakra('brown')), 'Earth', 'the Earth burst (new: no old save has it)');
+    assert.equal(chakraNature(chakra('cyan')), 'Lightning', 'the second Lightning burst (new: no old save has it)');
   });
 
   it('the colour never changes the nature: green fire is Fire, black lightning is Lightning', () => {
@@ -141,9 +142,9 @@ describe('the legends', () => {
       preset_storm: ['Lightning', '#a54ce0'], // was the violet Spectral Guardian
       preset_sunburst: ['Wind', '#f27c18'], // was the orange Cinder Nova
       preset_warlord: ['Fire', '#a54ce0'], // was the violet Spectral Guardian
-      preset_gentle: ['Water', '#36a0f0'],
       preset_night: ['Lightning', '#36a0f0'], // was the blue Rising Tide
       preset_aurelia: ['Light', '#fac856'], // a heroine: Light, no element, in her staff's gold
+      preset_lyra: ['Wind', '#40cccb'], // a heroine: wind in the cyan of her blade
     };
     assert.deepEqual(LEGENDARY_PRESETS.map((p) => p.character.id).sort(), Object.keys(want).sort());
     for (const { character: c } of LEGENDARY_PRESETS) {
@@ -229,7 +230,8 @@ describe('saved copies of the legends move to their new type (the owner, 2026-10
         const old = savedOld(id, tint);
         const was = chakraHex(old.appearance!.chakra);
         storage({ 'shinobi5e.hero.v1': old, 'shinobi5e.roster.v1': [{ character: old, savedAt: 1 }] });
-        const want = withChakra(old, NEW[id][1], tint ?? LEGEND_BURST_CHANGE[id].old);
+        // (a saved sheet loads as a ninja that has been made: its type is fixed, rules/progression.ts)
+        const want = { ...withChakra(old, NEW[id][1], tint ?? LEGEND_BURST_CHANGE[id].old), created: true };
         for (const [where, now] of [['hero', loadHero()!], ['roster', loadRoster()[0].character]] as const) {
           assert.deepEqual(now, want, `${id} in ${tint} (${where})`);
           assert.equal(natureOf(now), NEW[id][0], `${id} (${where}): its new type`);
@@ -279,10 +281,10 @@ describe('saved copies of the legends move to their new type (the owner, 2026-10
     }
     const ownSpirit = { ...saved(chakra('violet')), id: 'ninja_abc' };
     storage({ 'shinobi5e.hero.v1': ownSpirit });
-    assert.deepEqual(loadHero(), ownSpirit);
+    assert.deepEqual(loadHero(), { ...ownSpirit, created: true });
     assert.equal(natureOf(loadHero()!), 'Spirit');
     // The legends whose burst did not change are not touched either.
-    for (const id of ['preset_founder', 'preset_ember', 'preset_reference_aiden', 'preset_gentle']) {
+    for (const id of ['preset_founder', 'preset_ember', 'preset_reference_aiden']) {
       const c = withChakra(legend(id), 'violet', undefined);
       assert.deepEqual(migrateCharacter(c), c, id);
     }
@@ -309,10 +311,11 @@ describe('saved copies of the legends move to their new type (the owner, 2026-10
     for (const [what, c] of cases) {
       assert.equal(c.appearance!.chakra.color, LEGEND_BURST_CHANGE[c.id].old, `${what}: the legend's old burst`);
       storage({ 'shinobi5e.hero.v1': c, 'shinobi5e.roster.v1': [{ character: c, savedAt: 1 }] });
-      assert.deepEqual(loadHero(), c, `${what} (hero)`);
-      assert.deepEqual(loadRoster()[0].character, c, `${what} (roster)`);
+      const made = { ...c, created: true };
+      assert.deepEqual(loadHero(), made, `${what} (hero)`);
+      assert.deepEqual(loadRoster()[0].character, made, `${what} (roster)`);
       storage({ 'shinobi5e.hero.v1': loadHero() });
-      assert.deepEqual(loadHero(), c, `${what}: saved and loaded again`);
+      assert.deepEqual(loadHero(), made, `${what}: saved and loaded again`);
     }
     assert.equal(natureOf(loadHero()!), 'Wind');
     assert.equal(natureOf(migrateCharacter(picked('preset_night', 'Water', 'blue'))), 'Water');

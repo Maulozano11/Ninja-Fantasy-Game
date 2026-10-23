@@ -18,7 +18,7 @@ const hexAt = (rgba: Uint8Array | Uint8ClampedArray, i: number) => '#' + [0, 1, 
 
 describe('Small hands', () => {
   it('are off by default: a look without the option is drawn with the normal hands', () => {
-    for (const body of ['female', 'slender'] as BodyType[])
+    for (const body of ['female'] as BodyType[])
       for (const pose of ['idle', 'attack', 'walk'] as SpritePose[]) assert.ok(same(renderSprite(bare(body), pose, 1).rgba, renderSprite(bare(body, 'normal'), pose, 1).rgba), `${body} ${pose}`);
   });
 
@@ -28,7 +28,7 @@ describe('Small hands', () => {
   });
 
   it('are smaller than the normal hands on the female bodies', () => {
-    for (const body of ['female', 'slender'] as BodyType[]) {
+    for (const body of ['female'] as BodyType[]) {
       const normal = renderSprite(bare(body), 'idle', 0);
       const small = renderSprite(bare(body, 'small'), 'idle', 0);
       for (const part of ['handN', 'handF'] as const) assert.ok(handPixels(small, part) < handPixels(normal, part) * 0.75, `${body} ${part}: ${handPixels(small, part)} against ${handPixels(normal, part)}`);

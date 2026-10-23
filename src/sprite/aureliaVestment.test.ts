@@ -52,7 +52,7 @@ describe("Aurelia's vestment", () => {
   it('is armour for the women, her white, gold and gem the defaults', () => {
     const d = getItem('armor_dawn_vestment')!;
     assert.equal(d.slot, 'armor');
-    assert.deepEqual(d.bodies, ['female', 'slender']);
+    assert.deepEqual(d.bodies, ['female']);
     assert.deepEqual(
       d.colors.map((c) => [c.key, c.default]),
       [

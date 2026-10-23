@@ -103,8 +103,8 @@ const chip = (on: boolean) =>
   `rounded-md border px-2 py-1 transition ${FOCUS} ${on ? 'border-[#ecc672] bg-[#1b2a52] text-[#ffe9b0]' : 'border-[#6b5534]/70 bg-[#0a1226] text-slate-200 hover:border-[#dcb563]/80'}`;
 
 function checkChance(act: CampActivity, c: ShinobiCharacter): string | null {
-  if (act.id === 'hunt') return T('chanceHunt', { pct: pct(successChance(skillModifier(c, 'survival'), 12, checkAdvantage(c, 'survival'))) });
-  if (act.id === 'field_surgery') return T('chanceSurgery', { pct: pct(successChance(skillModifier(c, 'medicine'), 13, checkAdvantage(c, 'medicine'))) });
+  if (act.id === 'hunt') return T('chanceHunt', { pct: pct(successChance(skillModifier(c, 'survival'), 12, checkAdvantage(c, 'survival'), true)) });
+  if (act.id === 'field_surgery') return T('chanceSurgery', { pct: pct(successChance(skillModifier(c, 'medicine'), 13, checkAdvantage(c, 'medicine'), true)) });
   return null;
 }
 

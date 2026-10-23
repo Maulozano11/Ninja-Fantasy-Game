@@ -3,24 +3,26 @@
 
 import type { PartId } from './raster';
 
-export type BodyType = 'male' | 'female' | 'bulky' | 'slender';
+export type BodyType = 'male' | 'female' | 'bulky';
 
 /** Bodies drawn with the female face, lashes, lips and slimmer feet. */
-export const isFemaleBody = (b: BodyType | string): boolean => b === 'female' || b === 'slender';
+export const isFemaleBody = (b: BodyType | string): boolean => b === 'female';
 
 export type SpritePose = 'idle' | 'handsigns' | 'attack' | 'cast' | 'hurt' | 'victory' | 'charge' | StrikePose | MovePose | CampPose;
 
 /**
  * Weapon techniques: 'throw' hurls the held weapon (it is out of the hand from the release frame on,
- * see grip.ts throwRelease; the battle draws it in flight), 'pierce' is a lunging thrust.
+ * see grip.ts throwRelease; the battle draws it in flight), 'pierce' is a lunging thrust, 'tackle'
+ * a shoulder charge with the weapon put away (the Rush), 'combo' an unarmed punch-and-kick combo
+ * with the weapon put away (the Leaf Hurricane).
  */
-export type StrikePose = 'throw' | 'pierce';
+export type StrikePose = 'throw' | 'pierce' | 'tackle' | 'combo';
 
 /** Poses for moving around the battle map: walking, running, crouching, sneaking and lying downed. */
 export type MovePose = 'walk' | 'run' | 'crouch' | 'sneak' | 'downed';
 
 /** The poses the character creator previews. */
-export const SPRITE_POSES: SpritePose[] = ['idle', 'handsigns', 'attack', 'throw', 'pierce', 'cast', 'hurt', 'victory', 'charge'];
+export const SPRITE_POSES: SpritePose[] = ['idle', 'handsigns', 'attack', 'throw', 'pierce', 'tackle', 'combo', 'cast', 'hurt', 'victory', 'charge'];
 
 export const MOVE_POSES: MovePose[] = ['walk', 'run', 'crouch', 'sneak', 'downed'];
 
@@ -51,11 +53,19 @@ export interface CastChoice {
   jutsu?: Record<string, CastStyle>;
 }
 
-/** The eye options; valiant is the owner's own eyes from his Aiden picture, in his pixels; dawn is his Aurelia's, in her pixels at our scale. */
-export type EyeShape = 'standard' | 'sharp' | 'round' | 'calm' | 'fierce' | 'bright' | 'piercing' | 'valiant' | 'dawn';
+/** The eye options; valiant is the owner's own eyes from his Aiden picture, in his pixels; dawn is his Aurelia's, in her pixels at our scale; keen is his Lyra's, in her colours at our scale. */
+export type EyeShape = 'standard' | 'sharp' | 'round' | 'calm' | 'fierce' | 'bright' | 'piercing' | 'valiant' | 'dawn' | 'keen';
 
-/** Back of the neck behind the jaw: slender (default) or thick. */
-export type NeckType = 'slim' | 'strong';
+/**
+ * The owner's heroines' long neck (neck.ts): his Lyra carries the head further forward on a slimmer neck.
+ * Not a creator option: the owner removed the neck picker (2026-10-22, "quitar el cuello del creador y
+ * dejar a todos con el cuello de hoy"), so every look keeps the neck it has today, and only Lyra's
+ * preset has this one. The old 'slim' and 'strong' choices are dropped on load (migrateAppearance).
+ */
+export type NeckType = 'long';
+
+/** Arm length: the body's own (default), or long: his Lyra's longer forearms, her free hand hanging open (rig.ts LONG_ARMS). */
+export type ArmType = 'standard' | 'long';
 
 /**
  * Hand size on the female bodies: the body's own (default), or small: his Aurelia's smaller hands in his
@@ -65,9 +75,10 @@ export type HandSize = 'normal' | 'small';
 
 /**
  * Near-side cheek and jaw: V-line (default), fuller, or a strong flat jaw; or the owner's own head
- * from his Aiden picture (valiant: his skull, ear, cheeks, jaw and chin in his pixels).
+ * from his Aiden picture (valiant: his skull, ear, cheeks, jaw and chin in his pixels); or his Lyra's
+ * face (fine: her narrower face, mouth and chin in his pixels, under our skull).
  */
-export type FaceShape = 'tapered' | 'soft' | 'square' | 'valiant';
+export type FaceShape = 'tapered' | 'soft' | 'square' | 'valiant' | 'founder' | 'fine';
 
 /** Single-choice equipment slots, drawn back-to-front by depth (see compose.ts). */
 export type SlotId =
@@ -95,18 +106,25 @@ export interface ItemChoice {
 
 export type HeadbandPosition = 'none' | 'forehead' | 'neck' | 'arm' | 'waist';
 
-export type EmblemId = 'crescent' | 'wave' | 'peak' | 'bolt' | 'sun' | 'spiral' | 'blank';
-
+/**
+ * The headband: plain cloth only (the owner, 2026-10-22: "deja la pura bandana la pura tela"). It had a
+ * metal plate with an engraved emblem, which could be slashed; those are gone. Older saves and looks may
+ * still carry `slashed`, `emblem` and `plate`: nothing reads them, and migrateAppearance (legacy.ts)
+ * drops them on load.
+ */
 export interface HeadbandChoice {
   position: HeadbandPosition;
-  slashed: boolean;
   tails: boolean;
-  emblem: EmblemId;
   cloth: string;
-  plate: string;
+  /** Legacy, ignored (the scratch across the old plate). */
+  slashed?: boolean;
+  /** Legacy, ignored (the old plate's emblem). */
+  emblem?: string;
+  /** Legacy, ignored (the old plate's colour). */
+  plate?: string;
 }
 
-export type ChakraColorId = 'red' | 'orange' | 'yellow' | 'green' | 'blue' | 'indigo' | 'violet' | 'white' | 'black' | 'brown';
+export type ChakraColorId = 'red' | 'orange' | 'yellow' | 'green' | 'blue' | 'indigo' | 'violet' | 'white' | 'black' | 'brown' | 'cyan';
 
 export interface ChakraChoice {
   /**
@@ -144,8 +162,10 @@ export interface SpriteAppearance {
   skin: string;
   eyeShape: EyeShape;
   eyeColor: string;
-  /** Missing on older saves; treated as 'slim'. */
+  /** Only Lyra's preset has one (her long neck, NeckType); missing on every other look. */
   neck?: NeckType;
+  /** Missing on older saves; treated as 'standard'. */
+  arms?: ArmType;
   /** Missing on older saves; treated as 'tapered'. */
   faceShape?: FaceShape;
   /** Missing on older saves; treated as 'normal'. */
@@ -159,6 +179,12 @@ export interface SpriteAppearance {
   pixelEdits: PixelEdit[];
   /** In battle: the held weapon is put away (at the belt or on the back) to keep the hands free. */
   stowed?: boolean;
+  /**
+   * In battle: a kunai from the pouch in the near fist, whatever the held slot has (a Shooting-Star Thrust
+   * thrown without a weapon in the hand catches its kunai and thrusts with it: a stowed weapon stays
+   * put, a technique in the palm is not drawn meanwhile). See grip.ts throwsKunai.
+   */
+  pouchKunai?: boolean;
 }
 
 /** Special eye patterns, derived from the character's dojutsu. */

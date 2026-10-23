@@ -90,7 +90,7 @@ export function evade(s: BattleState, t: Unit, h: Hit, ev: BattleEvent[]): void 
   if (a && h.melee && leavesNodes(a)) addNode(s, a, from, ev);
 }
 
-// --- Ryusei: Weapon Nodes, Warp Strike, Spatial Swap ---------------------------------------
+// --- Ryusei: Weapon Nodes, Shooting-Star Thrust, Spatial Swap ---------------------------------------
 
 export const WARP = 'ryusei_warp';
 export const SWAP = 'ryusei_swap';
@@ -139,7 +139,7 @@ export const nodeUnder = (s: BattleState, u: Unit, t: Unit): WeaponNode | undefi
 export const nodeInSight = (s: BattleState, u: Unit, n: WeaponNode): boolean => lineOfSight(s, u.pos, n.pos, { structures: false });
 
 /**
- * Where a Warp Strike to a Node lands: on it if nobody stands on it, otherwise the nearest free cell
+ * Where a Shooting-Star Thrust to a Node lands: on it if nobody stands on it, otherwise the nearest free cell
  * within 1.5 m of it and at least 1 m from whoever stands on it (on their far side, when two are as
  * near). Never where the Ryusei already stands. Null if there is nowhere to land.
  */
@@ -154,7 +154,7 @@ export function warpLanding(s: BattleState, u: Unit, n: WeaponNode): Pt | null {
   return cellCenter(c);
 }
 
-/** Why a Warp Strike to this Node can't be made (none picked, too far, out of sight, nowhere to land), or null. */
+/** Why a Shooting-Star Thrust to this Node can't be made (none picked, too far, out of sight, nowhere to land), or null. */
 export function warpBlocker(s: BattleState, u: Unit, n: WeaponNode | undefined): string | null {
   if (!n) return 'noNode';
   if (dist(u.pos, n.pos) > JUTSU[WARP].range + 0.1) return 'outOfRange';
@@ -177,7 +177,7 @@ export function edgeFoe(s: BattleState, u: Unit, at: Pt = u.pos): Unit | undefin
 }
 
 /**
- * Warp Strike: the Ryusei vanishes and appears at its Node (no opportunity attacks, no traps); the
+ * Shooting-Star Thrust: the Ryusei vanishes and appears at its Node (no opportunity attacks, no traps); the
  * screen plays it as a phase, a body of blue light crossing to the Node.
  * Landing next to a foe, its next attack this turn comes from behind: advantage, and no clone,
  * Kawarimi or Evasion blocks it.
@@ -188,6 +188,8 @@ export function warpStrike(s: BattleState, u: Unit, to: Pt, ev: BattleEvent[]): 
   revealOutOfHiding(s, u, ev);
   const foe = edgeFoe(s, u);
   if (!foe) return;
+  // It lands facing the foe, thrusting at it (the screen plays the landing as a thrust).
+  if (foe.pos.x !== u.pos.x) u.facing = foe.pos.x > u.pos.x ? 1 : -1;
   u.cond.warpEdge = true;
   ev.push({ t: 'note', key: 'warpEdge', params: { name: u.name, foe: foe.name } });
 }

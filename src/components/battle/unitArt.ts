@@ -11,6 +11,7 @@ import { GRID, opaqueBox, RES } from '../../sprite/raster';
 import { phaseBody, phaseFrame } from '../../sprite/phase';
 import { catchLook, releaseClear, renderThrown, thrownItem } from '../../sprite/thrown';
 import { throwRelease } from '../../sprite/grip';
+import { COAT_FRAMES, coatPixels } from '../../sprite/coat';
 import type { ChakraColorId, SpriteAppearance, SpritePose } from '../../sprite/types';
 import type { Unit } from '../../battle/types';
 
@@ -115,6 +116,7 @@ function toCanvas(rgba: Uint8ClampedArray, layers?: { back: Uint8ClampedArray; f
 /**
  * One frame of a unit's sprite as a canvas. `aura` adds the chakra burst of a cast or a charge
  * (only if the player turned it on for that moment in the creator), `empowered` for an enhanced jutsu.
+ * `coat`: the weapons are coated with poison (sprite/coat.ts), at this tick of the drip.
  */
 export function unitFrame(
   u: Unit,
@@ -122,6 +124,7 @@ export function unitFrame(
   pose: SpritePose,
   frame: number,
   aura?: { mode: ChakraMode; tick: number; empowered?: boolean; burst?: { color: ChakraColorId; tint?: string } },
+  coat?: number,
 ): Cached {
   const n = framesOf(look, pose);
   const f = ((frame % n) + n) % n;
@@ -131,7 +134,8 @@ export function unitFrame(
   const tint = aura?.burst ? aura.burst.tint : look.chakra.tint;
   const wantAura = aura && (!!aura.burst || (aura.mode === 'cast' && look.chakra.onCast) || (aura.mode === 'charge' && look.chakra.onCharge) || aura.mode === 'aura');
   const fxTick = wantAura ? aura!.tick % chakraLoop(color) : -1;
-  const key = `${idOf(look)}|${eye}|${pose}|${f}|${wantAura ? `${aura!.mode}${aura!.empowered ? '+' : ''}${fxTick}${aura!.burst ? `|${color}:${tint ?? ''}` : ''}` : ''}`;
+  const coatTick = coat === undefined ? -1 : ((coat % COAT_FRAMES) + COAT_FRAMES) % COAT_FRAMES;
+  const key = `${idOf(look)}|${eye}|${pose}|${f}|${wantAura ? `${aura!.mode}${aura!.empowered ? '+' : ''}${fxTick}${aura!.burst ? `|${color}:${tint ?? ''}` : ''}` : ''}${coatTick >= 0 ? `|coat${coatTick}` : ''}`;
   let c = frames.get(key);
   if (c) {
     frames.delete(key);
@@ -140,7 +144,7 @@ export function unitFrame(
   }
   const spr = renderSpriteCached(look, pose, f, eye);
   const fx = wantAura ? renderChakra(color, aura!.mode, fxTick, spr.rgba, spr.rig, tint, aura!.empowered) : null;
-  c = { ...toCanvas(spr.rgba, fx), rig: spr.rig };
+  c = { ...toCanvas(coatTick >= 0 ? coatPixels(spr, coatTick) : spr.rgba, fx), rig: spr.rig };
   frames.set(key, c);
   if (frames.size > MAX) frames.delete(frames.keys().next().value as string);
   return c;

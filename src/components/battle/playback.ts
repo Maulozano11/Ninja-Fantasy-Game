@@ -202,6 +202,10 @@ export interface Fx {
   minis?: number;
   /** Lightning running across a wet patch: its cells ("c,r"), from `from` outward. */
   cells?: string[];
+  /** A thrown senbon (vfx_senbon/needle, its row): plain steel, coated with poison, or dipped in a healing potion. */
+  needle?: 'steel' | 'poison' | 'heal';
+  /** A thrown kunai coated with poison (drawn green). */
+  coated?: boolean;
 }
 
 /**
@@ -1939,7 +1943,9 @@ export class Playback {
         }
         this.setPose(a, 'attack', now, 520);
         if (ev.ranged) {
-          this.fx.push({ kind: 'kunai', element: 'chakra', from, to, t0: now + 120 / this.speed, dur: 260, lift: [70, 60] });
+          // A senbon flies as its own needle (coated or not); a kunai as a streak, green when coated.
+          const needle = ev.what === 'Senbon' ? (ev.coated ? 'poison' : 'steel') : undefined;
+          this.fx.push({ kind: 'kunai', element: 'chakra', from, to, t0: now + 120 / this.speed, dur: needle ? 300 : 260, lift: [70, 60], ...(needle ? { needle } : {}), ...(ev.coated ? { coated: true } : {}) });
           h.sound('swing');
         } else {
           const d = Math.max(0.01, dist(from, to));
@@ -2001,6 +2007,29 @@ export class Playback {
         this.float(`${ev.amount}`, '#f87171', at, now, { dur: 1200 });
         h.sound('hit');
         return 110;
+      }
+      case 'coat': {
+        // The poison goes on: a breath of the venom's green round the ninja.
+        if (!ev.on) return 0;
+        const at = this.posOf(ev.unit, now);
+        this.fx.push({ kind: 'aura', element: 'poison', from: at, to: at, t0: now, dur: 900, unit: ev.unit });
+        if (label) this.float(label, '#a3e635', at, now, { rise: 112 });
+        return 450;
+      }
+      case 'healSenbon': {
+        // The needle dipped in a potion flies to the ally, lit; the green of the heals wells up where it lands.
+        const a = this.view(ev.unit);
+        const from = this.posOf(ev.unit, now);
+        const to = this.posOf(ev.target, now);
+        if (a) {
+          if (Math.abs(to.x - from.x) > 0.05) a.facing = to.x > from.x ? 1 : -1;
+          this.setPose(a, 'attack', now, 520);
+        }
+        const t1 = now + 120 / this.speed;
+        this.fx.push({ kind: 'kunai', element: 'chakra', from, to, t0: t1, dur: 340, lift: [70, 60], needle: 'heal' });
+        this.fx.push({ kind: 'heal', element: 'chakra', from: to, to, t0: t1 + 300 / this.speed, dur: 1100, unit: ev.target });
+        h.sound('swing');
+        return 520;
       }
       case 'heal': {
         const v = this.view(ev.unit);

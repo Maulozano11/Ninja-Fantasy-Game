@@ -891,7 +891,8 @@ function drawUnit(ctx: CanvasRenderingContext2D, sc: Scene, u: Unit, pos: Pt): v
       : charge
         ? { mode: 'aura' as const, tick: Math.floor(now / 83), empowered: true, burst: { color: 'cyan' as const, tint: jutsuTint(charge, u) } }
         : undefined;
-  const fr = unitFrame(u, look, v.pose, frame, aura);
+  // Weapons coated with poison (battle/senbon.ts): the green sheen and its drip, 8 frames a second.
+  const fr = unitFrame(u, look, v.pose, frame, aura, u.coat && !u.down ? Math.floor(now / 125) : undefined);
   let lx = 0;
   let ly = 0;
   if (v.lunge) {
@@ -1653,8 +1654,32 @@ function drawFx(ctx: CanvasRenderingContext2D, sc: Scene, f: Fx): void {
       const e = t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2;
       const x = a.X + (b.X - a.X) * e;
       const y = a.Y - l0 + (b.Y - l1 - (a.Y - l0)) * e - Math.sin(t * Math.PI) * 30;
+      if (f.kind === 'kunai' && f.needle) {
+        // A senbon: its own needle (vfx_senbon) at the angle it flies, of the 16 drawn.
+        const sh = worldSprite('vfx_senbon', 'needle');
+        const de = 0.002;
+        const e2 = Math.min(1, t + de);
+        const ee = e2 < 0.5 ? 2 * e2 * e2 : 1 - (-2 * e2 + 2) ** 2 / 2;
+        const x2 = a.X + (b.X - a.X) * ee;
+        const y2 = a.Y - l0 + (b.Y - l1 - (a.Y - l0)) * ee - Math.sin(e2 * Math.PI) * 30;
+        const ang = Math.atan2(y2 - y, x2 - x) || Math.atan2(b.Y - a.Y, b.X - a.X);
+        const anim = sh?.spec.anims[f.needle];
+        if (sh && anim && sh.img.complete && sh.img.naturalWidth > 0) {
+          const k = ((Math.round((ang * 180) / Math.PI / (360 / anim.frames)) % anim.frames) + anim.frames) % anim.frames;
+          const [ax, ay] = sh.spec.anchor;
+          ctx.drawImage(sh.img, k * sh.spec.frameW, anim.row * sh.spec.frameH, sh.spec.frameW, sh.spec.frameH, Math.round(x - ax), Math.round(y - ay), sh.spec.frameW, sh.spec.frameH);
+          break;
+        }
+        ctx.strokeStyle = f.needle === 'heal' ? '#bbf7d0' : f.needle === 'poison' ? '#a3e635' : '#e5e7eb';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(x - Math.cos(ang) * 8, y - Math.sin(ang) * 8);
+        ctx.lineTo(x + Math.cos(ang) * 8, y + Math.sin(ang) * 8);
+        ctx.stroke();
+        break;
+      }
       if (f.kind === 'kunai') {
-        ctx.strokeStyle = '#e5e7eb';
+        ctx.strokeStyle = f.coated ? '#a3e635' : '#e5e7eb';
         ctx.lineWidth = 2;
         const ang = Math.atan2(b.Y - a.Y, b.X - a.X);
         ctx.beginPath();

@@ -1,0 +1,43 @@
+{
+ "group": "vfx_senbon",
+ "pxPerMeter": 57,
+ "sprites": {
+  "needle": {
+   "label": "A thrown senbon at 16 angles (frame k: k x 22.5 degrees clockwise from the right): plain steel, coated with poison, dipped in a healing potion",
+   "file": "needle.png",
+   "frameW": 48,
+   "frameH": 48,
+   "anchor": [
+    24,
+    24
+   ],
+   "meters": [
+    0.84,
+    0.84
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "steel": {
+     "row": 0,
+     "frames": 16,
+     "fps": 0,
+     "loop": true
+    },
+    "poison": {
+     "row": 1,
+     "frames": 16,
+     "fps": 0,
+     "loop": true
+    },
+    "heal": {
+     "row": 2,
+     "frames": 16,
+     "fps": 0,
+     "loop": true
+    }
+   }
+  }
+ }
+}

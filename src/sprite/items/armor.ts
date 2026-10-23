@@ -1513,7 +1513,7 @@ function drawShadowOps(g: DrawCtx, art: ShadowArt, pc: string, sc: string): void
   const rest = art.guardN.angle - art.vest.angle;
   const guard = torso + rest + 0.45 * (((upperN - torso - rest + 540) % 360) - 180);
   stampPiece(g, 'nearArm.armor', art.guardN, guardAt(r, 'N', torso), guard, 'upperArmN', tint);
-  armUnderOff(g);
+  armUnderOff(g, art);
   torsoUnderOff(g, g.m(suit, 'flat'));
   vestGapFill(g, g.m(suit, 'flat'));
 }
@@ -1592,9 +1592,9 @@ const WAIST_UP = 2.2;
 
 /**
  * His forearms (and the far upper arm) are his pixels from elbow to wrist: our bare arm under them
- * gives way where his pieces are not, so no edge of ours shows beside his.
+ * gives way where his pieces are not, so no edge of ours shows beside his (but the wrist past his guard).
  */
-function armUnderOff(g: DrawCtx): void {
+function armUnderOff(g: DrawCtx, art: ShadowArt): void {
   for (const [s, parts] of [
     ['N', ['upperArmN', 'forearmN']],
     ['F', ['upperArmF', 'forearmF']],
@@ -1602,8 +1602,29 @@ function armUnderOff(g: DrawCtx): void {
     const body = g.L(armDepth(s, 'body'));
     const his = g.L(armDepth(s, 'armor'));
     const idx = parts.map((p) => partIndex(p));
-    for (let i = 0; i < GRID * GRID; i++) if (body.mat[i] >= 0 && idx.includes(body.part[i]) && his.mat[i] < 0) body.mat[i] = -1;
+    // Where our forearm, reaching out, is longer than his arm guard, its wrist past the guard's end is
+    // kept: his bare fist goes on there, and the arm does not part from the fist (the owner, 2026-10-23,
+    // on the standard characters: no piece apart from the body).
+    const j = armJoints(g.rig, s);
+    const fore = partIndex(`forearm${s}` as PartId);
+    const reach = pieceReach(s === 'N' ? art.foreN : art.foreF);
+    const bone = sub(j.wrist, j.elbow);
+    const len = Math.hypot(bone.x, bone.y) * RES;
+    const along = (i: number) => (((i % GRID) + 0.5 - j.elbow.x * RES) * bone.x + (Math.floor(i / GRID) + 0.5 - j.elbow.y * RES) * bone.y) / (len / RES);
+    for (let i = 0; i < GRID * GRID; i++) {
+      if (body.mat[i] < 0 || !idx.includes(body.part[i]) || his.mat[i] >= 0) continue;
+      if (body.part[i] === fore && len > reach && along(i) >= reach - 1) continue;
+      body.mat[i] = -1;
+    }
   }
+}
+
+/** How far a piece reaches along its angle from its pivot (fine px): his arm guard's length from the elbow. */
+function pieceReach(p: PaintedPiece): number {
+  const a = (p.angle * Math.PI) / 180;
+  let most = 0;
+  p.rows.forEach((row, y) => [...row].forEach((ch, x) => ch !== '.' && (most = Math.max(most, (x + 0.5 - p.pivot[0]) * Math.cos(a) + (y + 0.5 - p.pivot[1]) * Math.sin(a)))));
+  return most;
 }
 
 export const ARMOR_ITEMS: ItemDef[] = [

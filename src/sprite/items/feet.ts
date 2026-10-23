@@ -10,6 +10,7 @@ import { add, along, ellipse, GRID, norm, partIndex, Pen, RES, seam, sub, v, typ
 import { across, crease, fpx, limb, limbR, stitch, stud, tube, wrapStripes } from './clothes';
 import { ROMAN_KIT_KIND, SANDAL_FOOT_F, SANDAL_FOOT_N, SANDAL_LEATHER, SANDAL_SHIN_F, SANDAL_SHIN_N, SANDAL_SKIN } from './bracersSandalsArt';
 import { BOOT_STEEL, BOOT_TRIM, crimsonKind, SABATON_FOOT_F, SABATON_FOOT_N, SABATON_SHIFT, SABATON_SHIN_F, SABATON_SHIN_N } from './sabatonsGauntletsArt';
+import { GROUND } from '../rig';
 import { isFemaleBody } from '../types';
 import { BOOT_CLOTH, BOOT_FOOT_F, BOOT_FOOT_N, BOOT_KIND, BOOT_SHIN_F, BOOT_SHIN_N, BOOT_SKIN, BOOT_SOLE, BOOT_SOLE_F, BOOT_SOLE_N } from './shinobiBootsArt';
 import { BOOT_F_CLOTH, BOOT_F_FOOT_F, BOOT_F_FOOT_N, BOOT_F_KIND, BOOT_F_LEGS, BOOT_F_SHIN_F, BOOT_F_SHIN_N, BOOT_F_SKIN } from './shinobiBootsFemaleArt';
@@ -303,6 +304,9 @@ function bareFootOff(g: DrawCtx, s: Side): void {
   }
 }
 
+/** How high (design units) over the ground an ankle is lifted off it: his hunters' open-toe boots turn their foot from there. */
+const LIFTED = 9;
+
 export const FEET_ITEMS: ItemDef[] = [
   {
     id: 'feet_leather',
@@ -355,6 +359,8 @@ export const FEET_ITEMS: ItemDef[] = [
         return k === 'line' ? hex : k === 'skin' ? retintHex(hex, female ? BOOT_F_SKIN : BOOT_SKIN, g.look.skin) : retintHex(hex, base, cloth);
       };
       const soled = (_ch: string, hex: string) => (BOOT_KIND[hex] === 'line' ? hex : retintHex(hex, BOOT_SOLE, sole));
+      // (his Cazador 1 and 2, the shadow-ops vest with his hunter's trousers: compose.ts standardLook)
+      const hunter = g.has('armor', 'armor_shadowops') && g.has('bottom', 'bottom_hunter_leggings');
       for (const s of SIDES) {
         const { knee, ankle } = legJoints(g.rig, s);
         const shin = female ? (s === 'N' ? BOOT_F_SHIN_N : BOOT_F_SHIN_F) : s === 'N' ? BOOT_SHIN_N : BOOT_SHIN_F;
@@ -365,8 +371,12 @@ export const FEET_ITEMS: ItemDef[] = [
         const at = female ? hisLeg(g.rig, BOOT_F_LEGS[s], s).ankle : ankle;
         legBelowOff(g, s, (shin.pivot[1] - 1) / RES, at);
         stampPiece(g, legDepth(s, 'feet'), shin, at, segAngle(knee, ankle), `shin${s}`, boot);
-        stampPiece(g, legDepth(s, 'feet'), foot, at, foot.angle, `foot${s}`, boot);
-        if (!female) stampPiece(g, legDepth(s, 'feet'), s === 'N' ? BOOT_SOLE_N : BOOT_SOLE_F, ankle, foot.angle, `foot${s}`, soled);
+        // On his hunters, off the ground (a kick, the trailing leg of a run) the foot turns with the shaft
+        // about the ankle, or the toes are left apart from the boot (the owner, 2026-10-23: "quiero que
+        // arregles solo los de la calidad standard"; every other look keeps its feet as they are).
+        const turn = hunter && GROUND - ankle.y > LIFTED ? ((((segAngle(knee, ankle) - shin.angle) % 360) + 540) % 360) - 180 : 0;
+        stampPiece(g, legDepth(s, 'feet'), foot, at, foot.angle + turn, `foot${s}`, boot);
+        if (!female) stampPiece(g, legDepth(s, 'feet'), s === 'N' ? BOOT_SOLE_N : BOOT_SOLE_F, ankle, foot.angle + turn, `foot${s}`, soled);
       }
     },
   },

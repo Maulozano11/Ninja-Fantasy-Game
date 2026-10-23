@@ -241,7 +241,7 @@ export const HANA: ShinobiCharacter = companion(HANA_LEGACY, {
     slot2Elemental: 'water_shield_suijinheki',
     slot3Elemental: 'water_dragon_suiryuudan',
     slot4Clan: 'adamantine_sealing_chains',
-    slot5Ultimate: 'yasaka_magatama',
+    slot5Ultimate: 'water_tide_s', // the Dragon Tsunami, Water's rank S, since Yasaka no Magatama left the game (2026-10-22)
   },
   appearance: look({
     body: 'female',

@@ -1047,7 +1047,7 @@ function strikeCharged(s: BattleState, u: Unit, ev: BattleEvent[]): void {
 
 /**
  * A silent jutsu that wounds a foe counts as an attack (the proposal's piece P6, the owner's answer
- * for the Mirage and the Bleeding Cut): the caster gives itself away once it has struck, as with a
+ * for the Mind Twist and the Bleeding Cut): the caster gives itself away once it has struck, as with a
  * blade, and in the stealth phase the target that survives shouts while one that falls unseen
  * leaves a body. A silent jutsu that reaches several foes is loud there.
  */

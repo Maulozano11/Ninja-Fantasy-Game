@@ -243,7 +243,6 @@ const OVERRIDE: Record<string, Partial<JutsuSpec>> = {
   rasenshuriken_wind: { vfx: 'sphere' },
   great_fire_annihilation: { vfx: 'breath', length: 12, effect: 'burning', sig: 'annihilation' },
   wood_golem_titan: { element: 'earth', vfx: 'blast' },
-  yasaka_magatama: { element: 'chakra', vfx: 'multi', width: 1.5 },
   night_guy_dragon: { element: 'chakra', vfx: 'beast', melee: true },
   // The rank D and C jutsu (the owner's answers of 2026-10-21; docs/GAMEPLAY_DESIGN.md, "Rank D and C
   // jutsu"). The projectiles fly apart, on three paths, to reach the target from different angles.

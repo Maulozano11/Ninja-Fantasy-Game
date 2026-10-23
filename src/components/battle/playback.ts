@@ -1614,7 +1614,7 @@ export class Playback {
     // Jutsu play at a pace the player can follow: a beat for the cast, a flight you can watch
     // (beasts slower still), and the impact plays out whole before the next turn starts.
     const castDelay = head ? 150 : 560;
-    // A dream's drift flies slower (the Mirage).
+    // A dream's drift flies slower (the Mind Twist).
     const fly = (spec?.vfx === 'beast' ? Math.max(900, dist(from, ev.at) * 150) : Math.max(500, dist(from, ev.at) * 115)) * (spec?.seq?.slowFlight ?? 1);
     const linger = (ms: number) => (this.lingerUntil = Math.max(this.lingerUntil, t1 + ms / this.speed));
     h.sound('jutsu', el);

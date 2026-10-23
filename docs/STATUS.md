@@ -146,6 +146,7 @@ screens (`CampaignMode.tsx`, `ArenaSandbox.tsx`) are English only.
 | `fix/cape-clasp-2` | pushed | The owner's answer on the clasp gaps (2026-10-22, *"1 arreglar igual capa 2 solen rellenar"*). The seam fill moves to `src/sprite/seams.ts` (`addSeam`, `clothSeam`, `fillSeams`). **Shadow Half-Cloak:** the background beside its studs (between the near shoulder's top and the hair, the mantle and the far plate) is filled with his own cloth of the mantle and shoulder piece continued, only within 5 px of a stud, where nothing is drawn and the figure walls it in; not at rest. **Solen, bulky idle:** the seam at the near stud (11 px) and beside the white stud (3 px) is filled at rest too; every other idle frame of every preset, companion and enemy is byte-identical. Tests: `src/sprite/seams.test.ts` (the cloak, default look and Aiden, three bodies), `solen.test.ts` now checks idle too. Open: the cloak's 2 px gap at rest on the female body (left as drawn: idle); on Solen's bulky idle a 1 px notch between hair and cowl, open to the outside, left as drawn. Touches `compose.ts` (hot file: the import and the `fillSeams` call), `accessories.ts`, `capes.ts`; `docs/SPRITE_STYLE_GUIDE.md` | **Fixes he asked for**; images to show him |
 | `jutsu/tide-s` | pushed | The **Dragon Tsunami** (*Técnica de Agua: Dragón Tsunami*, `water_tide_s`), Water's S-rank, from his paint-over of our widest wave (`docs/reference/tide-s-owner-reference.jpg`: "a la ola pasame el sprite donde se ven mas olas para agregarle un kanji y una bestia animada que sera el jutsu en version mejorada clase s"): his curl wave, water dragon (head, horns, whiskers, jaw as pieces), kanji 水 with its glow and spray, lifted at 2x2 game px per pixel of his (`tools/refs/tide-s-from-ref.py` → `tools/world-sprites/vfx-tide-s-refdata.ts` → `vfx-tide-s.ts` → `src/assets/world/vfx_tide_s/`); the curl rises with the wave, the dragon surges out of it, roars and dives at the break, the kanji fades in, pulses and flashes (3.1 s wave). In `JUTSUS_DATA` as Water's S-rank (S-rank slot, level 10; 12 chakra +4, 6d8 STR half, 11.25 m 80-degree cone, sweep 3 m and knock-down, douses, ground wet one round longer: `wetRounds`); the rank-A Tide renamed *Técnica de Agua: Tsunami* (same id). Every water ninja can cast it in practice (`#combat`); `src/battle/tideS.test.ts`. Touches `jutsu.ts`, `ground.ts`, `engine.ts`, `shinobiData.ts`, `playback.ts`, `vfxSprites.ts`, `vfxTintPlan.ts`, `BattleScreen.tsx`, `BattleDemo.tsx`, the tests that pinned "Water has no S-rank" | **Approved by the owner** (2026-10-22: the animation, rank S, the names, and the numbers "por ahora"); ready to merge |
 | `jutsu/chidori-active` | pushed | The owner's activated Chidori (`docs/GAMEPLAY_DESIGN.md`, "The Chidori becomes an activated state"): a bonus action charges the hand for 3 rounds, the blow (a melee jutsu attack roll, 5d8) goes off by itself within reach of the first foe the ninja moves to, the ground cracks under its steps into difficult terrain for 1 turn; generic charged hand for the Rasengan later (`src/battle/charged.ts` + tests); the AI uses it; his lightning hand from his two paint-overs (`tools/refs/chidori-hand-from-ref.py`, `tools/world-sprites/vfx-chidori.ts` → `src/assets/world/vfx_charged/`), the aura, Battle Static's crackle and the ground cracks. Touches `engine.ts`, `shinobiData.ts` (the Chidori's cast time, range, save, description), `playback.ts`, `renderer.ts` | **Waiting for approval** (new art, and the rules' open points) |
+| `jutsu/rename-remove` | pushed | The owner's jutsu decisions of 2026-10-22: Rasenshuriken → *Técnica de Viento: Estrella Huracán* / Hurricane Star, Espejismo → *Técnica de Genjutsu: Mente retorcida* / Mind Twist (ids unchanged, Japanese names of their own), Yasaka no Magatama removed (data, battle spec, short name; Hana gets the Dragon Tsunami); a saved sheet with it loads with a replacement (`refitRemoved` in `src/rules/progression.ts`, `REMOVED_JUTSUS` in `jutsuNature.ts`, through `migrateCharacter`); `src/rules/jutsuRemoved.test.ts`. Touches `shinobiData.ts`, `missions.ts`, `jutsu.ts`, `BattleScreen.tsx` (SHORT), `ninja.ts`, the tests that pinned the old names | **His decisions**; not merged (no PR yet) |
 | `worktree-*` | not on origin (local `6e2e8dc`) | Agent worktree leftovers | Stale |
 
 The tips are the pushed ones; fetch to see the latest. At this snapshot the owner's checkout had
@@ -165,8 +166,8 @@ Merge checks (`git merge-tree` on the origin tips, nothing changed):
 
 - `jutsu/tide-s` (2026-10-22): the Dragon Tsunami is approved (look, rank S, names, numbers for now).
   Still open, small:
-  - Hana (Water, medic) keeps Yasaka no Magatama in her S-rank slot (see the class question below);
-    give her the Dragon Tsunami instead? (Practice battles let every water ninja cast it anyway.)
+  - Hana (Water, medic) has the Dragon Tsunami in her S-rank slot since he removed Yasaka no
+    Magatama (2026-10-22, `jutsu/rename-remove`): the only rank S her nature and class allow. Confirm.
   - His curl stands with its foot cut straight where his canvas ended (bottom left); and where his
     dragon and kanji covered the curl, the curl is continued with his own rings turned about the
     spiral's eye (seen while the dragon rises and dives and before the kanji shows).
@@ -250,6 +251,13 @@ Merge checks (`git merge-tree` on the origin tips, nothing changed):
   clan secret not, the type change swaps the jutsu, Light and Void only jutsu with no element, the
   random ninja's picks); Kaien's Fireball and Raiga's Earth Wall (kept; proposed: a formal second
   nature, Kaien Rayo + Fuego, Raiga Fuego + Tierra).
+- Decided 2026-10-22 (`jutsu/rename-remove`): **Rasenshuriken → "Estrella Huracán"** (Hurricane Star,
+  `rasenshuriken_wind`), **Espejismo/Mirage → "Mind Twist"** (`genjutsu_mirage`; Spanish "Mente
+  retorcida", our proposal, one line to change if he wants "Mind Twist" in Spanish too), ids
+  unchanged; **Yasaka no Magatama removed**: *"quitala del juego"* (he will make something else).
+  Hana gets the Dragon Tsunami in its place; a saved sheet with it loads with the best jutsu its
+  nature, class and clan allow in that slot, same rank or lower, or the slot empty
+  (`docs/GAMEPLAY_DESIGN.md`, "Jutsu names, and a removed jutsu"). Night Guy: he renames it later.
 - Decided 2026-10-22: the neck option was removed from the creator; every character keeps the slim nape (his Aiden's). Saved 'strong' necks load as slim.
 - Decided 2026-10-22: **Solen approved and merged** (`solen/owner-standard`): *"me encanta la pantorilla aprovado"*. He also said yes to filling the 1-pixel holes for every character and to fixing the stowed sword that pokes out (*"si arregla el hueco de 1 pixel a todos si haz el cambio en espada guardada"*); both are built on `fix/holes-stowed-sword` (idle left as drawn).
 - Decided 2026-10-22: **Aurelia stays in our format; small hands become a creator option for women.** He first said *"la referencia es una version nueva copiala las manos mas pequeñas ponlas como opcion en el juego para personajes femeninos"*, then, seeing that his new picture is about 4 rows taller than the female base body, cancelled the re-scale: *"no esta bien deja tu diseño a nuestro formato esta bien cancela la reescala esta bien como esta"*. So Aurelia keeps the pieces from the game-scale picture on the female base body; "Manos: Normales / Pequeñas" is offered on the female and slender bodies, Pequeñas from her picture. Being built on `heroine/aurelia-v2` with the skirt and far-knee fixes.
@@ -272,7 +280,8 @@ Merge checks (`git merge-tree` on the origin tips, nothing changed):
 - Decided 2026-10-21 (later still), who learns the genjutsu, kenjutsu and taijutsu jutsu: *"9 los
   que elijan de clase genjutsu kenjutsu o taijutsu"*. Built on `chakra/progression`. Kenjutsu to
   the Maestro de Bukijutsu confirmed ("si bukijutsu sera kenjutsu"). **Still his**: Ninjutsu and
-  Medical learning none of the three; Hana (medic) keeping Yasaka no Magatama, marked.
+  Medical learning none of the three. (Hana, medic, kept Yasaka no Magatama, marked, until he
+  removed it on 2026-10-22; she has the Dragon Tsunami now.)
 - Decided 2026-10-21 (later still), the second and third element: *"nivel 5 suena bien para segundo
   elemento o subir de rango tu elemento principal proponme el feat ok con kaien y raiga"*. Built on
   `chakra/progression`: at level 5 a second element or a higher rank of the main element; Kaien
@@ -342,7 +351,7 @@ Generated art in `src/assets` adds more (icon files and manifests such as `rasen
 | sharingan | 31 | shinobiData 13, types/shinobi 5, CharacterCreator 3, campActivities 2, rules/rest 2, battle.test, ArenaSandbox, CampaignMode, RestCamp, ruleText, legacy |
 | byakugan | 15 | CharacterCreator 4, RestCamp 2, campActivities 2, shinobiData 2, types 2, CampaignMode, rest, legacy |
 | mangekyo / kamui / amaterasu / susanoo | 7 / 2 / 4 / 4 | shinobiData, types, legacy, CharacterCreator |
-| rasengan / rasenshuriken | 5 / 7 | shinobiData, types, legacy, units, BattleScreen, jutsu.ts |
+| rasengan / rasenshuriken | 5 / 13 | shinobiData, types, legacy, units; rasenshuriken is only the id `rasenshuriken_wind` now (the Hurricane Star), in data and tests |
 | chidori / raikiri | 22 / 1 | shinobiData 8, battle.test 6, units 2, others |
 | kirin | 16 | shinobiData 6, battle.test 5, vfxSprites 2, others |
 | hokage / akatsuki / konoha | 3 / 3 / 3 | types, legacy, shinobiData (Konoha Senpuu) |
@@ -366,12 +375,15 @@ What players see:
   (**wait for the owner**).
 - All 27 jutsu are Naruto techniques (Kage Bunshin, Shunshin, Kawarimi, Goukakyu, Suiryuudan,
   Doryuheki, Chidori, Raijuu Tsuiga, Konoha Senpuu, Mikazuki no Mai, Nehan Shouja, Kongou Fuusa,
-  Hakke 64 Palms, Mokuton, Kirin, Rasenshuriken, Gouka Mekkyaku, Mokujin, Yasaka no Magatama,
-  Night Guy).
+  Hakke 64 Palms, Mokuton, Kirin, Gouka Mekkyaku, Mokujin, Night Guy).
   - Decided 2026-10-22 (the owner, naming his icon sheets): Shunshin → **Desvanecer** ("Vanish",
     `body_flicker`) and Konoha Senpuu → **Patada huracán** ("Hurricane Kick", `leaf_hurricane_senpuu`);
     ids unchanged. He will rename Rasenshuriken and Night Guy himself, and plans to remove
     Yasaka no Magatama and make something else.
+  - Decided 2026-10-22 (later): Rasenshuriken → **Estrella Huracán** ("Hurricane Star",
+    `rasenshuriken_wind`), Espejismo/Mirage → **Mind Twist** ("Mente retorcida" in Spanish,
+    `genjutsu_mirage`), ids unchanged; Yasaka no Magatama removed from the game. Night Guy is left
+    for him to rename.
 - Feats and class text: Eight Gates, Tenketsu Lockout, feat id `sharingan_precog`.
 - Camp: "Sharingan reading", "Byakugan watch", "Close tenketsu", Ryusei's "Wood shelter" and
   "Wood skin".
@@ -424,7 +436,7 @@ remove the AI Studio leftovers (`README.md`, `metadata.json`, package name, unus
 
 ### 4f. Other
 - Battle abilities with no owner icon even after sheets 8–11: body flicker, explosive tag, mystical
-  palm, Kawarimi, wind blade, leaf hurricane, Rasenshuriken, wood golem, Yasaka, Night Guy,
+  palm, Kawarimi, wind blade, leaf hurricane, Hurricane Star, wood golem, Night Guy,
   Pursuing Flame.
 - Clan Paths of Mastery; clan reference pictures (CLANS_DESIGN: mechanics first, art after).
 - World sprites are paused (`tools/world-sprites/README.md`); the hydra art (`world/creatures/`)

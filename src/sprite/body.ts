@@ -16,7 +16,7 @@ import { KEEN_BROW_HAIR, KEEN_BROWS, KEEN_EYE_COLORS, KEEN_EYES, KEEN_IRIS } fro
 import { LONG_NAPE, LONG_NECK_BACK, LONG_NECK_W } from './neck';
 import { LYRA_FACE_FAR_LINE, lyraFaceCells, stampLyraFace } from './lyraFace';
 import { LYRA_FACE_FAR_EYE } from './lyraFaceArt';
-import { drawOwner, slotTint } from './ownerFrames';
+import { drawOwner, ownsBody, slotTint, trunksTint } from './ownerFrames';
 import { segAngle, stampPiece } from './painted';
 import { rotateTemplate, stampTemplate, type TemplatePalette } from './rotsprite';
 import { ballShade, capsule, ellipse, F_NO_OUTLINE, F_NO_TEXTURE, GRID, Layer, PartId, Pen, poly, RES, seam, v, Vec } from './raster';
@@ -27,6 +27,12 @@ const SCLERA = '#f4f1ee';
 const EYELINE = '#1b1420';
 
 export function drawBody(g: DrawCtx): void {
+  // His Trunks in the owner's own frames of him (ownerFrames.ts): every pixel of the figure is his, his
+  // face and bare arms included, so our body draws none of it.
+  if (ownsBody(g)) {
+    drawOwner(g, 'face', trunksTint(g.look, {}));
+    return;
+  }
   if (g.bp.fit) {
     drawBaseBody(g);
     return;

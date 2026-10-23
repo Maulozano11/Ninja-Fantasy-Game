@@ -15,7 +15,7 @@ import { FOUNDER_COWL, FOUNDER_COWL_GOLD, FOUNDER_COWL_KIND, FOUNDER_COWL_NEAR, 
 import { chakraHex } from '../chakraInfo';
 import { LYRA_SWORD_BLADE, LYRA_SWORD_GUARD } from './lyraSwordArt';
 import { drawLyraRapier } from './lyraSword';
-import { drawOwner, ownerFrame, slotTint } from '../ownerFrames';
+import { drawOwner, drawTrunks, ownerFrame, slotTint } from '../ownerFrames';
 import { gripPoint, handsBusy, handsLimp, handsReleased, poleAngle, swordAngle, throwsKunai } from '../grip';
 
 const col = (key: string, label: string, def: string, kind: RampKind = 'cloth') => ({ key, label, default: def, kind });
@@ -354,6 +354,8 @@ export const HELD_ITEMS: ItemDef[] = [
     colors: [col('blade', 'Crystal', '#8ccbe8', 'metal'), col('hilt', 'Grip', '#2a3348', 'leather'), col('guard', 'Guard', '#6f97c0', 'metal')],
     draw: (g, [blade, hilt, guard]) => {
       const c = { blade, grip: hilt, guard, wrap: '#8a9bb8' };
+      // In the owner's own frames of his Trunks (ownerFrames.ts) it is his, stowed on the back as he drew it.
+      if (drawTrunks(g, 'held')) return;
       if (handsBusy(g)) drawWeapon(g, 'backGear', CRYSTAL_SWORD, backGrip(g, 48), backAngle(g, 48), c);
       else if (handsLimp(g)) drawWeapon(g, 'nearArm.held', CRYSTAL_SWORD, droppedGrip(g, 0.7), -86, c);
       else if (!handsReleased(g)) drawWeapon(g, 'nearArm.held', CRYSTAL_SWORD, gripPoint(g), swordAngle(g), c);

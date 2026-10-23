@@ -38,8 +38,12 @@ DEPTH = {
     ('feet', 'F'): 'farLeg.feet',
     ('held', 'T'): 'nearArm.held',
     ('book', 'T'): 'nearArm.over',
+    # his Trunks' cape and gloves (trunks-read-from-ref.py, trunks-sit-from-ref.py)
+    ('cape', 'T'): 'capeFront',
+    ('hands', 'N'): 'nearArm.armor',
+    ('hands', 'F'): 'farArm.armor',
 }
-PART_OF_OWNER = {'hair': 'head', 'face': 'head', 'top': 'torso', 'armor': 'torso', 'bottom': 'pelvis', 'skirt': 'pelvis', 'waist': 'pelvis', 'held': 'held', 'book': 'held'}
+PART_OF_OWNER = {'hair': 'head', 'face': 'head', 'top': 'torso', 'armor': 'torso', 'bottom': 'pelvis', 'skirt': 'pelvis', 'waist': 'pelvis', 'held': 'held', 'book': 'held', 'cape': 'torso'}
 JOINT_OF = {
     'head': 'head', 'torso': 'neck', 'pelvis': 'pelvis', 'held': 'pelvis',
     'upperArmN': 'shoulderN', 'forearmN': 'elbowN', 'handN': 'wristN',

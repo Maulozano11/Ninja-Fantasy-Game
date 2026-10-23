@@ -13,6 +13,7 @@ import { OWNER_CAPE_BACK, OWNER_CAPE_FRONT, OWNER_CAPE_PLATE, OWNER_CAPE_SHOULDE
 import { FOUNDER_CAPE, FOUNDER_CAPE_CLOTH, FOUNDER_CAPE_KIND, FOUNDER_CAPE_REST } from './founderCapeArt';
 import { CRIMSON_CAPE_BACK, CRIMSON_CAPE_BASE, CRIMSON_CAPE_EDGE, CRIMSON_CAPE_FAR, CRIMSON_CAPE_LINE, CRIMSON_CAPE_NEAR } from './crimsonCapeArt';
 import { TRAVELER_BACK, TRAVELER_BROWN, TRAVELER_HOOD, TRAVELER_HOOD_BEHIND, TRAVELER_HOOD_SEAM, TRAVELER_REST, TRAVELER_SHOULDER, TRAVELER_SHOULDER_SEAM, TRAVELER_SLOT } from './travelerCapeArt';
+import { drawTrunks, ownerFrame, trunksTint } from '../ownerFrames';
 
 const col = (key: string, label: string, def: string, kind: 'cloth' | 'leather' | 'metal' = 'cloth') => ({ key, label, default: def, kind });
 
@@ -601,7 +602,8 @@ const sealed = (d: ItemDef): ItemDef => ({
   ...d,
   draw: (g, colors, parts) => {
     d.draw(g, colors, parts);
-    sealCloth(g, CAPE_DEPTHS, true);
+    // (not in the owner's own frames, ownerFrames.ts: there the cloth is his as he drew it)
+    if (!ownerFrame(g)) sealCloth(g, CAPE_DEPTHS, true);
   },
 });
 
@@ -799,6 +801,8 @@ const CAPES: ItemDef[] = [
       // His browns follow the slot (the old default means his); his line stays. Knocked out, the drawn
       // cape lies along the body instead.
       const c = c0.toLowerCase() === '#7d5b3b' ? TRAVELER_BROWN : c0;
+      // In the owner's own frames of his Trunks (ownerFrames.ts) the cape is his there, pixel for pixel.
+      if (drawTrunks(g, 'cape', trunksTint(g.look, { main: [TRAVELER_BROWN, c] }))) return;
       if (g.rig.pose !== 'downed') {
         const tint = (_ch: string, hex: string) => (TRAVELER_SLOT[hex] === 'main' ? retintHex(hex, TRAVELER_BROWN, c) : hex);
         // The hood goes on under the head, the neck and the shoulder's cloth, behind the body (hidden at

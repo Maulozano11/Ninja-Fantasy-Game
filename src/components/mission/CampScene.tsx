@@ -19,6 +19,7 @@ import {
   footShadow,
   gradedMember,
   gradedSeat,
+  seatTopOf,
   gradedSprite,
   GradedSprite,
   knownPose,
@@ -225,18 +226,20 @@ export function CampScene({ members, fire, asleep, dawn, alarm, shrine, danger, 
       } else if (p.name === 'stone_lantern') prop(p, 'lit', { emissive: true });
       else prop(p, p.anim);
     }
-    seats.forEach((_, i) => {
+    seats.forEach((m, i) => {
       const s = supportOf(i);
       if (s) prop(s, undefined);
       const seat = seatOf(i);
       const spot = SPOTS[i];
+      // (a figure the owner painted sitting lower than the pose's seat, his Trunks reading, gets it lower)
+      const top = seat ? seatTopOf(m, seatPose(i)) : undefined;
       if (seat)
         out.push({
           z: spot.y - 0.25,
-          key: `${seat}@${spot.x},${spot.y}`,
+          key: `${seat}@${spot.x},${spot.y}@${top ?? ''}`,
           frameAt: () => 0,
           draw: (ctx) => {
-            const c = gradedSeat(seat, spot.x, spot.y, spot.flip, light);
+            const c = gradedSeat(seat, spot.x, spot.y, spot.flip, light, top);
             if (c) ctx.drawImage(c.canvas, spot.x - (spot.flip ? GRID - 1 - FEET.x : FEET.x) + c.ox, spot.y - FEET.y + c.oy);
           },
         });

@@ -42,17 +42,55 @@ export function seatFor(pose: SpritePose, scene?: SeatId): SeatId | null {
   return scene ?? DEFAULT_SEAT;
 }
 
-/** A seat's pixels in a GRID x GRID frame like a sprite's (empty for 'seat_none'). */
-export function renderSeat(id: SeatId): Uint8ClampedArray {
+/** How many rows at the foot of a seat's art are the earth under it (kept whole when the seat is lowered). */
+const EARTH_ROWS = 6;
+
+/**
+ * Which rows of a seat's art show when its top is laid `drop` rows lower on the same ground: the rows
+ * most like the row below them are left out (his rows, whole, as owner_paintover.keep brings his figures
+ * down), never two side by side, never its top line or the earth at its foot. A figure the owner painted
+ * sitting lower than the pose's seat (ownerFrames.ts seatTopFor) gets the scene's seat that much lower.
+ */
+function keptRows(rows: string[], drop: number): number[] {
+  const n = rows.length;
+  const keep = rows.map((_, j) => j);
+  if (drop <= 0) return keep;
+  const unlike = (a: string, b: string) => {
+    let d = 0;
+    for (let i = 0; i < Math.max(a.length, b.length); i++) if ((a[i] ?? '.') !== (b[i] ?? '.')) d++;
+    return d;
+  };
+  const cost = rows.map((r, j) => (j < 2 || j >= n - EARTH_ROWS - 1 ? Infinity : unlike(r, rows[j + 1])));
+  const out = new Set(keep);
+  for (let k = 0; k < drop; k++) {
+    let best = -1;
+    for (let j = 0; j < n; j++) if (Number.isFinite(cost[j]) && (best < 0 || cost[j] < cost[best])) best = j;
+    if (best < 0) break;
+    out.delete(best);
+    cost[best] = Infinity;
+    if (best > 0) cost[best - 1] = Infinity;
+    if (best < n - 1) cost[best + 1] = Infinity;
+  }
+  return [...out].sort((a, b) => a - b);
+}
+
+/**
+ * A seat's pixels in a GRID x GRID frame like a sprite's (empty for 'seat_none'), its top on row `top`:
+ * its own top (the pose's seat) unless a figure sits lower, then standing on the same ground, lower.
+ */
+export function renderSeat(id: SeatId, top: number = SEATS[id].top): Uint8ClampedArray {
   const out = new Uint8ClampedArray(GRID * GRID * 4);
   const art = SEATS[id].art;
   if (!art) return out;
   const rgb = Object.fromEntries(Object.entries(art.colors).map(([c, h]) => [c, hexToRgb(h)]));
-  art.rows.forEach((row, j) => {
+  const rows = keptRows(art.rows, top - SEATS[id].top);
+  const y0 = art.at[1] + art.rows.length - rows.length;
+  rows.forEach((r, j) => {
+    const row = art.rows[r];
     for (let i = 0; i < row.length; i++) {
       if (row[i] === '.') continue;
       const x = art.at[0] + i;
-      const y = art.at[1] + j;
+      const y = y0 + j;
       if (x < 0 || y < 0 || x >= GRID || y >= GRID) continue;
       const k = (y * GRID + x) * 4;
       out.set([...rgb[row[i]], 255], k);
@@ -62,8 +100,8 @@ export function renderSeat(id: SeatId): Uint8ClampedArray {
 }
 
 /** A sprite frame on a seat: the seat first, the character over it (for previews and pictures). */
-export function onSeat(sprite: Uint8ClampedArray, id: SeatId): Uint8ClampedArray {
-  const out = renderSeat(id);
+export function onSeat(sprite: Uint8ClampedArray, id: SeatId, top?: number): Uint8ClampedArray {
+  const out = renderSeat(id, top);
   for (let i = 0; i < GRID * GRID; i++) if (sprite[i * 4 + 3]) out.set(sprite.subarray(i * 4, i * 4 + 4), i * 4);
   return out;
 }

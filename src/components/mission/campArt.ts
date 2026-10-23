@@ -15,6 +15,7 @@ import { renderSpriteCached } from '../../sprite/compose';
 import { dojutsuToEye, getAppearance } from '../../sprite/legacy';
 import { CAMP_PROPS, FEET, FEET_X, frameCount, POSE_FPS, rigPoseFor } from '../../sprite/rig';
 import { GRID, opaqueBox, RES } from '../../sprite/raster';
+import { seatTopFor } from '../../sprite/ownerFrames';
 import { renderSeat, type SeatId } from '../../sprite/seats';
 import type { SpriteAppearance, SpritePose } from '../../sprite/types';
 import type { ShinobiCharacter } from '../../types/shinobi';
@@ -254,6 +255,12 @@ export function gradedSprite(p: ScenePropDef, anim: string | undefined, light: F
 const looks = new WeakMap<ShinobiCharacter, SpriteAppearance>();
 const lookIds = new WeakMap<SpriteAppearance, number>();
 let lookSerial = 0;
+
+/** Where a party member's figure sits in a pose, if the owner painted it sitting lower than the pose's seat (sprite/ownerFrames.ts). */
+export function seatTopOf(m: ShinobiCharacter, pose: SpritePose): number | undefined {
+  return seatTopFor(lookOf(m), pose);
+}
+
 function lookOf(m: ShinobiCharacter): SpriteAppearance {
   let l = looks.get(m);
   if (!l) {
@@ -314,11 +321,11 @@ const seatCache = new Lru<{ canvas: HTMLCanvasElement; ox: number; oy: number }>
  * A seat prop (sprite/seats.ts) under a party member standing at (x, y), graded like the member: drawn
  * at the member's own origin, mirrored with it, so the seat is under its hips.
  */
-export function gradedSeat(seat: SeatId, x: number, y: number, flip: boolean, light: FireLight): { canvas: HTMLCanvasElement; ox: number; oy: number } | undefined {
-  const key = `${seat}|${x},${y}|${flip ? 1 : 0}|${lightKey(light)}`;
+export function gradedSeat(seat: SeatId, x: number, y: number, flip: boolean, light: FireLight, top?: number): { canvas: HTMLCanvasElement; ox: number; oy: number } | undefined {
+  const key = `${seat}|${top ?? ''}|${x},${y}|${flip ? 1 : 0}|${lightKey(light)}`;
   const hit = seatCache.get(key);
   if (hit) return hit;
-  const src = renderSeat(seat);
+  const src = renderSeat(seat, top);
   let rgba = src;
   if (flip) {
     rgba = new Uint8ClampedArray(src.length);

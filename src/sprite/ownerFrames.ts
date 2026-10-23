@@ -6,18 +6,25 @@
 // her face, her options in her slots) each of her options draws its pieces in those frames instead of its
 // own drawing, so the frame is his, pixel for pixel; her blouse and boots take our body off under them
 // (her skin is theirs there).
+//
+// His Trunks reading and sitting (items/trunksReadArt.ts, items/trunksSitArt.ts) are drawn the same way
+// on his figure (wearsTrunksFigure: our male in his Trunks 2 options), every piece pinned to the pelvis;
+// there our body draws nothing at all (ownsBody): every pixel of the figure is his, his face included.
 
 import { retintHex } from './color';
 import type { Depth, DrawCtx } from './ctx';
 import { LYRA_BOOT_SKIN } from './items/lyraBootsArt';
 import { LYRA_READ } from './items/lyraReadArt';
 import { LYRA_THROW } from './items/lyraThrowArt';
+import { TRUNKS_READ, TRUNKS_READ_SEAT } from './items/trunksReadArt';
+import { TRUNKS_SIT, TRUNKS_SIT_SEAT } from './items/trunksSitArt';
+import { PAINTED_SKIN } from './items/trunksKit';
 import { hisSkinTone } from './lyraFace';
 import { F_NO_OUTLINE, F_NO_TEXTURE, GRID, RES, type PartId } from './raster';
 import { READ_KEYS, type Rig } from './rig';
 import { isFemaleBody, type SlotId, type SpriteAppearance } from './types';
 
-export type FrameOwner = 'hair' | 'face' | 'top' | 'armor' | 'bottom' | 'skirt' | 'waist' | 'feet' | 'held' | 'book';
+export type FrameOwner = 'hair' | 'face' | 'top' | 'armor' | 'bottom' | 'skirt' | 'waist' | 'feet' | 'held' | 'book' | 'cape' | 'hands';
 export type FrameJoint = 'head' | 'neck' | 'pelvis' | 'shoulderN' | 'shoulderF' | 'elbowN' | 'elbowF' | 'wristN' | 'wristF' | 'hipN' | 'hipF' | 'kneeN' | 'kneeF' | 'ankleN' | 'ankleF';
 
 /** One piece of an owner's frame (generated: items/lyraReadArt.ts). */
@@ -83,9 +90,71 @@ export function paintedFrame(pose: string, frame: number): OwnerPiece[] | null {
   return null;
 }
 
+/** His Trunks' options, by slot (the Trunks 2 look he painted reading and sitting): what his frames of him are cut into. */
+const TRUNKS: Partial<Record<SlotId, string>> = {
+  hair: 'hair_drifter',
+  cape: 'cape_traveler',
+  top: 'top_highcollar',
+  waist: 'waist_belt',
+  bottom: 'bottom_cargo',
+  feet: 'feet_leather',
+  hands: 'hands_traveler_gloves',
+};
+
+/**
+ * Whether a look is his Trunks' figure, the one his read frames are of: our male with our face and eyes,
+ * in each of his slots his option (any colours), nothing else worn but his crystal greatsword (stowed on
+ * the back, as he drew it) or nothing in the hand, no headband or accessory. With anything else his frame
+ * would not fit it, and every option draws itself on the rig.
+ */
+export function wearsTrunksFigure(look: SpriteAppearance): boolean {
+  if (look.body !== 'male' || (look.faceShape && look.faceShape !== 'tapered') || (look.eyeShape ?? 'standard') !== 'standard') return false;
+  if ((look.headband && look.headband.position !== 'none') || look.accessories.length) return false;
+  for (const [slot, c] of Object.entries(look.slots) as [SlotId, { id: string } | undefined][]) {
+    if (!c || c.id.endsWith('_none')) {
+      if (TRUNKS[slot]) return false;
+      continue;
+    }
+    if (TRUNKS[slot] ? c.id !== TRUNKS[slot] : !(slot === 'held' && c.id === 'held_crystal')) return false;
+  }
+  return Object.keys(TRUNKS).every((slot) => look.slots[slot as SlotId]);
+}
+
+/**
+ * Which of his two Trunks read frames each of the read pose's keys shows (rig.ts READ_KEYS: "Atenta",
+ * "Leyendo", "Pasando pagina"): looking up from the book shut at the chest, then reading it open.
+ */
+export const TRUNKS_READ_OF_KEY = [1, 0, 0] as const;
+
+/** His painted frame of his Trunks for a pose and frame, if he painted one. */
+export function trunksFrame(pose: string, frame: number): OwnerPiece[] | null {
+  if (pose === 'read') return TRUNKS_READ[TRUNKS_READ_OF_KEY[readKey(frame)]];
+  // he painted one sit frame (no book, the far palm up): every frame of the pose is it
+  if (pose === 'sit') return TRUNKS_SIT;
+  return null;
+}
+
 /** The owner's frame for the rig's pose and frame, if he painted one and the look is his figure. */
 export function ownerFrame(g: Pick<DrawCtx, 'rig' | 'look'>): OwnerPiece[] | null {
-  return wearsHisFigure(g.look) ? paintedFrame(g.rig.pose, g.rig.frame) : null;
+  if (wearsHisFigure(g.look)) return paintedFrame(g.rig.pose, g.rig.frame);
+  if (wearsTrunksFigure(g.look)) return trunksFrame(g.rig.pose, g.rig.frame);
+  return null;
+}
+
+/** Whether his frame is the whole figure, his face and skin included, so our body draws none of it (his Trunks'). */
+export function ownsBody(g: Pick<DrawCtx, 'rig' | 'look'>): boolean {
+  return wearsTrunksFigure(g.look) && !!trunksFrame(g.rig.pose, g.rig.frame);
+}
+
+/**
+ * The fine pixel row a seated figure of his sits on in a pose (the top of the rock he drew under it), if
+ * he painted it seated lower than the pose's seat top: a seat prop is laid with its top there (seats.ts).
+ */
+export function seatTopFor(look: SpriteAppearance, pose: string): number | undefined {
+  if (!wearsTrunksFigure(look)) return undefined;
+  if (pose === 'read') return TRUNKS_READ_SEAT;
+  if (pose === 'sit') return TRUNKS_SIT_SEAT;
+  return undefined;
 }
 
 /** Stamps one piece of his on its joint, each colour of his through `tint` (kind, his colour). */
@@ -114,6 +183,11 @@ export function drawOwner(g: DrawCtx, owner: FrameOwner, tint?: (kind: string, h
   return true;
 }
 
+/** drawOwner for an option of his Trunks, only on his Trunks' figure (on his Lyra's it draws itself as before). */
+export function drawTrunks(g: DrawCtx, owner: FrameOwner, tint?: (kind: string, hex: string) => string): boolean {
+  return wearsTrunksFigure(g.look) && drawOwner(g, owner, tint);
+}
+
 /** Takes the body's own drawing off these layers (where her option's pieces carry her skin instead). */
 export function clearLayers(g: DrawCtx, depths: Depth[]): void {
   for (const d of depths) {
@@ -140,3 +214,21 @@ export function slotTint(moves: SlotMoves, skin?: string): (kind: string, hex: s
     return m ? retintHex(hex, m[0], m[1]) : hex;
   };
 }
+
+/**
+ * His Trunks' colours by kind (trunks-read-from-ref.py): 'main' (and 'buckle') move the way the option's
+ * slot moved from his colour, retintHex, so at his colours every pixel is his; his skin follows the
+ * character's skin as his Trunks clothes' do (items/trunksKit.ts), his eyes the eye colour from our
+ * default blue he painted them over; his line and the rest stay his.
+ */
+export function trunksTint(look: SpriteAppearance, moves: SlotMoves): (kind: string, hex: string) => string {
+  return (kind, hex) => {
+    if (kind === 'skin') return retintHex(hex, PAINTED_SKIN, look.skin);
+    if (kind === 'eye') return retintHex(hex, TRUNKS_EYE, look.eyeColor);
+    const m = moves[kind];
+    return m ? retintHex(hex, m[0], m[1]) : hex;
+  };
+}
+
+/** The eye colour of the frame he painted his Trunks reading over (our default blue). */
+const TRUNKS_EYE = '#3b82f6';

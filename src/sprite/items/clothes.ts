@@ -32,6 +32,7 @@ import { FOUNDER_THIGH_F, FOUNDER_THIGH_N, FOUNDER_TROUSERS, FOUNDER_TROUSERS_KI
 import { STEEL_BRACER, STEEL_BRACER_F, STEEL_BRACER_KIND, STEEL_BRACER_N } from './steelBracersArt';
 import { LYRA_BLOUSE_ITEM } from './lyraUpper';
 import { POUCH_BELT, STRIPED_PLEATS } from './lyraLower';
+import { drawTrunks, trunksTint } from '../ownerFrames';
 
 type Kind = 'cloth' | 'leather' | 'metal';
 const col = (key: string, label: string, def: string, kind: Kind = 'cloth') => ({ key, label, default: def, kind });
@@ -1101,6 +1102,8 @@ export const TOP_ITEMS: ItemDef[] = liftMain([
       // female bodies keep the drawn shirt (his is a man's chest).
       const c = savedAsHis(c0, '#1e2a4a', SHIRT_BLUE);
       const t = savedAsHis(t0, '#e5e7eb', SHIRT_TRIM);
+      // In the owner's own frames of his Trunks (ownerFrames.ts) the shirt and his bare arms are his there.
+      if (drawTrunks(g, 'top', trunksTint(g.look, { main: [SHIRT_BLUE, c] }))) return;
       if (!femaleBody(g.rig.body)) {
         drawShortShirt(g, c, t);
         return;
@@ -1644,7 +1647,9 @@ export const BOTTOM_ITEMS: ItemDef[] = liftMain([
     colors: [col('main', 'Pants', CARGO_GREEN), col('pouch', 'Pouch', '#6e5a3c', 'leather')],
     draw: (g, [c, p]) => {
       // The owner's trousers from his Trunks 2 picture (2026-10-21; tools/refs/trunks-cargo-from-ref.py).
-      // The female bodies keep the drawn trousers with the thigh pouch (his are a man's legs).
+      // The female bodies keep the drawn trousers with the thigh pouch (his are a man's legs). In the
+      // owner's own frames of his Trunks (ownerFrames.ts) the trousers are his there.
+      if (drawTrunks(g, 'bottom', trunksTint(g.look, { main: [CARGO_GREEN, savedAsHis(c, '#55603f', CARGO_GREEN)] }))) return;
       if (!femaleBody(g.rig.body)) {
         drawCargo(g, savedAsHis(c, '#55603f', CARGO_GREEN));
         return;
@@ -1834,6 +1839,8 @@ export const WAIST_ITEMS: ItemDef[] = liftMain([
       // broadened; the female bodies keep the drawn belt (his is cut for a man's waist).
       const c = savedAsHis(c0, '#4a3122', BELT_LEATHER);
       const bk = savedAsHis(bk0, '#c9b27a', BELT_BUCKLE);
+      // In the owner's own frames of his Trunks (ownerFrames.ts) the belt is his there.
+      if (drawTrunks(g, 'waist', trunksTint(g.look, { main: [BELT_LEATHER, c], buckle: [BELT_BUCKLE, bk] }))) return;
       if (!femaleBody(g.rig.body)) {
         const r = g.rig;
         const tint = slotTint(g, BELT_SLOT, { main: BELT_LEATHER, buckle: BELT_BUCKLE }, { main: c, buckle: bk });
@@ -2236,6 +2243,8 @@ export const HAND_ITEMS: ItemDef[] = liftMain([
       // shows through it where it does in his picture; an empty fist is the far one), the far one
       // hanging, his fingertips in the character's skin. Open, pointing or relaxed it is our hand
       // picture in his glove's greys. His greys follow the slot; his black line stays.
+      // In the owner's own frames of his Trunks (ownerFrames.ts) his gloved hands are his there, exactly.
+      if (drawTrunks(g, 'hands', trunksTint(g.look, { main: [TRAVELER_GLOVE_BLACK, c] }))) return;
       const tint = slotTint(g, TRAVELER_GLOVE_SLOT, { main: TRAVELER_GLOVE_BLACK }, { main: c });
       const tones = TRAVELER_GLOVE_TONES.map((t) => tint('', t));
       for (const s of SIDES) {

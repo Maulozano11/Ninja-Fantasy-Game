@@ -3,7 +3,7 @@
 
 import type { DrawCtx } from './ctx';
 import { LYRA_READ } from './items/lyraReadArt';
-import { readKey, stampOwnerPiece } from './ownerFrames';
+import { ownsBody, ownerFrame, readKey, stampOwnerPiece } from './ownerFrames';
 import { GRID, Layer, partIndex } from './raster';
 
 /** Draws what the camp pose holds, if anything. */
@@ -18,6 +18,11 @@ export function drawCampFx(g: DrawCtx): void {
  * on top of it, so the fingers lie over the cover as he drew hers.
  */
 function book(g: DrawCtx): void {
+  // His Trunks reading holds his own book (items/trunksReadArt.ts), with his hands where he drew them.
+  if (ownsBody(g)) {
+    for (const p of ownerFrame(g)!) if (p.owner === 'book') stampOwnerPiece(g, p);
+    return;
+  }
   for (const p of LYRA_READ[readKey(g.rig.frame)]) if (p.owner === 'book') stampOwnerPiece(g, p);
   liftHands(g, g.L('nearArm.over'));
 }

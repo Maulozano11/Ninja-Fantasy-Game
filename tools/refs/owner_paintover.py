@@ -84,7 +84,10 @@ def _fit_axis(e, X, Y, coord, pitch, deg=3, S=20.0, iters=5):
 
 def native(path, box, pitch):
     """His pixels in the picture's box (x0, y0, x1, y1): an (rows, cols, 3) int array, the median of each
-    cell's middle; a cell with nothing read (where the grid folds) takes the cell before it in its row."""
+    cell's middle; a cell with nothing read (where the grid folds) takes the cell before it in its row.
+    `pitch` is his cell in picture pixels, or (across, down) where the picture was stretched more one way
+    than the other (his Trunks read picture: 17.34 across, 16.52 down)."""
+    pitch_x, pitch_y = pitch if isinstance(pitch, tuple) else (pitch, pitch)
     img = np.asarray(Image.open(path).convert('RGB')).astype(np.float64)
     X0, Y0, X1, Y1 = box
     a = img[Y0:Y1, X0:X1]
@@ -94,8 +97,8 @@ def native(path, box, pitch):
     ex[:, 1:] = np.abs(np.diff(a, axis=1)).sum(2)
     ey[1:, :] = np.abs(np.diff(a, axis=0)).sum(2)
     Y, X = np.mgrid[Y0:Y1, X0:X1].astype(np.float64)
-    u = _fit_axis(ex, X, Y, X, pitch)
-    v = _fit_axis(ey, X, Y, Y, pitch)
+    u = _fit_axis(ex, X, Y, X, pitch_x)
+    v = _fit_axis(ey, X, Y, Y, pitch_y)
     iu = np.floor(u).astype(int)
     iv = np.floor(v).astype(int)
     lo, hi = MIDDLE

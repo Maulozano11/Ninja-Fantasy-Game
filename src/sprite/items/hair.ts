@@ -27,6 +27,7 @@ import { HAIR_COPPER_BRAID } from './lyraHair';
 import { BASE_HAIR, BASE_HAIR_BASE, BASE_HAIR_LINE, BASE_HAIR_SKULL } from './baseHairArt';
 import { VALIANT_HAIR_BACK, VALIANT_HAIR_BASE, VALIANT_HAIR_FRONT, VALIANT_HAIR_LINE } from './valiantHairArt';
 import { FOUNDER_HAIR_BACK, FOUNDER_HAIR_BASE, FOUNDER_HAIR_FRONT, FOUNDER_HAIR_LINE } from './founderHairArt';
+import { drawTrunks, trunksTint } from '../ownerFrames';
 
 const hairColor = (def: string) => [{ key: 'hair', label: 'Hair', default: def, kind: 'hair' as const }];
 
@@ -43,6 +44,8 @@ const paintedStyle = (id: string, name: string, desc: string, old: string, base:
   colors: hairColor(base),
   draw: (g, [c]) => {
     const to = c.toLowerCase() === old ? base : c;
+    // In the owner's own frames of his Trunks (ownerFrames.ts) his hair is his there, pixel for pixel.
+    if (drawTrunks(g, 'hair', trunksTint(g.look, { main: [base, to] }))) return;
     const tint = (ch: string, hex: string) => (line.includes(ch) ? hex : retintHex(hex, base, to));
     paintedHair(g, g.L('hairBack'), back, tint);
     paintedHair(g, g.L('hairFront'), front, tint);

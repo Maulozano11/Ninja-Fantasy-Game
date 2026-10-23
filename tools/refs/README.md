@@ -293,6 +293,24 @@ folders.
       python3 -I tools/refs/seat-rock-from-ref.py
       python3 -I tools/refs/lyra-throw-from-ref.py
 
+- `trunks_read_ref.py` + `trunks-read-from-ref.py` -> `src/sprite/items/trunksReadArt.ts`: his Trunks reading,
+  two frames (`docs/reference/trunks-read-owner-reference.jpg`: about 17.3 picture pixels across and 16.8 down a
+  cell, `owner_paintover.native` given a pitch per axis; drawn at our scale, one for one, where he painted over our
+  read frame). `trunks_sit_ref.py` + `trunks-sit-from-ref.py` -> `src/sprite/items/trunksSitArt.ts`: his Trunks
+  sitting (`trunks-sit-owner-reference.jpg`, 20 picture pixels a cell, his figure 1.17 times ours, brought down with
+  `keep()`; where a column or row left out took a step of his slanted outline, that pixel of his line is put back
+  beside it, and a pinhole that leaves in his line takes the cloth beside it). Each frame is cut by owner (zones of
+  his Trunks' options and colour rules) and part with `trunks_frames.py`, every piece pinned to the pelvis of our
+  male rig (`trunks-pose-joints.mts` prints it), his rock left out (its top row is where he sits:
+  `TRUNKS_*_SEAT`, the seat prop is laid there), small specks of the rock's grey inside his clothes kept as his
+  (`rock_specks`). The white he left at the waist is filled with his own cloth on the cloth's slant, as his Roman
+  drape behind the fist (`fill_waist`; the filled pixels are exported as `TRUNKS_*_FILLED`). Both check that no box
+  edge runs through his figure (`trunks_frames.clear_of_boxes`) and that the pieces laid together are his frame.
+
+      npx tsx tools/refs/trunks-pose-joints.mts
+      python3 -I tools/refs/trunks-read-from-ref.py [src/sprite/items/trunksReadArt.ts] [studyDir]
+      python3 -I tools/refs/trunks-sit-from-ref.py [src/sprite/items/trunksSitArt.ts] [studyDir]
+
 - `heroine_ref.py`, `heroine-study.py`, `heroine_paint.py`, `heroine-proportions.py`,
   `heroine-idle.mts`: the study of the owner's four heroines (`docs/reference/{lyra,elise,saya,aurelia}-owner-reference.jpg`),
   the base every heroine part builds on. His pictures are his own pixel art at 2.2 to 2.8 of his

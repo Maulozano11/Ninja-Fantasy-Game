@@ -10,6 +10,7 @@ import { drawHeadband } from './items/headband';
 import { add, F_NO_OUTLINE, F_NO_TEXTURE, GRID, Layer, MaterialTable, norm, PAD, PartId, partIndex, PARTS, perp, RES, scale, sub, v, Vec } from './raster';
 import { drawRig, Lay, layRig, Rig, rigPoseFor, turnPoint, turnRig } from './rig';
 import { carryHead } from './neck';
+import { ownerFrame } from './ownerFrames';
 import { drawCampFx } from './campfx';
 import { drawCastFx } from './castfx';
 import { sealCloth } from './seal';
@@ -322,8 +323,10 @@ function drawLayers(look: SpriteAppearance, pose: SpritePose, frame: number, eye
     }
     drawHeadband(g);
     drawThrowKunai(g);
-    // What an item leaves open against the rest of the figure, closed once all of it is drawn.
-    for (const def of equipped.values()) def.finish?.(g);
+    // What an item leaves open against the rest of the figure, closed once all of it is drawn (not in the
+    // owner's own frames, ownerFrames.ts: those are his pixels as he drew them).
+    const his = !!ownerFrame(g);
+    if (!his) for (const def of equipped.values()) def.finish?.(g);
     // clothes over a female torso follow the bust (fitted armors shape their own plates)
     for (const d of ['torso.top', 'torso.over'] as const) {
       const L = layers.get(d);
@@ -332,7 +335,7 @@ function drawLayers(look: SpriteAppearance, pose: SpritePose, frame: number, eye
     drawCastFx(g);
     drawCampFx(g);
     if (rig.farHandFront) farHandToFront(layers, g);
-    guardFace(g, layers);
+    if (!his) guardFace(g, layers);
   }
   return { layers, rig, mats };
 }

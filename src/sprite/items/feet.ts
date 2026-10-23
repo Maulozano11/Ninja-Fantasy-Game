@@ -19,6 +19,7 @@ import { BOOT_STEEL, BOOT_TRIM, crimsonKind, SABATON_FOOT_F, SABATON_FOOT_N, SAB
 import { BOOT_FOOT_F, BOOT_FOOT_N, BOOT_SHAFT_F, BOOT_SHAFT_N, LEATHER_BOOT_BROWN, LEATHER_BOOT_SLOT } from './leatherBootsArt';
 import { OPEN_BOOT_FOOT_F, OPEN_BOOT_FOOT_N, OPEN_BOOT_SHAFT_F, OPEN_BOOT_SHAFT_N, OPEN_BOOT_SLOT, OPEN_BOOT_TAN } from './openToeBootsArt';
 import { savedAsHis, slotTint } from './trunksKit';
+import { drawTrunks, trunksTint } from '../ownerFrames';
 
 type Kind = 'cloth' | 'leather' | 'metal';
 const col = (key: string, label: string, def: string, kind: Kind = 'leather') => ({ key, label, default: def, kind });
@@ -441,6 +442,8 @@ export const FEET_ITEMS: ItemDef[] = [
       // ground, our shin under the shaft and our foot taken away. At rest every pixel is his, where he drew
       // it. His browns follow the slot (the old default means his); his black line stays.
       const brown = savedAsHis(c, '#6b4226', LEATHER_BOOT_BROWN);
+      // In the owner's own frames of his Trunks (ownerFrames.ts) the boots are his there.
+      if (drawTrunks(g, 'feet', trunksTint(g.look, { main: [LEATHER_BOOT_BROWN, brown] }))) return;
       const tint = slotTint(g, LEATHER_BOOT_SLOT, { main: LEATHER_BOOT_BROWN }, { main: brown });
       for (const s of SIDES) {
         const [shaft, foot] = s === 'N' ? [BOOT_SHAFT_N, BOOT_FOOT_N] : [BOOT_SHAFT_F, BOOT_FOOT_F];

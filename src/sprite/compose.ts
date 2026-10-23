@@ -4,6 +4,7 @@ import { drawBody, faceCells, sculptClothes } from './body';
 import { fitsBody, getItem } from './catalog';
 import { hexToRgb } from './color';
 import { Depth, DEPTHS, DrawCtx, ItemDef, NO_OUTLINE_DEPTHS, resolveParts } from './ctx';
+import { mendGlitches } from './glitches';
 import { drawThrowKunai } from './items/accessories';
 import { drawHeadband } from './items/headband';
 import { add, F_NO_OUTLINE, F_NO_TEXTURE, GRID, Layer, MaterialTable, norm, PAD, PartId, partIndex, PARTS, perp, RES, scale, sub, v, Vec } from './raster';
@@ -27,6 +28,8 @@ export interface SpriteFrame {
 /** Depths drawn in head-local units and shrunk around the head center by `headScale`. */
 const HEAD_GROUP = new Set<Depth>(['hairBack', 'head.body', 'head.face', 'head.mask', 'hairFront', 'head.gear']);
 const HAIR_BACK = DEPTHS.indexOf('hairBack');
+/** The effects drawn over the figure (cast runes, a palm's glow): never mended. */
+const FX = DEPTHS.indexOf('top');
 const HAIR_FRONT = DEPTHS.indexOf('hairFront');
 
 // Slots are drawn in this order; within a depth, later items cover earlier ones.
@@ -379,6 +382,14 @@ export function renderSprite(
     isLine[i] = topShade[i] === 0 ? 1 : 0;
   }
   thinDoubleOutlines(rgba, top, isLine);
+  // The owner's standard characters (2026-10-23: "quiero que arregles solo los de la calidad standard"): off
+  // his pictures, the pockets, cracks and light edge pixels their moved pieces open are closed (glitches.ts).
+  // What he draws so is kept: the windows between her skirt and her thighs.
+  if (pose !== 'idle' && standardLook(look)) {
+    const keep = new Set(['pelvis', 'thighN', 'thighF'].map((p) => partIndex(p as PartId)));
+    const lineOf = (i: number) => (topMat[i] < 0 ? 0x07060b : parseInt(mats.ramps[topMat[i]][0].slice(1), 16));
+    mendGlitches(rgba, part, top, (i) => top[i] === FX, lineOf, (i) => keep.has(part[i]));
+  }
   const hair = new Uint8Array(N >> 3);
   for (let i = 0; i < N; i++) if (top[i] === HAIR_BACK || top[i] === HAIR_FRONT) hair[i >> 3] |= 1 << (i & 7);
 
@@ -414,6 +425,11 @@ function layFrame(rgba: Uint8ClampedArray, part: Uint8Array, hair: Uint8Array, l
  * layer's own fill, so the two never stack into a 2px dark line. Silhouette
  * outlines (next to transparency) are always kept.
  */
+/** A look of the owner's standard characters on this branch: his Saya (her Crimson Shade armour and pleats). */
+function standardLook(look: SpriteAppearance): boolean {
+  return look.slots.armor?.id === 'armor_crimson_shade' && look.slots.skirt?.id === 'skirt_shade_pleats';
+}
+
 function thinDoubleOutlines(rgba: Uint8ClampedArray, top: Int16Array, isLine: Uint8Array): void {
   const N = GRID * GRID;
   const fixes: [number, number][] = [];

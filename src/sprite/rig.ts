@@ -887,6 +887,8 @@ export interface Rig {
   up: Vec;
   right: Vec;
   head: Vec; // head center: whole design units (half units on snapped poses)
+  /** See PoseFrame.neckPitch: the head turned forward on the neck (the throw's release). */
+  neckPitch?: number;
   shoulderN: Vec;
   shoulderF: Vec;
   elbowN: Vec;
@@ -1160,6 +1162,7 @@ function solveRig(body: BodyType, pose: RigPose, frame: number, f: PoseFrame): R
     up,
     right,
     head,
+    neckPitch: f.neckPitch,
     shoulderN,
     shoulderF,
     elbowN: aN.elbow,

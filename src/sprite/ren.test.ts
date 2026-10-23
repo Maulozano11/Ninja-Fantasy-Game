@@ -420,6 +420,37 @@ describe("the owner's Ren", () => {
     }
   });
 
+  it('throwing, shows his neck under the chin with the head turned forward: no background walled in there', () => {
+    // The owner on throw 3: "en arrojar en el cuello tiene pixeles blancos muertos". His jacket took our neck
+    // away below the neck line, and with the head turned forward 7-8 px of background were left between his
+    // chin and his collar.
+    for (const body of ['male', 'bulky'] as BodyType[]) {
+      for (let frame = 0; frame < frameCount('throw'); frame++) {
+        const r = drawRig(body, 'throw', frame);
+        if (r.neckPitch === undefined) continue;
+        const { rgba } = renderSprite({ ...look(), body }, 'throw', frame, dojutsuToEye(REN.dojutsu));
+        // Background reached from the frame's edge; any other empty cell is walled in by the figure.
+        const out = new Uint8Array(GRID * GRID);
+        const stack = [0];
+        out[0] = 1;
+        while (stack.length) {
+          const i = stack.pop()!;
+          const x = i % GRID, y = (i / GRID) | 0;
+          for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+            const nx = x + dx, ny = y + dy;
+            if (nx < 0 || ny < 0 || nx >= GRID || ny >= GRID) continue;
+            const j = ny * GRID + nx;
+            if (!out[j] && !opaque(rgba, j)) { out[j] = 1; stack.push(j); }
+          }
+        }
+        const nx = Math.round(r.neck.x * RES), ny = Math.round(r.neck.y * RES);
+        const walled: string[] = [];
+        for (let y = ny - 8; y <= ny + 4; y++) for (let x = nx - 6; x <= nx + 8; x++) if (!out[y * GRID + x] && !opaque(rgba, y * GRID + x)) walled.push(`${x},${y}`);
+        assert.deepEqual(walled, [], `${body} throw ${frame}`);
+      }
+    }
+  });
+
   it('casting the runes, closes the back of his skirt behind the near hip: no white notch between it and the body', () => {
     for (const body of ['male', 'bulky'] as BodyType[]) {
       for (const stowed of [false, true]) {

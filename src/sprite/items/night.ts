@@ -60,14 +60,24 @@ function torsoOff(g: DrawCtx): void {
   const r = g.rig;
   const torso = partIndex('torso');
   const neck = (r.neck.x - r.pelvis.x) * r.up.x + (r.neck.y - r.pelvis.y) * r.up.y;
+  // With the head turned forward (the throw's release, Rig.neckPitch) our neck stays (body.ts draws it
+  // from the neck joint to under the head): its foot dips below the cut and left background under his
+  // chin. Every other pose is cut as before.
+  const top = v(r.head.x + 0.4 * g.bp.headScale, r.head.y + 4 * g.bp.headScale);
+  const onNeck = (p: Vec): boolean => {
+    const d = sub(top, r.neck);
+    const t = Math.max(0, Math.min(1, ((p.x - r.neck.x) * d.x + (p.y - r.neck.y) * d.y) / (d.x * d.x + d.y * d.y)));
+    return Math.hypot(p.x - r.neck.x - t * d.x, p.y - r.neck.y - t * d.y) <= g.bp.neckW;
+  };
   for (const d of ['torso.body', 'torso.under'] as const) {
     const L = g.L(d);
     if (!L.used) continue;
     for (let i = 0; i < GRID * GRID; i++) {
       if (L.mat[i] < 0 || L.part[i] !== torso) continue;
-      const x = ((i % GRID) + 0.5) / RES - r.pelvis.x;
-      const y = (Math.floor(i / GRID) + 0.5) / RES - r.pelvis.y;
-      if (x * r.up.x + y * r.up.y <= neck) L.mat[i] = -1;
+      const p = v(((i % GRID) + 0.5) / RES, (Math.floor(i / GRID) + 0.5) / RES);
+      const x = p.x - r.pelvis.x;
+      const y = p.y - r.pelvis.y;
+      if (x * r.up.x + y * r.up.y <= neck && !(r.neckPitch !== undefined && d === 'torso.body' && onNeck(p))) L.mat[i] = -1;
     }
   }
 }

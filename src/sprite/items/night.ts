@@ -8,7 +8,7 @@
 
 import { retintHex } from '../color';
 import { armDepth, armJoints, armReaches, DrawCtx, ItemDef, legDepth, legJoints, Side } from '../ctx';
-import { type PaintedPiece, segAngle, skinTone, stampLeaning, stampPiece } from '../painted';
+import { type PaintedPiece, segAngle, skinTone, stampLeaning, stampPiece, stretchPiece } from '../painted';
 import { add, F_NO_OUTLINE, F_NO_TEXTURE, GRID, type Layer, partIndex, PartId, PARTS, RES, sub, v, Vec } from '../raster';
 import { NIGHT_SKIN } from '../nightHeadArt';
 import { sealCloth } from '../seal';
@@ -588,7 +588,11 @@ export const NIGHT_ITEMS: ItemDef[] = [
         const j = legJoints(g.rig, s);
         const [hip, knee, ankle] = [j.hip, j.knee, j.ankle].map((p) => add(p, d));
         const L = legDepth(s, 'cloth');
-        stampPiece(g, L, s === 'N' ? NIGHT_THIGH_N : NIGHT_THIGH_F, hip, segAngle(hip, knee), `thigh${s}` as PartId, tint);
+        // A thigh longer than the body's (seated: rig.ts kneeLeg, the owner's Roman sit and Trunks read) takes his
+        // trouser leg lengthened with it (stretchPiece: his rows repeated), so it still reaches the knee.
+        const extra = (Math.hypot(knee.x - hip.x, knee.y - hip.y) - g.rig.bp.thigh) * RES;
+        const thigh = s === 'N' ? NIGHT_THIGH_N : NIGHT_THIGH_F;
+        stampPiece(g, L, extra > 0 ? stretchPiece(thigh, extra, g.rig.bp.thigh * RES) : thigh, hip, segAngle(hip, knee), `thigh${s}` as PartId, tint);
         stampPiece(g, L, s === 'N' ? NIGHT_SHIN_N : NIGHT_SHIN_F, knee, segAngle(knee, ankle), `shin${s}` as PartId, tint);
       }
     },

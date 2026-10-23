@@ -52,7 +52,7 @@ const romanOutfit = (body: BodyType = 'male'): SpriteAppearance => {
     armor: { id: 'armor_bronze', colors: [] },
     skirt: { id: 'skirt_imperial', colors: [] },
     hands: { id: 'hands_bronze_bracers', colors: [] },
-    feet: { id: 'feet_gladiator_sandals', colors: [] },
+    feet: { id: 'feet_gladiator_sandals', colors: [], parts: { paint: 'roman' } }, // his Roman paint (Solen's is the default)
   };
   return l;
 };
@@ -238,16 +238,17 @@ describe("the owner's skin on the male bodies", () => {
 
   it('leaves the female bodies exactly as they were', () => {
     // The default look on the female body, as the integration branch drew them before his
-    // male skin (421b9f6). A later change to the female art updates these with it. (The sit is the owner's
+    // male skin (421b9f6; again after merging it into sets/ascended-standard, 3358baa: the holes, seals and throw
+    // neck fixes). A later change to the female art updates these with it. (The sit is the owner's
     // Roman sit for every body since 2026-10-22, rig.ts SIT, its thighs longer on the seat: a new pose, the same
     // female art.)
     const was: Record<string, string> = {
-      'female idle 0': '4f66aa1be065dd83',
-      'female attack 1': '1b4219cd3403ebe6',
-      'female cast 0': '3d1a84bf30cbd4b5',
-      'female run 1': '88ab786d1622e6c8',
-      'female downed 0': '3d024464cbf49c72',
-      'female sit 0': '5f7c0535e3bc34a4',
+      'female idle 0': '71245bf3da80ae7d',
+      'female attack 1': 'da35ad9f6460d1a1',
+      'female cast 0': 'e37eccdf02881d17',
+      'female run 1': '553823b77b205d03',
+      'female downed 0': '19a0068d7ecd94e0',
+      'female sit 0': '93fa35e5f8921609',
     };
     for (const [key, sum] of Object.entries(was)) {
       const [body, pose, frame] = key.split(' ');
@@ -360,17 +361,17 @@ describe("the owner's Roman face", () => {
 
   it('keeps the other faces as they were', () => {
     // The other face and eye shapes on the female body (where the male skin does not
-    // reach), as the integration branch drew them before his Roman face (421b9f6); his Aiden head in the
+    // reach), as the integration branch drew them before his Roman face (421b9f6; again at 3358baa); his Aiden head in the
     // skin he painted it in.
     const was: Record<string, string> = {
-      'female tapered sharp': '97e1cf96e344970a',
-      'female tapered valiant': 'a0decd31b3d725d0',
-      'female soft sharp': 'b7a785d83b4a1666',
-      'female soft valiant': '840e7d300d4e0f34',
-      'female square sharp': 'c7294669412887c7',
-      'female square valiant': '7740ce7375a28eb3',
-      'female valiant sharp': '7c1c575c756f6907',
-      'female valiant valiant': '439579fad6bf660a',
+      'female tapered sharp': '2b00bc176616559e',
+      'female tapered valiant': '074f4370149e1027',
+      'female soft sharp': 'aeeac29f2184f6cb',
+      'female soft valiant': 'ea482afbaeb25bfe',
+      'female square sharp': '17edab76c6105a56',
+      'female square valiant': 'afa3a70d481aa930',
+      'female valiant sharp': 'e42d97da08b2429d',
+      'female valiant valiant': '45c48d7c676cbf27',
     };
     for (const [key, sum] of Object.entries(was)) {
       const [body, face, eye] = key.split(' ');

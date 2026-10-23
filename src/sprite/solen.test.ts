@@ -255,7 +255,9 @@ describe("the owner's Solen", () => {
         const rp = rigPoseFor(pose, 'runes', 'held_ice_crystal');
         for (let f = 0; f < frameCount(rp); f++) if (founderFarReach({ rig: buildRig(body, rp, f), has } as unknown as DrawCtx)) hits.push(`${pose} ${f}`);
       }
-      assert.deepEqual(hits.sort(), ['cast 0', 'cast 1', 'combo 2', 'sit 0', 'sit 1', 'sit 2', 'sit 3', 'throw 0', 'throw 1'], body);
+      // (on the bulky body the owner's Roman sit, rig.ts SIT from body/male-skin-face, does not hold the far arm out straight)
+      const sit = body === 'bulky' ? [] : ['sit 0', 'sit 1', 'sit 2', 'sit 3'];
+      assert.deepEqual(hits.sort(), ['cast 0', 'cast 1', 'combo 2', ...sit, 'throw 0', 'throw 1'].sort(), body);
     }
     // Reaching out, the far forearm is as thick as his near bracer (it was his far one, a third as much).
     const bracer = limbOnly(bracers.STEEL_BRACER_N, (h) => bracers.STEEL_BRACER_KIND[h] === 'line');

@@ -188,9 +188,10 @@ folders.
   `lyra_sit_ref.py` → `src/sprite/items/lyraSitArt.ts`: Lyra sitting, his one frame
   (`docs/reference/lyra-sit-owner-reference.jpg`, 20 picture pixels to one of ours, phase 0, at our scale, one
   for one), every frame of the sit pose; the rock and the earth round her boots are not hers (the seat prop is
-  under her). It also gives the read frames their sword tip: `lyra_read_ref.sword_tip()` keeps each read
-  blade up to its last cross-section of full width and lays his sit blade's tip past it, turned to the read
-  blade's angle by the repo's RotSprite through `rotsprite.mts` (so the read lift needs `npx tsx`).
+  under her). It also gives the read frames their blade: `lyra_read_ref.sword_blade()` keeps each read
+  frame's guard and grip and lays his sit blade, whole and unturned, where his sit guard falls on the frame's.
+  `seat-rock-sit-from-ref.py` → `src/sprite/seatRockSitArt.ts`: his sit rock as the sit seat prop (his read
+  rock is the read seat), what she hides continued from his pixels.
   `lyra-pose-joints.mts` prints the joints the pieces are pinned to; paste them into the scripts' `JOINTS`
   when the rig changes.
 
@@ -198,6 +199,7 @@ folders.
       python3 -I tools/refs/seat-rock-from-ref.py
       python3 -I tools/refs/lyra-throw-from-ref.py
       python3 -I tools/refs/lyra_sit_ref.py
+      python3 -I tools/refs/seat-rock-sit-from-ref.py
 
 - `heroine_ref.py`, `heroine-study.py`, `heroine_paint.py`, `heroine-proportions.py`,
   `heroine-idle.mts`: the study of the owner's four heroines (`docs/reference/{lyra,elise,saya,aurelia}-owner-reference.jpg`),

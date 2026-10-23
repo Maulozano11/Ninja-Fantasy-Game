@@ -256,15 +256,13 @@ def pieces():
     return pcs, want
 
 
-# Her sword's tip, which the read frames' blade ends in (lyra_read_ref.sword_tip; the owner, 2026-10-22, of
-# her read pose: "mira la referencia la punta es un poco mas larga y afilada"). Here her blade runs whole
-# down to a long sharp point: three cells of blade between his line, narrowing to two and then one over its
-# last columns, closed in his line. BLADE_X: his blade's columns, left of the guard. TIP_LEN: from its
-# point back to its last cross-section of full width, along the blade (fine pixels); the tip is the blade
-# past that cross-section, OVERLAP more is kept to lay it on another blade.
+# Her sword's blade, which the read frames' blades are (lyra_read_ref.sword_blade; the owner, 2026-10-22, of her
+# read pose: "mira la referencia la punta es un poco mas larga y afilada", then "la espada nuestra se ve mas
+# corta que en la referencia arregla esto alargandola y poniendola pixel a pixel con mi referencia"). Here
+# her blade runs whole from the guard down to a long sharp point: three cells between his line, narrowing to
+# two and then one over its last columns, closed in his line. BLADE_X: his blade's columns, left of the
+# guard (the guard and grip are right of it).
 BLADE_X = 29
-TIP_LEN = 5.0
-OVERLAP = 3.0
 
 
 def blue(m):
@@ -288,24 +286,25 @@ def along(o, d, x, y):
     return (x + 0.5 - o[0]) * d[0] + (y + 0.5 - o[1]) * d[1]
 
 
-def tip():
-    """His blade's end: every cell of his sword (his blues and his line round them) within TIP_LEN +
-    OVERLAP of its point, along the blade. Returns (cells [(x, y, hex, u)], the axis (o, d, angle), the
-    cut: u of the cross-section TIP_LEN back from the point)."""
+def blade_cells(m, line, held, x1):
+    """A blade, as a mask: its blues left of column x1 and his line round them (8-way)."""
+    b = blue(m) & held & ~line
+    b[:, x1:] = False
+    return b | (P.near8(b) & line & held)
+
+
+def sit_blade():
+    """His whole blade, from the guard to the point: (cells [(x, y, hex)], the axis (o, d, angle), u of
+    its first cross-section at the guard)."""
     m, fg, line = frame()
     own, masks = owners()
     held = masks['held']
     o, d, ang = blade_axis(m, line, held, BLADE_X)
     b = blue(m) & held & ~line
     b[:, BLADE_X:] = False
-    point = max(along(o, d, x, y) for y, x in zip(*np.nonzero(b)))
-    cut = point - TIP_LEN
-    cells = []
-    for y, x in zip(*np.nonzero(held)):
-        u = along(o, d, x, y)
-        if x < BLADE_X and u > cut - OVERLAP:
-            cells.append((int(x), int(y), P.hexs(m[y, x]), u))
-    return sorted(cells), (o, d, ang), cut
+    base = min(along(o, d, x, y) for y, x in zip(*np.nonzero(b)))
+    cells = [(int(x), int(y), P.hexs(m[y, x])) for y, x in zip(*np.nonzero(blade_cells(m, line, held, BLADE_X)))]
+    return sorted(cells), (o, d, ang), base
 
 
 DOC = """// Lyra sitting: the owner's picture, his pixels one for one (tools/refs/lyra_sit_ref.py from

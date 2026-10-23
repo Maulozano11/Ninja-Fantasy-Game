@@ -93,6 +93,12 @@ def book_under_hands(masks, col, k):
     return book, out
 
 
+# Where his sit sword lies on each frame's (his sit column and row less the frame's), and how many of its
+# pixels another piece of hers hides.
+SHIFTS = {}
+HIDDEN = {}
+
+
 def frame_pieces(k):
     m, fg, line = R.frame(k)
     own, masks = R.owners(k)
@@ -103,14 +109,16 @@ def frame_pieces(k):
             continue
         for y, x in zip(*np.nonzero(mk)):
             want[R.to_frame(x, y)] = P.hexs(m[y, x])
-    # her sword, ending in his sit tip (lyra_read_ref.sword_tip; past his picture's edge in "Atenta"), in
-    # our fine pixels (his line between it and another piece of hers goes with both): where it meets another
-    # piece of hers in another colour, that piece is in front
+    # her sword with his sit picture's blade (lyra_read_ref.sword_blade; past his picture's edge in
+    # "Atenta" too), in our fine pixels (his line between it and another piece of hers goes with both):
+    # where it meets another piece of hers in another colour, that piece is in front
     sword = np.zeros((256, 256), bool)
     scol = np.zeros((256, 256, 3), int)
-    for (x, y), hx in R.sword_tip(k, masks.pop('held')).items():
+    cells, SHIFTS[k] = R.sword_blade(k, masks.pop('held'))
+    for (x, y), hx in cells.items():
         fx, fy = R.to_frame(x, y)
         if want.get((fx, fy), hx) != hx:
+            HIDDEN[k] = HIDDEN.get(k, 0) + 1
             continue
         sword[fy, fx] = True
         scol[fy, fx] = F.rgb(hx)
@@ -164,7 +172,7 @@ def main():
         f.write(module(frames))
     if len(sys.argv) > 2:
         study(frames, wants, sys.argv[2])
-    print(out, ', '.join(f'{R.NAMES[k]}: {len(frames[k])} pieces, {len(wants[k])} pixels' for k in range(3)))
+    print(out, ', '.join(f'{R.NAMES[k]}: {len(frames[k])} pieces, {len(wants[k])} pixels, his sit sword at {SHIFTS[k]}, {HIDDEN.get(k, 0)} hidden' for k in range(3)))
 
 
 if __name__ == '__main__':

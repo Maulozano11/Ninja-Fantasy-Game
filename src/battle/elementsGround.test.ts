@@ -487,6 +487,8 @@ describe('the AI and the elements on the ground', () => {
   it('with its plan doable from inside the steam it strikes first, then walks out with the movement left', () => {
     const s = steamTurn({ x: 12, z: 10 }, { x: 18, z: 10 }, 0.9, 1.4);
     s.units.rogue_0.pos = cellCenter(cellOf({ x: s.units.a.pos.x + 1, z: s.units.a.pos.z }));
+    // No vial of weapon poison (battle/senbon.ts): it would coat its blade first, with the bonus action.
+    s.units.rogue_0.kit = undefined;
     assert.ok(steamAt(s, s.units.rogue_0.pos), 'the rogue starts in the steam');
     const first = aiAction(s)!;
     assert.equal(first.type, 'attack', 'it strikes from where it stands');

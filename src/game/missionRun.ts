@@ -184,7 +184,7 @@ export function resolvePartyBattle(run: MissionRun, result: PartyBattleResult): 
   // Supplies spent in battle.
   const events: RuleEvent[] = [];
   const supplies = { ...run.party.supplies };
-  for (const item of ['soldierPills', 'bandages', 'antidotes', 'explosiveTags'] as SupplyId[]) {
+  for (const item of ['soldierPills', 'bandages', 'antidotes', 'explosiveTags', 'weaponPoison', 'healingPotions'] as SupplyId[]) {
     const left = result.supplies[item as keyof PartyBattleResult['supplies']];
     if (left === undefined || left === supplies[item]) continue;
     events.push({ type: 'supplies', item, delta: left - supplies[item], left, reason: T('usedInBattle', undefined, 'en') });
@@ -216,7 +216,9 @@ export function migrateRun(r: MissionRun): MissionRun {
     const members = p.members.map(migrateCharacter);
     const dead = (p.dead ?? []).map(migrateCharacter);
     const grew = [...members, ...dead].reduce((n, now, i) => n + Math.max(0, pouchTags(now) - pouchTags(was[i])), 0);
-    return { ...p, members, dead, ...(grew ? { supplies: { ...p.supplies, explosiveTags: p.supplies.explosiveTags + grew } } : {}) };
+    // A backpack packed before weapon poison and healing potions existed set out without them.
+    const supplies = { ...p.supplies, weaponPoison: p.supplies.weaponPoison ?? 0, healingPotions: p.supplies.healingPotions ?? 0 };
+    return { ...p, members, dead, supplies: grew ? { ...supplies, explosiveTags: supplies.explosiveTags + grew } : supplies };
   };
   return { ...r, party: party(r.party), entry: party(r.entry ?? r.party) };
 }

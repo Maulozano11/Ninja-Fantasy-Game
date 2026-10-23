@@ -13,6 +13,7 @@ import { current } from './turns';
 import { areaValue, bestCell, goalOf, headOptions, ninjaOptions, offensive, planIntent, reachTo, standingUnit, stepToward, swapValue, visibleFoes, WALL, wallCover } from './intent';
 import type { Goal } from './intent';
 import { breakable, MAX_STRUCTURES, ownStructures, structureAt, structureAttack, structureBlocker, structureDist } from './structures';
+import { coatLeft, poisonLeft, potionsLeft, senbonLeft } from './senbon';
 import { COMMAND, commandRefused, edgeFoe, ownNodes, submissionRefused, SWAP, WARP, warpBlocker, warpLanding } from './clans';
 
 /** Whether the battle is waiting on the AI (an AI unit's turn in the fighting). */
@@ -45,6 +46,7 @@ function stillValid(s: BattleState, u: Unit, i: Intent | undefined): i is Intent
   if (i.kind === 'jutsu' && t && JUTSU[i.what] && areaValue(s, u, JUTSU[i.what], t) <= 0) return false;
   if (i.kind === 'command' && (i.what === COMMAND ? commandRefused : submissionRefused)(s, u, t)) return false;
   if (i.kind === 'heal' && i.what === 'bandage' && s.supplies.bandages < 1) return false;
+  if (i.kind === 'heal' && i.what === 'healSenbon' && (potionsLeft(s, u) < 1 || senbonLeft(u) < 1 || t?.id === u.id)) return false;
   return true;
 }
 
@@ -145,6 +147,7 @@ function carryOut(s: BattleState, u: Unit, i: Intent): Action | null {
       if (g.ready) {
         if (i.what === 'mystical_palm') return { type: 'jutsu', unit: u.id, jutsu: 'mystical_palm', at: { ...t.pos }, target: t.id };
         if (i.what === 'bandage') return { type: 'item', unit: u.id, item: 'bandage', target: t.id };
+        if (i.what === 'healSenbon') return { type: 'item', unit: u.id, item: 'healSenbon', target: t.id };
         return { type: 'stabilize', unit: u.id, target: t.id };
       }
       return moveToward(s, u, g, i.to);
@@ -198,10 +201,42 @@ function fallback(s: BattleState, u: Unit): Action | null {
   return null;
 }
 
-/** The bonus action, before the plan: a Ryusei warps to a Node beside a foe its feet can't reach this turn. */
+/**
+ * The bonus action, before the plan: a Ryusei warps to a Node beside a foe its feet can't reach this
+ * turn; a ninja about to strike with a blade or throw from where it stands coats its weapons first.
+ */
 function bonusBefore(s: BattleState, u: Unit, i: Intent): Action | null {
   if (!u.turn.bonus) return null;
-  return ryuseiWarp(s, u, i);
+  return ryuseiWarp(s, u, i) ?? coatFirst(s, u, i);
+}
+
+/** Weapon poison is worth a vial: its weapons not coated yet, a vial at hand (battle/senbon.ts). */
+const canCoat = (s: BattleState, u: Unit): boolean => u.kind === 'ninja' && coatLeft(u) < 1 && poisonLeft(s, u) > 0;
+
+/** A foe the poison works on: a ninja (the hydra's own venom runs in it). */
+const poisonable = (f: Unit): boolean => f.kind === 'ninja';
+
+/**
+ * Weapon poison before the blow: the plan a blow with a blade in hand, or a throw, that it can make
+ * from where it stands, at a foe the poison works on.
+ */
+function coatFirst(s: BattleState, u: Unit, i: Intent): Action | null {
+  if (!canCoat(s, u) || !(i.kind === 'ranged' || (i.kind === 'melee' && u.weapon.held))) return null;
+  const t = i.target ? s.units[i.target] : undefined;
+  if (!t || t.team === u.team || !poisonable(t) || !goalOf(s, u, i)?.ready) return null;
+  return { type: 'item', unit: u.id, item: 'poison' };
+}
+
+/**
+ * Weapon poison with the bonus action left after the action, for the blows to come: what it means
+ * to do on its next turn is a blow with a blade in hand, or a throw, at a foe the poison works on.
+ */
+function coatAfter(s: BattleState, u: Unit): Action | null {
+  if (!canCoat(s, u)) return null;
+  const next = planIntent(s, u, true);
+  const t = next?.target ? s.units[next.target] : undefined;
+  if (!next || !t || !poisonable(t) || !(next.kind === 'ranged' || (next.kind === 'melee' && u.weapon.held))) return null;
+  return { type: 'item', unit: u.id, item: 'poison' };
 }
 
 /** A blow from `p` reaches the target (and no metal wall stands between). */
@@ -246,11 +281,12 @@ function edgeStrike(s: BattleState, u: Unit, i: Intent): Action | null {
 
 /**
  * The bonus action, once the action is spent: a Kōton raises a metal block for cover; a ninja with a
- * damage jutsu cast as a bonus action (Pebble Shot) casts it at a foe.
+ * damage jutsu cast as a bonus action (Pebble Shot) casts it at a foe; a ninja with weapon poison
+ * coats its weapons for the next blows.
  */
 function bonusAfter(s: BattleState, u: Unit): Action | null {
   if (!u.turn.bonus) return null;
-  return kotonCover(s, u) ?? bonusStrike(s, u);
+  return kotonCover(s, u) ?? bonusStrike(s, u) ?? coatAfter(s, u);
 }
 
 /**

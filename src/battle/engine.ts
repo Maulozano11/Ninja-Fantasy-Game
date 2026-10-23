@@ -13,6 +13,7 @@ import { tripleNatureDiscount } from '../rules/feats';
 import { maxCritDamage } from '../rules/dice';
 import type {
   Action,
+  ItemId,
   AfterHits,
   AiOrder,
   BattleEvent,
@@ -63,6 +64,7 @@ import {
 } from './clans';
 import { reachTo, replanAgainst } from './intent';
 import { chargedFoe, chargeHolds, crackUnder, endCharge } from './charged';
+import { carriesCoat, coatLeft, HEAL_SENBON_DICE, HEAL_SENBON_RANGE, healSenbonBonus, POISON_DC, POISON_DICE, POISON_HITS, poisonLeft, potionsLeft, SENBON, senbonLeft, spendPoison, WEAPON_POISON } from './senbon';
 
 // --- setup ---------------------------------------------------------------------------------
 
@@ -256,7 +258,7 @@ function dispatch(s: BattleState, a: Action, ev: BattleEvent[]): string | null {
     case 'move':
       return doMove(s, u, a.to, ev);
     case 'attack':
-      return doAttack(s, u, a.target, !!a.ranged, !!a.knockout, ev);
+      return doAttack(s, u, a.target, !!a.ranged || !!a.senbon, !!a.knockout, ev, !!a.senbon);
     case 'jutsu':
       return doJutsu(s, u, a.jutsu, a.at, a.target, !!a.enhanced, ev, a.target2);
     case 'dash':
@@ -462,28 +464,32 @@ function afterMove(s: BattleState, u: Unit, ev: BattleEvent[]): void {
 
 // --- attacks -------------------------------------------------------------------------------
 
-function doAttack(s: BattleState, u: Unit, targetId: string, ranged: boolean, knockout: boolean, ev: BattleEvent[]): string | null {
+function doAttack(s: BattleState, u: Unit, targetId: string, ranged: boolean, knockout: boolean, ev: BattleEvent[], senbon = false): string | null {
   if (!u.turn.action) return 'noAction';
+  // Senbon are thrown at foes (a crate or a wall takes a kunai).
+  if (senbon && (targetId.startsWith('prop:') || targetId.startsWith('wall:'))) return 'badTarget';
   if (targetId.startsWith('prop:')) return attackProp(s, u, Number(targetId.slice(5)), ranged, ev);
   if (targetId.startsWith('wall:')) return attackStructure(s, u, targetId.slice(5), ranged, ev);
   const t = s.units[targetId];
   if (!t || !targetable(t)) return 'badTarget';
   if (t.team === u.team) return 'ally';
+  if (senbon && senbonLeft(u) < 1) return 'noSenbon';
   // A blade in its sheath is drawn for free (once a turn); a kunai needs a free hand.
   if (!ranged && u.weapon.held && !u.armed && !u.turn.interacted) setArmed(u, true, 'free', ev);
   if (ranged && u.armed && u.weapon.twoHanded) {
     if (u.turn.interacted) return 'handsBusy';
     setArmed(u, false, 'free', ev);
   }
-  const pv = attackPreview(s, u, t, ranged ? 'ranged' : 'melee');
+  const pv = attackPreview(s, u, t, ranged ? 'ranged' : 'melee', { senbon });
   if (!pv.inRange) return 'outOfRange';
   if (ranged && !lineOfSight(s, u.pos, t.pos)) return 'noSight';
   if (!ranged && fullCoverBetween(s, u.pos, t.pos)) return 'blocked';
   u.turn.action = false;
+  if (senbon) u.senbon = senbonLeft(u) - 1;
   const stealth = s.phase === 'stealth';
   const takedown = stealth && canTakedown(s, u, t);
   const after: AfterHits = stealth ? { stealthAttack: { attacker: u.id, target: t.id } } : {};
-  weaponAttack(s, u, t, ranged, pv, { knockout, takedown }, after, ev);
+  weaponAttack(s, u, t, ranged, pv, { knockout, takedown, senbon }, after, ev);
   if (!stealth) scareAnimalsNear(s, t.pos, 4, ev);
   return null;
 }
@@ -492,8 +498,9 @@ function doAttack(s: BattleState, u: Unit, targetId: string, ranged: boolean, kn
  * Rolls a weapon attack and queues its damage. Attacking from hiding, or a guard that hasn't
  * noticed the attacker, gives advantage and 1d6 surprise damage (and no Mirai sees it coming).
  * A Ryusei's warp edge is spent on it (nothing blocks the blow), and its kunai and missed blows
- * leave a Weapon Node where they land. Returns true if a reaction prompt (Evasion, Kawarimi)
- * paused the battle.
+ * leave a Weapon Node where they land. A weapon coated with poison spends a coated hit on every
+ * blow that lands, and the target saves against it once the blow is in (battle/senbon.ts). Returns
+ * true if a reaction prompt (Evasion, Kawarimi) paused the battle.
  */
 function weaponAttack(
   s: BattleState,
@@ -501,16 +508,17 @@ function weaponAttack(
   t: Unit,
   ranged: boolean,
   pv: AttackPreview,
-  o: { knockout?: boolean; takedown?: boolean },
+  o: { knockout?: boolean; takedown?: boolean; senbon?: boolean },
   after: AfterHits,
   ev: BattleEvent[],
 ): boolean {
-  const w = ranged ? KUNAI : wielded(a);
+  const w = o.senbon ? SENBON : ranged ? KUNAI : wielded(a);
   const adv = o.takedown ? combineAdvantage(pv.adv, 'advantage') : pv.adv;
   const roll = check(s, 'attack', pv.mod, pv.ac, adv, true);
   if (t.pos.x !== a.pos.x) a.facing = t.pos.x > a.pos.x ? 1 : -1;
   const reasons = o.takedown && !pv.reasons.includes('hidden') ? [...pv.reasons, 'unaware'] : pv.reasons;
-  ev.push({ t: 'attack', unit: a.id, target: t.id, what: w.name, roll, ranged, ...(reasons.length ? { reasons } : {}) });
+  const coated = carriesCoat(a, w, ranged);
+  ev.push({ t: 'attack', unit: a.id, target: t.id, what: w.name, roll, ranged, ...(reasons.length ? { reasons } : {}), ...(coated ? { coated } : {}) });
   if (leavesNodes(a) && (ranged || !roll.success)) addNode(s, a, t.pos, ev);
   const edge = !!a.cond.warpEdge;
   if (edge) a.cond.warpEdge = false;
@@ -524,10 +532,33 @@ function weaponAttack(
     let amount = rollDiceExpr(s, w.dice, roll.crit) + mod + (ranged ? 0 : effectMods(a.effects).meleeDamage);
     if (surprise) amount += rollDiceExpr(s, '1d6', roll.crit);
     if (!ranged && hasEffect(a.effects, 'gates_open')) amount += rollDiceExpr(s, '1d8', roll.crit);
-    hits.push({ unit: t.id, amount: Math.max(1, amount), type: w.type, source: a.id, what: w.name, crit: roll.crit, knockout: o.knockout && !ranged, melee: !ranged, aimed: true, unseen: surprise, unblockable: edge });
+    const poison = coated ? spendCoat(a, ev) : undefined;
+    hits.push({ unit: t.id, amount: Math.max(1, amount), type: w.type, source: a.id, what: w.name, crit: roll.crit, knockout: o.knockout && !ranged, melee: !ranged, aimed: true, unseen: surprise, unblockable: edge, ...(poison ? { poison } : {}) });
   }
   applyHits(s, hits, after, ev);
   return !!s.pending;
+}
+
+/** A coated hit is spent on a blow that lands: the save it asks for, and the coat gone with its last hit. */
+function spendCoat(a: Unit, ev: BattleEvent[]): Hit['poison'] {
+  const left = coatLeft(a) - 1;
+  if (left > 0) a.coat = { hits: left };
+  else {
+    a.coat = undefined;
+    ev.push({ t: 'coat', unit: a.id, on: false });
+  }
+  return { dc: POISON_DC };
+}
+
+/**
+ * The poison on a blade or a needle that went in: a CON save, or POISON_DICE poison damage and
+ * Poisoned (a natural 1 takes the dice at their highest, doubled; a natural 20 shrugs it off). Only
+ * ninjas: the hydra's own venom runs in it.
+ */
+function poisonIn(s: BattleState, t: Unit, h: Hit, ev: BattleEvent[]): void {
+  if (!h.poison || t.kind !== 'ninja' || t.down) return;
+  const amount = rollDiceExpr(s, POISON_DICE);
+  landHit(s, t, saveHit(s, t, 'con', h.poison.dc, amount, 'Poison', false, h.source, WEAPON_POISON, { effect: 'poisoned' }, ev, 'none', maxCritDamage(POISON_DICE)), ev);
 }
 
 function opportunityAttack(s: BattleState, r: Unit, m: Unit, ev: BattleEvent[], resume: NonNullable<AfterHits['resumeWalk']>): boolean {
@@ -663,6 +694,8 @@ function landHit(s: BattleState, t: Unit, h: Hit, ev: BattleEvent[]): void {
   // A charged hand doesn't outlast its ninja's fall.
   chargeHolds(t, false, ev);
   if (t.down || t.head?.severed || t.kind === 'hydra_body') return;
+  poisonIn(s, t, h, ev);
+  if (t.down) return;
   if (h.effect && !(h.effect === 'burning' && dampAt(s, t.pos))) {
     t.effects = addEffect(t.effects, h.effect, { source: JUTSU[h.what]?.name ?? h.what }).effects;
     ev.push({ t: 'effect', unit: t.id, effect: h.effect, on: true });
@@ -1389,7 +1422,9 @@ function pushClear(s: BattleState, from: Pt, to: Pt): boolean {
 
 const near = (u: Unit, t: Unit): boolean => u.id === t.id || dist(u.pos, t.pos) <= 1.6;
 
-function doItem(s: BattleState, u: Unit, item: 'pill' | 'bandage' | 'antidote' | 'tag' | 'tagTrap', targetId: string | undefined, at: Pt | undefined, ev: BattleEvent[]): string | null {
+function doItem(s: BattleState, u: Unit, item: ItemId, targetId: string | undefined, at: Pt | undefined, ev: BattleEvent[]): string | null {
+  // Weapon poison (bonus action): from the backpack, or an enemy's own pouch.
+  if (item === 'poison') return coatWeapons(s, u, ev);
   // The backpack is the party's: a commanded enemy or a beast that joined doesn't get into it.
   if (homeTeam(u) !== 'party' || u.joined) return 'noItems';
   if (item === 'pill') {
@@ -1431,6 +1466,7 @@ function doItem(s: BattleState, u: Unit, item: 'pill' | 'bandage' | 'antidote' |
     plantTag(s, u, at, ev);
     return null;
   }
+  if (item === 'healSenbon') return healSenbon(s, u, targetId, ev);
   const t = targetId ? s.units[targetId] : u;
   if (!t || t.team !== u.team || !targetable(t)) return 'badTarget';
   if (!near(u, t)) return 'outOfRange';
@@ -1454,6 +1490,53 @@ function doItem(s: BattleState, u: Unit, item: 'pill' | 'bandage' | 'antidote' |
   t.effects = removeEffect(t.effects, 'poisoned');
   ev.push({ t: 'act', unit: u.id, act: 'item' });
   ev.push({ t: 'effect', unit: t.id, effect: 'poisoned', on: false });
+  return null;
+}
+
+/**
+ * Weapon poison (bonus action): one vial coats the ninja's blade and throwing pouch (kunai,
+ * shuriken, senbon) for POISON_HITS hits, or until the battle ends. Quiet: it gives nobody away.
+ */
+function coatWeapons(s: BattleState, u: Unit, ev: BattleEvent[]): string | null {
+  if (u.kind !== 'ninja') return 'noItems';
+  if (!u.turn.bonus) return 'noBonus';
+  if (poisonLeft(s, u) < 1) return 'noneLeft';
+  if (coatLeft(u) > 0) return 'coated';
+  u.turn.bonus = false;
+  spendPoison(s, u);
+  u.coat = { hits: POISON_HITS };
+  ev.push({ t: 'act', unit: u.id, act: 'item' });
+  ev.push({ t: 'coat', unit: u.id, on: true, hits: POISON_HITS });
+  return null;
+}
+
+/**
+ * A healing senbon (action): a senbon dipped in a healing potion, thrown at an ally within
+ * HEAL_SENBON_RANGE and in sight. No attack roll (an ally doesn't dodge it): it heals
+ * HEAL_SENBON_DICE, plus a medic's WIS modifier, and gets a fallen ally back up. It never goes at a
+ * foe, nor at the thrower (a potion is drunk, not thrown at oneself). Spends a potion and a senbon.
+ */
+function healSenbon(s: BattleState, u: Unit, targetId: string | undefined, ev: BattleEvent[]): string | null {
+  const t = targetId ? s.units[targetId] : undefined;
+  if (!t || !targetable(t)) return 'badTarget';
+  if (t.id === u.id) return 'self';
+  if (t.team !== u.team) return 'notAlly';
+  if (senbonLeft(u) < 1) return 'noSenbon';
+  if (potionsLeft(s, u) < 1) return 'noneLeft';
+  if (dist(u.pos, t.pos) > HEAL_SENBON_RANGE + 0.1) return 'outOfRange';
+  if (!lineOfSight(s, u.pos, t.pos)) return 'noSight';
+  // A needle is thrown with a free hand, as a kunai is (a two-handed weapon is let go of for free).
+  if (u.armed && u.weapon.twoHanded) {
+    if (u.turn.interacted) return 'handsBusy';
+    setArmed(u, false, 'free', ev);
+  }
+  u.turn.action = false;
+  u.senbon = senbonLeft(u) - 1;
+  s.supplies.healingPotions = potionsLeft(s, u) - 1;
+  if (t.pos.x !== u.pos.x) u.facing = t.pos.x > u.pos.x ? 1 : -1;
+  ev.push({ t: 'act', unit: u.id, act: 'item' });
+  ev.push({ t: 'healSenbon', unit: u.id, target: t.id });
+  heal(t, Math.max(1, rollDiceExpr(s, HEAL_SENBON_DICE) + healSenbonBonus(u)), 'healSenbon', ev);
   return null;
 }
 

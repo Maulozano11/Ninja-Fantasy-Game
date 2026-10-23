@@ -41,7 +41,7 @@ const CLAN_JUTSU: Record<string, string> = {
   northstar_command: 'Command',
   northstar_submission: 'Natural Submission',
 };
-const ROWS = ['Pursuing Flame', 'other Mirai jutsu', 'Premonitory Evasion', 'Ryusei kunai', 'Node left', 'Shooting-Star Thrust', 'blow from behind', 'Spatial Swap', 'Kōton Block', 'Kōton Wall', 'Command', 'Command taken', 'aura slowed a foe', 'attack in a foe\'s aura'];
+const ROWS = ['Pursuing Flame', 'other Mirai jutsu', 'Premonitory Evasion', 'Ryusei kunai', 'Node left', 'Shooting-Star Thrust', 'blow from behind', 'Spatial Swap', 'Kōton Block', 'Kōton Wall', 'Command', 'Command taken', 'aura slowed a foe', 'attack in a foe\'s aura', 'weapon poison', 'poisoned by a coat', 'healing senbon', 'senbon thrown'];
 type Side = 'enemy' | 'party';
 
 let refusedAll = 0;
@@ -56,7 +56,7 @@ for (const id of only ?? (Object.keys(ENCOUNTERS) as EncounterId[])) {
   let unfinished = 0;
   let rounds = 0;
   for (let seed = 1; seed <= N; seed++) {
-    let s: BattleState = createBattle({ ...encounterSetup(id, party, { seed, difficulty: 'normal', supplies: { soldierPills: 2, bandages: 2, antidotes: 1, explosiveTags: 2 } }), stealth: false }).state;
+    let s: BattleState = createBattle({ ...encounterSetup(id, party, { seed, difficulty: 'normal', supplies: { soldierPills: 2, bandages: 2, antidotes: 1, explosiveTags: 2, weaponPoison: 2, healingPotions: 2 } }), stealth: false }).state;
     const seen: Record<Side, Set<string>> = { enemy: new Set(), party: new Set() };
     let last = '';
     let inTurn = 0;
@@ -87,6 +87,7 @@ for (const id of only ?? (Object.keys(ENCOUNTERS) as EncounterId[])) {
         uses[team][k] = (uses[team][k] ?? 0) + 1;
         seen[team].add(k);
       };
+      let lastSave = '';
       for (const e of out.events) {
         if (e.t === 'jutsu') {
           if (CLAN_JUTSU[e.jutsu]) add(side(e.unit), CLAN_JUTSU[e.jutsu]);
@@ -100,6 +101,12 @@ for (const id of only ?? (Object.keys(ENCOUNTERS) as EncounterId[])) {
         if (e.t === 'slowed') add(side(e.by), 'aura slowed a foe');
         // Credited to the Northstar's side, whose aura it is.
         if (e.t === 'attack' && e.reasons?.includes('aura')) add(side(e.unit) === 'enemy' ? 'party' : 'enemy', 'attack in a foe\'s aura');
+        // Senbon, weapon poison and the healing senbon (battle/senbon.ts).
+        if (e.t === 'coat' && e.on) add(side(e.unit), 'weapon poison');
+        if (e.t === 'save') lastSave = e.what;
+        if (e.t === 'effect' && e.on && e.effect === 'poisoned' && lastSave === 'weapon_poison') add(side(e.unit) === 'enemy' ? 'party' : 'enemy', 'poisoned by a coat');
+        if (e.t === 'healSenbon') add(side(e.unit), 'healing senbon');
+        if (e.t === 'attack' && e.what === 'Senbon') add(side(e.unit), 'senbon thrown');
       }
       s = out.state;
     }

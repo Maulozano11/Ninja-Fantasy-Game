@@ -19,6 +19,9 @@ export const DEFAULT_SUPPLIES: Supplies = {
   soldierPills: 2,
   explosiveTags: 2,
   wireRolls: 1,
+  // Proposal (docs/GAMEPLAY_DESIGN.md, "Senbon, weapon poison and the healing senbon").
+  weaponPoison: 2,
+  healingPotions: 2,
 };
 
 /** A new mission: the backpack (the mission's supplies, plus the explosive tags in each member's own pouch). */

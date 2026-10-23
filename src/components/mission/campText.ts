@@ -146,6 +146,8 @@ export const ONE: Record<SupplyId, { en: string; es: string }> = {
   soldierPills: { en: 'soldier pill', es: 'píldora de soldado' },
   explosiveTags: { en: 'explosive tag', es: 'sello explosivo' },
   wireRolls: { en: 'wire roll', es: 'rollo de alambre' },
+  weaponPoison: { en: 'vial of weapon poison', es: 'frasco de veneno para armas' },
+  healingPotions: { en: 'healing potion', es: 'poción curativa' },
 };
 
 /** Spanish for the option keys a done activity keeps (the English screen shows the key itself). */

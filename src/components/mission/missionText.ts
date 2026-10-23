@@ -128,8 +128,8 @@ export const T = strings({
   },
   stopsOnRoad: { en: '{n} stops on the road', es: '{n} etapas en el camino' },
   backpack: {
-    en: 'Backpack: {rations} rations, {kits} camp kits, {bandages} bandages, {antidotes} antidote, {pills} soldier pills, {tags} explosive tags, {wire} wire roll.',
-    es: 'Mochila: {rations} raciones, {kits} equipos de campamento, {bandages} vendas, {antidotes} antídoto, {pills} píldoras de soldado, {tags} sellos explosivos, {wire} rollo de alambre.',
+    en: 'Backpack: {rations} rations, {kits} camp kits, {bandages} bandages, {antidotes} antidote, {pills} soldier pills, {tags} explosive tags, {wire} wire roll, {poison} vials of weapon poison, {potions} healing potions.',
+    es: 'Mochila: {rations} raciones, {kits} equipos de campamento, {bandages} vendas, {antidotes} antídoto, {pills} píldoras de soldado, {tags} sellos explosivos, {wire} rollo de alambre, {poison} frascos de veneno para armas, {potions} pociones curativas.',
   },
   setOutOne: { en: 'Set out with {n} ninja', es: 'Partir con {n} ninja' },
   setOutMany: { en: 'Set out with {n} ninjas', es: 'Partir con {n} ninjas' },

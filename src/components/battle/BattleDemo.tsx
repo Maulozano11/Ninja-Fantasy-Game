@@ -78,7 +78,7 @@ export const BattleDemo: React.FC<BattleDemoProps> = ({ character, start }) => {
         battle.id,
         party.map((c) => ({ character: c })),
         // The practice backpack, plus the explosive tags in each ninja's own pouch.
-        { seed: battle.seed, difficulty, supplies: withPouches({ soldierPills: 2, bandages: 3, antidotes: 1, explosiveTags: 2 }, party) },
+        { seed: battle.seed, difficulty, supplies: withPouches({ soldierPills: 2, bandages: 3, antidotes: 1, explosiveTags: 2, weaponPoison: 2, healingPotions: 2 }, party) },
       ),
     );
     // Practice only: the water ninjas can try the Dragon Tsunami whatever their level (missions untouched).

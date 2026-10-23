@@ -209,6 +209,12 @@ export interface Unit {
   stats2: { critsTaken: number; critsLanded: number; pills: number; fell: boolean; fellToCrit: boolean; tension: number; jutsuCast: number };
   /** Skill proficiencies (Stealth, Perception, Medicine...). */
   skills: string[];
+  /** Senbon left in its case (battle/senbon.ts); none in a battle saved before they existed. */
+  senbon?: number;
+  /** Its weapons coated with poison: the coated hits left (battle/senbon.ts). Kept out of `cond`, which a fall wipes. */
+  coat?: { hits: number };
+  /** An enemy's own pouch (the party uses its backpack): vials of weapon poison. */
+  kit?: { poison?: number };
 }
 
 /**
@@ -362,6 +368,10 @@ export interface BattleSupplies {
   bandages: number;
   antidotes: number;
   explosiveTags: number;
+  /** Vials of weapon poison (battle/senbon.ts); none in a setup made before they existed. */
+  weaponPoison?: number;
+  /** Healing potions a senbon is dipped in to heal an ally from afar. */
+  healingPotions?: number;
 }
 
 export type BattlePhase = 'stealth' | 'combat' | 'ended';
@@ -400,6 +410,8 @@ export interface Hit {
   push?: { from: Pt; m: number; toward?: boolean };
   /** Water that puts out the flames on whoever it reaches (saved or not). */
   douse?: boolean;
+  /** A blow from a weapon coated with poison: once it lands, a CON save against this DC (battle/senbon.ts). */
+  poison?: { dc: number };
 }
 
 /** What still has to happen once the queued hits have landed. */
@@ -465,15 +477,20 @@ export interface BattleState {
   tick: number;
 }
 
+/** The items used in battle. */
+export type ItemId = 'pill' | 'bandage' | 'antidote' | 'tag' | 'tagTrap' | 'poison' | 'healSenbon';
+
 /** What a player or the AI wants to do. */
 export type Action =
   | { type: 'move'; unit: string; to: Cell; sneak?: boolean }
-  | { type: 'attack'; unit: string; target: string; ranged?: boolean; knockout?: boolean }
+  /** `senbon`: a thrown senbon instead of a kunai (it implies `ranged`). */
+  | { type: 'attack'; unit: string; target: string; ranged?: boolean; knockout?: boolean; senbon?: boolean }
   | { type: 'jutsu'; unit: string; jutsu: string; at: Pt; target?: string; enhanced?: boolean; target2?: string }
   | { type: 'dash' | 'disengage' | 'dodge' | 'hide' | 'focus' | 'crouch' | 'jump' | 'draw'; unit: string }
   | { type: 'shove'; unit: string; target: string; mode: 'prone' | 'push' }
   /** `tag` throws an explosive tag at a point; `tagTrap` hides one on the ground there. */
-  | { type: 'item'; unit: string; item: 'pill' | 'bandage' | 'antidote' | 'tag' | 'tagTrap'; target?: string; at?: Pt }
+  /** `poison` coats the ninja's own weapons (bonus action); `healSenbon` throws a senbon dipped in a healing potion at an ally. */
+  | { type: 'item'; unit: string; item: ItemId; target?: string; at?: Pt }
   | { type: 'stabilize'; unit: string; target: string }
   | { type: 'flee'; unit: string }
   | { type: 'endTurn'; unit: string }
@@ -511,7 +528,8 @@ export type BattleEvent =
   | { t: 'weapon'; unit: string; armed: boolean; cost: 'free' | 'bonus' }
   | { t: 'act'; unit: string; act: 'dash' | 'disengage' | 'dodge' | 'focus' | 'crouch' | 'stand' | 'jump' | 'item' | 'stone' }
   /** `reasons`: why the roll had advantage or disadvantage (the preview's keys: 'aura', 'behind'…). */
-  | { t: 'attack'; unit: string; target: string; what: string; roll: RollInfo; ranged: boolean; reasons?: string[] }
+  /** `coated`: the weapon carried poison (battle/senbon.ts): the screen flies a coated senbon. */
+  | { t: 'attack'; unit: string; target: string; what: string; roll: RollInfo; ranged: boolean; reasons?: string[]; coated?: boolean }
   /** `ab`: the ability the save is made with (dex, wis…). */
   | { t: 'save'; unit: string; what: string; roll: RollInfo; ab?: string }
   | { t: 'check'; unit: string; what: string; roll: RollInfo }
@@ -565,6 +583,10 @@ export type BattleEvent =
   /** `what`: the blow or jutsu stepped away from. */
   | { t: 'evade'; unit: string; from: Pt; to: Pt; source?: string; what?: string }
   | { t: 'clone'; unit: string; on: boolean }
+  /** A ninja's weapons are coated with poison (`hits` left), or the coat is spent. */
+  | { t: 'coat'; unit: string; on: boolean; hits?: number }
+  /** A senbon dipped in a healing potion thrown at an ally (the heal follows). */
+  | { t: 'healSenbon'; unit: string; target: string }
   | { t: 'sever'; unit: string }
   /** `source`: whose fire or lightning sealed it (its flare takes that ninja's chakra colour on the screen). */
   | { t: 'seal'; unit: string; how: 'fire' | 'lightning' | 'explosion'; source?: string }

@@ -298,6 +298,8 @@ function PartyBattle({ run, onEnd }: { run: MissionRun; onEnd: (r: PartyBattleRe
             bandages: run.party.supplies.bandages,
             antidotes: run.party.supplies.antidotes,
             explosiveTags: run.party.supplies.explosiveTags,
+            weaponPoison: run.party.supplies.weaponPoison,
+            healingPotions: run.party.supplies.healingPotions,
           },
           // Bells on the perimeter: nobody is caught asleep. The perimeter traps wait on the raiders' paths.
           partySurprised: b.ambush && !run.camp?.bells,
@@ -709,6 +711,8 @@ function Village({
                 pills: DEFAULT_SUPPLIES.soldierPills,
                 tags: withPouches(DEFAULT_SUPPLIES, members).explosiveTags,
                 wire: DEFAULT_SUPPLIES.wireRolls,
+                poison: DEFAULT_SUPPLIES.weaponPoison,
+                potions: DEFAULT_SUPPLIES.healingPotions,
               })}
             </div>
             <button type="button" className={`${btnMain} w-full justify-center`} onClick={() => onStart(members, leader, difficulty, noRandomness)}>

@@ -19,6 +19,7 @@ import { foreseen } from '../../battle/intent';
 import { MAX_STRUCTURES, STRUCTURE_AC, breakable, jutsuWallAt, ownStructures, structureAt, structureAttack, structureBlocker, structureDist } from '../../battle/structures';
 import { auraEntered, commandBlocker, edgeFoe, nodeInSight, nodeUnder, ownNodeAt, ownNodes, submissionBlocker, submissionRefused, swapBlocker, warpBlocker, warpLanding } from '../../battle/clans';
 import { KUNAI, KUNAI_LONG, wielded } from '../../battle/units';
+import { coatLeft, HEAL_SENBON_DICE, HEAL_SENBON_RANGE, healSenbonBonus, poisonLeft, potionsLeft, SENBON, senbonLeft } from '../../battle/senbon';
 import { STONE_RANGE } from '../../battle/stealth';
 import { TAG } from '../../battle/hazards';
 import { battleResult } from '../../battle/result';
@@ -50,10 +51,11 @@ import { unitTint, unitTintSheets } from './vfxTintPlan';
 
 type Mode =
   | { k: 'move' }
-  | { k: 'attack'; ranged: boolean }
+  /** `senbon`: a senbon thrown instead of a kunai. */
+  | { k: 'attack'; ranged: boolean; senbon?: boolean }
   /** `picked`: Command from level 9, the first of its two targets. */
   | { k: 'jutsu'; id: string; enhanced: boolean; picked?: string }
-  | { k: 'item'; item: 'bandage' | 'antidote' | 'tag' | 'tagTrap' }
+  | { k: 'item'; item: 'bandage' | 'antidote' | 'tag' | 'tagTrap' | 'healSenbon' }
   | { k: 'shove'; mode: 'push' | 'prone' }
   | { k: 'stone' }
   | { k: 'stabilize' }
@@ -471,19 +473,20 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
         }
       }
     } else if (mode.k === 'attack') {
-      const range = mode.ranged ? KUNAI.reach : wielded(drawsFree(actor)).reach;
+      const missile = mode.senbon ? SENBON : KUNAI;
+      const range = mode.ranged ? missile.reach : wielded(drawsFree(actor)).reach;
       o.range = { at: actor.pos, radius: range };
       const hw = !hu && hover?.wall ? s.walls.find((w) => w.id === hover.wall) : undefined;
       if (hu && hu.team !== actor.team) {
         const striker = mode.ranged ? actor : drawsFree(actor);
-        const pv = attackPreview(s, striker, hu, mode.ranged ? 'ranged' : 'melee');
+        const pv = attackPreview(s, striker, hu, mode.ranged ? 'ranged' : 'melee', { senbon: mode.senbon });
         o.targets = [hu.id];
         // The engine's refusals first: out of reach, out of sight or walled off, hands busy.
         const busyHands = mode.ranged && actor.armed && actor.weapon.twoHanded && actor.turn.interacted;
-        label = !pv.inRange ? T('aimNoReach') : pv.blocked ? reasonLine(pv.blocked === 'noSight' ? sightWhy(s, striker.pos, hu.pos) : pv.blocked) : busyHands ? reasonLine('handsBusy') : T('aimChance', { p: Math.round(pv.chance * 100), dice: mode.ranged ? KUNAI.dice : wielded(striker).dice });
+        label = !pv.inRange ? T('aimNoReach') : pv.blocked ? reasonLine(pv.blocked === 'noSight' ? sightWhy(s, striker.pos, hu.pos) : pv.blocked) : busyHands ? reasonLine('handsBusy') : T('aimChance', { p: Math.round(pv.chance * 100), dice: mode.ranged ? missile.dice : wielded(striker).dice });
         sub = pv.inRange && !pv.blocked && !busyHands ? reasonsText(pv, lang) : null;
         if (planLine) sub = sub ? `${sub} · ${planLine}` : planLine;
-      } else if (hw) {
+      } else if (hw && !mode.senbon) {
         // A Kōton structure: AC 10, like a crate.
         const pv = structureAttack(s, actor, hw, mode.ranged);
         o.point = { at: pv.at, ok: pv.inRange && pv.sight };
@@ -599,6 +602,14 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
         o.area = { shape: { kind: 'circle', center: hover.pt, radius: TAG.radius }, tone: 'enemy' };
         label = ok ? (lineOfSight(s, actor.pos, hover.pt, { into: true }) ? T('aimTagTrap') : reasonLine(sightWhy(s, actor.pos, hover.pt, true))) : T('aimNoReach');
       }
+    } else if (mode.k === 'item' && mode.item === 'healSenbon') {
+      // A healing senbon: the allies it reaches light up; the one under the cursor shows the heal.
+      o.range = { at: actor.pos, radius: HEAL_SENBON_RANGE };
+      if (hu && hu.team === actor.team && hu.id !== actor.id) {
+        o.targets = [hu.id];
+        const bonus = healSenbonBonus(actor);
+        label = dist(actor.pos, hu.pos) > HEAL_SENBON_RANGE + 0.1 ? T('aimNoReach') : !lineOfSight(s, actor.pos, hu.pos) ? reasonLine(sightWhy(s, actor.pos, hu.pos)) : T('aimHeal', { dice: bonus ? `${HEAL_SENBON_DICE}+${bonus}` : HEAL_SENBON_DICE });
+      } else if (hu) label = reasonLine(hu.id === actor.id ? 'self' : 'notAlly');
     } else if (mode.k === 'stone') {
       o.range = { at: actor.pos, radius: STONE_RANGE };
       if (hover?.pt) o.point = { at: hover.pt, ok: dist(actor.pos, hover.pt) <= STONE_RANGE };
@@ -884,9 +895,11 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
         return;
       case 'attack': {
         if (u && u.team !== actor.team) {
-          act({ type: 'attack', unit: actor.id, target: u.id, ranged: mode.ranged, knockout: !mode.ranged && u.team === 'enemy' });
+          act({ type: 'attack', unit: actor.id, target: u.id, ranged: mode.ranged, knockout: !mode.ranged && u.team === 'enemy', ...(mode.senbon ? { senbon: true } : {}) });
           return;
         }
+        // Senbon go at foes only.
+        if (mode.senbon) return;
         // A Kōton structure in the way: the blade or the kunai goes at it.
         const wall = u ? undefined : structureUnder(w.X, w.Y, pt);
         if (wall) act({ type: 'attack', unit: actor.id, target: `wall:${wall}`, ranged: mode.ranged });
@@ -956,7 +969,8 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
     const noAction = can.action ? null : t('r_noAction');
     if (!more) {
       add({ id: 'attack', label: t('act_attack'), icon: ACTION_ICON.attack, disabled: !can.action, why: noAction, active: mode.k === 'attack' && !mode.ranged, help: t('help_attack') });
-      add({ id: 'throw', label: t('act_throw'), icon: ACTION_ICON.throw, disabled: !can.action, why: noAction, active: mode.k === 'attack' && mode.ranged, help: t('help_throw') });
+      add({ id: 'throw', label: t('act_throw'), icon: ACTION_ICON.throw, disabled: !can.action, why: noAction, active: mode.k === 'attack' && mode.ranged && !mode.senbon, help: t('help_throw') });
+      add({ id: 'senbon', label: t('act_senbon'), icon: ACTION_ICON.senbon, badge: senbonLeft(u), disabled: !can.action || senbonLeft(u) < 1, why: noAction ?? t('r_noSenbon'), active: mode.k === 'attack' && !!mode.senbon, help: T('help_senbon', { n: senbonLeft(u) }, lang) });
       for (const id of u.jutsus) {
         const sp = JUTSU[id];
         if (!sp) continue;
@@ -1037,6 +1051,9 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
       add({ id: 'tag', label: t('act_tag'), icon: ACTION_ICON.tag, badge: s.supplies.explosiveTags, disabled: !can.action || s.supplies.explosiveTags < 1, active: mode.k === 'item' && mode.item === 'tag', help: t('help_tag') });
       // The same tags, hidden on the ground: the explosive tag's old jutsu, now a use of the item.
       add({ id: 'tagTrap', label: t('act_tagTrap'), icon: ACTION_ICON.tagTrap, badge: s.supplies.explosiveTags, disabled: !can.action || s.supplies.explosiveTags < 1, active: mode.k === 'item' && mode.item === 'tagTrap', help: t('help_tagTrap') });
+      // Weapon poison (a bonus action) and the healing senbon (battle/senbon.ts).
+      add({ id: 'poison', label: t('act_poison'), icon: ACTION_ICON.poison, badge: poisonLeft(s, u), disabled: !can.bonus || poisonLeft(s, u) < 1 || coatLeft(u) > 0, why: !can.bonus ? t('r_noBonus') : coatLeft(u) > 0 ? t('r_coated') : t('r_noneLeft'), help: t('help_poison') });
+      add({ id: 'healSenbon', label: t('act_healSenbon'), icon: ACTION_ICON.healSenbon, badge: potionsLeft(s, u), disabled: !can.action || potionsLeft(s, u) < 1 || senbonLeft(u) < 1, why: noAction ?? (senbonLeft(u) < 1 ? t('r_noSenbon') : t('r_noneLeft')), active: mode.k === 'item' && mode.item === 'healSenbon', help: t('help_healSenbon') });
       if (downedAlly) add({ id: 'stabilize', label: t('act_stabilize'), icon: ACTION_ICON.stabilize, disabled: !can.action, active: mode.k === 'stabilize', help: t('help_stabilize') });
       if (stealth) add({ id: 'stone', label: t('act_stone'), icon: ACTION_ICON.stone, disabled: !can.action, active: mode.k === 'stone', help: t('help_stone') });
       // Its id carries the body; its painted icon is the owner's drag (sheet 19).
@@ -1084,7 +1101,16 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
           setMode((m) => (m.k === 'attack' && !m.ranged ? { k: 'move' } : { k: 'attack', ranged: false }));
           return;
         case 'throw':
-          setMode((m) => (m.k === 'attack' && m.ranged ? { k: 'move' } : { k: 'attack', ranged: true }));
+          setMode((m) => (m.k === 'attack' && m.ranged && !m.senbon ? { k: 'move' } : { k: 'attack', ranged: true }));
+          return;
+        case 'senbon':
+          setMode((m) => (m.k === 'attack' && m.senbon ? { k: 'move' } : { k: 'attack', ranged: true, senbon: true }));
+          return;
+        case 'poison':
+          act({ type: 'item', unit: u.id, item: 'poison' });
+          return;
+        case 'healSenbon':
+          setMode((m) => (m.k === 'item' && m.item === 'healSenbon' ? { k: 'move' } : { k: 'item', item: 'healSenbon' }));
           return;
         case 'dash':
         case 'disengage':

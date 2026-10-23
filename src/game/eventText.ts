@@ -37,6 +37,8 @@ export const SUPPLY_LABEL: Record<SupplyId, string> = {
   soldierPills: 'Soldier pills',
   explosiveTags: 'Explosive tags',
   wireRolls: 'Wire rolls',
+  weaponPoison: 'Weapon poison',
+  healingPotions: 'Healing potions',
 };
 
 export const SUPPLY_LABEL_ES: Record<SupplyId, string> = {
@@ -47,6 +49,8 @@ export const SUPPLY_LABEL_ES: Record<SupplyId, string> = {
   soldierPills: 'Píldoras de soldado',
   explosiveTags: 'Sellos explosivos',
   wireRolls: 'Rollos de alambre',
+  weaponPoison: 'Veneno para armas',
+  healingPotions: 'Pociones curativas',
 };
 
 export const BREAKDOWN_LABEL: Record<string, string> = {

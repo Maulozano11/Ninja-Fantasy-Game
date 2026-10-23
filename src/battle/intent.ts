@@ -18,6 +18,7 @@ import { KUNAI, KUNAI_LONG, wielded } from './units';
 import { COMMAND, FORESIGHT_RANGE, SUBMISSION, SWAP, WARP, commandRefused, ownNodes, submissionRefused, swapBlocker, warpBlocker, warpLanding } from './clans';
 import { ownStructures, structureAt, structureBlocker } from './structures';
 import { chargedReach } from './charged';
+import { coatLeft, HEAL_SENBON_DICE, HEAL_SENBON_RANGE, healSenbonBonus, MEDIC_CLASS, POISON_DC, POISON_DICE, poisonLeft, potionsLeft, senbonLeft } from './senbon';
 
 const avg = (dice?: string): number => {
   const d = dice ? parseDice(dice) : null;
@@ -252,10 +253,14 @@ export function ninjaOptions(s: BattleState, u: Unit, next = false): Option[] {
   const warps = canWarp(u, next);
   // A kunai leaves a Node to warp to on the next turn (2 chakra left for it).
   const plants = u.jutsus.includes(WARP) && !noJutsu(u) && u.chakra >= JUTSU[WARP].cost;
+  // Weapons coated with poison, or a vial to coat them with the bonus action (battle/senbon.ts): a
+  // weapon blow that lands asks for the CON save, worth its poison and Poisoned (counted as 2 more).
+  const coated = u.kind === 'ninja' && (coatLeft(u) > 0 || (poisonLeft(s, u) > 0 && (next || u.turn.bonus)));
+  const venom = (f: Unit): number => (coated && f.kind === 'ninja' ? (1 - successChance(saveMod(f, 'con'), POISON_DC, 'none', true)) * (avg(POISON_DICE) + 2) * 0.65 : 0);
   for (const f of foes) {
     const d = dist(u.pos, f.pos);
     const fx = focus(u, f);
-    const blow = (avg(u.weapon.dice) + wMod) * 0.65 * fx;
+    const blow = (avg(u.weapon.dice) + wMod) * 0.65 * fx + (u.weapon.held ? venom(f) * fx : 0);
     // A Ryusei with a Node beside the foe warps in and strikes from behind, however far it is.
     const warpIn = warps ? warpStrikeAt(s, u, f) : null;
     if (warpIn) out.push({ intent: { kind: 'melee', what: u.weapon.name, target: f.id }, value: blow * EDGE, way: 'warp' });
@@ -263,7 +268,7 @@ export function ninjaOptions(s: BattleState, u: Unit, next = false): Option[] {
     if (d <= KUNAI_LONG + u.speed) {
       // With no Node near the foe yet (and the foe out of reach), the kunai leaves one: half a blow from behind more.
       const plant = plants && !warpIn && d > reachTo(u, f) + 0.1;
-      const v = (avg(KUNAI.dice) + dexMod) * 0.55 * fx * (d > KUNAI.reach + u.speed ? 0.5 : 1) + (plant ? blow * EDGE * 0.5 : 0);
+      const v = ((avg(KUNAI.dice) + dexMod) * 0.55 + venom(f)) * fx * (d > KUNAI.reach + u.speed ? 0.5 : 1) + (plant ? blow * EDGE * 0.5 : 0);
       out.push({ intent: { kind: 'ranged', what: KUNAI.name, target: f.id }, value: v, ...(plant ? { way: 'plant' as const } : {}) });
     }
     if (sealed) continue;
@@ -307,6 +312,11 @@ export function ninjaOptions(s: BattleState, u: Unit, next = false): Option[] {
     if (!hurt) continue;
     if (!sealed && u.jutsus.includes('mystical_palm') && u.chakra >= JUTSU.mystical_palm.cost && dist(u.pos, f.pos) <= u.speed + 1.6) {
       out.push({ intent: { kind: 'heal', what: 'mystical_palm', target: f.id }, value: avg(JUTSU.mystical_palm.dice) * support * (f.down ? 2 : 1) });
+    }
+    // A senbon dipped in a healing potion, thrown from up to 6 m: a medic's own way of healing from afar.
+    if (f.id !== u.id && potionsLeft(s, u) > 0 && senbonLeft(u) > 0 && dist(u.pos, f.pos) <= HEAL_SENBON_RANGE + (next ? u.speed : walkLeft(u))) {
+      const medic = u.character?.shinobiClass === MEDIC_CLASS ? 1.25 : 1;
+      out.push({ intent: { kind: 'heal', what: 'healSenbon', target: f.id }, value: (avg(HEAL_SENBON_DICE) + healSenbonBonus(u)) * support * medic * (f.down ? 2 : 1) });
     }
     if (homeTeam(u) === 'party' && !u.joined && f.down === 'downed' && dist(u.pos, f.pos) <= u.speed + 1.6) {
       const bandage = s.supplies.bandages > 0;
@@ -460,6 +470,8 @@ export function goalOf(s: BattleState, u: Unit, i: Intent): Goal | null {
       return goal((p) => dist(p, t.pos) <= reach && (j.melee ? !fullCoverBetween(s, p, t.pos) && (!j.charge || clearRun(s, p, t.pos)) : lineOfSight(s, p, t.pos)), t);
     }
     case 'heal':
+      // A healing senbon is thrown from up to 6 m, in sight; the rest is done at the ally's side.
+      if (i.what === 'healSenbon') return goal((p) => dist(p, t.pos) <= HEAL_SENBON_RANGE && lineOfSight(s, p, t.pos), undefined);
       return goal((p) => dist(p, t.pos) <= 1.6, undefined);
     case 'command':
       return goal((p) => dist(p, t.pos) <= JUTSU[i.what].range && lineOfSight(s, p, t.pos), t);

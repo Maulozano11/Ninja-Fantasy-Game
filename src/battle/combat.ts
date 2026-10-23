@@ -12,6 +12,7 @@ import type { BattleEvent, BattleState, DamageType, Pt, RollInfo, Unit } from '.
 import { homeTeam } from './types';
 import { coverBetween, dist, fullCoverBetween, hideSpotAt, levelAtPt, lineOfSight, steamAt } from './map';
 import { KUNAI, KUNAI_LONG, wielded } from './units';
+import { SENBON, SENBON_HIT, SENBON_LONG } from './senbon';
 
 /** The next dice stream of the battle. */
 export function nextRng(s: BattleState): Rng {
@@ -157,8 +158,9 @@ function hostileWithin(s: BattleState, u: Unit, r: number): boolean {
  * Everything about an attack before rolling: the % shown on the screen. `opts.melee`: a jutsu
  * struck in person (a sword art, a tackle) rolls with the caster's jutsu attack but is a blow like
  * any other: no cover, no penalty for a foe close by, advantage on a prone target, flanking.
+ * `opts.senbon`: a thrown senbon instead of a kunai (shorter normal range, +1 to hit; battle/senbon.ts).
  */
-export function attackPreview(s: BattleState, a: Unit, t: Unit, kind: AttackKind, opts: { jutsuRange?: number; melee?: boolean } = {}): AttackPreview {
+export function attackPreview(s: BattleState, a: Unit, t: Unit, kind: AttackKind, opts: { jutsuRange?: number; melee?: boolean; senbon?: boolean } = {}): AttackPreview {
   const close = kind === 'melee' || !!opts.melee;
   const am = effectMods(a.effects);
   const tm = effectMods(t.effects);
@@ -171,11 +173,12 @@ export function attackPreview(s: BattleState, a: Unit, t: Unit, kind: AttackKind
     mod = a.jutsuAttack + am.allRolls - 2 * (a.character?.exhaustion ?? 0);
     inRange = d <= (opts.jutsuRange ?? 9) + 0.1;
   } else {
-    const w = kind === 'ranged' ? KUNAI : wielded(a);
+    const senbon = kind === 'ranged' && !!opts.senbon;
+    const w = kind === 'ranged' ? (senbon ? SENBON : KUNAI) : wielded(a);
     const ab = kind === 'ranged' ? abilityMod(a.stats.dex) : w.finesse ? Math.max(abilityMod(a.stats.str), abilityMod(a.stats.dex)) : abilityMod(a.stats.str);
-    mod = a.prof + ab + am.allRolls - 2 * (a.character?.exhaustion ?? 0) + (kind === 'ranged' ? am.dexRolls : 0);
-    inRange = kind === 'ranged' ? d <= KUNAI_LONG + 0.1 : d <= w.reach + 0.1 + (t.kind === 'hydra_head' ? 2.5 : 0) + (t.bulk ?? 0);
-    if (kind === 'ranged' && d > KUNAI.reach + 0.1) {
+    mod = a.prof + ab + am.allRolls - 2 * (a.character?.exhaustion ?? 0) + (kind === 'ranged' ? am.dexRolls : 0) + (senbon ? SENBON_HIT : 0);
+    inRange = kind === 'ranged' ? d <= (senbon ? SENBON_LONG : KUNAI_LONG) + 0.1 : d <= w.reach + 0.1 + (t.kind === 'hydra_head' ? 2.5 : 0) + (t.bulk ?? 0);
+    if (kind === 'ranged' && d > w.reach + 0.1) {
       advs.push('disadvantage');
       reasons.push('longRange');
     }

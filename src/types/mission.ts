@@ -85,6 +85,10 @@ export interface Supplies {
   soldierPills: number;
   explosiveTags: number;
   wireRolls: number;
+  /** Vials of weapon poison (a coat for a ninja's blade and throwing pouch, in battle). */
+  weaponPoison: number;
+  /** Healing potions (a senbon dipped in one heals an ally from afar, in battle). */
+  healingPotions: number;
 }
 export type SupplyId = keyof Supplies;
 

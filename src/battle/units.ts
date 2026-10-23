@@ -13,6 +13,7 @@ import { naturesOf, thirdElementOpen } from '../rules/natureGrowth';
 import { natureOf } from '../rules/ninja';
 import type { AiOrder, Pt, Rank, Team, Unit, Weapon } from './types';
 import { JUTSU, clanAbilities } from './jutsu';
+import { ENEMY_POISON, SENBON_CASE } from './senbon';
 
 const W = (name: string, dice: string, type: Weapon['type'], reach = 1.5, finesse = true, held = false, twoHanded = false): Weapon =>
   twoHanded ? { name, dice, type, reach, finesse, held, twoHanded } : { name, dice, type, reach, finesse, held };
@@ -132,6 +133,7 @@ export function unitFrom(c: ShinobiCharacter, o: UnitOptions): Unit {
     power,
     stats2: { critsTaken: 0, critsLanded: 0, pills: 0, fell: false, fellToCrit: false, tension: 0, jutsuCast: 0 },
     skills: skillsOf(c),
+    senbon: SENBON_CASE,
     // Triple Nature's discount, once per long rest: spent already if it was used since the last camp.
     ...(thirdElementOpen(c) ? { tripleNature: { natures: naturesOf(c, natureOf(c)), spent: c.tripleNatureSpent === true } } : {}),
   };
@@ -402,5 +404,7 @@ export function enemyUnit(kind: EnemyKind, n: number, pos: Pt, difficulty: Diffi
   const nm = enemyNameOf(kind, o.clan);
   if (nm.nameEs !== nm.name) u.nameEs = numbered(nm.nameEs, o.no);
   if (nm.articleEs) u.articleEs = nm.articleEs;
+  // Some carry a vial of weapon poison of their own (battle/senbon.ts).
+  if (ENEMY_POISON[kind]) u.kit = { poison: ENEMY_POISON[kind] };
   return u;
 }

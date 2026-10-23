@@ -10,11 +10,11 @@ import { natureOf } from '../rules/ninja';
 import { withNature } from '../sprite/chakraNature';
 import type { ChakraNature, ShinobiCharacter } from '../types/shinobi';
 import { applyAction, createBattle } from './engine';
-import { runAi } from './ai';
+import { imbueChoice, runAi } from './ai';
 import { beginTurn } from './turns';
 import { unitFrom, wielded } from './units';
 import { reachTo } from './intent';
-import { EARTH_CRIT, IMBUE_COST, IMBUE_DAMAGE, IMBUE_ELEMENTS, IMBUE_PENDING, IMBUE_ROUNDS, WATER_REACH, WEAPON_ELEMENT, classAbilities, imbueElementOf, startImbue } from './imbue';
+import { EARTH_CRIT, IMBUE_COST, IMBUE_DAMAGE, IMBUE_ELEMENTS, IMBUE_PENDING, IMBUE_ROUNDS, WATER_REACH, WEAPON_ELEMENT, classAbilities, imbueElementOf, startImbue, unitImbueElements } from './imbue';
 import type { ImbueElement } from './imbue';
 import { logLine } from '../components/battle/battleLog';
 import type { Action, BattleEvent, BattleState } from './types';
@@ -299,5 +299,64 @@ describe('Weapon Element Enhancement: the log', () => {
     assert.equal(line({ t: 'imbue', unit: 'a', element: 'Fire', on: false, end: 'sealed' }, 'en'), "Sealed chakra leaves Aki's weapon plain");
     // The rogue's: an enemy's generic name takes its article in Spanish.
     assert.equal(line({ t: 'imbue', unit: foeOf(s).id, element: 'Fire', on: true }, 'es'), 'El arma del Renegado se prende en llamas');
+  });
+});
+
+describe("Weapon Element Enhancement: the second element too (the owner: \"tambien segundo elemento al momento de desbloquear\")", () => {
+  /** Aki, Fire, with a second element unlocked at level 5 (or not). */
+  const two = (second: ChakraNature, unlocked = true, main: ChakraNature = 'Fire'): ShinobiCharacter => ({
+    ...ninja(main),
+    level: 5,
+    natureGrowth: unlocked ? 'element' : 'rank',
+    extraNatures: unlocked ? [second] : [],
+  });
+  /** A's turn with this sheet, a rogue `gap` meters to the right. */
+  function setup2(c: ShinobiCharacter, gap = 1.5): BattleState {
+    const s = setup('Fire', gap);
+    const u = unitFrom(c, { team: 'party', pos: { ...s.units.a.pos } });
+    s.units.a = { ...u, id: 'a', turn: { move: u.speed, action: true, bonus: true, reaction: true, moved: 0 }, chakra: 20 };
+    return s;
+  }
+
+  it('both elements once the second is unlocked: its chakra type first; not before, and never a third', () => {
+    const at = { team: 'party' as const, pos: { x: 0, z: 0 } };
+    assert.deepEqual(unitImbueElements(unitFrom(two('Lightning'), at)), ['Fire', 'Lightning']);
+    assert.deepEqual(unitImbueElements(unitFrom(two('Lightning', false), at)), ['Fire']);
+    const third = { ...two('Lightning'), level: 9, extraNatures: ['Lightning', 'Earth'] as ChakraNature[], selectedFeats: ['triple_nature'] };
+    assert.deepEqual(unitImbueElements(unitFrom(third, at)), ['Fire', 'Lightning']);
+    // A ninja whose type has no element (Light) puts its second element on the weapon.
+    const light = unitFrom(two('Wind', true, 'Light'), at);
+    assert.ok(light.jutsus.includes(WEAPON_ELEMENT));
+    assert.deepEqual(unitImbueElements(light), ['Wind']);
+    // Water waits for the owner's yes on its effect (IMBUE_PENDING) as a second element too.
+    if (IMBUE_PENDING.includes('Water')) assert.deepEqual(unitImbueElements(unitFrom(two('Water'), at)), ['Fire']);
+  });
+
+  it('the player chooses which, one at a time; an element it does not have is refused', () => {
+    const s = setup2(two('Lightning'));
+    const out = act(s, { type: 'jutsu', unit: 'a', jutsu: WEAPON_ELEMENT, at: { ...s.units.a.pos }, element: 'Lightning' });
+    assert.equal(out.state.units.a.imbued?.element, 'Lightning');
+    assert.ok(out.events.some((e) => e.t === 'imbue' && e.element === 'Lightning' && e.on));
+    // One at a time: the other is refused while it holds.
+    const again = structuredClone(out.state);
+    again.units.a.turn.bonus = true;
+    assert.equal(applyAction(again, { type: 'jutsu', unit: 'a', jutsu: WEAPON_ELEMENT, at: { ...again.units.a.pos }, element: 'Fire' }).reason, 'alreadyImbued');
+    // Without a choice it is its chakra type's.
+    assert.equal(act(setup2(two('Lightning')), { type: 'jutsu', unit: 'a', jutsu: WEAPON_ELEMENT, at: { ...s.units.a.pos } }).state.units.a.imbued?.element, 'Fire');
+    // Not one of its elements.
+    assert.equal(applyAction(setup2(two('Lightning')), { type: 'jutsu', unit: 'a', jutsu: WEAPON_ELEMENT, at: { ...s.units.a.pos }, element: 'Earth' }).reason, 'noElement');
+    assert.equal(applyAction(setup2(two('Lightning', false)), { type: 'jutsu', unit: 'a', jutsu: WEAPON_ELEMENT, at: { ...s.units.a.pos }, element: 'Lightning' }).reason, 'noElement');
+  });
+
+  it('the AI picks sensibly: not fire at a burning foe, its chakra type otherwise', () => {
+    const s = setup2(two('Lightning'));
+    const foe = foeOf(s);
+    assert.equal(imbueChoice(s, s.units.a, foe), 'Fire');
+    foe.effects = [{ id: 'burning', remaining: 2 }];
+    assert.equal(imbueChoice(s, s.units.a, foe), 'Lightning');
+    // One element: that one, whatever the foe.
+    const one = setup2(two('Lightning', false));
+    foeOf(one).effects = [{ id: 'burning', remaining: 2 }];
+    assert.equal(imbueChoice(one, one.units.a, foeOf(one)), 'Fire');
   });
 });

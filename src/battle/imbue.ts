@@ -14,8 +14,9 @@
 //
 // Pure rules: no React, no images, no Math.random (the dice are rolled by the engine's seeded rolls).
 
+import { extraNatures, hasSecondElement } from '../rules/natureGrowth';
 import { natureOf } from '../rules/ninja';
-import type { ChakraNature } from '../types/shinobi';
+import type { ChakraNature, ShinobiCharacter } from '../types/shinobi';
 import type { BattleEvent, DamageType, Unit } from './types';
 
 /** The ability's id (a class ability: it sits among the unit's jutsu, like a clan's). */
@@ -69,14 +70,39 @@ export const IMBUE_PENDING: readonly ImbueElement[] = ['Water'];
 export const imbueElementOf = (nature: ChakraNature | string | undefined): ImbueElement | null =>
   IMBUE_ELEMENTS.includes(nature as ImbueElement) && !IMBUE_PENDING.includes(nature as ImbueElement) ? (nature as ImbueElement) : null;
 
-/** The class abilities a ninja of this class and nature has, in the order their buttons show. */
-export function classAbilities(shinobiClass: string | undefined, nature: ChakraNature | string | undefined): string[] {
-  return shinobiClass === IMBUE_CLASS && imbueElementOf(nature) ? [WEAPON_ELEMENT] : [];
+/**
+ * The class abilities a ninja of this class and these natures has (its chakra type and, once unlocked, its
+ * second element: imbueNaturesOf), in the order their buttons show.
+ */
+export function classAbilities(shinobiClass: string | undefined, natures: ChakraNature | string | undefined | readonly (ChakraNature | string)[]): string[] {
+  const list = Array.isArray(natures) ? natures : [natures];
+  return shinobiClass === IMBUE_CLASS && list.some((n) => imbueElementOf(n)) ? [WEAPON_ELEMENT] : [];
 }
 
-/** The element this unit puts on its weapon (its sheet's chakra type), or null: no sheet, or not an element. */
+/**
+ * The natures a ninja can put on its weapon: its chakra type, and its second element once it has
+ * unlocked it (the owner, 2026-10-23: "tambien segundo elemento al momento de desbloquear"; the second
+ * element of natureGrowth.ts, never the third).
+ */
+export function imbueNaturesOf(c: ShinobiCharacter): ChakraNature[] {
+  const main = natureOf(c);
+  return hasSecondElement(c) ? [main, ...extraNatures(c, main).slice(0, 1)] : [main];
+}
+
+/** The elements this unit can put on its weapon, its chakra type's first, each one of the five and not waiting for approval. */
+export function unitImbueElements(u: Pick<Unit, 'character'>): ImbueElement[] {
+  if (!u.character) return [];
+  const out: ImbueElement[] = [];
+  for (const n of imbueNaturesOf(u.character)) {
+    const e = imbueElementOf(n);
+    if (e && !out.includes(e)) out.push(e);
+  }
+  return out;
+}
+
+/** The element this unit puts on its weapon unless it chooses another (the first of unitImbueElements), or null. */
 export function unitImbueElement(u: Pick<Unit, 'character'>): ImbueElement | null {
-  return u.character ? imbueElementOf(natureOf(u.character)) : null;
+  return unitImbueElements(u)[0] ?? null;
 }
 
 /** The element on the weapon a unit strikes with right now: imbued, and the weapon in hand. */
@@ -86,12 +112,13 @@ export const activeImbue = (u: Pick<Unit, 'imbued' | 'armed' | 'weapon'>): Imbue
 export const imbueReach = (u: Pick<Unit, 'imbued' | 'armed' | 'weapon'>): number => (activeImbue(u) === 'Water' ? WATER_REACH : 0);
 
 /**
- * Why the unit can't put its element on its weapon now, or null (the engine checks the action,
- * the bonus action and the chakra itself): not one of the five elements, no weapon to hold (fists,
- * a palm technique), already on the weapon.
+ * Why the unit can't put its element (or `element`, one of its two) on its weapon now, or null (the
+ * engine checks the action, the bonus action and the chakra itself): not one of its elements, no
+ * weapon to hold (fists, a palm technique), already on the weapon (one at a time).
  */
-export function imbueBlocker(u: Unit): string | null {
-  if (!unitImbueElement(u)) return 'noElement';
+export function imbueBlocker(u: Unit, element?: ImbueElement): string | null {
+  const els = unitImbueElements(u);
+  if (!els.length || (element && !els.includes(element))) return 'noElement';
   if (!u.weapon.held) return 'noBlade';
   if (u.imbued) return 'alreadyImbued';
   return null;

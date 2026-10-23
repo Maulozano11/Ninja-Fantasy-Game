@@ -1883,3 +1883,88 @@ for now; its S-rank slot offers its element's (and nothing for Light or Void).
   change leaves it. Its projectile sheet (`vfx_chakra/multi`) stays in the
   repo: it is one sheet of the generated chakra set (every element's set has a
   `multi`), no other jutsu flies it today, and deleting art is his call.
+
+## Shadow Clone (the owner's decisions of 2026-10-23; built on `jutsu/shadow-clone`, waiting for his look)
+
+Until now the clone jutsu (`shadow_clone`, Utility, rank B, bonus action, 3 chakra, enhanced +2) left
+nothing on the map: a flag on the ninja that took the next aimed blow, and nothing more (the enhanced
+cast did nothing extra, no flank, the AI ignored it, it lasted until hit). We proposed: a) the clone
+appears on the map as a copy of the ninja, on a cell beside him; b) enhanced = 2 clones (absorb 2
+blows); c) the clone counts as an ally for flanking: +2 to melee attacks against a foe next to it;
+d) it lasts until the end of your next turn or until it absorbs the blow.
+
+His answer, verbatim: *"clon A si , si , si y ataca junto a ti con un combo cuando pasa eso o cuando
+usas una habilidad de taijutsu y es benefiada por clones d) dura 3 turnos o hazta que recibe un golpe
+pueden hacer 1 jutsu rango D y version mejorada 1 C o 2 D a costa del chakra del invocador"*.
+
+His rules:
+1. **On the map** (a, yes): the clone (or clones) stands on a free cell beside the ninja, a copy of
+   him: the same sprite and pose, told apart by his chakra colour.
+2. **Enhanced** (b, yes): the enhanced cast makes **2 clones**.
+3. **Flank and combo** (c, yes, and more): a clone next to a foe gives **+2 to melee attacks** against
+   that foe. When that happens (you attack a foe a clone stands next to), or **when you use a taijutsu
+   ability**, the clone **attacks with you in a combo**: taijutsu is boosted by clones.
+4. **How long** (d): **3 turns, or until it takes a blow**.
+5. **Its jutsu**: a clone can cast **1 rank D jutsu**; the enhanced version **1 rank C or 2 rank D**,
+   **paid with the summoner's chakra**.
+
+How it is built (`src/battle/clones.ts`, the engine, the AI and the screen). The numbers marked
+*proposal* are the builder's, in one place (`CLONE` in `clones.ts`), waiting for his look:
+
+- **A clone is a unit on the map** that takes no turns of its own: it acts in its summoner's turn.
+  It has the summoner's look, sheet, AC, jutsu attack and DC; 1 HP and no chakra of its own. Each
+  cast replaces the clones still standing. Only once the fighting starts (not in the stealth phase).
+- **Where it stands** (*proposal*, the simplest readable way): on a free cell 0.9–1.6 m from its
+  summoner, on his level, never closer than 0.9 m to anyone else (so it is never drawn over
+  another unit). The player doesn't walk the clones: **they follow their summoner**. Whenever he
+  moves (a walk, a flash-in, a warp, Kawarimi, a push), each clone runs to the best cell beside
+  him: next to a foe he is fighting in melee, on the far side of it if it can (a flank); otherwise
+  the nearest cell to where it stood. A new clone stands toward the nearest foe.
+- **Flank** (his +2): a melee attack (a blow, or a melee jutsu's attack roll) against a foe that a
+  standing clone of the attacker's side is next to (within 1.6 m, no metal wall between) gets +2,
+  once however many clones stand there. It is not the advantage of an ally's flank: a clone gives
+  only the +2. The log says it on the attack line ("(+2, un clon flanquea)").
+- **Combo on a blow** (*proposal* for the number): the summoner's melee blow **that lands** on a foe
+  a clone stands next to: each such clone strikes too, **1d6 bludgeoning, no modifier**, after the
+  blow (only if the foe is still up). A miss brings no combo.
+- **Combo on a taijutsu** (*proposal*): a taijutsu melee jutsu of the summoner (Hurricane Kick, the
+  Rush, 64 Palms, Night Guy) that strikes foes: **every clone joins**, at the foes struck in turn,
+  flashing in beside the foe if it isn't there already, with **one die of the jutsu's own dice**
+  (Hurricane Kick 2d6+3 → 1d6, the Rush 2d8 → 1d8). A ninja's jutsu never strikes its own clones
+  (nor a clone's jutsu its summoner).
+- **How long** (his 3 turns): the turn it is summoned in counts; it goes up in smoke at the end of
+  its summoner's third turn. Three small pips over it count the turns left (a clone shows no HP bar).
+- **One blow and it is gone**: any damage that hurts it sends it up in smoke. **A blow aimed at the
+  summoner is taken by a clone first**, as before: the nearest clone goes up in smoke where the blow
+  struck, and the summoner is where that clone stood (they trade places, so the screen shows which
+  was the copy). Area jutsu, traps and explosions strike clones like anyone (a save that leaves no
+  damage leaves it standing). When the summoner falls or flees, his clones go.
+- **Foes can strike a clone directly** (*proposal*), and are **confused by them**: an enemy that plans
+  a blow, a kunai or a jutsu at a ninja with clones goes at one of the clones instead **n times in
+  n + 2** with n clones standing (1 in 3 with one, 1 in 2 with two). Who it picks comes from the
+  battle's seed and the moment, never from the battle's dice (the same state always plans the same).
+  Otherwise the AI doesn't count clones as foes (nor as friends to spare from its blasts).
+- **The clones' jutsu** (his rule): the summoner's own rank D jutsu (rank C too, enhanced), no clan
+  ability, reaction, charged hand or the clone jutsu itself. They share points: plain 1 (a rank D),
+  enhanced 2 (a rank C costs 2, a rank D 1). The **summoner's chakra pays** the plain cost (no
+  enhanced casts from a clone, no discounts). The jutsu is cast **from where the clone stands**,
+  with the **clone's own action** (or bonus action): the summoner keeps his (*proposal*: a clone has
+  an action and a bonus action each of its summoner's turns, for jutsu only). Chakra sealed on the
+  summoner seals his clones too.
+- **The player** (*proposal*, the HUD as it is): the clone jutsu's slot now aims first (its clones'
+  cells light up; E for the enhanced cast, 2 clones), and a click or the slot again casts it. With
+  clones that can still cast, a **Clones** button (with the jutsu points left) picks one, or a click
+  on a clone does: the bar then shows only that clone's jutsu (paid from the summoner's chakra, shown
+  in the dock), a **Back** button and End turn. A click anywhere else goes back to the ninja.
+- **The AI**: a ninja on the AI who knows the jutsu summons its clones (its bonus action) when it
+  means to strike in melee this turn, enhanced if its chakra covers that and its plan twice over;
+  the clones then flank and join its blows by themselves. Once its action is spent, a clone casts
+  what it may: a damage jutsu at the foe it is worth most against (if the summoner keeps as much
+  chakra again), or a heal for a friend at half HP or less.
+- **On the screen**: the clone is the ninja's own frame, washed in his chakra colour with a 1 px line
+  of it round the body, and a little see-through; it stands up in a puff of smoke and vanishes in
+  one; a combo is the clone's own lunge and swing at the target ("¡Combo!").
+- **Open for him**: the numbers above (1d6 combo, one die for a taijutsu, the confusion odds, the
+  clone's own action for its jutsu); whether the player should walk the clones by hand later;
+  whether an enemy template should know the jutsu (none does today: the AI uses it for the party's
+  ninjas on the AI, Hiro in practice). The jutsu keeps its rank B in the creator.

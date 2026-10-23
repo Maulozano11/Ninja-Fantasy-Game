@@ -521,7 +521,8 @@ function sealLegs(g: DrawCtx): void {
   const pits = { F: kneePit(legJoints(g.rig, 'F')), N: kneePit(legJoints(g.rig, 'N')) };
   const inPit = (s: Side) => (i: number) => pits[s]((i % GRID) + 0.5, ((i / GRID) | 0) + 0.5);
   const filled = new Map<number, Layer>();
-  for (let pass = 0; pass < 3; pass++) {
+  // (as many passes as a gap between her two shoes needs: each closes one more pixel from either end)
+  for (let pass = 0; pass < 6; pass++) {
     const fill: [number, Side][] = [];
     const tops = new Int16Array(GRID * GRID);
     for (let i = 0; i < GRID * GRID; i++) tops[i] = top(i);
@@ -538,8 +539,9 @@ function sealLegs(g: DrawCtx): void {
         const s = sides.reduce((b, sd) => (legs.filter((j) => leg(j) === sd).length > legs.filter((j) => leg(j) === b).length ? sd : b));
         // shut in: two of her legs round it, either; on the edge: three of her legs round it, two of them one leg
         if (!shut && (ns.filter((j) => tops[j] >= 0).length !== legs.length || legs.length < 3 || legs.filter((j) => leg(j) === s).length < 2 || inPit(s[0])(i))) continue;
-        // his shoe's arch: empty under the shoe alone
-        if (legs.every((j) => Ls[tops[j]].part[j] === leg(j)![2])) continue;
+        // his shoe's arch: empty under the shoe alone (one shoe: between her two shoes, a kick's heel against the
+        // standing boot, it is a gap between her legs)
+        if (legs.every((j) => Ls[tops[j]].part[j] === leg(j)![2] && leg(j) === leg(legs[0]))) continue;
         fill.push([i, s[0]]);
       }
     // a dent a pixel deep and up to three wide, the edge straight behind it (rows, then columns)

@@ -12,6 +12,7 @@ import { VALIANT_HEAD, VALIANT_SKIN } from './headArt';
 import { type PaintedPiece, stampPiece } from './painted';
 import { ROMAN_EYE_COLORS, ROMAN_EYES, ROMAN_IRIS } from './romanEyeArt';
 import { ROMAN_HEAD, ROMAN_SKIN } from './romanHeadArt';
+import { drawRomanNeck } from './romanNeck';
 import { ballShade, capsule, ellipse, F_NO_OUTLINE, F_NO_TEXTURE, GRID, Layer, PartId, Pen, poly, RES, seam, v, Vec } from './raster';
 import { isFemaleBody, type EyeShape, type FaceShape } from './types';
 
@@ -77,6 +78,8 @@ export function drawBody(g: DrawCtx): void {
     skin('torso'),
     strong ? (x) => (x < napeX + 1 ? 3 : 2) : 2,
   );
+  // Under the owner's Roman face on a male body, his neck (romanNeck.ts).
+  drawRomanNeck(g);
 
   // Simple form shading only (no muscle lines): a soft chest shadow and collarbone light.
   const T = r.T;

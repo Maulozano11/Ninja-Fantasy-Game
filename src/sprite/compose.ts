@@ -11,6 +11,7 @@ import { drawRig, Lay, layRig, Rig, rigPoseFor, turnPoint, turnRig } from './rig
 import { drawCampFx } from './campfx';
 import { drawCastFx } from './castfx';
 import { maleSkinRamp, paintMaleSkin } from './maleSkin';
+import { romanRig } from './romanNeck';
 import { applyTexture, frayHair } from './texture';
 import type { EyeSpecial, PixelEdit, SlotId, SpriteAppearance, SpritePose } from './types';
 
@@ -252,7 +253,7 @@ export function renderSprite(
   opts: { skipEdits?: boolean; heldOnly?: Rig } = {},
 ): SpriteFrame {
   // heldOnly: just the held item (or the kunai bare hands throw) on that rig, no body (sprite/thrown.ts).
-  const rig = opts.heldOnly ?? drawRig(look.body, rigPoseFor(pose, look.cast?.style, look.stowed ? undefined : look.slots.held?.id), frame);
+  const rig = opts.heldOnly ?? romanRig(drawRig(look.body, rigPoseFor(pose, look.cast?.style, look.stowed ? undefined : look.slots.held?.id), frame), look);
   const mats = new MaterialTable();
   const layers = new Map<Depth, Layer>();
   const equipped = new Map<SlotId, ItemDef>();

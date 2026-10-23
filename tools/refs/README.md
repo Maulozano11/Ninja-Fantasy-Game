@@ -134,7 +134,7 @@ folders.
   male bodies (upper arms down to the elbow, fists, and each leg whole for our thigh and our shin, registered as
   his sandals are, the laces taken off across each row; continued along each limb where ours reaches past what
   he shows; his darker shadow tone) and his face as the `roman` face and eye shapes (his head registered on
-  ours by its eyes and ear, 3 px lower than he painted it; his skull under the hair is our male skull's cells,
+  ours by its eyes and ear; on the male bodies the head is raised 3 px to where he painted it; his skull under the hair is our male skull's cells,
   without his bangs' shadow, its line running into his ear's). Each writes a study at 8x (16x for the eyes)
   into `<out>/study/`. `roman-test-pixels-from-ref.py` writes his skin pixels as he painted them
   (`src/sprite/romanRefPixels.ts`) for `src/sprite/maleSkin.test.ts`, which checks the frames against his
@@ -144,6 +144,16 @@ folders.
       python3 -I tools/refs/roman-head-from-ref.py docs/reference/roman-owner-reference.jpg <out> src/sprite/romanHeadArt.ts
       python3 -I tools/refs/roman-eyes-from-ref.py docs/reference/roman-owner-reference.jpg <out> src/sprite/romanEyeArt.ts
       python3 -I tools/refs/roman-test-pixels-from-ref.py docs/reference/roman-owner-reference.jpg src/sprite/romanRefPixels.ts
+- `roman-neck-from-ref.py`, `roman-hair-from-ref.py`: his Roman head as the male standard (2026-10-23, "me gusta mas el
+  de mi dibujo"). On the male bodies the game raises the head 3 px under his face (`ROMAN_HEAD_UP`, written by
+  `roman-head-from-ref.py`), so the face stands where he painted it; the neck script lifts his skin between the chin
+  and the collar (and continues each column below it, behind the collar) and the hair script his dark spiky hair
+  (`hair_roman`: front, back with what his face hides filled in, and the shadow his locks cast on the forehead), both
+  registered on the face anchor. `roman-test-pixels-from-ref.py` also writes every pixel of his head, hair and neck
+  (`ROMAN_HEAD_PIXELS`) for `src/sprite/romanHead.test.ts`.
+
+      python3 -I tools/refs/roman-neck-from-ref.py docs/reference/roman-owner-reference.jpg <out> src/sprite/romanNeckArt.ts
+      python3 -I tools/refs/roman-hair-from-ref.py docs/reference/roman-owner-reference.jpg <out> src/sprite/items/romanHairArt.ts
 - `roman-sit-rock-from-ref.py`: the grey rock from the owner's Roman sit (`docs/reference/roman-sit-owner-reference.jpg`,
   2000/240 picture px per pixel of his) as a seat prop (`src/sprite/seatBoulderArt.ts`, `src/sprite/seats.ts`). His
   figure there is 80% of ours; he chose to build the sit at our scale ("romano sentado a"), so the rock is scaled by

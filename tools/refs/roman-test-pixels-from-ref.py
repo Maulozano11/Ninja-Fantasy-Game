@@ -12,7 +12,9 @@ pixel (x, y) at (x + OFFSET[0], y + OFFSET[1]) before any limb is registered):
   face                                 his face below the hair, ear to chin (not his eyes)
 
 and every pixel of his legs below the skirt (ROMAN_LEG_PIXELS: legN, legF), knee to sole: his skin, the
-sandals and his black line round them, for the test that his whole legs are in the frame at rest.
+sandals and his black line round them, for the test that his whole legs are in the frame at rest; and every
+pixel of his head (ROMAN_HEAD_PIXELS): hair, face, eyes and neck down to the collar, all he painted above
+the cuirass and the shoulder guards, for the test that his head stands at rest where he drew it.
 
 The same picture always gives the same bytes. Run from the repo root with python3 -I:
 
@@ -38,6 +40,8 @@ REGIONS = {
     'legF': [(54, 67.5), (66, 67.5), (66, 92), (54, 92)],
     'face': [(43, 15), (62, 15), (62, 26), (43, 26)],
 }
+# His head and neck: all he painted above row 28 (the cuirass's collar line), less the cuirass and guards.
+HEAD = [(25, 0), (70, 0), (70, 28), (25, 28)]
 # His legs below the skirt, knee to sole (the skirt's strips end on rows 66 to 68 above them).
 LEGS = {
     'legN': [(33, 66.5), (51, 66.5), (51, 99.5), (33, 99.5)],
@@ -88,6 +92,21 @@ def main():
         out.append('  ],')
         print(name, len(cells))
     out += ['};', '']
+    # His head and neck: every pixel he painted there that is not the cuirass's or a shoulder guard's.
+    masks, _cols = R.pieces(a)
+    owned = np.zeros(a.shape[:2], bool)
+    for m in masks.values():
+        owned |= m
+    m = R.inside(HEAD, *a.shape[:2]) & ~R.background(a) & ~owned
+    cells = [f"[{x}, {y}, '{R.hexc(a[y, x])}']" for y, x in zip(*np.nonzero(m))]
+    out += [
+        '/** Every pixel of his head where he painted it, hair, face, eyes and neck to the collar (not the cuirass or the guards): [x, y, colour]. */',
+        'export const ROMAN_HEAD_PIXELS: [number, number, string][] = [',
+    ]
+    for i in range(0, len(cells), 6):
+        out.append('  ' + ', '.join(cells[i:i + 6]) + ',')
+    out += ['];', '']
+    print('head', len(cells))
     R.write(sys.argv[2], '\n'.join(out))
 
 

@@ -15,6 +15,7 @@ import { GRID, partIndex, type PartId } from './raster';
 import { buildRig } from './rig';
 import { ROMAN_EYE_COLORS, ROMAN_EYES, ROMAN_IRIS } from './romanEyeArt';
 import { ROMAN_HEAD, ROMAN_SKIN } from './romanHeadArt';
+import { romanRig } from './romanNeck';
 import { ROMAN_KIT_LEG_SHIFT } from './items/bracersSandalsArt';
 import { ROMAN_OFFSET, ROMAN_SKIN_PIXELS } from './romanRefPixels';
 import { CAMP_POSES, MOVE_POSES, SPRITE_POSES, type BodyType, type SpriteAppearance, type SpritePose } from './types';
@@ -23,6 +24,17 @@ const POSES = [...new Set([...SPRITE_POSES, ...MOVE_POSES, ...CAMP_POSES])] as S
 /** Our hand shapes his fists are not laid on. */
 const OPEN_HANDS = ['open', 'point', 'sign', 'cradle'];
 const hex = (rgba: Uint8ClampedArray, i: number) => '#' + [0, 1, 2].map((k) => rgba[i * 4 + k].toString(16).padStart(2, '0')).join('');
+
+/**
+ * A look with the default head it had before his Roman head became the default (2026-10-23): our face,
+ * our standard eyes in blue. The hashes pinned before that are of this head.
+ */
+export const oldHead = (l: SpriteAppearance): SpriteAppearance => {
+  delete l.faceShape;
+  l.eyeShape = 'standard';
+  l.eyeColor = '#3b82f6';
+  return l;
+};
 
 /** A bare body (only the undergarments), in a skin. */
 const bare = (body: BodyType, skinHex = skin.MALE_SKIN_BASE): SpriteAppearance => {
@@ -257,7 +269,7 @@ describe("the owner's skin on the male bodies", () => {
     };
     for (const [key, sum] of Object.entries(was)) {
       const [body, pose, frame] = key.split(' ');
-      const l = defaultAppearance();
+      const l = oldHead(defaultAppearance());
       l.body = body as BodyType;
       const f = renderSprite(l, pose as SpritePose, +frame);
       assert.equal(createHash('sha1').update(f.rgba).digest('hex').slice(0, 16), sum, key);
@@ -280,10 +292,10 @@ describe("the owner's Roman face", () => {
     return l;
   };
 
-  it('is his picture: his face skin where he painted it (3 px lower), on a bald male', () => {
+  it('is his picture: his face skin where he painted it, the head raised on his neck, on a bald male', () => {
     const f = renderSprite(roman('male', false), 'idle', 0);
     // Not the shadow his bangs cast on his forehead, which the bald skull leaves out (it read as a scar).
-    const { right, wrong } = againstHim(f, 'face', [0, 3], ROMAN_SKIN, ['head'], ['52,15', '50,16']);
+    const { right, wrong } = againstHim(f, 'face', [0, 0], ROMAN_SKIN, ['head'], ['52,15', '50,16']);
     assert.deepEqual(wrong, []);
     assert.ok(right / ROMAN_SKIN_PIXELS.face.length > 0.9, `${right} of ${ROMAN_SKIN_PIXELS.face.length}`);
   });
@@ -291,7 +303,7 @@ describe("the owner's Roman face", () => {
   it('has a clean bald skull: no shadow of his hair on the forehead, no seam behind the ear', () => {
     const l = roman('male', false);
     const f = renderSprite(l, 'idle', 0);
-    const r = buildRig('male', 'idle', 0);
+    const r = romanRig(buildRig('male', 'idle', 0), l);
     const { nx, ny } = faceAnchor({ rig: r, bp: r.bp, look: l } as unknown as DrawCtx);
     // The forehead above the brow, from the temple to the far brow, is his skull's base skin only (the row
     // over the brow is his own forehead between the bangs).
@@ -323,7 +335,7 @@ describe("the owner's Roman face", () => {
   it('is the module lifted for it, pixel for pixel, on a bald male in the skin he painted over', () => {
     const l = roman('male', false);
     const f = renderSprite(l, 'idle', 0);
-    const r = buildRig('male', 'idle', 0);
+    const r = romanRig(buildRig('male', 'idle', 0), l);
     const { nx, ny, ex, fx } = faceAnchor({ rig: r, bp: r.bp, look: l } as unknown as DrawCtx);
     // His eyes over his head: where an eye has a pixel of his, that; elsewhere his head.
     const want = new Map<number, string>();
@@ -384,7 +396,7 @@ describe("the owner's Roman face", () => {
     };
     for (const [key, sum] of Object.entries(was)) {
       const [body, face, eye] = key.split(' ');
-      const l = defaultAppearance();
+      const l = oldHead(defaultAppearance());
       l.body = body as BodyType;
       l.faceShape = face as SpriteAppearance['faceShape'];
       l.eyeShape = eye as SpriteAppearance['eyeShape'];

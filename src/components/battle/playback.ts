@@ -13,7 +13,8 @@ import { COMBO_KICKS, COMBO_TURNED, POSE_FPS, TACKLE_IMPACT_FRAME } from '../../
 import { BLOW_MS, CONDUCT_MS, DOUSE_MS, FAN_MS, FAN_ROLL, GROUND_FADE, TOWER_MS, TOWER_RISE, WAVE_CREST, WAVE_HOLD, blastMs, impactMs, keyCenter, signatureMs, skySignature } from './vfxSprites';
 import { jutsuTint, unitTint } from './vfxTintPlan';
 import { DRIP_MS, SCREEN_MS, SPRAY_DELAY, SPRAY_LANDED, SPRAY_MS, bleedingStarts, isBleedTick } from './bloodPlan';
-import { dist } from '../../battle/map';
+import { cellOf, dist } from '../../battle/map';
+import { crackKey } from '../../battle/nav';
 import { closestPoint } from '../../battle/structures';
 import { midpoint } from '../../battle/combat';
 import type { Bend } from './paths';
@@ -82,6 +83,26 @@ export interface Held {
   t0: number;
   end: number;
   rows: { anim: string; ms: number }[];
+  /** Drawn the way the ninja faces (mirrored facing left): his lightning round the near forearm is not round. */
+  faced?: boolean;
+  /** A charged hand's (the activated Chidori): it stays until the charge ends. */
+  charged?: boolean;
+}
+
+/** How solid the element's aura is round a ninja with a charged hand (the activated Chidori). */
+export const CHARGE_AURA = 0.5;
+/** How long a mended crack takes to fade (ms at speed 1). */
+export const CRACK_FADE = 400;
+
+/**
+ * What a charged hand holds (the jutsu's `seq.held`: the activated Chidori's lightning, his two
+ * paint-overs flickering), in its chakra colour, until the charge ends.
+ */
+function chargedHeld(u: Unit | undefined, now: number, jutsu = u?.charged?.jutsu): Held | undefined {
+  const spec = jutsu ? JUTSU[jutsu] : undefined;
+  const h = spec?.seq?.held;
+  if (!spec || !h) return undefined;
+  return { group: h.group, name: h.name, element: spec.element, tint: u ? jutsuTint(spec, u) : undefined, t0: now, end: Infinity, rows: [{ anim: h.anim, ms: 1 }], faced: true, charged: true };
 }
 
 export interface Floater {
@@ -406,7 +427,12 @@ export class Playback {
    * Units wrapped in a lingering aura while a condition lasts (the Breeze Mantle: its wind stays
    * on the ninja, faint, until its next turn): unit → the aura's element, opacity and start.
    */
-  lingers = new Map<string, { element: VfxElement; alpha: number; t0: number; tint?: string }>();
+  lingers = new Map<string, { element: VfxElement; alpha: number; t0: number; tint?: string; charged?: boolean }>();
+  /**
+   * Ground cracked under a charged ninja's steps (battle/charged.ts), by cell ("c,r"): when it
+   * cracks on the screen (as the walker passes it) and when it mends (it fades).
+   */
+  cracks = new Map<string, { t0: number; gone?: number }>();
   /**
    * Units on fire (Burning): his fire aura burns round them, faint, while it lasts, so water putting
    * it out shows on the map ("el agua apaga el fuego"): unit → when it caught.
@@ -474,16 +500,25 @@ export class Playback {
         severed: !!u.head?.severed,
         creature: v?.creature,
         fade: u.down === 'fled' ? v?.fade ?? { t0: now - 1000, dur: 1 } : undefined,
+        // A charged hand keeps its lightning (the activated Chidori).
+        held: u.charged && !u.down ? (v?.held?.charged ? v.held : chargedHeld(u, now)) : undefined,
       };
       this.views.set(u.id, next);
       const mantle = JUTSU.wind_breeze_mantle;
-      if (u.cond.mantle && !u.down && mantle?.seq?.lingerAura) {
+      const charged = u.charged && !u.down ? JUTSU[u.charged.jutsu] : undefined;
+      if (charged) {
+        if (!this.lingers.get(u.id)?.charged) this.lingers.set(u.id, { element: charged.element, alpha: CHARGE_AURA, t0: now - 2000, tint: jutsuTint(charged, u), charged: true });
+      } else if (u.cond.mantle && !u.down && mantle?.seq?.lingerAura) {
         if (!this.lingers.has(u.id)) this.lingers.set(u.id, { element: mantle.element, alpha: mantle.seq.lingerAura, t0: now - 2000, tint: jutsuTint(mantle, u) });
       } else this.lingers.delete(u.id);
       if (u.effects.some((e) => e.id === 'burning') && !u.down) {
         if (!this.burns.has(u.id)) this.burns.set(u.id, { element: 'fire', alpha: BURN_ALPHA, t0: now - 1000 });
       } else this.burns.delete(u.id);
     }
+    // The cracked ground as the state has it: new cells show at once, mended ones fade.
+    const cracked = state.cracks ?? {};
+    for (const k of Object.keys(cracked)) if (!this.cracks.has(k) || this.cracks.get(k)!.gone !== undefined) this.cracks.set(k, { t0: now - 1000 });
+    for (const [k, c] of this.cracks) if (!(k in cracked) && c.gone === undefined) c.gone = now;
     if (state.phase === 'combat') {
       this.turnUnit = state.order[state.turn];
       this.round = state.round;
@@ -664,6 +699,7 @@ export class Playback {
     this.impacts = this.impacts.filter((c) => now < c.t0 + (IMPACT.number + IMPACT.numberLife) / this.speed);
     this.floaters = this.floaters.filter((f) => now < f.t0 + f.dur);
     this.zoneGone = this.zoneGone.filter((z) => now < z.t0 + 1000 / this.speed);
+    for (const [k, c] of this.cracks) if (c.gone !== undefined && now > c.gone + CRACK_FADE / this.speed) this.cracks.delete(k);
     this.groundGone = this.groundGone.filter((g) => now < g.t0 + (g.blown ? BLOW_MS : GROUND_FADE) / this.speed);
     this.fx = this.fx.filter((f) => now < f.t0 + f.dur);
     this.banners = this.banners.filter((b) => now < b.t0 + b.dur);
@@ -1781,6 +1817,19 @@ export class Playback {
           v.pose = pose;
           v.poseT0 = now;
         }
+        // The ground cracking under a charged hand's steps: each crack as the walker gets there.
+        const cr = this.queue[0];
+        if (cr?.t === 'cracks' && cr.unit === ev.unit && cr.on) {
+          let along = 0;
+          let prevP = start;
+          const when = new Map<string, number>();
+          for (const p of ev.path) {
+            along += dist(prevP, p);
+            prevP = p;
+            when.set(crackKey(cellOf(p)), v.walk.t0 + ((along / speed) * 1000) / this.speed);
+          }
+          for (const k of cr.cells) this.cracks.set(k, { t0: when.get(k) ?? now });
+        }
         h.sound('step');
         if (ev.unit === this.turnUnit || state.phase === 'stealth') h.focus(ev.unit);
         return beat + (total / speed) * 1000;
@@ -2087,6 +2136,39 @@ export class Playback {
         h.shake(3);
         return 300;
       }
+      case 'charged': {
+        // A hand charged (the activated Chidori): his lightning in the hand, the element's aura round
+        // the ninja and its sparks crackling; or the charge ends (a blow that struck lets its own
+        // thrust end the lightning).
+        const v = this.view(ev.unit);
+        const u = state.units[ev.unit];
+        const spec = JUTSU[ev.jutsu];
+        if (!v || !spec) return 0;
+        if (ev.on) {
+          const tint = u ? jutsuTint(spec, u) : undefined;
+          this.setPose(v, 'cast', now, 520);
+          v.castEnhanced = !!ev.enhanced;
+          v.held = chargedHeld(u, now, ev.jutsu);
+          this.lingers.set(ev.unit, { element: spec.element, alpha: CHARGE_AURA, t0: now, tint, charged: true });
+          this.fx.push({ kind: 'aura', element: spec.element, from: v.pos, to: v.pos, t0: now, dur: 700, unit: ev.unit, tint, enhanced: ev.enhanced });
+          h.sound('jutsu', spec.element);
+          if (label) this.float(label, '#fde68a', v.pos, now, { rise: 128, dur: 1200 });
+          return 560;
+        }
+        if (this.lingers.get(ev.unit)?.charged) this.lingers.delete(ev.unit);
+        if (ev.end === 'struck') return 0;
+        if (v.held?.charged) v.held = undefined;
+        this.fx.push({ kind: 'smoke', element: 'chakra', from: v.pos, to: v.pos, t0: now, dur: 420 });
+        return 200;
+      }
+      case 'cracks':
+        // Cracks not timed with a walk show now; mended ones fade.
+        for (const k of ev.cells) {
+          const c = this.cracks.get(k);
+          if (ev.on && !c) this.cracks.set(k, { t0: now });
+          else if (!ev.on && c) c.gone = now;
+        }
+        return 0;
       case 'zone':
         // A gale starts turning (it rises out of the ground), or dies down (it fades).
         if (ev.on) this.zoneBorn.set(ev.zone.id, now);

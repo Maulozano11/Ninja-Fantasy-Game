@@ -127,6 +127,20 @@ folders.
 - `wood-dragon-from-ref.py`: his wood dragon out of his Wood Dragon hotbar icon (sheet 10), for the Wood Dragon's battle effect (a proposal, waiting for his yes). It takes his pixels with the same grid functions as `icons-from-ref-23.py`, keeps his dragon and his leaves without his green ground (his loose leaves apart), groups his colours into 40 of his (the JPEG gives each pixel a slightly different one) and adds his dark line where the cut edge meets the air. It writes `tools/world-sprites/vfx-wood-refdata.ts`, which `tools/world-sprites/vfx-new-r1.ts` animates (`vfx_wood`, with `vfx_hand` for the Chidori's lightning in the hand); a third argument writes a check sheet (his window, our cut, his leaves at 6x).
 
       python3 -I tools/refs/wood-dragon-from-ref.py docs/reference/icons-owner-reference-10.jpg tools/world-sprites/vfx-wood-refdata.ts [check.png]
+
+- `chidori-hand-from-ref.py`: his lightning in the hand out of his two silver-haired paint-overs
+  (the tactical vest's ring and thin bolts, the coat's burst of sparks), for the activated Chidori (a
+  proposal, waiting for his yes). It finds each picture's grid from his black outline (the vest's
+  pixel is about 17.9 x 18.0 picture px, the coat's 20), takes each of his pixels as its cell's
+  median, and keeps only the lightning in a box round the near forearm and fist (not the white
+  around him, nor his white seen between the arm and the vest, his skin, green cloth or anything
+  darker than luma 115). It writes `tools/world-sprites/vfx-chidori-refdata.ts`, which
+  `tools/world-sprites/vfx-chidori.ts` (WORLD_OUT only) turns into `vfx_charged/chidori_hand` (his
+  two drawings flickering, one of his pixels each, anchored on his fist) with the new
+  `vfx_charged/ground_crack`; a fourth argument writes a check sheet (his box, the kept lightning, at 8x).
+
+      python3 -I tools/refs/chidori-hand-from-ref.py docs/reference/tactico-chaleco-owner-reference.jpg docs/reference/tactico-abrigo-owner-reference.jpg tools/world-sprites/vfx-chidori-refdata.ts [check.png]
+      WORLD_OUT=<staging dir> npx tsx tools/world-sprites/vfx-chidori.ts
       WORLD_OUT=<staging dir> npx tsx tools/world-sprites/vfx-new-r1.ts
 - `roman_ref.py` + `roman-cuirass-from-ref.py`, `roman-skirt-from-ref.py`, `roman-bracers-sandals-from-ref.py`: the
   owner's Roman paint-over (`docs/reference/roman-owner-reference.jpg`, pitch 10.24, our male idle frame 0 at

@@ -10,7 +10,8 @@
 
 import { DrawCtx, legDepth, legJoints, Side } from '../ctx';
 import { segAngle } from '../painted';
-import { GRID, partIndex, RES, v, type Vec } from '../raster';
+import { hexToRgb } from '../color';
+import { GRID, type Layer, partIndex, RES, v, type Vec } from '../raster';
 import { drawRig, type Rig } from '../rig';
 import type { BodyType } from '../types';
 
@@ -169,3 +170,111 @@ export function joinFlat(g: DrawCtx, s: Side): void {
     L.flags[j] = flags;
   }
 }
+
+/** His painted footwear whose turned foot came out cut from the leg at the ankle (openJoint). His Trunks boots are drawn as one piece already. */
+export const JOINED_FEET = ['feet_crimson_sabatons', 'feet_gladiator_sandals'];
+
+/** How far (fine pixels) his line across the joint may run along the shin between the shin's own pixels and the foot's (openJoint). */
+export const JOINT_GAP = 3;
+/** How far (fine pixels) from where the foot meets the shin the joint is closed (openJoint). */
+const JOINT_R = 8;
+/** Darker than this (0-255 luma) reads as his black line, as his pictures' converters sort it. */
+export const LINE_LUM = 40;
+
+/**
+ * Where a turned foot meets its shin, for his painted footwear (JOINED_FEET): the leg made one piece there,
+ * as his Trunks boots are drawn. Turned with the shin, the line he drew between the two (the top of his
+ * Aiden's sabaton cuff, the bottom of his plate's greave, the dark band round his sandals' ankle) and the
+ * pixels bitten out where the two pieces part cut the foot from the leg (the owner, 2026-10-23: "aiden y
+ * romano le falta ahora conectar la punta del pie con la pierna como trunks su pie y su pierna estan
+ * conectadas no hay un corte de pixeles"). Within JOINT_R of where they meet:
+ *  - where the foot turns all of the shin's turn (FOOT_TURN: a kick, a raised leg), his line across the leg
+ *    between them (a dark pixel of either beside the other, the leg on both sides of it across, whose first
+ *    light pixel up the shin, within JOINT_GAP, is the shin's and down it the foot's) takes that shin pixel:
+ *    the shin runs on into the foot; his line round the outside stays, and so do his laces and straps away
+ *    from where the two meet. Turned less, the foot bends at the ankle and his line there is the ankle's;
+ *  - a pixel bitten out of the leg (empty, the leg on three sides of it) is filled, with his line where it
+ *    touches his line (it is on the outline), else with the pixel beside it.
+ * Round after round until none is left, as one opened leaves the next. Run once every item is drawn (his
+ * plate's greave and the boots are drawn by different items); a foot not turned (at rest, standing, the
+ * camp lean) is left as it is. Tested in sprite/feet.test.ts.
+ */
+export function openJoint(g: DrawCtx, s: Side): void {
+  if (flatPose(g) || !JOINED_FEET.some((id) => g.has('feet', id))) return;
+  // (turned as the item turns it: his sabatons turn on the ground too, items/feet.ts)
+  const turn = Math.abs(footTurn(g, s, g.has('feet', 'feet_crimson_sabatons')));
+  if (!turn) return;
+  const asOne = turn >= FOOT_TURN;
+  // the leg's layers, the one on top first
+  const layers = (['armor', 'feet', 'cloth', 'body'] as const).map((k) => g.L(legDepth(s, k)));
+  const F = g.L(legDepth(s, 'feet'));
+  const shin = partIndex(`shin${s}`);
+  const foot = partIndex(`foot${s}`);
+  const { knee, ankle } = legJoints(g.rig, s);
+  const n = Math.hypot(ankle.x - knee.x, ankle.y - knee.y) || 1;
+  const [ux, uy] = [(ankle.x - knee.x) / n, (ankle.y - knee.y) / n];
+  const top = (x: number, y: number) => {
+    if (x < 0 || y < 0 || x >= GRID || y >= GRID) return undefined;
+    const i = y * GRID + x;
+    const L = layers.find((l) => l.mat[i] >= 0);
+    return L && { L, i, part: L.part[i], line: lum(g.mats.ramps[L.mat[i]][L.shade[i]]) < LINE_LUM };
+  };
+  const along = (x: number, y: number, k: number) => top(Math.round(x + ux * k), Math.round(y + uy * k));
+  /** The first light pixel from (x, y) along the shin (`dir` +1 down to the foot, -1 up to the knee), within JOINT_GAP over the leg. */
+  const firstLight = (x: number, y: number, dir: number) => {
+    for (let k = 1; k <= JOINT_GAP; k++) {
+      const q = along(x, y, dir * k);
+      if (!q) return undefined;
+      if (!q.line) return q;
+    }
+    return undefined;
+  };
+  // where they meet: the foot's pixels beside the shin's
+  let cx = 0;
+  let cy = 0;
+  let cn = 0;
+  for (let y = 1; y < GRID - 1; y++)
+    for (let x = 1; x < GRID - 1; x++) {
+      const p = top(x, y);
+      if (p?.part !== foot) continue;
+      if ([top(x + 1, y), top(x - 1, y), top(x, y + 1), top(x, y - 1)].some((q) => q?.part === shin)) [cx, cy, cn] = [cx + x, cy + y, cn + 1];
+    }
+  if (!cn) return;
+  [cx, cy] = [cx / cn, cy / cn];
+  const near: [number, number][] = [];
+  for (let y = Math.floor(cy - JOINT_R); y <= cy + JOINT_R; y++) for (let x = Math.floor(cx - JOINT_R); x <= cx + JOINT_R; x++) if (Math.hypot(x - cx, y - cy) <= JOINT_R) near.push([x, y]);
+  for (let round = 0; round < 16; round++) {
+    const fills: [Layer, number, Layer, number][] = [];
+    for (const [x, y] of near) {
+      const p = top(x, y);
+      if (p) {
+        if (!asOne || !p.line || (p.part !== shin && p.part !== foot)) continue;
+        // between the two: beside the other piece, and the leg on both sides of it across
+        const other = p.part === shin ? foot : shin;
+        if (![top(x - 1, y), top(x + 1, y), top(x, y - 1), top(x, y + 1)].some((q) => q?.part === other)) continue;
+        if (!top(Math.round(x - uy), Math.round(y + ux)) || !top(Math.round(x + uy), Math.round(y - ux))) continue;
+        const up = firstLight(x, y, -1);
+        const down = firstLight(x, y, 1);
+        if (up?.part === shin && down?.part === foot) fills.push([p.L, p.i, up.L, up.i]);
+      } else {
+        const sides = [top(x - 1, y), top(x + 1, y), top(x, y - 1), top(x, y + 1)].filter((q) => !!q);
+        if (sides.length < 3) continue;
+        const from = sides.find((q) => q.line) ?? sides[0];
+        fills.push([F, y * GRID + x, from.L, from.i]);
+      }
+    }
+    if (!fills.length) break;
+    for (const [L, i, from, j] of fills) {
+      L.mat[i] = from.mat[j];
+      L.shade[i] = from.shade[j];
+      L.part[i] = from.part[j];
+      L.flags[i] = from.flags[j];
+    }
+    F.used = true;
+  }
+}
+
+const lum = (hex: string) => {
+  const [r, gr, b] = hexToRgb(hex);
+  return 0.299 * r + 0.587 * gr + 0.114 * b;
+};

@@ -9,12 +9,12 @@
 
 import { skinTone } from '../body';
 import { retintHex } from '../color';
-import { type Depth, type DrawCtx, type ItemDef, legDepth, legJoints, type Side } from '../ctx';
+import { type Depth, DEPTHS, type DrawCtx, type ItemDef, legDepth, legJoints, type Side } from '../ctx';
 import { segAngle, stampPiece } from '../painted';
 import { F_NO_OUTLINE, F_NO_TEXTURE, GRID, type Layer, partIndex, type PartId, RES, v, type Vec } from '../raster';
 import { BODY_PARAMS, drawRig, GROUND, type Rig } from '../rig';
 import type { BodyType } from '../types';
-import { fillHoles, sealLegsAfter } from './aureliaBoots';
+import { fillHoles, legsKeptAsDrawn, sealLegsAfter } from './aureliaBoots';
 import { DAWN_SLIT_F, DAWN_SLIT_N, DAWN_SLIT_SKIN, DAWN_THIGH_N } from './aureliaBootsArt';
 import { DAWN_BASE, DAWN_FAR, DAWN_FRONT, DAWN_LINE, DAWN_LINING, DAWN_NEAR, DAWN_WAIST, type DawnPiece } from './aureliaLowerArt';
 
@@ -328,6 +328,61 @@ function drawPiece(g: DrawCtx, depth: Depth, part: PartId, p: DawnPiece, tint: (
 /** The base body's shorts (body.ts undergarments): her skirt is open at the sides, her thighs show bare. */
 const SHORTS = '#3b3a46';
 
+/**
+ * Keeps her lining from standing beside a boot like another leg (the owner, 2026-10-22: "tienes un bug en la
+ * falda que esta poniendo como piernas o botas extra"). It hangs down to her ankles behind her legs; where a
+ * pose swings her hips past a standing leg (the combo's spinning back kick) its edge showed beside the boot, a
+ * grey strip down by the shoe. Moved, a stretch of lining left showing that is shaped like a leg (as wide as a
+ * boot or less, upright, as tall as a shin and reaching down by the shoes) is cut back to the lower knee, its
+ * cut edge in her line. Lining showing otherwise, and at rest, is as he drew it.
+ */
+function liningOffTheGround(g: DrawCtx): void {
+  const L = g.L('backGear');
+  if (!L.used || g.rig.lay) return;
+  const lining = partIndex('pelvis');
+  const line = g.m(DAWN_LINE, 'flat');
+  const above = DEPTHS.slice(DEPTHS.indexOf('backGear') + 1)
+    .map((d) => g.L(d))
+    .filter((M) => M.used);
+  const shows = (i: number) => L.mat[i] >= 0 && L.part[i] === lining && !above.some((M) => M.mat[i] >= 0);
+  const legs = (['F', 'N'] as Side[]).flatMap((s) => (['body', 'cloth', 'feet'] as const).map((k) => g.L(legDepth(s, k)))).filter((M) => M.used);
+  const knee = Math.floor(Math.max(g.rig.kneeF.y, g.rig.kneeN.y) * RES);
+  const sole = Math.floor(GROUND * RES);
+  const seen = new Uint8Array(GRID * GRID);
+  for (let s = GRID; s < GRID * (GRID - 1); s++) {
+    if (seen[s] || !shows(s)) continue;
+    const px: number[] = [];
+    const stack = [s];
+    seen[s] = 1;
+    let [x0, y0, x1, y1] = [GRID, GRID, -1, -1];
+    while (stack.length) {
+      const i = stack.pop()!;
+      px.push(i);
+      const [x, y] = [i % GRID, (i / GRID) | 0];
+      [x0, y0, x1, y1] = [Math.min(x0, x), Math.min(y0, y), Math.max(x1, x), Math.max(y1, y)];
+      for (const j of [i - 1, i + 1, i - GRID, i + GRID])
+        if (!seen[j] && shows(j)) {
+          seen[j] = 1;
+          stack.push(j);
+        }
+    }
+    const w = x1 - x0 + 1;
+    if (w > 7 || y1 - y0 + 1 < Math.max(12, 2 * w) || y1 < sole - 10) continue;
+    const off = px.filter((i) => ((i / GRID) | 0) > knee);
+    // beside her legs, not between them: on most of its rows below the knee her legs lie on one side of it only
+    const rows = [...new Set(off.map((i) => (i / GRID) | 0))];
+    const beside = rows.filter((y) => {
+      const xs = off.filter((i) => ((i / GRID) | 0) === y).map((i) => i % GRID);
+      const legX = [];
+      for (let x = 0; x < GRID; x++) if (legs.some((M) => M.mat[y * GRID + x] >= 0)) legX.push(x);
+      return legX.length > 0 && (legX.every((x) => x < Math.min(...xs)) || legX.every((x) => x > Math.max(...xs)));
+    });
+    if (beside.length * 2 < rows.length || !rows.length) continue;
+    for (const i of off) L.mat[i] = -1;
+    for (const i of off) for (const j of [i - 1, i + 1, i - GRID, i + GRID]) if (L.mat[j] >= 0 && L.part[j] === lining) L.mat[j] = line;
+  }
+}
+
 /** Takes the base body's shorts away under the skirt (when no trousers are worn): the slits show her thighs. */
 function bareThighs(g: DrawCtx): void {
   if (g.has('bottom')) return;
@@ -421,6 +476,7 @@ export const SKIRT_DAWN_PANELS: ItemDef = {
     // moved, a pixel left empty between her panels and her legs is filled (at rest each piece is as drawn)
     const below: Depth[] = ['backGear', 'farLeg.body', 'farLeg.cloth', 'farLeg.feet', 'farLeg.armor', 'nearLeg.body', 'nearLeg.cloth', 'nearLeg.feet', 'skirt'];
     if (g.rig.pose !== 'idle') {
+      if (!legsKeptAsDrawn(g)) liningOffTheGround(g);
       fillHoles(g, below);
       trimPanelSpurs(g, below);
     }

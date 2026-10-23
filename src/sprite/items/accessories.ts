@@ -410,7 +410,7 @@ export const HELD_ITEMS: ItemDef[] = [
     colors: [col('gold', 'Gold', AURELIA_STAFF_GOLD, 'metal'), col('orb', 'Orb', AURELIA_STAFF_ORB, 'glow')],
     draw: (g, [gold, orb]) => {
       if (handsBusy(g)) drawDawnStaff(g, 'backGear', backGrip(g, -62), -62, gold, orb, false);
-      else if (handsLimp(g)) drawDawnStaff(g, 'nearArm.held', droppedGrip(g, 1.5, 4.5), 88, gold, orb, false);
+      else if (handsLimp(g)) drawDawnStaff(g, 'nearArm.held', droppedGrip(g, 1.3, 4.5), 88, gold, orb, false);
       // At rest it hangs from her far fist at his angle, every pixel his; otherwise the near fist holds it like a pole.
       else if (dawnStaffInFarHand(g)) {
         drawDawnStaff(g, 'farArm.held', dawnStaffRest(g), DAWN_STAFF.angle, gold, orb, true);

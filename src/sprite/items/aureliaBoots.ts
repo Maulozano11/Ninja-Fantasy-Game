@@ -487,6 +487,9 @@ export function kneePit({ hip, knee, ankle }: { hip: Vec; knee: Vec; ankle: Vec 
  */
 const KEEP_LEGS = new Set(['idle', 'walk']);
 
+/** Whether her legs (and her skirt about them) stay as drawn in this pose (KEEP_LEGS). */
+export const legsKeptAsDrawn = (g: DrawCtx): boolean => KEEP_LEGS.has(g.rig.pose);
+
 /**
  * Closes the outline of her moved legs (the owner, 2026-10-22: "veo unos errores de mordidas en las piernas
  * en sin falda en correr 3 y 4 y en correr 6 sin falda faltan pixeles en las piernas"). Her leg is several
@@ -594,7 +597,8 @@ function sealLegs(g: DrawCtx): void {
       const count = new Map<number, number>();
       for (const j of src) count.set(Ls[top(j)].mat[j], (count.get(Ls[top(j)].mat[j]) ?? 0) + 1);
       const j = src.reduce((b, n) => (count.get(Ls[top(n)].mat[n])! > count.get(Ls[top(b)].mat[b])! ? n : b));
-      next.push([i, own ? g.L(legDepth(own[0], 'feet')) : Ls[top(j)], j]);
+      // (on the layer of the leg's pixel it takes its colour from, so a thigh's skin runs on unlined)
+      next.push([i, own && sideOf(top(j)) !== own ? g.L(legDepth(own[0], 'feet')) : Ls[top(j)], j]);
     }
     for (const [i, L, j] of next) {
       const was = filled.get(i)!;
@@ -606,6 +610,25 @@ function sealLegs(g: DrawCtx): void {
       coloured.add(i);
       if (j >= 0) more = true;
     }
+  }
+  // The line a filled edge pixel now runs outside of: one pixel of his line on the same layer beside it, now
+  // shut in, with the leg's colour straight past it, takes that colour (the edge moved out a pixel, still
+  // one pixel of line, not two).
+  const inner: [number, number][] = [];
+  for (const [f, L] of filled) {
+    if (L.mat[f] !== line) continue;
+    for (const d of [1, -1, GRID, -GRID]) {
+      const p = f + d;
+      const q = p + d;
+      const dp = top(p);
+      if (filled.has(p) || dp < 0 || Ls[dp] !== L || L.mat[p] !== line || top(q) < 0 || Ls[top(q)] !== L || L.mat[q] === line) continue;
+      if ([p - 1, p + 1, p - GRID, p + GRID].every((j) => top(j) >= 0)) inner.push([p, q]);
+    }
+  }
+  for (const [p, q] of inner) {
+    const L = Ls[top(p)];
+    L.mat[p] = L.mat[q];
+    L.shade[p] = L.shade[q];
   }
   // the cut across the thigh lined where nothing lies past it
   for (const s of ['F', 'N'] as Side[])

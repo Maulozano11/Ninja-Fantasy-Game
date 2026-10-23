@@ -5,6 +5,7 @@
 import type { Depth, DrawCtx } from '../ctx';
 import { F_NO_OUTLINE, F_NO_TEXTURE, GRID, partIndex, RES, v, type Vec } from '../raster';
 import { drawRig } from '../rig';
+import { isFemaleBody } from '../types';
 import { stampTemplate, type TemplatePalette } from '../rotsprite';
 import { retintHex } from '../color';
 import { drawPaintedWeapon } from './weapons';
@@ -39,9 +40,11 @@ function sparkTemplate(frame: number): typeof DAWN_STAFF {
 
 /**
  * At rest she holds it as he drew it, hanging from her far fist down to the right (her near hand is
- * empty); every other pose holds it in the near fist like the naginata.
+ * empty); every other pose holds it in the near fist like the naginata. His fist round it is drawn for her
+ * (the female body's far fist at rest): on the male and bulky bodies the far fist hangs elsewhere and the
+ * staff floated beside it, so there the near fist holds it at rest too.
  */
-export const dawnStaffInFarHand = (g: DrawCtx): boolean => g.rig.pose === 'idle';
+export const dawnStaffInFarHand = (g: DrawCtx): boolean => g.rig.pose === 'idle' && isFemaleBody(g.look.body);
 
 /**
  * Our far fist's joint at rest, as at idle frame 0: as she breathes (the later idle frames raise the

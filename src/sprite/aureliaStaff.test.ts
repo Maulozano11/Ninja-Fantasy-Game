@@ -5,9 +5,11 @@ import { describe, it } from 'node:test';
 import { getItem } from './catalog';
 import { renderSprite } from './compose';
 import { AURELIA_STAFF_GOLD, AURELIA_STAFF_ORB, DAWN_STAFF } from './items/aureliaStaffArt';
-import { DEFAULT_CHARACTER } from '../data/shinobiData';
+import { DEFAULT_CHARACTER, LEGENDARY_PRESETS } from '../data/shinobiData';
 import { weaponOf } from '../battle/units';
-import type { SpriteAppearance } from './types';
+import { GRID } from './raster';
+import { frameCount } from './rig';
+import type { SpriteAppearance, SpritePose } from './types';
 
 const look = (colors: string[] = []): SpriteAppearance => ({
   ...DEFAULT_CHARACTER.appearance!,
@@ -44,5 +46,39 @@ describe('Aurelia dawn staff', () => {
     assert.equal(w.name, 'Quarterstaff');
     assert.equal(w.dice, '1d6');
     assert.equal(w.type, 'Bludgeoning');
+  });
+
+  // His sparkles (a few pixels each) twinkle apart from it; the staff itself never does.
+  it('stays with her: in her fist at rest on every body, beside her when she is downed', () => {
+    const aurelia = LEGENDARY_PRESETS.find((p) => p.character.id === 'preset_aurelia')!.character.appearance!;
+    for (const body of ['female', 'male', 'bulky'] as const)
+      for (const pose of ['idle', 'downed'] as SpritePose[])
+        for (let f = 0; f < frameCount(pose); f++) {
+          const { rgba } = renderSprite({ ...aurelia, body }, pose, f);
+          // the pieces of the frame (8-connected): one figure and sparkles
+          const seen = new Uint8Array(GRID * GRID);
+          const sizes: number[] = [];
+          for (let s = 0; s < GRID * GRID; s++) {
+            if (seen[s] || !rgba[s * 4 + 3]) continue;
+            let n = 0;
+            const stack = [s];
+            seen[s] = 1;
+            while (stack.length) {
+              const i = stack.pop()!;
+              n++;
+              const x = i % GRID;
+              for (let dy = -GRID; dy <= GRID; dy += GRID)
+                for (let dx = -1; dx <= 1; dx++) {
+                  const j = i + dy + dx;
+                  if (j < 0 || j >= GRID * GRID || x + dx < 0 || x + dx >= GRID || seen[j] || !rgba[j * 4 + 3]) continue;
+                  seen[j] = 1;
+                  stack.push(j);
+                }
+            }
+            sizes.push(n);
+          }
+          sizes.sort((a, b) => b - a);
+          assert.ok(sizes.slice(1).every((n) => n <= 4), `${body} ${pose} ${f + 1}: pieces apart from her of ${sizes.slice(1).join(', ')} pixels`);
+        }
   });
 });

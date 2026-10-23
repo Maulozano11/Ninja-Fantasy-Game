@@ -8,6 +8,7 @@ import type { ClanType, JutsuDefinition } from '../types/shinobi';
 import type { Ability, Advantage } from '../rules/checks';
 import type { EffectId } from '../types/mission';
 import type { AreaShape, DamageType, Pt } from './types';
+import { IMBUE_COST, WEAPON_ELEMENT } from './imbue';
 
 export type VfxElement = 'fire' | 'water' | 'wind' | 'lightning' | 'earth' | 'genjutsu' | 'chakra' | 'poison';
 export type VfxRole = 'bolt' | 'beast' | 'stream' | 'breath' | 'sphere' | 'slash' | 'multi' | 'blast' | 'wall' | 'aura' | 'hit';
@@ -115,7 +116,7 @@ export interface JutsuSpec {
   save?: Ability;
   /** On a successful save: half damage, or nothing. */
   saveHalf: boolean;
-  special?: 'heal' | 'flicker' | 'clone' | 'kawarimi' | 'earthWall' | 'waterWall' | 'seal' | 'confuse' | 'evasion' | 'metalBlock' | 'metalWall' | 'warp' | 'swap' | 'command' | 'submission' | 'mantle' | 'galeZone';
+  special?: 'heal' | 'flicker' | 'clone' | 'kawarimi' | 'earthWall' | 'waterWall' | 'seal' | 'confuse' | 'evasion' | 'metalBlock' | 'metalWall' | 'warp' | 'swap' | 'command' | 'submission' | 'mantle' | 'galeZone' | 'imbue';
   /** The projectile or effect the screen plays. */
   vfx: VfxRole;
   /** A signature effect of its own (vfx_<element>/<sig>, and <sig>_great or <sig>_enh enhanced). */
@@ -549,7 +550,35 @@ const CLAN_SPECS: JutsuSpec[] = [
   },
 ];
 
-export const JUTSU: Record<string, JutsuSpec> = Object.fromEntries([...JUTSUS_DATA.map((j) => [j.id, specOf(j)]), ...HYDRA_SPECS.map((j) => [j.id, j]), ...CLAN_SPECS.map((j) => [j.id, j])]);
+/**
+ * The classes' own abilities, which come with the class (and, for this one, the nature), not a slot
+ * (battle/imbue.ts). Weapon Element Enhancement: chakra worked into the weapon in hand, no hand
+ * seals; its element is the ninja's own, so the screen reads it from the unit, not from here.
+ */
+const CLASS_SPECS: JutsuSpec[] = [
+  {
+    id: WEAPON_ELEMENT,
+    name: 'Weapon Element Enhancement',
+    nameEs: 'Potenciación elemental del arma',
+    ability: true,
+    rank: '',
+    element: 'chakra',
+    cost: IMBUE_COST,
+    enhCost: 0,
+    cast: 'bonus',
+    range: 0,
+    shape: 'self',
+    saveHalf: false,
+    special: 'imbue',
+    vfx: 'aura',
+    melee: false,
+    // A sword art's rule: the weapon is drawn for it (free, once a turn).
+    weapon: 'draw',
+    loud: false,
+  },
+];
+
+export const JUTSU: Record<string, JutsuSpec> = Object.fromEntries([...JUTSUS_DATA.map((j) => [j.id, specOf(j)]), ...HYDRA_SPECS.map((j) => [j.id, j]), ...CLAN_SPECS.map((j) => [j.id, j]), ...CLASS_SPECS.map((j) => [j.id, j])]);
 
 /** The abilities a clan's members have, in order. */
 export const clanAbilities = (clan: ClanType): string[] => CLAN_SPECS.filter((j) => j.clan === clan).map((j) => j.id);

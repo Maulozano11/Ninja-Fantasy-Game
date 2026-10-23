@@ -1,0 +1,595 @@
+{
+ "kit": "ui_icons_14",
+ "references": [
+  "docs/reference/icons-owner-reference-14.jpg"
+ ],
+ "round": 1,
+ "screen": [
+  1600,
+  900
+ ],
+ "pixel": "one art pixel per screen pixel (as ui_icons, sheet 1): draw at 1x on a 1600x900 screen, @2x on a 2x screen, always with image-rendering: pixelated",
+ "frame": {
+  "from": "ui_icons (sheet 1), read only: skill_slot_steel.png and skill_slot_steel_active.png, 56x56, the icon window 44x44 at 6,6; see ui_icons/manifest.json for its slices",
+  "window": {
+   "x": 6,
+   "y": 6,
+   "w": 44,
+   "h": 44
+  }
+ },
+ "method": "his sheets are pixel art (480x268 scaled 4.1667x and saved as JPEG); his pixels are taken back first (tools/refs/icons-from-ref-23.py). 88: his own pixels one to one (his 90x90 or 93x91 window with the columns and rows that show least dropped), on a palette sampled from his pixels, 1-2 pixel areas merged only where his own pixels do not stand out. 44: area mean of his pixels, except his thin lines and strongest specks, which keep their own colour one pixel wide; a light bilateral filter, nearest palette entry, 1-2 pixel areas merged; then hand-fixes only where that still loses his picture (see tools/ui/ui-icons-23.ts). Sheets 8 to 11 use no bilateral filter (it lightened his dark figures into his ground), and their palettes give his rare colours a slot each: after the k-means, every colour of the 44's and the 88's pictures still far from the palette in hue (his skin, his violet chains, a dragon's teeth, his greys and whites) is grouped and the group missed most gets its own entry, his nearest real colour, up to 20 (paletteCovered); his thin marks of one colour (skin, violet chains, embers, teeth, mouth cores, foam) are kept by colour rules. Sheets 13 to 22 (tools/refs/icons-from-ref-13.py) are made as sheets 9 and 10. Some are 240x134 pictures (sheets 15, 16, 17, 19): their windows are 47 to 63 of his pixels, so at 88 every one of his pixels is kept and some are shown twice (twice88), and their 44 is his pixels one to one too, the columns and rows that show least dropped (dropped44); sheet 18 (78 to 79 of his pixels) is grown to 88 the same way and reduced to 44 as the others. Sheets 20 to 22 (100 to 101 by 103 to 104) are reduced at 88 as sheets 8 and 11",
+ "checks": "small = 8-connected areas of one colour of 1 or 2 pixels: smallHis are his own marks (at 88 his pixel stands out there; at 44 his kept specks), smallDrawn hold a hand-fixed detail, smallOther are left over from the reduction; lowFreq = mean OKLab difference x100 to his box reduction after both are blurred (sigma size/30), lowFreqBoxOnPalette = the same for his box reduction put on our palette; ssim = structural similarity of the lightness (Gaussian window sigma 1.5) to his picture box-reduced to 88, ours (the 44 shown 2x) against ssimBox, his own box reduction to 44 shown 2x; hue = OKLab median hue in degrees (hueHis: his box reduction); thinRun = the longest straight run of one colour one pixel thick [length, row or col, index]",
+ "icons": {
+  "fire_three_embers": {
+   "name": "Three Embers",
+   "sheet": "docs/reference/icons-owner-reference-14.jpg",
+   "file": "fire_three_embers.png",
+   "file2x": "fire_three_embers@2x.png",
+   "size": [
+    44,
+    44
+   ],
+   "size2x": [
+    88,
+    88
+   ],
+   "label": "BRASAS",
+   "hisWindow": [
+    99,
+    100
+   ],
+   "dropped88": {
+    "columns": [
+     3,
+     10,
+     17,
+     26,
+     39,
+     54,
+     62,
+     68,
+     80,
+     90,
+     94
+    ],
+    "rows": [
+     1,
+     5,
+     14,
+     30,
+     34,
+     38,
+     44,
+     48,
+     84,
+     89,
+     93,
+     97
+    ]
+   },
+   "palette": [
+    "#280a04",
+    "#430f10",
+    "#442a24",
+    "#5f1213",
+    "#7a1a14",
+    "#633819",
+    "#603e33",
+    "#783422",
+    "#892417",
+    "#9a331d",
+    "#884e32",
+    "#ac4c28",
+    "#c0381b",
+    "#99704a",
+    "#b46634",
+    "#b0684d",
+    "#d8561e",
+    "#c57a36",
+    "#e97025",
+    "#df7c5f",
+    "#cb9852",
+    "#f08e32",
+    "#caae73",
+    "#eba646",
+    "#f7aa77",
+    "#f0ba54",
+    "#fbca54",
+    "#fedd57",
+    "#fff270",
+    "#fef89c",
+    "#fffdcd",
+    "#ffffee"
+   ],
+   "paletteDetailOnly": [],
+   "paletteCovered": [
+    "#99704a",
+    "#fef89c",
+    "#df7c5f",
+    "#c0381b",
+    "#633819",
+    "#ffffee",
+    "#caae73",
+    "#783422",
+    "#f7aa77",
+    "#b0684d"
+   ],
+   "sampled": [],
+   "checks": {
+    "44": {
+     "small": 1,
+     "smallHis": 1,
+     "smallDrawn": 0,
+     "smallOther": 0,
+     "lowFreq": 1.12,
+     "lowFreqBoxOnPalette": 0.68,
+     "ssim": 0.751,
+     "ssimBox": 0.837,
+     "hue": 34,
+     "hueHis": 33,
+     "colours": 26,
+     "thinRun": [
+      6,
+      "col",
+      40
+     ]
+    },
+    "88": {
+     "small": 582,
+     "smallHis": 582,
+     "smallDrawn": 0,
+     "smallOther": 0,
+     "lowFreq": 1.74,
+     "lowFreqBoxOnPalette": 0.58,
+     "ssim": 0.636,
+     "ssimBox": 1,
+     "hue": 34,
+     "hueHis": 32,
+     "colours": 32,
+     "thinRun": [
+      9,
+      "row",
+      16
+     ]
+    }
+   },
+   "use": "Hotbar skill icon: fills the 44x44 window of skill_slot_steel (ui_icons), at 6,6."
+  },
+  "wood_golem_titan": {
+   "name": "Wood Golem",
+   "sheet": "docs/reference/icons-owner-reference-14.jpg",
+   "file": "wood_golem_titan.png",
+   "file2x": "wood_golem_titan@2x.png",
+   "size": [
+    44,
+    44
+   ],
+   "size2x": [
+    88,
+    88
+   ],
+   "label": "GOLEM",
+   "hisWindow": [
+    99,
+    100
+   ],
+   "dropped88": {
+    "columns": [
+     1,
+     5,
+     9,
+     13,
+     17,
+     24,
+     28,
+     32,
+     81,
+     90,
+     94
+    ],
+    "rows": [
+     5,
+     24,
+     37,
+     41,
+     45,
+     51,
+     55,
+     59,
+     70,
+     74,
+     79,
+     96
+    ]
+   },
+   "palette": [
+    "#030a02",
+    "#141413",
+    "#1e1e15",
+    "#172b14",
+    "#2b281e",
+    "#302a32",
+    "#3a3127",
+    "#0d3f0e",
+    "#38403d",
+    "#4c3c2d",
+    "#2c4828",
+    "#4d5232",
+    "#604a35",
+    "#386441",
+    "#645855",
+    "#476655",
+    "#765c42",
+    "#227832",
+    "#3e7c4e",
+    "#6a8441",
+    "#917656",
+    "#4c9962",
+    "#818e64",
+    "#3da43a",
+    "#6ea070",
+    "#61a958",
+    "#b49670",
+    "#66bf74",
+    "#84bc52",
+    "#a8bd72",
+    "#58d078",
+    "#86c68c",
+    "#64d249",
+    "#cfb07b",
+    "#87d87d",
+    "#b8d26d",
+    "#76ea8e",
+    "#b4f080",
+    "#b4f45a",
+    "#d3f469",
+    "#f5fe9e",
+    "#faffc5"
+   ],
+   "paletteDetailOnly": [],
+   "paletteCovered": [
+    "#64d249",
+    "#172b14",
+    "#6a8441",
+    "#a8bd72",
+    "#4d5232",
+    "#227832",
+    "#38403d",
+    "#b8d26d",
+    "#86c68c",
+    "#b4f45a",
+    "#3da43a",
+    "#0d3f0e",
+    "#818e64",
+    "#faffc5",
+    "#476655",
+    "#302a32",
+    "#cfb07b",
+    "#645855",
+    "#6ea070",
+    "#84bc52"
+   ],
+   "sampled": [],
+   "checks": {
+    "44": {
+     "small": 1,
+     "smallHis": 1,
+     "smallDrawn": 0,
+     "smallOther": 0,
+     "lowFreq": 1.9,
+     "lowFreqBoxOnPalette": 0.83,
+     "ssim": 0.667,
+     "ssimBox": 0.767,
+     "hue": 116,
+     "hueHis": 128,
+     "colours": 39,
+     "thinRun": [
+      8,
+      "col",
+      42
+     ]
+    },
+    "88": {
+     "small": 1394,
+     "smallHis": 1394,
+     "smallDrawn": 0,
+     "smallOther": 0,
+     "lowFreq": 3.03,
+     "lowFreqBoxOnPalette": 0.73,
+     "ssim": 0.283,
+     "ssimBox": 1,
+     "hue": 121,
+     "hueHis": 127,
+     "colours": 42,
+     "thinRun": [
+      9,
+      "col",
+      86
+     ]
+    }
+   },
+   "use": "Hotbar skill icon: fills the 44x44 window of skill_slot_steel (ui_icons), at 6,6."
+  },
+  "lightning_spark_fan": {
+   "name": "Spark Fan",
+   "sheet": "docs/reference/icons-owner-reference-14.jpg",
+   "file": "lightning_spark_fan.png",
+   "file2x": "lightning_spark_fan@2x.png",
+   "size": [
+    44,
+    44
+   ],
+   "size2x": [
+    88,
+    88
+   ],
+   "label": "ABANICO",
+   "hisWindow": [
+    99,
+    100
+   ],
+   "dropped88": {
+    "columns": [
+     4,
+     8,
+     12,
+     35,
+     51,
+     56,
+     79,
+     84,
+     88,
+     92,
+     96
+    ],
+    "rows": [
+     1,
+     5,
+     10,
+     14,
+     18,
+     30,
+     36,
+     58,
+     64,
+     74,
+     91,
+     96
+    ]
+   },
+   "palette": [
+    "#060515",
+    "#11143d",
+    "#1d2048",
+    "#2c293c",
+    "#202659",
+    "#37345b",
+    "#3c3477",
+    "#34368a",
+    "#4a4448",
+    "#493e7d",
+    "#564863",
+    "#62507b",
+    "#636268",
+    "#715e72",
+    "#626397",
+    "#78665c",
+    "#796a86",
+    "#8b7073",
+    "#94828b",
+    "#8284b0",
+    "#929083",
+    "#ad9280",
+    "#b1a0af",
+    "#aba5ca",
+    "#c8ab86",
+    "#dcb16e",
+    "#c6b6a4",
+    "#cbbec6",
+    "#dfc292",
+    "#cdceec",
+    "#f2d991",
+    "#dcdeda",
+    "#fde87d",
+    "#f3ecc4",
+    "#faf0a4",
+    "#f0f1ff",
+    "#fffceb"
+   ],
+   "paletteDetailOnly": [],
+   "paletteCovered": [
+    "#8284b0",
+    "#cdceec",
+    "#f3ecc4",
+    "#4a4448",
+    "#fde87d",
+    "#c6b6a4",
+    "#626397",
+    "#2c293c",
+    "#78665c",
+    "#dcb16e",
+    "#aba5ca",
+    "#f0f1ff",
+    "#34368a",
+    "#929083",
+    "#636268"
+   ],
+   "sampled": [],
+   "checks": {
+    "44": {
+     "small": 0,
+     "smallHis": 0,
+     "smallDrawn": 0,
+     "smallOther": 0,
+     "lowFreq": 1.54,
+     "lowFreqBoxOnPalette": 0.61,
+     "ssim": 0.708,
+     "ssimBox": 0.784,
+     "hue": 275,
+     "hueHis": 275,
+     "colours": 34,
+     "thinRun": [
+      5,
+      "row",
+      36
+     ]
+    },
+    "88": {
+     "small": 1015,
+     "smallHis": 1015,
+     "smallDrawn": 0,
+     "smallOther": 0,
+     "lowFreq": 1.97,
+     "lowFreqBoxOnPalette": 0.57,
+     "ssim": 0.545,
+     "ssimBox": 1,
+     "hue": 275,
+     "hueHis": 275,
+     "colours": 37,
+     "thinRun": [
+      6,
+      "row",
+      79
+     ]
+    }
+   },
+   "use": "Hotbar skill icon: fills the 44x44 window of skill_slot_steel (ui_icons), at 6,6."
+  },
+  "lightning_thunder_beam": {
+   "name": "Thunder Beam",
+   "sheet": "docs/reference/icons-owner-reference-14.jpg",
+   "file": "lightning_thunder_beam.png",
+   "file2x": "lightning_thunder_beam@2x.png",
+   "size": [
+    44,
+    44
+   ],
+   "size2x": [
+    88,
+    88
+   ],
+   "label": "TRUENO",
+   "hisWindow": [
+    99,
+    100
+   ],
+   "dropped88": {
+    "columns": [
+     2,
+     6,
+     10,
+     20,
+     24,
+     29,
+     43,
+     47,
+     52,
+     56,
+     94
+    ],
+    "rows": [
+     2,
+     6,
+     10,
+     14,
+     20,
+     47,
+     51,
+     79,
+     84,
+     88,
+     92,
+     96
+    ]
+   },
+   "palette": [
+    "#0c1033",
+    "#1b1c3e",
+    "#1e2255",
+    "#242568",
+    "#2e2f6f",
+    "#353486",
+    "#3c40a0",
+    "#3c4b82",
+    "#444ab0",
+    "#4854c3",
+    "#4b68b7",
+    "#5c69a6",
+    "#4a62d2",
+    "#5072d8",
+    "#6287c0",
+    "#5486de",
+    "#5695e3",
+    "#70a2be",
+    "#8799da",
+    "#74a6e1",
+    "#7ab6ea",
+    "#62bcfe",
+    "#6cc9ee",
+    "#bbc0c0",
+    "#b4bcf6",
+    "#aacaf4",
+    "#99dcf4",
+    "#80ecfe",
+    "#a5eef7",
+    "#cde4fc",
+    "#d0f8ff",
+    "#f8fefe"
+   ],
+   "paletteDetailOnly": [],
+   "paletteCovered": [
+    "#5c69a6",
+    "#8799da",
+    "#bbc0c0",
+    "#70a2be",
+    "#cde4fc",
+    "#b4bcf6",
+    "#62bcfe",
+    "#6287c0",
+    "#80ecfe",
+    "#3c4b82"
+   ],
+   "sampled": [],
+   "checks": {
+    "44": {
+     "small": 2,
+     "smallHis": 2,
+     "smallDrawn": 0,
+     "smallOther": 0,
+     "lowFreq": 0.98,
+     "lowFreqBoxOnPalette": 0.54,
+     "ssim": 0.826,
+     "ssimBox": 0.88,
+     "hue": 275,
+     "hueHis": 274,
+     "colours": 26,
+     "thinRun": [
+      13,
+      "row",
+      23
+     ]
+    },
+    "88": {
+     "small": 462,
+     "smallHis": 462,
+     "smallDrawn": 0,
+     "smallOther": 0,
+     "lowFreq": 2.37,
+     "lowFreqBoxOnPalette": 0.42,
+     "ssim": 0.617,
+     "ssimBox": 1,
+     "hue": 275,
+     "hueHis": 274,
+     "colours": 32,
+     "thinRun": [
+      20,
+      "row",
+      40
+     ]
+    }
+   },
+   "use": "Hotbar skill icon: fills the 44x44 window of skill_slot_steel (ui_icons), at 6,6."
+  }
+ }
+}

@@ -1,0 +1,348 @@
+{
+ "kit": "ui_icons_21",
+ "references": [
+  "docs/reference/icons-owner-reference-21.jpg"
+ ],
+ "round": 1,
+ "screen": [
+  1600,
+  900
+ ],
+ "pixel": "one art pixel per screen pixel (as ui_icons, sheet 1): draw at 1x on a 1600x900 screen, @2x on a 2x screen, always with image-rendering: pixelated",
+ "frame": {
+  "from": "ui_icons (sheet 1), read only: skill_slot_steel.png and skill_slot_steel_active.png, 56x56, the icon window 44x44 at 6,6; see ui_icons/manifest.json for its slices",
+  "window": {
+   "x": 6,
+   "y": 6,
+   "w": 44,
+   "h": 44
+  }
+ },
+ "method": "his sheets are pixel art (480x268 scaled 4.1667x and saved as JPEG); his pixels are taken back first (tools/refs/icons-from-ref-23.py). 88: his own pixels one to one (his 90x90 or 93x91 window with the columns and rows that show least dropped), on a palette sampled from his pixels, 1-2 pixel areas merged only where his own pixels do not stand out. 44: area mean of his pixels, except his thin lines and strongest specks, which keep their own colour one pixel wide; a light bilateral filter, nearest palette entry, 1-2 pixel areas merged; then hand-fixes only where that still loses his picture (see tools/ui/ui-icons-23.ts). Sheets 8 to 11 use no bilateral filter (it lightened his dark figures into his ground), and their palettes give his rare colours a slot each: after the k-means, every colour of the 44's and the 88's pictures still far from the palette in hue (his skin, his violet chains, a dragon's teeth, his greys and whites) is grouped and the group missed most gets its own entry, his nearest real colour, up to 20 (paletteCovered); his thin marks of one colour (skin, violet chains, embers, teeth, mouth cores, foam) are kept by colour rules. Sheets 8 and 11 have bigger windows (127 to 139 of his pixels across, not square): the icon is the square part of his window (cropInWindow; Swap keeps 139x127 and is squeezed 9% across so his two ninjas stay whole), and its 88 is made as its 44 (area mean of his pixels with his thin lines and specks kept, palette, clean-up: method88). Sheets 13 to 22 (tools/refs/icons-from-ref-13.py) are made as sheets 9 and 10. Some are 240x134 pictures (sheets 15, 16, 17, 19): their windows are 47 to 63 of his pixels, so at 88 every one of his pixels is kept and some are shown twice (twice88), and their 44 is his pixels one to one too, the columns and rows that show least dropped (dropped44); sheet 18 (78 to 79 of his pixels) is grown to 88 the same way and reduced to 44 as the others. Sheets 20 to 22 (100 to 101 by 103 to 104) are reduced at 88 as sheets 8 and 11",
+ "checks": "small = 8-connected areas of one colour of 1 or 2 pixels: smallHis are his own marks (at 88 his pixel stands out there; at 44 his kept specks), smallDrawn hold a hand-fixed detail, smallOther are left over from the reduction; lowFreq = mean OKLab difference x100 to his box reduction after both are blurred (sigma size/30), lowFreqBoxOnPalette = the same for his box reduction put on our palette; ssim = structural similarity of the lightness (Gaussian window sigma 1.5) to his picture box-reduced to 88, ours (the 44 shown 2x) against ssimBox, his own box reduction to 44 shown 2x; hue = OKLab median hue in degrees (hueHis: his box reduction); thinRun = the longest straight run of one colour one pixel thick [length, row or col, index]",
+ "icons": {
+  "water_tide_s": {
+   "name": "Dragon Tsunami",
+   "sheet": "docs/reference/icons-owner-reference-21.jpg",
+   "file": "water_tide_s.png",
+   "file2x": "water_tide_s@2x.png",
+   "size": [
+    44,
+    44
+   ],
+   "size2x": [
+    88,
+    88
+   ],
+   "label": "DRAGON TSUNAMI",
+   "hisWindow": [
+    100,
+    103
+   ],
+   "method88": "area mean of his 100x103 pixels (too many to keep one to one), his thin lines and specks kept in their own colour, as the 44",
+   "palette": [
+    "#000a28",
+    "#051a3c",
+    "#0b234b",
+    "#042e5c",
+    "#043867",
+    "#273a57",
+    "#074372",
+    "#0e4e7d",
+    "#0e5a87",
+    "#415e7c",
+    "#1a658f",
+    "#1d719b",
+    "#247ea6",
+    "#62839e",
+    "#348ab2",
+    "#3d99bb",
+    "#44a7ca",
+    "#80a5be",
+    "#58b7d5",
+    "#6ec4dd",
+    "#85d0e6",
+    "#b2c9da",
+    "#9adcef",
+    "#87e9f2",
+    "#b1e6f2",
+    "#c6f2fa",
+    "#e4fcfe"
+   ],
+   "paletteDetailOnly": [],
+   "paletteCovered": [
+    "#415e7c",
+    "#b2c9da",
+    "#62839e",
+    "#273a57",
+    "#87e9f2"
+   ],
+   "sampled": [],
+   "checks": {
+    "44": {
+     "small": 1,
+     "smallHis": 1,
+     "smallDrawn": 0,
+     "smallOther": 0,
+     "lowFreq": 1.49,
+     "lowFreqBoxOnPalette": 0.71,
+     "ssim": 0.698,
+     "ssimBox": 0.773,
+     "hue": 236,
+     "hueHis": 239,
+     "colours": 26,
+     "thinRun": [
+      5,
+      "col",
+      32
+     ]
+    },
+    "88": {
+     "small": 44,
+     "smallHis": 44,
+     "smallDrawn": 0,
+     "smallOther": 0,
+     "lowFreq": 1.07,
+     "lowFreqBoxOnPalette": 0.58,
+     "ssim": 0.929,
+     "ssimBox": 1,
+     "hue": 238,
+     "hueHis": 240,
+     "colours": 26,
+     "thinRun": [
+      11,
+      "col",
+      12
+     ]
+    }
+   },
+   "use": "Hotbar skill icon: fills the 44x44 window of skill_slot_steel (ui_icons), at 6,6."
+  },
+  "genjutsu_mirage": {
+   "name": "Mirage",
+   "sheet": "docs/reference/icons-owner-reference-21.jpg",
+   "file": "genjutsu_mirage.png",
+   "file2x": "genjutsu_mirage@2x.png",
+   "size": [
+    44,
+    44
+   ],
+   "size2x": [
+    88,
+    88
+   ],
+   "label": "MIND TWIST",
+   "hisWindow": [
+    101,
+    103
+   ],
+   "method88": "area mean of his 101x103 pixels (too many to keep one to one), his thin lines and specks kept in their own colour, as the 44",
+   "palette": [
+    "#000000",
+    "#010104",
+    "#010200",
+    "#06020e",
+    "#10081d",
+    "#1e043a",
+    "#1e182e",
+    "#321241",
+    "#33075c",
+    "#2e2543",
+    "#431659",
+    "#401976",
+    "#4a3260",
+    "#531892",
+    "#612880",
+    "#55425e",
+    "#5b387c",
+    "#6420ae",
+    "#601ec3",
+    "#78289e",
+    "#744682",
+    "#7a1ec4",
+    "#863692",
+    "#861ce0",
+    "#942fbf",
+    "#942ad4",
+    "#7850db",
+    "#ac18eb",
+    "#b532dc",
+    "#9e61b8",
+    "#a158d6",
+    "#cb3cd6",
+    "#b660d0",
+    "#d830ef",
+    "#c85ae4",
+    "#aa82b0",
+    "#c486cf",
+    "#df70f2",
+    "#fe6aff",
+    "#cca6d3",
+    "#ec92f2",
+    "#f0b8f4"
+   ],
+   "paletteDetailOnly": [],
+   "paletteCovered": [
+    "#78289e",
+    "#4a3260",
+    "#601ec3",
+    "#612880",
+    "#b660d0",
+    "#cb3cd6",
+    "#942fbf",
+    "#861ce0",
+    "#aa82b0",
+    "#744682",
+    "#ac18eb",
+    "#321241",
+    "#55425e",
+    "#7850db",
+    "#431659",
+    "#863692",
+    "#cca6d3",
+    "#a158d6",
+    "#fe6aff",
+    "#010200"
+   ],
+   "sampled": [],
+   "checks": {
+    "44": {
+     "small": 0,
+     "smallHis": 0,
+     "smallDrawn": 0,
+     "smallOther": 0,
+     "lowFreq": 1.38,
+     "lowFreqBoxOnPalette": 0.75,
+     "ssim": 0.726,
+     "ssimBox": 0.797,
+     "hue": 300,
+     "hueHis": 302,
+     "colours": 36,
+     "thinRun": [
+      5,
+      "row",
+      3
+     ]
+    },
+    "88": {
+     "small": 10,
+     "smallHis": 10,
+     "smallDrawn": 0,
+     "smallOther": 0,
+     "lowFreq": 0.99,
+     "lowFreqBoxOnPalette": 0.61,
+     "ssim": 0.932,
+     "ssimBox": 1,
+     "hue": 300,
+     "hueHis": 301,
+     "colours": 42,
+     "thinRun": [
+      13,
+      "row",
+      8
+     ]
+    }
+   },
+   "use": "Hotbar skill icon: fills the 44x44 window of skill_slot_steel (ui_icons), at 6,6."
+  },
+  "wind_whirlwind_tower": {
+   "name": "Whirlwind Tower",
+   "sheet": "docs/reference/icons-owner-reference-21.jpg",
+   "file": "wind_whirlwind_tower.png",
+   "file2x": "wind_whirlwind_tower@2x.png",
+   "size": [
+    44,
+    44
+   ],
+   "size2x": [
+    88,
+    88
+   ],
+   "label": "TORRE TORBEL",
+   "hisWindow": [
+    101,
+    103
+   ],
+   "method88": "area mean of his 101x103 pixels (too many to keep one to one), his thin lines and specks kept in their own colour, as the 44",
+   "palette": [
+    "#000201",
+    "#07101a",
+    "#101c26",
+    "#182831",
+    "#102c46",
+    "#21343c",
+    "#25404a",
+    "#1f4f5e",
+    "#424a4d",
+    "#525245",
+    "#325c65",
+    "#46647e",
+    "#3a6a76",
+    "#5e6a70",
+    "#4c757e",
+    "#4e8690",
+    "#7d807a",
+    "#5d8fb0",
+    "#5c969c",
+    "#7ca0a1",
+    "#7cb0c1",
+    "#72b6ac",
+    "#80bcc6",
+    "#90cacf",
+    "#b5c2c6",
+    "#9ad6d8",
+    "#a8e4e2",
+    "#bcf2f6"
+   ],
+   "paletteDetailOnly": [],
+   "paletteCovered": [
+    "#72b6ac",
+    "#525245",
+    "#b5c2c6",
+    "#5e6a70",
+    "#46647e",
+    "#102c46"
+   ],
+   "sampled": [],
+   "checks": {
+    "44": {
+     "small": 0,
+     "smallHis": 0,
+     "smallDrawn": 0,
+     "smallOther": 0,
+     "lowFreq": 1.31,
+     "lowFreqBoxOnPalette": 0.88,
+     "ssim": 0.709,
+     "ssimBox": 0.788,
+     "hue": 213,
+     "hueHis": 214,
+     "colours": 22,
+     "thinRun": [
+      10,
+      "row",
+      2
+     ]
+    },
+    "88": {
+     "small": 12,
+     "smallHis": 12,
+     "smallDrawn": 0,
+     "smallOther": 0,
+     "lowFreq": 1.09,
+     "lowFreqBoxOnPalette": 0.82,
+     "ssim": 0.929,
+     "ssimBox": 1,
+     "hue": 213,
+     "hueHis": 215,
+     "colours": 26,
+     "thinRun": [
+      12,
+      "row",
+      13
+     ]
+    }
+   },
+   "use": "Hotbar skill icon: fills the 44x44 window of skill_slot_steel (ui_icons), at 6,6."
+  }
+ }
+}

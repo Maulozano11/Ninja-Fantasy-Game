@@ -192,16 +192,18 @@ def spectrum_pitch(g):
     return float(1 / fr[np.argmax(np.where(m, f, 0))])
 
 
-def grid(a):
-    """His pixel grid on one sheet: pitch (x, y), phase (x, y) and the checks behind them."""
+def grid(a, size=NATIVE):
+    """His pixel grid on one sheet: pitch (x, y), phase (x, y) and the checks behind them. `size` is his
+    picture's size in his pixels (480x268; 240x134 on sheets 15 to 17 and 19, which
+    tools/refs/icons-from-ref-13.py crops)."""
     L = a.mean(2)
     H, W = L.shape
-    px, py = W / NATIVE[0], H / NATIVE[1]
+    px, py = W / size[0], H / size[1]
     gx = np.abs(np.diff(L, axis=1)).mean(0)  # edge energy between sheet column x and x + 1
     gy = np.abs(np.diff(L, axis=0)).mean(1)
     sx, sy = spectrum_pitch(gx), spectrum_pitch(gy)
     if abs(sx / px - 1) > 0.01 or abs(sy / py - 1) > 0.01:
-        sys.exit('his pixel grid is not %dx%d: the edges repeat every %.3f x %.3f sheet pixels' % (NATIVE + (sx, sy)))
+        sys.exit('his pixel grid is not %dx%d: the edges repeat every %.3f x %.3f sheet pixels' % (tuple(size) + (sx, sy)))
 
     def phase(g, p, n):
         best = None
@@ -214,8 +216,8 @@ def grid(a):
                 best = (e, ph)
         return best
 
-    ex, phx = phase(gx, px, NATIVE[0])
-    ey, phy = phase(gy, py, NATIVE[1])
+    ex, phx = phase(gx, px, size[0])
+    ey, phy = phase(gy, py, size[1])
     return {
         'pitch': [px, py],
         'spectrumPitch': [round(sx, 4), round(sy, 4)],
@@ -228,16 +230,16 @@ def cell_edges(p, ph, n):
     return [int(np.floor(ph + k * p)) for k in range(n + 1)]
 
 
-def native(a, g):
+def native(a, g, size=NATIVE):
     """His pixels: each the median of its block's interior (the block without its outer ring)."""
     H, W, _ = a.shape
-    xs = cell_edges(g['pitch'][0], g['phase'][0], NATIVE[0])
-    ys = cell_edges(g['pitch'][1], g['phase'][1], NATIVE[1])
-    out = np.zeros((NATIVE[1], NATIVE[0], 3))
+    xs = cell_edges(g['pitch'][0], g['phase'][0], size[0])
+    ys = cell_edges(g['pitch'][1], g['phase'][1], size[1])
+    out = np.zeros((size[1], size[0], 3))
     spread = []
-    for j in range(NATIVE[1]):
+    for j in range(size[1]):
         y0, y1 = max(0, ys[j]), min(H, ys[j + 1])
-        for i in range(NATIVE[0]):
+        for i in range(size[0]):
             x0, x1 = max(0, xs[i]), min(W, xs[i + 1])
             c = a[y0 + 1:y1 - 1, x0 + 1:x1 - 1] if (y1 - y0 > 2 and x1 - x0 > 2) else a[y0:y1, x0:x1]
             if c.size == 0:

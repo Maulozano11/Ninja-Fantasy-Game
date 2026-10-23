@@ -7,7 +7,7 @@
 // hangs from the arm like cloth (SLEEVE_HANG). The hair and the cloak are drawn in hair.ts and capes.ts.
 
 import { hexToRgb, retintHex } from '../color';
-import { armDepth, armJoints, type Depth, DrawCtx, handDraw, legDepth, legJoints, Side } from '../ctx';
+import { armDepth, armJoints, armReaches, type Depth, DrawCtx, handDraw, legDepth, legJoints, Side } from '../ctx';
 import { PaintedPiece, segAngle, stampPiece } from '../painted';
 import { F_NO_OUTLINE, F_NO_TEXTURE, GRID, Layer, partIndex, PartId, RES, v, Vec } from '../raster';
 import type { Rig } from '../rig';
@@ -354,14 +354,41 @@ export function ascendedPalm(r: Rig, s: Side): boolean {
   return shape === 'open' && (r.pose === 'throw' || r.pose.startsWith('cast'));
 }
 
+const MIRRORED = new Map<PaintedPiece, PaintedPiece>();
+/**
+ * A piece of his mirrored across its limb: each row reversed, its pivot mirrored with it and its angle a
+ * turned to 180 - a, so the side lit on his hanging near arm faces the light again on an arm held out. Every
+ * pixel and colour is his (the same mirror as Solen's far reach, tools/refs/solen-reach-from-ref.py).
+ */
+export function mirroredPiece(p: PaintedPiece): PaintedPiece {
+  let q = MIRRORED.get(p);
+  if (q) return q;
+  const w = Math.max(...p.rows.map((row) => row.length));
+  q = { ...p, pivot: [w - 1 - p.pivot[0], p.pivot[1]], angle: 180 - p.angle, rows: p.rows.map((row) => [...row.padEnd(w, '.')].reverse().join('')) };
+  MIRRORED.set(p, q);
+  return q;
+}
+
+/**
+ * Whether the far arm reaches out (ctx.ts armReaches: the cast at the runes, the combo's cross, the throw's
+ * pointing arm, the camp sit). He drew the far forearm hanging in shadow behind the body, 6 rows across:
+ * stretched out it reads thin, under the extended forearm rule (ctx.ts FOREARM_RULE, the owner on Ren: "pon
+ * como el antebrazo del modelo de lanzar jutsu ... y toda pose que tenga el brazo extendido de esa forma se
+ * vea asi"). Reaching out it is his near bandaged forearm and fist mirrored (8 rows, the rule's), as Solen's
+ * far arm is his near arm mirrored.
+ */
+export const ascendedFarReach = (r: Rig, s: Side): boolean => s === 'F' && armReaches(r, s);
+
 /**
  * His bandaged forearm on an arm of the rig, whole about the elbow, and his fist whole about the wrist
- * (none where the pose opens the hand: ascendedPalm).
+ * (none where the pose opens the hand: ascendedPalm); on the far arm reaching out, his near ones mirrored
+ * (ascendedFarReach).
  */
 export function wrapStamps(r: Rig, s: Side): ArmStamp[] {
   const j = armJoints(r, s);
-  const fore = s === 'N' ? WRAPS_FORE_N : WRAPS_FORE_F;
-  const fist = s === 'N' ? WRAPS_FIST_N : WRAPS_FIST_F;
+  const reach = ascendedFarReach(r, s);
+  const fore = s === 'N' ? WRAPS_FORE_N : reach ? mirroredPiece(WRAPS_FORE_N) : WRAPS_FORE_F;
+  const fist = s === 'N' ? WRAPS_FIST_N : reach ? mirroredPiece(WRAPS_FIST_N) : WRAPS_FIST_F;
   const out: ArmStamp[] = [{ name: 'fore', piece: fore, at: j.elbow, turn: segAngle(j.elbow, j.wrist) - fore.angle }];
   if (!ascendedPalm(r, s)) out.push({ name: 'fist', piece: fist, at: j.wrist, turn: segAngle(j.wrist, j.hand) - fist.angle });
   return out;
@@ -419,7 +446,9 @@ export function drawAscendedWraps(g: DrawCtx, main: string): void {
         stampPiece(g, over, t.piece, t.at, deg, prt('hand', s), tint);
         continue;
       }
-      const { inside, out } = foreParts(s);
+      // (the far arm reaching out wears his near forearm mirrored, cut where his near cuff covers it)
+      const near = foreParts('N');
+      const { inside, out } = ascendedFarReach(g.rig, s) ? { inside: mirroredPiece(near.inside), out: mirroredPiece(near.out) } : foreParts(s);
       stampPiece(g, armDepth(s, 'cloth'), inside, t.at, deg, prt('forearm', s), tint);
       stampPiece(g, over, out, t.at, deg, prt('forearm', s), tint);
     }

@@ -89,7 +89,8 @@ The face is a template copied pixel by pixel from the reference (`FACE_MAIN` and
     (`limbR` in `clothes.ts`, `forearmR` for bracers and sleeves in `armor.ts`), so a sleeve keeps its own cloth
     over the rule's forearm. His painted arms: Ren's far arm reaching out is his casting forearm in every pose
     (`nightArmStamps`; on the longer bulky forearm its wrist end is carried on to the wrist); Solen's far arm
-    reaching out is his near arm mirrored (`founderFarReach`, same test). His painted pieces keep his rows on
+    reaching out is his near arm mirrored (`founderFarReach`, same test). The Ascended set's far arm reaching out is his near bandaged
+    forearm and fist mirrored (`ascendedFarReach` in `items/ascended.ts`; his far forearm hangs in shadow, 6 rows). His painted pieces keep his rows on
     every body they are carried on.
   - An arm at rest is left as drawn (idle is his picture); `src/sprite/forearm.test.ts` checks the rule.
 - **Contact shadows:** skin is one shade darker for two rows under any sleeve, hem, collar or chin drawn over it (`castShadows` in `compose.ts`).

@@ -79,6 +79,25 @@ const presets = (): [string, SpriteAppearance, EyeSpecial][] => [
     })(),
     'none',
   ],
+  [
+    // the owner's Ascended set (his bandaged forearms; the far one reaching out is his near one mirrored)
+    'ascended',
+    (() => {
+      const l = defaultAppearance();
+      l.headband = { ...l.headband!, position: 'none' };
+      l.slots = {
+        hair: { id: 'hair_ascended', colors: [] },
+        cape: { id: 'cape_rogue', colors: [] },
+        top: { id: 'top_kimono', colors: [] },
+        bottom: { id: 'bottom_hakama', colors: [] },
+        waist: { id: 'waist_sash', colors: [] },
+        hands: { id: 'hands_wraps', colors: [] },
+        feet: { id: 'feet_wraps', colors: [] },
+      };
+      return l;
+    })(),
+    'none',
+  ],
 ];
 
 describe('the extended forearm (the owner\'s rule)', () => {
@@ -105,7 +124,7 @@ describe('the extended forearm (the owner\'s rule)', () => {
     }
   });
 
-  it('is never thinner than the rule in the cast and the combo, for every preset and the Roman', () => {
+  it('is never thinner than the rule in the cast and the combo, for every preset, the Roman and the Ascended set', () => {
     // Over the middle of the far forearm (a sleeve, bracer or vambrace over it may add to it). His painted
     // forearms keep his 8 rows on every body, so a body's rule counts from the smaller of the two.
     for (const [name, base, eye] of presets()) {

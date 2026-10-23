@@ -12,7 +12,8 @@ import * as kimono from './items/kimonoArt';
 import * as sash from './items/sashArt';
 import * as wraps from './items/wrapsArt';
 import type { Side } from './ctx';
-import { ascendedPalm, type ArmStamp, sleeveStamps, wrapStamps } from './items/ascended';
+import { ascendedFarReach, ascendedPalm, type ArmStamp, mirroredPiece, sleeveStamps, wrapStamps } from './items/ascended';
+import { armReaches } from './ctx';
 import { defaultAppearance } from './legacy';
 import { type PaintedPiece, segAngle } from './painted';
 import { GRID, partIndex, RES } from './raster';
@@ -187,6 +188,36 @@ describe('the Ascended set', () => {
         }
       }
     }
+  });
+
+  it('gives the far arm reaching out his near forearm and fist, mirrored (the extended forearm rule)', () => {
+    for (const body of ['male', 'bulky'] as BodyType[]) {
+      let seen = 0;
+      for (const pose of Object.keys(RIG_POSES) as (keyof typeof RIG_POSES)[])
+        for (let f = 0; f < frameCount(pose); f++) {
+          const rig = drawRig(body, pose, f);
+          const reach = armReaches(rig, 'F');
+          assert.equal(ascendedFarReach(rig, 'F'), reach);
+          assert.ok(!ascendedFarReach(rig, 'N'), `${body} ${pose} ${f}: only the far arm takes the near pieces`);
+          const fore = wrapStamps(rig, 'F').find((t) => t.name === 'fore')!.piece;
+          const fist = wrapStamps(rig, 'F').find((t) => t.name === 'fist')?.piece;
+          if (reach) {
+            seen++;
+            assert.equal(fore, mirroredPiece(wraps.WRAPS_FORE_N), `${body} ${pose} ${f}: his near forearm mirrored`);
+            if (fist) assert.equal(fist, mirroredPiece(wraps.WRAPS_FIST_N), `${body} ${pose} ${f}: his near fist mirrored`);
+          } else {
+            assert.equal(fore, wraps.WRAPS_FORE_F, `${body} ${pose} ${f}: his far forearm`);
+            if (fist) assert.equal(fist, wraps.WRAPS_FIST_F, `${body} ${pose} ${f}: his far fist`);
+          }
+        }
+      assert.ok(seen >= 10, `${body}: ${seen} frames with the far arm reaching out`);
+    }
+    // the mirror keeps every pixel of his: each row reversed, the angle turned to 180 - a
+    const m = mirroredPiece(wraps.WRAPS_FORE_N);
+    const w = Math.max(...wraps.WRAPS_FORE_N.rows.map((r) => r.length));
+    assert.deepEqual(m.rows.map((r) => [...r].reverse().join('')), wraps.WRAPS_FORE_N.rows.map((r) => r.padEnd(w, '.')));
+    assert.equal(m.angle, 180 - wraps.WRAPS_FORE_N.angle);
+    assert.equal(m.pivot[0], w - 1 - wraps.WRAPS_FORE_N.pivot[0]);
   });
 
   it('keeps the drawn items on the female body', () => {

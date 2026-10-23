@@ -1,6 +1,7 @@
 // Composites the base body and every equipped item into one GRID x GRID frame.
 
 import { drawBody, faceCells, sculptClothes } from './body';
+import { broadReadFrame, readsAsHisBroadMan } from './broadRead';
 import { fitsBody, getItem } from './catalog';
 import { hexToRgb } from './color';
 import { Depth, DEPTHS, DrawCtx, ItemDef, NO_OUTLINE_DEPTHS, resolveParts } from './ctx';
@@ -277,11 +278,17 @@ export function renderSprite(
   pose: SpritePose,
   frame: number,
   eyeSpecial: EyeSpecial = 'none',
-  opts: { skipEdits?: boolean; heldOnly?: Rig; depths?: ReadonlySet<Depth> } = {},
+  opts: { skipEdits?: boolean; heldOnly?: Rig; depths?: ReadonlySet<Depth>; skipOwner?: boolean } = {},
 ): SpriteFrame {
   // heldOnly: just the held item (or the kunai bare hands throw) on that rig, no body (sprite/thrown.ts).
   // depths: only these layers are shown (tests look at one limb alone, nothing in front of it).
   const rig = opts.heldOnly ?? drawRig(look.body, rigPoseFor(pose, look.cast?.style, look.stowed ? undefined : look.slots.held?.id), frame);
+  // skipOwner: our pieces even where the owner painted the whole frame himself (his broad man reading, broadRead.ts).
+  if (!opts.heldOnly && !opts.depths && !opts.skipOwner && readsAsHisBroadMan(look, pose)) {
+    const his = broadReadFrame(look, rig);
+    if (!opts.skipEdits && look.pixelEdits?.length) applyEdits(look.pixelEdits, rig, his.rgba, his.part);
+    return his;
+  }
   const mats = new MaterialTable();
   const layers = new Map<Depth, Layer>();
   const equipped = new Map<SlotId, ItemDef>();

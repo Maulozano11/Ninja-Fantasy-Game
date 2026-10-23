@@ -4,6 +4,8 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { describe, it } from 'node:test';
+import { BROAD_READ } from './broadReadArt';
+import { BROAD_READ_BASE, BROAD_READ_LOOK, readsAsHisBroadMan } from './broadRead';
 import { BULKY_BASE, BULKY_BASE_KIND, BULKY_BASE_REST, BULKY_BASE_SKIN } from './bulkyBaseArt';
 import { getItem } from './catalog';
 import { renderSprite } from './compose';
@@ -561,6 +563,8 @@ describe("his shirt on the normal male, in the Roman's style", () => {
       const look = his(body);
       for (const pose of POSES) {
         const n = frameCount(rigPoseFor(pose, look.cast?.style, look.slots.held?.id));
+        // (reading on the bulky body he is his own frame, his lock in it as he painted it: broadRead.ts)
+        if (readsAsHisBroadMan(look, pose)) continue;
         for (let fr = 0; fr < n; fr++) {
           const f = renderSprite(look, pose, fr);
           const lock = renderSprite(look, pose, fr, 'none', { depths: new Set(['hairOver']) });
@@ -587,12 +591,48 @@ describe("his shirt on the normal male, in the Roman's style", () => {
 });
 
 describe('the read on the bulky body', () => {
+  it("his broad man reads in the owner's own frame of him, every pixel his, in all 12 frames (\"aqui esta la referencia exacta q quiero\")", () => {
+    const cells = new Map<number, string>();
+    BROAD_READ.rows.forEach((row, j) => [...row].forEach((ch, k) => ch !== '.' && cells.set((BROAD_READ.at[1] + j) * GRID + BROAD_READ.at[0] + k, BROAD_READ.colors[ch])));
+    assert.ok(cells.size > 2000, `${cells.size} pixels`);
+    for (const look of [his('bulky'), BROAD_READ_LOOK]) {
+      for (let fr = 0; fr < frameCount(rigPoseFor('read')); fr++) {
+        const f = renderSprite(look, 'read', fr);
+        for (let i = 0; i < GRID * GRID; i++) {
+          const hex = cells.get(i);
+          if (!hex) {
+            assert.equal(f.rgba[i * 4 + 3], 0, `read ${fr}: a pixel at ${i % GRID},${Math.floor(i / GRID)} he did not paint`);
+            continue;
+          }
+          assert.deepEqual([...f.rgba.subarray(i * 4, i * 4 + 4)], [...hexRgb(hex), 255], `read ${fr}: ${i % GRID},${Math.floor(i / GRID)}`);
+        }
+      }
+    }
+  });
+  it('his frame follows the character: his skin, hair and eyes take theirs; his clothes in other colours, or more worn, are our pieces', () => {
+    const base = renderSprite(his('bulky'), 'read', 0);
+    const tan = renderSprite(his('bulky', { skin: '#8d5a3b' }), 'read', 0);
+    const skin = Object.values(BROAD_READ.kinds).filter((k) => k === 'skin').length;
+    assert.ok(skin > 5, `${skin} skin colours`);
+    let changed = 0;
+    for (let i = 0; i < GRID * GRID; i++) if (base.rgba[i * 4 + 3] && base.rgba[i * 4] !== tan.rgba[i * 4]) changed++;
+    assert.ok(changed > 150, `${changed} pixels follow the skin`);
+    for (let i = 0; i < GRID * GRID; i++) assert.equal(tan.rgba[i * 4 + 3], base.rgba[i * 4 + 3]);
+    assert.equal(BROAD_READ_BASE.skin, his('bulky').skin);
+    const red = his('bulky');
+    red.slots = { ...red.slots, top: { id: 'top_seam_shirt', colors: ['#8a1f1f'] } };
+    assert.ok(!readsAsHisBroadMan(red, 'read'));
+    assert.ok(!readsAsHisBroadMan({ ...his('bulky'), body: 'male' }, 'read'));
+    assert.ok(!readsAsHisBroadMan(his('bulky'), 'sit'));
+    assert.ok(readsAsHisBroadMan(his('bulky', { skin: '#8d5a3b' }), 'read'));
+  });
   /**
    * The top of the near upper arm (his shoulder and the shirt's sleeve over it) in each column of the
    * torso's frame: columns across the torso and heights up it, both from the neck, in fine pixels.
    */
+  // Our pieces, which every other bulky look reads with (his broad man reads in his own frame: broadRead.ts).
   const shoulderTop = (look: SpriteAppearance, pose: SpritePose, fr: number) => {
-    const f = renderSprite(look, pose, fr);
+    const f = renderSprite(look, pose, fr, 'none', { skipOwner: true });
     const r = f.rig;
     const u = Math.hypot(r.up.x, r.up.y);
     const [ux, uy] = [r.up.x / u, r.up.y / u];
@@ -629,7 +669,7 @@ describe('the read on the bulky body', () => {
   });
   it("the near shoulder is round: its back edge bows out past the straight cut from its top to its back (the owner, 2026-10-23: 'ahora redondea el hombro')", () => {
     for (let fr = 0; fr < frameCount(rigPoseFor('read')); fr++) {
-      const f = renderSprite(his('bulky'), 'read', fr);
+      const f = renderSprite(his('bulky'), 'read', fr, 'none', { skipOwner: true });
       const arm = (x: number, y: number) => f.rgba[(y * GRID + x) * 4 + 3] > 0 && PARTS[f.part[y * GRID + x]] === 'upperArmN';
       const jy = Math.floor(f.rig.shoulderN.y * RES) + 2;
       // each row's furthest pixel back, the shoulder's top (its first row three wide) and its back

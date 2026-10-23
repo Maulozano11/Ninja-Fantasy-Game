@@ -149,6 +149,13 @@ function castWristEnd(): PaintedPiece {
   return (CAST_WRIST = { ...p, rows });
 }
 
+/**
+ * The throw's free hand aimed at the target (the coil and the cock, the far hand pointing the way): his far
+ * arm as he cast the runes, his casting forearm and his casting fist on it, whole (the owner, on the throw's
+ * far arm and hand: "copia el que tiene para lanzar jutsu o el jab en el combo"; clothes.ts castFist).
+ */
+export const throwAimsCast = (r: Rig, s: Side): boolean => r.pose === 'throw' && s === 'F' && armJoints(r, s).shape === 'point';
+
 /** One of his pieces where an arm stamps it: about which joint, along which angle (stampPiece). */
 export interface ArmStamp {
   piece: PaintedPiece;
@@ -182,10 +189,10 @@ export function nightArmStamps(r: Rig, s: Side): ArmStamp[] {
     const cast = arm(s, NIGHT_CAST_FORE_N, NIGHT_CAST_FORE_F);
     const deg = segAngle(j.elbow, j.wrist);
     const out: ArmStamp[] = [{ piece: cast, at: j.elbow, deg, part: fp, name: 'fore' }];
-    // Off the cast (where his own fist covers the wrist) a forearm longer than the male one he painted (the
+    // Off the cast and the throw's aim (where his own casting fist covers the wrist) a forearm longer than the male one he painted (the
     // bulky body) has his wrist end carried on along the bone to our wrist, so no gap opens before the glove.
     const extra = Math.hypot(j.wrist.x - j.elbow.x, j.wrist.y - j.elbow.y) * RES - CAST_FORE_LEN;
-    if (r.pose !== 'cast' && s === 'F' && extra > 0) {
+    if (r.pose !== 'cast' && !throwAimsCast(r, s) && s === 'F' && extra > 0) {
       const d = Math.ceil(extra) / RES;
       const a = (deg * Math.PI) / 180;
       out.push({ piece: castWristEnd(), at: add(j.elbow, v(Math.cos(a) * d, Math.sin(a) * d)), deg, part: fp, name: 'fore' });

@@ -269,6 +269,8 @@ describe("the owner's Ren", () => {
           const g = { rig, look: l, has: (slot: string, id: string) => (l.slots as Record<string, { id: string } | undefined>)[slot]?.id === id } as unknown as DrawCtx;
           const hold = s === 'N' ? paintedGrip(g) : null;
           const fists = nightFistStamps(rig, s, hold);
+          // (the throw's far hand aimed at the target is his casting fist, cuff and all: see the throw's test)
+          if (fists[0].piece === cast.NIGHT_CAST_FIST_F) continue;
           const cuff = fists.find((t) => t.name === 'cuff')!;
           const turn = (cuff.mirror ? 180 - cuff.piece.angle : cuff.piece.angle) + cuff.turn - fore.deg;
           assert.ok(Math.abs(((turn % 360) + 540) % 360 - 180) < 1, `${where}: the cuff leaves the forearm`);
@@ -358,6 +360,44 @@ describe("the owner's Ren", () => {
     // his colours mean the same in his cast arms as in his gloves and jacket (the items recolour them by kind)
     for (const [h, k] of Object.entries(cast.NIGHT_CAST_KIND)) {
       for (const other of [kit.NIGHT_KIT_KIND, jacket.NIGHT_JACKET_KIND] as Record<string, string>[]) if (other[h]) assert.equal(other[h], k, h);
+    }
+  });
+
+  it("throwing, aims his far arm as he casts: his casting forearm and fist, whole, at his size", () => {
+    // the owner on the throw: "en arrojar el brazo y mano izquierdo del personaje se ve mal copia el que tiene
+    // para lanzar jutsu o el jab en el combo"
+    const cells = (p: PaintedPiece) => p.rows.join('').replace(/\./g, '').length;
+    for (const body of ['male', 'bulky'] as BodyType[]) {
+      for (let frame = 0; frame < frameCount('throw'); frame++) {
+        const rig = drawRig(body, 'throw', frame);
+        const where = `${body} throw ${frame}`;
+        const fore = nightArmStamps(rig, 'F').filter((t) => t.name === 'fore');
+        const fists = nightFistStamps(rig, 'F', null);
+        if (rig.shapeF !== 'point') {
+          // swung back behind him (the throw, the release): not his casting arm
+          assert.ok(!fists.some((t) => t.piece === cast.NIGHT_CAST_FIST_F), where);
+          continue;
+        }
+        assert.equal(fore[0].piece, cast.NIGHT_CAST_FORE_F, where);
+        assert.equal(whole(fore[0].piece, fore[0].deg - fore[0].piece.angle), null, `${where} forearm`);
+        assert.deepEqual(fists.map((t) => t.piece), [cast.NIGHT_CAST_FIST_F], where);
+        assert.equal(fists[0].at, undefined, `${where}: on the wrist`);
+        assert.equal(whole(fists[0].piece, fists[0].turn), null, `${where} fist`);
+        // his fist at his size, not our open hand: the far hand drawn is about his fist's cells, all his colours
+        const fr = renderSprite({ ...look(), body }, 'throw', frame, dojutsuToEye(REN.dojutsu));
+        const hand = partIndex('handF');
+        const his = new Set(Object.values(cast.NIGHT_CAST_FIST_F.colors).map((h) => h.toLowerCase()));
+        let n = 0;
+        let mine = 0;
+        for (let i = 0; i < GRID * GRID; i++) {
+          if (fr.part[i] !== hand || !opaque(fr.rgba, i)) continue;
+          n++;
+          if (his.has(hex(fr.rgba, i)) || cast.NIGHT_CAST_KIND[hex(fr.rgba, i)] !== undefined) mine++;
+        }
+        const size = cells(cast.NIGHT_CAST_FIST_F);
+        assert.ok(n >= 0.8 * size && n <= 1.15 * size, `${where}: the far hand ${n} pixels, his fist ${size}`);
+        assert.ok(mine >= 0.9 * n, `${where}: ${n - mine} of the far hand's pixels not his`);
+      }
     }
   });
 

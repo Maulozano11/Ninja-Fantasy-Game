@@ -1162,17 +1162,21 @@ function stretched(p: PaintedPiece, left: number, right: number, down: number, f
   const spread = (a: number, b: number, n: number) => new Set(Array.from({ length: n }, (_, k) => Math.round(a + ((b - a) * (k + 0.5)) / n)));
   const cols = new Set([...spread(2, p.pivot[0] - 1, left), ...spread(p.pivot[0] + 1, w - 3, right)]);
   const rows = spread(from, to, down);
-  const out: string[] = [];
-  p.rows.forEach((r, j) => {
-    const row = r.padEnd(w, '.').split('').map((ch, i) => (cols.has(i) ? ch + ch : ch)).join('');
-    out.push(row);
-    if (rows.has(j)) out.push(row);
-  });
+  const grow = (src: string[]) => {
+    const out: string[] = [];
+    src.forEach((r, j) => {
+      const row = r.padEnd(w, '.').split('').map((ch, i) => (cols.has(i) ? ch + ch : ch)).join('');
+      out.push(row);
+      if (rows.has(j)) out.push(row);
+    });
+    return out;
+  };
   let px = p.pivot[0];
   for (const c of cols) if (c < p.pivot[0]) px++;
   let py = p.pivot[1];
   for (const j of rows) if (j < p.pivot[1]) py++;
-  return { ...p, rows: out, pivot: [px, py] };
+  // An open edge (PaintedPiece.seal) is stretched with its piece.
+  return { ...p, rows: grow(p.rows), pivot: [px, py], ...(p.seal ? { seal: grow(p.seal) } : {}) };
 }
 
 /**

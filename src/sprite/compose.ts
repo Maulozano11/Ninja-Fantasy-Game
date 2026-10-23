@@ -30,9 +30,10 @@ export interface SpriteFrame {
 }
 
 /** Depths drawn in head-local units and shrunk around the head center by `headScale`. */
-const HEAD_GROUP = new Set<Depth>(['hairBack', 'head.body', 'head.face', 'head.mask', 'hairFront', 'head.gear']);
+const HEAD_GROUP = new Set<Depth>(['hairBack', 'head.body', 'head.face', 'head.mask', 'hairFront', 'head.gear', 'hairOver']);
 const HAIR_BACK = DEPTHS.indexOf('hairBack');
 const HAIR_FRONT = DEPTHS.indexOf('hairFront');
+const HAIR_OVER = DEPTHS.indexOf('hairOver');
 const FX = DEPTHS.indexOf('top');
 
 // Slots are drawn in this order; within a depth, later items cover earlier ones.
@@ -414,7 +415,7 @@ export function renderSprite(
   const hair = new Uint8Array(N >> 3);
   const fx = new Uint8Array(N >> 3);
   for (let i = 0; i < N; i++) {
-    if (top[i] === HAIR_BACK || top[i] === HAIR_FRONT) hair[i >> 3] |= 1 << (i & 7);
+    if (top[i] === HAIR_BACK || top[i] === HAIR_FRONT || top[i] === HAIR_OVER) hair[i >> 3] |= 1 << (i & 7);
     if (top[i] === FX) fx[i >> 3] |= 1 << (i & 7);
   }
 

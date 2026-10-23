@@ -1647,6 +1647,25 @@ function trimSkull(g: DrawCtx, p: PaintedPart): void {
 }
 
 /**
+ * A pixel a lean or a turn leaves open inside the lock (three or four of its four neighbours the lock's)
+ * takes the colour most of them have: lying over the body, the lock shows nothing of it through a hole.
+ * As he drew it the lock has none.
+ */
+function closeLock(L: Layer): void {
+  const fill: [number, number][] = [];
+  for (let y = 1; y < GRID - 1; y++)
+    for (let x = 1; x < GRID - 1; x++) {
+      const i = y * GRID + x;
+      if (L.mat[i] >= 0) continue;
+      const nb = [i - 1, i + 1, i - GRID, i + GRID].filter((j) => L.mat[j] >= 0);
+      if (nb.length < 3) continue;
+      const n = (j: number) => nb.filter((k) => L.mat[k] === L.mat[j]).length;
+      fill.push([i, nb.reduce((a, j) => (n(j) > n(a) ? j : a))]);
+    }
+  for (const [i, j] of fill) L.set(i % GRID, (i / GRID) | 0, L.mat[j], L.shade[j], 'head', L.flags[j]);
+}
+
+/**
  * The owner's broad man's long lock (lockHairArt.ts), pinned on the face anchor as he drew it and leaned
  * with the body: it lies on the chest. A small lean shears it, each row moved across whole (his pixels
  * only stepped); past 20 degrees it is turned with RotSprite.
@@ -1659,6 +1678,7 @@ function paintedLock(g: DrawCtx, L: Layer, p: PaintedPiece, color: (ch: string, 
   L.noFray = true;
   if (Math.abs(d) > 20) {
     stampTemplate(L, p, v((nx + 0.5) / RES, (ny + 0.5) / RES), d, pal, 'head', { flags: F_NO_TEXTURE | F_NO_OUTLINE });
+    closeLock(L);
     return;
   }
   const sn = Math.sin((d * Math.PI) / 180);
@@ -1668,7 +1688,7 @@ function paintedLock(g: DrawCtx, L: Layer, p: PaintedPiece, color: (ch: string, 
       const ch = row[i];
       if (ch !== '.') L.set(nx - p.pivot[0] + i + dx, ny - p.pivot[1] + j, pal[ch][0], 3, 'head', F_NO_TEXTURE | F_NO_OUTLINE);
     }
-  });
+  });  closeLock(L);
 }
 
 /** His broad man's hair recoloured: his black line stays, his yellows and browns move the way his lit yellow does. */
@@ -1882,7 +1902,9 @@ export const HAIR_ITEMS: ItemDef[] = [
       const tint = lockHairColor(c);
       paintedHair(g, g.L('hairBack'), LOCK_HAIR_BACK, tint);
       paintedHair(g, g.L('hairFront'), LOCK_HAIR_FRONT, tint);
-      paintedLock(g, g.L('hairFront'), LOCK_HAIR_LOCK, tint);
+      // His lock lies over the shirt, its collar and the near shoulder (the owner: "corrige la coleta del
+      // peinado que debe ir encima de la ropa y cuerpo"): over the body and every piece of clothing.
+      paintedLock(g, g.L('hairOver'), LOCK_HAIR_LOCK, tint);
       trimSkull(g, LOCK_HAIR_BACK);
     },
   },

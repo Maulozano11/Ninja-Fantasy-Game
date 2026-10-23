@@ -100,7 +100,7 @@ function extraColumns(body: Rig['body'], widen: Limb['widen'], p: PaintedPiece):
 }
 
 /** Whether the layer's outline pass will turn this pixel into outline (raster.ts Layer.applyOutline). */
-function isEdge(L: Layer, i: number): boolean {
+export function isEdge(L: Layer, i: number): boolean {
   if (!L.outline || L.flags[i] & F_NO_OUTLINE) return false;
   const x = i % GRID;
   const y = (i / GRID) | 0;

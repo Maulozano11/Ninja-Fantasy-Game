@@ -180,11 +180,14 @@ folders.
       python3 -I tools/refs/jeans-from-ref.py src/sprite/items/jeansArt.ts [studyDir]
       python3 -I tools/refs/brawler-boots-from-ref.py src/sprite/items/brawlerBootsArt.ts [studyDir]
 - `seam-shirt-male-from-ref.py`: the broad man's shirt on the normal male in his Roman's style (the owner, 2026-10-23:
-  "copia el estilo que tiene romano y pasa los colores de pixel a ese y pasa los brazos de romano a ese"). The pieces
-  are the Roman's chest and shoulder guards (`roman_ref.pieces()`, cell for cell, his black line kept); each other
-  colour of his takes the shirt colour of the same lightness rank (`seam-shirt-from-ref.py`'s `lift()`), and the
-  shirt's silver seams are carried onto them, each measured along and across its bone in both pictures, touching
-  seam pixels kept joined. The arms below the guards are the male's own (the Roman skin).
+  "copia el estilo que tiene romano y pasa los colores de pixel a ese", then "quitale la hombrera y solo ponle la
+  camisa pegada al cuerpo base", "si quiero el cuello alto de la camisa", "si tiene mangas la camisa ... camisa
+  pegada al cuerpo"). The chest is the Roman's (`roman_ref.pieces()`, cell for cell, his black line kept, its far
+  line run on under his far guard), the broad man's high collar pasted round the neck; the sleeves are the
+  Roman's upper arms (`roman-skin-from-ref.py`'s `lift()`) where the broad man's sleeve covers the arm, down to his
+  hem. Each colour of the Roman's takes the shirt colour of the same lightness rank (`seam-shirt-from-ref.py`'s
+  `lift()`); the shirt's silver seams are carried onto the chest, each measured along and across its bone in both
+  pictures. No shoulder guards. Below the sleeves the arms are the male's own (the Roman skin).
 
       python3 -I tools/refs/seam-shirt-male-from-ref.py src/sprite/items/seamShirtMaleArt.ts [studyDir]
 - `solen_ref.py` + `solen-*-from-ref.py`: the owner's Solen (`docs/reference/solen-owner-reference.jpg`, the new

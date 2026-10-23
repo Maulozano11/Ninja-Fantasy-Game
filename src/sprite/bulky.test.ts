@@ -19,6 +19,7 @@ import * as cuirass from './items/bronzeCuirassArt';
 import { LEGENDARY_PRESETS } from '../data/shinobiData';
 import { defaultAppearance } from './legacy';
 import type { PaintedPiece } from './painted';
+import { DEPTHS } from './ctx';
 import { GRID, PARTS, RES, Vec } from './raster';
 import { drawRig, frameCount, rigPoseFor, type Rig } from './rig';
 import { STERN_HEAD } from './sternFaceArt';
@@ -196,7 +197,11 @@ describe("the owner's bare broad man (the bulky body)", () => {
       return out;
     };
     const touch = (a: Set<number>, b: Set<number>) => [...a].some((i) => [-1, 1, -GRID, GRID, -GRID - 1, -GRID + 1, GRID - 1, GRID + 1].some((d) => b.has(i + d)));
-    for (const [k, f] of frames(bare())) {
+    // His long lock lies over the body (hairOver): the limbs are looked at under it.
+    const underLock = new Set(DEPTHS.filter((d) => d !== 'hairOver'));
+    const look = bare();
+    const limbFrames = POSES.flatMap((pose) => Array.from({ length: frameCount(rigPoseFor(pose, look.cast?.style, look.slots.held?.id)) }, (_, fr) => [`${look.body} ${pose} ${fr}`, renderSprite(look, pose, fr, 'none', { depths: underLock })] as const));
+    for (const [k, f] of limbFrames) {
       // Every part there, each joint closed (the parts either side of it touch) and below the knee the shin
       // and foot one piece; the far leg and arm only there, the near leg and the torso can hide any of them.
       for (const s of ['N', 'F']) {
@@ -455,64 +460,121 @@ describe('fitting his pieces to another body', () => {
 
 describe("his shirt on the normal male, in the Roman's style", () => {
   // The owner (2026-10-23): "copia el estilo que tiene romano y pasa los colores de pixel a ese y pasa los
-  // brazos de romano a ese" (tools/refs/seam-shirt-male-from-ref.py).
-  const pieces: [string, PaintedPiece, PaintedPiece][] = [
-    ['SHIRT_MALE_CHEST', shirtMale.SHIRT_MALE_CHEST, cuirass.CUIRASS_CHEST],
-    ['SHIRT_MALE_GUARD_N', shirtMale.SHIRT_MALE_GUARD_N, cuirass.CUIRASS_GUARD_N],
-    ['SHIRT_MALE_GUARD_F', shirtMale.SHIRT_MALE_GUARD_F, cuirass.CUIRASS_GUARD_F],
-  ];
+  // brazos de romano a ese"; then "quitale la hombrera y solo ponle la camisa pegada al cuerpo base", "si
+  // tiene mangas la camisa ... simplemente es una camisa pegada al cuerpo", "si quiero el cuello alto de la
+  // camisa" (tools/refs/seam-shirt-male-from-ref.py).
+  const SLEEVES = [shirtMale.SHIRT_MALE_SLEEVE_N, shirtMale.SHIRT_MALE_SLEEVE_F];
+  const male = his('male');
+  const all = [...frames(male)];
 
-  it("each piece is the Roman's piece cell for cell, hung where his hangs, his black line where he drew it", () => {
-    for (const [name, mine, his] of pieces) {
-      assert.deepEqual(shirtMale.SHIRT_MALE_REST[name], cuirass.CUIRASS_REST[name.replace('SHIRT_MALE', 'CUIRASS')], name);
-      assert.deepEqual(mine.pivot, his.pivot, name);
-      assert.equal(mine.angle, his.angle, name);
-      assert.equal(mine.rows.length, his.rows.length, name);
-      mine.rows.forEach((row, j) => {
-        assert.equal(row.length, his.rows[j].length, `${name} row ${j}`);
-        for (let i = 0; i < row.length; i++) {
-          assert.equal(row[i] === '.', his.rows[j][i] === '.', `${name} ${i},${j}`);
-          if (row[i] === '.') continue;
-          const line = cuirass.CUIRASS_KIND[his.colors[his.rows[j][i]]] === 'line';
-          assert.equal(shirtMale.SHIRT_MALE_KIND[mine.colors[row[i]]] === 'line', line, `${name} ${i},${j}: his line stays his line`);
-          if (line) assert.equal(mine.colors[row[i]], his.colors[his.rows[j][i]], `${name} ${i},${j}`);
-        }
-      });
+  it('is a shirt: the chest and two sleeves, no shoulder guard', () => {
+    const pieces = Object.entries(shirtMale).filter(([, v]) => typeof v === 'object' && v !== null && 'rows' in v).map(([k]) => k);
+    assert.deepEqual(pieces.sort(), ['SHIRT_MALE_CHEST', 'SHIRT_MALE_SLEEVE_F', 'SHIRT_MALE_SLEEVE_N']);
+    // No colour of the Bronze Cuirass's guards' shapes is drawn: at rest nothing of the shirt stands out
+    // past the bare male's shoulders.
+    const f = renderSprite(male, 'idle', 0);
+    const bare = renderSprite({ ...male, slots: { ...male.slots, top: undefined } }, 'idle', 0);
+    for (let i = 0; i < GRID * GRID; i++) {
+      if (!opaque(f.rgba, i) || opaque(bare.rgba, i)) continue;
+      assert.ok(!['upperArmN', 'upperArmF'].includes(PARTS[f.part[i]]), `shirt past the shoulder at ${i % GRID},${(i / GRID) | 0}`);
     }
   });
 
-  it("every other colour is one of his shirt's (within 3, as the converters pack his colours)", () => {
+  it("the chest is the Roman's chest cell for cell below his high collar, its far line run on where his guard hid it", () => {
+    const mine = shirtMale.SHIRT_MALE_CHEST;
+    const his = cuirass.CUIRASS_CHEST;
+    assert.deepEqual(shirtMale.SHIRT_MALE_REST.SHIRT_MALE_CHEST, cuirass.CUIRASS_REST.CUIRASS_CHEST);
+    assert.deepEqual(mine.pivot, his.pivot);
+    assert.equal(mine.angle, his.angle);
+    assert.equal(mine.rows.length, his.rows.length);
+    // collar: the first four rows; the far line: column 17 down to row 10
+    mine.rows.forEach((row, j) => {
+      if (j < 4) return;
+      for (let i = 0; i < Math.max(row.length, his.rows[j].length); i++) {
+        const a = (row[i] ?? '.') !== '.';
+        const b = (his.rows[j][i] ?? '.') !== '.';
+        if (i === 17 && j <= 10) assert.ok(a, `far line ${i},${j}`);
+        else assert.equal(a, b, `chest ${i},${j}`);
+      }
+    });
+  });
+
+  it("every colour but the black line is one of his shirt's (within 3, as the converters pack his colours)", () => {
     const his = [...new Set([shirt.SHIRT_TORSO, shirt.SHIRT_SLEEVE_N, shirt.SHIRT_SLEEVE_F, shirt.SHIRT_CAP_N, shirt.SHIRT_CAP_F].flatMap((p) => Object.values(p.colors)))].map(hexRgb);
-    for (const [name, mine] of pieces)
+    for (const mine of [shirtMale.SHIRT_MALE_CHEST, ...SLEEVES])
       for (const hex of Object.values(mine.colors)) {
         if (shirtMale.SHIRT_MALE_KIND[hex] === 'line') continue;
         const c = hexRgb(hex);
-        assert.ok(
-          his.some((h) => h.every((v, k) => Math.abs(v - c[k]) <= 3)),
-          `${name} ${hex}`,
-        );
+        assert.ok(his.some((h) => h.every((v, k) => Math.abs(v - c[k]) <= 3)), hex);
       }
   });
 
-  it("below the guards the arms are the male's own bare arms, in the Roman's skin", () => {
-    // At rest every pixel of the upper arms is the bare male's or the shirt's guard over it: no sleeve of
-    // the broad man's refitted, no arm of ours cut away under it.
-    const dressed = renderSprite(his('male'), 'idle', 0);
-    const bare = renderSprite({ ...his('male'), slots: { ...his('male').slots, top: undefined } }, 'idle', 0);
-    const guard = new Set([shirtMale.SHIRT_MALE_GUARD_N, shirtMale.SHIRT_MALE_GUARD_F].flatMap((p) => Object.values(p.colors)).map((h) => h.toLowerCase()));
+  it('shows no skin at the shoulders in any pose or frame: the sleeves cover the top of both arms', () => {
+    // A pixel of an upper arm in its first third from the shoulder (and the round of the shoulder above
+    // it) is never skin (warm: red well above blue); the shirt's colours are blacks, blue-greys and silvers.
+    for (const [k, f] of all) {
+      const r = f.rig;
+      for (const s of ['N', 'F'] as const) {
+        const sh = s === 'N' ? r.shoulderN : r.shoulderF;
+        const el = s === 'N' ? r.elbowN : r.elbowF;
+        const len = Math.hypot(el.x - sh.x, el.y - sh.y);
+        const part = PARTS.indexOf(`upperArm${s}` as never);
+        for (let i = 0; i < GRID * GRID; i++) {
+          if (f.part[i] !== part || !opaque(f.rgba, i)) continue;
+          const t = (((i % GRID) + 0.5) / RES - sh.x) * ((el.x - sh.x) / len) + ((((i / GRID) | 0) + 0.5) / RES - sh.y) * ((el.y - sh.y) / len);
+          if (t > len / 3) continue;
+          assert.ok(f.rgba[i * 4] - f.rgba[i * 4 + 2] <= 50, `${k}: skin at the ${s === 'N' ? 'near' : 'far'} shoulder, ${i % GRID},${(i / GRID) | 0}`);
+        }
+      }
+    }
+  });
+
+  it("below the sleeves the arms are the male's own bare arms, in the Roman's skin", () => {
+    // At rest every pixel of the upper arms below the sleeve's hem (and its line) is the bare male's: no
+    // sleeve of the broad man's refitted, no arm of ours cut away under it.
+    const dressed = renderSprite(male, 'idle', 0);
+    const bare = renderSprite({ ...male, slots: { ...male.slots, top: undefined } }, 'idle', 0);
+    const sleeve = new Set(SLEEVES.flatMap((p) => Object.values(p.colors)).map((h) => h.toLowerCase()));
     const hexAt = (i: number) => '#' + [0, 1, 2].map((c) => dressed.rgba[i * 4 + c].toString(16).padStart(2, '0')).join('');
     const isArm = (i: number) => ['upperArmN', 'upperArmF'].includes(PARTS[dressed.part[i]]);
-    // Below the guards (and the row or two of his skin shading under their lower edge): the bare male's arm.
-    let below = 0;
-    for (let i = 0; i < GRID * GRID; i++) if (isArm(i) && guard.has(hexAt(i))) below = Math.max(below, ((i / GRID) | 0) + 3);
-    let arm = 0;
-    for (let i = below * GRID; i < GRID * GRID; i++) {
-      if (!isArm(i)) continue;
-      assert.ok(!guard.has(hexAt(i)), `guard pixel below the guards at ${i % GRID},${(i / GRID) | 0}`);
-      assert.ok([0, 1, 2, 3].every((c) => dressed.rgba[i * 4 + c] === bare.rgba[i * 4 + c]), `upper arm pixel ${i % GRID},${(i / GRID) | 0}`);
-      arm++;
+    for (const side of ['upperArmN', 'upperArmF']) {
+      let below = 0;
+      for (let i = 0; i < GRID * GRID; i++) if (PARTS[dressed.part[i]] === side && sleeve.has(hexAt(i))) below = Math.max(below, ((i / GRID) | 0) + 1);
+      let arm = 0;
+      for (let i = below * GRID; i < GRID * GRID; i++) {
+        if (!isArm(i) || PARTS[dressed.part[i]] !== side) continue;
+        assert.ok([0, 1, 2, 3].every((c) => dressed.rgba[i * 4 + c] === bare.rgba[i * 4 + c]), `upper arm pixel ${i % GRID},${(i / GRID) | 0}`);
+        arm++;
+      }
+      // The sleeve ends about halfway down the upper arm, as his do (bulky-owner-reference.jpg); at rest
+      // the far arm shows only a strip beside the chest.
+      assert.ok(arm >= 3, `${side}: ${arm} bare upper arm pixels below the sleeve`);
     }
-    assert.ok(arm > 12, `${arm} bare upper arm pixels`);
+  });
+
+  it('his long lock lies over the shirt, the collar, the arms and everything else, whole, in every pose and frame', () => {
+    // The owner: "corrige la coleta del peinado que debe ir encima de la ropa y cuerpo".
+    for (const body of ['male', 'bulky'] as BodyType[]) {
+      const look = his(body);
+      for (const pose of POSES) {
+        const n = frameCount(rigPoseFor(pose, look.cast?.style, look.slots.held?.id));
+        for (let fr = 0; fr < n; fr++) {
+          const f = renderSprite(look, pose, fr);
+          const lock = renderSprite(look, pose, fr, 'none', { depths: new Set(['hairOver']) });
+          let shown = 0;
+          let px = 0;
+          for (let i = 0; i < GRID * GRID; i++) {
+            if (!opaque(lock.rgba, i)) continue;
+            px++;
+            if ([0, 1, 2].every((c) => f.rgba[i * 4 + c] === lock.rgba[i * 4 + c])) shown++;
+          }
+          assert.ok(px > 40, `${body} ${pose} ${fr}: ${px} lock pixels`);
+          // Drawn alone, a lock turned by RotSprite may get a pinhole or two closed (holes.ts) that the whole
+          // figure, with the body behind the lock, does not need.
+          assert.ok(px - shown <= 2, `${body} ${pose} ${fr}: ${px - shown} of the lock's pixels covered`);
+        }
+      }
+    }
   });
 
   it('the bulky body keeps his own shirt (seamShirtArt.ts), unchanged', () => {

@@ -73,6 +73,8 @@ export const DEPTHS = [
   'nearArm.cloth',
   'nearArm.armor',
   'nearArm.over',
+  // hair that lies over the body and the clothes (the broad man's long lock over the chest and shoulder)
+  'hairOver',
   'top',
 ] as const;
 export type Depth = (typeof DEPTHS)[number];

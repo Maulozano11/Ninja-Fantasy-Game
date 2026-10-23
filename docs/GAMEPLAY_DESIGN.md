@@ -300,7 +300,23 @@ que hiciste para la hotbar no me gustaron los mejorare"*.
   (`IMBUE_PENDING` in `src/battle/imbue.ts`); its rules (the longer reach, the flames put out) stay for then.
 - The hotbar icons: he did not like ours (the element icons the button shows); **he will paint them himself**.
   Ours stay on the button only until his arrive.
-- The numbers and the Spanish name below are still our proposal; he has not changed them.
+
+**His answers to the four open questions (2026-10-23), verbatim:** *"1 si me gusta dime que haria cada elemento
+(ejemplo: fuego efecto Burn o quemado ) 2 aprovado 3 tambien segundo elemento al momento de desbloquear , 4 no"*.
+1. The numbers are **decided** as proposed below: a bonus action, 2 chakra, 3 turns, +1d4 a blow, and each
+   element's rider in the table (fire's crit burns, lightning's crit numbs 2 rounds, wind's crit blows the foe
+   back 1.5 m, water +1.5 m reach and puts out flames, earth's obsidian crits on a natural 19).
+2. The Spanish name *Potenciación elemental del arma*, button *Arma elemental*: **approved**.
+3. **The second element too, once it is unlocked** (the level-5 choice of a second element,
+   `rules/natureGrowth.ts`; never the third of Triple Nature): a Bukijutsu Master with a second element can
+   put either of its elements on the weapon, one at a time. The hotbar shows a button for each ("Arma
+   elemental · Fuego", "Arma elemental · Rayo"), in its element's colour; with one element, one button as
+   before. A ninja whose type has no element (Light, Void) but whose second element is one has it for that
+   one. Water stays held back as a second element too while it waits for his yes. The AI picks: water when
+   only its longer reach brings the foe within a blow this turn; not fire at a foe already burning or
+   standing in the wet, nor water at a burning foe; otherwise its chakra type's (`imbueChoice` in
+   `src/battle/ai.ts`; `unitImbueElements`, `imbueNaturesOf` in `src/battle/imbue.ts`).
+4. Thrown weapons: **no** (as built).
 
 The owner, verbatim: *"ok ahora para la clase de maestro de armas , agregale weapon
 element enhacement como habilidad y le pondra un efecto de animacion a las armas (si
@@ -318,12 +334,13 @@ genjutsu, solo elemental )"*.
   effects. Earth: sharp obsidian forms on the weapon.
 - Only the five elements; never genjutsu.
 
-**The builder's proposal (his numbers wanted; constants in `src/battle/imbue.ts`):**
+**The rules (proposed by the builder, decided by him on 2026-10-23 as above; constants in `src/battle/imbue.ts`):**
 - Spanish name *Potenciación elemental del arma* (his own English name, translated);
-  the button reads *Arma elemental*. He names things: rename freely. Id `weapon_element`.
+  the button reads *Arma elemental* (approved). Id `weapon_element`.
 - Who: a Bukijutsu Master whose chakra type is Fire, Water, Wind, Lightning or Earth
   (its main element, the one its chakra type says; Light and Void, and the pending
-  Shadow and Spirit, have none to give, so the button is not there). From level 1, as
+  Shadow and Spirit, have none to give), or whose unlocked second element is one (his
+  answer 3 above). From level 1, as
   the class's own ability, after the clan's on the hotbar. The rogues (Fire Bukijutsu
   Masters) have it too.
 - How: a **bonus action, 2 chakra**, no hand seals (chakra worked into the weapon in
@@ -337,7 +354,7 @@ genjutsu, solo elemental )"*.
   it the maximum of two dice, 8, the owner's crit rule), landed right after the blow's
   damage (a clone, Kawarimi or Evasion that stops the blow stops it too). Water, wind
   and earth deal what their jutsu deal, as the game has no such damage types:
-  | Element | Damage | And (proposal) |
+  | Element | Damage | And (decided) |
   |---|---|---|
   | Fire | fire | a critical hit sets the foe **burning** (not on wet ground); a fire blade seals a hydra stump it has just cut |
   | Lightning | lightning | a critical hit leaves the foe **Numb** (2 rounds); a lightning blade seals a hydra stump too; Downpour makes it hit harder, as all lightning |

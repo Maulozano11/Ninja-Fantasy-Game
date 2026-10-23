@@ -190,6 +190,17 @@ Merge checks (`git merge-tree` on the origin tips, nothing changed):
   mas corta que en la referencia arregla esto alargandola y poniendola pixel a pixel con mi referencia"*):
   about 10 columns longer, laid unturned where his sit guard falls on each read frame's (his guard is the same
   in all of them); the read guard and grip and everything else stay his read pixels.
+- Saya sitting and reading like Lyra (`heroine/saya-sit-read`, from `heroine/saya-v2` with `heroine/lyra-v2`
+  merged; the owner, 2026-10-23: *"mandame a saya en gif completa para aprovar y espero que tenga el sentada
+  y leer similar a lyra"*), waiting for his look: on his Lyra's seated rig (READ and FIT_SIT, his joints) and
+  his two rocks, with her own parts; his Lyra's hands for every fitted body reading or sitting
+  (`src/sprite/ownerHands.ts`), in Saya's gloves; the book held from her own neck as Lyra holds it from hers
+  (`rig.ts` PoseAt.hisNeck: his Lyra reading carries her head higher over her shoulders than the fitted body
+  can, so without it the book came up before Saya's face); the seated knee notch, a pixel at her far arm guard
+  and gaps beside the book closed. Her idle is byte for byte as before; only Saya's and Shiori's read and sit
+  frames change. Question for him: his seated Lyra sits taller than the fitted body (her head about 9 px
+  higher, her knees 8 px higher with longer shins); should the female seated pose stretch to his, as the
+  Roman sit's thighs did ("opcion a")?
 - Decided 2026-10-21 (later): Warp Strike is renamed **"Shooting-Star Thrust"** (Spanish **"Estocada Fugaz"**; the owner first said "Shooting Star", then chose these), after the clan's name (Ryusei = shooting star) and to stay clear of other games' "Warp Strike". The id `ryusei_warp` stays. To apply once `icons/sheets-8-11` is merged (it touches the same strings): names, hotbar label, help text, log, clan texts, D24.
 - Decided 2026-10-21: the Spanish names are **"Golpe Warp"** and **"Comando"** (the owner: "los dos"); `icons/sheets-8-11` brings them and updates D24 in `docs/CLANS_DESIGN.md`.
 - Jutsu pacing (owner: too fast, "like a flashing star"): a first pass is merged (`8ef28a9`: 560 ms

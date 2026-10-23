@@ -164,6 +164,8 @@ Merge checks (`git merge-tree` on the origin tips, nothing changed):
 
 - Decided 2026-10-23: the owner approved the Fireball / Great Fireball core animation and smoke trail (`vfx/fireball-core-smoke`, "aprovado") and the Chidori ground cracks ("me gusta ese efecto electrico en la tierra aprovado"); both are in the game.
 
+- Decided 2026-10-23: the map quality standard is `docs/reference/map-quality-owner-reference.png` ("el standard de calidad que quiero llegar del mapa es este"); his paint-over of our camp battle (`map-height-owner-reference.jpg`, on `battle/height-test`) shows how height and depth go in: terraces with rock cliff faces and stairs between levels. He will edit the world himself.
+
 ## 3. Waiting for the owner
 
 - `jutsu/tide-s` (2026-10-22): the Dragon Tsunami is approved (look, rank S, names, numbers for now).

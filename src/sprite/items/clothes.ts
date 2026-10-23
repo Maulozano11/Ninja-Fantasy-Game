@@ -19,7 +19,8 @@ import { BRACER_BRONZE, BRACER_F, BRACER_N, ROMAN_KIT_KIND } from './bracersSand
 import { NIGHT_GLOVE, NIGHT_GLOVE_F, NIGHT_GLOVE_N, NIGHT_GLOVE_PLATE, NIGHT_KIT_KIND } from './nightBootsGlovesArt';
 import { NIGHT_CAST_FIST_F, NIGHT_CAST_FIST_N, NIGHT_CAST_FORE_N, NIGHT_CAST_GRIP_N, NIGHT_CAST_KIND } from './nightCastArmsArt';
 import { NIGHT_SKIN } from '../nightHeadArt';
-import { throwAimsCast } from './night';
+import { farForeEnd, sitsReachingOut, throwAimsCast } from './night';
+import { NIGHT_SIT_PALM_F, NIGHT_SIT_PALM_GLOVE, NIGHT_SIT_PALM_KIND, NIGHT_SIT_PALM_SKIN } from './nightSitPalmArt';
 import { isFemaleBody } from '../types';
 import { sandalPieces } from './feet';
 import { clearParts, clipParts, founderArmAtRest, founderArmBends, founderFarOut, founderFarReach, founderLegBends, founderLegLen, founderLegOut, moveParts } from './founderOut';
@@ -2179,6 +2180,23 @@ export const HAND_ITEMS: ItemDef[] = liftMain([
         const hold = s === 'N' && male ? paintedGrip(g) : null;
         // (casting the runes he drew both fists closed, the near one round the grip or on nothing: castFist)
         const castHand = (g.rig.pose === 'cast' && (s === 'F' || gripAngle(g) === null)) || throwAimsCast(g.rig, s);
+        if (male && sitsReachingOut(g.rig, s)) {
+          // Seated, his far hand open, palm up, reaching forward: the owner's standard open hand (his Trunks
+          // sit picture, a black fingerless glove as Ren's), on the wrist, turned with the forearm as his was:
+          // his line kept, his fingers in the character's skin, his glove in the glove's colour.
+          if (g.has('top', 'top_night_jacket')) handOff(g, s);
+          else bareHandOff(g, s);
+          const palm = (_ch: string, hex: string) => {
+            const k = NIGHT_SIT_PALM_KIND[hex];
+            if (k === 'line') return hex;
+            return k === 'skin' ? skinTone(hex, NIGHT_SIT_PALM_SKIN, g.look.skin) : retintHex(hex, NIGHT_SIT_PALM_GLOVE, c);
+          };
+          // (on his casting forearm's end, as his casting fist sits back over it: the forearm under the jacket)
+          const j = armJoints(g.rig, s);
+          const at = g.has('top', 'top_night_jacket') ? farForeEnd(g.rig) : j.wrist;
+          stampPiece(g, armDepth(s, 'armor'), NIGHT_SIT_PALM_F, at, segAngle(j.elbow, j.wrist), prt('hand', s), palm);
+          continue;
+        }
         if (male && (hold || !nightPalm(g, s) || castHand)) {
           // Under his jacket his bare forearm runs down to his glove: only our hand is taken away.
           if (g.has('top', 'top_night_jacket')) handOff(g, s);

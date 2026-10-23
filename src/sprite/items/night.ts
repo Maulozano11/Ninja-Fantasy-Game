@@ -7,7 +7,7 @@
 // character's skin; the rest follows the colour slots, his own colours when they are kept.
 
 import { retintHex } from '../color';
-import { armDepth, armJoints, armReaches, DrawCtx, ItemDef, legDepth, legJoints, Side } from '../ctx';
+import { armDepth, armJoints, armReaches, type Depth, DrawCtx, ItemDef, legDepth, legJoints, Side } from '../ctx';
 import { type PaintedPiece, segAngle, skinTone, stampLeaning, stampPiece, stretchPiece } from '../painted';
 import { add, F_NO_OUTLINE, F_NO_TEXTURE, GRID, type Layer, partIndex, PartId, PARTS, RES, sub, v, Vec } from '../raster';
 import { NIGHT_SKIN } from '../nightHeadArt';
@@ -110,6 +110,61 @@ function shinUnderBootOff(g: DrawCtx, s: Side, knee: Vec, ankle: Vec): void {
   for (let i = 0; i < GRID * GRID; i++) if (L.mat[i] >= 0 && L.part[i] === shin && boot.mat[i] < 0 && down(i) > top + 1 / RES) L.mat[i] = -1;
 }
 
+/** How far round the knee (fine px) the trouser leg is closed where it bends (closeKnee). */
+const KNEE_R = 7;
+
+/**
+ * His trouser leg closed round a knee bent further than he drew it (seated: the owner's Roman sit and his
+ * Trunks read lift the knees clear of the skirt). His thigh and shin pieces end in the tapers he drew under
+ * the skirt, so bent that far the two ends part on the outside of the knee and the shin's top stands out as a
+ * spike. Round the knee the leg is filled out to the hull of the two pieces: with his trousers' cloth (the
+ * cloth colour most of the leg there has), his line along the new edge.
+ */
+function closeKnee(g: DrawCtx, s: Side, depth: Depth, knee: Vec, tint: (ch: string, hex: string) => string): void {
+  const L = g.L(depth);
+  const ids = new Set([partIndex(`thigh${s}` as PartId), partIndex(`shin${s}` as PartId)]);
+  const kx = knee.x * RES;
+  const ky = knee.y * RES;
+  const near = (x: number, y: number) => Math.hypot(x + 0.5 - kx, y + 0.5 - ky) <= KNEE_R;
+  const pts: [number, number][] = [];
+  const count = new Map<number, number>();
+  const lines = new Set(Object.entries(NIGHT_TROUSERS_KIND).filter(([, k]) => k === 'line').map(([hex]) => g.m(tint('', hex), 'flat')));
+  for (let y = Math.floor(ky - KNEE_R); y <= ky + KNEE_R; y++)
+    for (let x = Math.floor(kx - KNEE_R); x <= kx + KNEE_R; x++) {
+      if (!near(x, y) || !L.has(x, y)) continue;
+      const i = y * GRID + x;
+      if (L.mat[i] < 0 || !ids.has(L.part[i])) continue;
+      pts.push([x, y]);
+      if (!lines.has(L.mat[i])) count.set(L.mat[i], (count.get(L.mat[i]) ?? 0) + 1);
+    }
+  if (pts.length < 3 || !count.size) return;
+  const cloth = [...count].sort((a, b) => b[1] - a[1])[0][0];
+  const line = g.m(tint('', '#010312'), 'flat');
+  // The hull of the leg's pixels round the knee (Andrew's monotone chain), counter-clockwise.
+  const sorted = [...pts].sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+  const cross = (o: [number, number], a: [number, number], b: [number, number]) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+  const half = (list: [number, number][]) => {
+    const h: [number, number][] = [];
+    for (const p of list) {
+      while (h.length >= 2 && cross(h[h.length - 2], h[h.length - 1], p) <= 0) h.pop();
+      h.push(p);
+    }
+    return h.slice(0, -1);
+  };
+  const hull = [...half(sorted), ...half([...sorted].reverse())];
+  if (hull.length < 3) return;
+  const inside = (x: number, y: number) => hull.every((a, k) => cross(a, hull[(k + 1) % hull.length], [x, y]) >= 0);
+  const filled: number[] = [];
+  for (let y = Math.floor(ky - KNEE_R); y <= ky + KNEE_R; y++)
+    for (let x = Math.floor(kx - KNEE_R); x <= kx + KNEE_R; x++) {
+      if (x < 1 || y < 1 || x >= GRID - 1 || y >= GRID - 1 || !near(x, y) || L.mat[y * GRID + x] >= 0 || !inside(x, y)) continue;
+      L.set(x, y, cloth, 3, `shin${s}` as PartId, F_NO_TEXTURE | F_NO_OUTLINE);
+      filled.push(y * GRID + x);
+    }
+  // His line along the new edge: a filled pixel beside the outside takes it.
+  for (const i of filled) if ([i - 1, i + 1, i - GRID, i + GRID].some((j) => L.mat[j] < 0)) L.mat[i] = line;
+}
+
 const arm = (s: Side, n: PaintedPiece, f: PaintedPiece) => (s === 'N' ? n : f);
 /** His black line in his skirt's colours: turned past a shear, his line stays whole round each panel (rotateLined). */
 const skirtLine = (hex: string) => NIGHT_SKIRT_KIND[hex] === 'line';
@@ -158,6 +213,17 @@ const CAST_FORE_LEN = (() => {
   return Math.hypot(r.wristF.x - r.elbowF.x, r.wristF.y - r.elbowF.y) * RES;
 })();
 let CAST_WRIST: PaintedPiece | undefined;
+let CAST_FORE_REACH: number | undefined;
+/** How far his far casting forearm reaches along the bone from the elbow (fine px): short of the wrist, which his fist covers. */
+function castForeReach(): number {
+  if (CAST_FORE_REACH !== undefined) return CAST_FORE_REACH;
+  const p = NIGHT_CAST_FORE_F;
+  const a = (p.angle * Math.PI) / 180;
+  let most = 0;
+  p.rows.forEach((row, y) => [...row].forEach((ch, x) => ch !== '.' && (most = Math.max(most, (x + 0.5 - p.pivot[0]) * Math.cos(a) + (y + 0.5 - p.pivot[1]) * Math.sin(a)))));
+  return (CAST_FORE_REACH = most);
+}
+
 /** The wrist half of his far casting forearm (its cells CAST_WRIST_FROM or more along the bone from the elbow). */
 const CAST_WRIST_FROM = 4;
 function castWristEnd(): PaintedPiece {
@@ -174,6 +240,14 @@ function castWristEnd(): PaintedPiece {
  * far arm and hand: "copia el que tiene para lanzar jutsu o el jab en el combo"; clothes.ts castFist).
  */
 export const throwAimsCast = (r: Rig, s: Side): boolean => r.pose === 'throw' && s === 'F' && armJoints(r, s).shape === 'point';
+
+/**
+ * Seated ('sit'), his far arm reaches forward with the hand open, palm up, as the owner drew the far arm of the
+ * others' sit (his Trunks sit picture, the hands' standard): his casting forearm, whatever the body's arm bends,
+ * and the open palm on it (clothes.ts, nightSitPalmArt.ts). The owner on Ren's sit: "la pose de sentado y su
+ * brazo izquierdo cuando esta sentado ya tienes las bases y respuestas en los otros personajes".
+ */
+export const sitsReachingOut = (r: Rig, s: Side): boolean => r.pose === 'sit' && s === 'F';
 
 /** One of his pieces where an arm stamps it: about which joint, along which angle (stampPiece). */
 export interface ArmStamp {
@@ -197,11 +271,11 @@ export function nightArmStamps(r: Rig, s: Side): ArmStamp[] {
   const sleeve = arm(s, NIGHT_SLEEVE_N, NIGHT_SLEEVE_F);
   const { upper, lower, elbow } = bareArm(piece, sleeve.angle);
   const fp = `forearm${s}` as PartId;
-  // His far arm reaching out in any pose (the combo's cross, the throw's pointing arm, every cast style)
+  // His far arm reaching out in any pose (the combo's cross, the throw's pointing arm, every cast style, the sit)
   // is his casting forearm, the 8 rows he settled on: his idle far forearm, hanging in shadow, reads thin
   // stretched out (the owner: "su antebrazo izquierdo en el combo se ve aun flaco pon como el antebrazo del
   // modelo de lanzar jutsu"; ctx.ts FOREARM_RULE).
-  if (r.pose === 'cast' || (s === 'F' && armReaches(r, s))) {
+  if (r.pose === 'cast' || (s === 'F' && (armReaches(r, s) || sitsReachingOut(r, s)))) {
     // Casting the runes he painted the arms himself (docs/reference/ren-cast-owner-reference.jpg): each
     // bare forearm his, from under the sleeve (the near one bent across the chest, the far one thick and
     // stretched at the runes), riding our forearm about the elbow, the sleeve over it as always.
@@ -230,6 +304,23 @@ export function nightArmStamps(r: Rig, s: Side): ArmStamp[] {
   out.push({ piece: sleeve, at: j.shoulder, deg: segAngle(j.shoulder, j.elbow), part: `upperArm${s}` as PartId, name: 'sleeve' });
   return out;
 }
+
+/**
+ * Where his far casting forearm ends along the bone, as nightArmStamps lays it (seated, sitsReachingOut): the
+ * open palm's cuff goes on there, over the forearm's end, as his casting fist's back does in the cast, so the
+ * forearm is never carried on in a second piece and no seam opens across it.
+ */
+export function farForeEnd(r: Rig): Vec {
+  const j = armJoints(r, 'F');
+  const deg = segAngle(j.elbow, j.wrist);
+  const extra = Math.hypot(j.wrist.x - j.elbow.x, j.wrist.y - j.elbow.y) * RES - CAST_FORE_LEN;
+  // (the wrist half carried on by Math.ceil(extra) on a forearm longer than his, the bulky body's)
+  const d = (castForeReach() + (extra > 0 ? Math.ceil(extra) : 0) - FORE_CUFF) / RES;
+  const a = (deg * Math.PI) / 180;
+  return add(j.elbow, v(Math.cos(a) * d, Math.sin(a) * d));
+}
+/** How far (fine px) the palm's cuff comes back over the forearm's end, his line over his. */
+const FORE_CUFF = 1;
 
 /**
  * His skirt in panels, cut down his seams (columns of NIGHT_SKIRT): the broad panel over the near leg
@@ -630,6 +721,7 @@ export const NIGHT_ITEMS: ItemDef[] = [
         const thigh = s === 'N' ? NIGHT_THIGH_N : NIGHT_THIGH_F;
         stampPiece(g, L, extra > 1e-6 ? stretchPiece(thigh, extra, g.rig.bp.thigh * RES) : thigh, hip, segAngle(hip, knee), `thigh${s}` as PartId, tint);
         stampPiece(g, L, s === 'N' ? NIGHT_SHIN_N : NIGHT_SHIN_F, knee, segAngle(knee, ankle), `shin${s}` as PartId, tint);
+        if (extra > 1e-6) closeKnee(g, s, L, knee, tint);
       }
     },
   },

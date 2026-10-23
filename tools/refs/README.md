@@ -437,3 +437,10 @@ folders.
   `owner_paintover.py` (copied byte for byte from `heroine/lyra-v2`), with a pitch per axis.
 
       python3 -I tools/refs/roman-read-from-ref.py [src/sprite/maleReadArt.ts] [study.png]
+- `ren-sit-palm-from-ref.py` (with `trunks_sit_ref.py` and `trunks_read_ref.py`, from `trunks/read-pose`): Ren's far hand when
+  seated, the owner's open palm up from his Trunks sit picture (`docs/reference/trunks-sit-owner-reference.jpg`, brought down to
+  our scale by `trunks_sit_ref.frame`), the hands' standard: his far hand without the bit of bare forearm his frame gives with it,
+  every pixel his; his line kept, his skin and glove recoloured in the game (`src/sprite/items/nightSitPalmArt.ts`; `clothes.ts`
+  Fingerless Gloves). Its angle is his bare forearm's, fitted on its columns; its pivot his wrist on that line.
+
+      python3 -I tools/refs/ren-sit-palm-from-ref.py src/sprite/items/nightSitPalmArt.ts [studyDir]

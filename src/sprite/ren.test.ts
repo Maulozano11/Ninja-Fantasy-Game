@@ -12,10 +12,11 @@ import { renderSprite } from './compose';
 import { armReaches, type Depth, type DrawCtx, type Side } from './ctx';
 import { paintedGrip } from './grip';
 import { nightFistStamps } from './items/clothes';
-import { nightArmStamps, nightSkirtStamps } from './items/night';
+import { nightArmStamps, nightSkirtStamps, sitsReachingOut } from './items/night';
 import * as kit from './items/nightBootsGlovesArt';
 import * as belt from './items/nightBeltArt';
 import * as cast from './items/nightCastArmsArt';
+import * as palm from './items/nightSitPalmArt';
 import * as hair from './items/nightHairArt';
 import * as jacket from './items/nightJacketArt';
 import * as katana from './items/katanaV2Art';
@@ -27,7 +28,8 @@ import { NIGHT_EYE_COLORS, NIGHT_EYES, NIGHT_IRIS } from './nightEyeArt';
 import type { PaintedPiece } from './painted';
 import { airOf, findNicks, findPinholes } from './holes';
 import { GRID, partIndex, type PartId, RES } from './raster';
-import { drawRig, frameCount, GROUND, rigPoseFor } from './rig';
+import { drawRig, frameCount, GROUND, rigPoseFor, SIT_SEAT_TOP } from './rig';
+import { renderSeat, seatFor } from './seats';
 import { rotateTemplate } from './rotsprite';
 import { CAMP_POSES, MOVE_POSES, SPRITE_POSES, type BodyType, type SpriteAppearance, type SpritePose } from './types';
 
@@ -253,7 +255,7 @@ describe("the owner's Ren", () => {
           const upper = stamps.find((t) => t.name === 'upper');
           const sleeve = stamps.find((t) => t.name === 'sleeve')!;
           // (his far arm reaching out is his casting forearm, under the sleeve as it is casting: forearm.test.ts)
-          const reach = s === 'F' && armReaches(rig, s);
+          const reach = s === 'F' && (armReaches(rig, s) || sitsReachingOut(rig, s));
           assert.equal(!upper, reach, `${where}: his casting forearm only on the far arm reaching out`);
           // his upper arm's end turns with his sleeve: one piece
           if (upper) assert.ok(Math.abs(upper.deg - upper.piece.angle - (sleeve.deg - sleeve.piece.angle)) < 1e-6, `${where}: the upper arm breaks from the sleeve`);
@@ -401,6 +403,45 @@ describe("the owner's Ren", () => {
     }
   });
 
+  it('seated, reaches his far arm out: his casting forearm, the open palm up at his size, the figure whole on the rock', () => {
+    // the owner on Ren's sit: "la pose de sentado y su brazo izquierdo cunado esta sentado ya tienes las bases y
+    // respuestas en los otros personajes"; the others' answer: the far arm forward, the open palm up (his Trunks
+    // sit picture, the hands' standard), the far forearm his thick casting one (the forearm rule)
+    const cells = (p: PaintedPiece) => p.rows.join('').replace(/\./g, '').length;
+    const rock = renderSeat(seatFor('sit')!);
+    for (const body of ['male', 'bulky'] as BodyType[]) {
+      for (let frame = 0; frame < frameCount('sit'); frame++) {
+        const rig = drawRig(body, 'sit', frame);
+        const where = `${body} sit ${frame}`;
+        const fore = nightArmStamps(rig, 'F').filter((t) => t.name === 'fore');
+        assert.equal(fore[0].piece, cast.NIGHT_CAST_FORE_F, `${where}: his casting forearm`);
+        for (const t of fore) assert.equal(whole(t.piece, t.deg - t.piece.angle), null, `${where} forearm`);
+        assert.equal(whole(palm.NIGHT_SIT_PALM_F, 0), null);
+        const fr = renderSprite({ ...look(), body }, 'sit', frame, dojutsuToEye(REN.dojutsu));
+        // the far hand is his open palm, as many pixels as he drew it (turned whole), none of our hand beside it
+        const hand = partIndex('handF');
+        let n = 0;
+        for (let i = 0; i < GRID * GRID; i++) if (fr.part[i] === hand && opaque(fr.rgba, i)) n++;
+        const size = cells(palm.NIGHT_SIT_PALM_F);
+        assert.ok(n >= 0.85 * size && n <= 1.1 * size, `${where}: the far hand ${n} pixels, his palm ${size}`);
+        // his black line stays his black
+        const lines = new Set(Object.entries(palm.NIGHT_SIT_PALM_KIND).filter(([, k]) => k === 'line').map(([h]) => h));
+        let black = 0;
+        for (let i = 0; i < GRID * GRID; i++) if (fr.part[i] === hand && opaque(fr.rgba, i) && lines.has(hex(fr.rgba, i))) black++;
+        assert.ok(black >= 0.3 * n, `${where}: ${black} of the palm's ${n} pixels his line`);
+        // one piece, on the rock: the hips on its top, nothing apart from the body
+        assert.ok(Math.abs(rig.pelvis.y * RES - (SIT_SEAT_TOP - 5.4)) < 0.01, `${where}: the hips on the rock (${rig.pelvis.y * RES})`);
+        assert.deepEqual(apart(fr.rgba), [], `${where}: pixels apart from the body`);
+        const px = Math.round(rig.pelvis.x * RES);
+        let top = 0;
+        while (!rock[(top * GRID + px) * 4 + 3]) top++;
+        let low = top - 1;
+        while (low > 0 && !opaque(fr.rgba, low * GRID + px)) low--;
+        assert.ok(top - low <= 3, `${where}: ${top - low - 1} rows between him and his rock`);
+      }
+    }
+  });
+
   it('leaves no dead pixel in any pose or frame, sword drawn or put away: no hole, nick or dot apart, no white that is not his', () => {
     // his colours: every colour of his pieces
     const his = new Set<string>();
@@ -541,9 +582,16 @@ describe("the owner's Ren", () => {
           for (const dir of [1, -1]) {
             const X = (u: number) => (dir > 0 ? u : GRID - 1 - u);
             const E: number[] = [];
+            // (seated, the knees come up beside the hips: their round is the knee's, not the hip's edge)
+            const knees = [fr.rig.kneeN, fr.rig.kneeF].map((k) => [k.x * RES, k.y * RES]);
+            const atKnee = (x: number, y: number) => knees.some(([kx, ky]) => Math.hypot(x + 0.5 - kx, y + 0.5 - ky) <= 8);
             for (let y = y0; y <= y1; y++) {
               let u = 0;
               while (u < GRID && !on(X(u), y)) u++;
+              if (u < GRID && atKnee(X(u), y)) {
+                E.push(-1);
+                continue;
+              }
               E.push(u < GRID ? u : -1);
               // his line is the outermost pixel of every row, 1 px
               if (u < GRID) assert.ok(luma(fr.rgba, y * GRID + X(u)) < 6, `${where}: no line at the ${dir > 0 ? 'back' : 'front'} edge at ${X(u)},${y}`);

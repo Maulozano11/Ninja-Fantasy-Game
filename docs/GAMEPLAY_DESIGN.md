@@ -148,7 +148,8 @@ elements.
 
 - +2 to hit from higher ground, −2 from lower ground.
 - Ranged attacks reach further from high ground.
-- Falling deals damage; enemies can be shoved off ledges.
+- Falling deals damage when it isn't on purpose (shoved or swept off a ledge); enemies can be
+  shoved off ledges.
 - Climbing: ramps, stairs and vines, plus ninja jumps and wall runs paid with
   movement or chakra.
 - How it looks (the owner, 2026-10-22, his paint-over
@@ -159,12 +160,22 @@ elements.
   next, trees at different depths. A higher level is drawn higher on screen. He paints the final
   maps himself ("el mundo lo voy a editar yo").
 
-### Height in play (being tried, 2026-10-22; built on `battle/height-test`)
+### Height in play (2026-10-22, his answers 2026-10-23; built on `battle/height-test`)
 
 His answer on the Y axis: *"si a eso me referia con eje y, si me gustaria darle alguna clase de
 altura pero dando entender que alguien esta en terreno elevado o que estas trepando una colina
 bajando un colina o que alguien subio a una torre"*. Y (depth) already worked; this adds the
-sense of height. One level is 1.5 m (one 5 ft square). Proposals marked **(P)** wait for his yes.
+sense of height. One level is 1.5 m (one 5 ft square). Proposals marked **(P)** wait for his yes;
+**(D)** marks his decisions of 2026-10-23. His answers, numbered as the seven questions he was asked
+(verbatim): *"1 si el doble 2 kunai shuriken y jutsus y todo lo que podria afectarse con mas alcance
+3 no nadie solo bosses masivos (nuevo concepto que aun no implementamos) 4 en cierto punto si estas
+muy pegado al muro no puedes ver a los que estan muy atras en terreno alto y si estuvieras mas atras
+si podrias verlos lo unicos enemigos o amigos que podrias ver serian los que estuvieran cerca del
+borde como en xcom 2 5 caer un nivel hace 1d6 pero solo cuando es involuntario porque puedes bajar de
+un salto , warp, caminando y esto seria voluntario pero si te empujan o el suelo donde estas colapsa
+entonces es involuntario y entre mas niveles (max 3) mas dados de daño tira 2 niveles 2d6 3 niveles
+3d6 6 si es un personaje de largo alcance que le conviene estar lejos si , si es de corto alcance
+entonces si baja 7 aun no la pruebo espera con esa decision"*.
 
 - **Drawing.** A ninja is drawn as high as the ground under its feet (one level = 86 px). Walking
   up a ramp, stairs, a ledge or a ladder moves the sprite up smoothly, step by step; a climb plays
@@ -172,33 +183,69 @@ sense of height. One level is 1.5 m (one 5 ft square). Proposals marked **(P)** 
   ninja is off the ground (on a ladder, halfway up a ledge) its shadow stays on the ground below,
   smaller and fainter, with a faint dotted line down to it.
 - **Stairs and ramps** cost only the ground covered.
-- **Climbing (P, 5e: climbing costs double).** Up a cliff face one level high (a terrace's edge, a
-  rock ledge): the step plus **3 m** (1.5 m of height at half speed); down: the step plus **1.5 m**.
-  A **ladder** (or vines) is paid the same way for every bit of height: up a 3 m tower's ladder,
-  6 m on top of the steps. Nobody stops on a ladder's rungs. (Before: 4 m up, 1 m down, a guess
-  never written here.)
+- **Climbing costs double (D, his answer 1: "si el doble"; 5e).** Up a cliff face one level high (a
+  terrace's edge, a rock ledge): the step plus **3 m** (1.5 m of height at half speed); down: the
+  step plus **1.5 m**. A **ladder** (or vines) is paid the same way for every bit of height: up a
+  3 m tower's ladder, 6 m on top of the steps. Nobody stops on a ladder's rungs. (Before: 4 m up,
+  1 m down, a guess never written here.)
 - **Walls of 2 levels or more (P)** (a 3 m cliff, a tower's sides) can't be climbed: take the
   stairs or the ladder, or the **ninja jump** (bonus action: a level up costs 0.5 m, down 0.25 m;
   this is the "wall run" above).
 - **High ground (as written above, unchanged):** +2 to hit from a level or more above the target,
-  −2 from below. **Thrown weapons reach further (P):** a kunai or shuriken gets **+1.5 m** of
-  normal and long range for each full level above the target.
-- **Reach (P).** A blade, a shove, a takedown or a melee jutsu doesn't reach **two levels** (3 m)
-  up or down: the rogue on the watch tower can't be stabbed from its foot. One level (a man on a
-  1.5 m ledge) is still in reach. No flanking across two levels.
+  −2 from below.
+- **Range from high ground (D, his answer 2: "kunai shuriken y jutsus y todo lo que podria
+  afectarse con mas alcance").** Everything thrown or sent at something reaches **+1.5 m** further
+  for each full level above it: kunai and shuriken (normal and long range, also at a crate or a
+  Kōton structure), an explosive tag, a thrown stone, and every jutsu aimed at a target or a point
+  away from the caster (the fire bullets, the dragons, the Lightning Hound, the chains, a
+  fireball's, a geyser's or Kirin's point; `reachesFromAbove` in `src/battle/jutsu.ts`). It counts
+  the levels between the caster and the target or the point aimed at. What it doesn't change (our
+  reading, his to correct): a blow or a melee jutsu; a cone or a line, which start at the caster
+  and keep their size; a wall or a block raised from the ground; a heal; a warp; and what takes
+  the mind rather than flying there (a genjutsu, the Northstar's Command and Submission). The
+  move preview's "no llega" and the AI follow the same reach.
+- **Reach (D, his answer 3: "no nadie solo bosses masivos (nuevo concepto que aun no
+  implementamos)").** A blade, a shove, a takedown or a melee jutsu (the charged hand's blow too)
+  doesn't reach **two levels** (3 m) up or down, for everyone: the rogue on the watch tower can't
+  be stabbed from its foot. One level (a man on a 1.5 m ledge) is still in reach. No flanking
+  across two levels. Later, **massive bosses** (a new kind of enemy, not built yet) will be the
+  only ones that reach across two levels.
 - **Looking down (P).** From **two levels** above a thing (a watch tower over the field): half
   cover from it doesn't count, three-quarters counts as half, and a tent, a stack of crates or a
   bamboo fence no longer blocks sight. Trees and jutsu walls still do. The same works the other
   way: a low crate can't cover a ninja on the tower.
-- **The ground blocks sight (P).** Sight runs from eye to eye, a level (1.5 m) over each one's feet:
-  where the ground between them rises above that line (a cliff face, a 3 m wall, the tower's
-  block), they don't see each other. A guard's vision cone, kunai and jutsu that need sight follow
-  it. A ninja at the foot of a 1.5 m terrace still sees one on top.
-- **Falling (open).** Today a ninja falls only when shoved or swept off a ledge: 1d6 a level, and
-  prone. 5e gives no damage for a 5 ft (one level) fall: keep 1d6 for one level? And should
-  stepping off a two-level edge without the jump be allowed, as a fall?
+- **The ground blocks sight, as in XCOM 2 (D, his answer 4: "si estas muy pegado al muro no puedes
+  ver a los que estan muy atras en terreno alto y si estuvieras mas atras si podrias verlos lo
+  unicos enemigos o amigos que podrias ver serian los que estuvieran cerca del borde como en xcom
+  2").** Sight runs between two points **half a level (0.75 m)** over each one's feet: where the
+  ground between them rises above that line (a cliff face, a rock, a 3 m wall, the tower's block),
+  they don't see each other. So right against a terrace's cliff face a ninja sees only those at
+  its edge (about the first half metre); a few metres back from the wall it sees further in (from
+  about 7 m back, a ninja 5 m in from the edge). Both ways: one far back on the terrace doesn't see down to
+  the wall's foot. A guard's vision cone, kunai and jutsu that need sight follow it. Built by
+  lowering the sight line from 1.5 m (a level) to 0.75 m (`SIGHT_LEVELS` in `src/battle/map.ts`):
+  at 1.5 m, eyes as high as a one-level terrace saw everything on it. It also means a rock as high
+  as a man (the rock ledge, River Forest's lookout rock) hides a ninja right behind it from the
+  ground, and from the tower one near its far side.
+- **Falling (D, his answer 5: "caer un nivel hace 1d6 pero solo cuando es involuntario ... si te
+  empujan o el suelo donde estas colapsa entonces es involuntario y entre mas niveles (max 3) mas
+  dados de daño tira 2 niveles 2d6 3 niveles 3d6").** Only an involuntary fall hurts: shoved or
+  swept off a ledge, **1d6 a level, at most 3 levels (3d6)**, and prone (`fallDice` in
+  `src/battle/map.ts`). Going down on purpose never hurts: walking or climbing down, the ninja jump
+  down a wall, a warp. **Ground that collapses** (his other involuntary fall) doesn't exist yet: when
+  it is built it falls the same way. Still as before: a wall of two levels is taken down only by
+  the stairs, the ladder or the ninja jump (his "puedes bajar de un salto"); stepping off it on foot
+  isn't a move.
+- **The AI and height (D, his answer 6: "si es un personaje de largo alcance que le conviene estar
+  lejos si , si es de corto alcance entonces si baja").** A ninja that fights from afar (its best
+  hit from a distance, a kunai or an affordable jutsu reaching 6 m or more, beats its best blow)
+  keeps the high ground and its distance: where it stands to strike, each level above the foe (up
+  to two) is worth 5 m of walking, and a little more distance a little more; walking down to a
+  blow from above is worth less to it. One that fights up close comes down: it likes a level
+  above the foe only where its blade reaches. Out of chakra, a jutsu caster may turn into one that
+  closes in. (`fightsFromAfar`, `standScore` in `src/battle/intent.ts`.)
 
-### Diagonals: 5-10-5 (being tried, 2026-10-22)
+### Diagonals: 5-10-5 (being tried, 2026-10-22; his decision waits)
 
 His answer: *"vamos a probar 5-10-5"*. The 5e variant: diagonal steps alternate between costing
 one square and two. Our hidden grid is 0.5 m, a third of a 5 ft square (1.5 m), so the rule is
@@ -209,7 +256,8 @@ move saves nothing; a dash carries it on) and starts again each turn. Paths, the
 metres in the move preview, dashing and the AI all use it. The move preview also shows the same
 path at true length, to compare ("diagonales 5-10-5 · longitud real 5.7 m"). One switch in the
 engine, `DIAGONAL_RULE` in `src/battle/nav.ts`: `'5-10-5'` (now) or `'true'` (before: a diagonal
-cell costs its true length, 0.71 m).
+cell costs its true length, 0.71 m). His answer 7 (2026-10-23): *"aun no la pruebo espera con esa
+decision"*: it stays on until he has tried it.
 
 ## Cover
 
@@ -1063,15 +1111,14 @@ folder (`WORLD_OUT`) until then. Approved so far: the river bridge.
 
   It was drawn because Earth had none; Kenji is Earth (his answer 1), but the
   art itself waits for his yes.
-- **Height (2026-10-22, "Height in play" under Elevation):** keep or change each proposal: climbing
-  at half speed (3 m a level up, 1.5 m down; ladders the same); walls of 2 levels only by stairs,
-  ladder or the ninja jump; kunai +1.5 m of range a level above; no blow across 2 levels; from 2
-  levels up low cover counts less and tents and crate stacks don't block sight; the ground blocks
-  sight above the eye line. Falling: 1d6 for a one-level fall (5e: none under 10 ft)? May a ninja
-  step off a two-level edge without the jump, as a fall? Should the AI value high ground more (it
-  now walks down from the tower to fight)?
+- **Height ("Height in play" under Elevation):** his answers of 2026-10-23 decided climbing, range,
+  reach, sight, falling and the AI. Still proposals: walls of 2 levels only by stairs, ladder or the
+  ninja jump; from 2 levels up low cover counts less and tents and crate stacks don't block sight.
+  Our readings to confirm: which jutsu reach further from above (not cones, lines, walls, heals,
+  warps, genjutsu); a rock as high as a man now hides a ninja right behind it.
 - **5-10-5 (2026-10-22):** after trying it, keep it or go back to true-length diagonals
-  (`DIAGONAL_RULE`, `src/battle/nav.ts`)?
+  (`DIAGONAL_RULE`, `src/battle/nav.ts`)? He hasn't tried it yet (2026-10-23: "espera con esa
+  decision").
 - Lightning's second burst (*Estática de batalla* / Battle Static, his request
   and his name, 2026-10-21): approve or redo the art, now with bolts at every
   frame and more while empowered.

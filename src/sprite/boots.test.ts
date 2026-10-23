@@ -1,5 +1,6 @@
 // Tests for the owner's plate boots on his Aiden (docs/reference/aiden-owner-reference.jpg), his Roman
-// sandals (roman-owner-reference.jpg) and the ankle rules they share (items/ankle.ts): npm test.
+// sandals (roman-owner-reference.jpg), the ankle rules they share (items/ankle.ts) and our closed boots over
+// the bare foot (items/feet.ts boot): npm test.
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
@@ -128,5 +129,67 @@ describe('the ankle rules shared by his boots and sandals', () => {
     const k = ctx('male', 'crouch', 0);
     assert.equal(footTurn(k, 'F'), 0);
     assert.equal(footTurn(k, 'F', true), shinTurn(k, 'F'));
+  });
+});
+
+/**
+ * The pixels of these parts whose colour comes from the skin, in a frame drawn in a pure green skin (no
+ * item of these looks is green): green-led pixels are skin, his painted skin retinted into the green too.
+ */
+function skinOn(l: SpriteAppearance, pose: SpritePose, f: number, parts: number[]): string[] {
+  const fr = renderSprite({ ...l, skin: '#00ff00' }, pose, f, 'none');
+  const hits: string[] = [];
+  for (let i = 0; i < GRID * GRID; i++) {
+    const [r, g, b, a] = fr.rgba.subarray(i * 4, i * 4 + 4);
+    if (a && parts.includes(fr.part[i]) && g > r + 40 && g > b + 40) hits.push(`${i % GRID},${Math.floor(i / GRID)}`);
+  }
+  return hits;
+}
+const LEG_PARTS = (['thighN', 'shinN', 'footN', 'thighF', 'shinF', 'footF'] as const).map(partIndex);
+const BELOW_KNEE = (['shinN', 'footN', 'shinF', 'footF'] as const).map(partIndex);
+
+describe('closed boots', () => {
+  it('see the skin (the check itself): our bare foot is skin', () => {
+    const l = { ...defaultAppearance(), body: 'male' as BodyType };
+    delete l.slots.feet;
+    assert.ok(skinOn(l, 'idle', 0, BELOW_KNEE).length > 20);
+  });
+
+  // The owner on Ren (2026-10-23): "verifica los pies de ren en todas sus poses porque se le esta saliendo
+  // piel del zapato". Our bare foot, longer at the toe than the boot's own foot, poked out past its toe.
+  it("show no skin on Ren's legs in any pose and frame, on the three bodies", () => {
+    const ren = LEGENDARY_PRESETS.find((p) => p.character.id === 'preset_night')!.character;
+    const bad: string[] = [];
+    for (const body of BODIES) {
+      const l: SpriteAppearance = { ...structuredClone(getAppearance(ren)), body };
+      // (on the female body his trousers, not refitted to her, leave a thigh's edge in a kick: only below the knee there)
+      const parts = body === 'female' ? BELOW_KNEE : LEG_PARTS;
+      for (const pose of POSES) {
+        const n = frameCount(rigPoseFor(pose, l.cast?.style, l.slots.held?.id));
+        for (let f = 0; f < n; f++) {
+          const hits = skinOn(l, pose, f, parts);
+          if (hits.length) bad.push(`${body} ${pose}#${f}: ${hits.length} at ${hits.slice(0, 3).join(' ')}`);
+        }
+      }
+    }
+    assert.deepEqual(bad, []);
+  });
+
+  it('take our bare foot away under them: no skin below the knee on the male bodies, at rest, seated and reading', () => {
+    const bad: string[] = [];
+    for (const id of ['feet_leather', 'feet_cowboy', 'feet_greaves']) {
+      for (const body of ['male', 'bulky'] as BodyType[]) {
+        const l = { ...defaultAppearance(), body };
+        l.slots = { ...l.slots, feet: { id, colors: [] } };
+        for (const pose of ['idle', 'sit', 'read'] as SpritePose[]) {
+          const n = frameCount(rigPoseFor(pose, l.cast?.style, l.slots.held?.id));
+          for (let f = 0; f < n; f++) {
+            const hits = skinOn(l, pose, f, BELOW_KNEE);
+            if (hits.length) bad.push(`${id} ${body} ${pose}#${f}: ${hits.length} at ${hits.slice(0, 3).join(' ')}`);
+          }
+        }
+      }
+    }
+    assert.deepEqual(bad, []);
   });
 });

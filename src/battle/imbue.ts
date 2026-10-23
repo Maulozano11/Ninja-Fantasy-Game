@@ -57,9 +57,17 @@ export const IMBUE_DAMAGE: Record<ImbueElement, DamageType> = {
   Earth: 'Piercing',
 };
 
-/** An element the ninja can put on its weapon: its chakra type, if it is one of the five elements. */
+/**
+ * The elements whose effect on the weapon waits for the owner's yes: not offered (no button) until he
+ * approves it. The owner (2026-10-23): "me gusta las armas con mejora elemental metelas en el juego
+ * menos la de agua se ve mal y no de calidad mejorala para que se ve mas epica y proporcional". Its
+ * rules stay (the longer reach, the flames put out) for when it comes back.
+ */
+export const IMBUE_PENDING: readonly ImbueElement[] = ['Water'];
+
+/** An element the ninja can put on its weapon: its chakra type, if it is one of the five elements and not waiting for approval. */
 export const imbueElementOf = (nature: ChakraNature | string | undefined): ImbueElement | null =>
-  IMBUE_ELEMENTS.includes(nature as ImbueElement) ? (nature as ImbueElement) : null;
+  IMBUE_ELEMENTS.includes(nature as ImbueElement) && !IMBUE_PENDING.includes(nature as ImbueElement) ? (nature as ImbueElement) : null;
 
 /** The class abilities a ninja of this class and nature has, in the order their buttons show. */
 export function classAbilities(shinobiClass: string | undefined, nature: ChakraNature | string | undefined): string[] {

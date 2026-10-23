@@ -289,7 +289,18 @@ D21 and D24 there):
 
 ## Class abilities in battle
 
-### Weapon Element Enhancement (the owner, 2026-10-23; built on `class/weapon-element`, waiting for his yes)
+### Weapon Element Enhancement (the owner, 2026-10-23; in the game since 2026-10-23, water held back)
+
+**His answer on the effects (2026-10-23), verbatim:** *"me gusta las armas con mejora elemental metelas en el
+juego menos la de agua se ve mal y no de calidad mejorala para que se ve mas epica y proporcional y los iconos
+que hiciste para la hotbar no me gustaron los mejorare"*.
+- Lightning, wind, fire and earth on the weapon are **approved** and in the game.
+- Water is **not approved**: until he approves a better one (more epic, in proportion to the weapon and the
+  character; redone on `vfx/weapon-water-v2`), a Water Bukijutsu Master has no button for it
+  (`IMBUE_PENDING` in `src/battle/imbue.ts`); its rules (the longer reach, the flames put out) stay for then.
+- The hotbar icons: he did not like ours (the element icons the button shows); **he will paint them himself**.
+  Ours stay on the button only until his arrive.
+- The numbers and the Spanish name below are still our proposal; he has not changed them.
 
 The owner, verbatim: *"ok ahora para la clase de maestro de armas , agregale weapon
 element enhacement como habilidad y le pondra un efecto de animacion a las armas (si

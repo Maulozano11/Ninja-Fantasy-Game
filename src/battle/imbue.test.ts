@@ -6,6 +6,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { DEFAULT_CHARACTER } from '../data/shinobiData';
 import { getAppearance } from '../sprite/legacy';
+import { natureOf } from '../rules/ninja';
 import { withNature } from '../sprite/chakraNature';
 import type { ChakraNature, ShinobiCharacter } from '../types/shinobi';
 import { applyAction, createBattle } from './engine';
@@ -13,7 +14,7 @@ import { runAi } from './ai';
 import { beginTurn } from './turns';
 import { unitFrom, wielded } from './units';
 import { reachTo } from './intent';
-import { EARTH_CRIT, IMBUE_COST, IMBUE_DAMAGE, IMBUE_ELEMENTS, IMBUE_ROUNDS, WATER_REACH, WEAPON_ELEMENT, classAbilities, imbueElementOf } from './imbue';
+import { EARTH_CRIT, IMBUE_COST, IMBUE_DAMAGE, IMBUE_ELEMENTS, IMBUE_PENDING, IMBUE_ROUNDS, WATER_REACH, WEAPON_ELEMENT, classAbilities, imbueElementOf, startImbue } from './imbue';
 import type { ImbueElement } from './imbue';
 import { logLine } from '../components/battle/battleLog';
 import type { Action, BattleEvent, BattleState } from './types';
@@ -53,7 +54,19 @@ function act(s: BattleState, a: Action): { state: BattleState; events: BattleEve
   return out;
 }
 
-const imbue = (s: BattleState) => act(s, { type: 'jutsu', unit: 'a', jutsu: WEAPON_ELEMENT, at: { ...s.units.a.pos } });
+/**
+ * A's ability. Water waits for the owner's yes on its effect (IMBUE_PENDING: no button), so its rules,
+ * kept for when it comes back, are tested with the element put on the weapon directly.
+ */
+function imbue(s: BattleState): { state: BattleState; events: BattleEvent[] } {
+  if (s.units.a.character && IMBUE_PENDING.includes(natureOfA(s))) {
+    const events: BattleEvent[] = [];
+    startImbue(s.units.a, natureOfA(s), events);
+    return { state: s, events };
+  }
+  return act(s, { type: 'jutsu', unit: 'a', jutsu: WEAPON_ELEMENT, at: { ...s.units.a.pos } });
+}
+const natureOfA = (s: BattleState) => natureOf(s.units.a.character!) as ImbueElement;
 
 /**
  * A's blow at the rogue (made easy to hit, and with HP to spare), imbued with `el`, for the first
@@ -77,7 +90,10 @@ const damages = (ev: BattleEvent[], unit: string) => ev.filter((e): e is Extract
 
 describe('Weapon Element Enhancement: who has it', () => {
   it('a Bukijutsu Master of one of the five elements, never another class or a nature with no element (no genjutsu)', () => {
-    for (const n of ['Fire', 'Water', 'Wind', 'Lightning', 'Earth'] as const) assert.deepEqual(classAbilities('Bukijutsu Master', n), [WEAPON_ELEMENT], n);
+    for (const n of ['Fire', 'Wind', 'Lightning', 'Earth'] as const) assert.deepEqual(classAbilities('Bukijutsu Master', n), [WEAPON_ELEMENT], n);
+    // water waits for the owner's yes on its effect ("menos la de agua")
+    assert.deepEqual(classAbilities('Bukijutsu Master', 'Water'), []);
+    assert.deepEqual([...IMBUE_PENDING], ['Water']);
     for (const n of ['Light', 'Void', 'Shadow', 'Spirit', 'Genjutsu'] as const) assert.deepEqual(classAbilities('Bukijutsu Master', n), [], n);
     for (const c of ['Ninjutsu Specialist', 'Taijutsu Master', 'Genjutsu Adept', 'Medical Specialist']) assert.deepEqual(classAbilities(c, 'Fire'), [], c);
     assert.equal(imbueElementOf('Genjutsu'), null);

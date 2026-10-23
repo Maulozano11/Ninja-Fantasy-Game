@@ -209,3 +209,158 @@ export function stampBent(
   for (const [ch, hex] of Object.entries(piece.colors)) mats.set(ch, g.m(color ? color(ch, hex) : hex, 'flat'));
   for (const [i, p] of px) L.set(i % GRID, (i / GRID) | 0, mats.get(p.ch)!, 3, part, F_NO_TEXTURE | F_NO_OUTLINE);
 }
+
+/** Two pieces he drew as one picture (a shin and its boot or sandal), laid in one grid as he drew them. */
+interface JoinedPieces {
+  piece: PixelTemplate;
+  /** The grid's characters that are the upper piece's (the rest are the lower's). */
+  upper: Set<string>;
+  /** Each grid character: its piece's own character and colour. */
+  of: Map<string, [string, string]>;
+}
+
+const JOINED = new Map<string, JoinedPieces>();
+
+/** How many rows above the lower piece's first row, and below it, are the joint (closeJoint). */
+const JOINT_UP = 4;
+const JOINT_DOWN = 2;
+/** The widest step (cells) at the joint that is closed: a wider one is a toe or a heel standing out from the ankle, as he drew it. */
+const JOINT_STEP = 3;
+
+/**
+ * `upper` and `lower` in one grid, each where he drew it (their pivots on one point), the lower over the
+ * upper where they overlap, as they are stamped; each piece's characters renamed apart so either can be told
+ * from the other.
+ * With `line` (which of his colours are his line), the joint is closed as one piece (closeJoint).
+ */
+function joinedPieces(upper: PaintedPiece, lower: PaintedPiece, line?: (hex: string) => boolean): JoinedPieces {
+  const key = `${upper.rows.join('|')}@${upper.pivot}#${lower.rows.join('|')}@${lower.pivot}#${!!line}`;
+  const hit = JOINED.get(key);
+  if (hit) return hit;
+  const [ox, oy] = [upper.pivot[0] - lower.pivot[0], upper.pivot[1] - lower.pivot[1]];
+  const w = (p: PaintedPiece) => Math.max(...p.rows.map((r) => r.length));
+  // (room on either side for closeJoint to move the outline out)
+  const pad = line ? JOINT_STEP : 0;
+  const x0 = Math.min(0, ox) - pad;
+  const y0 = Math.min(0, oy);
+  const W = Math.max(w(upper), ox + w(lower)) + pad - x0;
+  const H = Math.max(upper.rows.length, oy + lower.rows.length) - y0;
+  const grid = Array.from({ length: H }, () => new Array<string>(W).fill('.'));
+  const of = new Map<string, [string, string]>();
+  const upperChars = new Set<string>();
+  const lay = (p: PaintedPiece, dx: number, dy: number, base: number, isUpper: boolean) => {
+    const name = new Map<string, string>();
+    Object.keys(p.colors).forEach((ch, k) => {
+      const c = String.fromCharCode(base + k);
+      name.set(ch, c);
+      of.set(c, [ch, p.colors[ch]]);
+      if (isUpper) upperChars.add(c);
+    });
+    p.rows.forEach((row, y) => [...row].forEach((ch, x) => ch !== '.' && name.has(ch) && (grid[y + dy - y0][x + dx - x0] = name.get(ch)!)));
+  };
+  lay(upper, 0, 0, 0x100, true);
+  lay(lower, ox, oy, 0x300, false);
+  if (line) closeJoint(grid, oy - y0, (c) => line(of.get(c)![1]));
+  const j: JoinedPieces = { piece: { rows: grid.map((r) => r.join('')), pivot: [upper.pivot[0] - x0, upper.pivot[1] - y0] }, upper: upperChars, of };
+  JOINED.set(key, j);
+  return j;
+}
+
+/**
+ * The joint of a shin and its boot or sandal (`grid`, the lower piece starting on row `at`, the limb running
+ * down the rows) closed as one piece, as his Trunks boots are drawn: turned with the shin in a kick, the
+ * foot came out cut from the leg (the owner, 2026-10-23: "aiden y romano le falta ahora conectar la punta
+ * del pie con la pierna como trunks su pie y su pierna estan conectadas no hay un corte de pixeles"). In the
+ * joint's rows (JOINT_UP above the lower piece's first row, JOINT_DOWN below; his line across the leg there
+ * is opened once the figure is drawn, items/ankle.ts openJoint):
+ *  - a hole between his pixels takes the pixel beside it;
+ *  - where the outline steps in at the joint (the foot standing out from the shin, or the shin drawn in
+ *    above the foot), it comes in a cell a row, his pixels continued out to it, his line moved out with it;
+ *    a step wider than JOINT_STEP (a toe, a heel) is as he drew it.
+ */
+function closeJoint(grid: string[][], at: number, isLine: (c: string) => boolean): void {
+  const H = grid.length;
+  const top = Math.max(0, at - JOINT_UP);
+  const end = Math.min(H - 1, at + JOINT_DOWN);
+  const span = (y: number): [number, number] => {
+    const xs = grid[y].flatMap((c, x) => (c === '.' ? [] : [x]));
+    return xs.length ? [xs[0], xs[xs.length - 1]] : [-1, -1];
+  };
+  for (let y = top; y <= end; y++) {
+    const [l, r] = span(y);
+    for (let x = l + 1; x < r; x++) if (grid[y][x] === '.') grid[y][x] = grid[y][x - 1];
+  }
+  const L = grid.map((_, y) => span(y)[0]);
+  const R = grid.map((_, y) => span(y)[1]);
+  const rows = (a: number, b: number) => Array.from({ length: b - a + 1 }, (_, k) => a + k).filter((y) => y >= 0 && y < H && L[y] >= 0);
+  // Each side as a distance out from the middle (larger = further out): the left edge negated.
+  for (const side of [-1, 1]) {
+    const out = (y: number) => (side < 0 ? -L[y] : R[y]);
+    const want = grid.map((_, y) => (L[y] < 0 ? -Infinity : out(y)));
+    for (const y of rows(top, end)) {
+      // drawn in between the rows above and below it (a waist at the joint)
+      const above = rows(y - JOINT_UP, y - 1).map(out);
+      const below = rows(y + 1, y + JOINT_UP).map(out);
+      if (!above.length || !below.length) continue;
+      const wall = Math.min(Math.max(...above), Math.max(...below));
+      if (wall > want[y] && wall - want[y] <= JOINT_STEP) want[y] = wall;
+    }
+    // a step in, a cell a row: up the shin from the foot, and down the foot from the shin
+    for (let y = at - 1; y >= top; y--) if (want[y] > -Infinity && want[y + 1] - 1 > want[y] && want[y + 1] - 1 - out(y) <= JOINT_STEP) want[y] = want[y + 1] - 1;
+    for (let y = at; y <= end; y++) if (want[y] > -Infinity && y > 0 && want[y - 1] - 1 > want[y] && want[y - 1] - 1 - out(y) <= JOINT_STEP) want[y] = want[y - 1] - 1;
+    for (const y of rows(top, end)) {
+      const n = want[y] - out(y);
+      if (n <= 0) continue;
+      const edge = side < 0 ? L[y] : R[y];
+      const e = grid[y][edge];
+      let inner = e;
+      for (let x = edge; x >= L[y] && x <= R[y]; x -= side)
+        if (!isLine(grid[y][x])) {
+          inner = grid[y][x];
+          break;
+        }
+      for (let k = 0; k <= n; k++) grid[y][edge + side * k] = isLine(e) && k === n ? e : isLine(e) ? inner : e;
+    }
+  }
+}
+
+/**
+ * Two pieces he drew as one (a shin and the boot or sandal under it), each turned on its own limb, `lower`
+ * (at `lowerDeg`) over `upper` (at `upperDeg`), their pivots on `at`. Turned the same way (within a degree:
+ * the foot turning all of the shin's turn, a kick), the foot came out cut from the leg at the ankle: so
+ * they are stamped as his one picture turned once, its joint closed (closeJoint; `seam` says which of his
+ * colours are his line). Otherwise (the foot unturned: at rest, standing, the camp lean; or bending at the
+ * ankle) each is
+ * stamped on its own as before (stampPiece). `line`, as for stampPiece, keeps his line whole as they turn.
+ */
+export function stampJoined(
+  g: DrawCtx,
+  depth: Depth,
+  upper: PaintedPiece,
+  lower: PaintedPiece,
+  at: Vec,
+  upperDeg: number,
+  lowerDeg: number,
+  parts: [PartId, PartId],
+  seam: (hex: string) => boolean,
+  color?: (ch: string, hex: string) => string,
+  line?: (hex: string) => boolean,
+): void {
+  const ru = Math.round(upperDeg - upper.angle);
+  const rl = Math.round(lowerDeg - lower.angle);
+  // (the two angles compared round the circle: a shin's angle may come a whole turn apart from its foot's)
+  if (rl % 360 === 0 || Math.abs((((ru - rl) % 360) + 540) % 360 - 180) > 1) {
+    stampPiece(g, depth, upper, at, upperDeg, parts[0], color, line);
+    stampPiece(g, depth, lower, at, lowerDeg, parts[1], color, line);
+    return;
+  }
+  const L = g.L(depth);
+  const ax = Math.floor(at.x * RES);
+  const ay = Math.floor(at.y * RES);
+  const j = joinedPieces(upper, lower, seam);
+  const isLine = line && ((ch: string) => line(j.of.get(ch)![1]));
+  for (const p of isLine ? rotateLined(j.piece, ru, isLine) : rotateTemplate(j.piece, ru)) {
+    const [ch, hex] = j.of.get(p.ch)!;
+    L.set(ax + p.dx, ay + p.dy, g.m(color ? color(ch, hex) : hex, 'flat'), 3, parts[j.upper.has(p.ch) ? 0 : 1], F_NO_TEXTURE | F_NO_OUTLINE);
+  }
+}

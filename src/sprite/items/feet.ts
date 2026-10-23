@@ -6,7 +6,7 @@
 import { retintHex } from '../color';
 import { DEPTHS, DrawCtx, FootArt, footDraw, ItemDef, legDepth, legJoints, legPoint, Side } from '../ctx';
 import type { BodyType } from '../types';
-import { continuedTo, limbOnly, type PaintedPiece, segAngle, stampPiece } from '../painted';
+import { continuedTo, limbOnly, type PaintedPiece, segAngle, stampJoined, stampPiece } from '../painted';
 import { add, along, ellipse, GRID, norm, partIndex, PARTS, Pen, RES, seam, sub, v, type Vec } from '../raster';
 import { sealAgainstFigure } from '../seal';
 import { across, crease, fpx, limb, limbR, stitch, stud, tube, wrapStripes } from './clothes';
@@ -552,8 +552,8 @@ export const FEET_ITEMS: ItemDef[] = [
         const at = add(ankle, shinCarried(g, s, dx, dy));
         const shin = s === 'N' ? SABATON_SHIN_N : SABATON_SHIN_F;
         const foot = s === 'N' ? SABATON_FOOT_N : SABATON_FOOT_F;
-        stampPiece(g, legDepth(s, 'feet'), shin, at, segAngle(knee, ankle), `shin${s}`, tint);
-        stampPiece(g, legDepth(s, 'feet'), foot, at, foot.angle + footTurn(g, s, true), `foot${s}`, tint);
+        // (as one: turned with the shin, the sabaton stays joined to his greave as he drew them, stampJoined)
+        stampJoined(g, legDepth(s, 'feet'), shin, foot, at, segAngle(knee, ankle), foot.angle + footTurn(g, s, true), [`shin${s}`, `foot${s}`], (hex) => crimsonKind(hex) === 'line', tint);
       }
     },
   },
@@ -604,8 +604,8 @@ export const FEET_ITEMS: ItemDef[] = [
         // Lifted well off the ground (a kick, the run's back leg), either sandal turns with its laced shin about
         // the ankle, as he drew them as one (footTurn: 0 standing, so at rest every pixel is his).
         const turn = moving || roman ? footTurn(g, s) : 0;
-        stampPiece(g, legDepth(s, 'feet'), shin, at, segAngle(knee, ankle), `shin${s}`, tint, line);
-        stampPiece(g, legDepth(s, 'feet'), foot, at, foot.angle + turn, `foot${s}`, tint, line);
+        // (as one: turned with the shin, the sandal stays joined to his laced shin as he drew them, stampJoined)
+        stampJoined(g, legDepth(s, 'feet'), shin, foot, at, segAngle(knee, ankle), foot.angle + turn, [`shin${s}`, `foot${s}`], (hex) => pieces.kind[hex] === 'line', tint, line);
         if (moving || turn) {
           // His line round the ankle: the pieces' line colours (his line is never tinted).
           const lineHex = [...Object.values(shin.colors), ...(roman ? Object.values(foot.colors) : [])].filter((hex) => pieces.kind[hex] === 'line');

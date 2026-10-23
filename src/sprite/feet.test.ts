@@ -23,7 +23,20 @@
 // Sampled: in each pose, for each leg, every frame where its shin turns past 20 degrees from rest (where
 // its foot turns), the frame where it turns furthest and the one where its ankle is lifted highest, each
 // leg's stance once (framesOf); looks whose legs draw the same as one already checked, at rest and in the
-// side kick, are checked once. npm test.
+// side kick, are checked once.
+//
+// And his painted footwear turned with its shin is one piece with it at the joint, as his Trunks boots are
+// drawn (the owner, 2026-10-23, on combo 5/8: "aiden y romano le falta ahora conectar la punta del pie con
+// la pierna como trunks su pie y su pierna estan conectadas no hay un corte de pixeles"): for his sabatons
+// and his sandals (each paint), his Aiden, his Solen, his Roman and every companion or enemy wearing them,
+// on the three bodies, in every frame where the foot turns, within JOINT_R of where the foot meets the
+// shin there is
+//   (d) no pixel bitten out of the leg (empty, the leg on three sides of it), and
+//   (e) where the foot turns all of the shin's turn (a kick), no line of his across the leg between the two:
+//       a dark pixel of either beside the other, the leg on both sides of it across, whose first light pixel
+//       up the shin (within JOINT_GAP) is the shin's and down it the foot's. Fails on fix/feet-turn-all as
+//       first pushed: his Aiden's cuff line and plate greave's end, his Roman's and Solen's ankle band, in
+//       combo 5/8 and 7/8, the run, and the steps the sandals left at their joint. npm test.
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
@@ -34,7 +47,7 @@ import { ALL_ITEMS, getItem } from './catalog';
 import { PAINTED_SKIN } from './items/trunksKit';
 import { renderSprite } from './compose';
 import { legDepth, legJoints, type Depth, type DrawCtx, type Side } from './ctx';
-import { ankleLift, shinTurn } from './items/ankle';
+import { ankleLift, footTurn, JOINED_FEET, JOINT_GAP, LINE_LUM, shinTurn } from './items/ankle';
 import { defaultAppearance, dojutsuToEye, getAppearance } from './legacy';
 import { GRID, partIndex, RES } from './raster';
 import { drawRig, frameCount, rigPoseFor, type Rig } from './rig';
@@ -279,6 +292,101 @@ function feetOffShins(looks: Look[], seen: Set<string>): string[] {
   return bad;
 }
 
+/** How far (fine pixels) from where the foot meets the shin the joint is checked. */
+const JOINT_R = 6;
+/** A foot turned this far turns all of its shin's turn (items/ankle.ts FOOT_TURN). */
+const FOOT_TURN = 45;
+
+/** His Roman look: the bronze armour, the imperial skirt, the bronze bracers and his sandals in their Roman paint. */
+function romanLook(): Look {
+  const l = defaultAppearance();
+  const slot = (id: string, parts?: Record<string, string>) => ({ id, colors: ALL_ITEMS.find((d) => d.id === id)!.colors.map((c) => c.default), parts });
+  l.slots = { ...l.slots, armor: slot('armor_bronze'), skirt: slot('skirt_imperial'), hands: slot('hands_bronze_bracers'), feet: slot('feet_gladiator_sandals', { paint: 'roman' }) };
+  delete l.slots.top;
+  delete l.slots.bottom;
+  delete l.slots.cape;
+  delete l.slots.held;
+  return { id: 'roman', look: l, eye: 'none' };
+}
+
+/** Where the foot meets the shin in a frame (the foot's pixels beside the shin's), or none. */
+function jointOf(fr: { rgba: Uint8ClampedArray | Uint8Array; part: Uint8Array }, s: Side): [number, number] | undefined {
+  const foot = partIndex(`foot${s}`);
+  const shin = partIndex(`shin${s}`);
+  let [x0, y0, n] = [0, 0, 0];
+  for (let y = 1; y < GRID - 1; y++)
+    for (let x = 1; x < GRID - 1; x++) {
+      const i = y * GRID + x;
+      if (!fr.rgba[i * 4 + 3] || fr.part[i] !== foot) continue;
+      if ([i - 1, i + 1, i - GRID, i + GRID].some((j) => fr.rgba[j * 4 + 3] && fr.part[j] === shin)) [x0, y0, n] = [x0 + x, y0 + y, n + 1];
+    }
+  return n ? [x0 / n, y0 / n] : undefined;
+}
+
+/** Every frame of his painted footwear (JOINED_FEET) where its turned foot is cut from its shin at the joint. */
+function cutJoints(looks: Look[]): string[] {
+  const bad: string[] = [];
+  for (const l of looks)
+    for (const body of BODIES) {
+      const look = { ...l.look, body };
+      const onGround = look.slots.feet?.id === 'feet_crimson_sabatons';
+      for (const pose of POSES) {
+        const rp = rigPoseFor(pose, look.cast?.style, look.slots.held?.id);
+        for (let f = 0; f < frameCount(rp); f++)
+          for (const s of SIDES) {
+            const turn = Math.abs(footTurn({ rig: drawRig(body, rp, f) } as DrawCtx, s, onGround));
+            if (!turn || pose === 'lean') continue;
+            const at = `${l.id} ${body} ${pose} ${f} ${s}`;
+            const foot = partIndex(`foot${s}`);
+            const shin = partIndex(`shin${s}`);
+            // (d) on the whole leg; (e) on his painted pieces alone (the feet and armour layers)
+            for (const check of ['notch', 'line'] as const) {
+              if (check === 'line' && turn < FOOT_TURN) continue;
+              const depths = check === 'notch' ? LEG[s] : new Set<Depth>([legDepth(s, 'feet'), legDepth(s, 'armor')]);
+              const fr = renderSprite(look, pose, f, l.eye, { depths });
+              const j = jointOf(fr, s);
+              if (!j) continue;
+              const { knee, ankle } = legJoints(fr.rig, s);
+              const n = Math.hypot(ankle.x - knee.x, ankle.y - knee.y) || 1;
+              const [ux, uy] = [(ankle.x - knee.x) / n, (ankle.y - knee.y) / n];
+              const on = (x: number, y: number) => x >= 0 && y >= 0 && x < GRID && y < GRID && fr.rgba[(y * GRID + x) * 4 + 3] > 0;
+              const dark = (x: number, y: number) => {
+                const i = (y * GRID + x) * 4;
+                return 0.299 * fr.rgba[i] + 0.587 * fr.rgba[i + 1] + 0.114 * fr.rgba[i + 2] < LINE_LUM;
+              };
+              const partAt = (x: number, y: number) => fr.part[y * GRID + x];
+              const firstLight = (x: number, y: number, dir: number) => {
+                for (let k = 1; k <= JOINT_GAP; k++) {
+                  const [a, b] = [Math.round(x + ux * dir * k), Math.round(y + uy * dir * k)];
+                  if (!on(a, b)) return -1;
+                  if (!dark(a, b)) return partAt(a, b);
+                }
+                return -1;
+              };
+              const found: string[] = [];
+              for (let y = Math.floor(j[1] - JOINT_R); y <= j[1] + JOINT_R; y++)
+                for (let x = Math.floor(j[0] - JOINT_R); x <= j[0] + JOINT_R; x++) {
+                  if (Math.hypot(x - j[0], y - j[1]) > JOINT_R) continue;
+                  const sides: [number, number][] = [[x - 1, y], [x + 1, y], [x, y - 1], [x, y + 1]];
+                  if (check === 'notch') {
+                    if (!on(x, y) && sides.filter(([a, b]) => on(a, b)).length >= 3) found.push(`${x},${y}`);
+                    continue;
+                  }
+                  if (!on(x, y) || !dark(x, y) || (partAt(x, y) !== foot && partAt(x, y) !== shin)) continue;
+                  const other = partAt(x, y) === foot ? shin : foot;
+                  if (!sides.some(([a, b]) => on(a, b) && partAt(a, b) === other)) continue;
+                  if (!on(Math.round(x - uy), Math.round(y + ux)) || !on(Math.round(x + uy), Math.round(y - ux))) continue;
+                  if (firstLight(x, y, -1) === shin && firstLight(x, y, 1) === foot) found.push(`${x},${y}`);
+                }
+              if (found.length) bad.push(`${at}: ${check === 'notch' ? 'pixels bitten out of the leg' : 'his line across the leg'} at the joint (${found.join(' ')})`);
+            }
+          }
+      }
+    }
+  if (process.env.FEET_DEBUG) console.log(`DEBUG joints ${bad.length}\n` + bad.join('\n'));
+  return bad;
+}
+
 describe('every foot on its shin', () => {
   const seen = new Set<string>();
   it('every feet item and our bare foot, in every pose, on the male, female and bulky bodies', () => {
@@ -286,6 +394,12 @@ describe('every foot on its shin', () => {
   });
   it('every preset, companion and enemy and the owner\'s Trunks, in every pose, on the male, female and bulky bodies', () => {
     assert.deepEqual(feetOffShins(characterLooks(), seen), []);
+  });
+  it('his sabatons and sandals turned with the shin are one piece with it at the joint (his Aiden, Solen and Roman, and everyone wearing them)', () => {
+    const joined = (l: Look) => JOINED_FEET.includes(l.look.slots.feet?.id ?? '');
+    const looks = [...feetLooks().filter(joined), ...characterLooks().filter(joined), romanLook()];
+    for (const id of ['preset_reference_aiden', 'preset_founder', 'roman', 'feet_crimson_sabatons', 'feet_gladiator_sandals roman']) assert.ok(looks.some((l) => l.id === id), id);
+    assert.deepEqual(cutJoints(looks), []);
   });
   it('covers every feet item in the catalogue', () => {
     const ids = new Set(feetLooks().map((l) => l.look.slots.feet?.id));

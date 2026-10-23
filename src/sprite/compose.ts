@@ -6,7 +6,7 @@ import { hexToRgb } from './color';
 import { Depth, DEPTHS, DrawCtx, ItemDef, NO_OUTLINE_DEPTHS, resolveParts } from './ctx';
 import { closePinholes } from './holes';
 import { clipStowed, drawThrowKunai } from './items/accessories';
-import { joinFlat } from './items/ankle';
+import { joinFlat, openJoint } from './items/ankle';
 import { CAPE_DEPTHS } from './items/capes';
 import { drawHeadband } from './items/headband';
 import { add, F_NO_OUTLINE, GRID, Layer, MaterialTable, norm, PAD, PartId, partIndex, PARTS, perp, RES, scale, sub, v, Vec } from './raster';
@@ -320,6 +320,8 @@ export function renderSprite(
     }
     // The lean's flat feet meet their shins, whichever item drew each (items/ankle.ts).
     for (const s of ['N', 'F'] as const) joinFlat(g, s);
+    // A foot turned with its shin is one piece with it, whichever items drew the two (items/ankle.ts).
+    for (const s of ['N', 'F'] as const) openJoint(g, s);
     drawHeadband(g);
     drawThrowKunai(g);
     // What an item leaves open against the rest of the figure, closed once all of it is drawn.

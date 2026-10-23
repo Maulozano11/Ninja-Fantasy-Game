@@ -26,6 +26,7 @@ import type { Depth } from './ctx';
 import { hexToRgb } from './color';
 import { weaponInHand } from './grip';
 import { GRID, RES } from './raster';
+import { frameCount, rigPoseFor } from './rig';
 import { tintVfx } from './vfxTint';
 import type { EyeSpecial, SpriteAppearance, SpritePose } from './types';
 
@@ -376,8 +377,30 @@ function drawWind(b: Blade, k: number, back: Paint, front: Paint): void {
   }
 }
 
-/** How far past the tip the water reaches (fine pixels): about half the blade again, so the weapon stays in proportion (the owner: the reach grows, "proporcional"). */
-export const waterReachPx = (b: Pick<Blade, 'start' | 'tip'>): number => Math.round(Math.max(16, Math.min(24, (b.tip - b.start) * 0.45 + 4)));
+/**
+ * How far past the tip the water reaches (fine pixels). The owner on the second water (2026-10-23): "al de agua
+ * hazlo mas largo para que se entienda la extension de alcance hazlo unos 1.35 mas largo": the whole water, along
+ * the blade and past it, is WATER_LONGER times what it was (past the tip half the blade again, 16 to 24 px), so
+ * past the tip it is about the blade again.
+ */
+export const waterReachPx = (b: Pick<Blade, 'start' | 'tip'>): number => {
+  const len = b.tip - b.start;
+  return Math.round(WATER_LONGER * (len + Math.max(16, Math.min(24, len * 0.45 + 4))) - len);
+};
+const WATER_LONGER = 1.35;
+/** Fine pixels kept between the water's head and the frame's edge (its foam head and the first of its spray). */
+const WATER_EDGE = 7;
+
+/** The water's reach in this frame: waterReachPx, short of the frame's edge where the blade points close to it (the lunge). */
+export function waterReach(b: Blade): number {
+  let room = 0;
+  for (; room < GRID * 2; room++) {
+    const x = b.hx + b.dx * (b.tip + room);
+    const y = b.hy + b.dy * (b.tip + room);
+    if (x < 0 || y < 0 || x >= GRID || y >= GRID) break;
+  }
+  return Math.max(8, Math.min(waterReachPx(b), room - WATER_EDGE));
+}
 
 /**
  * Water: a torrent runs along the blade and on past its tip as a longer blade of water with a foaming head
@@ -386,10 +409,11 @@ export const waterReachPx = (b: Pick<Blade, 'start' | 'tip'>): number => Math.ro
  * foam caps breaking on its upper edge, a head of foam where it ends and spray thrown off it, drops falling
  * off the underside; his dark water line round the water. The owner on the first water (2026-10-23): "se ve
  * mal y no de calidad mejorala para que se ve mas epica y proporcional". Past the tip it is about half the
- * blade again, so the weapon stays in proportion.
+ * blade again, so the weapon stays in proportion; then, his "hazlo unos 1.35 mas largo", the whole water a
+ * third longer, past the tip about the blade again (waterReachPx).
  */
-function drawWater(b: Blade, k: number, front: Paint): void {
-  const ext = waterReachPx(b);
+function drawWater(b: Blade, k: number, front: Paint, reach?: number): void {
+  const ext = reach ?? waterReach(b);
   const end = b.tip + ext;
   const ph = (k / IMBUE_LOOP) * Math.PI * 2;
   // The side of the blade that faces up (as the fire's): the foam breaks on it.
@@ -498,7 +522,8 @@ function drawWater(b: Blade, k: number, front: Paint): void {
     const sa = Math.sin(ang);
     const x = ex + (b.dx * ca - b.dy * sa) * dist;
     const y = ey + (b.dy * ca + b.dx * sa) * dist + life * life * 4;
-    front.put(x, y, life < 0.5 ? WATER.foam : WATER.light, 255 * (1 - life * 0.55));
+    // (a drop that would leave the frame is not drawn: cut off at its edge it would read as a cut)
+    if (x >= 1 && y >= 1 && x < GRID - 1 && y < GRID - 1) front.put(x, y, life < 0.5 ? WATER.foam : WATER.light, 255 * (1 - life * 0.55));
   }
   for (let d = 0; d < 4; d++) {
     const life = ((k + d * 2) % IMBUE_LOOP) / IMBUE_LOOP;
@@ -506,7 +531,9 @@ function drawWater(b: Blade, k: number, front: Paint): void {
     const sp = span(t);
     if (!sp) continue;
     const [x, y] = at(b, t, nUp < 0 ? sp[1] : sp[0]);
-    front.put(x + (hash(d, 22) - 0.5) * 3, y + nUp * (2 + life * 5), WATER.pale, 255 * (1 - life * 0.6));
+    const sx = x + (hash(d, 22) - 0.5) * 3;
+    const sy = y + nUp * (2 + life * 5);
+    if (sx >= 1 && sy >= 1 && sx < GRID - 1 && sy < GRID - 1) front.put(sx, sy, WATER.pale, 255 * (1 - life * 0.6));
   }
 }
 
@@ -582,14 +609,14 @@ function fillTri(p: Paint, a: [number, number], b: [number, number], c: [number,
  * it), for a frame's blade (bladeOf). `tint`: the ninja's chakra colour (vfxTintOf); obsidian keeps
  * its own.
  */
-export function renderImbue(fx: ImbueFx, tick: number, b: Blade, tint?: string): { back: Uint8ClampedArray; front: Uint8ClampedArray } {
+export function renderImbue(fx: ImbueFx, tick: number, b: Blade, tint?: string, reach?: number): { back: Uint8ClampedArray; front: Uint8ClampedArray } {
   const k = ((tick % IMBUE_LOOP) + IMBUE_LOOP) % IMBUE_LOOP;
   const back = new Paint();
   const front = new Paint();
   if (fx === 'fire') drawFire(b, k, front);
   else if (fx === 'lightning') drawLightning(b, k, front);
   else if (fx === 'wind') drawWind(b, k, back, front);
-  else if (fx === 'water') drawWater(b, k, front);
+  else if (fx === 'water') drawWater(b, k, front, reach);
   else drawEarth(b, k, front);
   if (fx === 'earth' || !tint) return { back: back.rgba, front: front.rgba };
   const sheet = { width: GRID, height: GRID };
@@ -599,5 +626,31 @@ export function renderImbue(fx: ImbueFx, tick: number, b: Blade, tint?: string):
 /** The element on this frame's weapon in hand, or null when the frame holds none. */
 export function imbueLayers(look: SpriteAppearance, pose: SpritePose, frame: number, fx: ImbueFx, tick: number, tint?: string, eye: EyeSpecial = 'none'): { back: Uint8ClampedArray; front: Uint8ClampedArray } | null {
   const b = bladeOf(look, pose, frame, eye);
-  return b ? renderImbue(fx, tick, b, tint) : null;
+  return b ? renderImbue(fx, tick, b, tint, fx === 'water' ? steadyReach(look, pose, frame, eye, b) : undefined) : null;
 }
+
+const steady = new Map<string, number | null>();
+
+/**
+ * The water's reach in a frame of a pose. Where the blade barely turns over the pose (at rest, walking,
+ * running) the water keeps one length, its shortest in the pose, so it doesn't grow and shrink as the frame
+ * edge comes nearer; where the blade swings (a cut, the lunge) each frame has its own.
+ */
+function steadyReach(look: SpriteAppearance, pose: SpritePose, frame: number, eye: EyeSpecial, b: Blade): number {
+  const key = `${JSON.stringify(look.slots.held ?? null)}|${look.body}|${look.stowed ? 1 : 0}|${JSON.stringify(look.arms ?? null)}|${pose}|${eye}`;
+  let r = steady.get(key);
+  if (r === undefined) {
+    const all: Blade[] = [];
+    for (let f = 0; f < frameCount(rigPoseFor(pose)); f++) {
+      const o = bladeOf(look, pose, f, eye);
+      if (o) all.push(o);
+    }
+    const turn = Math.max(...all.map((o) => Math.acos(Math.max(-1, Math.min(1, o.dx * all[0].dx + o.dy * all[0].dy)))));
+    r = all.length && (turn * 180) / Math.PI < STEADY_TURN ? Math.min(...all.map(waterReach)) : null;
+    steady.set(key, r);
+    if (steady.size > BLADES_MAX) steady.delete(steady.keys().next().value as string);
+  }
+  return r ?? waterReach(b);
+}
+/** Degrees the blade may turn over a pose for the water to keep one length. */
+const STEADY_TURN = 25;

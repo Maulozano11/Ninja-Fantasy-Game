@@ -301,8 +301,11 @@ que hiciste para la hotbar no me gustaron los mejorare"*.
   The new water (`vfx/weapon-water-v2`, waiting for his yes): a torrent drawn as his water stream is (his
   water sheet: his blues, a light strand running along it, white foam caps breaking on the crests of waves
   that run along its upper edge, a rounded head of foam, his spray dots, drops falling), his dark water
-  line round it; past the tip about half the blade again (16 to 24 px, was up to 34), so the weapon stays
-  in proportion. That branch offers water again.
+  line round it. Then his *"al de agua hazlo mas largo para que se entienda la extension de alcance hazlo
+  unos 1.35 mas largo"* (2026-10-23): the whole water 1.35 times as long, past the tip about the blade again
+  (46 to 48 px on Solen's and Ren's blades), short of the frame's edge where the blade points near it (the
+  lunge, a cut, hurt), one length over a pose where the blade barely turns (at rest, walking, running).
+  That branch offers water again.
 - The hotbar icons: he did not like ours (the element icons the button shows); **he will paint them himself**.
   Ours stay on the button only until his arrive.
 - The numbers and the Spanish name below are still our proposal; he has not changed them.

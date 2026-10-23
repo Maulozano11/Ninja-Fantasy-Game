@@ -784,8 +784,10 @@ const THROW: PoseFrame[] = [
   // Cock: rising, the weapon raised behind the head with the elbow back, the free hand pointing the way.
   { lean: 9, footN: v(-0.46, 0.91), footF: v(0.4, 0.88), handN: arm(-0.42, -0.6), bendN: -1, handF: arm(0.96, -0.1), shapeN: 'grip', shapeF: 'point' },
   // Throw: the arm whips forward under the chin and flings the weapon level at the target, the body
-  // pitching after it halfway to the release, the free arm swinging back.
-  { lean: 21, pelvisDx: 1.5, headDx: 3, headDy: 4.5, footN: v(-0.52, 0.87), footF: v(0.25, 0.8), handN: arm(0.78, 0.68), handF: arm(-0.55, 0.5), shapeN: 'grip', shapeF: 'fist' },
+  // pitching after it halfway to the release, the free arm swinging back; the head up on the neck,
+  // turned forward on the way to the release's (neckPitch; the owner on Solen's Arrojar 3, once a fixed
+  // offset sank it into the chest: "ahi se quedo igual la cabeza hay que corregirla").
+  { lean: 21, pelvisDx: 1.5, neckPitch: 18, footN: v(-0.52, 0.87), footF: v(0.25, 0.8), handN: arm(0.78, 0.68), handF: arm(-0.55, 0.5), shapeN: 'grip', shapeF: 'fist' },
   // RELEASE: the owner's reference; the phase starts here.
   { lean: 32, pelvisDx: 2, neckPitch: 26, footN: v(-0.56, 0.83), footF: v(0.087, 0.637), handN: arm(-0.73, -0.62), handF: arm(-0.62, 0.55), shapeN: 'open', shapeF: 'open', released: true, streamBack: true },
   // Follow-through: carried on into the leap, both feet leaving the ground.

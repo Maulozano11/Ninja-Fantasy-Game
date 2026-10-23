@@ -81,7 +81,7 @@ describe('throw and pierce poses', () => {
     }
   });
 
-  it('keeps the head up on the neck at its length through the release and follow-through, on every body', () => {
+  it('keeps the head up on the neck at its length through the throw, release and follow-through, on every body', () => {
     // The release once hung the head ahead of the chest by a fixed offset (headDx 6, headDy 8): 13 px from the
     // neck's foot against 9 at rest, below the shoulders, no neck to it (the owner: "hay que arreglarle el
     // cuello y la cabeza a las ultimas 2 poses de arrojar"). As on his heroine's throw (neckPitch), the head
@@ -94,7 +94,9 @@ describe('throw and pierce poses', () => {
         const d = Math.hypot(r.head.x - r.neck.x, r.head.y - r.neck.y) * RES;
         // no frame stretches the neck past its length (the head on whole fine pixels: 1.5 px)
         assert.ok(d <= len + 1.5, `${body} throw ${f}: the head ${d.toFixed(1)} px from the neck's foot (at rest ${len.toFixed(1)})`);
-        if (f < THROW_RELEASE_FRAME) continue;
+        // from the throw itself, the frame before the release, the body pitching after the arm (the owner on
+        // Solen's Arrojar 3: "ahi se quedo igual la cabeza hay que corregirla")
+        if (f < THROW_RELEASE_FRAME - 1) continue;
         assert.ok(Math.abs(d - len) <= 1.5, `${body} throw ${f}: the head ${d.toFixed(1)} px from the neck's foot (at rest ${len.toFixed(1)})`);
         const deg = (Math.atan2(r.head.x - r.neck.x, r.neck.y - r.head.y) * 180) / Math.PI;
         assert.ok(deg >= 10 && deg <= 30, `${body} throw ${f}: the neck leans ${deg.toFixed(1)} degrees forward`);

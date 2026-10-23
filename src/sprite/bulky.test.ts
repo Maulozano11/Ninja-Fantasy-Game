@@ -256,7 +256,8 @@ describe('the other bodies are unchanged', () => {
     ['male', 'preset_founder', 'run', 3, '8a8e42a06e724ebe63414725cb1365d2693455a2'],
     ['male', 'default', 'sit', 0, '40f7e5a7e74aaf803f6a9dfb6b0be414a1bcadeb'],
     ['female', 'default', 'walk', 3, 'c71b371beba31db791f6cc1e8e82a6c80fdc964c'],
-    ['female', 'preset_reference_aiden', 'throw', 2, '7b413fc24f3a1a81f0de8b6ef8c64a5467125a99'],
+    // (throw 2 with the head up on the neck, as on every body: the owner on Solen's Arrojar 3)
+    ['female', 'preset_reference_aiden', 'throw', 2, 'b87d92a1100dadffe638d2485eb8fbadc9a7972a'],
     ['female', 'default', 'cast', 0, 'b57a8d0369a49d5a0e8f17caa34d5e5447254eb6'],
     ['female', 'preset_founder', 'downed', 0, '123e04f18944ac9c22e35bf39439c5045c0c2979'],
   ];

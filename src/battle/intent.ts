@@ -18,6 +18,7 @@ import { KUNAI, KUNAI_LONG, wielded } from './units';
 import { COMMAND, FORESIGHT_RANGE, SUBMISSION, SWAP, WARP, commandRefused, ownNodes, submissionRefused, swapBlocker, warpBlocker, warpLanding } from './clans';
 import { ownStructures, structureAt, structureBlocker } from './structures';
 import { chargedReach } from './charged';
+import { activeImbue, IMBUE_DICE, imbueReach } from './imbue';
 
 const avg = (dice?: string): number => {
   const d = dice ? parseDice(dice) : null;
@@ -43,7 +44,7 @@ export function visibleFoes(s: BattleState, u: Unit): Unit[] {
 }
 
 /** Melee reach to a target (hydra heads rise high, the body is big). */
-export const reachTo = (u: Unit, t: Unit): number => u.weapon.reach + (t.kind === 'hydra_head' ? 2.5 : 0) + (t.bulk ?? 0);
+export const reachTo = (u: Unit, t: Unit): number => u.weapon.reach + imbueReach(u) + (t.kind === 'hydra_head' ? 2.5 : 0) + (t.bulk ?? 0);
 
 /** The jutsu that deal damage and can be aimed at a foe. */
 export const offensive = (j: JutsuSpec): boolean => !!j.dice && !!j.dmgType && !j.special && j.cast !== 'reaction';
@@ -252,10 +253,13 @@ export function ninjaOptions(s: BattleState, u: Unit, next = false): Option[] {
   const warps = canWarp(u, next);
   // A kunai leaves a Node to warp to on the next turn (2 chakra left for it).
   const plants = u.jutsus.includes(WARP) && !noJutsu(u) && u.chakra >= JUTSU[WARP].cost;
+  // The element already on its weapon (Weapon Element Enhancement): its die on every blow. (One it
+  // could still put on doesn't count: the plan is made as before, and the AI imbues before a blow.)
+  const imbued = !!activeImbue(u);
   for (const f of foes) {
     const d = dist(u.pos, f.pos);
     const fx = focus(u, f);
-    const blow = (avg(u.weapon.dice) + wMod) * 0.65 * fx;
+    const blow = (avg(u.weapon.dice) + wMod + (imbued ? avg(IMBUE_DICE) : 0)) * 0.65 * fx;
     // A Ryusei with a Node beside the foe warps in and strikes from behind, however far it is.
     const warpIn = warps ? warpStrikeAt(s, u, f) : null;
     if (warpIn) out.push({ intent: { kind: 'melee', what: u.weapon.name, target: f.id }, value: blow * EDGE, way: 'warp' });

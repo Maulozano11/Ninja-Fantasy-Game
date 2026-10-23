@@ -13,6 +13,7 @@ import { current } from './turns';
 import { areaValue, bestCell, goalOf, headOptions, ninjaOptions, offensive, planIntent, reachTo, standingUnit, stepToward, swapValue, visibleFoes, WALL, wallCover } from './intent';
 import type { Goal } from './intent';
 import { breakable, MAX_STRUCTURES, ownStructures, structureAt, structureAttack, structureBlocker, structureDist } from './structures';
+import { IMBUE_COST, imbueBlocker, unitImbueElement, WATER_REACH, WEAPON_ELEMENT } from './imbue';
 import { COMMAND, commandRefused, edgeFoe, ownNodes, submissionRefused, SWAP, WARP, warpBlocker, warpLanding } from './clans';
 
 /** Whether the battle is waiting on the AI (an AI unit's turn in the fighting). */
@@ -198,10 +199,29 @@ function fallback(s: BattleState, u: Unit): Action | null {
   return null;
 }
 
-/** The bonus action, before the plan: a Ryusei warps to a Node beside a foe its feet can't reach this turn. */
+/**
+ * The bonus action, before the plan: a Ryusei warps to a Node beside a foe its feet can't reach this
+ * turn; a Bukijutsu Master about to strike puts its element on its weapon.
+ */
 function bonusBefore(s: BattleState, u: Unit, i: Intent): Action | null {
   if (!u.turn.bonus) return null;
-  return ryuseiWarp(s, u, i);
+  return ryuseiWarp(s, u, i) ?? imbueFirst(s, u, i);
+}
+
+/**
+ * Weapon Element Enhancement before a blow (battle/imbue.ts): a Bukijutsu Master whose plan is a
+ * blow of its weapon at a foe it can reach this turn (water's longer reach counted) puts its element
+ * on the weapon first, if it has the chakra and the element isn't on it already.
+ */
+function imbueFirst(s: BattleState, u: Unit, i: Intent): Action | null {
+  if (i.kind !== 'melee' || !u.jutsus.includes(WEAPON_ELEMENT) || imbueBlocker(u) || effectMods(u.effects).noJutsu) return null;
+  const spec = JUTSU[WEAPON_ELEMENT];
+  if (u.chakra < Math.max(IMBUE_COST, jutsuCost(u, spec, false)) || handsBlocker(u, spec)) return null;
+  const t = i.target ? s.units[i.target] : undefined;
+  if (!t || t.team === u.team || !standingUnit(t)) return null;
+  const reach = reachTo(u, t) + (unitImbueElement(u) === 'Water' ? WATER_REACH : 0);
+  if (dist(u.pos, t.pos) > reach + walkBudget(u) + 0.1) return null;
+  return { type: 'jutsu', unit: u.id, jutsu: WEAPON_ELEMENT, at: { ...u.pos } };
 }
 
 /** A blow from `p` reaches the target (and no metal wall stands between). */

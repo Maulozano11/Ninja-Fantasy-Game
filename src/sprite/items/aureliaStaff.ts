@@ -84,5 +84,7 @@ export function drawDawnFarFist(g: DrawCtx): void {
 export function drawDawnStaff(g: DrawCtx, depth: Depth, at: Vec, deg: number, gold: string, orb: string, sparks: boolean): void {
   const tint = tintOf(gold, orb);
   drawPaintedWeapon(g, depth, DAWN_STAFF, at, deg, tint);
-  if (sparks) drawPaintedWeapon(g, depth, sparkTemplate(g.rig.frame), at, deg, tint);
+  // The sparkles are an effect over the figure (depth 'top', as Lyra's sword's), apart from it as he
+  // painted them, so the pass that takes stray specks away (holes.ts) leaves them.
+  if (sparks) drawPaintedWeapon(g, 'top', sparkTemplate(g.rig.frame), at, deg, tint);
 }

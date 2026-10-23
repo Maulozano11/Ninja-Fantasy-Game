@@ -40,10 +40,10 @@ const R = (radius: number, cover: 0 | 2 | 5, o: Partial<PropRules> = {}): PropRu
 
 /** What each kind of prop does in battle (the sprite manifests' tags, made concrete). */
 export const PROP_RULES: Record<string, PropRules & { halfLen?: number }> = {
-  'trees/oak': R(0.45, 2, { blocksSight: true, flammable: true }),
-  'trees/maple': R(0.4, 2, { blocksSight: true, flammable: true }),
-  'trees/pine': R(0.35, 2, { blocksSight: true, flammable: true }),
-  'trees/bamboo': R(0.7, 2, { blocksSight: true, hideSpot: true, passable: true, flammable: true }),
+  'trees/oak': R(0.45, 2, { blocksSight: true, height: 7.5, flammable: true }),
+  'trees/maple': R(0.4, 2, { blocksSight: true, height: 5, flammable: true }),
+  'trees/pine': R(0.35, 2, { blocksSight: true, height: 9, flammable: true }),
+  'trees/bamboo': R(0.7, 2, { blocksSight: true, height: 6, hideSpot: true, passable: true, flammable: true }),
   'trees/stump': R(0.35, 2),
   'plants/bush_round': R(0.65, 2, { hideSpot: true, passable: true, flammable: true }),
   'plants/bush_wide': R(0.95, 2, { hideSpot: true, passable: true, flammable: true }),
@@ -57,19 +57,20 @@ export const PROP_RULES: Record<string, PropRules & { halfLen?: number }> = {
   'landmarks/stone_lantern': R(0.3, 2),
   'landmarks/signpost': R(0.15, 0),
   'landmarks/fence': { ...R(0.25, 2, { hp: 12 }), halfLen: 1.1 },
-  'landmarks/fence_bamboo': { ...R(0.25, 2, { blocksSight: true, hp: 12 }), halfLen: 1.1 },
-  'landmarks/boulder': R(0.95, 5),
+  'landmarks/fence_bamboo': { ...R(0.25, 2, { blocksSight: true, height: 1.2, hp: 12 }), halfLen: 1.1 },
+  // A tall rock hides what is behind it (the owner, 2026-10-23: "rocas altas y objetos altos para tapar la vista").
+  'landmarks/boulder': R(0.95, 5, { blocksSight: true, height: 1.3 }),
   'landmarks/rock': R(0.45, 2),
   'landmarks/rocks_small': R(0, 0, { passable: true }),
   'landmarks/river_stones': R(0, 0, { passable: true }),
   'landmarks/hokora': R(0.4, 2),
   'camp/campfire': R(0.5, 0),
   'camp/smoke': R(0, 0, { passable: true }),
-  'camp/tent': R(1.35, 5, { blocksSight: true, flammable: true, hp: 30 }),
+  'camp/tent': R(1.35, 5, { blocksSight: true, height: 2, flammable: true, hp: 30 }),
   'camp/barrel': R(0.32, 2, { hp: 10 }),
   'camp/barrel_explosive': R(0.32, 2, { hp: 6, explosive: true }),
   'camp/crate': R(0.42, 2, { hp: 12 }),
-  'camp/crate_stack': R(0.6, 5, { blocksSight: true, hp: 25 }),
+  'camp/crate_stack': R(0.6, 5, { blocksSight: true, height: 1.6, hp: 25 }),
   'camp/sacks': R(0.6, 2),
   'camp/weapon_rack': R(0.4, 0, { hp: 10 }),
 };
@@ -158,6 +159,14 @@ export function steamBetween(s: BattleState, a: Pt, b: Pt, into = false): boolea
   if (into) while (end > 0 && at(end)) end--;
   for (let k = 0; k <= end; k++) if (at(k)) return true;
   return false;
+}
+
+/** Where along the segment a-b (0..1) the point nearest p lies. */
+function alongSegment(p: Pt, a: Pt, b: Pt): number {
+  const dx = b.x - a.x;
+  const dz = b.z - a.z;
+  const l2 = dx * dx + dz * dz || 1e-9;
+  return Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.z - a.z) * dz) / l2));
 }
 
 /** Distance from p to the segment a-b (meters). */
@@ -261,9 +270,9 @@ export const tooHigh = (s: BattleState, a: Pt, b: Pt): boolean => Math.abs(level
 export const heightReach = (s: BattleState, from: Pt, to: Pt): number => Math.max(0, Math.floor(levelAtPt(s, from) - levelAtPt(s, to) + 0.1)) * LEVEL_M;
 
 /**
- * Levels above a thing from which one sees over it (proposal): from 2 levels up (a watch tower)
- * low cover (half) gives none, three-quarters gives half, and a tent, a stack of crates or a bamboo
- * fence no longer blocks sight. Trees and jutsu walls still do.
+ * Levels above a thing from which one looks down on its cover (proposal): from 2 levels up (a watch
+ * tower) low cover (half) gives none and three-quarters gives half. (Sight over a tall thing goes by
+ * its height instead: lineOfSight.)
  */
 export const OVERLOOK_LEVELS = 2;
 const overlooks = (high: number, thing: number): boolean => high - thing >= OVERLOOK_LEVELS - 0.1;
@@ -321,28 +330,39 @@ function circleHitsSegment(c: Pt, r: number, a: Pt, b: Pt): boolean {
 }
 
 /**
- * Nothing that blocks sight stands between two points (trees, tents, stacked crates, earth and metal
- * walls, steam, which also blinds whoever stands in it). `into`: b is a point aimed at, which may lie
- * in steam (steamBetween). With `structures: false` the walls don't count (a Ryusei warps past them).
+ * Nothing that blocks sight stands between two points (the ground, trees, tents, stacked crates, a
+ * boulder, a bamboo fence, earth and metal walls, steam, which also blinds whoever stands in it).
+ * `into`: b is a point aimed at, which may lie in steam (steamBetween). With `structures: false` the
+ * walls don't count (a Ryusei warps past them).
+ *
+ * A tall thing hides as the ground does (the owner, 2026-10-23: "rocas altas y objetos altos para
+ * tapar la vista"): only where its top rises above the line between the two, SIGHT_LEVELS over each
+ * one's feet. On flat ground it always does; from high above, it hides a ninja close behind it and
+ * not one further off (a tent, a stack of crates), and a tree still hides everything behind it.
  */
 export function lineOfSight(s: BattleState, a: Pt, b: Pt, opts: { structures?: boolean; into?: boolean } = {}): boolean {
   if (steamBetween(s, a, b, opts.into)) return false;
   if (terrainBlocks(s, a, b)) return false;
   const map = getMap(s.mapId);
-  const high = Math.max(levelAtPt(s, a), levelAtPt(s, b));
+  const ea = levelAtPt(s, a) + SIGHT_LEVELS;
+  const eb = levelAtPt(s, b) + SIGHT_LEVELS;
   for (let i = 0; i < map.props.length; i++) {
     const p = map.props[i];
     const rules = propRules(p);
     if (!rules.blocksSight || s.props[i]?.destroyed) continue;
-    // Seen over from high above (a watch tower): everything but a tree.
-    if (p.group !== 'trees' && overlooks(high, p.level)) continue;
     if (dist(p, a) < rules.radius + 0.1 || dist(p, b) < rules.radius + 0.1) continue;
+    // Where along the line (0 at a, 1 at b) it stands in the way, if it does.
+    let t = -1;
     if (rules.halfLen) {
       // A bamboo fence: a segment along x.
       const pa = { x: p.x - rules.halfLen, z: p.z };
       const pb = { x: p.x + rules.halfLen, z: p.z };
-      if (segmentsCross(a, b, pa, pb)) return false;
-    } else if (circleHitsSegment(p, rules.radius * 0.8, a, b)) return false;
+      if (segmentsCross(a, b, pa, pb)) t = (p.z - a.z) / (b.z - a.z);
+    } else if (circleHitsSegment(p, rules.radius * 0.8, a, b)) t = alongSegment(p, a, b);
+    if (t < 0) continue;
+    // Its top over the line there (a prop with no height given is taller than anything).
+    const top = p.level + (rules.height ?? Infinity) / LEVEL_M;
+    if (top > ea + (eb - ea) * t + 0.05) return false;
   }
   if (opts.structures === false) return true;
   for (const w of s.walls) if ((w.kind === 'earth' || w.kind === 'metal') && segmentsCross(a, b, w.a, w.b)) return false;

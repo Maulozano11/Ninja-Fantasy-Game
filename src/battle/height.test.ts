@@ -4,7 +4,11 @@
 // the ladder), the reach and cover rules of height, and the height test battle. His answers of
 // 2026-10-23 on the height rules: the range from high ground for everything thrown or sent, sight
 // over an edge "como en xcom 2", falls that hurt only when not on purpose (3d6 at most), and an AI
-// that keeps the high ground when it fights from afar and comes down when it fights up close.
+// that keeps the high ground when it fights from afar and comes down when it fights up close. His
+// second round (2026-10-23): "jutsus sin alcance extra ; conos solo conos los demas si les da mas
+// alcance ... rocas altas y objetos altos para tapar la vista ... [mirar hacia abajo] es similar
+// solo inverso": only cones get no reach from above, tall things hide by their height, and looking
+// down works as looking up, the other way round.
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
@@ -18,13 +22,14 @@ import { CELL, cellCenter, cellOf, coverBetween, fallDice, gridFor, idx, levelAt
 import { canStop, climbCost, CLIMB_DOWN, CLIMB_UP, DIAGONAL_RULE, diagonalCost, pathCost, pathTo, reachable, walkCost } from './nav';
 import { attackPreview } from './combat';
 import { KUNAI } from './units';
-import { JUTSU, jutsuRange, reachesFromAbove } from './jutsu';
+import { JUTSU, areaIn, areaOf, jutsuRange, reachesFromAbove } from './jutsu';
 import { fightsFromAfar, ninjaOptions, standScore } from './intent';
 import type { BattleEvent } from './types';
 import { aiAction } from './ai';
 import { current } from './turns';
 import { ENCOUNTERS, encounterSetup } from './encounters';
-import { LADDER, TOWER } from './maps/heightTest';
+import { HEIGHT_TEST, LADDER, TOWER } from './maps/heightTest';
+const getMapProps = (_s: BattleState) => HEIGHT_TEST.props;
 import './maps';
 
 const hero = (over: Partial<ShinobiCharacter> = {}): ShinobiCharacter => ({ ...DEFAULT_CHARACTER, effects: [], ...over });
@@ -229,7 +234,7 @@ describe('fighting from high ground', () => {
     assert.equal(KUNAI.reach, 9);
   });
 
-  it('a jutsu sent at a target or a point reaches 1.5 m further a level above it, like a kunai; a blow, a cone or a line doesn\'t', () => {
+  it('a jutsu sent at a target or a point reaches 1.5 m further a level above it, like a kunai; a blow or a cone doesn\'t', () => {
     const s = onHill(at(29.75, 4.25), at(19.25, 4.25));
     const tower = s.units.a.pos;
     const ground = s.units.rogue_0.pos;
@@ -237,7 +242,7 @@ describe('fighting from high ground', () => {
     assert.equal(jutsuRange(s, JUTSU.fire_three_embers, tower, ground), 12);
     assert.equal(jutsuRange(s, JUTSU.fireball_goukakyu, tower, ground), 12);
     assert.equal(jutsuRange(s, JUTSU.fire_three_embers, ground, tower), 9, 'not from below');
-    for (const id of ['dragon_fire_stream', 'great_fire_annihilation', 'genjutsu_mirage', 'northstar_command', 'earth_wall_doryuheki', 'mystical_palm', 'taijutsu_rush', 'chidori_lightning_blade']) {
+    for (const id of ['dragon_fire_bomb', 'great_fire_annihilation', 'mystical_palm', 'taijutsu_rush', 'chidori_lightning_blade']) {
       assert.equal(reachesFromAbove(JUTSU[id]), false, id);
       assert.equal(jutsuRange(s, JUTSU[id], tower, ground), JUTSU[id].range, id);
     }
@@ -260,7 +265,7 @@ describe('fighting from high ground', () => {
     assert.equal(applyAction(below, { type: 'item', unit: 'a', item: 'tag', at: { ...below.units.rogue_0.pos } }).reason, 'outOfRange');
   });
 
-  it('from the tower low cover is looked down on: the crate gives none, the stack of crates half and no longer hides', () => {
+  it('from the tower low cover is looked down on: the crate gives none, the stack of crates half', () => {
     const s = onHill(at(2.25, 14.75));
     const tower = at(28.25, 4.25);
     const ground = at(28.25, 8.25);
@@ -272,7 +277,6 @@ describe('fighting from high ground', () => {
     assert.equal(coverBetween(s, at(29.75, 8.25), behindStack), 5);
     assert.equal(coverBetween(s, at(29.75, 4.25), behindStack), 2);
     assert.equal(lineOfSight(s, at(29.75, 8.25), behindStack), false);
-    assert.equal(lineOfSight(s, at(29.75, 4.25), behindStack), true);
   });
 });
 
@@ -451,5 +455,160 @@ describe('the height test battle', () => {
     }
     // Someone went from the ground to two levels up or the other way (the tower's rogue comes down).
     assert.ok([...seen.values()].some((l) => l.has(0) && l.has(2)), JSON.stringify([...seen].map(([id, l]) => [id, [...l]])));
+  });
+});
+
+describe('the owner\'s second round (2026-10-23): only cones get no reach from above', () => {
+  const tower = at(29.75, 4.25);
+  const ground = at(19.25, 4.25);
+
+  it('everything aimed somewhere reaches 1.5 m further a level above it: lines, walls, heals, warps, genjutsu, Command, Submission', () => {
+    const s = onHill(tower, ground);
+    const ids = ['dragon_fire_stream', 'earth_spear_doryuudan', 'lightning_thunder_beam', 'wind_blade_daitoppa', 'water_healing_dew', 'genjutsu_mirage', 'temple_of_nirvana', 'northstar_command', 'northstar_submission', 'earth_wall_doryuheki', 'water_shield_suijinheki', 'koton_block', 'koton_wall', 'body_flicker', 'wind_gale_curtain', 'ryusei_warp', 'ryusei_swap', 'adamantine_sealing_chains'];
+    for (const id of ids) {
+      assert.equal(reachesFromAbove(JUTSU[id]), true, id);
+      assert.equal(jutsuRange(s, JUTSU[id], tower, ground), JUTSU[id].range + 3, id);
+      assert.equal(jutsuRange(s, JUTSU[id], ground, tower), JUTSU[id].range, `${id}, not from below`);
+    }
+  });
+
+  it('a cone keeps its range and its size; a blow, a touch and what works around the caster get nothing', () => {
+    const s = onHill(tower, ground);
+    for (const id of ['dragon_fire_bomb', 'water_devouring_tide', 'water_tide_s', 'earth_rubble_gust', 'lightning_spark_fan', 'great_fire_annihilation', 'hydra_roar']) {
+      assert.equal(JUTSU[id].shape, 'cone', id);
+      assert.equal(reachesFromAbove(JUTSU[id]), false, id);
+      assert.deepEqual(areaIn(s, JUTSU[id], tower, ground), areaOf(JUTSU[id], tower, ground), id);
+    }
+    for (const id of ['mystical_palm', 'taijutsu_rush', 'crescent_moon_dance', 'chidori_lightning_blade', 'leaf_hurricane_senpuu', 'shadow_clone', 'substitution_kawarimi']) {
+      assert.equal(reachesFromAbove(JUTSU[id]), false, id);
+      assert.equal(jutsuRange(s, JUTSU[id], tower, ground), JUTSU[id].range, id);
+    }
+  });
+
+  it('a line runs 1.5 m longer a level below the caster where it is aimed: the thunder beam reaches a rogue 10.5 m off from the tower', () => {
+    const s = turnOf(onHill(tower, ground), 'a');
+    const beam = JUTSU.lightning_thunder_beam;
+    const area = areaIn(s, beam, tower, ground);
+    assert.ok(area?.kind === 'line');
+    assert.equal(area.length, beam.length! + 3);
+    s.units.a.jutsus = ['lightning_thunder_beam'];
+    s.units.a.chakra = 30;
+    const out = ok(applyAction(s, { type: 'jutsu', unit: 'a', jutsu: 'lightning_thunder_beam', at: { ...ground } }));
+    assert.ok(out.events.some((e) => e.t === 'save' && e.unit === 'rogue_0'), 'the rogue is in the beam');
+    // From the ground, the same beam stops 1.5 m short of the tower.
+    const below = turnOf(onHill(ground, tower), 'a');
+    below.units.a.jutsus = ['lightning_thunder_beam'];
+    below.units.a.chakra = 30;
+    const miss = ok(applyAction(below, { type: 'jutsu', unit: 'a', jutsu: 'lightning_thunder_beam', at: { ...tower } }));
+    assert.ok(!miss.events.some((e) => e.t === 'save' && e.unit === 'rogue_0'));
+  });
+
+  it('a heal at range from the tower reaches a friend 7.5 m off below (6 m from the ground); a wall goes up 7 m off', () => {
+    const party = (a: Pt, b: Pt) => [
+      { character: hero({ id: 'a', name: 'Aki', clan: 'Northstar' }), pos: a },
+      { character: hero({ id: 'b', name: 'Bo' }), pos: b },
+    ];
+    const mk = (a: Pt, b: Pt) => {
+      const s = turnOf(createBattle(setup({ mapId: 'height_test', party: party(a, b), enemies: [{ kind: 'rogue', pos: at(2.25, 14.75) }] })).state, 'a');
+      s.units.a.jutsus = ['water_healing_dew', 'earth_wall_doryuheki', 'northstar_command'];
+      s.units.a.chakra = 40;
+      s.units.b.hp = 1;
+      return s;
+    };
+    const up = mk(tower, at(22.25, 4.25));
+    const healed = ok(applyAction(up, { type: 'jutsu', unit: 'a', jutsu: 'water_healing_dew', at: { ...up.units.b.pos }, target: 'b' }));
+    assert.ok(healed.events.some((e) => e.t === 'heal' && e.unit === 'b'));
+    const down = mk(at(22.25, 4.25), tower);
+    assert.equal(applyAction(down, { type: 'jutsu', unit: 'a', jutsu: 'water_healing_dew', at: { ...down.units.b.pos }, target: 'b' }).reason, 'outOfRange');
+    // An earth wall raised 7 m off on the field below the tower (6 m from the ground).
+    ok(applyAction(mk(tower, at(2.25, 12.25)), { type: 'jutsu', unit: 'a', jutsu: 'earth_wall_doryuheki', at: at(22.75, 4.25) }));
+    assert.equal(applyAction(mk(at(29.75, 9.25), at(2.25, 12.25)), { type: 'jutsu', unit: 'a', jutsu: 'earth_wall_doryuheki', at: at(22.75, 9.25) }).reason, 'outOfRange');
+  });
+
+  it('Command takes a mind 10.5 m off from the tower, not from the ground', () => {
+    // A rogue of no clan that shields its mind (the Mirai's does).
+    const mind = (st: BattleState) => {
+      const r = st.units.rogue_0;
+      if (r.character) r.character = { ...r.character, clan: 'Koton' };
+      return st;
+    };
+    const s = mind(turnOf(onHill(tower, ground), 'a'));
+    s.units.a.jutsus = ['northstar_command'];
+    s.units.a.chakra = 30;
+    const out = applyAction(s, { type: 'jutsu', unit: 'a', jutsu: 'northstar_command', at: { ...ground }, target: 'rogue_0' });
+    ok(out);
+    const below = mind(turnOf(onHill(ground, tower), 'a'));
+    below.units.a.jutsus = ['northstar_command'];
+    below.units.a.chakra = 30;
+    assert.equal(applyAction(below, { type: 'jutsu', unit: 'a', jutsu: 'northstar_command', at: { ...tower }, target: 'rogue_0' }).reason, 'outOfRange');
+  });
+
+  it('the AI counts it: a beam-caster on the tower aims at a foe 10.5 m below', () => {
+    const s = turnOf(onHill(ground, tower), 'rogue_0');
+    const r = s.units.rogue_0;
+    r.jutsus = ['lightning_thunder_beam'];
+    r.chakra = 30;
+    assert.ok(ninjaOptions(s, r).some((o) => o.intent.kind === 'jutsu' && o.intent.what === 'lightning_thunder_beam' && o.intent.target === 'a'));
+  });
+});
+
+describe('looking down from high ground (the owner, 2026-10-23: "es similar solo inverso")', () => {
+  it('at the terrace\'s edge one sees the ninjas at the foot of its cliff face; 5 m back, not the one hugging it, only those further out', () => {
+    const s = onHill(at(2.25, 14.75));
+    const edge = at(6.25, 8.25); // on the terrace (level 1), at its edge
+    const back = at(6.25, 3.25); // on the terrace, 5 m back from its edge
+    const foot = at(6.25, 8.75); // on the field, against the cliff face
+    const out = at(6.25, 15.25); // on the field, 6.75 m out from it
+    assert.equal(lineOfSight(s, edge, foot), true);
+    assert.equal(lineOfSight(s, edge, at(6.25, 10.25)), true);
+    assert.equal(lineOfSight(s, back, foot), false);
+    assert.equal(lineOfSight(s, back, at(6.25, 12.25)), false);
+    assert.equal(lineOfSight(s, back, out), true);
+  });
+
+  it('the same from the tower (two levels up): at its side one sees the foot of it, from its other side only further out', () => {
+    const s = onHill(at(2.25, 14.75));
+    const side = at(30.25, 4.75); // on the platform, at its east edge (x 30.5)
+    const far = at(28.25, 4.75); // on the platform, 2 m back from that edge
+    const foot = at(30.75, 4.75);
+    assert.equal(lineOfSight(s, side, foot), true);
+    assert.equal(lineOfSight(s, far, foot), false);
+    assert.equal(lineOfSight(s, far, at(40.25, 4.75)), true);
+  });
+
+  it('a kunai follows it: from the edge it hits the ninja at the foot; from far back, no sight', () => {
+    ok(applyAction(turnOf(onHill(at(6.25, 8.25), at(6.25, 8.75)), 'a'), { type: 'attack', unit: 'a', target: 'rogue_0', ranged: true }));
+    assert.equal(applyAction(turnOf(onHill(at(6.25, 3.25), at(6.25, 8.75)), 'a'), { type: 'attack', unit: 'a', target: 'rogue_0', ranged: true }).reason, 'noSight');
+  });
+});
+
+describe('tall things hide by their height (the owner, 2026-10-23: "rocas altas y objetos altos para tapar la vista")', () => {
+  it('on flat ground a boulder, a tent, a stack of crates and a tree hide who stands behind them; a low crate or rock doesn\'t', () => {
+    const s = createBattle(setup()).state;
+    // River Forest's boulder at (41, 15.25), 1.3 m high; a little in front of it, the view is clear.
+    assert.equal(lineOfSight(s, at(37.25, 15.25), at(44.25, 15.25)), false);
+    assert.equal(lineOfSight(s, at(37.25, 17.25), at(44.25, 17.25)), true);
+    const h = onHill(at(2.25, 14.75));
+    // The stack of crates (1.6 m) and the barrel (0.9 m) in front of the tower, from the field.
+    assert.equal(lineOfSight(h, at(29.75, 8.25), at(29.75, 13.75)), false);
+    assert.equal(lineOfSight(h, at(32.75, 8.25), at(32.75, 12.75)), true);
+  });
+
+  it('from the tower a stack of crates hides one close behind it, not one further off; a tree hides from up there too', () => {
+    const s = onHill(at(2.25, 14.75));
+    const tower = at(29.75, 4.25);
+    assert.equal(levelAtPt(s, tower), 2);
+    assert.equal(lineOfSight(s, tower, at(29.75, 13.75)), false, 'close behind the stack');
+    assert.equal(lineOfSight(s, tower, at(29.75, 15.25)), true, 'further off');
+    // The oak (7.5 m) at (38.6, 0.7): from the platform, the one behind it is hidden, one beside it isn't.
+    assert.equal(lineOfSight(s, at(30.25, 3.75), at(40.25, 0.25)), false);
+    assert.equal(lineOfSight(s, at(30.25, 3.75), at(40.25, 3.25)), true);
+  });
+
+  it('what is not there doesn\'t hide: a burnt-down stack of crates', () => {
+    const s = onHill(at(2.25, 14.75));
+    const i = getMapProps(s).findIndex((p) => p.name === 'crate_stack');
+    s.props[i] = { ...s.props[i], destroyed: true };
+    assert.equal(lineOfSight(s, at(29.75, 8.25), at(29.75, 13.75)), true);
   });
 });

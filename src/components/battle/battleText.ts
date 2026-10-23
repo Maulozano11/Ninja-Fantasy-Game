@@ -193,6 +193,7 @@ const TABLE = strings({
   aimWater: { en: 'water ×2', es: 'agua ×2' },
   aimClimb: { en: 'climb', es: 'trepar' },
   aimNoReach: { en: 'Out of reach', es: 'Fuera de alcance' },
+  aimHeightReach: { en: '+{m} m of reach from the height', es: '+{m} m de alcance por la altura' },
   aimTagTrap: { en: 'Hide the tag here', es: 'Esconder el sello aquí' },
   aimChance: { en: '{p}% · {dice}', es: '{p}% · {dice}' },
   aimSave: { en: '{save} save DC {dc}', es: 'Salvación {save} CD {dc}' },

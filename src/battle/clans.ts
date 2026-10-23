@@ -6,7 +6,7 @@ import type { BattleEvent, BattleState, Hit, Pt, Unit, WeaponNode } from './type
 import { cellBlocked, cellCenter, cellOf, coverBetween, dist, fullCoverBetween, gridFor, lineOfSight, sameCell, waterAtPt } from './map';
 import { canStop, freeSpot, isOnMap, occupancy, reachable } from './nav';
 import { AURA_RADIUS, passivePerception, revealOutOfHiding, savingThrow, sovereign } from './combat';
-import { JUTSU } from './jutsu';
+import { JUTSU, jutsuRange } from './jutsu';
 import { trapAt } from './hazards';
 import { wielded } from './units';
 
@@ -157,7 +157,7 @@ export function warpLanding(s: BattleState, u: Unit, n: WeaponNode): Pt | null {
 /** Why a Shooting-Star Thrust to this Node can't be made (none picked, too far, out of sight, nowhere to land), or null. */
 export function warpBlocker(s: BattleState, u: Unit, n: WeaponNode | undefined): string | null {
   if (!n) return 'noNode';
-  if (dist(u.pos, n.pos) > JUTSU[WARP].range + 0.1) return 'outOfRange';
+  if (dist(u.pos, n.pos) > jutsuRange(s, JUTSU[WARP], u.pos, n.pos) + 0.1) return 'outOfRange';
   if (!nodeInSight(s, u, n)) return 'noSight';
   return warpLanding(s, u, n) ? null : 'blocked';
 }
@@ -205,7 +205,7 @@ export function swapBlocker(s: BattleState, u: Unit, t: Unit | undefined): strin
   if (t.kind !== 'ninja') return 'tooBig';
   const n = nodeUnder(s, u, t);
   if (!n) return 'notOnNode';
-  if (dist(u.pos, n.pos) > JUTSU[SWAP].range + 0.1) return 'outOfRange';
+  if (dist(u.pos, n.pos) > jutsuRange(s, JUTSU[SWAP], u.pos, n.pos) + 0.1) return 'outOfRange';
   return nodeInSight(s, u, n) ? null : 'noSight';
 }
 
@@ -289,9 +289,9 @@ export function submissionRefused(s: BattleState, u: Unit, t: Unit | undefined):
   return t.creature && t.team !== u.team ? null : 'notBeast';
 }
 
-/** Command and Natural Submission reach 9 m, in sight. */
+/** Command and Natural Submission reach 9 m (1.5 m more a level above the target), in sight. */
 function mindReach(s: BattleState, u: Unit, t: Unit, id: string): string | null {
-  if (dist(u.pos, t.pos) > JUTSU[id].range + 0.1) return 'outOfRange';
+  if (dist(u.pos, t.pos) > jutsuRange(s, JUTSU[id], u.pos, t.pos) + 0.1) return 'outOfRange';
   return lineOfSight(s, u.pos, t.pos) ? null : 'noSight';
 }
 

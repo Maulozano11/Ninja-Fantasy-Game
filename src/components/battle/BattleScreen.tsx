@@ -11,7 +11,7 @@ import { chargeLanding, handsBlocker, jutsuCost, needsSeals } from '../../battle
 import { aiAction, aiToAct } from '../../battle/ai';
 import { current } from '../../battle/turns';
 import { AURA_RADIUS, attackPreview, sovereign } from '../../battle/combat';
-import { JUTSU, areaOf, enhanced as enhancedSpec, fanDice, fannedBy, jutsuRange } from '../../battle/jutsu';
+import { JUTSU, areaIn, areaOf, enhanced as enhancedSpec, fanDice, fannedBy, jutsuRange } from '../../battle/jutsu';
 import type { JutsuSpec } from '../../battle/jutsu';
 import { LEVEL_M, cellCenter, cellOf, dist, fullCoverBetween, getMap, gridFor, heightReach, idx, levelAtPt, lineOfSight, sameCell, steamAt, steamBetween, steamHides } from '../../battle/map';
 import { DIAGONAL_RULE, canStop, occupancy, pathTo, reachable, walkCost } from '../../battle/nav';
@@ -525,7 +525,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
     } else if (mode.k === 'jutsu' && spec && spec.shape === 'onNode') {
       // Spatial Swap: whoever stands on a Node it can reach; an enemy gets a STR save.
       o.range = { at: actor.pos, radius: spec.range };
-      o.nodes = { valid: ownNodes(s, actor).filter((n) => dist(actor.pos, n.pos) <= spec.range + 0.1 && nodeInSight(s, actor, n)).map((n) => n.id) };
+      o.nodes = { valid: ownNodes(s, actor).filter((n) => dist(actor.pos, n.pos) <= jutsuRange(s, spec, actor.pos, n.pos) + 0.1 && nodeInSight(s, actor, n)).map((n) => n.id) };
       o.targets = Object.values(s.units).filter((x) => !swapBlocker(s, actor, x)).map((x) => x.id);
       if (hu) {
         const why = swapBlocker(s, actor, hu);
@@ -549,7 +549,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
       if (!self) o.range = { at: actor.pos, radius: spec.range };
       const at = self ? actor.pos : hu ? hu.pos : hover?.pt;
       if (at) {
-        const area = areaOf(spec, actor.pos, at);
+        const area = areaIn(s, spec, actor.pos, at);
         if (area && spec.special === 'galeZone') {
           // The Gale Curtain hurts nobody: where the gale will turn, and what it does.
           o.area = { shape: area, tone: 'heal' };
@@ -579,8 +579,10 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
           const fan = T(fanDice(spec) > 1 ? 'aimFanned2' : 'aimFanned');
           sub = sub ? `${sub} · ${fan}` : fan;
         }
-        // From high ground a jutsu sent through the air reaches further (as the engine allows it).
-        if (!self && dist(actor.pos, at) > jutsuRange(s, spec, actor.pos, at) + 0.1 + (hu?.bulk ?? 0) + (hu?.kind === 'hydra_head' ? 2.5 : 0)) label = T('aimNoReach');
+        // From high ground a jutsu reaches further (as the engine allows it); a line runs longer.
+        const slack = 0.1 + (hu?.bulk ?? 0) + (hu?.kind === 'hydra_head' ? 2.5 : 0);
+        const upReach = jutsuRange(s, spec, actor.pos, at) - spec.range;
+        if (!self && dist(actor.pos, at) > spec.range + upReach + slack) label = T('aimNoReach');
         // Then sight, as the engine refuses it: a jutsu at one target needs to see it (a strike, no
         // metal wall between); an area or a point needs to see where it goes.
         else if (spec.shape === 'single' && hu && (spec.melee ? fullCoverBetween(s, actor.pos, hu.pos) || (!!spec.charge && !chargeLanding(s, actor, hu)) : !lineOfSight(s, actor.pos, hu.pos))) label = reasonLine(spec.melee ? 'blocked' : sightWhy(s, actor.pos, hu.pos));
@@ -591,13 +593,18 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
           // for a Kōton, how many already stand.
           const koton = spec.special === 'metalBlock' || spec.special === 'metalWall';
           const w = koton ? structureAt(spec, actor.pos, at, actor.id, 'preview') : jutsuWallAt(spec, actor.pos, at, 'preview');
-          const why = dist(actor.pos, at) > spec.range + 0.1 ? 'outOfRange' : !lineOfSight(s, actor.pos, at, { into: true }) ? sightWhy(s, actor.pos, at, true) : structureBlocker(s, w);
+          const why = dist(actor.pos, at) > jutsuRange(s, spec, actor.pos, at) + 0.1 ? 'outOfRange' : !lineOfSight(s, actor.pos, at, { into: true }) ? sightWhy(s, actor.pos, at, true) : structureBlocker(s, w);
           const n = ownStructures(s, actor.id).length;
           o.point = undefined;
           o.footprint = { wall: w, ok: !why };
           label = why ? reasonLine(why) : koton ? T('aimStructures', { n }) : jutsuName(spec.id, lang);
           // Refused, nothing crumbles: no warning about the oldest one then.
           if (koton && n >= MAX_STRUCTURES && !why) sub = T('aimOldest');
+        }
+        // Said when the height is what makes it reach (a line: whenever it runs longer).
+        if (upReach > 0 && label !== T('aimNoReach') && (spec.shape === 'line' || dist(actor.pos, at) > spec.range + slack)) {
+          const more = T('aimHeightReach', { m: upReach.toFixed(1) });
+          sub = sub ? `${sub} · ${more}` : more;
         }
       }
     } else if (mode.k === 'item' && mode.item === 'tag') {

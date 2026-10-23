@@ -269,6 +269,11 @@ export interface PropRules {
   radius: number;
   cover: 0 | 2 | 5;
   blocksSight: boolean;
+  /**
+   * How tall it stands over its ground (m; its sprite's height). One that blocks sight hides only
+   * where its top rises above the line between two ninjas' eyes (map.ts, lineOfSight).
+   */
+  height?: number;
   /** Bushes, tall grass, reeds: a ninja inside can hide; it doesn't block walking. */
   hideSpot: boolean;
   /** Walkable decoration (flowers, ferns, lily pads). */

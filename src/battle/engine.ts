@@ -33,7 +33,7 @@ import { cellBlocked, cellCenter, cellOf, clearRun, coverBetween, dampAt, dist, 
 import { canStop, countStep, freeSpot, occupancy, pathTo, pathTouchesDeep, reachable, unitStepCost } from './nav';
 import type { AttackPreview } from './combat';
 import { attackPreview, check, damage, heal, hostileAura, passivePerception, PERFECT_HIDE, reveal, revealOutOfHiding, rollDiceExpr, skillMod } from './combat';
-import { JUTSU, MIN_AIM, areaOf, enhanced, fanDice, fanned, fannedBy, jutsuRange } from './jutsu';
+import { JUTSU, MIN_AIM, areaIn, enhanced, fanDice, fanned, fannedBy, jutsuRange } from './jutsu';
 import type { JutsuSpec } from './jutsu';
 import { KUNAI, enemyNameOf, enemyUnit, handsFree, unitFrom, wielded } from './units';
 import type { EnemyKind } from './units';
@@ -880,7 +880,7 @@ function doJutsu(s: BattleState, u: Unit, id: string, atIn: Pt, targetId: string
       break;
     case 'ally':
       if (!target || target.team !== u.team || !targetable(target)) return 'needAlly';
-      if (d > spec.range + 0.1) return 'outOfRange';
+      if (d > jutsuRange(s, spec, u.pos, target.pos) + 0.1) return 'outOfRange';
       break;
     case 'circle':
     case 'point':
@@ -946,7 +946,7 @@ function doJutsu(s: BattleState, u: Unit, id: string, atIn: Pt, targetId: string
     else dashTo(s, u, target, id, ev);
   }
   if (at.x !== u.pos.x) u.facing = at.x > u.pos.x ? 1 : -1;
-  const area = areaOf(spec, u.pos, at);
+  const area = areaIn(s, spec, u.pos, at);
   // A fire jutsu through a gale on the ground burns harder (the Gale Curtain).
   const fan = fannedBy(spec, u.pos, at, s.zones ?? []);
   ev.push({ t: 'jutsu', unit: u.id, jutsu: id, at, shape: area, enhanced: enh, ...(fan ? { fanned: fan } : {}) });
@@ -1069,7 +1069,7 @@ function silentAttack(s: BattleState, u: Unit, spec: JutsuSpec, target: Unit | u
 
 /** Saves (or attack rolls) for everyone the jutsu reaches, plus what it does to the ground. */
 function jutsuHits(s: BattleState, u: Unit, spec: JutsuSpec, target: Unit | undefined, at: Pt, ev: BattleEvent[]): Hit[] {
-  const area = areaOf(spec, u.pos, at);
+  const area = areaIn(s, spec, u.pos, at);
   const fromCaster = spec.shape === 'selfCircle' || spec.shape === 'cone' || spec.shape === 'line';
   const victims = area ? unitsInArea(s, area, fromCaster ? [u.id] : [], fromCaster ? u.pos : at) : target ? [target] : [];
   const type = spec.dmgType ?? 'Force';

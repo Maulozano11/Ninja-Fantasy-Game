@@ -6,7 +6,7 @@ import type { AreaShape, BattleState, Cell, Intent, PropDef, Pt, Trap, Unit, Wal
 import { homeTeam } from '../../battle/types';
 import type { MapDef } from '../../battle/map';
 import { BLOCK_HALF, CELL, cellCenter, dist, segmentsCross } from '../../battle/map';
-import { JUTSU, areaOf } from '../../battle/jutsu';
+import { JUTSU, areaIn } from '../../battle/jutsu';
 import { breakable } from '../../battle/structures';
 import { AURA_RADIUS, sovereign } from '../../battle/combat';
 import { lookOf as guardLook, VISION } from '../../battle/stealth';
@@ -291,9 +291,11 @@ function areaPath(ctx: CanvasRenderingContext2D, map: MapDef, a: AreaShape): voi
     const ez = Math.sin(rad) * a.length;
     pts.push({ x: o.x + nx, z: o.z + nz }, { x: o.x + ex + nx, z: o.z + ez + nz }, { x: o.x + ex - nx, z: o.z + ez - nz }, { x: o.x - nx, z: o.z - nz });
   }
+  // Each corner on the ground under it: a line or a cone sent down from high ground is drawn
+  // reaching down to the lower ground, not floating at the caster's height.
   const lvl = map.levelAt(o.x, o.z);
   pts.forEach((p, i) => {
-    const s = project(map, p, lvl);
+    const s = project(map, p, i === 0 || (a.kind === 'line' && i === 3) ? lvl : map.levelAt(p.x, p.z));
     if (i) ctx.lineTo(s.X, s.Y);
     else ctx.moveTo(s.X, s.Y);
   });
@@ -467,7 +469,7 @@ function drawForesight(ctx: CanvasRenderingContext2D, sc: Scene, id: string, it:
   // A jutsu is aimed where its target stands when the turn comes (the hydra's venom and roar too).
   const spec = it.kind === 'jutsu' || it.kind === 'spit' || it.kind === 'roar' ? JUTSU[it.what] : undefined;
   const stop = it.to ?? from;
-  const area = spec ? areaOf(spec, stop, tgt ? sc.pb.posOf(tgt.id, now) : it.at ?? from) : null;
+  const area = spec ? areaIn(sc.state, spec, stop, tgt ? sc.pb.posOf(tgt.id, now) : it.at ?? from) : null;
   if (area) {
     ctx.beginPath();
     areaPath(ctx, map, area);

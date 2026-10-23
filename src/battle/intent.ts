@@ -11,7 +11,7 @@ import { homeTeam } from './types';
 import { cellCenter, cellOf, clearRun, coverBetween, dist, fullCoverBetween, gridFor, heightReach, levelAtPt, lineOfSight, sameCell, steamAt, steamHides, tooHigh } from './map';
 import { lightningSeeds, unitsOnPatch, wetPatch } from './ground';
 import { canStop, occupancy, reachable } from './nav';
-import { JUTSU, MIN_AIM, areaOf, inArea, jutsuRange } from './jutsu';
+import { JUTSU, MIN_AIM, areaIn, areaOf, inArea, jutsuRange } from './jutsu';
 import type { JutsuSpec } from './jutsu';
 import { passivePerception, saveMod } from './combat';
 import { KUNAI, KUNAI_LONG, wielded } from './units';
@@ -68,7 +68,7 @@ function focus(u: Unit, f: Unit): number {
 
 /** Foes and friends an area would hit (1 for a jutsu with no area). */
 export function areaValue(s: BattleState, u: Unit, j: JutsuSpec, at: Unit): number {
-  const area = areaOf(j, u.pos, at.pos);
+  const area = areaIn(s, j, u.pos, at.pos);
   if (!area) return 1 + conductValue(s, u, j, at, null);
   let v = 0;
   for (const o of Object.values(s.units)) {
@@ -272,7 +272,7 @@ export function wallCover(s: BattleState, u: Unit, p: Unit, advancing = false): 
     if (l < 1e-6) continue;
     for (const r of [1.25, 2, 2.75]) {
       const at = { x: p.pos.x + (dv.x / l) * r, z: p.pos.z + (dv.z / l) * r };
-      if (dist(u.pos, at) > spec.range || dist(u.pos, at) < 0.5 || !lineOfSight(s, u.pos, at)) continue;
+      if (dist(u.pos, at) > jutsuRange(s, spec, u.pos, at) || dist(u.pos, at) < 0.5 || !lineOfSight(s, u.pos, at)) continue;
       const w = structureAt(spec, u.pos, at, u.id, '');
       if (structureBlocker(s, w)) continue;
       const after = { ...s, walls: [...s.walls, w] };
@@ -348,7 +348,7 @@ export function ninjaOptions(s: BattleState, u: Unit, next = false): Option[] {
     // fails, the foe neither strikes the Northstar's side nor holds back from its own: twice its harm.
     for (const [id, refused] of [[COMMAND, commandRefused], [SUBMISSION, submissionRefused]] as const) {
       const j = JUTSU[id];
-      if (!u.jutsus.includes(id) || noJutsu(u) || u.chakra < j.cost || d > j.range + u.speed || refused(s, u, f)) continue;
+      if (!u.jutsus.includes(id) || noJutsu(u) || u.chakra < j.cost || d > jutsuRange(s, j, u.pos, f.pos) + u.speed || refused(s, u, f)) continue;
       const fails = 1 - successChance(saveMod(f, 'wis'), u.saveDC, 'none', true);
       out.push({ intent: { kind: 'command', what: id, target: f.id }, value: fails * 2 * threat(f) * fx });
     }
@@ -516,7 +516,7 @@ export function goalOf(s: BattleState, u: Unit, i: Intent): Goal | null {
     case 'heal':
       return goal((p) => dist(p, t.pos) <= 1.6, undefined);
     case 'command':
-      return goal((p) => dist(p, t.pos) <= JUTSU[i.what].range && lineOfSight(s, p, t.pos), t);
+      return goal((p) => dist(p, t.pos) <= jutsuRange(s, JUTSU[i.what], p, t.pos) && lineOfSight(s, p, t.pos), t);
     case 'move':
       return goal(() => false, t);
     default:

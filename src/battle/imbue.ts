@@ -14,7 +14,7 @@
 //
 // Pure rules: no React, no images, no Math.random (the dice are rolled by the engine's seeded rolls).
 
-import { extraNatures, hasSecondElement } from '../rules/natureGrowth';
+import { extraNatures, hasSecondElement, thirdElementOpen } from '../rules/natureGrowth';
 import { natureOf } from '../rules/ninja';
 import type { ChakraNature, ShinobiCharacter } from '../types/shinobi';
 import type { BattleEvent, DamageType, Unit } from './types';
@@ -80,13 +80,14 @@ export function classAbilities(shinobiClass: string | undefined, natures: Chakra
 }
 
 /**
- * The natures a ninja can put on its weapon: its chakra type, and its second element once it has
- * unlocked it (the owner, 2026-10-23: "tambien segundo elemento al momento de desbloquear"; the second
- * element of natureGrowth.ts, never the third).
+ * The natures a ninja can put on its weapon: its chakra type, its second element once it has unlocked it
+ * (the owner, 2026-10-23: "tambien segundo elemento al momento de desbloquear"), and its third once Triple
+ * Nature opens it ("si el triple naturaleza tambien cuenta"; natureGrowth.ts thirdElementOpen).
  */
 export function imbueNaturesOf(c: ShinobiCharacter): ChakraNature[] {
   const main = natureOf(c);
-  return hasSecondElement(c) ? [main, ...extraNatures(c, main).slice(0, 1)] : [main];
+  if (!hasSecondElement(c)) return [main];
+  return [main, ...extraNatures(c, main).slice(0, thirdElementOpen(c) ? 2 : 1)];
 }
 
 /** The elements this unit can put on its weapon, its chakra type's first, each one of the five and not waiting for approval. */

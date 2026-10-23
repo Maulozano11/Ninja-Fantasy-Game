@@ -64,7 +64,9 @@ describe('seats', () => {
     const rock = renderSeat('seat_rock');
     const on = (x: number, y: number) => rock[(y * GRID + x) * 4 + 3] > 0;
     for (const body of ['male', 'female', 'bulky', 'slender'] as BodyType[]) {
-      for (const [pose, f] of [...READ_KEYS.map((_, f) => ['read', f] as const), ...SIT_KEYS.map((_, f) => ['sit', f] as const)]) {
+      // (sitting on his rock: the fitted female bodies; the male and bulky sit keeps the camp's log seat)
+      const sits = BODY_PARAMS[body].fit ? SIT_KEYS.map((_, f) => ['sit', f] as const) : [];
+      for (const [pose, f] of [...READ_KEYS.map((_, f) => ['read', f] as const), ...sits]) {
         const r = drawRig(body, pose, f);
         // the hips rest on its top: the pelvis that body's own height above it
         const above = READ_SEAT_TOP - r.pelvis.y * RES;
@@ -101,8 +103,9 @@ describe('seats', () => {
         // and it renders
         assert.ok(opaque(renderSprite(look, 'read', f).rgba) > 1000, `${body} ${k}`);
       }
-      // sitting: the far hand reaching out forward past the knees, open; the near one by the hip
-      for (let f = 0; f < SIT_KEYS.length; f++) {
+      // sitting (the fitted female bodies, as his Lyra): the far hand reaching out forward past the knees,
+      // open; the near one by the hip
+      for (let f = 0; f < (BODY_PARAMS[body].fit ? SIT_KEYS.length : 0); f++) {
         const r = drawRig(body, 'sit', f);
         assert.ok(r.handF.x * RES > 138 && r.shapeF === 'open', `${body} sit ${f}: the far hand out at ${r.handF.x * RES}`);
         assert.ok(r.handN.x * RES > 100 && r.handN.x * RES < 116 && r.handN.y * RES > 165, `${body} sit ${f}: the near hand by the hip`);

@@ -180,8 +180,9 @@ Merge checks (`git merge-tree` on the origin tips, nothing changed):
   next to it: *"mira la referencia la punta es un poco mas larga y afilada"*. Built on `heroine/lyra-v2`,
   waiting for his look: her sit pose is his one frame, every pixel his (`tools/refs/lyra_sit_ref.py` ->
   `items/lyraSitArt.ts`, `ownerFrames.ts`), held over the 4-frame loop (the old sit only breathed; his
-  picture has one frame); the sit rig of every body is posed toward his joints (`rig.ts` SIT) and sits on
-  the seat prop like read (the camp's sit spot now has his rock, not the log). All three read frames' blades
+  picture has one frame); the sit rig of the fitted female bodies is posed toward his joints (`rig.ts`
+  FIT_SIT) and sits on the seat prop like read; the male and bulky sit stays as it was (their standard is
+  his Roman sit on `body/male-skin-face`). The camp's sit spot now has his rock, not the log, for everyone. All three read frames' blades
   end in his sit tip (narrowing 1, 2, 2, 2 pixels, about 3 px longer), turned with RotSprite to their angle;
   nothing else in them changed. Question for him: his sit rock is drawn differently from the read rock (wider
   to the left, other stones); should it become the seat prop, or a second rock?

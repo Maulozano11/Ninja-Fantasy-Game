@@ -10,6 +10,7 @@ import { defaultAppearance } from './legacy';
 import { GRID, partIndex, RES } from './raster';
 import { stretchPiece } from './painted';
 import { SKIN_THIGH_F, SKIN_THIGH_N } from './maleSkinArt';
+import { BULKY_BASE } from './bulkyBaseArt';
 import { ANKLE_N, BODY_PARAMS, buildRig, drawRig, FAR_LIFT, frameCount, READ_JOINTS, READ_KEYS, READ_SEAT_TOP, rigPoseFor, SIT_SEAT_TOP } from './rig';
 import { READ_BOOK, READ_HAND_F, READ_HAND_N, READ_SKIN_BASE, type ReadPiece } from './maleReadArt';
 import { DEFAULT_SEAT, onSeat, renderSeat, SEATS, seatFor, type SeatId } from './seats';
@@ -76,10 +77,20 @@ describe('the sit on a seat', () => {
       for (let f = 0; f < frameCount(rigPoseFor('sit')); f++) {
         const r = buildRig(body, rigPoseFor('sit'), f);
         for (const s of ['N', 'F'] as const) {
-          // The bulky body's legs are the owner's painted pieces (rig.ts paintedLegs): its own thighs, so
-          // his thigh and shin meet at the knee.
+          // The bulky body's legs are the owner's painted pieces (rig.ts paintedLegs): thigh and shin both
+          // lengthen, in its own proportion (the owner: "mas largas como romano para alcanzar el suelo ...
+          // pero a su proporcion"), his painted pieces with them (rows of his repeated, none made up).
           if (bp.paintedLegs) {
-            assert.ok(Math.abs(thigh(r, s) - bp.thigh) < 1e-9, `${body} sit ${f}: thigh${s} its own`);
+            const t = thigh(r, s);
+            const sh = Math.hypot(r[`ankle${s}`].x - r[`knee${s}`].x, r[`ankle${s}`].y - r[`knee${s}`].y);
+            assert.ok(t > bp.thigh * 1.15 && t * RES < 28, `${body} sit ${f} thigh${s}: ${(t * RES).toFixed(1)} px`);
+            assert.ok(Math.abs(t / bp.thigh - sh / bp.shin) < 1e-6, `${body} sit ${f}: thigh${s} and shin${s} lengthened alike`);
+            for (const [p, bone, len] of [[BULKY_BASE[`thigh${s}`], bp.thigh, t], [BULKY_BASE[`shin${s}`], bp.shin, sh]] as const) {
+              const long = stretchPiece(p, (len - bone) * RES, bone * RES);
+              assert.ok(long.rows.length > p.rows.length, `${body} sit ${f}: his leg${s} lengthened`);
+              const his = new Set(p.rows.map((row) => row.replace(/^\.+|\.+$/g, '')));
+              for (const row of long.rows) assert.ok(his.has(row.replace(/^\.+|\.+$/g, '')), `${body} sit ${f}: a row of his leg${s}`);
+            }
             continue;
           }
           // longer than the body's, about his (his hips to his knees: 18 to 23 px), never past 26 px
@@ -93,8 +104,9 @@ describe('the sit on a seat', () => {
           for (const row of long.rows) assert.ok(his.has(row.replace(/^\.+|\.+$/g, '')), `${body} sit ${f}: a row of his thigh${s} skin`);
         }
       }
-      // every other pose keeps the body's own thighs (and his skin as painted)
-      for (const pose of [...SPRITE_POSES, ...MOVE_POSES, ...CAMP_POSES].filter((p) => p !== 'sit')) {
+      // every other pose keeps the body's own thighs (and his skin as painted); the bulky body's read, seated
+      // on his knees too, lengthens its legs as its sit does
+      for (const pose of [...SPRITE_POSES, ...MOVE_POSES, ...CAMP_POSES].filter((p) => p !== 'sit' && !(bp.paintedLegs && p === 'read'))) {
         for (let f = 0; f < frameCount(rigPoseFor(pose)); f++) {
           const r = drawRig(body, rigPoseFor(pose), f);
           for (const s of ['N', 'F'] as const) {
@@ -114,10 +126,8 @@ describe('the sit on a seat', () => {
       const idle = renderSprite(roman(body), 'idle', 0).part;
       for (let f = 0; f < frameCount(rigPoseFor('sit')); f++) {
         const r = buildRig(body, rigPoseFor('sit'), f);
-        // the hips on the seat's top, as on every seat (a body of his painted legs, which keeps its own short
-        // thighs, lower on it, as far as its feet need to reach the ground: rig.ts paintedLegs)
-        if (r.bp.paintedLegs) assert.ok(r.pelvis.y * RES >= SIT_SEAT_TOP - 5.4 - 0.01 && r.pelvis.y * RES < SIT_SEAT_TOP + 8, `${body} ${f}: pelvis at ${r.pelvis.y * RES}`);
-        else assert.ok(Math.abs(r.pelvis.y * RES - (SIT_SEAT_TOP - 5.4)) < 0.01, `${body} ${f}: pelvis at ${r.pelvis.y * RES}`);
+        // the hips on the seat's top, as on every seat (the bulky body's too: its legs lengthen to the ground)
+        assert.ok(Math.abs(r.pelvis.y * RES - (SIT_SEAT_TOP - 5.4)) < 0.01, `${body} ${f}: pelvis at ${r.pelvis.y * RES}`);
         // each sole on the row it stands on at rest
         const part = renderSprite(roman(body), 'sit', f).part;
         assert.ok(Math.abs(lowest(part, footN) - lowest(idle, footN)) <= 1, `${body} sit ${f}: near sole on row ${lowest(part, footN)}, at rest ${lowest(idle, footN)}`);

@@ -1795,10 +1795,11 @@ function drawPteruges(g: DrawCtx, tc: string, lc: string, sc: string, drapes: bo
     if (k === 'stud') return retintHex(hex, PTERUGES_STUD, studs);
     return k === 'line' || k === 'skin' || k === 'hair' ? hex : retintHex(hex, PTERUGES_LEATHER, strips);
   };
-  if (drapes) drawDrape(g, color);
   const depth = g.L('torso.over').used ? 'torso.over' : 'skirt';
-  stampLeaning(g, depth, PTERUGES_FRONT, r.pelvis, torso, 'pelvis', color);
+  // (the waist closed first, then any hole left in the skirt: drawDrape's)
   if (r.pose !== 'idle') g.after((layers) => closeWaist(g.rig, g.L(depth), layers));
+  if (drapes) drawDrape(g, color);
+  stampLeaning(g, depth, PTERUGES_FRONT, r.pelvis, torso, 'pelvis', color);
 }
 
 /**

@@ -79,10 +79,11 @@ export interface BodyParams {
   idleHands?: { N: Vec; F: Vec };
   /**
    * The body's legs are the owner's painted pieces, each riding one bone (the bulky body, bulkyBody.ts). A
-   * pose copied from his frames (PoseAt) lengthens its thighs to his knees (kneeLeg) as on every body, and
-   * the painted thigh is lengthened with the bone (stretchPiece: rows of his repeated), so his thigh and
-   * shin pieces still meet at the knee (the owner on the bulky sit, 2026-10-23: "que hagas que se le hagan
-   * mas largas como romano para alcanzar el suelo ... pero a su proporcion").
+   * pose copied from his frames (PoseAt) lengthens its legs to his knees as the male's thighs are, but thigh
+   * and shin alike, in the body's own proportion (kneeLegScaled), and the painted thigh and shin are
+   * lengthened with their bones (stretchPiece: rows of his repeated), so they still meet at the knee (the
+   * owner on the bulky sit, 2026-10-23: "que hagas que se le hagan mas largas como romano para alcanzar el
+   * suelo ... pero a su proporcion").
    */
   paintedLegs?: boolean;
   /**
@@ -1275,6 +1276,23 @@ function kneeLeg(hip: Vec, t: Vec, k: Vec, thigh: number, shin: number): { mid: 
   return len(sub(mid, hip)) > thigh ? { mid, end: t } : reachLeg(hip, t, thigh, shin);
 }
 
+/**
+ * kneeLeg for a body of his painted legs (the bulky body, BodyParams.paintedLegs), in its own proportion:
+ * the thigh and the shin lengthened alike (by the one factor that brings the knee onto the line from the
+ * ankle toward his knee), never shorter than the body's (then it is reachLeg's leg). The painted thigh and
+ * shin are lengthened with them (bulkyBody.ts).
+ */
+function kneeLegScaled(hip: Vec, t: Vec, k: Vec, thigh: number, shin: number): { mid: Vec; end: Vec } {
+  const u = norm(sub(k, t));
+  const d = sub(t, hip);
+  const a = thigh * thigh - shin * shin;
+  if (a <= 0) return kneeLeg(hip, t, k, thigh, shin);
+  const b = -2 * shin * (d.x * u.x + d.y * u.y);
+  const c = -(d.x * d.x + d.y * d.y);
+  const s = (-b + Math.sqrt(b * b - 4 * a * c)) / (2 * a);
+  return s > 1 ? { mid: add(t, scale(u, s * shin)), end: t } : reachLeg(hip, t, thigh, shin);
+}
+
 function solveRig(body: BodyType, pose: RigPose, frame: number, f: PoseFrame): Rig {
   const bp = BODY_PARAMS[body];
   // A pose copied from the owner's frames (PoseAt): the pelvis where he put it (seated, on the seat's top),
@@ -1336,8 +1354,8 @@ function solveRig(body: BodyType, pose: RigPose, frame: number, f: PoseFrame): R
   // (PoseAt: each ankle where he drew it, or on the ground under it, the far one FAR_LIFT higher; on a body
   // with `ankleLift` the ground ankles stand as low as its standing ones)
   // (and with his knees, the thigh as long as reaching them takes: kneeLeg; a body of his painted legs
-  // lengthens its painted thighs with it, bulkyBody.ts)
-  const atLeg = (hip: Vec, t: Vec, k?: Vec) => (k ? kneeLeg(hip, t, k, bp.thigh, bp.shin) : reachLeg(hip, t, bp.thigh, bp.shin));
+  // lengthens thigh and shin alike, in its own proportion: kneeLegScaled)
+  const atLeg = (hip: Vec, t: Vec, k?: Vec) => (k ? (bp.paintedLegs ? kneeLegScaled : kneeLeg)(hip, t, k, bp.thigh, bp.shin) : reachLeg(hip, t, bp.thigh, bp.shin));
   const farLift = bp.farLift ?? FAR_LIFT;
   const legN = a
     ? atLeg(hipN, a.ground ? v(a.ankleN.x, ANKLE_N + liftN) : a.ankleN, a.kneeN)

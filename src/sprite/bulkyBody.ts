@@ -128,12 +128,12 @@ export function drawBulkyBase(g: DrawCtx): void {
     const thigh = s === 'N' ? B.thighN : B.thighF;
     const shin = s === 'N' ? B.shinN : B.shinF;
     const foot = s === 'N' ? B.footN : B.footF;
-    // A seated thigh longer than the body's (rig.ts kneeLeg): his thigh lengthened with it, rows of his
-    // repeated between the hip and the knee (stretchPiece), so it still meets his shin at the knee.
-    const bone = r.bp.thigh;
-    const long = stretchPiece(thigh, (len(sub(knee, hip)) - bone) * RES, bone * RES);
+    // A seated leg longer than the body's (rig.ts kneeLegScaled): his thigh and shin lengthened with it,
+    // rows of his repeated between the joints (stretchPiece), so they still meet at the knee.
+    const long = stretchPiece(thigh, (len(sub(knee, hip)) - r.bp.thigh) * RES, r.bp.thigh * RES);
+    const lower = stretchPiece(shin, (len(sub(ankle, knee)) - r.bp.shin) * RES, r.bp.shin * RES);
     onBone(L, long, hip, segAngle(hip, knee), pal(long), s === 'N' ? 'thighN' : 'thighF');
-    onBone(L, shin, knee, segAngle(knee, ankle), pal(shin), s === 'N' ? 'shinN' : 'shinF');
+    onBone(L, lower, knee, segAngle(knee, ankle), pal(lower), s === 'N' ? 'shinN' : 'shinF');
     onBone(L, foot, ankle, foot.angle, pal(foot), s === 'N' ? 'footN' : 'footF');
   };
   const lean = segAngle(r.pelvis, r.neck);

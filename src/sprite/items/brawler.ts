@@ -408,9 +408,10 @@ export const BRAWLER_BOTTOMS: ItemDef[] = [
       for (const s of SIDES) {
         const L = g.L(legDepth(s, 'cloth'));
         const { hip, knee, ankle } = legJoints(r, s);
-        const shin = limbFit(g, s === 'N' ? JEANS_SHIN_N : JEANS_SHIN_F, `JEANS_SHIN_${s}`, MALE_FIT.shin, (b) => b.shin);
-        // A seated thigh longer than the body's (rig.ts kneeLeg): his jeans' thigh lengthened with it, rows
-        // of his repeated (stretchPiece), so it still meets the shin at the knee.
+        const shinFit = limbFit(g, s === 'N' ? JEANS_SHIN_N : JEANS_SHIN_F, `JEANS_SHIN_${s}`, MALE_FIT.shin, (b) => b.shin);
+        const shin = stretchPiece(shinFit, (len(sub(ankle, knee)) - g.bp.shin) * RES, g.bp.shin * RES);
+        // A seated leg longer than the body's (rig.ts kneeLeg, kneeLegScaled): his jeans lengthened with
+        // it, rows of his repeated (stretchPiece), so thigh and shin still meet at the knee.
         const fit = limbFit(g, s === 'N' ? JEANS_THIGH_N : JEANS_THIGH_F, `JEANS_THIGH_${s}`, MALE_FIT.thigh, (b) => b.thigh);
         const thigh = stretchPiece(fit, (len(sub(knee, hip)) - g.bp.thigh) * RES, g.bp.thigh * RES);
         onLimb(g, L, shin, knee, segAngle(knee, ankle), prt('shin', s), tint);

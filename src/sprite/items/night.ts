@@ -213,6 +213,17 @@ const CAST_FORE_LEN = (() => {
   return Math.hypot(r.wristF.x - r.elbowF.x, r.wristF.y - r.elbowF.y) * RES;
 })();
 let CAST_WRIST: PaintedPiece | undefined;
+let CAST_FORE_REACH: number | undefined;
+/** How far his far casting forearm reaches along the bone from the elbow (fine px): short of the wrist, which his fist covers. */
+function castForeReach(): number {
+  if (CAST_FORE_REACH !== undefined) return CAST_FORE_REACH;
+  const p = NIGHT_CAST_FORE_F;
+  const a = (p.angle * Math.PI) / 180;
+  let most = 0;
+  p.rows.forEach((row, y) => [...row].forEach((ch, x) => ch !== '.' && (most = Math.max(most, (x + 0.5 - p.pivot[0]) * Math.cos(a) + (y + 0.5 - p.pivot[1]) * Math.sin(a)))));
+  return (CAST_FORE_REACH = most);
+}
+
 /** The wrist half of his far casting forearm (its cells CAST_WRIST_FROM or more along the bone from the elbow). */
 const CAST_WRIST_FROM = 4;
 function castWristEnd(): PaintedPiece {
@@ -224,9 +235,10 @@ function castWristEnd(): PaintedPiece {
 }
 
 /**
- * Seated ('sit'), his far arm reaches forward as it reaches out to aim the throw: his casting forearm, whatever
- * the body's arm bends, and his glove on our hand at its end. The owner, on the open palm tried there first: "intenta
- * copiar ese brazo extendido izquierdo de antes para la pose de sentado la que tiene ahora se ve muy flaca y rara".
+ * Seated ('sit'), his far arm reaches forward with the hand open, palm up, as the owner drew the far arm of the
+ * others' sit (his Trunks sit picture, the hands' standard): his casting forearm, whatever the body's arm bends,
+ * and the open palm on it (clothes.ts, nightSitPalmArt.ts). The owner on Ren's sit: "la pose de sentado y su
+ * brazo izquierdo cuando esta sentado ya tienes las bases y respuestas en los otros personajes".
  */
 export const sitsReachingOut = (r: Rig, s: Side): boolean => r.pose === 'sit' && s === 'F';
 
@@ -285,6 +297,23 @@ export function nightArmStamps(r: Rig, s: Side): ArmStamp[] {
   out.push({ piece: sleeve, at: j.shoulder, deg: segAngle(j.shoulder, j.elbow), part: `upperArm${s}` as PartId, name: 'sleeve' });
   return out;
 }
+
+/**
+ * Where his far casting forearm ends along the bone, as nightArmStamps lays it (seated, sitsReachingOut): the
+ * open palm's cuff goes on there, over the forearm's end, as his casting fist's back does in the cast, so the
+ * forearm is never carried on in a second piece and no seam opens across it.
+ */
+export function farForeEnd(r: Rig): Vec {
+  const j = armJoints(r, 'F');
+  const deg = segAngle(j.elbow, j.wrist);
+  const extra = Math.hypot(j.wrist.x - j.elbow.x, j.wrist.y - j.elbow.y) * RES - CAST_FORE_LEN;
+  // (the wrist half carried on by Math.ceil(extra) on a forearm longer than his, the bulky body's)
+  const d = (castForeReach() + (extra > 0 ? Math.ceil(extra) : 0) - FORE_CUFF) / RES;
+  const a = (deg * Math.PI) / 180;
+  return add(j.elbow, v(Math.cos(a) * d, Math.sin(a) * d));
+}
+/** How far (fine px) the palm's cuff comes back over the forearm's end, his line over his. */
+const FORE_CUFF = 1;
 
 /**
  * His skirt in panels, cut down his seams (columns of NIGHT_SKIRT): the broad panel over the near leg

@@ -15,7 +15,7 @@ export const NIGHT_SIT_PALM_KIND: Record<string, 'glove' | 'line' | 'skin'> = {
   '#1d1a39': 'glove',
   '#23212c': 'line',
   '#23261f': 'line',
-  '#2d1219': 'skin',
+  '#2d1219': 'glove',
   '#3b3139': 'glove',
   '#7f4446': 'skin',
   '#9f5b52': 'skin',
@@ -47,8 +47,7 @@ export const NIGHT_SIT_PALM_F: PaintedPiece = {
     'aeffajeejancna...',
     '.affeajeaiaaaa...',
     '.aefaaaaadpna....',
-    '.daaa....aaa.....',
-    '.aa..............',
+    '..aaa....aaa.....',
   ],
   colors: {
     a: '#000000',

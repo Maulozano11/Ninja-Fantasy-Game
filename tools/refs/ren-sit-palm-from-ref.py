@@ -35,6 +35,10 @@ import trunks_sit_ref as S  # noqa: E402
 OUT = 'src/sprite/items/nightSitPalmArt.ts'
 # His frame's hands below this row are the near hand on the thigh, above it the far hand (trunks-sit-from-ref.py).
 HANDS_ROW = 43
+# The least red a colour of the hand has to follow the character's skin: his darkest warm crease between the curled
+# fingers (#2d1219) is under it, and tinted as skin it showed in the game as a dead red pixel (the owner: "aun falta
+# arreglarle algunos pixeles"); it stays dark, as the glove round it.
+SKIN_MIN = 64
 # His bare far forearm in his frame (columns, rows): between the sleeve and the glove's cuff.
 FOREARM = ((50, 60), (33, 45))
 
@@ -126,13 +130,36 @@ def hand_only(hand, m, line, wx):
             gone[y, x] = True
 
 
+def loose_off(hand, line):
+    """Without the cells of his colour left loose under the cuff when his forearm was taken away (a cell, not his
+    line, with no other such cell beside it: a dead pixel below the glove in the game), and the line round only
+    them, taken as hand_only takes the forearm's."""
+    H, W = hand.shape
+    out = hand.copy()
+    gone = np.zeros_like(hand)
+    near = lambda y, x, test: any(0 <= y + dy < H and 0 <= x + dx < W and test(y + dy, x + dx) for dy in (-1, 0, 1) for dx in (-1, 0, 1) if dy or dx)
+    for y, x in zip(*np.nonzero(hand)):
+        if not line[y, x] and not near(y, x, lambda a, b: hand[a, b] and not line[a, b]):
+            out[y, x] = False
+            gone[y, x] = True
+    while True:
+        drop = [(y, x) for y, x in zip(*np.nonzero(out)) if line[y, x]
+                and near(y, x, lambda a, b: gone[a, b])
+                and not near(y, x, lambda a, b: out[a, b] and not line[a, b])]
+        if not drop:
+            return out
+        for y, x in drop:
+            out[y, x] = False
+            gone[y, x] = True
+
+
 def main():
     out_ts = sys.argv[1] if len(sys.argv) > 1 else OUT
     study = sys.argv[2] if len(sys.argv) > 2 else None
     m, hand, line, fg, masks = lifted()
     k, c = forearm_line(m, fg, line, masks)
     wx, wy = wrist(hand, k, c)
-    hand = hand_only(hand, m, line, wx)
+    hand = loose_off(hand_only(hand, m, line, wx), line)
     ox, oy = S.OFFSET
     # In our frame (fine pixels): his cell (x, y) is our pixel (x + OFFSET[0], y + OFFSET[1]).
     col = np.zeros((256, 256, 3), np.uint8)
@@ -146,7 +173,7 @@ def main():
     kinds, skins, gloves = {}, {}, {}
     for y, x in zip(*np.nonzero(mask)):
         h = R.packed(R.hexc(col[y, x]), palette)
-        kd = 'line' if lmask[y, x] else 'skin' if is_skin(col[y, x]) else 'glove'
+        kd = 'line' if lmask[y, x] else 'skin' if is_skin(col[y, x]) and col[y, x][0] >= SKIN_MIN else 'glove'
         if kinds.get(h, kd) != kd:
             raise ValueError(f'{h} is both {kinds[h]} and {kd}')
         kinds[h] = kd

@@ -166,6 +166,8 @@ Merge checks (`git merge-tree` on the origin tips, nothing changed):
 
 - Decided 2026-10-23: the map quality standard is `docs/reference/map-quality-owner-reference.png` ("el standard de calidad que quiero llegar del mapa es este"); his paint-over of our camp battle (`map-height-owner-reference.jpg`, on `battle/height-test`) shows how height and depth go in: terraces with rock cliff faces and stairs between levels. He will edit the world himself.
 
+- Decided 2026-10-23: the owner approved Lyra's sit pose ("lyra pose sentada aprovada": his sit picture on his sit rock, `heroine/lyra-v2` 6646042). The rest of Lyra waits for his yes.
+
 ## 3. Waiting for the owner
 
 - `jutsu/tide-s` (2026-10-22): the Dragon Tsunami is approved (look, rank S, names, numbers for now).

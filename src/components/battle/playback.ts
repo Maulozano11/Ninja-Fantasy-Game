@@ -9,6 +9,7 @@ import type { WindowKind } from '../dice/diceData';
 import type { SpritePose } from '../../sprite/types';
 import { JUTSU, areaEnd, nearSegment } from '../../battle/jutsu';
 import type { JutsuSpec, StageKind, VfxElement, VfxRole } from '../../battle/jutsu';
+import { ACTIVATE_MS } from '../../sprite/imbue';
 import { COMBO_KICKS, COMBO_TURNED, POSE_FPS, TACKLE_IMPACT_FRAME } from '../../sprite/rig';
 import { BLOW_MS, CONDUCT_MS, DOUSE_MS, FAN_MS, FAN_ROLL, GROUND_FADE, TOWER_MS, TOWER_RISE, WAVE_CREST, WAVE_HOLD, blastMs, impactMs, keyCenter, signatureMs, skySignature } from './vfxSprites';
 import { jutsuTint, unitTint } from './vfxTintPlan';
@@ -71,6 +72,8 @@ export interface UnitView {
   castEnhanced?: boolean;
   /** The element on its weapon (Weapon Element Enhancement): renderer.ts draws it on the weapon in hand. */
   imbue?: 'Fire' | 'Lightning' | 'Wind' | 'Water' | 'Earth';
+  /** When the element went onto the weapon: its activation plays from `t0` to `end` (renderer.ts). */
+  imbueAct?: { t0: number; end: number };
 }
 
 /**
@@ -2165,23 +2168,23 @@ export class Playback {
         return 200;
       }
       case 'imbue': {
-        // The element goes onto the weapon (Weapon Element Enhancement): raised in the cast pose, the
-        // element's aura round the ninja a moment; or it leaves the weapon in a puff.
+        // The element goes onto the weapon (Weapon Element Enhancement): the weapon raised in the victory
+        // pose, the element gathers into the hand, surges up the blade and flares (its activation,
+        // sprite/imbue.ts; the owner: "hazle una animacion para activar la mejora de elemento con la pose de
+        // victoria"); or it leaves the weapon in a puff.
         const v = this.view(ev.unit);
-        const u = state.units[ev.unit];
         if (!v) return 0;
         const el = ev.element.toLowerCase() as VfxElement;
         if (ev.on) {
           v.imbue = ev.element;
-          this.setPose(v, 'cast', now, 520);
-          v.castEnhanced = false;
-          const tint = ev.element === 'Earth' || !u ? undefined : unitTint(u);
-          this.fx.push({ kind: 'aura', element: el, from: v.pos, to: v.pos, t0: now, dur: 650, unit: ev.unit, tint });
+          this.setPose(v, 'victory', now, ACTIVATE_MS);
+          v.imbueAct = { t0: now, end: now + ACTIVATE_MS / this.speed };
           h.sound('jutsu', el);
           if (label) this.float(label, '#fde68a', v.pos, now, { rise: 128, dur: 1100 });
-          return 520;
+          return ACTIVATE_MS;
         }
         v.imbue = undefined;
+        v.imbueAct = undefined;
         this.fx.push({ kind: 'smoke', element: 'chakra', from: v.pos, to: v.pos, t0: now, dur: 380 });
         return 150;
       }

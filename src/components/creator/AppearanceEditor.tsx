@@ -16,7 +16,6 @@ import type {
   HandSize,
   HeadbandPosition,
   ItemChoice,
-  NeckType,
   SlotId,
   SpriteAppearance,
   SpritePose,
@@ -129,12 +128,6 @@ const FACE_SHAPES: { id: FaceShape; label: string; sub: string }[] = [
   { id: 'founder', label: 'Founder', sub: "Solen's face" },
   { id: 'shade', label: 'Shade', sub: "Saya's face" },
   { id: 'fine', label: 'Fine', sub: "Lyra's face" },
-];
-
-const NECKS: { id: NeckType; label: string; sub: string }[] = [
-  { id: 'slim', label: 'Slim', sub: 'Slender' },
-  { id: 'strong', label: 'Strong', sub: 'Thick, muscular' },
-  { id: 'long', label: 'Long', sub: "Lyra's neck" },
 ];
 
 const ARMS: { id: ArmType; label: string; sub: string }[] = [
@@ -355,25 +348,6 @@ export const AppearanceEditor: React.FC<{
               </div>
             </div>
             <ColorRow label="Skin Tone" value={look.skin} swatches={SKIN_TONES} onChange={(skin) => onChange({ ...look, skin })} />
-            <div>
-              <SectionLabel>Neck</SectionLabel>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                {NECKS.map((n) => (
-                  <OptionCard
-                    key={n.id}
-                    selected={(look.neck || 'slim') === n.id}
-                    label={n.label}
-                    sub={n.sub}
-                    onClick={() => {
-                      soundManager.playSelect();
-                      onChange({ ...look, neck: n.id });
-                    }}
-                  >
-                    <SpriteThumb look={{ ...look, neck: n.id }} eye={eye} crop="head" />
-                  </OptionCard>
-                ))}
-              </div>
-            </div>
             {isFemaleBody(look.body) && (
               <div>
                 <SectionLabel>Hands</SectionLabel>

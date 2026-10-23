@@ -56,8 +56,12 @@ export interface CastChoice {
 /** The eye options; valiant is the owner's own eyes from his Aiden picture, in his pixels; shade is his Saya's, dawn his Aurelia's and keen his Lyra's, in their colours at our scale. */
 export type EyeShape = 'standard' | 'sharp' | 'round' | 'calm' | 'fierce' | 'bright' | 'piercing' | 'valiant' | 'shade' | 'dawn' | 'keen';
 
-/** Back of the neck behind the jaw: slender (default) or thick; long is the owner's heroines' (neck.ts). */
-export type NeckType = 'slim' | 'strong' | 'long';
+/**
+ * The neck is not a creator option (the owner, 2026-10-22: "quitar el cuello del creador y dejar a todos
+ * con el cuello de hoy"): every look has the slim nape of his Aiden, but for his Lyra, whose long neck is
+ * part of her picture (neck.ts). Missing means the slim nape.
+ */
+export type NeckType = 'long';
 
 /** Arm length: the body's own (default), or long: his Lyra's longer forearms, her free hand hanging open (rig.ts LONG_ARMS). */
 export type ArmType = 'standard' | 'long';
@@ -157,7 +161,7 @@ export interface SpriteAppearance {
   skin: string;
   eyeShape: EyeShape;
   eyeColor: string;
-  /** Missing on older saves; treated as 'slim'. */
+  /** Only Lyra's look has one (her long neck, from his picture); missing means the slim nape. */
   neck?: NeckType;
   /** Missing on older saves; treated as 'standard'. */
   arms?: ArmType;

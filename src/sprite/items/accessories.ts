@@ -26,6 +26,7 @@ import { drawLyraRapier } from './lyraSword';
 import { drawOwner, ownerFrame, slotTint } from '../ownerFrames';
 import { gripPoint, handsBusy, handsLimp, handsReleased, poleAngle, swordAngle, throwsKunai } from '../grip';
 import type { Rig } from '../rig';
+import { addSeam, clothSeam } from '../seams';
 
 const col = (key: string, label: string, def: string, kind: RampKind = 'cloth') => ({ key, label, default: def, kind });
 
@@ -951,44 +952,10 @@ function scrollShape(g: DrawCtx, L: Layer, a: Vec, b: Vec, r: number, c: { paper
   capsule(L, add(b, scale(d, -0.6)), add(b, scale(d, 0.8)), r + 0.35, r + 0.35, caps, lit);
 }
 
-/** The cloth a piece drew to fill its seams, per frame (see fillSeams). */
-const SEAMS = new WeakMap<DrawCtx, Layer>();
-/** How far (px) the figure may stand from an open seam on each side, along its row and its column. */
-const SEAM_REACH = 7;
-
-/**
- * Fills the seams the founder's cowl opens (stamped into SEAMS while it draws) once the whole figure is
- * drawn: a pixel of that cloth goes in where nothing is drawn at all and the figure stands round it, to its
- * left and right and above and below, within SEAM_REACH. So it shows only where the background would show
- * between the pieces; it never covers what is drawn, nor grows the figure's outline.
- */
-export function fillSeams(g: DrawCtx, layers: ReadonlyMap<Depth, Layer>): void {
-  const seam = SEAMS.get(g);
-  if (!seam?.used) return;
-  const all = [...layers.values()].filter((L) => L.used);
-  const on = (x: number, y: number) => x >= 0 && y >= 0 && x < GRID && y < GRID && all.some((L) => L.mat[y * GRID + x] >= 0);
-  const walled = (x: number, y: number, dx: number, dy: number) => {
-    for (let k = 1; k <= SEAM_REACH; k++) if (on(x + dx * k, y + dy * k)) return true;
-    return false;
-  };
-  const fill: number[] = [];
-  for (let i = 0; i < GRID * GRID; i++) {
-    if (seam.mat[i] < 0) continue;
-    const x = i % GRID;
-    const y = (i / GRID) | 0;
-    if (on(x, y) || !walled(x, y, -1, 0) || !walled(x, y, 1, 0) || !walled(x, y, 0, -1) || !walled(x, y, 0, 1)) continue;
-    fill.push(i);
-  }
-  if (!fill.length) return;
-  const back = g.L('capeBack');
-  for (const i of fill) {
-    back.mat[i] = seam.mat[i];
-    back.shade[i] = seam.shade[i];
-    back.part[i] = seam.part[i];
-    back.flags[i] = seam.flags[i];
-    back.used = true;
-  }
-}
+/** How far (px) his cowl's greys go on past its edge to fill an open seam (sprite/seams.ts). */
+const COWL_SEAM = 3;
+/** How far (px) from his studs a seam is filled with his greys. */
+const COWL_SEAM_ROUND = 5;
 
 /** Clears pixels of a front layer that cover the head, so wraps sit under the chin. */
 function tuckUnderChin(g: DrawCtx, L: Layer): void {
@@ -1341,13 +1308,27 @@ export const ACCESSORY_ITEMS: ItemDef[] = [
       // from the neck (a wider body, a swung arm) the seam beside the gold stud opens and the background
       // shows through (the owner, 2026-10-22: "aqui tiene unos aun en la hebilla o medallon de la capa"). What
       // he drew beside each of them (his cowl, and under the stud the cuirass's top), riding with it, fills the
-      // seam from behind once the figure is drawn (fillSeams). His greys follow Cowl; the rest stays his.
+      // seam from behind once the figure is drawn (fillSeams, sprite/seams.ts). His greys follow Cowl; the rest
+      // stays his. At rest too (the owner, 2026-10-22: "solen rellenar"): on the male body the pieces meet as he
+      // drew them and nothing goes in; on the bulky body the near end stands off the neck already at rest.
       const seamTint = (_ch: string, hex: string): string => (FOUNDER_COWL_KIND[hex] === 'grey' ? retintHex(hex, FOUNDER_COWL, c) : hex);
       const seam = new Layer(false);
       const sg: DrawCtx = { ...g, L: () => seam };
       stampLeaning(sg, 'capeFront', FOUNDER_COWL_SEAM_N, r.shoulderN, torso, 'torso', seamTint, cowlLine);
       stampLeaning(sg, 'capeFront', FOUNDER_COWL_SEAM_F, r.shoulderF, torso, 'torso', seamTint, cowlLine);
-      SEAMS.set(g, seam);
+      addSeam(g, seam, { at: 'always' });
+      // At rest the bulky body's near end stands off the neck, past what he drew beside it: there his greys of
+      // the cowl go on from its edge, round his studs only. Only at rest: in the poses that move, what the seam
+      // leaves is closed by the pinhole pass (sprite/holes.ts), which does not run at rest.
+      const greys = new Set<number>();
+      const studs = new Set<number>();
+      for (const p of [FOUNDER_COWL_NECK, FOUNDER_COWL_NEAR, FOUNDER_COWL_STUD_F])
+        for (const [ch, hex] of Object.entries(p.colors)) {
+          const k = FOUNDER_COWL_KIND[hex];
+          if (k === 'grey') greys.add(g.m(tint(ch, hex), 'flat'));
+          else if (k === 'gold' || k === 'white' || k === 'stud' || k === 'steel') studs.add(g.m(tint(ch, hex), 'flat'));
+        }
+      addSeam(g, clothSeam(g, { depths: ['capeFront', 'nearArm.over'], cloth: greys, studs, reach: COWL_SEAM, round: COWL_SEAM_ROUND }), { walls: 3, at: 'idle', again: true });
     },
   },
   {

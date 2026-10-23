@@ -32,7 +32,7 @@ describe('Lyra on our body', () => {
     for (const body of ['female'] as const) {
       const r = drawRig(body, 'idle', 0);
       assert.deepEqual(carryHead(r, 'long').head, { x: r.head.x + 1, y: r.head.y }, body);
-      for (const n of [undefined, 'slim', 'strong'] as const) assert.equal(carryHead(r, n), r);
+      assert.equal(carryHead(r, undefined), r);
     }
     for (const body of ['male', 'bulky'] as const) {
       const r = drawRig(body, 'idle', 0);

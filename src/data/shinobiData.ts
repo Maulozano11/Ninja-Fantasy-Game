@@ -281,9 +281,9 @@ export const JUTSUS_DATA: JutsuDefinition[] = [
   },
   {
     id: 'body_flicker',
-    name: 'Taijutsu Technique: Body Flicker',
-    nameEs: 'Técnica de Taijutsu: Shunshin (parpadeo instantáneo)',
-    japaneseName: '瞬身の術 (Shunshin no Jutsu)',
+    name: 'Taijutsu Technique: Vanish',
+    nameEs: 'Técnica de Taijutsu: Desvanecer',
+    japaneseName: '消失の術 (Shōshitsu no Jutsu)',
     rank: 'D',
     category: 'Utility',
     nature: 'Taijutsu',
@@ -818,9 +818,9 @@ export const JUTSUS_DATA: JutsuDefinition[] = [
   // Taijutsu & Kenjutsu
   {
     id: 'leaf_hurricane_senpuu',
-    name: 'Taijutsu Technique: Leaf Hurricane (Konoha Senpuu)',
-    nameEs: 'Técnica de Taijutsu: Huracán de la hoja (Konoha Senpuu)',
-    japaneseName: '木ノ葉旋風 (Konoha Senpuu)',
+    name: 'Taijutsu Technique: Hurricane Kick',
+    nameEs: 'Técnica de Taijutsu: Patada huracán',
+    japaneseName: '旋風脚 (Senpūkyaku)',
     rank: 'D',
     category: 'Elemental',
     nature: 'Taijutsu',

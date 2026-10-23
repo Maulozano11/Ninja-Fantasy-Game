@@ -70,17 +70,17 @@ export function drawBody(g: DrawCtx): void {
   capsule(torso, r.neck, neckTop, neckW, neckW * 0.95, skin('torso'), long ? (x) => (x < r.neck.x + 0.2 ? 4 : 3) : (x) => (x < r.neck.x - 0.6 ? 3 : 2));
   // Nape: the back of the neck, from under the skull down to the shoulders.
   // It fills the gap behind the tapered jaw when the hair doesn't hang there;
-  // hair drawn over the head still covers it. 'slim' (default) starts well
-  // inside the skull's back edge and stays in shadow; 'strong' is a thick
-  // neck flush with the back of the skull, with a lit nape.
+  // hair drawn over the head still covers it. It starts well inside the
+  // skull's back edge and stays in shadow: the slim nape of the owner's Aiden,
+  // the one neck every character has but his Lyra (the owner, 2026-10-22, removed
+  // the thick one and the creator's neck choice; her long neck is her picture's).
   const fa = faceAnchor(g);
-  const strong = g.look.neck === 'strong';
-  const napeX = (fa.nx - (strong ? 5.5 : long ? LONG_NAPE : 3.5)) / RES;
+  const napeX = (fa.nx - (long ? LONG_NAPE : 3.5)) / RES;
   poly(
     torso,
     [v(napeX, (fa.ny + 1) / RES), v(napeX, r.neck.y + 0.2), v(napeX - 0.8, r.neck.y + 1.2), v(r.neck.x, r.neck.y + 1.2), v(neckTop.x, (fa.ny + 1) / RES)],
     skin('torso'),
-    strong ? (x) => (x < napeX + 1 ? 3 : 2) : long ? 4 : 2,
+    long ? 4 : 2,
   );
 
   // Simple form shading only (no muscle lines): a soft chest shadow and collarbone light.

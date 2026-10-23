@@ -281,7 +281,8 @@ export function headAt(g: DrawCtx, dx: number, dy: number): Vec {
  * The owner's heads, his pixels (face shapes 'valiant', from his Aiden, and 'night', from his Ren): the
  * head, the skin he painted it in, where his eyes sit from the face anchor's column (the near eye's
  * first column and the far eye's), and whether the face template draws its mouth on it (his Ren head
- * has his own mouth).
+ * has his own mouth). `neckRows`: his bottom rows that are the top of the neck under the chin, left off
+ * when the head is turned forward on the neck (Rig.neckPitch), where his collar no longer covers them.
  */
 interface PaintedHead {
   head: PaintedPiece;
@@ -289,10 +290,13 @@ interface PaintedHead {
   ex: number;
   fx: number;
   mouth: boolean;
+  neckRows?: number;
 }
 const PAINTED_HEADS: Partial<Record<FaceShape, PaintedHead>> = {
   valiant: { head: VALIANT_HEAD, skin: VALIANT_SKIN, ex: 1, fx: 8, mouth: true },
-  night: { head: NIGHT_HEAD, skin: NIGHT_SKIN, ex: 1, fx: 9, mouth: false },
+  // His Ren's last row is the top of his neck: with the head turned forward in the throw it hung under the
+  // jaw on its own line (the owner: "la papada debajo del cuello esta mal").
+  night: { head: NIGHT_HEAD, skin: NIGHT_SKIN, ex: 1, fx: 9, mouth: false, neckRows: 1 },
 };
 const paintedHead = (g: DrawCtx): PaintedHead | undefined => (g.look.faceShape ? PAINTED_HEADS[g.look.faceShape] : undefined);
 
@@ -372,7 +376,8 @@ function drawHead(g: DrawCtx): void {
 function drawPaintedHead(g: DrawCtx, ph: PaintedHead): void {
   const { nx, ny } = faceAnchor(g);
   const at = v((nx + 0.5) / RES, (ny + 0.5) / RES);
-  stampPiece(g, 'head.body', ph.head, at, ph.head.angle, 'head', (_ch, hex) => skinTone(hex, ph.skin, g.look.skin));
+  const head = ph.neckRows && g.rig.neckPitch !== undefined ? { ...ph.head, rows: ph.head.rows.slice(0, -ph.neckRows) } : ph.head;
+  stampPiece(g, 'head.body', head, at, head.angle, 'head', (_ch, hex) => skinTone(hex, ph.skin, g.look.skin));
 }
 
 /**

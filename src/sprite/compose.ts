@@ -5,6 +5,7 @@ import { fitsBody, getItem } from './catalog';
 import { hexToRgb } from './color';
 import { Depth, DEPTHS, DrawCtx, ItemDef, NO_OUTLINE_DEPTHS, resolveParts } from './ctx';
 import { mendGlitches } from './glitches';
+import { keptFill } from './keptFills';
 import { closePinholes } from './holes';
 import { fillSeams } from './seams';
 import { paintedFrame, wearsHisFigure } from './ownerFrames';
@@ -412,9 +413,11 @@ export function renderSprite(
   const hisFrame = wearsHisFigure(look) && !!paintedFrame(rig.pose, rig.frame);
   if (pose !== 'idle' && !hisFrame) closePinholes(rgba, part, top, (i) => top[i] === FX, lineOf);
   // The owner's standard characters (2026-10-23: "quiero que arregles solo los de la calidad standard"): off
-  // his pictures, the pockets, cracks and light edge pixels their moved pieces open are closed (glitches.ts).
+  // his pictures, the cracks and light edge pixels their moved pieces open are closed; a pocket only where he saw
+  // it filled and left it (glitches.ts, keptFills.ts).
   // (her walk he approved pixel for pixel stays as it is: aureliaLegs.test.ts)
-  if (pose !== 'idle' && !hisFrame && standardLook(look) && !(onAureliaHead(look) && pose === 'walk')) mendGlitches(rgba, part, top, (i) => top[i] === FX, lineOf);
+  const who = pose === 'idle' || hisFrame ? null : standardOf(look);
+  if (who && !(who === 'aurelia' && pose === 'walk')) mendGlitches(rgba, part, top, (i) => top[i] === FX, lineOf, undefined, (px) => keptFill(`${who}@${look.body}`, pose, frame, px));
   const hair = new Uint8Array(N >> 3);
   const fx = new Uint8Array(N >> 3);
   for (let i = 0; i < N; i++) {
@@ -468,9 +471,11 @@ function layFrame(rgba: Uint8ClampedArray, part: Uint8Array, hair: Uint8Array, l
  * layer's own fill, so the two never stack into a 2px dark line. Silhouette
  * outlines (next to transparency) are always kept.
  */
-/** A look of the owner's standard characters on this branch: his Lyra, his Aurelia, his Roman set (cuirass and skirt). */
-function standardLook(look: SpriteAppearance): boolean {
-  return wearsHisFigure(look) || onAureliaHead(look) || (look.slots.armor?.id === 'armor_bronze' && look.slots.skirt?.id === 'skirt_imperial');
+/** Which of the owner's standard characters a look is on this branch (keptFills.ts names), or null: his Lyra, his Aurelia, his Roman set (cuirass and skirt). */
+function standardOf(look: SpriteAppearance): string | null {
+  if (wearsHisFigure(look)) return 'lyra';
+  if (onAureliaHead(look)) return 'aurelia';
+  return look.slots.armor?.id === 'armor_bronze' && look.slots.skirt?.id === 'skirt_imperial' ? 'roman' : null;
 }
 
 function thinDoubleOutlines(rgba: Uint8ClampedArray, top: Int16Array, isLine: Uint8Array): void {

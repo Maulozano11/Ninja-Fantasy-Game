@@ -189,9 +189,9 @@ describe('the Ascended set', () => {
     }
   });
 
-  it('keeps the drawn items on the female bodies', () => {
+  it('keeps the drawn items on the female body', () => {
     const his = new Set([...Object.values(wraps.WRAPS_FORE_N.colors), ...Object.values(kimono.KIMONO_BODY.colors), ...Object.values(sash.SASH_BAND.colors)]);
-    for (const body of ['female', 'slender'] as BodyType[]) {
+    for (const body of ['female'] as BodyType[]) {
       const l = look(body);
       delete l.slots.hair;
       delete l.slots.cape;

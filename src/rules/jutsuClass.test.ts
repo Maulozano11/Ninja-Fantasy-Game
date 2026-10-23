@@ -145,16 +145,19 @@ describe('changing class in the creator swaps the jutsu of another class, as a t
   });
 
   it('a legend picked as a starting point and a made ninja keep their ranks: the swap may be of any rank', () => {
-    const shiori = legend('preset_gentle'); // Water, Taijutsu Master: Leaf Hurricane (D), Night Guy (S)
-    const r = fitToClass(shiori, natureOf(shiori), 'Genjutsu Adept');
+    // Hiro (Wind, Taijutsu Master) with a taijutsu S-rank: Leaf Hurricane (D), Night Guy (S). (This was
+    // Shiori's sheet until the owner discarded her on 2026-10-22: "shiori desechala".)
+    const hiro = legend('preset_sunburst');
+    const taijutsuS = { ...hiro, selectedJutsus: { ...hiro.selectedJutsus, slot5Ultimate: 'night_guy_dragon' } };
+    const r = fitToClass(taijutsuS, natureOf(taijutsuS), 'Genjutsu Adept');
     assert.deepEqual(r.swaps, [
-      { slot: 'slot3Elemental', from: 'leaf_hurricane_senpuu', to: 'water_geyser' },
-      // Water's own S-rank first (the Devouring Tide, the owner's answer of 2026-10-21).
-      { slot: 'slot5Ultimate', from: 'night_guy_dragon', to: 'water_devouring_tide' },
+      { slot: 'slot3Elemental', from: 'leaf_hurricane_senpuu', to: 'wind_whirl' },
+      { slot: 'slot5Ultimate', from: 'night_guy_dragon', to: 'rasenshuriken_wind' },
     ]);
-    const made = asMade({ ...shiori, id: 'ninja_made' });
+    const made = asMade({ ...taijutsuS, id: 'ninja_made' });
     assert.deepEqual(fitToClass(made, natureOf(made), 'Genjutsu Adept'), r, 'a made ninja: the same');
-    // Ninjutsu: no genjutsu or taijutsu for this class, but Water has its S-rank now.
-    assert.equal(fitToClass(shiori, natureOf(shiori), 'Ninjutsu Specialist').loadout.slot5Ultimate, 'water_devouring_tide');
+    // A new ninja's copy may not learn the S-rank: the slot empties.
+    const nu = { ...taijutsuS, id: 'ninja_new' };
+    assert.equal(fitToClass(nu, natureOf(nu), 'Genjutsu Adept').loadout.slot5Ultimate, '');
   });
 });

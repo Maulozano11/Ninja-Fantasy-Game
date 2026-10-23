@@ -187,7 +187,7 @@ const look = (o: Partial<SpriteAppearance>): SpriteAppearance => ({
   eyeColor: '#3b82f6',
   slots: {},
   accessories: [],
-  headband: { position: 'none', slashed: false, tails: false, emblem: 'crescent', cloth: '#1e3a8a', plate: '#cbd5e1' },
+  headband: { position: 'none', tails: false, cloth: '#1e3a8a' },
   chakra: { color: 'blue', onCharge: true, onCast: true, onVictory: false },
   pixelEdits: [],
   ...o,
@@ -196,7 +196,7 @@ const look = (o: Partial<SpriteAppearance>): SpriteAppearance => ({
 const item = (id: string, ...colors: string[]) => ({ id, colors });
 
 /** A full sheet from a build: legacy look fields from a preset, derived stats from the build. */
-function companion(base: ShinobiCharacter, c: Pick<ShinobiCharacter, 'id' | 'name' | 'title' | 'level' | 'clan' | 'shinobiClass' | 'stats' | 'selectedFeats' | 'selectedJutsus' | 'appearance'>): ShinobiCharacter {
+function companion(base: Partial<ShinobiCharacter> & Pick<ShinobiCharacter, 'palette' | 'hairstyle' | 'headbandPosition'>, c: Pick<ShinobiCharacter, 'id' | 'name' | 'title' | 'level' | 'clan' | 'shinobiClass' | 'stats' | 'selectedFeats' | 'selectedJutsus' | 'appearance'>): ShinobiCharacter {
   const armorStyle = ((c.appearance?.slots.armor && getItem(c.appearance.slots.armor.id)?.statsArmor) || 'Ronin Wanderer Cloak') as ArmorStyleType;
   const d = deriveStats({ level: c.level, stats: c.stats, clan: c.clan, shinobiClass: c.shinobiClass, armor: armorStyle, feats: c.selectedFeats });
   return { ...base, ...c, dojutsu: 'None', armorStyle, ...d, sheetVersion: SHEET_VERSION, currentHp: d.maxHp, currentChakra: d.maxChakra };
@@ -204,8 +204,30 @@ function companion(base: ShinobiCharacter, c: Pick<ShinobiCharacter, 'id' | 'nam
 
 const presetById = (id: string): ShinobiCharacter => (LEGENDARY_PRESETS.find((p) => p.character.id === id) ?? LEGENDARY_PRESETS[0]).character;
 
+/**
+ * Hana's legacy look fields, from her sprite look (read only by a sheet without one). She was built on
+ * a legend's sheet until the owner discarded that legend on 2026-10-22 ("shiori desechala").
+ */
+const HANA_LEGACY: Pick<ShinobiCharacter, 'palette' | 'hairstyle' | 'headbandPosition' | 'weaponStyle' | 'capeStyle'> = {
+  palette: {
+    skinTone: '#f6d3b8',
+    hairColor: '#4a2f22',
+    eyeColor: '#2f8f6a',
+    armorPrimary: '#26323a',
+    armorSecondary: '#2f7d5b',
+    clothColor: '#e8eee8',
+    headbandCloth: '#2f7d5b',
+    headbandPlate: '#cbd5e1',
+    chakraAuraColor: '#22c55e',
+  },
+  hairstyle: 'Itachi Low Ribbon',
+  headbandPosition: 'Forehead',
+  weaponStyle: 'Gentle Fist Palm',
+  capeStyle: 'None',
+};
+
 /** A field medic, so camps can heal with jutsu and operate. */
-export const HANA: ShinobiCharacter = companion(presetById('preset_gentle'), {
+export const HANA: ShinobiCharacter = companion(HANA_LEGACY, {
   id: 'companion_hana',
   name: 'Hana',
   title: 'The Field Medic',
@@ -234,7 +256,7 @@ export const HANA: ShinobiCharacter = companion(presetById('preset_gentle'), {
       feet: item('feet_sandals', '#26323a', '#c9a46c'),
       held: item('held_palm', '#7ef0b8'),
     },
-    headband: { position: 'forehead', slashed: false, tails: true, emblem: 'wave', cloth: '#2f7d5b', plate: '#cbd5e1' },
+    headband: { position: 'forehead', tails: true, cloth: '#2f7d5b' },
     chakra: { color: 'blue', tint: 'green', onCharge: true, onCast: true, onVictory: false }, // Water like her jutsu, in her green
   }),
 });
@@ -269,7 +291,7 @@ export const KENJI: ShinobiCharacter = companion(presetById('preset_storm'), {
       feet: item('feet_shinobi', '#1c1830', '#3b2f5c'),
       cape: item('cape_haori', '#6d4fa3', '#1c1830', '#c9a46c'),
     },
-    headband: { position: 'arm', slashed: false, tails: false, emblem: 'spiral', cloth: '#3b2f5c', plate: '#cbd5e1' },
+    headband: { position: 'arm', tails: false, cloth: '#3b2f5c' },
     chakra: { color: 'brown', tint: 'violet', onCharge: true, onCast: true, onVictory: false }, // Earth like his jutsu, in his violet
   }),
 });

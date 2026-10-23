@@ -13,7 +13,7 @@ import { current } from '../../battle/turns';
 import { AURA_RADIUS, attackPreview, sovereign } from '../../battle/combat';
 import { JUTSU, areaOf, enhanced as enhancedSpec, fanDice, fannedBy } from '../../battle/jutsu';
 import type { JutsuSpec } from '../../battle/jutsu';
-import { cellCenter, cellOf, dist, fullCoverBetween, getMap, gridFor, idx, lineOfSight, sameCell } from '../../battle/map';
+import { cellCenter, cellOf, dist, fullCoverBetween, getMap, gridFor, idx, lineOfSight, sameCell, steamAt, steamBetween, steamHides } from '../../battle/map';
 import { canStop, occupancy, pathCost, pathTo, reachable } from '../../battle/nav';
 import { foreseen } from '../../battle/intent';
 import { MAX_STRUCTURES, STRUCTURE_AC, breakable, jutsuWallAt, ownStructures, structureAt, structureAttack, structureBlocker, structureDist } from '../../battle/structures';
@@ -452,7 +452,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
         const pv = attackPreview(s, striker, hu, 'melee');
         if (pv.inRange) {
           o.targets = [hu.id];
-          label = pv.blocked ? reasonLine(pv.blocked) : T('aimChance', { p: Math.round(pv.chance * 100), dice: wielded(striker).dice });
+          label = pv.blocked ? reasonLine(pv.blocked === 'noSight' ? sightWhy(s, striker.pos, hu.pos) : pv.blocked) : T('aimChance', { p: Math.round(pv.chance * 100), dice: wielded(striker).dice });
           sub = pv.blocked ? null : reasonsText(pv, lang);
         } else label = planLine;
         if (pv.inRange && planLine) sub = sub ? `${sub} · ${planLine}` : planLine;
@@ -480,7 +480,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
         o.targets = [hu.id];
         // The engine's refusals first: out of reach, out of sight or walled off, hands busy.
         const busyHands = mode.ranged && actor.armed && actor.weapon.twoHanded && actor.turn.interacted;
-        label = !pv.inRange ? T('aimNoReach') : pv.blocked ? reasonLine(pv.blocked) : busyHands ? reasonLine('handsBusy') : T('aimChance', { p: Math.round(pv.chance * 100), dice: mode.ranged ? KUNAI.dice : wielded(striker).dice });
+        label = !pv.inRange ? T('aimNoReach') : pv.blocked ? reasonLine(pv.blocked === 'noSight' ? sightWhy(s, striker.pos, hu.pos) : pv.blocked) : busyHands ? reasonLine('handsBusy') : T('aimChance', { p: Math.round(pv.chance * 100), dice: mode.ranged ? KUNAI.dice : wielded(striker).dice });
         sub = pv.inRange && !pv.blocked && !busyHands ? reasonsText(pv, lang) : null;
         if (planLine) sub = sub ? `${sub} · ${planLine}` : planLine;
       } else if (hw) {
@@ -570,15 +570,15 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
         if (!self && dist(actor.pos, at) > spec.range + 0.1 + (hu?.bulk ?? 0) + (hu?.kind === 'hydra_head' ? 2.5 : 0)) label = T('aimNoReach');
         // Then sight, as the engine refuses it: a jutsu at one target needs to see it (a strike, no
         // metal wall between); an area or a point needs to see where it goes.
-        else if (spec.shape === 'single' && hu && (spec.melee ? fullCoverBetween(s, actor.pos, hu.pos) || (!!spec.charge && !chargeLanding(s, actor, hu)) : !lineOfSight(s, actor.pos, hu.pos))) label = reasonLine(spec.melee ? 'blocked' : 'noSight');
-        else if ((spec.shape === 'circle' || spec.shape === 'point' || spec.shape === 'wall') && !lineOfSight(s, actor.pos, at)) label = reasonLine('noSight');
+        else if (spec.shape === 'single' && hu && (spec.melee ? fullCoverBetween(s, actor.pos, hu.pos) || (!!spec.charge && !chargeLanding(s, actor, hu)) : !lineOfSight(s, actor.pos, hu.pos))) label = reasonLine(spec.melee ? 'blocked' : sightWhy(s, actor.pos, hu.pos));
+        else if ((spec.shape === 'circle' || spec.shape === 'point' || spec.shape === 'wall') && !lineOfSight(s, actor.pos, at, { into: true })) label = reasonLine(sightWhy(s, actor.pos, at, true));
         if (spec.shape === 'point' || spec.shape === 'wall') o.point = { at, ok: dist(actor.pos, at) <= spec.range + 0.1 };
         if (spec.special === 'metalBlock' || spec.special === 'metalWall' || spec.special === 'earthWall' || spec.special === 'waterWall') {
           // A wall or a Kōton structure: where it would stand and why it can't (never over anyone);
           // for a Kōton, how many already stand.
           const koton = spec.special === 'metalBlock' || spec.special === 'metalWall';
           const w = koton ? structureAt(spec, actor.pos, at, actor.id, 'preview') : jutsuWallAt(spec, actor.pos, at, 'preview');
-          const why = dist(actor.pos, at) > spec.range + 0.1 ? 'outOfRange' : !lineOfSight(s, actor.pos, at) ? 'noSight' : structureBlocker(s, w);
+          const why = dist(actor.pos, at) > spec.range + 0.1 ? 'outOfRange' : !lineOfSight(s, actor.pos, at, { into: true }) ? sightWhy(s, actor.pos, at, true) : structureBlocker(s, w);
           const n = ownStructures(s, actor.id).length;
           o.point = undefined;
           o.footprint = { wall: w, ok: !why };
@@ -597,7 +597,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
         const ok = dist(actor.pos, hover.pt) <= TAG.plant + 0.1;
         o.point = { at: hover.pt, ok };
         o.area = { shape: { kind: 'circle', center: hover.pt, radius: TAG.radius }, tone: 'enemy' };
-        label = ok ? (lineOfSight(s, actor.pos, hover.pt) ? T('aimTagTrap') : reasonLine('noSight')) : T('aimNoReach');
+        label = ok ? (lineOfSight(s, actor.pos, hover.pt, { into: true }) ? T('aimTagTrap') : reasonLine(sightWhy(s, actor.pos, hover.pt, true))) : T('aimNoReach');
       }
     } else if (mode.k === 'stone') {
       o.range = { at: actor.pos, radius: STONE_RANGE };
@@ -621,6 +621,14 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
   selectedRef.current = selected;
   const foreseenRef = useRef(foreseenNow);
   foreseenRef.current = foreseenNow;
+  // The acting ninja stands in steam: the foes outside it vanish from its sight (the owner:
+  // "que los enemigos desaparezcan de la visión de ese personaje"), drawn as a hidden foe is.
+  const unseen = useMemo(() => {
+    if (!actor || !steamAt(state, actor.pos)) return undefined;
+    return new Set(Object.values(state.units).filter((u) => u.team !== actor.team && steamHides(state, actor.pos, u.pos)).map((u) => u.id));
+  }, [actor, state]);
+  const unseenRef = useRef(unseen);
+  unseenRef.current = unseen;
 
   useEffect(() => {
     let raf = 0;
@@ -683,6 +691,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
         team: 'party',
         lang: langRef.current,
         avoid: panelRects(canvas, dpr),
+        unseen: unseenRef.current,
       });
       // The dice over the fight: the quick d20s, the big window, a critical's impact.
       drawDiceLayer(ctx, {
@@ -749,7 +758,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
       if (gr.complete && gr.naturalWidth) g.drawImage(gr, 0, 0);
       for (const u of Object.values(s.units)) {
         if (u.down === 'dead' || u.down === 'fled' || u.kind === 'hydra_head') continue;
-        if (u.team === 'enemy' && u.cond.hidden !== undefined) continue;
+        if (u.team === 'enemy' && (u.cond.hidden !== undefined || unseenRef.current?.has(u.id))) continue;
         const p = project(map, pbRef.current!.posOf(u.id, now));
         g.fillStyle = homeTeam(u) === 'party' ? '#38bdf8' : '#f87171';
         g.beginPath();
@@ -1546,7 +1555,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
 
 const SHORT: Record<string, [string, string]> = {
   shadow_clone: ['Clone', 'Clon'],
-  body_flicker: ['Flicker', 'Shunshin'],
+  body_flicker: ['Vanish', 'Desvanecer'],
   mystical_palm: ['Heal palm', 'Palma'],
   substitution_kawarimi: ['Kawarimi', 'Kawarimi'],
   fireball_goukakyu: ['Fireball', 'Bola de fuego'],
@@ -1591,7 +1600,8 @@ const SHORT: Record<string, [string, string]> = {
   genjutsu_mirage: ['Mirage', 'Espejismo'],
   kenjutsu_bleeding_cut: ['Bleeding cut', 'Tajo'],
   taijutsu_rush: ['Rush', 'Embestida'],
-  water_devouring_tide: ['Devouring tide', 'Ola devoradora'],
+  water_devouring_tide: ['Tsunami', 'Tsunami'],
+  water_tide_s: ['Dragon Tsunami', 'Dragón Tsunami'],
   wind_whirlwind_tower: ['Whirlwind tower', 'Torre'],
   wind_gale_curtain: ['Gale curtain', 'Cortina'],
   lightning_thunder_beam: ['Thunder beam', 'Haz de trueno'],
@@ -1642,6 +1652,11 @@ function jutsuTip(sp: JutsuSpec, cost: number, lang: ReturnType<typeof useLang>)
 function jutsuShort(id: string, lang: ReturnType<typeof useLang>): string {
   const s = SHORT[id];
   return s ? s[lang === 'es' ? 1 : 0] : jutsuName(id, lang).split(/[\s:(]/)[0];
+}
+
+/** Why there is no line of sight: the steam named when it is what hides the target (it "nubla la visión"). */
+function sightWhy(s: BattleState, a: Pt, b: Pt, into = false): string {
+  return steamBetween(s, a, b, into) ? 'noSightSteam' : 'noSight';
 }
 
 /** What an engine reason key says (the generic line for a key without text). */

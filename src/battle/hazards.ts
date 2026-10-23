@@ -5,7 +5,8 @@
 
 import type { Advantage } from '../rules/checks';
 import type { AreaShape, BattleEvent, BattleState, DamageType, Hit, Pt, Trap, Unit } from './types';
-import { dist, fullCoverBetween, getMap, propRules, waterAtPt } from './map';
+import { cellCenter, cellKey, cellOf, dampAt, keyCell, dist, fullCoverBetween, getMap, propRules, waterAtPt } from './map';
+import { lightningSeeds, steamUp, unitsOnPatch, wetPatch } from './ground';
 import { inArea } from './jutsu';
 import { rollDiceExpr, savingThrow } from './combat';
 import { maxCritDamage } from '../rules/dice';
@@ -66,7 +67,7 @@ export function explode(s: BattleState, at: Pt, radius: number, dice: string, dc
   const hits: Hit[] = [];
   for (const u of unitsInArea(s, area, [], at)) hits.push(saveHit(s, u, 'dex', dc, amount, 'Fire', true, source, 'explosion', { explosion: true }, ev, 'none', maxCritDamage(dice)));
   hitStructuresIn(s, area, amount, ev);
-  hits.push(...groundEffects(s, area, 'Fire', ev, seen));
+  hits.push(...groundEffects(s, area, 'Fire', ev, seen, false, source));
   return hits;
 }
 
@@ -105,10 +106,15 @@ export function saveHit(
 
 /**
  * What an area does to the props in it: fire burns flammable props (no more cover or hiding) and
- * sets off explosive barrels and tags, lightning sets them off too, wind cuts bushes and grass.
+ * sets off explosive barrels and tags, lightning sets them off too, wind cuts bushes and grass. Fire
+ * turns wet ground to steam first (battle/ground.ts), and what stood on it is wet: it doesn't burn.
  */
-export function groundEffects(s: BattleState, area: AreaShape, type: DamageType | 'Wind', ev: BattleEvent[], seen = new Set<string>(), clearFoliage = false): Hit[] {
+export function groundEffects(s: BattleState, area: AreaShape, type: DamageType | 'Wind', ev: BattleEvent[], seen = new Set<string>(), clearFoliage = false, by = ''): Hit[] {
   const hits: Hit[] = [];
+  // Fire on wet ground makes steam (the owner, 2026-10-21): the bushes there were wet, and don't
+  // burn. Which cells were wet is taken before the steam uses their water up.
+  const soaked = type === 'Fire' && s.wet ? new Set(Object.keys(s.wet)) : undefined;
+  if (type === 'Fire') steamUp(s, area, by, ev);
   const map = getMap(s.mapId);
   const fiery = type === 'Fire' || type === 'Lightning';
   map.props.forEach((p, i) => {
@@ -121,7 +127,7 @@ export function groundEffects(s: BattleState, area: AreaShape, type: DamageType 
       st.destroyed = true;
       ev.push({ t: 'prop', prop: i, state: 'exploded' });
       hits.push(...explode(s, { x: p.x, z: p.z }, BARREL.radius, BARREL.dice, BARREL.dc, `prop:${i}`, ev, seen));
-    } else if (rules.flammable && type === 'Fire' && waterAtPt(s, p) === 0) {
+    } else if (rules.flammable && type === 'Fire' && !dampAt(s, p) && !soaked?.has(cellKey(cellOf(p)))) {
       st.destroyed = true;
       ev.push({ t: 'prop', prop: i, state: 'burnt' });
     } else if (clearFoliage && rules.hideSpot) {
@@ -158,6 +164,23 @@ export function electrify(s: BattleState, points: Pt[], amount: number, dc: numb
     hits.push(saveHit(s, u, 'dex', dc, Math.floor(amount / 2), 'Lightning', true, source, 'electrified water', {}, ev, 'none', dice ? Math.floor(maxCritDamage(dice) / 2) : undefined));
   }
   return hits;
+}
+
+/**
+ * Lightning that touches wet ground runs across the whole wet patch it touched (the owner, 2026-10-21:
+ * "conduce electricidad"; battle/ground.ts): everyone else standing on it makes a DEX save against
+ * half the damage, halved again on a success, as lightning running through water does. `points`:
+ * where it strikes (the ones it reached, where a circle bursts); `already`: the ones it struck itself.
+ */
+export function conduct(s: BattleState, area: AreaShape | null, points: Pt[], amount: number, dc: number, source: string, already: string[], ev: BattleEvent[], dice?: string): Hit[] {
+  if (amount <= 0 || (!area && !points.length)) return [];
+  const patch = wetPatch(s, lightningSeeds(s, area, points));
+  if (!patch.size) return [];
+  const from = points.find((p) => patch.has(cellKey(cellOf(p)))) ?? [...patch].map((k) => cellCenter(keyCell(k)))[0];
+  ev.push({ t: 'conduct', cells: [...patch], at: { ...from }, source });
+  return unitsOnPatch(s, patch, already).map((u) =>
+    saveHit(s, u, 'dex', dc, Math.floor(amount / 2), 'Lightning', true, source, 'wet ground', {}, ev, 'none', dice ? Math.floor(maxCritDamage(dice) / 2) : undefined),
+  );
 }
 
 /** A thrown explosive tag (the party's supplies): it seals a hydra stump like fire does. */

@@ -6,7 +6,7 @@
 import { abilityMod, combineAdvantage } from '../rules/checks';
 import type { Advantage } from '../rules/checks';
 import type { AreaShape, BattleEvent, BattleState, Pt, Unit, Wall } from './types';
-import { BLOCK_HALF, CELL, cellCenter, cellOf, dist, gridFor, idx, inGrid, lineOfSight, segDist, segmentsCross, wallCovers } from './map';
+import { BLOCK_HALF, CELL, cellCenter, cellOf, dist, gridFor, heightReach, idx, inGrid, lineOfSight, segDist, segmentsCross, wallCovers } from './map';
 import { occupancy } from './nav';
 import { inArea } from './jutsu';
 import type { JutsuSpec } from './jutsu';
@@ -80,11 +80,13 @@ export function structureAttack(s: BattleState, u: Unit, w: Wall, ranged: boolea
     advs.push(a);
     reasons.push(why);
   };
-  if (ranged && d > KUNAI.reach) add('disadvantage', 'longRange');
+  // A kunai thrown from high ground carries further.
+  const up = ranged ? heightReach(s, u.pos, at) : 0;
+  if (ranged && d > KUNAI.reach + up) add('disadvantage', 'longRange');
   if (u.cond.warpEdge) add('advantage', 'behind');
   if (hostileAura(s, u)) add('disadvantage', 'aura');
   const adv = combineAdvantage(...advs);
-  const inRange = ranged ? d <= KUNAI_LONG + 0.1 : d <= wielded(u).reach + thickness(w) + 0.1;
+  const inRange = ranged ? d <= KUNAI_LONG + up + 0.1 : d <= wielded(u).reach + thickness(w) + 0.1;
   // Aimed a hair short of the wall's face, so the wall itself doesn't hide it.
   const k = d > 0.1 ? 0.05 / d : 0;
   const sight = ranged

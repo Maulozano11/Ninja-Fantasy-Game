@@ -11,7 +11,7 @@ import { homeTeam } from './types';
 import { cellCenter, cellOf, clearRun, coverBetween, dist, fullCoverBetween, gridFor, heightReach, levelAtPt, lineOfSight, sameCell, steamAt, steamHides, tooHigh } from './map';
 import { lightningSeeds, unitsOnPatch, wetPatch } from './ground';
 import { canStop, occupancy, reachable } from './nav';
-import { JUTSU, MIN_AIM, areaOf, inArea } from './jutsu';
+import { JUTSU, MIN_AIM, areaOf, inArea, jutsuRange } from './jutsu';
 import type { JutsuSpec } from './jutsu';
 import { passivePerception, saveMod } from './combat';
 import { KUNAI, KUNAI_LONG, wielded } from './units';
@@ -128,6 +128,54 @@ export function threat(u: Unit): number {
     }
   }
   return best;
+}
+
+/** A jutsu that strikes from this far (m) or further is fought with from afar. */
+const AFAR_M = 6;
+
+/**
+ * A ninja that fights best from afar (the owner, 2026-10-23: "si es un personaje de largo alcance
+ * que le conviene estar lejos si, si es de corto alcance entonces si baja"): its best hit from a
+ * distance (a kunai, an affordable jutsu reaching 6 m or more) is worth more than its best blow (its
+ * weapon, a melee or short jutsu). It keeps the high ground and its distance; one that fights up
+ * close comes down to fight. Out of chakra, a jutsu caster may turn into one that closes in.
+ */
+export function fightsFromAfar(u: Unit): boolean {
+  if (u.kind !== 'ninja') return false;
+  const strMod = abilityMod(u.stats.str);
+  const dexMod = abilityMod(u.stats.dex);
+  const w = wielded(u);
+  let blow = (avg(w.dice) + (w.finesse ? Math.max(strMod, dexMod) : strMod)) * 0.65;
+  let shot = (avg(KUNAI.dice) + dexMod) * 0.55;
+  if (!noJutsu(u)) {
+    for (const id of u.jutsus) {
+      const j = JUTSU[id];
+      if (!j || !offensive(j) || u.chakra < j.cost) continue;
+      const v = avg(j.dice) * (j.save ? 0.75 : 0.65);
+      if (j.melee || j.handCharge || j.range < AFAR_M) blow = Math.max(blow, v);
+      else shot = Math.max(shot, v);
+    }
+  }
+  return shot > blow;
+}
+
+/**
+ * How much a unit likes standing at `p` against `foe` (lower is better; bestCell adds the walk):
+ * cover from it; and the height. One that fights from afar wants the high ground (each level above
+ * the foe, up to two, is worth 5 m of walking) and a little distance; one that fights up close likes
+ * a level over the foe only where its blade reaches it (+2 to hit), so it doesn't hang back on a
+ * ledge but comes down.
+ */
+export function standScore(s: BattleState, u: Unit, foe: Unit | undefined, p: Pt, afar = fightsFromAfar(u)): number {
+  if (!foe) return 0;
+  let v = 0;
+  if (coverBetween(s, foe.pos, p, [foe.id, u.id]) >= 2) v -= 1.5;
+  const up = levelAtPt(s, p) - levelAtPt(s, foe.pos);
+  if (afar) {
+    v -= 1.5 * Math.min(2, Math.max(0, Math.floor(up + 0.1)));
+    v -= 0.1 * Math.min(dist(p, foe.pos), KUNAI.reach);
+  } else if (up >= 0.9 && dist(p, foe.pos) <= reachTo(u, foe) + 0.1) v -= 1;
+  return v;
 }
 
 /**
@@ -252,18 +300,23 @@ export function ninjaOptions(s: BattleState, u: Unit, next = false): Option[] {
   const warps = canWarp(u, next);
   // A kunai leaves a Node to warp to on the next turn (2 chakra left for it).
   const plants = u.jutsus.includes(WARP) && !noJutsu(u) && u.chakra >= JUTSU[WARP].cost;
+  const afar = fightsFromAfar(u);
   for (const f of foes) {
     const d = dist(u.pos, f.pos);
     const fx = focus(u, f);
     const blow = (avg(u.weapon.dice) + wMod) * 0.65 * fx;
     // A Ryusei with a Node beside the foe warps in and strikes from behind, however far it is.
     const warpIn = warps ? warpStrikeAt(s, u, f) : null;
+    // One that fights from afar, above the foe, would give up the high ground to walk to it: less worth it.
+    const keepsHeight = afar && d > reachTo(u, f) + 0.1 && levelAtPt(s, u.pos) - levelAtPt(s, f.pos) >= 0.9 ? 0.6 : 1;
     if (warpIn) out.push({ intent: { kind: 'melee', what: u.weapon.name, target: f.id }, value: blow * EDGE, way: 'warp' });
-    else if (d <= u.speed + reachTo(u, f) + 0.1) out.push({ intent: { kind: 'melee', what: u.weapon.name, target: f.id }, value: blow });
-    if (d <= KUNAI_LONG + u.speed) {
+    else if (d <= u.speed + reachTo(u, f) + 0.1) out.push({ intent: { kind: 'melee', what: u.weapon.name, target: f.id }, value: blow * keepsHeight });
+    // From high ground a kunai carries further.
+    const up = heightReach(s, u.pos, f.pos);
+    if (d <= KUNAI_LONG + up + u.speed) {
       // With no Node near the foe yet (and the foe out of reach), the kunai leaves one: half a blow from behind more.
       const plant = plants && !warpIn && d > reachTo(u, f) + 0.1;
-      const v = (avg(KUNAI.dice) + dexMod) * 0.55 * fx * (d > KUNAI.reach + u.speed ? 0.5 : 1) + (plant ? blow * EDGE * 0.5 : 0);
+      const v = (avg(KUNAI.dice) + dexMod) * 0.55 * fx * (d > KUNAI.reach + up + u.speed ? 0.5 : 1) + (plant ? blow * EDGE * 0.5 : 0);
       out.push({ intent: { kind: 'ranged', what: KUNAI.name, target: f.id }, value: v, ...(plant ? { way: 'plant' as const } : {}) });
     }
     if (sealed) continue;
@@ -283,7 +336,7 @@ export function ninjaOptions(s: BattleState, u: Unit, next = false): Option[] {
         out.push({ intent: { kind: 'jutsu', what: id, target: f.id, at: { ...f.pos } }, value: avg(j.dice) * 0.8 * fx * (u.chakra >= j.cost * 2 ? 1 : 0.85), single: true });
         continue;
       }
-      if (d > j.range + u.speed + (f.bulk ?? 0)) continue;
+      if (d > jutsuRange(s, j, u.pos, f.pos) + u.speed + (f.bulk ?? 0)) continue;
       const hits = areaValue(s, u, j, f);
       if (hits <= 0) continue;
       const thrift = u.chakra >= j.cost * 2 ? 1 : 0.85;
@@ -395,7 +448,7 @@ export function headOptions(s: BattleState, u: Unit): Option[] {
     const fx = focus(u, f);
     if (d <= u.weapon.reach + 0.1 && !fullCoverBetween(s, u.pos, f.pos)) out.push({ intent: { kind: 'bite', what: 'Bite', target: f.id }, value: (avg(u.weapon.dice) + abilityMod(u.stats.str)) * 0.65 * fx });
     const spit = JUTSU.hydra_spit;
-    if (u.chakra >= spit.cost && d <= spit.range + 0.1 && lineOfSight(s, u.pos, f.pos)) {
+    if (u.chakra >= spit.cost && d <= jutsuRange(s, spit, u.pos, f.pos) + 0.1 && lineOfSight(s, u.pos, f.pos)) {
       const poison = hasEffect(f.effects, 'poisoned') ? 0 : 3;
       out.push({ intent: { kind: 'spit', what: 'hydra_spit', target: f.id, at: { ...f.pos } }, value: (avg(spit.dice) * 0.75 * areaValue(s, u, spit, f) + poison) * fx });
     }
@@ -456,9 +509,9 @@ export function goalOf(s: BattleState, u: Unit, i: Intent): Goal | null {
       // A metal wall for cover and a Spatial Swap are made from where it stands, or not at all.
       if (i.what === WALL) return { at: u.pos, good: () => false, ready: !!wallCover(s, u, t) };
       if (i.what === SWAP) return { at: u.pos, good: () => false, ready: swapValue(s, u, t) > 0 };
-      const reach = j.range + (t.bulk ?? 0) + (j.shape === 'single' && t.kind === 'hydra_head' ? 2.5 : 0);
+      const reach = (p: Pt) => jutsuRange(s, j, p, t.pos) + (t.bulk ?? 0) + (j.shape === 'single' && t.kind === 'hydra_head' ? 2.5 : 0);
       // A charge needs a clear straight run to its target.
-      return goal((p) => dist(p, t.pos) <= reach && (j.melee ? !tooHigh(s, p, t.pos) && !fullCoverBetween(s, p, t.pos) && (!j.charge || clearRun(s, p, t.pos)) : lineOfSight(s, p, t.pos)), t);
+      return goal((p) => dist(p, t.pos) <= reach(p) && (j.melee ? !tooHigh(s, p, t.pos) && !fullCoverBetween(s, p, t.pos) && (!j.charge || clearRun(s, p, t.pos)) : lineOfSight(s, p, t.pos)), t);
     }
     case 'heal':
       return goal((p) => dist(p, t.pos) <= 1.6, undefined);
@@ -494,17 +547,14 @@ export function bestCell(s: BattleState, u: Unit, good: (p: Pt) => boolean, scor
 
 /**
  * A step toward a goal with `budget` meters: a reachable cell where the plan can be carried out
- * (cheapest, with cover and high ground preferred), or else the reachable cell closest to the goal.
+ * (cheapest, with cover and, by how it fights, high ground preferred: standScore), or else the
+ * reachable cell closest to the goal.
  * Only cells where `open` holds. Null if it can't get closer.
  */
 export function stepToward(s: BattleState, u: Unit, g: Goal, budget: number, open: (p: Pt) => boolean = () => true): Cell | null {
   const foe = g.foe;
-  const score = (p: Pt) => {
-    let v = 0;
-    if (foe && coverBetween(s, foe.pos, p, [foe.id, u.id]) >= 2) v -= 1.5;
-    if (foe && levelAtPt(s, p) - levelAtPt(s, foe.pos) >= 0.9) v -= 1;
-    return v;
-  };
+  const afar = fightsFromAfar(u);
+  const score = (p: Pt) => standScore(s, u, foe, p, afar);
   const here = dist(u.pos, g.at);
   const cell = bestCell(s, u, (p) => g.good(p) && open(p), score, budget) ?? bestCell(s, u, (p) => dist(p, g.at) < here - 0.75 && open(p), (p) => dist(p, g.at) * 2 + score(p), budget);
   return cell && !sameCell(cell, cellOf(u.pos)) ? cell : null;

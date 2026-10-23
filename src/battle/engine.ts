@@ -29,11 +29,11 @@ import type {
   Unit,
 } from './types';
 import { homeTeam } from './types';
-import { cellBlocked, cellCenter, cellOf, clearRun, coverBetween, dampAt, dist, fullCoverBetween, getMap, gridFor, hideSpotAt, idx, inGrid, levelAtPt, lineOfSight, propRules, sameCell, segmentsCross, tooHigh, waterAtPt } from './map';
+import { cellBlocked, cellCenter, cellOf, clearRun, coverBetween, dampAt, dist, fallDice, fullCoverBetween, getMap, gridFor, heightReach, hideSpotAt, idx, inGrid, levelAtPt, lineOfSight, propRules, sameCell, segmentsCross, tooHigh, waterAtPt } from './map';
 import { canStop, countStep, freeSpot, occupancy, pathTo, pathTouchesDeep, reachable, unitStepCost } from './nav';
 import type { AttackPreview } from './combat';
 import { attackPreview, check, damage, heal, hostileAura, passivePerception, PERFECT_HIDE, reveal, revealOutOfHiding, rollDiceExpr, skillMod } from './combat';
-import { JUTSU, MIN_AIM, areaOf, enhanced, fanDice, fanned, fannedBy } from './jutsu';
+import { JUTSU, MIN_AIM, areaOf, enhanced, fanDice, fanned, fannedBy, jutsuRange } from './jutsu';
 import type { JutsuSpec } from './jutsu';
 import { KUNAI, enemyNameOf, enemyUnit, handsFree, unitFrom, wielded } from './units';
 import type { EnemyKind } from './units';
@@ -283,7 +283,7 @@ function dispatch(s: BattleState, a: Action, ev: BattleEvent[]): string | null {
     case 'stone':
       if (s.phase !== 'stealth') return 'notStealth';
       if (!u.turn.action) return 'noAction';
-      if (dist(u.pos, a.at) > STONE_RANGE) return 'outOfRange';
+      if (dist(u.pos, a.at) > STONE_RANGE + heightReach(s, u.pos, a.at)) return 'outOfRange';
       ev.push({ t: 'act', unit: u.id, act: 'stone' });
       throwStone(s, u, a.at, ev);
       return null;
@@ -545,14 +545,16 @@ function attackProp(s: BattleState, u: Unit, i: number, ranged: boolean, ev: Bat
   if (!p || !st || st.destroyed || st.hp === undefined) return 'badTarget';
   const d = dist(u.pos, p);
   const rules = propRules(p);
-  if (ranged ? d > KUNAI.reach * 2 : d > wielded(u).reach + rules.radius + 0.1) return 'outOfRange';
+  // A kunai thrown from high ground carries further.
+  const up = ranged ? heightReach(s, u.pos, p) : 0;
+  if (ranged ? d > KUNAI.reach * 2 + up : d > wielded(u).reach + rules.radius + 0.1) return 'outOfRange';
   if (ranged && !lineOfSight(s, u.pos, p)) return 'noSight';
   u.turn.action = false;
   const w = ranged ? KUNAI : wielded(u);
   const edge = !!u.cond.warpEdge;
   if (edge) u.cond.warpEdge = false;
   // From inside a foe's Aura of Sovereignty, with disadvantage, as against a unit.
-  const far = ranged && d > KUNAI.reach;
+  const far = ranged && d > KUNAI.reach + up;
   const aura = !!hostileAura(s, u);
   const adv = combineAdvantage(far ? 'disadvantage' : 'none', edge ? 'advantage' : 'none', aura ? 'disadvantage' : 'none');
   const roll = check(s, 'attack', u.prof + abilityMod(ranged ? u.stats.dex : u.stats.str), 10, adv, true);
@@ -702,7 +704,7 @@ function sweptInto(s: BattleState, t: Unit, from: Pt, to: Pt): boolean {
  * A jutsu moves a unit that failed its save (the Devouring Tide, the Whirlwind Tower): 1.5 m at a
  * time, away from `push.from` or toward it (never past it), until it has gone `push.m` or something
  * stops it (a wall, a tree, a structure, another unit or coming within 1.2 m of one, the edge of the
- * map): it stays where it hits. Swept off a ledge it falls (1d6 a level, and prone); swept into
+ * map): it stays where it hits. Swept off a ledge it falls (1d6 a level, 3d6 at most, and prone); swept into
  * water its flames go out.
  */
 function sweep(s: BattleState, t: Unit, h: Hit, ev: BattleEvent[]): void {
@@ -734,7 +736,7 @@ function sweep(s: BattleState, t: Unit, h: Hit, ev: BattleEvent[]): void {
   ev.push({ t: 'pushed', unit: t.id, from, to: { ...t.pos }, fall: Math.max(0, Math.round(drop)), what: h.what });
   if (drop >= 0.9) {
     t.cond.prone = true;
-    landHit(s, t, { unit: t.id, amount: rollDiceExpr(s, `${Math.round(drop)}d6`), type: 'Bludgeoning', source: h.source, what: 'fall' }, ev);
+    landHit(s, t, { unit: t.id, amount: rollDiceExpr(s, fallDice(drop)), type: 'Bludgeoning', source: h.source, what: 'fall' }, ev);
   }
   if (dampAt(s, t.pos) && hasEffect(t.effects, 'burning')) {
     t.effects = removeEffect(t.effects, 'burning');
@@ -870,7 +872,7 @@ function doJutsu(s: BattleState, u: Unit, id: string, atIn: Pt, targetId: string
   switch (spec.shape) {
     case 'single':
       if (!target || !targetable(target)) return 'needTarget';
-      if (d > spec.range + 0.1 + (target.bulk ?? 0) + (target.kind === 'hydra_head' ? 2.5 : 0)) return 'outOfRange';
+      if (d > jutsuRange(s, spec, u.pos, target.pos) + 0.1 + (target.bulk ?? 0) + (target.kind === 'hydra_head' ? 2.5 : 0)) return 'outOfRange';
       if (spec.melee && tooHigh(s, u.pos, target.pos)) return 'outOfRange';
       if (!spec.melee && !lineOfSight(s, u.pos, target.pos)) return 'noSight';
       if (spec.melee && fullCoverBetween(s, u.pos, target.pos)) return 'blocked';
@@ -883,7 +885,7 @@ function doJutsu(s: BattleState, u: Unit, id: string, atIn: Pt, targetId: string
     case 'circle':
     case 'point':
     case 'wall':
-      if (d > spec.range + 0.1) return 'outOfRange';
+      if (d > jutsuRange(s, spec, u.pos, at) + 0.1) return 'outOfRange';
       // A point in steam can be aimed at (the cloud is seen), not one past it.
       if (!lineOfSight(s, u.pos, at, { into: true })) return 'noSight';
       break;
@@ -1089,7 +1091,7 @@ function jutsuHits(s: BattleState, u: Unit, spec: JutsuSpec, target: Unit | unde
       hits.push(saveHit(s, v, spec.save, u.saveDC, amount, type, spec.saveHalf, u.id, spec.id, extra, ev, spec.saveAdv, spec.dice ? maxCritDamage(spec.dice) : undefined));
       continue;
     }
-    const pv = attackPreview(s, u, v, 'jutsu', { jutsuRange: spec.range, melee: spec.melee });
+    const pv = attackPreview(s, u, v, 'jutsu', { jutsuRange: jutsuRange(s, spec, u.pos, v.pos), melee: spec.melee });
     const roll = check(s, 'attack', pv.mod, pv.ac, pv.adv, true);
     ev.push({ t: 'attack', unit: u.id, target: v.id, what: spec.id, roll, ranged: !spec.melee, ...(pv.reasons.length ? { reasons: pv.reasons } : {}) });
     // A critical does maximum damage (the dice at their highest, doubled, the bonus once).
@@ -1366,10 +1368,10 @@ function doShove(s: BattleState, u: Unit, targetId: string, mode: 'prone' | 'pus
       const drop = levelAtPt(s, from) - levelAtPt(s, to);
       t.pos = to;
       ev.push({ t: 'pushed', unit: t.id, from, to, fall: Math.max(0, Math.round(drop)) });
-      // Off a ledge: 1d6 per level fallen, and down on the ground.
+      // Off a ledge: 1d6 per level fallen (3d6 at most), and down on the ground.
       if (drop >= 0.9) {
         t.cond.prone = true;
-        hits.push({ unit: t.id, amount: rollDiceExpr(s, `${Math.round(drop)}d6`), type: 'Bludgeoning', source: u.id, what: 'fall' });
+        hits.push({ unit: t.id, amount: rollDiceExpr(s, fallDice(drop)), type: 'Bludgeoning', source: u.id, what: 'fall' });
       }
       if (dampAt(s, to) && hasEffect(t.effects, 'burning')) {
         t.effects = removeEffect(t.effects, 'burning');
@@ -1413,7 +1415,7 @@ function doItem(s: BattleState, u: Unit, item: 'pill' | 'bandage' | 'antidote' |
   if (item === 'tag') {
     // An explosive tag thrown at a point: it seals a hydra's stump like fire.
     if (s.supplies.explosiveTags < 1) return 'noneLeft';
-    if (!at || dist(u.pos, at) > TAG.range + 0.1) return 'outOfRange';
+    if (!at || dist(u.pos, at) > TAG.range + heightReach(s, u.pos, at) + 0.1) return 'outOfRange';
     if (!lineOfSight(s, u.pos, at, { into: true })) return 'noSight';
     u.turn.action = false;
     s.supplies.explosiveTags -= 1;

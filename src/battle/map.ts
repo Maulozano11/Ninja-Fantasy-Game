@@ -239,13 +239,25 @@ export const levelAtPt = (s: BattleState, p: Pt): number => {
 export const LEVEL_M = 1.5;
 
 /**
+ * A fall hurts only when it isn't the ninja's own doing (the owner, 2026-10-23): shoved or swept
+ * off a ledge (later, the ground giving way under it), 1d6 a level and at most 3 levels, 3d6.
+ * Going down on purpose (walking, climbing, the ninja jump, a warp) never hurts.
+ */
+export const MAX_FALL_LEVELS = 3;
+export const fallDice = (levels: number): string => `${Math.min(MAX_FALL_LEVELS, Math.max(1, Math.round(levels)))}d6`;
+
+/**
  * Levels apart at which a blow, a shove or a touch can't reach (a ninja on a tower over one on the
  * ground): 2 levels, 3 m. One level (a ledge as high as a man) is still in reach.
  */
 export const REACH_LEVELS = 2;
 export const tooHigh = (s: BattleState, a: Pt, b: Pt): boolean => Math.abs(levelAtPt(s, a) - levelAtPt(s, b)) >= REACH_LEVELS - 0.1;
 
-/** Thrown weapons carry further from high ground (GAMEPLAY_DESIGN, Elevation): 1.5 m more range for each full level above the target. */
+/**
+ * What is thrown or sent through the air carries further from high ground (GAMEPLAY_DESIGN, "Height
+ * in play"): 1.5 m more range for each full level above the target. Kunai and shuriken, explosive
+ * tags, a stone, and the jutsu aimed at a target or a point (jutsu.ts, reachesFromAbove).
+ */
 export const heightReach = (s: BattleState, from: Pt, to: Pt): number => Math.max(0, Math.floor(levelAtPt(s, from) - levelAtPt(s, to) + 0.1)) * LEVEL_M;
 
 /**
@@ -341,10 +353,19 @@ export function lineOfSight(s: BattleState, a: Pt, b: Pt, opts: { structures?: b
 const topLevel = new Map<string, number>();
 
 /**
+ * How high over its feet a ninja must be seen (and sees from), in levels: half a level, 0.75 m. A
+ * ninja shows over an edge only if this much of it does, so from the foot of a terrace one sees the
+ * ninjas near its edge and not those far back on it, and seeing further back takes stepping back
+ * from the wall (the owner, 2026-10-23: "como en xcom 2"). A rock as high as a man hides too.
+ */
+export const SIGHT_LEVELS = 0.5;
+
+/**
  * The ground itself hides two points from each other (the owner's terraces: a cliff face, a rock,
- * the tower's block): somewhere between them it rises above the line joining their eyes, a level
- * (1.5 m) over each one's feet. A ninja at a cliff's foot still sees one on the terrace above; two
- * ninjas on the field don't see each other through the tower.
+ * the tower's block): somewhere between them it rises above the line joining them, SIGHT_LEVELS
+ * over each one's feet. At a terrace's foot one sees a ninja at its edge but not one far back on
+ * it; a few metres back from the wall one sees further in. Two ninjas on the field don't see each
+ * other through the tower.
  */
 export function terrainBlocks(s: BattleState, a: Pt, b: Pt): boolean {
   const g = gridFor(s.mapId);
@@ -354,8 +375,8 @@ export function terrainBlocks(s: BattleState, a: Pt, b: Pt): boolean {
     for (const l of g.level) top = Math.max(top, l);
     topLevel.set(s.mapId, top);
   }
-  const ea = levelAtPt(s, a) + 1;
-  const eb = levelAtPt(s, b) + 1;
+  const ea = levelAtPt(s, a) + SIGHT_LEVELS;
+  const eb = levelAtPt(s, b) + SIGHT_LEVELS;
   if (top <= Math.min(ea, eb)) return false;
   const ca = cellOf(a);
   const cb = cellOf(b);

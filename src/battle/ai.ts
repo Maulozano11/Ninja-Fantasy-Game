@@ -4,9 +4,9 @@
 
 import { effectMods } from '../rules/effects';
 import type { Action, BattleEvent, BattleState, Cell, Intent, Pt, Unit } from './types';
-import { cellCenter, cellOf, coverBetween, dist, fullCoverBetween, gridFor, idx, lineOfSight, sameCell, segmentsCross, steamAt } from './map';
+import { cellCenter, cellOf, coverBetween, dist, fullCoverBetween, gridFor, heightReach, idx, lineOfSight, sameCell, segmentsCross, steamAt } from './map';
 import { canStop, reachable } from './nav';
-import { JUTSU, MIN_AIM } from './jutsu';
+import { JUTSU, MIN_AIM, jutsuRange } from './jutsu';
 import { KUNAI_LONG } from './units';
 import { applyAction, chargeLanding, handsBlocker, jutsuCost } from './engine';
 import { current } from './turns';
@@ -82,7 +82,7 @@ function headAction(s: BattleState, u: Unit): Action | null {
   if (i?.kind === 'bite' && (dist(u.pos, s.units[i.target!].pos) > u.weapon.reach + 0.1 || fullCoverBetween(s, u.pos, s.units[i.target!].pos))) i = undefined;
   if (i && (i.kind === 'spit' || i.kind === 'roar')) {
     const t = s.units[i.target!];
-    if (dist(u.pos, t.pos) > JUTSU[i.what].range + 0.1 || !lineOfSight(s, u.pos, t.pos)) i = undefined;
+    if (dist(u.pos, t.pos) > jutsuRange(s, JUTSU[i.what], u.pos, t.pos) + 0.1 || !lineOfSight(s, u.pos, t.pos)) i = undefined;
     // A foe that walked right under the head leaves the roar no direction: pick again.
     else if (i.kind === 'roar' && dist(u.pos, t.pos) < MIN_AIM) i = undefined;
   }
@@ -165,7 +165,7 @@ function carryOut(s: BattleState, u: Unit, i: Intent): Action | null {
 function kunaiOr(s: BattleState, u: Unit, t: Unit): Action | null {
   // A charged hand closes in rather than throw: out of movement, it dashes.
   if (u.charged) return u.turn.move < 0.5 && u.turn.action ? { type: 'dash', unit: u.id } : null;
-  if (dist(u.pos, t.pos) <= KUNAI_LONG && lineOfSight(s, u.pos, t.pos)) return { type: 'attack', unit: u.id, target: t.id, ranged: true };
+  if (dist(u.pos, t.pos) <= KUNAI_LONG + heightReach(s, u.pos, t.pos) && lineOfSight(s, u.pos, t.pos)) return { type: 'attack', unit: u.id, target: t.id, ranged: true };
   if (u.turn.move < 0.5) return { type: 'dash', unit: u.id };
   return null;
 }
@@ -193,7 +193,7 @@ function fallback(s: BattleState, u: Unit): Action | null {
   for (const o of ninjaOptions(s, u)) {
     const t = o.intent.target ? s.units[o.intent.target] : undefined;
     if (o.intent.kind === 'melee' && t && dist(u.pos, t.pos) <= reachTo(u, t) + 0.1 && !fullCoverBetween(s, u.pos, t.pos)) return { type: 'attack', unit: u.id, target: t.id };
-    if (o.intent.kind === 'ranged' && t && dist(u.pos, t.pos) <= KUNAI_LONG && lineOfSight(s, u.pos, t.pos)) return { type: 'attack', unit: u.id, target: t.id, ranged: true };
+    if (o.intent.kind === 'ranged' && t && dist(u.pos, t.pos) <= KUNAI_LONG + heightReach(s, u.pos, t.pos) && lineOfSight(s, u.pos, t.pos)) return { type: 'attack', unit: u.id, target: t.id, ranged: true };
   }
   return null;
 }
@@ -265,7 +265,7 @@ function bonusStrike(s: BattleState, u: Unit): Action | null {
     if (!j || j.cast !== 'bonus' || j.melee || !offensive(j) || u.chakra < jutsuCost(u, j, false)) continue;
     if (handsBlocker(u, j)) continue;
     for (const f of visibleFoes(s, u)) {
-      const reach = j.range + (f.bulk ?? 0) + (j.shape === 'single' && f.kind === 'hydra_head' ? 2.5 : 0);
+      const reach = jutsuRange(s, j, u.pos, f.pos) + (f.bulk ?? 0) + (j.shape === 'single' && f.kind === 'hydra_head' ? 2.5 : 0);
       if (dist(u.pos, f.pos) > reach + 0.1 || !lineOfSight(s, u.pos, f.pos) || areaValue(s, u, j, f) <= 0) continue;
       const v = 1 - f.hp / Math.max(1, f.maxHp);
       if (!best || v > best.v) best = { a: { type: 'jutsu', unit: u.id, jutsu: id, at: { ...f.pos }, target: j.shape === 'single' ? f.id : undefined }, v };

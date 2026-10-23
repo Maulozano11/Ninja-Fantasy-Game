@@ -11,9 +11,9 @@ import { chargeLanding, handsBlocker, jutsuCost, needsSeals } from '../../battle
 import { aiAction, aiToAct } from '../../battle/ai';
 import { current } from '../../battle/turns';
 import { AURA_RADIUS, attackPreview, sovereign } from '../../battle/combat';
-import { JUTSU, areaOf, enhanced as enhancedSpec, fanDice, fannedBy } from '../../battle/jutsu';
+import { JUTSU, areaOf, enhanced as enhancedSpec, fanDice, fannedBy, jutsuRange } from '../../battle/jutsu';
 import type { JutsuSpec } from '../../battle/jutsu';
-import { LEVEL_M, cellCenter, cellOf, dist, fullCoverBetween, getMap, gridFor, idx, levelAtPt, lineOfSight, sameCell, steamAt, steamBetween, steamHides } from '../../battle/map';
+import { LEVEL_M, cellCenter, cellOf, dist, fullCoverBetween, getMap, gridFor, heightReach, idx, levelAtPt, lineOfSight, sameCell, steamAt, steamBetween, steamHides } from '../../battle/map';
 import { DIAGONAL_RULE, canStop, occupancy, pathTo, reachable, walkCost } from '../../battle/nav';
 import { foreseen } from '../../battle/intent';
 import { MAX_STRUCTURES, STRUCTURE_AC, breakable, jutsuWallAt, ownStructures, structureAt, structureAttack, structureBlocker, structureDist } from '../../battle/structures';
@@ -579,12 +579,13 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
           const fan = T(fanDice(spec) > 1 ? 'aimFanned2' : 'aimFanned');
           sub = sub ? `${sub} · ${fan}` : fan;
         }
-        if (!self && dist(actor.pos, at) > spec.range + 0.1 + (hu?.bulk ?? 0) + (hu?.kind === 'hydra_head' ? 2.5 : 0)) label = T('aimNoReach');
+        // From high ground a jutsu sent through the air reaches further (as the engine allows it).
+        if (!self && dist(actor.pos, at) > jutsuRange(s, spec, actor.pos, at) + 0.1 + (hu?.bulk ?? 0) + (hu?.kind === 'hydra_head' ? 2.5 : 0)) label = T('aimNoReach');
         // Then sight, as the engine refuses it: a jutsu at one target needs to see it (a strike, no
         // metal wall between); an area or a point needs to see where it goes.
         else if (spec.shape === 'single' && hu && (spec.melee ? fullCoverBetween(s, actor.pos, hu.pos) || (!!spec.charge && !chargeLanding(s, actor, hu)) : !lineOfSight(s, actor.pos, hu.pos))) label = reasonLine(spec.melee ? 'blocked' : sightWhy(s, actor.pos, hu.pos));
         else if ((spec.shape === 'circle' || spec.shape === 'point' || spec.shape === 'wall') && !lineOfSight(s, actor.pos, at, { into: true })) label = reasonLine(sightWhy(s, actor.pos, at, true));
-        if (spec.shape === 'point' || spec.shape === 'wall') o.point = { at, ok: dist(actor.pos, at) <= spec.range + 0.1 };
+        if (spec.shape === 'point' || spec.shape === 'wall') o.point = { at, ok: dist(actor.pos, at) <= jutsuRange(s, spec, actor.pos, at) + 0.1 };
         if (spec.special === 'metalBlock' || spec.special === 'metalWall' || spec.special === 'earthWall' || spec.special === 'waterWall') {
           // A wall or a Kōton structure: where it would stand and why it can't (never over anyone);
           // for a Kōton, how many already stand.
@@ -613,7 +614,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
       }
     } else if (mode.k === 'stone') {
       o.range = { at: actor.pos, radius: STONE_RANGE };
-      if (hover?.pt) o.point = { at: hover.pt, ok: dist(actor.pos, hover.pt) <= STONE_RANGE };
+      if (hover?.pt) o.point = { at: hover.pt, ok: dist(actor.pos, hover.pt) <= STONE_RANGE + heightReach(s, actor.pos, hover.pt) };
     } else if (mode.k === 'shove' || mode.k === 'stabilize' || (mode.k === 'item' && mode.item !== 'tag' && mode.item !== 'tagTrap')) {
       o.range = { at: actor.pos, radius: 1.5 };
       if (hu) o.targets = [hu.id];

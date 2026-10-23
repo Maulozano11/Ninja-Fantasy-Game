@@ -1,7 +1,10 @@
 // Height and diagonals (the owner, 2026-10-22): "si me gustaria darle alguna clase de altura ...
 // terreno elevado ... trepando una colina bajando un colina ... alguien subio a una torre", and
 // "vamos a probar 5-10-5". These tests pin the 5-10-5 diagonals, climbing (ramps, ledges, walls,
-// the ladder), the reach and cover rules of height, and the height test battle.
+// the ladder), the reach and cover rules of height, and the height test battle. His answers of
+// 2026-10-23 on the height rules: the range from high ground for everything thrown or sent, sight
+// over an edge "como en xcom 2", falls that hurt only when not on purpose (3d6 at most), and an AI
+// that keeps the high ground when it fights from afar and comes down when it fights up close.
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
@@ -11,10 +14,13 @@ import type { ShinobiCharacter } from '../types/shinobi';
 import type { BattleState, Pt } from './types';
 import { applyAction, createBattle } from './engine';
 import type { BattleSetup } from './engine';
-import { CELL, cellOf, coverBetween, gridFor, idx, levelAtPt, lineOfSight, terrainBlocks } from './map';
+import { CELL, cellCenter, cellOf, coverBetween, fallDice, gridFor, idx, levelAtPt, lineOfSight, terrainBlocks } from './map';
 import { canStop, climbCost, CLIMB_DOWN, CLIMB_UP, DIAGONAL_RULE, diagonalCost, pathCost, pathTo, reachable, walkCost } from './nav';
 import { attackPreview } from './combat';
 import { KUNAI } from './units';
+import { JUTSU, jutsuRange, reachesFromAbove } from './jutsu';
+import { fightsFromAfar, ninjaOptions, standScore } from './intent';
+import type { BattleEvent } from './types';
 import { aiAction } from './ai';
 import { current } from './turns';
 import { ENCOUNTERS, encounterSetup } from './encounters';
@@ -223,6 +229,37 @@ describe('fighting from high ground', () => {
     assert.equal(KUNAI.reach, 9);
   });
 
+  it('a jutsu sent at a target or a point reaches 1.5 m further a level above it, like a kunai; a blow, a cone or a line doesn\'t', () => {
+    const s = onHill(at(29.75, 4.25), at(19.25, 4.25));
+    const tower = s.units.a.pos;
+    const ground = s.units.rogue_0.pos;
+    // 10.5 m apart, the tower 2 levels up: 3 m more for what flies there.
+    assert.equal(jutsuRange(s, JUTSU.fire_three_embers, tower, ground), 12);
+    assert.equal(jutsuRange(s, JUTSU.fireball_goukakyu, tower, ground), 12);
+    assert.equal(jutsuRange(s, JUTSU.fire_three_embers, ground, tower), 9, 'not from below');
+    for (const id of ['dragon_fire_stream', 'great_fire_annihilation', 'genjutsu_mirage', 'northstar_command', 'earth_wall_doryuheki', 'mystical_palm', 'taijutsu_rush', 'chidori_lightning_blade']) {
+      assert.equal(reachesFromAbove(JUTSU[id]), false, id);
+      assert.equal(jutsuRange(s, JUTSU[id], tower, ground), JUTSU[id].range, id);
+    }
+    // The engine: the embers reach the rogue from the tower, and not the other way.
+    const up = turnOf(s, 'a');
+    up.units.a.jutsus = ['fire_three_embers'];
+    up.units.a.chakra = 30;
+    ok(applyAction(up, { type: 'jutsu', unit: 'a', jutsu: 'fire_three_embers', at: { ...ground }, target: 'rogue_0' }));
+    const down = turnOf(s, 'rogue_0');
+    down.units.rogue_0.jutsus = ['fire_three_embers'];
+    down.units.rogue_0.chakra = 30;
+    assert.equal(applyAction(down, { type: 'jutsu', unit: 'rogue_0', jutsu: 'fire_three_embers', at: { ...tower }, target: 'a' }).reason, 'outOfRange');
+    // A fireball aimed at a point 10.5 m off, an explosive tag too (9 m from the ground).
+    const ball = turnOf(s, 'a');
+    ball.units.a.jutsus = ['fireball_goukakyu'];
+    ball.units.a.chakra = 30;
+    ok(applyAction(ball, { type: 'jutsu', unit: 'a', jutsu: 'fireball_goukakyu', at: { ...ground } }));
+    ok(applyAction(turnOf(s, 'a'), { type: 'item', unit: 'a', item: 'tag', at: { ...ground } }));
+    const below = turnOf(onHill(at(19.25, 4.25), at(29.75, 4.25)), 'a');
+    assert.equal(applyAction(below, { type: 'item', unit: 'a', item: 'tag', at: { ...below.units.rogue_0.pos } }).reason, 'outOfRange');
+  });
+
   it('from the tower low cover is looked down on: the crate gives none, the stack of crates half and no longer hides', () => {
     const s = onHill(at(2.25, 14.75));
     const tower = at(28.25, 4.25);
@@ -239,19 +276,143 @@ describe('fighting from high ground', () => {
   });
 });
 
-describe('sight over the terraces (the owner\'s cliff faces)', () => {
-  it('the ground hides what is behind it, above the line between two ninjas\' eyes (1.5 m over their feet)', () => {
+describe('sight over the terraces (the owner\'s cliff faces, "como en xcom 2")', () => {
+  it('the ground hides what is behind it, above the line between two ninjas half a level (0.75 m) over their feet', () => {
     const s = onHill(at(2.25, 14.75));
     // Two ninjas on the field don't see each other through the tower's block.
     assert.ok(terrainBlocks(s, at(27.25, 4.75), at(31.25, 4.75)));
     assert.equal(lineOfSight(s, at(27.25, 4.75), at(31.25, 4.75)), false);
-    // At the foot of the terrace's cliff face (1.5 m) one still sees the ninja on top, both ways.
-    assert.equal(lineOfSight(s, at(6.25, 8.75), at(6.25, 3.25)), true);
-    assert.equal(lineOfSight(s, at(6.25, 3.25), at(6.25, 8.75)), true);
     // At the foot of the upper terrace's 3 m wall, the ninja on top behind the edge is out of sight.
     assert.equal(lineOfSight(s, at(18.75, 2.25), at(12.25, 2.25)), false);
-    // And the one on the tower sees down over the field.
-    assert.equal(lineOfSight(s, at(29.75, 4.25), at(20.25, 14.25)), true);
+    // The one on the tower sees down over the field, but not a ninja right behind the rock ledge
+    // (1.5 m high, as high as a man) on the far side of it.
+    assert.equal(lineOfSight(s, at(29.75, 4.25), at(24.25, 14.25)), true);
+    assert.equal(lineOfSight(s, at(29.75, 4.25), at(20.25, 14.25)), false);
+  });
+
+  it('right against the terrace\'s cliff face one sees only the ninjas at its edge; further back, those far back on it', () => {
+    const s = onHill(at(2.25, 14.75));
+    const wall = at(6.25, 8.75); // 0.25 m from the cliff face (z 8.5), on the field
+    const edge = at(6.25, 8.25); // on the terrace, at its edge
+    const back = at(6.25, 3.25); // on the terrace, 5 m back from its edge
+    assert.deepEqual([levelAtPt(s, wall), levelAtPt(s, edge), levelAtPt(s, back)], [0, 1, 1]);
+    assert.equal(lineOfSight(s, wall, edge), true);
+    assert.equal(lineOfSight(s, wall, back), false);
+    // Both ways: the one far back doesn't see down to the foot of the wall either.
+    assert.equal(lineOfSight(s, back, wall), false);
+    // Six metres back from the wall, the one far back on the terrace is in sight.
+    assert.equal(lineOfSight(s, at(6.25, 15.25), back), true);
+    assert.equal(lineOfSight(s, back, at(6.25, 15.25)), true);
+    // The same at the watch tower: at the ladder's foot the lookout on the platform is hidden, from 5 m off it is seen.
+    assert.equal(lineOfSight(s, at(29.25, 7.25), at(29.25, 4.75)), false);
+    assert.equal(lineOfSight(s, at(29.25, 12.25), at(29.25, 4.25)), true);
+  });
+
+  it('a kunai needs that sight: from the wall\'s foot the ninja far back can\'t be hit, from further back it can', () => {
+    const near = turnOf(onHill(at(6.25, 8.75), at(6.25, 3.25)), 'a');
+    assert.equal(applyAction(near, { type: 'attack', unit: 'a', target: 'rogue_0', ranged: true }).reason, 'noSight');
+    const far = turnOf(onHill(at(6.25, 15.25), at(6.25, 3.25)), 'a');
+    ok(applyAction(far, { type: 'attack', unit: 'a', target: 'rogue_0', ranged: true }));
+  });
+});
+
+/** The first unit pushed in these events, and the fall damage it took. */
+const pushedIn = (ev: BattleEvent[], id: string) => ev.find((e): e is Extract<BattleEvent, { t: 'pushed' }> => e.t === 'pushed' && e.unit === id);
+
+describe('falling (the owner, 2026-10-23: only when it isn\'t on purpose)', () => {
+  it('1d6 a level fallen, 3 levels at most (3d6)', () => {
+    assert.deepEqual([1, 2, 3, 4].map(fallDice), ['1d6', '2d6', '3d6', '3d6']);
+  });
+
+  it('shoved off the tower: it falls two levels, takes 2d6 and lies prone', () => {
+    // Both on the platform; the push goes east, off its side (x 30.5) onto the field.
+    const s = turnOf(onHill(at(28.75, 4.75), at(30.25, 4.75)), 'a');
+    s.units.a.stats.str = 30;
+    let out: ReturnType<typeof applyAction> | undefined;
+    for (let seed = 1; seed < 120 && !out; seed++) {
+      const t = structuredClone(s);
+      t.seed = seed;
+      const o = ok(applyAction(t, { type: 'shove', unit: 'a', target: 'rogue_0', mode: 'push' }));
+      if (pushedIn(o.events, 'rogue_0')) out = o;
+    }
+    assert.ok(out, 'no seed pushes it');
+    const r = out.state.units.rogue_0;
+    assert.equal(pushedIn(out.events, 'rogue_0')!.fall, 2);
+    assert.equal(levelAtPt(out.state, r.pos), 0);
+    assert.equal(r.cond.prone, true);
+    const lost = s.units.rogue_0.hp - r.hp;
+    assert.ok(lost >= 2 && lost <= 12, `2d6: ${lost}`);
+  });
+
+  it('going down on purpose never hurts: stepping off a ledge, the ninja jump down a 3 m wall', () => {
+    const s = turnOf(onHill(at(6.25, 8.25)), 'a');
+    const hp = s.units.a.hp;
+    const off = ok(applyAction(s, { type: 'move', unit: 'a', to: cellOf(at(6.25, 9.75)) }));
+    assert.equal(levelAtPt(off.state, off.state.units.a.pos), 0);
+    assert.equal(off.state.units.a.hp, hp);
+    assert.ok(!off.state.units.a.cond.prone);
+    // From the upper terrace (level 2) straight down its right side to the field.
+    const top = turnOf(onHill(at(17.75, 2.25)), 'a');
+    assert.equal(levelAtPt(top, top.units.a.pos), 2);
+    const j = ok(applyAction(top, { type: 'jump', unit: 'a' }));
+    const down = ok(applyAction(j.state, { type: 'move', unit: 'a', to: cellOf(at(19.25, 2.25)) }));
+    assert.equal(levelAtPt(down.state, down.state.units.a.pos), 0);
+    assert.equal(down.state.units.a.hp, top.units.a.hp);
+    assert.ok(!down.state.units.a.cond.prone);
+    assert.ok(![...off.events, ...down.events].some((e) => e.t === 'damage'));
+  });
+});
+
+describe('the AI and height (the owner: far-fighters keep it, close fighters come down)', () => {
+  /** Aki as a thrower (kunai, no blade worth closing in for) or a brawler (a strong arm, no throw). */
+  const style = (s: BattleState, id: string, afar: boolean) => {
+    const u = s.units[id];
+    u.jutsus = [];
+    u.stats = afar ? { ...u.stats, str: 6, dex: 20 } : { ...u.stats, str: 20, dex: 6 };
+    return u;
+  };
+
+  it('who fights from afar: its best hit from a distance beats its best blow', () => {
+    const s = onHill(at(2.25, 14.75));
+    assert.equal(fightsFromAfar(style(s, 'a', true)), true);
+    assert.equal(fightsFromAfar(style(s, 'a', false)), false);
+    // A brawler with a fireball and the chakra for it fights from afar; out of chakra, up close.
+    const u = style(s, 'a', false);
+    u.jutsus = ['fireball_goukakyu'];
+    u.chakra = 30;
+    assert.equal(fightsFromAfar(u), true);
+    u.chakra = 0;
+    assert.equal(fightsFromAfar(u), false);
+  });
+
+  it('where it likes to stand: a thrower wants the tower over the ground; a brawler likes height only within reach', () => {
+    const s = onHill(at(2.25, 14.75), at(29.25, 11.25));
+    const foe = s.units.rogue_0;
+    const tower = at(29.25, 4.75);
+    const ground = at(29.25, 7.75);
+    const thrower = style(s, 'a', true);
+    assert.ok(standScore(s, thrower, foe, tower) <= standScore(s, thrower, foe, ground) - 3, 'two levels up: 3 better');
+    assert.ok(standScore(s, thrower, foe, at(29.25, 8.75)) > standScore(s, thrower, foe, ground), 'and further off');
+    const brawler = style(structuredClone(s), 'a', false);
+    assert.equal(standScore(s, brawler, foe, tower), 0, 'out of its reach, the tower is worth nothing');
+  });
+
+  it('on the tower, a thrower stays up and throws; a brawler climbs down to fight', () => {
+    const base = onHill(at(29.25, 4.75), at(29.25, 12.75));
+    const t = turnOf(base, 'a');
+    style(t, 'a', true);
+    t.units.a.controller = 'ai';
+    assert.equal(ninjaOptions(t, t.units.a)[0].intent.kind, 'ranged');
+    const throwAct = aiAction(t);
+    assert.deepEqual(throwAct, { type: 'attack', unit: 'a', target: 'rogue_0', ranged: true });
+    const b = turnOf(base, 'a');
+    style(b, 'a', false);
+    b.units.a.controller = 'ai';
+    assert.equal(ninjaOptions(b, b.units.a)[0].intent.kind, 'melee');
+    const step = aiAction(b);
+    assert.equal(step?.type, 'move');
+    const moved = ok(applyAction(b, step!));
+    assert.ok(levelAtPt(moved.state, moved.state.units.a.pos) < 2, 'it came down');
   });
 });
 

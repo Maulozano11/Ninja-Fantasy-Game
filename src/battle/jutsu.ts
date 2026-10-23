@@ -7,7 +7,8 @@ import { JUTSUS_DATA } from '../data/shinobiData';
 import type { ClanType, JutsuDefinition } from '../types/shinobi';
 import type { Ability, Advantage } from '../rules/checks';
 import type { EffectId } from '../types/mission';
-import type { AreaShape, DamageType, Pt } from './types';
+import type { AreaShape, BattleState, DamageType, Pt } from './types';
+import { heightReach } from './map';
 
 export type VfxElement = 'fire' | 'water' | 'wind' | 'lightning' | 'earth' | 'genjutsu' | 'chakra' | 'poison';
 export type VfxRole = 'bolt' | 'beast' | 'stream' | 'breath' | 'sphere' | 'slash' | 'multi' | 'blast' | 'wall' | 'aura' | 'hit';
@@ -574,6 +575,20 @@ const deg = (r: number) => (r * 180) / Math.PI;
 
 /** A cone or a line needs a direction: it is aimed at least this far (m) from its caster. */
 export const MIN_AIM = 0.3;
+
+/**
+ * A jutsu sent at something away from its caster reaches further from high ground, as a kunai does
+ * (the owner, 2026-10-23: "kunai shuriken y jutsus y todo lo que podria afectarse con mas
+ * alcance"): one aimed at a target or at a point (the fire bullets, the dragons, a fireball's or a
+ * geyser's point). Not a blow, nor an area around the caster or along its aim (a cone, a line: its
+ * size stays the same), a wall or a block raised from the ground, a heal, a warp, nor what takes
+ * the mind rather than flying there (a genjutsu, the Northstar's Command and Submission).
+ */
+export const reachesFromAbove = (spec: JutsuSpec): boolean =>
+  !spec.melee && !spec.handCharge && (spec.shape === 'single' || spec.shape === 'circle') && spec.nature !== 'Genjutsu' && spec.special !== 'command' && spec.special !== 'submission';
+
+/** How far a jutsu cast from `from` reaches toward `to` (m): its range, and 1.5 m more a level above it when it flies there (heightReach). */
+export const jutsuRange = (s: BattleState, spec: JutsuSpec, from: Pt, to: Pt): number => spec.range + (reachesFromAbove(spec) ? heightReach(s, from, to) : 0);
 
 /** The area a jutsu covers when aimed at `at` from `from`. Null for single-target jutsu. */
 export function areaOf(spec: JutsuSpec, from: Pt, at: Pt): AreaShape | null {

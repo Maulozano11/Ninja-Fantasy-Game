@@ -9,7 +9,7 @@ import { migrateCharacter } from '../rules/ninja';
 import type { ShinobiCharacter } from '../types/shinobi';
 import { getItem } from './catalog';
 import { renderSprite } from './compose';
-import type { Depth, DrawCtx, Side } from './ctx';
+import { armReaches, type Depth, type DrawCtx, type Side } from './ctx';
 import { paintedGrip } from './grip';
 import { nightFistStamps } from './items/clothes';
 import { nightArmStamps, nightSkirtStamps } from './items/night';
@@ -250,10 +250,13 @@ describe("the owner's Ren", () => {
           if (rig.pose === 'cast') continue;
           const stamps = nightArmStamps(rig, s);
           const fore = stamps.find((t) => t.name === 'fore')!;
-          const upper = stamps.find((t) => t.name === 'upper')!;
+          const upper = stamps.find((t) => t.name === 'upper');
           const sleeve = stamps.find((t) => t.name === 'sleeve')!;
+          // (his far arm reaching out is his casting forearm, under the sleeve as it is casting: forearm.test.ts)
+          const reach = s === 'F' && armReaches(rig, s);
+          assert.equal(!upper, reach, `${where}: his casting forearm only on the far arm reaching out`);
           // his upper arm's end turns with his sleeve: one piece
-          assert.ok(Math.abs(upper.deg - upper.piece.angle - (sleeve.deg - sleeve.piece.angle)) < 1e-6, `${where}: the upper arm breaks from the sleeve`);
+          if (upper) assert.ok(Math.abs(upper.deg - upper.piece.angle - (sleeve.deg - sleeve.piece.angle)) < 1e-6, `${where}: the upper arm breaks from the sleeve`);
           for (const t of stamps) {
             if (t.name === 'elbow') continue;
             const bad = whole(t.piece, t.deg - t.piece.angle);

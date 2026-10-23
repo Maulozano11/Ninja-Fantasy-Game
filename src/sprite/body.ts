@@ -259,7 +259,7 @@ function muscleLine(g: DrawCtx, L: Layer, s: Side, mat: number, t0: number, t1: 
     const ln = Math.hypot(n.x, n.y) || 1;
     n = v(n.x / ln, n.y / ln);
     if (n.x * -0.72 + n.y * -0.69 < 0) n = v(-n.x, -n.y); // toward the light
-    const r = armRadius(g, t);
+    const r = armRadius(g, t, s);
     const fx = Math.floor((p.x + n.x * r * off) * RES);
     const fy = Math.floor((p.y + n.y * r * off) * RES);
     const i = fy * GRID + fx;

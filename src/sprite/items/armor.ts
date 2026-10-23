@@ -14,7 +14,7 @@
 // crests, never stripe patterns.
 
 import { hexToRgb, retintHex } from '../color';
-import { armDepth, armJoints, Depth, DrawCtx, ItemDef, legDepth, legJoints, Side, torsoPoly } from '../ctx';
+import { armDepth, armJoints, Depth, DrawCtx, forearmR, ItemDef, legDepth, legJoints, Side, torsoPoly } from '../ctx';
 import { PaintedPiece, segAngle, stampLeaning, stampPiece } from '../painted';
 import { add, capsule, ellipse, F_NO_OUTLINE, F_NO_TEXTURE, fine, GRID, Layer, lerp, norm, partIndex, PartId, Pen, perp, poly, RES, scale, sub, v, Vec } from '../raster';
 import { drawRig, GROUND, Rig, turnPoint } from '../rig';
@@ -435,7 +435,7 @@ function bracer(g: DrawCtx, pen: Pen, o: BracerOpts = {}): void {
     const L = g.L(armDepth(s, 'armor'));
     const f = armFrame(g, s, 1);
     const p = onLimb(pen, s, 'forearm');
-    const rad = (t: number) => R[2] + (R[3] - R[2]) * t + grow;
+    const rad = (t: number) => forearmR(g, s, t) + grow;
     const at = (a: number) => a / Math.max(0.01, f.len);
     /** Which side of the forearm (+1 outer, -1 inner) faces the light. */
     const ls = limbDot(f, 1, 2) > limbDot(f, -1, 2) ? 1 : -1;
@@ -840,7 +840,7 @@ function sleeves(g: DrawCtx, pen: Pen, grow = 0.45): void {
       const p = onLimb(pen, s, seg ? 'forearm' : 'upperArm');
       const rad = (a: number) => {
         const t = clamp(a / Math.max(0.01, f.len), 0, 1);
-        return (seg ? R[2] + (R[3] - R[2]) * t : R[0] + (R[1] - R[0]) * t) + grow;
+        return (seg ? forearmR(g, s, t) : R[0] + (R[1] - R[0]) * t) + grow;
       };
       lfill(A, f, p, R[0] + 1.5, (a, bb) => {
         if (a < (seg ? -0.6 : -1.2) || a > f.len + (seg ? -0.3 : 0.6)) return null;
@@ -2380,7 +2380,7 @@ export const ARMOR_ITEMS: ItemDef[] = [
           const tp = onLimb(trim, s, seg ? 'forearm' : 'upperArm');
           const rad = (a: number) => {
             const t = clamp(a / Math.max(0.01, f.len), 0, 1);
-            return (seg ? R[2] + (R[3] - R[2]) * t : R[0] + (R[1] - R[0]) * t) + 0.45;
+            return (seg ? forearmR(g, s, t) : R[0] + (R[1] - R[0]) * t) + 0.45;
           };
           lfill(A, f, p, R[0] + 1.5, (a, bb) => {
             if (a < (seg ? -0.6 : -1.2) || a > f.len + (seg ? -0.2 : 0.6)) return null;
@@ -2542,7 +2542,7 @@ export const ARMOR_ITEMS: ItemDef[] = [
           const tp = onLimb(trim, s, seg ? 'forearm' : 'upperArm');
           const rad = (a: number) => {
             const t = clamp(a / Math.max(0.01, f.len), 0, 1);
-            return (seg ? R[2] + (R[3] - R[2]) * t : R[0] + (R[1] - R[0]) * t) + 0.45;
+            return (seg ? forearmR(g, s, t) : R[0] + (R[1] - R[0]) * t) + 0.45;
           };
           lfill(A, f, p, R[0] + 1.5, (a, bb) => {
             if (a < (seg ? -0.6 : -1.2) || a > f.len + (seg ? -0.2 : 0.6)) return null;

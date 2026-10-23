@@ -5,7 +5,7 @@
 // stitching and buttons can be a single fine pixel.
 
 import { hexToRgb, retintHex } from '../color';
-import { armDepth, armJoints, armPoint, armSpan, type Depth, DrawCtx, fillTorso, handDraw, handPose, ItemDef, legDepth, legJoints, legPoint, Side, torsoPoly } from '../ctx';
+import { armDepth, armJoints, armPoint, armReaches, armSpan, type Depth, DrawCtx, fillTorso, handDraw, handPose, forearmRuleR, ItemDef, legDepth, legJoints, legPoint, REACH_CUTS, Side, torsoPoly } from '../ctx';
 import { continuedTo, limbOnly, PaintedPiece, PieceJoint, segAngle, skinTone, stampBent, stampPiece } from '../painted';
 import { add, along, ellipse, F_NO_EDGE, F_NO_OUTLINE, F_NO_TEXTURE, GRID, Layer, lerp, norm, PAD, PartId, partIndex, PARTS, Pen, perp, poly, RES, scale, seam, ShadeFn, sub, v, Vec } from '../raster';
 import { stampTemplate, TemplatePalette } from '../rotsprite';
@@ -157,8 +157,12 @@ function jointShade(c: Vec, d: Vec, r: number, light?: (o: number, n: Vec) => nu
 
 export type LimbKind = 'arm' | 'leg';
 export const limbPt = (g: DrawCtx, k: LimbKind, s: Side, t: number): Vec => (k === 'arm' ? armPoint(g, s, t) : legPoint(g, s, t));
-/** Body radius of a limb at t (0 root, 1 middle joint, 2 end). */
-export function limbR(g: DrawCtx, k: LimbKind, t: number): number {
+/**
+ * Body radius of a limb at t (0 root, 1 middle joint, 2 end). With the limb's side, a forearm reaching out
+ * follows the owner's forearm (ctx.ts FOREARM_RULE), so the cloth on it follows the arm it dresses.
+ */
+export function limbR(g: DrawCtx, k: LimbKind, t: number, s?: Side): number {
+  if (k === 'arm' && t > 1 && s && armReaches(g.rig, s)) return forearmRuleR(g.rig.body, t);
   const R = k === 'arm' ? g.bp.armR : g.bp.legR;
   const P = k === 'arm' ? ARM_PROFILE : LEG_PROFILE;
   for (let i = 1; i < P.length; i++) {
@@ -216,12 +220,12 @@ export function limb(
 ): void {
   const inf = (t: number) =>
     typeof inflate === 'number' ? inflate : typeof inflate === 'function' ? inflate(t) : inflate[0] + (inflate[1] - inflate[0]) * ((t - from) / (to - from || 1));
-  const cuts = [from, ...PROFILE_CUTS[k].filter((c) => c > from && c < to), to];
+  const cuts = [from, ...(k === 'arm' && armReaches(g.rig, s) ? REACH_CUTS : PROFILE_CUTS[k]).filter((c) => c > from && c < to), to];
   for (let i = 0; i < cuts.length - 1; i++) {
     const t0 = cuts[i];
     const t1 = cuts[i + 1];
-    const r0 = (t0 === 1 ? limbR(g, k, 1.0001) : limbR(g, k, t0)) + inf(t0);
-    const r1 = limbR(g, k, t1) + inf(t1);
+    const r0 = (t0 === 1 ? limbR(g, k, 1.0001, s) : limbR(g, k, t0, s)) + inf(t0);
+    const r1 = limbR(g, k, t1, s) + inf(t1);
     const a = limbPt(g, k, s, t0);
     const b = limbPt(g, k, s, t1);
     const l = Math.hypot(b.x - a.x, b.y - a.y);
@@ -231,7 +235,7 @@ export function limb(
   }
   const disc = (t: number) => {
     const p = limbPt(g, k, s, t);
-    const r = Math.max(limbR(g, k, t), t === 1 ? limbR(g, k, 1.0001) : 0) + inf(t);
+    const r = Math.max(limbR(g, k, t, s), t === 1 ? limbR(g, k, 1.0001, s) : 0) + inf(t);
     // shoulder and hip caps are round; the knee/elbow and the far end blend the segments they join
     const dir = norm(sub(limbPt(g, k, s, Math.min(2, t + 0.25)), limbPt(g, k, s, Math.max(0, t - 0.25))));
     const sh = opts.shade ?? (t === 0 ? capShade(p, r) : jointShade(p, dir, r, opts.light && ((o, n) => opts.light!(t, o, n))));
@@ -249,7 +253,7 @@ export function across(g: DrawCtx, L: Layer, k: LimbKind, s: Side, t: number, in
   const hi = t > 1 ? 2 : 1;
   const dir = norm(sub(limbPt(g, k, s, Math.min(hi, t + 0.05)), limbPt(g, k, s, Math.max(lo, t - 0.05))));
   const n = perp(dir);
-  const r = limbR(g, k, t) + inflate + 0.6;
+  const r = limbR(g, k, t, s) + inflate + 0.6;
   seam(L, add(p, scale(n, -r)), add(p, scale(n, r)), d);
 }
 
@@ -395,8 +399,8 @@ function jointFolds(g: DrawCtx, L: Layer, k: LimbKind, s: Side, inflate: number)
   const e = limbPt(g, k, s, 2);
   // a hanging arm bends forward (screen-right), a standing leg backward (screen-left)
   const side = bendSide(g, k, s, k === 'arm' ? -1 : 1);
-  const r1 = limbR(g, k, 0.85) + inflate;
-  const r2 = limbR(g, k, 1.15) + inflate;
+  const r1 = limbR(g, k, 0.85, s) + inflate;
+  const r2 = limbR(g, k, 1.15, s) + inflate;
   fold(L, along(a, m, 0.7, side * r1 * 0.95), along(a, m, 0.9, -side * r1 * 0.1));
   fold(L, along(m, e, 0.2, side * r2 * 0.95), along(m, e, 0.06, -side * r2 * 0.05));
   if (k === 'leg') fold(L, along(a, m, 0.93, -side * r1 * 0.9), along(m, e, 0.06, -side * r2 * 0.15));
@@ -2188,7 +2192,7 @@ export const HAND_ITEMS: ItemDef[] = liftMain([
         // criss-cross lacing on the outer face
         const a = armPoint(g, s, 1.4);
         const bb = armPoint(g, s, 1.84);
-        const r = limbR(g, 'arm', 1.6) * 0.45;
+        const r = limbR(g, 'arm', 1.6, s) * 0.45;
         const lace = clothPen(g, st, prt('forearm', s), sb(s), 'leather');
         for (let i = 0; i < 3; i++) {
           const t0 = i / 3;
@@ -2196,7 +2200,7 @@ export const HAND_ITEMS: ItemDef[] = liftMain([
           stitch(L, along(a, bb, t0, -r), along(a, bb, t1, r), lace, 1, 0);
           stitch(L, along(a, bb, t0, r), along(a, bb, t1, -r), lace, 2, 0);
         }
-        crease(L, along(a, bb, 0, -limbR(g, 'arm', 1.4) - 0.3), along(a, bb, 1, -limbR(g, 'arm', 1.84) - 0.1), 0);
+        crease(L, along(a, bb, 0, -limbR(g, 'arm', 1.4, s) - 0.3), along(a, bb, 1, -limbR(g, 'arm', 1.84, s) - 0.1), 0);
         glove(g, s, clothPen(g, c, prt('hand', s), sb(s), 'leather'), -0.1, true);
       }
     },
@@ -2219,7 +2223,7 @@ export const HAND_ITEMS: ItemDef[] = liftMain([
         across(g, L, 'arm', s, 1.68, 0.5, -1);
         const a = armPoint(g, s, 1.18);
         const bb = armPoint(g, s, 1.92);
-        seam(L, along(a, bb, 0, -limbR(g, 'arm', 1.2) * 0.4), along(a, bb, 1, -limbR(g, 'arm', 1.9) * 0.4), 2);
+        seam(L, along(a, bb, 0, -limbR(g, 'arm', 1.2, s) * 0.4), along(a, bb, 1, -limbR(g, 'arm', 1.9, s) * 0.4), 2);
         // leather strap
         limb(g, L, 'arm', s, 1.52, 1.6, 0.6, clothPen(g, u, prt('forearm', s), sb(s), 'leather'));
         stud(L, along(armPoint(g, s, 1.52), armPoint(g, s, 1.6), 0.5, -0.2), mp.mat, prt('forearm', s), s === 'N');
@@ -2243,7 +2247,7 @@ export const HAND_ITEMS: ItemDef[] = liftMain([
         const pen = clothPen(g, c, prt('forearm', s), sb(s));
         limb(g, L, 'arm', s, 1.4, 2, [0.45, 0.35], pen);
         glove(g, s, clothPen(g, c, prt('hand', s), sb(s)), 0.1, true);
-        wrapStripes(L, armPoint(g, s, 1.4), armPoint(g, s, 2.0), limbR(g, 'arm', 1.4) + 1, 1.1, -1, 0.8);
+        wrapStripes(L, armPoint(g, s, 1.4), armPoint(g, s, 2.0), limbR(g, 'arm', 1.4, s) + 1, 1.1, -1, 0.8);
         const { at } = handFrame(g, s, 0.1);
         seam(L, at(-0.8, -1), at(-0.2, 1), -1);
         seam(L, at(-0.3, -1), at(0.3, 1), -1);

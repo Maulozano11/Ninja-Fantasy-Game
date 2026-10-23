@@ -7,7 +7,7 @@
 // character's skin; the rest follows the colour slots, his own colours when they are kept.
 
 import { retintHex } from '../color';
-import { armDepth, armJoints, DrawCtx, ItemDef, legDepth, legJoints, Side } from '../ctx';
+import { armDepth, armJoints, armReaches, DrawCtx, ItemDef, legDepth, legJoints, Side } from '../ctx';
 import { type PaintedPiece, segAngle, skinTone, stampLeaning, stampPiece } from '../painted';
 import { add, F_NO_OUTLINE, F_NO_TEXTURE, GRID, type Layer, partIndex, PartId, PARTS, RES, sub, v, Vec } from '../raster';
 import { NIGHT_SKIN } from '../nightHeadArt';
@@ -123,6 +123,22 @@ function bareArm(piece: PaintedPiece, upperAngle: number): BareArm {
   return out;
 }
 
+/** His far casting forearm's length, elbow to wrist (fine pixels): our male rig's in 'cast' frame 0, where he painted it. */
+const CAST_FORE_LEN = (() => {
+  const r = drawRig('male', 'cast', 0);
+  return Math.hypot(r.wristF.x - r.elbowF.x, r.wristF.y - r.elbowF.y) * RES;
+})();
+let CAST_WRIST: PaintedPiece | undefined;
+/** The wrist half of his far casting forearm (its cells CAST_WRIST_FROM or more along the bone from the elbow). */
+const CAST_WRIST_FROM = 4;
+function castWristEnd(): PaintedPiece {
+  if (CAST_WRIST) return CAST_WRIST;
+  const p = NIGHT_CAST_FORE_F;
+  const a = (p.angle * Math.PI) / 180;
+  const rows = p.rows.map((row, y) => [...row].map((ch, x) => ((x + 0.5 - p.pivot[0]) * Math.cos(a) + (y + 0.5 - p.pivot[1]) * Math.sin(a) >= CAST_WRIST_FROM ? ch : '.')).join(''));
+  return (CAST_WRIST = { ...p, rows });
+}
+
 /** One of his pieces where an arm stamps it: about which joint, along which angle (stampPiece). */
 export interface ArmStamp {
   piece: PaintedPiece;
@@ -145,15 +161,27 @@ export function nightArmStamps(r: Rig, s: Side): ArmStamp[] {
   const sleeve = arm(s, NIGHT_SLEEVE_N, NIGHT_SLEEVE_F);
   const { upper, lower, elbow } = bareArm(piece, sleeve.angle);
   const fp = `forearm${s}` as PartId;
-  if (r.pose === 'cast') {
+  // His far arm reaching out in any pose (the combo's cross, the throw's pointing arm, every cast style)
+  // is his casting forearm, the 8 rows he settled on: his idle far forearm, hanging in shadow, reads thin
+  // stretched out (the owner: "su antebrazo izquierdo en el combo se ve aun flaco pon como el antebrazo del
+  // modelo de lanzar jutsu"; ctx.ts FOREARM_RULE).
+  if (r.pose === 'cast' || (s === 'F' && armReaches(r, s))) {
     // Casting the runes he painted the arms himself (docs/reference/ren-cast-owner-reference.jpg): each
     // bare forearm his, from under the sleeve (the near one bent across the chest, the far one thick and
     // stretched at the runes), riding our forearm about the elbow, the sleeve over it as always.
     const cast = arm(s, NIGHT_CAST_FORE_N, NIGHT_CAST_FORE_F);
-    return [
-      { piece: cast, at: j.elbow, deg: segAngle(j.elbow, j.wrist), part: fp, name: 'fore' },
-      { piece: sleeve, at: j.shoulder, deg: segAngle(j.shoulder, j.elbow), part: `upperArm${s}` as PartId, name: 'sleeve' },
-    ];
+    const deg = segAngle(j.elbow, j.wrist);
+    const out: ArmStamp[] = [{ piece: cast, at: j.elbow, deg, part: fp, name: 'fore' }];
+    // Off the cast (where his own fist covers the wrist) a forearm longer than the male one he painted (the
+    // bulky body) has his wrist end carried on along the bone to our wrist, so no gap opens before the glove.
+    const extra = Math.hypot(j.wrist.x - j.elbow.x, j.wrist.y - j.elbow.y) * RES - CAST_FORE_LEN;
+    if (r.pose !== 'cast' && s === 'F' && extra > 0) {
+      const d = Math.ceil(extra) / RES;
+      const a = (deg * Math.PI) / 180;
+      out.push({ piece: castWristEnd(), at: add(j.elbow, v(Math.cos(a) * d, Math.sin(a) * d)), deg, part: fp, name: 'fore' });
+    }
+    out.push({ piece: sleeve, at: j.shoulder, deg: segAngle(j.shoulder, j.elbow), part: `upperArm${s}` as PartId, name: 'sleeve' });
+    return out;
   }
   const up = piece.angle + segAngle(j.shoulder, j.elbow) - sleeve.angle;
   const fore = segAngle(j.elbow, j.wrist);

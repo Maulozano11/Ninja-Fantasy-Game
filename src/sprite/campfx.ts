@@ -1,10 +1,10 @@
 // Props the camp poses hold: the open book for 'read', drawn after the body
 // and items (compose.ts).
 
-import type { DrawCtx } from './ctx';
+import { DEPTHS, type DrawCtx } from './ctx';
 import { LYRA_READ } from './items/lyraReadArt';
-import { readKey, stampOwnerPiece } from './ownerFrames';
-import { GRID, Layer, partIndex } from './raster';
+import { readKey, stampOwnerPiece, wearsHisFigure } from './ownerFrames';
+import { F_NO_OUTLINE, F_NO_TEXTURE, GRID, Layer, partIndex } from './raster';
 
 /** Draws what the camp pose holds, if anything. */
 export function drawCampFx(g: DrawCtx): void {
@@ -20,6 +20,35 @@ export function drawCampFx(g: DrawCtx): void {
 function book(g: DrawCtx): void {
   for (const p of LYRA_READ[readKey(g.rig.frame)]) if (p.owner === 'book') stampOwnerPiece(g, p);
   liftHands(g, g.L('nearArm.over'));
+  // (his own figure's frame is his, pixel for pixel; on any other fitted body the book meets her own hands and clothes)
+  if (g.bp.fit && !wearsHisFigure(g.look)) closeBookGaps(g, g.L('nearArm.over'));
+}
+
+/**
+ * On a fitted body other than his own figure the book and his hands lie on her own arms and clothes,
+ * not his, and where their edges meet a patch of one to three pixels can stay open, shut in by the
+ * figure: beside the book, it is closed with his line (the book's black).
+ */
+function closeBookGaps(g: DrawCtx, B: Layer): void {
+  const layers = DEPTHS.map((d) => g.L(d)).filter((L) => L.used);
+  const full = (x: number, y: number) => x < 0 || y < 0 || x >= GRID || y >= GRID || layers.some((L) => L.mat[y * GRID + x] >= 0);
+  const line = g.m('#000000', 'flat');
+  for (let y = 1; y < GRID - 1; y++) {
+    for (let x = 1; x < GRID - 1; x++) {
+      if (full(x, y)) continue;
+      const patch: [number, number][] = [[x, y]];
+      const has = (X: number, Y: number) => patch.some(([a, b]) => a === X && b === Y);
+      for (let k = 0; k < patch.length && patch.length <= 3; k++) {
+        const [px, py] = patch[k];
+        for (const [X, Y] of [[px - 1, py], [px + 1, py], [px, py - 1], [px, py + 1]]) if (!full(X, Y) && !has(X, Y)) patch.push([X, Y]);
+      }
+      if (patch.length > 3) continue;
+      // only beside the book or a hand on it
+      const near = patch.some(([X, Y]) => [[X - 1, Y], [X + 1, Y], [X, Y - 1], [X, Y + 1]].some(([a, b]) => B.mat[b * GRID + a] >= 0));
+      if (!near) continue;
+      for (const [X, Y] of patch) B.set(X, Y, line, 0, 'held', F_NO_TEXTURE | F_NO_OUTLINE);
+    }
+  }
 }
 
 /** Moves both hands (skin and any glove on them) onto `dest`, over what was drawn there. */

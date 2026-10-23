@@ -7,6 +7,8 @@ import { armDepth, armJoints, Depth, DEPTHS, DrawCtx, handDraw, handPose, ItemDe
 import { PaintedPiece, segAngle, stampPiece } from '../painted';
 import { add, F_NO_EDGE, F_NO_OUTLINE, F_NO_TEXTURE, GRID, Layer, partIndex, PartId, RES, v, Vec } from '../raster';
 import { isFemaleBody } from '../types';
+import { ownerHand } from '../ownerHands';
+import { SEATED_POSES } from '../seats';
 import {
   SAYA_CLOTH,
   SAYA_FAR_OUT,
@@ -159,6 +161,26 @@ function drawShadeArmor(g: DrawCtx, cloth: string, trim: string, plate: string):
   if (capped !== turnN) {
     offBandeau(g);
     lineOpenEdge(g, A, under);
+  }
+  if ((SEATED_POSES as string[]).includes(r.pose)) closeSeatedPinholes(g);
+}
+
+/**
+ * Seated (his read and sit), her far arm reaches forward across her top, and the turned pieces can leave
+ * a single pixel open where her top meets her far arm guard, with the figure on all four sides of it: it
+ * is closed with her line on her top.
+ */
+function closeSeatedPinholes(g: DrawCtx): void {
+  const layers = DEPTHS.map((d) => g.L(d)).filter((L) => L.used);
+  const full = (i: number) => layers.some((L) => L.mat[i] >= 0);
+  const T = g.L('torso.top');
+  const line = g.m(SAYA_LINE, 'flat');
+  for (let y = 1; y < GRID - 1; y++) {
+    for (let x = 1; x < GRID - 1; x++) {
+      const i = y * GRID + x;
+      if (full(i) || !full(i - 1) || !full(i + 1) || !full(i - GRID) || !full(i + GRID)) continue;
+      T.set(x, y, line, 3, 'torso', F_NO_TEXTURE | F_NO_OUTLINE);
+    }
   }
 }
 
@@ -374,9 +396,11 @@ function drawShadeGloves(g: DrawCtx, glove: string, trim: string, skin: string):
     const w = armJoints(g.rig, s).wrist;
     const wx = Math.floor(w.x * RES) + ox + 0.5;
     const wy = Math.floor(w.y * RES) + oy + 0.5;
-    // Our hand pictures hang from the wrist (turned by `rot`); the cradling hand stands on it.
+    // Our hand pictures hang from the wrist (turned by `rot`); the cradling hand stands on it. His Lyra's
+    // hands, reading and sitting (ownerHands.ts), point from the wrist the way he drew them.
     const a = (rot * Math.PI) / 180;
-    const [dx, dy] = kind === 'cradle' ? [0, -1] : [-Math.sin(a), Math.cos(a)];
+    const his = g.bp.fit ? ownerHand(g.rig.pose, g.rig.frame, s) : null;
+    const [dx, dy] = his ? his.dir : kind === 'cradle' ? [0, -1] : [-Math.sin(a), Math.cos(a)];
     const T = SAYA_GLOVE_TONES;
     const strap = (s === 'N' ? T.strapN : T.strapF).map((h) => g.m(h, 'flat'));
     // her near glove is navy with a red band over the knuckles; her far hand is a bare fist under the strap

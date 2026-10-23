@@ -6,6 +6,7 @@ import { retintHex } from '../color';
 import { DrawCtx, ItemDef, legDepth, legJoints, Side } from '../ctx';
 import { PaintedPiece, segAngle, stampPiece } from '../painted';
 import { add, F_NO_EDGE, F_NO_OUTLINE, F_NO_TEXTURE, GRID, norm, partIndex, RES, sub, v, Vec } from '../raster';
+import { SEATED_POSES } from '../seats';
 import {
   SHADE_BAND,
   SHADE_CLOTH,
@@ -157,6 +158,40 @@ function closePinholes(g: DrawCtx, d: Parameters<typeof stampPiece>[1]): void {
   }
 }
 
+/**
+ * Seated (his read and sit, on the seat prop), the knee pad on her shin's piece stands off the legging on
+ * her thigh's: the thigh comes in level and the shin hangs down, and a notch of two or three pixels
+ * opens between them at the knee. An empty patch of at most three pixels shut in by this leg (her pieces
+ * and our leg under them) is closed with his line, as closePinholes closes single pixels.
+ */
+function closeKneeNotches(g: DrawCtx, s: Side, d: Parameters<typeof stampPiece>[1]): void {
+  const L = g.L(d);
+  const B = g.L(legDepth(s, 'body'));
+  const line = g.m(LINE, 'flat');
+  const full = (x: number, y: number) => x < 0 || y < 0 || x >= GRID || y >= GRID || L.mat[y * GRID + x] >= 0 || B.mat[y * GRID + x] >= 0;
+  for (let y = 1; y < GRID - 1; y++) {
+    for (let x = 1; x < GRID - 1; x++) {
+      if (full(x, y)) continue;
+      // the empty patch round (x, y), given up once it grows past three pixels
+      const patch: [number, number][] = [[x, y]];
+      const has = (X: number, Y: number) => patch.some(([a, b]) => a === X && b === Y);
+      for (let k = 0; k < patch.length && patch.length <= 3; k++) {
+        const [px, py] = patch[k];
+        for (const [X, Y] of [[px - 1, py], [px + 1, py], [px, py - 1], [px, py + 1]]) if (!full(X, Y) && !has(X, Y)) patch.push([X, Y]);
+      }
+      if (patch.length > 3) continue;
+      const part = partIndex(`shin${s}`);
+      for (const [X, Y] of patch) {
+        const i = Y * GRID + X;
+        L.mat[i] = line;
+        L.shade[i] = 3;
+        L.part[i] = part;
+        L.flags[i] = F_NO_TEXTURE | F_NO_OUTLINE;
+      }
+    }
+  }
+}
+
 export const SHADE_WRAPS: ItemDef = {
   id: 'feet_shade_wraps',
   slot: 'feet',
@@ -195,9 +230,13 @@ export const SHADE_WRAPS: ItemDef = {
       stampClean(g, d, thigh, knee, thighA, `thigh${s}`, leg);
       if (Math.abs(thighA - thigh.angle) >= 0.5) onOurThigh(g, s, d);
       stampClean(g, d, shin, ankle, shinA, `shin${s}`, leg);
-      stampPiece(g, d, foot, footAt(shin, ankle, shinA), foot.angle, `foot${s}`, shoe);
+      // (seated, the ankle stands on her ground: the shoe keeps its sole on the ground row, only following the shin across)
+      const seated = (SEATED_POSES as string[]).includes(g.rig.pose);
+      const shoeAt = footAt(shin, ankle, shinA);
+      stampPiece(g, d, foot, seated ? v(shoeAt.x, ankle.y) : shoeAt, foot.angle, `foot${s}`, shoe);
       // at rest every pixel is his
       if (Math.abs(thighA - thigh.angle) >= 0.5 || Math.abs(shinA - shin.angle) >= 0.5) closePinholes(g, d);
+      if (seated) closeKneeNotches(g, s, d);
     }
   },
 };

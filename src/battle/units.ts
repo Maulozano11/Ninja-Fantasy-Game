@@ -37,6 +37,8 @@ export function weaponOf(c: ShinobiCharacter): Weapon {
       return W('Naginata', '1d10', 'Slashing', 3, false, true, true);
     case 'held_kunai':
       return W('Kunai', '1d6', 'Piercing', 1.5, true, true);
+    case 'held_gilded_rapier':
+      return W('Rapier', '1d8', 'Piercing', 1.5, true, true);
     case 'held_palm':
       return W('Gentle fist', '1d8', 'Force');
     case 'held_lightning':

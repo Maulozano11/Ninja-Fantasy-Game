@@ -13,10 +13,16 @@ import { nightArmStamps } from './items/night';
 import { NIGHT_CAST_FORE_F } from './items/nightCastArmsArt';
 import { defaultAppearance, dojutsuToEye } from './legacy';
 import { GRID, RES } from './raster';
-import { drawRig, frameCount, POSES, rigPoseFor, type Rig, type RigPose } from './rig';
+import { BODY_PARAMS, drawRig, frameCount, POSES, rigPoseFor, type Rig, type RigPose } from './rig';
 import type { BodyType, EyeSpecial, SpriteAppearance, SpritePose } from './types';
 
 const BODIES: BodyType[] = ['male', 'bulky', 'female'];
+/**
+ * The bodies that draw our limbs, whose rendered forearm the rule sets. The fitted female body (BodyParams.fit,
+ * the owner's bare female body from body/female-v2) draws his own painted arm pieces (femaleBaseArt.ts), his
+ * heroines' standard, which the rule does not redraw: its radius follows the rule, its pixels are his.
+ */
+const DRAWN: BodyType[] = BODIES.filter((b) => !BODY_PARAMS[b].fit);
 /** Ren's casting forearm, the rule's model: 8 rows (his picture shrunk evenly is 10, "1-2 pixels less"). */
 const HIS_ROWS = NIGHT_CAST_FORE_F.rows.length;
 
@@ -109,7 +115,7 @@ describe('the extended forearm (the owner\'s rule)', () => {
     // Over the middle of the far forearm (a sleeve, bracer or vambrace over it may add to it). His painted
     // forearms keep his 8 rows on every body, so a body's rule counts from the smaller of the two.
     for (const [name, base, eye] of presets()) {
-      for (const body of BODIES) {
+      for (const body of DRAWN) {
         const l = { ...base, body };
         const min = Math.min(FOREARM_RULE[body].rows, HIS_ROWS) - 1;
         for (const [pose, f] of [['cast', 0], ['cast', 1], ['combo', 2]] as const) {
@@ -124,7 +130,7 @@ describe('the extended forearm (the owner\'s rule)', () => {
 
   it('is the rule\'s forearm on a bare arm reaching out, in every such frame', () => {
     // The default look's forearms are bare (a short-sleeved tee): every reaching arm is the rule's rows, give or take one.
-    for (const body of BODIES) {
+    for (const body of DRAWN) {
       const l = { ...defaultAppearance(), body };
       const { rows } = FOREARM_RULE[body];
       for (const [pose, f, s] of reaching(body)) {

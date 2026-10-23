@@ -4,17 +4,18 @@
 // (grown, revealed, flickered, cooled into smoke), so the peak frame is his picture.
 //
 // Frame counts (the owner asked for slower, fuller animations): fly loops 8 frames at 12 fps with
-// frame 0 his picture; hit 12 frames (build 3, his picture held 3, dissipate 6); blast 16 frames
-// (anticipation 4, his picture held 3, settle and fade 9); walls rise 12 / idle 8 at 10 fps; aura
-// and aura_back idle 12 frames at 10 fps.
+// frame 0 his picture (the Great Fireballs' churning core and smoke trail are ours, from his
+// colours, in every frame: see `fireballFly`); hit 12 frames (build 3, his picture held 3,
+// dissipate 6); blast 16 frames (anticipation 4, his picture held 3, settle and fade 9); walls
+// rise 12 / idle 8 at 10 fps; aura and aura_back idle 12 frames at 10 fps.
 
 import { Canvas, Color, WorldSprite, withAlpha } from './kit';
-import { FIRE, embers } from './vfx-a-fire-kit';
-import { cool, dim, loopDisplace, loopFlicker, placed, refPiece, roughen, scaled, thinOut } from './vfx-a-ref';
+import { Billow, FIRE, billows, embers } from './vfx-a-fire-kit';
+import { cool, dim, dropCrumbs, loopDisplace, loopFlicker, placed, refPiece, roughen, scaled, thinOut } from './vfx-a-ref';
 import { fireballOld } from './vfx-a-fire-sig';
 import { REF_FRAMES } from './vfx-a-fire-refdata';
 import {
-  TAU, WallKind, clamp, dissolve, flySprite, frames, fract, lerp, pnoise, rr, smooth, stack, vfxSprite,
+  Pt, TAU, WallKind, clamp, dissolve, flySprite, frames, fract, lerp, pfbm, pnoise, rr, smooth, stack, vfxSprite,
 } from './vfx-a-lib';
 
 
@@ -522,26 +523,330 @@ export function hit(): WorldSprite {
   return vfxSprite('hit', 'Fire hit (starburst of flame spikes)', [F.ax, F.ay], { hit: { frames: fr, fps: 12, loop: false } });
 }
 
+// --- the Great Fireballs ----------------------------------------------------------------------
+
+const N4: [number, number][] = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+const N8: [number, number][] = [...N4, [1, 1], [1, -1], [-1, 1], [-1, -1]];
+const sameColor = (a: Color, b: Color): boolean => a[0] === b[0] && a[1] === b[1] && a[2] === b[2];
+
+/** Connected pieces (4- or 8-neighbour) of the pixels `on` picks, each a list of indices y * w + x. */
+function piecesOf(w: number, h: number, on: (x: number, y: number) => boolean, diag: boolean): number[][] {
+  const seen = new Uint8Array(w * h), out: number[][] = [];
+  for (let i = 0; i < w * h; i++) {
+    if (seen[i] || !on(i % w, (i / w) | 0)) continue;
+    const piece = [i], todo = [i];
+    seen[i] = 1;
+    while (todo.length) {
+      const j = todo.pop()!, x = j % w, y = (j / w) | 0;
+      for (const [dx, dy] of diag ? N8 : N4) {
+        const u = x + dx, v = y + dy;
+        if (u < 0 || v < 0 || u >= w || v >= h) continue;
+        const k = v * w + u;
+        if (seen[k] || !on(u, v)) continue;
+        seen[k] = 1;
+        piece.push(k);
+        todo.push(k);
+      }
+    }
+    out.push(piece);
+  }
+  return out;
+}
+
+/** His smoke colours (his palette's outline, browns and lit brown: indices 0-5 and 7), dark to light. */
+function smokeOf(pal: Color[]): Color[] {
+  const lum = (c: Color) => 0.3 * c[0] + 0.59 * c[1] + 0.11 * c[2];
+  return [pal[0], ...[1, 2, 3, 4, 5, 7].map((i) => pal[i]).sort((a, b) => lum(a) - lum(b))];
+}
+
 /**
- * The Great Fireballs: `fly` (8 frames) is his ball with its big smoke trail and debris, cut from his panel;
- * `burst` is the approved burst, unchanged. Both share one anchor (the ball's centre / the
- * burst's ground centre), so the frame is the union of the two around it.
+ * Closes the small see-through holes in his smoke (where his darkest smoke matched the panel's
+ * background and was keyed out, then ringed with the outline): each hole and its ring take the
+ * smoke colours round them, from the outside in. Only holes walled in by smoke are closed.
+ */
+function closeSmokeHoles(c: Canvas, smoke: Color[], maxPx: number): Canvas {
+  const W = c.w, H = c.h, out = c.clone(), outline = smoke[0];
+  const isSmoke = (x: number, y: number) => {
+    const p = c.get(x, y);
+    return p[3] > 0 && smoke.some((s) => sameColor(s, p));
+  };
+  const fill = new Uint8Array(W * H);
+  for (const hole of piecesOf(W, H, (x, y) => !c.alpha(x, y), false)) {
+    if (hole.length > maxPx) continue;
+    const inHole = new Set(hole);
+    let walled = true;
+    for (const i of hole) {
+      const x = i % W, y = (i / W) | 0;
+      if (x === 0 || y === 0 || x === W - 1 || y === H - 1) walled = false;
+      for (const [dx, dy] of N8) if (!inHole.has((y + dy) * W + x + dx) && c.alpha(x + dx, y + dy) && !isSmoke(x + dx, y + dy)) walled = false;
+    }
+    if (walled) for (const i of hole) fill[i] = 1;
+  }
+  // The ring: outline pixels touching a closed hole and no other clear pixel.
+  for (let y = 0; y < H; y++)
+    for (let x = 0; x < W; x++) {
+      const i = y * W + x;
+      if (fill[i] || !c.alpha(x, y) || !sameColor(c.get(x, y), outline)) continue;
+      const touches = N8.some(([dx, dy]) => c.inside(x + dx, y + dy) && fill[(y + dy) * W + x + dx] === 1);
+      const open = N4.some(([dx, dy]) => c.inside(x + dx, y + dy) && !c.alpha(x + dx, y + dy) && !fill[(y + dy) * W + x + dx]);
+      if (touches && !open) fill[i] = 2;
+    }
+  let todo: number[] = [];
+  for (let i = 0; i < W * H; i++) if (fill[i]) todo.push(i);
+  while (todo.length) {
+    const next: number[] = [], set: [number, Color][] = [];
+    for (const i of todo) {
+      const x = i % W, y = (i / W) | 0;
+      const count = new Map<string, { c: Color; n: number }>();
+      for (const [dx, dy] of N8) {
+        const u = x + dx, v = y + dy;
+        if (!c.inside(u, v) || fill[v * W + u] || !out.alpha(u, v)) continue;
+        const p = out.get(u, v);
+        if (sameColor(p, outline)) continue;
+        const k = p.join(',');
+        const e = count.get(k);
+        if (e) e.n++;
+        else count.set(k, { c: p, n: 1 });
+      }
+      let best: { c: Color; n: number } | null = null;
+      for (const e of count.values()) if (!best || e.n > best.n) best = e;
+      if (best) set.push([i, best.c]);
+      else next.push(i);
+    }
+    if (!set.length) break;
+    for (const [i, col] of set) {
+      out.set(i % W, (i / W) | 0, col);
+      fill[i] = 0;
+    }
+    todo = next;
+  }
+  return out;
+}
+
+/**
+ * His panel cut the Great Fireball's smoke along straight lines (its left and top edges). The smoke
+ * is worn back from each line into round, ragged billows: a pixel goes when it is nearer the line
+ * than a depth that swells and shrinks along it in billow-sized lumps, the new edge takes his
+ * outline, and crumbs left loose in that strip go.
+ */
+function uncut(c: Canvas, cutX: number | null, cutY: number | null, depth: number, outline: Color, seed: number): Canvas {
+  const dc = (x: number, y: number) => Math.min(cutX === null ? 1e9 : x - cutX, cutY === null ? 1e9 : y - cutY);
+  const goes = (x: number, y: number) => dc(x, y) < depth * (0.3 + 1.2 * pfbm(x, y, 16, 2, 0, 0, seed));
+  const out = roughen(c, goes, outline);
+  for (const p of piecesOf(c.w, c.h, (x, y) => out.alpha(x, y) > 0, true))
+    if (p.length <= 14 && dc(p[0] % c.w, (p[0] / c.w) | 0) < depth * 2) for (const i of p) out.set(i % c.w, (i / c.w) | 0, [0, 0, 0, 0]);
+  return out;
+}
+
+/** The ball's white-hot core: his largest patch of his hottest colour, its centre and radius. */
+interface Core { mask: Uint8Array; cx: number; cy: number; R: number }
+function coreOf(c: Canvas, hot: Color): Core {
+  const all = piecesOf(c.w, c.h, (x, y) => c.alpha(x, y) > 0 && sameColor(c.get(x, y), hot), false);
+  const big = all.reduce((a, b) => (b.length > a.length ? b : a));
+  const mask = new Uint8Array(c.w * c.h);
+  let sx = 0, sy = 0;
+  for (const i of big) {
+    mask[i] = 1;
+    sx += i % c.w;
+    sy += (i / c.w) | 0;
+  }
+  const cx = sx / big.length + 0.5, cy = sy / big.length + 0.5;
+  let R = 1;
+  for (const i of big) R = Math.max(R, Math.hypot((i % c.w) + 0.5 - cx, ((i / c.w) | 0) + 0.5 - cy));
+  return { mask, cx, cy, R };
+}
+
+/**
+ * The core churns: his flat white-hot patch is repainted in his three hottest colours as licks of
+ * fire that roll over the ball from its front (the side it flies toward) round to its back, where
+ * his flame tongues stream off. Each lick is drawn out along a meridian of the ball (from the front
+ * pole to the back pole), so they bunch at both poles and swell over the middle. The noise repeats
+ * twice along the meridian and slides one repeat back a loop, so the loop is seamless. The middle
+ * stays mostly white-hot; toward the rim the licks grow and run into his yellow ring.
+ */
+function churnCore(c: Canvas, core: Core, t: number, hot: Color[], seed: number): Canvas {
+  const out = c.clone();
+  const { cx, cy, R } = core;
+  // One repeat is half the way from pole to pole; the noise has 4 cells to a repeat.
+  const rep = (Math.PI * R) / 2, sx = 64 / rep;
+  const idx = new Int8Array(c.w * c.h).fill(-1);
+  for (let y = 0; y < c.h; y++)
+    for (let x = 0; x < c.w; x++) {
+      if (!core.mask[y * c.w + x]) continue;
+      const dx = x + 0.5 - cx, dy = y + 0.5 - cy;
+      const X = clamp(dx / R, -0.97, 0.97);
+      // u: px along the meridian from the front pole; v: px across, measured at the ball's middle.
+      const u = Math.acos(X) * R, v = dy / Math.sqrt(1 - X * X);
+      const n = pfbm((u - t * rep) * sx, v * (16 / Math.max(6, R * 0.2)), 16, 2, 64, 0, seed);
+      const r = Math.hypot(dx, dy) / R;
+      const k = n + 0.6 * r * r;
+      idx[y * c.w + x] = k > 0.92 ? 2 : k > 0.7 ? 1 : 0;
+    }
+  // A single pixel of one colour amid another takes its neighbours' (clean pixel art, no specks).
+  for (let y = 0; y < c.h; y++)
+    for (let x = 0; x < c.w; x++) {
+      const i = y * c.w + x;
+      if (idx[i] < 0) continue;
+      let n = -1, lone = true;
+      for (const [dx, dy] of N4) {
+        const q = c.inside(x + dx, y + dy) ? idx[(y + dy) * c.w + x + dx] : -1;
+        if (q === idx[i]) lone = false;
+        else if (q >= 0) {
+          if (n < 0) n = q;
+          else if (n !== q) lone = false;
+        }
+      }
+      out.set(x, y, hot[lone && n >= 0 ? n : idx[i]]);
+    }
+  return out;
+}
+
+/** How a fireball's smoke trails behind it. */
+interface TrailLook {
+  /** The far end of his smoke, where the puffs come out (a line, in his frame's px). */
+  from: [Pt, Pt];
+  /** How far they drift in a loop (back from the ball and a little up), px. */
+  drift: Pt;
+  /** Puffs on the trail at once, and their radius as they come out and as they break up. */
+  n: number;
+  r: [number, number];
+  /** How far his loose debris behind the ball drifts back in a loop, px. */
+  debris: number;
+}
+
+/**
+ * The smoke trail: puffs in his smoke colours (lit from the upper left like his billows) come out of
+ * the far end of his smoke one after another, drift back and up as the ball flies on, swell, darken
+ * and break up into ragged scraps until nothing is left. Their ages are spread over the loop, so the
+ * trail streams back without a seam. The oldest (furthest back) come first, so younger ones overlap
+ * them; all of it goes behind the ball and his smoke.
+ */
+function trailPuffs(W: number, H: number, look: TrailLook, smoke: Color[], t: number, seed: number): Canvas {
+  const out: { b: Billow; a: number; k: number }[] = [];
+  for (let k = 0; k < look.n; k++) {
+    const a = fract(t + k / look.n + rr(seed, k, -0.03, 0.03));
+    const s = fract(0.13 + k * 0.618);
+    const x = lerp(look.from[0][0], look.from[1][0], s) + look.drift[0] * a + rr(seed + 1, k, -3, 3);
+    const y = lerp(look.from[0][1], look.from[1][1], s) + look.drift[1] * a + rr(seed + 2, k, -3, 3);
+    const r = lerp(look.r[0], look.r[1], Math.sqrt(a)) * rr(seed + 3, k, 0.85, 1.15);
+    out.push({ b: { x, y, r, heat: 0, back: a > 0.5, bumps: 2 + (k % 2) }, a, k });
+  }
+  // The oldest (furthest back) first, so the younger puffs overlap them: one cloud, its puffs
+  // parted by his dark creases and outlined round the whole.
+  out.sort((p, q) => q.a - p.a);
+  // His darker browns without his reddest one (on the puffs it reads as rust): his smoke is dark
+  // this far from the fire.
+  const sat = (c: Color) => (c[0] - Math.min(c[1], c[2])) / Math.max(1, c[0]);
+  const reddest = smoke.slice(1).reduce((a, b) => (sat(b) > sat(a) ? b : a));
+  const br = smoke.slice(1).filter((c) => c !== reddest);
+  const pal = [smoke[0], br[0], br[1], br[2], br[2], br[3], br[3]];
+  const cloud = billows(W, H, out.map((p) => p.b), seed + 10, 0, pal);
+  // Which puff each pixel belongs to (the last one over it).
+  const owner = new Int16Array(W * H).fill(-1);
+  out.forEach((p, j) => {
+    const m = billows(W, H, [p.b], seed + 10, 0, pal);
+    for (let i = 0; i < W * H; i++) if (m.px[i * 4 + 3]) owner[i] = j;
+  });
+  // An ageing puff breaks up: ragged holes open in it (read from noise that rides with it) and
+  // grow until it is gone; the new edges take his outline.
+  const left = new Canvas(W, H);
+  for (let y = 0; y < H; y++)
+    for (let x = 0; x < W; x++) {
+      const j = owner[y * W + x];
+      if (j < 0) continue;
+      const p = out[j], gone = smooth(0.35, 0.95, p.a);
+      if (gone > 0 && pfbm(x - p.b.x, y - p.b.y, 7, 2, 0, 0, seed + 20 + p.k) < gone * 1.15 - 0.08) continue;
+      left.set(x, y, cloud.get(x, y));
+    }
+  const res = left.clone();
+  for (let y = 0; y < H; y++)
+    for (let x = 0; x < W; x++)
+      if (left.alpha(x, y) && N4.some(([dx, dy]) => cloud.alpha(x + dx, y + dy) && !left.alpha(x + dx, y + dy))) res.set(x, y, smoke[0]);
+  return dropCrumbs(res, 3);
+}
+
+/**
+ * A Great Fireball's flight, 8 frames: his ball and smoke from his panel, with
+ * - the panel's straight cut worn into round billows and his keyed-out holes closed (`uncut`,
+ *   `closeSmokeHoles`);
+ * - the white-hot core churning (`churnCore`);
+ * - his flames and smoke flickering back from the ball as before (`trail`), and a little pulse;
+ * - a smoke trail streaming back out of his smoke (`trailPuffs`), his loose debris drifting back
+ *   with it.
+ * It is drawn `P` px bigger on the left and top, for the trail; `fireballs` cuts it to what is used.
+ */
+function fireballFly(great: boolean): { frames: Canvas[]; anchor: [number, number] } {
+  const piece = great ? 'p_fireball_great' : 'p_fireball';
+  const F = REF_FRAMES[great ? 'fireball_great_fly' : 'fireball_fly'];
+  const seed = great ? 4500 : 4400, amp = great ? 3 : 2.4, pulse = 0.015;
+  const P = 120, W = F.w + P, H = F.h + P, ax = F.ax + P, ay = F.ay + P;
+  const pc = refPiece(piece);
+  const smoke = smokeOf(pc.pal);
+  const hot = [pc.pal[13], pc.pal[12], pc.pal[11]];
+  let base = placed(piece, W, H, P, P);
+  base = closeSmokeHoles(base, smoke, great ? 60 : 30);
+  if (great) base = uncut(base, P + pc.x, P + pc.y, 22, smoke[0], seed + 50);
+  const core = coreOf(base, hot[0]);
+  // His loose bits behind the ball (smoke scraps, embers) drift back with the trail.
+  const parts = piecesOf(W, H, (x, y) => base.alpha(x, y) > 0, true);
+  const body = parts.reduce((a, b) => (b.length > a.length ? b : a));
+  const loose = parts
+    .filter((p) => p !== body && p.length <= 40 && p.reduce((s, i) => s + (i % W), 0) / p.length < core.cx - core.R * 1.6)
+    .map((p) => p.map((i) => ({ x: i % W, y: (i / W) | 0, c: base.get(i % W, (i / W) | 0) })));
+  for (const p of loose) for (const q of p) base.set(q.x, q.y, [0, 0, 0, 0]);
+  const look: TrailLook = great
+    ? { from: [[P + 40, P + 40], [P + 48, P + 104]], drift: [-118, -62], n: 15, r: [15, 24], debris: 0 }
+    : { from: [[P + 38, P + 66], [P + 42, P + 86]], drift: [-84, -16], n: 12, r: [9, 13], debris: 26 };
+  const dl = Math.hypot(look.drift[0], look.drift[1]);
+  const frs = frames(FLY, (t) => {
+    const ph = t * TAU;
+    let c = churnCore(base, core, t, hot, seed + 60);
+    c = trail(c, ph, ax + 6, F.ax, amp, seed);
+    // Each bit drifts back from where he drew it (there at frame 0 when its phase allows), and is
+    // gone for the last tenth of its trip before it comes round again.
+    const bits = new Canvas(W, H);
+    loose.forEach((p, j) => {
+      const a0 = rr(seed + 70, j, 0, 1), a = fract(a0 + t);
+      if (a > 0.9) return;
+      const d = look.debris * (a - a0);
+      const ox = Math.round((look.drift[0] / dl) * d), oy = Math.round((look.drift[1] / dl) * d);
+      for (const q of p) bits.set(q.x + ox, q.y + oy, q.c);
+    });
+    c = stack(W, H, trailPuffs(W, H, look, smoke, t, seed + 100), bits, c);
+    return pulse ? scaled(c, 1 + pulse * Math.sin(ph), 1 + pulse * Math.sin(ph), ax, ay) : c;
+  });
+  return { frames: frs, anchor: [ax, ay] };
+}
+
+/**
+ * The Great Fireballs: `fly` (8 frames, `fireballFly`) is his ball with its smoke trail, from his
+ * panel; `burst` is the approved burst, unchanged. Both share one anchor (the ball's centre / the
+ * burst's ground centre), so the frame is the union of the two round it, cut on the left and top
+ * to what the trail uses (2 px to spare).
  */
 export function fireballs(): WorldSprite[] {
   return ([false, true] as const).map((great) => {
     const old = fireballOld(great);
-    const F = REF_FRAMES[great ? 'fireball_great_fly' : 'fireball_fly'];
-    const fly = flyFrom(great ? 'p_fireball_great' : 'p_fireball', great ? 'fireball_great_fly' : 'fireball_fly', FLY, great ? 3 : 2.4, 0.015, great ? 4500 : 4400);
+    const fly = fireballFly(great);
+    const [fax, fay] = fly.anchor, fw = fly.frames[0].w, fh = fly.frames[0].h;
+    let x0 = fw, y0 = fh;
+    for (const c of fly.frames)
+      for (let y = 0; y < fh; y++)
+        for (let x = 0; x < fw; x++)
+          if (c.alpha(x, y)) {
+            x0 = Math.min(x0, x);
+            y0 = Math.min(y0, y);
+          }
     const ob = old.anims.burst.frames[0];
-    const left = Math.max(F.ax, old.anchor[0]), top = Math.max(F.ay, old.anchor[1]);
-    const W = left + Math.max(F.w - F.ax, ob.w - old.anchor[0]), H = top + Math.max(F.h - F.ay, ob.h - old.anchor[1]);
+    const left = Math.max(fax - x0 + 2, old.anchor[0]), top = Math.max(fay - y0 + 2, old.anchor[1]);
+    const W = left + Math.max(fw - fax, ob.w - old.anchor[0]), H = top + Math.max(fh - fay, ob.h - old.anchor[1]);
     const put = (c: Canvas, ax: number, ay: number) => {
       const out = new Canvas(W, H);
       out.draw(c, left - ax, top - ay);
       return out;
     };
     return vfxSprite(old.name, old.label, [left, top], {
-      fly: { frames: fly.frames.map((c) => put(c, F.ax, F.ay)), fps: 12, loop: true },
+      fly: { frames: fly.frames.map((c) => put(c, fax, fay)), fps: 12, loop: true },
       burst: { frames: old.anims.burst.frames.map((c) => put(c, old.anchor[0], old.anchor[1])), fps: 12, loop: false },
     });
   });

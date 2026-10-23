@@ -8,6 +8,7 @@ import { ICE_SWORD } from './items/iceSwordArt';
 import { KATANA_V2 } from './items/katanaV2Art';
 import { NIGHT_GLOVE_N } from './items/nightBootsGlovesArt';
 import { add, norm, RES, scale, sub, v, Vec } from './raster';
+import { LYRA_RAPIER } from './items/lyraSwordArt';
 import { drawRig, THROW_RELEASE_FRAME } from './rig';
 import { isFemaleBody, type BodyType } from './types';
 
@@ -70,6 +71,8 @@ function poseSwordAngle(g: DrawCtx): number {
     case 'train':
       return [-38, -165, 30, 64, 145, 12, -40, -42][f % 8];
     default:
+      // Lyra's rapier hangs at the angle the owner drew it, so at rest it is his pixels.
+      if (g.has('held', 'held_gilded_rapier')) return LYRA_RAPIER.angle;
       // Matches the reference: blade hangs across the legs at about 50 degrees. The owner's flame
       // longsword, ice crystal sword and Katana v2 hang at the angles he painted them (35, 35, 37), so at
       // rest they are every pixel his.
@@ -179,7 +182,7 @@ export const handsBusy = (g: DrawCtx): boolean => BUSY.has(g.rig.pose) || !!g.lo
 export const handsReleased = (g: DrawCtx): boolean => g.rig.released && !handsBusy(g);
 
 /** The held items that are weapons, with a handle the fist holds; the others are empty hands or a technique held in the palm. */
-const WEAPONS = new Set(['held_katana', 'held_katana_v2', 'held_crystal', 'held_ice_crystal', 'held_flame_sword', 'held_kunai', 'held_naginata']);
+const WEAPONS = new Set(['held_katana', 'held_katana_v2', 'held_crystal', 'held_ice_crystal', 'held_flame_sword', 'held_gilded_rapier', 'held_kunai', 'held_naginata']);
 
 /** The owner's painted swords, held by their own grip at the hand joint (the others at the fist's middle, gripPoint). */
 export const HAND_JOINT_SWORDS = new Set(['held_flame_sword', 'held_ice_crystal', 'held_katana_v2']);
@@ -201,6 +204,7 @@ export const throwsKunai = (g: DrawCtx): boolean =>
 export function gripAngle(g: DrawCtx): number | null {
   if (throwsKunai(g)) return swordAngle(g);
   if (handsBusy(g) || handsLimp(g) || handsReleased(g)) return null;
+  if (g.has('held', 'held_gilded_rapier')) return swordAngle(g);
   if (g.has('held', 'held_naginata')) return poleAngle(g);
   if (g.has('held', 'held_katana') || g.has('held', 'held_katana_v2') || g.has('held', 'held_crystal') || g.has('held', 'held_ice_crystal') || g.has('held', 'held_flame_sword') || g.has('held', 'held_kunai')) return swordAngle(g);
   return null;

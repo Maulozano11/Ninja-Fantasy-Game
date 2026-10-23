@@ -1,0 +1,138 @@
+{
+ "kit": "ui_icons_22",
+ "references": [
+  "docs/reference/icons-owner-reference-22.jpg"
+ ],
+ "round": 1,
+ "screen": [
+  1600,
+  900
+ ],
+ "pixel": "one art pixel per screen pixel (as ui_icons, sheet 1): draw at 1x on a 1600x900 screen, @2x on a 2x screen, always with image-rendering: pixelated",
+ "frame": {
+  "from": "ui_icons (sheet 1), read only: skill_slot_steel.png and skill_slot_steel_active.png, 56x56, the icon window 44x44 at 6,6; see ui_icons/manifest.json for its slices",
+  "window": {
+   "x": 6,
+   "y": 6,
+   "w": 44,
+   "h": 44
+  }
+ },
+ "method": "his sheets are pixel art (480x268 scaled 4.1667x and saved as JPEG); his pixels are taken back first (tools/refs/icons-from-ref-23.py). 88: his own pixels one to one (his 90x90 or 93x91 window with the columns and rows that show least dropped), on a palette sampled from his pixels, 1-2 pixel areas merged only where his own pixels do not stand out. 44: area mean of his pixels, except his thin lines and strongest specks, which keep their own colour one pixel wide; a light bilateral filter, nearest palette entry, 1-2 pixel areas merged; then hand-fixes only where that still loses his picture (see tools/ui/ui-icons-23.ts). Sheets 8 to 11 use no bilateral filter (it lightened his dark figures into his ground), and their palettes give his rare colours a slot each: after the k-means, every colour of the 44's and the 88's pictures still far from the palette in hue (his skin, his violet chains, a dragon's teeth, his greys and whites) is grouped and the group missed most gets its own entry, his nearest real colour, up to 20 (paletteCovered); his thin marks of one colour (skin, violet chains, embers, teeth, mouth cores, foam) are kept by colour rules. Sheets 8 and 11 have bigger windows (127 to 139 of his pixels across, not square): the icon is the square part of his window (cropInWindow; Swap keeps 139x127 and is squeezed 9% across so his two ninjas stay whole), and its 88 is made as its 44 (area mean of his pixels with his thin lines and specks kept, palette, clean-up: method88). Sheets 13 to 22 (tools/refs/icons-from-ref-13.py) are made as sheets 9 and 10. Some are 240x134 pictures (sheets 15, 16, 17, 19): their windows are 47 to 63 of his pixels, so at 88 every one of his pixels is kept and some are shown twice (twice88), and their 44 is his pixels one to one too, the columns and rows that show least dropped (dropped44); sheet 18 (78 to 79 of his pixels) is grown to 88 the same way and reduced to 44 as the others. Sheets 20 to 22 (100 to 101 by 103 to 104) are reduced at 88 as sheets 8 and 11",
+ "checks": "small = 8-connected areas of one colour of 1 or 2 pixels: smallHis are his own marks (at 88 his pixel stands out there; at 44 his kept specks), smallDrawn hold a hand-fixed detail, smallOther are left over from the reduction; lowFreq = mean OKLab difference x100 to his box reduction after both are blurred (sigma size/30), lowFreqBoxOnPalette = the same for his box reduction put on our palette; ssim = structural similarity of the lightness (Gaussian window sigma 1.5) to his picture box-reduced to 88, ours (the 44 shown 2x) against ssimBox, his own box reduction to 44 shown 2x; hue = OKLab median hue in degrees (hueHis: his box reduction); thinRun = the longest straight run of one colour one pixel thick [length, row or col, index]",
+ "icons": {
+  "rasenshuriken_wind": {
+   "name": "Rasenshuriken",
+   "sheet": "docs/reference/icons-owner-reference-22.jpg",
+   "file": "rasenshuriken_wind.png",
+   "file2x": "rasenshuriken_wind@2x.png",
+   "size": [
+    44,
+    44
+   ],
+   "size2x": [
+    88,
+    88
+   ],
+   "label": "RASENSHURIKEN",
+   "hisWindow": [
+    100,
+    103
+   ],
+   "method88": "area mean of his 100x103 pixels (too many to keep one to one), his thin lines and specks kept in their own colour, as the 44",
+   "palette": [
+    "#0f0500",
+    "#1f1c08",
+    "#282c1b",
+    "#383a24",
+    "#2e4a31",
+    "#025236",
+    "#4c4b30",
+    "#206148",
+    "#27704a",
+    "#586e52",
+    "#746a42",
+    "#308056",
+    "#14924c",
+    "#399261",
+    "#848a59",
+    "#5c9a78",
+    "#849079",
+    "#a18a51",
+    "#779d56",
+    "#48a66e",
+    "#a09e62",
+    "#44bf6e",
+    "#94b880",
+    "#6ac88b",
+    "#c6b878",
+    "#62d480",
+    "#96cc84",
+    "#8ece9e",
+    "#a4c8ab",
+    "#c1d5a9",
+    "#69ed85",
+    "#a2e0b4",
+    "#86eca1",
+    "#b4f6c1",
+    "#defce6"
+   ],
+   "paletteDetailOnly": [],
+   "paletteCovered": [
+    "#5c9a78",
+    "#586e52",
+    "#a4c8ab",
+    "#14924c",
+    "#96cc84",
+    "#a18a51",
+    "#849079",
+    "#2e4a31",
+    "#c1d5a9",
+    "#69ed85",
+    "#c6b878",
+    "#779d56",
+    "#6ac88b"
+   ],
+   "sampled": [],
+   "checks": {
+    "44": {
+     "small": 1,
+     "smallHis": 1,
+     "smallDrawn": 0,
+     "smallOther": 0,
+     "lowFreq": 1.64,
+     "lowFreqBoxOnPalette": 0.99,
+     "ssim": 0.752,
+     "ssimBox": 0.817,
+     "hue": 151,
+     "hueHis": 152,
+     "colours": 33,
+     "thinRun": [
+      8,
+      "col",
+      32
+     ]
+    },
+    "88": {
+     "small": 5,
+     "smallHis": 5,
+     "smallDrawn": 0,
+     "smallOther": 0,
+     "lowFreq": 1.18,
+     "lowFreqBoxOnPalette": 0.96,
+     "ssim": 0.942,
+     "ssimBox": 1,
+     "hue": 152,
+     "hueHis": 152,
+     "colours": 33,
+     "thinRun": [
+      11,
+      "row",
+      1
+     ]
+    }
+   },
+   "use": "Hotbar skill icon: fills the 44x44 window of skill_slot_steel (ui_icons), at 6,6."
+  }
+ }
+}

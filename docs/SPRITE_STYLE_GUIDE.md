@@ -18,7 +18,7 @@ npm run sprites -- preset <presetId> out.png  # a preset in every pose
 | Height | About 94 px from the top of the hair to the soles, like the reference. |
 | View | 3/4, facing right. The near arm and leg (screen-left) are drawn in front; the far ones are behind and one shade darker. |
 | Head | Shrunk by `headScale` (about 0.78). The face from the lash row down is a fixed pixel template. |
-| Bodies | Male, female, bulky. Every item must work on all three. |
+| Bodies | Male, female, bulky (the slender body was removed by the owner, 2026-10-22). Every item must work on all three. The female body follows the owner's heroines drawn at our scale (`body/female-v2`, in the game with Lyra, approved 2026-10-23): 92 px tall without hair, a longer torso and neck with the waist higher (`waistY`), narrow shoulders, a slim knee and fuller calf, his hands (5-7 px, cut 1:1 from his pictures) and Aurelia's bare shoulder (`femaleBodyArt.ts`), feet 4 rows shorter (the ankles stand lower, `ankleLift`; every foot template and boot is shortened by `shortFoot`), flat skin with a one-pixel shadow rim inside his near-black line (`skinF` ramp, `flatSkin`). |
 | Poses | idle, handsigns, attack (3 frames), cast, hurt, victory, charge. Every item must work in all of them. |
 | Posture | Upright: chest slightly out, head over the shoulders. Never hunched. Even with the body pitched far forward (the throw's release and follow-through) the head stays up on the neck at its rest length, the neck turned 10-30 degrees forward of upright, above the shoulders, looking at the target (`PoseFrame.neckPitch` in `rig.ts`; the owner: *"hay que arreglarle el cuello y la cabeza a las ultimas 2 poses de arrojar"*, as on his heroine's throw: *"es el cuello lo que se ve raro"*). In idle the legs are straight under the hips and the arms hang relaxed and nearly straight, fists at hip height. |
 | Depth | 3/4 front ground plane: the near foot stands lower on screen, the far hip and foot sit higher (`ANKLE_N`, `FAR_LIFT` in `rig.ts`). |
@@ -37,6 +37,23 @@ npm run sprites -- preset <presetId> out.png  # a preset in every pose
   background with the figure on three sides, one of them not line), and takes away stray specks of 1–2 pixels.
   Real gaps stay: anything bigger or open to the outside, a notch the line goes round, and what an effect
   walls in. **Idle is left exactly as drawn** (it is the frame his pictures were copied into).
+- No background in the seam beside a clasp (the owner, 2026-10-22: *"aqui tiene unos aun en la hebilla o
+  medallon de la capa"*, then *"1 arreglar igual capa 2 solen rellenar"*). Painted pieces on different joints
+  (a mantle on the neck, its shoulder piece on the shoulder, the hair on the head) part as they move; the piece
+  says what fills its seam (`addSeam`, `src/sprite/seams.ts`): his cloth drawn beside it (Solen's cowl) or its
+  own cloth continued round its studs (`clothSeam`: the Shadow Half-Cloak). Once the figure is drawn it goes
+  in behind everything, only where nothing is drawn and the figure stands round it on all four sides. Idle
+  only where he left the seam open: Solen's cowl on the bulky body (every other idle frame is byte-identical).
+- Jutsu effects (decided 2026-10-22, the owner: *"1 si 2 cambia 3 si"*): **solid jutsu get the characters'
+  black line, energy gets none.** Solid: the beasts, rock (earth walls, thrown rocks, spikes, rubble),
+  crystal walls, the poison walls' stone frame, the chakra barriers' gold frame, the wood dragon and roots,
+  the dragon heads. Energy: fire, lightning, wind, water, chakra, poison and genjutsu bolts and streams,
+  auras, blasts, smoke, dust, mist, slime, glow, spray. The line is 1 px outside the silhouette in the
+  characters' colour rule (never over a pixel of his, never a second line outside his own dark line), and
+  where his line is not dark (the raiju's brown, the crane's teal) it is recoloured to it. No line where an
+  effect comes out of something else (a head out of the fire, a dragon out of the wave, a root out of the
+  ground). The generators lay it with `tools/world-sprites/solid-outline.ts`; a new solid effect's generator
+  must too (`outlineSprite`, naming its own energy colours with `particleColour`).
 
 ## 3. Light and values
 
@@ -49,7 +66,7 @@ npm run sprites -- preset <presetId> out.png  # a preset in every pose
 
 ## 4. Face (fixed)
 
-The face is a template copied pixel by pixel from the reference (`FACE_MAIN` and `FACE_LEFT` in `body.ts`). It has a 4 px lash bar, a 2x2 iris (a dark top row over a mid-tone row, never the brightest tone, so the gaze stays focused), a 1 px far eye, a single nose pixel, a 3 px mouth and a tapered 1 px chin. The near cheek and jaw come in three face shapes (`FACE_LEFT`): `tapered` (default) drops straight for only two rows below the eye, then tapers diagonally into the chin, so the lower face stays small; `soft` is a fuller cheek; `square` is the reference's original strong, flat jaw. Behind the jaw the nape (back of the neck) runs from under the skull down to the shoulders, so short or swept-back hair never leaves a gap there: `slim` (default) starts well inside the skull's back edge and stays in shadow; `strong` is flush with the back of the skull, with a lit nape. It recolors by skin tone and eye color, and has female and bulky variants, seven eye shapes (standard, sharp, round, calm, fierce, bright, piercing; `EYE_ROWS`, which may also replace the row under the eye), three face shapes and two necks. Don't change it without comparing at 10x against the reference.
+The face is a template copied pixel by pixel from the reference (`FACE_MAIN` and `FACE_LEFT` in `body.ts`). It has a 4 px lash bar, a 2x2 iris (a dark top row over a mid-tone row, never the brightest tone, so the gaze stays focused), a 1 px far eye, a single nose pixel, a 3 px mouth and a tapered 1 px chin. The near cheek and jaw come in three face shapes (`FACE_LEFT`): `tapered` (default) drops straight for only two rows below the eye, then tapers diagonally into the chin, so the lower face stays small; `soft` is a fuller cheek; `square` is the reference's original strong, flat jaw. Behind the jaw the nape (back of the neck) runs from under the skull down to the shoulders, so short or swept-back hair never leaves a gap there: it starts well inside the skull's back edge and stays in shadow, the slim nape of his Aiden. Every character has this one neck (the owner, 2026-10-22: "quitar el cuello del creador y dejar a todos con el cuello de hoy"; the thick `strong` neck is gone, and a saved one loads as slim), except his Lyra, who keeps the long neck she has today (`neck: 'long'` on her preset only, `neck.ts`; not a creator option). It recolors by skin tone and eye color, and has female and bulky variants, seven eye shapes (standard, sharp, round, calm, fierce, bright, piercing; `EYE_ROWS`, which may also replace the row under the eye), three face shapes and one neck. Don't change it without comparing at 10x against the reference.
 
 ## 5. Skin, arms, hands and feet
 
@@ -90,6 +107,24 @@ The face is a template copied pixel by pixel from the reference (`FACE_MAIN` and
 - **Feet** are pixel templates in 3/4 front view (`FootArt`, `footDraw` in `ctx.ts`). The near foot faces the viewer with the toes at the bottom; the far foot points right and is authored a shade darker. Each footwear item supplies its own `FootArt` (legend: `0-5` main, `a-f` sole/straps, `p-u` skin, `v-z` metal or stitching); shafts stay procedural.
 
 **The far (left) shoulder and arm** (the owner, 2026-10-21: "no te olvides de el hombro y brazo izquierdo de el diseño de los personajes masculinos", after the same fix on the heroines). In the 3/4 view facing right the character's left shoulder and arm are the far ones. When copying his picture, read that side cell by cell (bare shoulder, sleeve, bracer, fist): at rest every pixel is his and where he drew it, pinned with an offset that follows the far-arm joints when our joint sits elsewhere (`FAR_OUT`, tools/refs/saya-upper-from-ref.py). Nothing on that side may be cut off or hidden behind the torso in any pose; check throw-prepare, throw-release, cast and handsigns in particular, and report the pixels that still differ.
+
+### The female standard (bodies, animations and sprites)
+
+**The female body is his bare female body** (`docs/reference/female-base-owner-reference.jpg`, 2026-10-21). The owner, verbatim: "sigue teniendo las manos separadas en arrojada, en arrojada preparar falta el hombro, sentada, caida y varios mas tienes bugeada las piernas y estas poniendo 3 piernas o 3 botas corrige eso aqui tienes una base del cuerpo femenino sin ropa para que entiendas la base del cuerpo". On the female body, in every pose and frame:
+
+- **His body, piece by piece.** Chest (neck, shoulders and his sports top), pelvis (belly and his briefs), each upper arm, forearm and hand, each thigh, shin and foot are his pixels (`src/sprite/femaleBaseArt.ts`, from `tools/refs/female-base-body-from-ref.py`): his skin and shading, his proportions, his arm and hand shapes and his black line. They ride the rig the way Aiden's plate does (`body.ts` `drawBaseBody`): at his angle every pixel is his, turned with RotSprite as the limb turns. His skin follows the character's skin (in his own skin, `#f6d1b0`, his colours exactly); his line never changes.
+- **The rig is fitted to his joints** (`rig.ts` `BodyFit`, `solveFit`): at idle every joint is his, so frame 0 of idle is his picture, every pixel of the body below the head (`femaleBase.test.ts`). In every other pose the torso keeps his neck, shoulders and hips and each limb his length on its side (his far arm and leg are drawn shorter on screen, so the far foot stands higher without a lift of its own). His thigh is much longer than his shin: a foot asked to come in under the hip goes forward until the knee can fold over it.
+- **One piece per limb, never twice.** Each leg is one piece with its foot, each arm one piece with its hand, on its own layer: never a leg, a foot or a boot drawn a second time (a heroine's skirt or boots must not carry painted legs of their own that stay put while the legs move). `femaleBase.test.ts` checks every pose and frame: one connected near leg and far leg (with and without boots), one connected arm with its hand on each side, no part drawn with more pixels than his piece.
+- **No hand apart from its arm.** A hand turns with its forearm, exactly, and carries a round cap of the wrist, so it never comes away from the wrist (the throw's release). His closed fists are his hands; his heroines' small hands (`femaleBodyArt.ts` `FEMALE_HANDS`) hold a weapon, point, open and cradle on his wrist.
+- **The shoulder is always there.** The upper arm piece carries his shoulder's round and turns about its middle, so a raised arm (the throw's wind-up) keeps its shoulder; the chest under it is continued from his pixels.
+- **Joints stay whole.** The lower piece of every joint carries a round cap of the upper piece over the joint (elbow, wrist, knee, ankle), drawn over it; what he hides (the thigh tops under the briefs, the chest's near side under the arm, the far upper arm behind the chest, the neck under the head, the belly under the top) is continued from his pixels and stays hidden at rest.
+- **No pixel cut off.** At rest every pixel is his. In any other pose a pixel of a piece left on its layer's edge becomes his line, so a piece moved apart from the next one, or a pixel of his line lost turning it, never leaves the body cut open.
+- **His sports top and briefs** are part of the body (it always wears them, in his black) and two items, the sports top and the briefs, that recolour them.
+- **His painted shades stay his**: the compositor's drop shadows leave every hand-painted pixel alone on the female bodies (`F_NO_TEXTURE`).
+- **Sitting** sets the seat of his briefs on the camp seat's top (`FIT_SEAT_SINK`).
+- Male and bulky stay byte-identical when the female standard changes.
+
+The earlier review (2026-10-21), on the body built from his heroines at our scale, verbatim: "en las animaciones tienes errores en el hombro en arrojar (preparar) probablemente se arregle cuando arregles los hombros en el personaje mujer que le estas arreglando el hombro y brazo izquierdo y la mano en arrojada se ve cortada y tambien unos pixeles de la espalda se ven cortados en general en las animaciones y posturas los errores estan en ese brazo y hombro izquierdo que estas agregando entonces haz estos cambios el standard de el cuerpo animaciones y sprites femeninos para verse de la calidad que buscamos". His heroines at our scale (`docs/reference/*-game-scale-owner-reference.jpg`) still give the female faces' skin ramp and the small hands.
 
 ## 6. Hair
 

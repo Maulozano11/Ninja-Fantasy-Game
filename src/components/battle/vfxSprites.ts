@@ -618,7 +618,7 @@ function drawRoute(ctx: CanvasRenderingContext2D, sc: Scene, f: Fx, ms: number):
  * What a ninja holds in its near hand (the Chidori's lightning, the owner's answer 11), its anchor at
  * the hand (x, y): its rows one after another, the last looping, in the caster's chakra colour.
  */
-export function drawHeld(ctx: CanvasRenderingContext2D, sc: Scene, h: Held, x: number, y: number): void {
+export function drawHeld(ctx: CanvasRenderingContext2D, sc: Scene, h: Held, x: number, y: number, facing: 1 | -1 = 1): void {
   const s = worldSprite(h.group, h.name);
   if (!s || !ready(s)) return;
   const sh = inTint(s, h.element, h.name, h.tint);
@@ -627,11 +627,72 @@ export function drawHeld(ctx: CanvasRenderingContext2D, sc: Scene, h: Held, x: n
   for (let i = 0; i < h.rows.length; i++) {
     const row = h.rows[i];
     if (ms < acc + row.ms || i === h.rows.length - 1) {
-      blit(ctx, sh, row.anim, frameAt(sh, row.anim, Math.max(0, ms - acc)), Math.round(x), Math.round(y), false);
+      blit(ctx, sh, row.anim, frameAt(sh, row.anim, Math.max(0, ms - acc)), Math.round(x), Math.round(y), !!h.faced && facing < 0);
       return;
     }
     acc += row.ms;
   }
+}
+
+/** A small deterministic hash in [0, 1) (each crack's variant and turn stay the same frame to frame). */
+function hash01(a: number, b: number): number {
+  let h = (Math.imul(a | 0, 374761393) + Math.imul(b | 0, 668265263)) | 0;
+  h = Math.imul(h ^ (h >>> 13), 1274126177);
+  h ^= h >>> 16;
+  return (h >>> 0) / 4294967296;
+}
+
+/** How long the lightning left in a new crack's depths takes to die out (ms at speed 1). */
+const CRACK_GLOW_MS = 900;
+
+/**
+ * The ground cracked under a charged ninja's steps (vfx_charged/ground_crack, one of its variants per
+ * cell): each crack splits open as the walker gets there (its 'open_<variant>' frames), the Chidori's
+ * lightning flickering in its depths and dying out, then holds until it mends and fades. Never in a
+ * chakra colour.
+ */
+export function drawCracks(ctx: CanvasRenderingContext2D, sc: Scene, fade: number): void {
+  if (!sc.pb.cracks.size) return;
+  const s = worldSprite('vfx_charged', 'ground_crack') as Sheet | undefined;
+  if (!s || !ready(s)) return;
+  const n = s.spec.anims.idle?.frames ?? 1;
+  for (const [k, c] of sc.pb.cracks) {
+    if (sc.now < c.t0) continue;
+    const [cc, cr] = k.split(',').map(Number);
+    const ms = (sc.now - c.t0) * sc.pb.speed;
+    const alpha = c.gone === undefined ? 1 : Math.max(0, 1 - ((sc.now - c.gone) * sc.pb.speed) / fade);
+    if (alpha <= 0) continue;
+    const at = project(sc.map, cellCenter({ c: cc, r: cr }));
+    const x = Math.round(at.X), y = Math.round(at.Y);
+    const v = Math.floor(hash01(cc, cr) * n);
+    const mirror = hash01(cr, cc) < 0.5;
+    const open = `open_${v}`;
+    if (s.spec.anims[open] && ms < animMs(s, open)) blit(ctx, s, open, frameAt(s, open, ms), x, y, mirror, alpha);
+    else blit(ctx, s, 'idle', v, x, y, mirror, alpha);
+    // The lightning in its depths: bright as it splits, then flickering out.
+    if (s.spec.anims.glow && ms < CRACK_GLOW_MS) {
+      const g = ms < 150 ? 1 : 1 - (ms - 150) / (CRACK_GLOW_MS - 150);
+      blit(ctx, s, 'glow', v * 2 + (Math.floor(ms / 70) % 2), x, y, mirror, alpha * g);
+    }
+  }
+}
+
+/** The dust and chips of ground thrown up as each crack opens, among the standing things (over the feet that cracked it). */
+function crackDustItems(ctx: CanvasRenderingContext2D, sc: Scene): DepthItem[] {
+  if (!sc.pb.cracks.size) return [];
+  const s = worldSprite('vfx_charged', 'ground_crack_dust') as Sheet | undefined;
+  if (!s || !ready(s)) return [];
+  const out: DepthItem[] = [];
+  const dur = animMs(s, 'puff');
+  for (const [k, c] of sc.pb.cracks) {
+    const ms = (sc.now - c.t0) * sc.pb.speed;
+    if (ms < 0 || ms >= dur || c.gone !== undefined) continue;
+    const [cc, cr] = k.split(',').map(Number);
+    const p = cellCenter({ c: cc, r: cr });
+    const at = project(sc.map, p);
+    out.push({ z: p.z + 0.02, draw: () => blit(ctx, s, 'puff', frameAt(s, 'puff', ms), Math.round(at.X), Math.round(at.Y), hash01(cc, cr) < 0.5) });
+  }
+  return out;
 }
 
 function drawFromSheets(ctx: CanvasRenderingContext2D, sc: Scene, f: Fx): boolean {
@@ -1678,6 +1739,7 @@ export function depthFx(ctx: CanvasRenderingContext2D, sc: Scene): DepthItem[] {
     else if (f.kind === 'conduct') out.push(...conductItems(ctx, sc, f));
   }
   out.push(...steamItems(ctx, sc));
+  out.push(...crackDustItems(ctx, sc));
   const pending = (id: string) => sc.pb.queue.some((e) => e.t === 'zone' && e.on && e.zone.id === id);
   for (const z of [...(sc.state.zones ?? []), ...sc.pb.goneZones()]) if (!pending(z.id)) out.push(...galeItems(ctx, sc, z));
   for (const g of sc.pb.zoneGone) out.push(...galeItems(ctx, sc, g.zone, g.t0));

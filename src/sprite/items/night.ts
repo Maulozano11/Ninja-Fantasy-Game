@@ -11,6 +11,7 @@ import { armDepth, armJoints, armReaches, DrawCtx, ItemDef, legDepth, legJoints,
 import { type PaintedPiece, segAngle, skinTone, stampLeaning, stampPiece } from '../painted';
 import { add, F_NO_OUTLINE, F_NO_TEXTURE, GRID, type Layer, partIndex, PartId, PARTS, RES, sub, v, Vec } from '../raster';
 import { NIGHT_SKIN } from '../nightHeadArt';
+import { isFemaleBody } from '../types';
 import { sealCloth } from '../seal';
 import { closeAnkle, footTurn } from './ankle';
 import { NIGHT_BELT, NIGHT_BELT_BASE, NIGHT_BELT_KIND } from './nightBeltArt';
@@ -89,6 +90,24 @@ function footOff(g: DrawCtx, s: Side): void {
     const L = g.L(d);
     for (let i = 0; i < GRID * GRID; i++) if (L.mat[i] >= 0 && L.part[i] === foot) L.mat[i] = -1;
   }
+}
+
+/**
+ * On the women's bodies, his painted bare legs (body.ts drawBaseBody), the leg ends at his boot's top: none of
+ * its skin shows beside the shaft further down the shin than the boot's top, where the leg is wider than the
+ * shaft at a slant (the throw's release).
+ */
+function shinUnderBootOff(g: DrawCtx, s: Side, knee: Vec, ankle: Vec): void {
+  const shin = partIndex(`shin${s}` as PartId);
+  const len = Math.hypot(ankle.x - knee.x, ankle.y - knee.y);
+  const [ux, uy] = [(ankle.x - knee.x) / len, (ankle.y - knee.y) / len];
+  const down = (i: number) => (((i % GRID) + 0.5) / RES - knee.x) * ux + ((Math.floor(i / GRID) + 0.5) / RES - knee.y) * uy;
+  const boot = g.L(legDepth(s, 'feet'));
+  let top = Infinity;
+  for (let i = 0; i < GRID * GRID; i++) if (boot.mat[i] >= 0 && boot.part[i] === shin) top = Math.min(top, down(i));
+  if (!Number.isFinite(top)) return;
+  const L = g.L(legDepth(s, 'body'));
+  for (let i = 0; i < GRID * GRID; i++) if (L.mat[i] >= 0 && L.part[i] === shin && boot.mat[i] < 0 && down(i) > top + 1 / RES) L.mat[i] = -1;
 }
 
 const arm = (s: Side, n: PaintedPiece, f: PaintedPiece) => (s === 'N' ? n : f);
@@ -633,6 +652,7 @@ export const NIGHT_ITEMS: ItemDef[] = [
         const turn = footTurn(g, s);
         stampPiece(g, legDepth(s, 'feet'), shin, ankle, segAngle(knee, ankle), `shin${s}` as PartId, tint);
         stampPiece(g, legDepth(s, 'feet'), foot, ankle, foot.angle + turn, `foot${s}` as PartId, tint);
+        if (isFemaleBody(g.rig.body)) shinUnderBootOff(g, s, knee, ankle);
         if (turn) {
           const lineHex = [...Object.values(shin.colors), ...Object.values(foot.colors)].filter((hex) => NIGHT_KIT_KIND[hex] === 'line');
           if (lineHex.length) closeAnkle(g, s, ankle, g.m(lineHex[0], 'flat'), new Set(lineHex.map((hex) => g.m(hex, 'flat'))));

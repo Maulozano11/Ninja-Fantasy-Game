@@ -8,13 +8,13 @@ import { CAST_STYLE_INFO, defaultCastStyle } from '../../sprite/castInfo';
 import { CAST_STYLES } from '../../sprite/types';
 import { CLOTH_COLORS, CLOTH_FAMILIES, EYE_COLORS, HAIR_COLORS, SKIN_TONES } from '../../sprite/palettes';
 import type {
+  ArmType,
   BodyType,
   EyeShape,
   EyeSpecial,
   FaceShape,
   HeadbandPosition,
   ItemChoice,
-  NeckType,
   SlotId,
   SpriteAppearance,
   SpritePose,
@@ -126,11 +126,12 @@ const FACE_SHAPES: { id: FaceShape; label: string; sub: string }[] = [
   { id: 'valiant', label: 'Valiant', sub: "Aiden's face" },
   { id: 'night', label: 'Night', sub: "Ren's face" },
   { id: 'founder', label: 'Founder', sub: "Solen's face" },
+  { id: 'fine', label: 'Fine', sub: "Lyra's face" },
 ];
 
-const NECKS: { id: NeckType; label: string; sub: string }[] = [
-  { id: 'slim', label: 'Slim', sub: 'Slender' },
-  { id: 'strong', label: 'Strong', sub: 'Thick, muscular' },
+const ARMS: { id: ArmType; label: string; sub: string }[] = [
+  { id: 'standard', label: 'Standard', sub: "The body's own" },
+  { id: 'long', label: 'Long', sub: "Lyra's arms" },
 ];
 
 const EYE_SHAPES: { id: EyeShape; label: string; sub?: string }[] = [
@@ -143,6 +144,7 @@ const EYE_SHAPES: { id: EyeShape; label: string; sub?: string }[] = [
   { id: 'piercing', label: 'Piercing' },
   { id: 'valiant', label: 'Valiant', sub: "Aiden's eyes" },
   { id: 'night', label: 'Night', sub: "Ren's eyes" },
+  { id: 'keen', label: 'Keen', sub: "Lyra's eyes" },
 ];
 
 const HEADBAND_POSITIONS: { id: HeadbandPosition; label: string }[] = [
@@ -340,20 +342,20 @@ export const AppearanceEditor: React.FC<{
             </div>
             <ColorRow label="Skin Tone" value={look.skin} swatches={SKIN_TONES} onChange={(skin) => onChange({ ...look, skin })} />
             <div>
-              <SectionLabel>Neck</SectionLabel>
+              <SectionLabel>Arms</SectionLabel>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                {NECKS.map((n) => (
+                {ARMS.map((n) => (
                   <OptionCard
                     key={n.id}
-                    selected={(look.neck || 'slim') === n.id}
+                    selected={(look.arms || 'standard') === n.id}
                     label={n.label}
                     sub={n.sub}
                     onClick={() => {
                       soundManager.playSelect();
-                      onChange({ ...look, neck: n.id });
+                      onChange({ ...look, arms: n.id });
                     }}
                   >
-                    <SpriteThumb look={{ ...look, neck: n.id }} eye={eye} crop="head" />
+                    <SpriteThumb look={{ ...look, arms: n.id }} eye={eye} />
                   </OptionCard>
                 ))}
               </div>

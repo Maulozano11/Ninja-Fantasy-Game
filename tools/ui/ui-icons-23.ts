@@ -82,6 +82,17 @@
 //    dissolves into his streaks on his trailing side. His vortex, portal, kunai, wind, speed lines
 //    and stars stay his. At 88 and 44 the lit rim and the eyes are drawn again crisp, and the
 //    figure's pixels take the figure's own colours (not his ground's), so it stays deep blue.
+//
+// Sheets 13 to 22 (2026-10-22: his icons for our "missing icons" sheets), one staging folder each:
+//
+//   python3 -I tools/refs/icons-from-ref-13.py 13=docs/reference/icons-owner-reference-13.jpg <stage13>
+//   UI_OUT=<stage13> UI_FRAME=src/assets/ui_icons npx tsx tools/ui/ui-icons-23.ts
+//
+// They are made as sheets 9 and 10 (LATER below). Sheets 15, 16, 17 and 19 are 240x134 pictures,
+// so their windows are only 47 to 63 of his pixels: at 88 every one of his pixels is kept and some
+// are shown twice (grownLines), and at 44 his pixels are kept one to one with the columns and rows
+// that show least dropped (as the 88 of sheets 2 to 7). Sheet 18's windows (78 to 79) are grown to
+// 88 the same way. Sheets 20 to 22 (100 to 101 by 103) are reduced at 88 as sheets 8 and 11.
 
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -711,12 +722,54 @@ function keptLines(W: F, n: number, axis: 'x' | 'y'): number[] {
   return all.filter((i) => !drop.has(i));
 }
 
-/** His pixels at 88: the kept columns and rows of his window, one to one. */
-function his88(W: F): { img: F; cols: number[]; rows: number[] } {
-  const cols = keptLines(W, 88, 'x'), rows = keptLines(W, 88, 'y');
-  const o = new F(88, 88);
+/**
+ * Sheets 15 to 19: his window is smaller than the size asked for (47 to 83 of his pixels for 88), so
+ * every one of his lines is kept and some are shown twice. Which: the `m` lines to double (or, when
+ * more than half are doubled, the ones left single) are spread evenly, one in each of `m` equal
+ * stretches of his window, and in each stretch it is the line that shows least (as keptLines: the
+ * one nearest its neighbours), ties to the stretch's middle. Returns, for each line of the result,
+ * his line.
+ */
+function grownLines(W: F, n: number, axis: 'x' | 'y'): number[] {
+  const len = axis === 'x' ? W.w : W.h, along = axis === 'x' ? W.h : W.w;
+  const twice = n - len;
+  if (twice <= 0 || twice > len) throw new Error(`ui-icons-23: cannot grow ${len} lines to ${n}`);
+  const labs: Lab[] = [];
+  for (let i = 0; i < W.w * W.h; i++) labs.push(W.lab(i));
+  const at = (line: number, t: number): Lab => (axis === 'x' ? labs[t * W.w + line] : labs[line * W.w + t]);
+  const cost = Array.from({ length: len }, (_, i) => {
+    let c = 0;
+    for (let t = 0; t < along; t++) {
+      const me = at(i, t);
+      const l = i > 0 ? Math.sqrt(dist(me, at(i - 1, t))) : Infinity, r = i < len - 1 ? Math.sqrt(dist(me, at(i + 1, t))) : Infinity;
+      c += Math.min(l, r);
+    }
+    return c;
+  });
+  const single = twice > len - twice;
+  const m = single ? len - twice : twice;
+  const picked = new Set<number>();
+  for (let j = 0; j < m; j++) {
+    const a = Math.floor((j * len) / m), b = Math.max(a + 1, Math.floor(((j + 1) * len) / m));
+    const mid = (a + b - 1) / 2;
+    let best = a;
+    for (let i = a; i < b; i++) if (cost[i] < cost[best] - 1e-9 || (Math.abs(cost[i] - cost[best]) <= 1e-9 && Math.abs(i - mid) < Math.abs(best - mid))) best = i;
+    picked.add(best);
+  }
+  const out: number[] = [];
+  for (let i = 0; i < len; i++) {
+    out.push(i);
+    if (picked.has(i) !== single) out.push(i);
+  }
+  return out;
+}
+
+/** His pixels at N (88; 44 on sheets 15 to 17 and 19): the kept columns and rows of his window, one to one (some shown twice when his window is smaller). */
+function his88(W: F, N = 88): { img: F; cols: number[]; rows: number[] } {
+  const cols = W.w >= N ? keptLines(W, N, 'x') : grownLines(W, N, 'x'), rows = W.h >= N ? keptLines(W, N, 'y') : grownLines(W, N, 'y');
+  const o = new F(N, N);
   rows.forEach((sy, y) => cols.forEach((sx, x) => {
-    for (let k = 0; k < 3; k++) o.d[(y * 88 + x) * 3 + k] = W.d[(sy * W.w + sx) * 3 + k];
+    for (let k = 0; k < 3; k++) o.d[(y * N + x) * 3 + k] = W.d[(sy * W.w + sx) * 3 + k];
   }));
   return { img: o, cols, rows };
 }
@@ -1074,7 +1127,7 @@ interface IconSpec {
   name: string;
   /** His label under the slot (his sheet). */
   label?: string;
-  sheet: '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' | '10' | '11';
+  sheet: '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' | '10' | '11' | '13' | '14' | '15' | '16' | '17' | '18' | '19' | '20' | '21' | '22';
   /** An edit the owner asked for, made on his window (his pixels) before anything else; returns what it did, for the manifest. */
   edit?: (W: F) => string;
   /** What the hand-drawn part of the owner's edit is at each size, for the manifest. */
@@ -1117,6 +1170,10 @@ interface Built {
   rows: number[];
   /** True when his window is too big for his pixels one to one at 88 (sheets 8 and 11): the 88 is an area mean as the 44. */
   area88: boolean;
+  /** True when his window is small enough for his pixels one to one at 44 too (sheets 15 to 17 and 19); then his kept columns and rows there. */
+  one44: boolean;
+  cols44: number[];
+  rows44: number[];
   /** What the owner's edit did to his window. */
   edited: string | null;
   /** The palette entries added for his rare colours (sheets 8 to 11, coverPalette). */
@@ -1126,6 +1183,8 @@ interface Built {
 
 /** His windows up to this size (his pixels) keep his pixels one to one at 88; bigger ones are reduced. */
 const ONE_TO_ONE_MAX = 100;
+/** His windows up to this size keep his pixels one to one at 44 too (his 240x134 pictures, sheets 15 to 17 and 19: 47 to 63 of his pixels; at 60 of them the area mean blurred his ninjas' outlines away, his own pixels keep them). */
+const ONE_TO_ONE_44_MAX = 64;
 
 function loadRef(name: string): Img {
   const path = join(REF, name);
@@ -1154,6 +1213,8 @@ function buildIcon(spec: IconSpec): Built {
       }
   const area88 = W.w > ONE_TO_ONE_MAX || W.h > ONE_TO_ONE_MAX;
   const h88 = area88 ? { img: areaResize(W, 88, 88), cols: [] as number[], rows: [] as number[] } : his88(W);
+  const one44 = W.w <= ONE_TO_ONE_44_MAX && W.h <= ONE_TO_ONE_44_MAX;
+  const h44 = one44 ? his88(W, 44) : { img: new F(44, 44), cols: [] as number[], rows: [] as number[] };
   const marks = process.env.UI_NOMARKS ? [] : spec.marks ?? [];
   const reds: Record<number, Reduced> = { 44: reduceKeep(W, 44, marks) };
   if (area88) reds[88] = reduceKeep(W, 88, marks);
@@ -1161,6 +1222,7 @@ function buildIcon(spec: IconSpec): Built {
   /** The picture put on the palette at size N: his pixels (88 one to one) or the reduction with his marks in their own colour. */
   const pictureAt = (N: number): F => {
     if (N === 88 && !area88) return h88.img;
+    if (N === 44 && one44) return h44.img;
     const rN = reds[N] ?? red;
     const [ss, sr] = spec.bil44;
     const sm = sr > 0 ? bilateral(rN.box, ss, sr, 2) : rN.box.clone();
@@ -1179,12 +1241,13 @@ function buildIcon(spec: IconSpec): Built {
   const out: Built['out'] = {};
   for (const N of [44, 88]) {
     const box = areaResize(sheetCrop, N, N);
-    // His pixels one to one at 88 (sheets 2 to 7, 9, 10), or the area reduction (the 44; the 88 of sheets 8 and 11).
-    const oneToOne = N === 88 && !area88;
+    // His pixels one to one at 88 (sheets 2 to 7, 9, 10, 13 to 19) and at 44 on sheets 15 to 17 and 19, or the area reduction (the 44; the 88 of sheets 8, 11, 20 to 22).
+    const oneToOne = N === 88 ? !area88 : one44;
+    const hN = N === 88 ? h88 : h44;
     const rN = reds[N] ?? red;
     let ref: F, q0: Ix;
     if (oneToOne) {
-      ref = h88.img;
+      ref = hN.img;
       q0 = cleanup(quantize(ref, pal), pal, ref, 2, new Set(), hisMark(ref, spec.mark88));
     } else {
       ref = pics[N];
@@ -1200,14 +1263,14 @@ function buildIcon(spec: IconSpec): Built {
         if (ink) pt.px(i % N, Math.floor(i / N), ink);
       }
     // His window's points at this size: through his kept columns and rows at 88 one to one, else by scale.
-    const map = (x: number, y: number): [number, number] => (oneToOne ? [keptAt(h88.cols, x), keptAt(h88.rows, y)] : [(x * N) / W.w, (y * N) / W.h]);
+    const map = (x: number, y: number): [number, number] => (oneToOne ? [keptAt(hN.cols, x), keptAt(hN.rows, y)] : [(x * N) / W.w, (y * N) / W.h]);
     if (!process.env.UI_NOART && !(spec.edit && !edited)) spec.art?.(pt, { W, his88: h88.img, red: rN, ref, map });
     const q = cleanup(pt.q, pal, ref, oneToOne ? 2 : spec.clean44 ?? 2, pt.drawn, oneToOne ? hisMark(ref, spec.mark88) : undefined);
     // At 88 one to one the small areas that stayed are his own marks.
     const hisSet = new Set(pt.his);
     if (oneToOne) {
       const { lab, size } = components(q);
-      for (let i = 0; i < 88 * 88; i++) if (size[lab[i]] <= 2 && !pt.drawn.has(i)) hisSet.add(i);
+      for (let i = 0; i < N * N; i++) if (size[lab[i]] <= 2 && !pt.drawn.has(i)) hisSet.add(i);
     }
     const ours = ixToF(q, pal);
     const sm = smallClusters(q, hisSet, pt.drawn);
@@ -1234,7 +1297,7 @@ function buildIcon(spec: IconSpec): Built {
     };
   }
   const p88 = join(REF, `${spec.id}@88.png`);
-  return { spec, pal, out, red, W, cols: h88.cols, rows: h88.rows, area88, edited, covered, hisLanczos88: existsSync(p88) ? loadPng(p88) : null };
+  return { spec, pal, out, red, W, cols: h88.cols, rows: h88.rows, area88, one44, cols44: h44.cols, rows44: h44.rows, edited, covered, hisLanczos88: existsSync(p88) ? loadPng(p88) : null };
 }
 
 /** His window with the owner's edit as a whole (the edit, and what is drawn only at each size drawn at his scale). */
@@ -2092,6 +2155,15 @@ function phaseMaskView(W: F, id: string): Img {
 // (paletteCovered).
 const COVER: Cover = { thr: 0.06, minMass: 6, add: 20, cw: 2, wl: 0.6 };
 
+/** Sheets 13 to 22 (2026-10-22): made as sheets 9 and 10 (his rare colours covered, no bilateral filter). */
+const LATER = (s: Pick<IconSpec, 'id' | 'name' | 'label' | 'sheet' | 'marks'> & Partial<IconSpec>): IconSpec => ({ cover: COVER, colors: 22, flat: 0.5, chroma: 1.1, bil44: [0, 0], mark88: 0.06, ...s });
+const OUTLINE = (what: string): MarkRule => ({ kind: 'dark', what, r: 1, thr: 0.1, maxL: 0.16, minPx: 6, share: 0.25, mix: 0.55 });
+/** His dark outlines that are not near-black (a brown pouch's, a bottle's, a log's): darker than the closing of his lightness. */
+const INK = (what: string, maxL = 0.32): MarkRule => ({ kind: 'dark', what, r: 1, thr: 0.07, maxL, minPx: 6, share: 0.3, mix: 0.9 });
+/** A palette entry for his darkest outline (the darkest 3% of his window), which the k-means left to the browns of his ground. */
+const INK_ENTRY = (w: number, h: number): NonNullable<IconSpec['extra']>[number] => ({ box: [0, 0, w, h], lo: 0, hi: 0.03, spare: false, by: 'L', why: 'his darkest outline' });
+const LIGHTS = (what: string, minL = 0.75): MarkRule => ({ kind: 'bright', what, r: 1, thr: 0.08, minL, minPx: 3, speck: 0.15, share: 0.35, mix: 0.75 });
+
 const ICONS: IconSpec[] = [
   {
     id: 'chidori_lightning_blade',
@@ -2807,6 +2879,41 @@ const ICONS: IconSpec[] = [
     bil44: [0, 0],
     mark88: 0.06,
   },
+  // Sheets 13 to 22 (2026-10-22): his icons for the jutsu, items and actions of our "missing icons"
+  // sheets (tools/refs/icons-from-ref-13.py). Sheets 15, 16, 17 and 19 are 240x134 pictures.
+  LATER({ id: 'earth_pebble_shot', name: 'Pebble Shot', label: 'GUIJARROS', sheet: '13', marks: [OUTLINE('the near-black outlines of his pebbles'), LIGHTS('his pale dust trails and the lit tops of the pebbles')] }),
+  LATER({ id: 'earth_spike_crown', name: 'Spike Crown', label: 'CORONA', sheet: '13', marks: [OUTLINE('the near-black outlines of his spikes'), LIGHTS('his sparks and the lit edges of the spikes')] }),
+  LATER({ id: 'earth_rubble_gust', name: 'Rubble Gust', label: 'POLVAREDA', sheet: '13', marks: [OUTLINE('the near-black outlines of his rocks'), LIGHTS('the lit faces of his rocks')] }),
+  LATER({ id: 'fire_three_embers', name: 'Three Embers', label: 'BRASAS', sheet: '14', marks: [OUTLINE('the dark smoke trails and the embers\' outlines'), LIGHTS('his glowing ember cores and sparks', 0.8)] }),
+  LATER({ id: 'wood_golem_titan', name: 'Wood Golem', label: 'GOLEM', sheet: '14', marks: [LIGHTS('his green eyes, the glowing core and the lit vines', 0.65), INK('the dark grooves and outline of his twisted wood', 0.25)] }),
+  LATER({ id: 'lightning_spark_fan', name: 'Spark Fan', label: 'ABANICO', sheet: '14', marks: [LIGHTS('his white bolts and golden sparks', 0.7)] }),
+  LATER({ id: 'lightning_thunder_beam', name: 'Thunder Beam', label: 'TRUENO', sheet: '14', marks: [LIGHTS('his white bolts and the zigzag lightning', 0.7)] }),
+  LATER({ id: 'katon_pursuing_flame', name: 'Pursuing Flame', label: 'LLAMA PERSECU', sheet: '15', marks: [LIGHTS('his yellow flame core and embers', 0.8)] }),
+  LATER({ id: 'lightning_jolt', name: 'Jolt', label: 'CALAMBRE', sheet: '15', marks: [OUTLINE('the near-black outline of his ninja'), LIGHTS('his yellow lightning', 0.75)] }),
+  LATER({ id: 'kenjutsu_bleeding_cut', name: 'Bleeding Cut', label: 'TAJO SANGRAN', sheet: '15', marks: [LIGHTS('the lit edge of his blade and the blood\'s shine', 0.7)] }),
+  LATER({ id: 'water_healing_dew', name: 'Healing Dew', label: 'ROCIO SANADOR', sheet: '16', marks: [LIGHTS('his shining drops and rain streaks', 0.8)] }),
+  LATER({ id: 'mystical_palm', name: 'Mystical Palm', label: 'PALMA MISTICA', sheet: '16', marks: [OUTLINE('the dark outline of his hand and glove'), LIGHTS('his green glow, sparkles and the palm\'s light', 0.75)] }),
+  LATER({ id: 'water_geyser', name: 'Geyser', label: 'GEISER', sheet: '16', marks: [LIGHTS('his white spray', 0.85)] }),
+  LATER({ id: 'water_devouring_tide', name: 'Devouring Tide', label: 'TSUNAMI', sheet: '16', marks: [LIGHTS('his white foam', 0.85)] }),
+  LATER({ id: 'wind_breeze_mantle', name: 'Breeze Mantle', label: 'MANTO BRISA', sheet: '17', marks: [OUTLINE('the near-black outline of his ninja'), LIGHTS('his light wind ribbons', 0.8)] }),
+  LATER({ id: 'wind_whirl', name: 'Whirl', label: 'REMOLINO', sheet: '17', marks: [LIGHTS('the light bands of his whirlwind', 0.8)] }),
+  LATER({ id: 'wind_blade_daitoppa', name: 'Great Gale Blade', label: 'GRAN RAFAGA', sheet: '17', marks: [LIGHTS('the white edge of his wind crescent', 0.85)] }),
+  LATER({ id: 'wind_gale_curtain', name: 'Gale Curtain', label: 'VENDAVAL', sheet: '17', marks: [LIGHTS('his white wind streaks', 0.8)] }),
+  LATER({ id: 'pill', name: 'Soldier Pill', label: 'PILDORA SOLD', sheet: '18', extra: [INK_ENTRY(78, 82)], marks: [INK('the dark outline of his pouch and pill'), LIGHTS('his cyan sparks and the pill\'s shine', 0.7)] }),
+  LATER({ id: 'bandage', name: 'Bandage', label: 'VENDA', sheet: '18', extra: [INK_ENTRY(78, 82)], marks: [INK('the dark outline of his bandage roll', 0.42), LIGHTS('his golden sparkles', 0.85)] }),
+  LATER({ id: 'antidote', name: 'Antidote', label: 'ANTIDOTO', sheet: '18', extra: [INK_ENTRY(78, 82)], marks: [INK('the dark outline of his bottle'), LIGHTS('his bubbles and the glass\'s shine', 0.7)] }),
+  LATER({ id: 'tag', name: 'Explosive Tag', label: 'SELLO EXPLOS', sheet: '18', extra: [INK_ENTRY(78, 82)], marks: [{ kind: 'colour', what: 'the red writing on his tag', r: 0, thr: 0, hue: [10, 45], minC: 0.12, maxL: 0.6, minPx: 2, share: 0.3, mix: 0.8, win: (x, y) => x >= 25 && x < 65 && y >= 8 && y < 70 }, INK('the dark outline of his tag'), LIGHTS('his sparks and flames', 0.8)] }),
+  LATER({ id: 'tagTrap', name: 'Hide Tag', label: 'ESCONDER SELLO', sheet: '19', marks: [OUTLINE('the near-black outlines of his hands and arms'), LIGHTS('the lit knuckles and the grass', 0.7)] }),
+  LATER({ id: 'stone', name: 'Throw Stone', label: 'LANZAR PIEDRA', sheet: '19', marks: [OUTLINE('the near-black outline of his ninja'), LIGHTS('his sound ripples and the stone', 0.6)] }),
+  LATER({ id: 'drag', name: 'Drag Body', label: 'ARRASTRAR CUER', sheet: '19', marks: [OUTLINE('the near-black outlines of his two ninjas'), LIGHTS('his speed lines', 0.6)] }),
+  LATER({ id: 'body_flicker', name: 'Body Flicker', label: 'DESVANECER', sheet: '20', marks: [OUTLINE('the dark outline of his fading ninja')] }),
+  LATER({ id: 'substitution_kawarimi', name: 'Substitution', label: 'SUSTITUCION', sheet: '20', marks: [OUTLINE('the near-black outlines of his log and shuriken'), LIGHTS('his sparks and the shuriken\'s shine', 0.8)] }),
+  LATER({ id: 'leaf_hurricane_senpuu', name: 'Leaf Hurricane', label: 'PATADA HURACAN', sheet: '20', marks: [OUTLINE('the near-black outline of his ninja'), LIGHTS('the light streaks of his whirl', 0.8)] }),
+  LATER({ id: 'taijutsu_rush', name: 'Rush', label: 'EMBESTIDA', sheet: '20', marks: [OUTLINE('the near-black outline of his ninja'), LIGHTS('his speed lines', 0.8)] }),
+  LATER({ id: 'water_tide_s', name: 'Dragon Tsunami', label: 'DRAGON TSUNAMI', sheet: '21', marks: [LIGHTS('his white foam and the dragon\'s light scales', 0.85)] }),
+  LATER({ id: 'genjutsu_mirage', name: 'Mirage', label: 'MIND TWIST', sheet: '21', marks: [OUTLINE('the near-black outline of his hooded ninja'), LIGHTS('his violet spiral and shards', 0.65)] }),
+  LATER({ id: 'wind_whirlwind_tower', name: 'Whirlwind Tower', label: 'TORRE TORBEL', sheet: '21', marks: [OUTLINE('the dark outlines of his tower and blocks'), LIGHTS('the light bands of his tornado', 0.8)] }),
+  LATER({ id: 'rasenshuriken_wind', name: 'Rasenshuriken', label: 'RASENSHURIKEN', sheet: '22', marks: [OUTLINE('the dark outlines of his rocks'), LIGHTS('the light strands of his green spiral', 0.8)] }),
 ];
 
 // --- the slot frame (sheet 1's, read only) ------------------------------------------------------------
@@ -2825,6 +2932,8 @@ const frameActive = loadFrame('skill_slot_steel_active.png');
 // --- build, write, check ------------------------------------------------------------------------------
 
 const only = process.env.UI_ONLY ? new Set(process.env.UI_ONLY.split(',')) : null;
+/** His lines shown twice (grownLines). */
+const twice = (lines: number[]): number[] => lines.filter((v, i) => i > 0 && lines[i - 1] === v);
 // The icons whose windows were cropped into this folder (sheets 2 and 3 in ui_icons_23, sheet 4 in ui_icons_4).
 const built = ICONS.filter((s) => (!only || only.has(s.id)) && existsSync(join(REF, `${s.id}.png`))).map(buildIcon);
 const SHEETS_BUILT = [...new Set(built.map((b) => b.spec.sheet))].sort((a, b) => +a - +b);
@@ -2833,7 +2942,9 @@ const CROPS: Record<string, { box: number[]; window?: number[] }> = existsSync(j
 for (const b of built) {
   console.log(b.spec.id, b.pal.rgb.length, b.pal.rgb.map((c, i) => toHex(c) + (b.pal.spare[i] ? '*' : '')).join(' '));
   if (b.area88) console.log(`   88 is the area mean of his ${b.W.w}x${b.W.h} pixels`);
+  else if (b.W.w < 88 || b.W.h < 88) console.log('   88 shows twice columns', twice(b.cols).join(','), 'rows', twice(b.rows).join(','));
   else console.log('   88 drops columns', [...Array(b.W.w).keys()].filter((i) => !b.cols.includes(i)).join(','), 'rows', [...Array(b.W.h).keys()].filter((i) => !b.rows.includes(i)).join(','));
+  if (b.one44) console.log('   44 drops columns', [...Array(b.W.w).keys()].filter((i) => !b.cols44.includes(i)).join(','), 'rows', [...Array(b.W.h).keys()].filter((i) => !b.rows44.includes(i)).join(','));
   if (b.edited) console.log('   edit:', b.edited);
   if (b.covered.length) console.log('   covered:', b.covered.map(toHex).join(' '));
   for (const N of [44, 88]) console.log('  ', N, JSON.stringify(b.out[N].checks));
@@ -2923,7 +3034,10 @@ const manifest = {
     (built.some((b) => b.area88)
       ? '. Sheets 8 and 11 have bigger windows (127 to 139 of his pixels across, not square): the icon is the square part of his window (cropInWindow; Swap keeps 139x127 and is squeezed 9% across so his two ninjas stay whole), and its 88 is made as its 44 (area mean of his pixels with his thin lines and specks kept, palette, clean-up: method88)'
       : '') +
-    (built.some((b) => b.edited) ? '. Edits the owner asked for are listed per icon under edits: made on his window first, then drawn again crisp at 88 and 44' : ''),
+    (built.some((b) => b.edited) ? '. Edits the owner asked for are listed per icon under edits: made on his window first, then drawn again crisp at 88 and 44' : '') +
+    (built.some((b) => +b.spec.sheet >= 13)
+      ? '. Sheets 13 to 22 (tools/refs/icons-from-ref-13.py) are made as sheets 9 and 10. Some are 240x134 pictures (sheets 15, 16, 17, 19): their windows are 47 to 63 of his pixels, so at 88 every one of his pixels is kept and some are shown twice (twice88), and their 44 is his pixels one to one too, the columns and rows that show least dropped (dropped44); sheet 18 (78 to 79 of his pixels) is grown to 88 the same way and reduced to 44 as the others. Sheets 20 to 22 (100 to 101 by 103 to 104) are reduced at 88 as sheets 8 and 11'
+      : ''),
   checks:
     'small = 8-connected areas of one colour of 1 or 2 pixels: smallHis are his own marks (at 88 his pixel stands out there; at 44 his kept specks), smallDrawn hold a hand-fixed detail, smallOther are left over from the reduction; lowFreq = mean OKLab difference x100 to his box reduction after both are blurred (sigma size/30), lowFreqBoxOnPalette = the same for his box reduction put on our palette; ssim = structural similarity of the lightness (Gaussian window sigma 1.5) to his picture box-reduced to 88, ours (the 44 shown 2x) against ssimBox, his own box reduction to 44 shown 2x; hue = OKLab median hue in degrees (hueHis: his box reduction); thinRun = the longest straight run of one colour one pixel thick [length, row or col, index]',
   icons: Object.fromEntries(
@@ -2943,7 +3057,10 @@ const manifest = {
           : {}),
         ...(b.area88
           ? { method88: `area mean of his ${b.W.w}x${b.W.h} pixels (too many to keep one to one), his thin lines and specks kept in their own colour, as the 44` }
-          : { dropped88: { columns: [...Array(b.W.w).keys()].filter((i) => !b.cols.includes(i)), rows: [...Array(b.W.h).keys()].filter((i) => !b.rows.includes(i)) } }),
+          : b.W.w < 88 || b.W.h < 88
+            ? { method88: `his ${b.W.w}x${b.W.h} pixels, every one kept, some shown twice (fewer than 88)`, twice88: { columns: twice(b.cols), rows: twice(b.rows) } }
+            : { dropped88: { columns: [...Array(b.W.w).keys()].filter((i) => !b.cols.includes(i)), rows: [...Array(b.W.h).keys()].filter((i) => !b.rows.includes(i)) } }),
+        ...(b.one44 ? { method44: `his ${b.W.w}x${b.W.h} pixels one to one, the columns and rows that show least dropped`, dropped44: { columns: [...Array(b.W.w).keys()].filter((i) => !b.cols44.includes(i)), rows: [...Array(b.W.h).keys()].filter((i) => !b.rows44.includes(i)) } } : {}),
         ...(b.edited
           ? {
               edits: [

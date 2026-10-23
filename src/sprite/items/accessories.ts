@@ -2,7 +2,7 @@
 // Everything is placed from the rig (hand + forearm direction, torso-local
 // T(), head-local hd()) so it works on every body type and pose.
 
-import { armJoints, Depth, DEPTHS, DrawCtx, ItemDef, legPoint, Side } from '../ctx';
+import { armJoints, Depth, DEPTHS, DrawCtx, ItemDef, legPoint, Side, torsoNeck } from '../ctx';
 import { add, capsule, ellipse, F_NO_OUTLINE, fine, GRID, Layer, len, lerp, line, norm, partIndex, Pen, perp, poly, px, RES, scale, seam, sub, UNITS, v, Vec } from '../raster';
 import { hexToRgb, retintHex, type RampKind } from '../color';
 import { hd } from './hairkit';
@@ -14,10 +14,14 @@ import { KATANA_V2, KATANA_V2_BLADE, KATANA_V2_CHAKRA, KATANA_V2_GOLD, KATANA_V2
 import type { PartSlot, PartsPreview } from '../ctx';
 import type { SpriteAppearance } from '../types';
 import { stampLeaning } from '../painted';
-import { FOUNDER_COWL, FOUNDER_COWL_GOLD, FOUNDER_COWL_KIND, FOUNDER_COWL_NEAR, FOUNDER_COWL_NECK, FOUNDER_COWL_STUD, FOUNDER_COWL_STUD_F } from './founderCowlArt';
+import { FOUNDER_COWL, FOUNDER_COWL_GOLD, FOUNDER_COWL_KIND, FOUNDER_COWL_NEAR, FOUNDER_COWL_NECK, FOUNDER_COWL_SEAM_F, FOUNDER_COWL_SEAM_N, FOUNDER_COWL_STUD, FOUNDER_COWL_STUD_F } from './founderCowlArt';
 import { chakraHex } from '../chakraInfo';
+import { LYRA_SWORD_BLADE, LYRA_SWORD_GUARD } from './lyraSwordArt';
+import { drawLyraRapier } from './lyraSword';
+import { drawOwner, ownerFrame, slotTint } from '../ownerFrames';
 import { gripPoint, handsBusy, handsLimp, handsReleased, paintedGrip, poleAngle, swordAngle, throwsKunai } from '../grip';
 import type { Rig } from '../rig';
+import { addSeam, clothSeam } from '../seams';
 
 const col = (key: string, label: string, def: string, kind: RampKind = 'cloth') => ({ key, label, default: def, kind });
 
@@ -32,7 +36,8 @@ const fromAngle = (deg: number): Vec => rot(v(1, 0), deg);
 /** Breathing-aware torso point (follows the shoulders). */
 function topPt(g: DrawCtx) {
   const T = g.rig.T;
-  const dy = g.rig.neck.y - T(0.6, g.bp.torsoLen).y;
+  const n = torsoNeck(g);
+  const dy = g.rig.neck.y - T(n.x, n.y).y;
   return (x: number, y: number) => add(T(x, y), v(0, dy));
 }
 
@@ -273,10 +278,16 @@ function stowKatanaAtHip(g: DrawCtx, hilt: string, guard: string): void {
   sheathedSword(g, g.L('waist'), g.rig.T(b.waistHalf * 0.6 + 3.2, 5.6), dirBack, { sheath: '#2a1e1e', hilt, guard }, { hilt: 3.8, sheath: 14, part: 'pelvis' });
 }
 
+/** The angle Lyra's rapier rides at on the back (see held_gilded_rapier). */
+const LYRA_STOW_DEG = 70;
+
 /** Big blades and polearms ride diagonally across the back, the hilt or blade over the near shoulder. */
 function backGrip(g: DrawCtx, deg: number): Vec {
   const b = g.bp;
-  return stowAt(g, -b.shoulderHalf - 2.4, b.torsoLen + 2.8 - (deg < 0 ? 9 : 0));
+  // Narrow (female) shoulders keep the blade as far back as the old female body's did, so a long
+  // blade still clears the neck when the body pitches forward.
+  // A fitted body's neck sits further back in its torso (his, rig.ts neckLocal): the blade goes back with it.
+  return stowAt(g, -Math.max(b.shoulderHalf, 5.9) - 2.4 + (torsoNeck(g).x - 0.6), b.torsoLen + 2.8 - (deg < 0 ? 9 : 0));
 }
 
 /**
@@ -592,6 +603,27 @@ export const HELD_ITEMS: ItemDef[] = [
     desc: 'A calm pale-cyan glow gathered in the palm.',
     colors: [col('glow', 'Glow', '#8ff0ea', 'glow')],
     draw: (g, [glow]) => !handsBusy(g) && !handsLimp(g) && !handsReleased(g) && !throwsKunai(g) && drawPalmGlow(g, { glow }),
+  },
+  {
+    id: 'held_gilded_rapier',
+    slot: 'held',
+    name: 'Gilded Rapier',
+    desc: 'A long slender blade glowing cyan under a steel swept hilt with gold tips, a cyan gem in the cross, sparkles round it: the owner drew it for Lyra.',
+    colors: [col('blade', 'Blade glow', LYRA_SWORD_BLADE, 'glow'), col('guard', 'Guard', LYRA_SWORD_GUARD, 'metal')],
+    draw: (g, [blade, guard]) => {
+      // In the owner's own frames of Lyra (ownerFrames.ts) the sword is his there: lying behind her on
+      // the seat as she reads, thrust out at the throw's release (put away, she throws without it).
+      if (ownerFrame(g)) {
+        if (!(g.look.stowed && g.rig.pose === 'throw')) drawOwner(g, 'held', slotTint({ blade: [LYRA_SWORD_BLADE, blade], guard: [LYRA_SWORD_GUARD, guard] }));
+        return;
+      }
+      // Stowed on the back steeper than other long blades (70 degrees, not 48): her long blade then
+      // stays behind the narrow female body down to the tip, instead of showing in flecks past her far
+      // side (seated, reading, the female hips settle into the seat and carry the blade lower).
+      if (handsBusy(g)) drawLyraRapier(g, 'backGear', backGrip(g, LYRA_STOW_DEG), backAngle(g, LYRA_STOW_DEG), blade, guard, false);
+      else if (handsLimp(g)) drawLyraRapier(g, 'nearArm.held', droppedGrip(g, 0.7), -86, blade, guard, false);
+      else if (!handsReleased(g)) drawLyraRapier(g, 'nearArm.held', gripPoint(g), swordAngle(g), blade, guard, true);
+    },
   },
 ];
 
@@ -938,6 +970,11 @@ function scrollShape(g: DrawCtx, L: Layer, a: Vec, b: Vec, r: number, c: { paper
   capsule(L, add(a, scale(d, -0.8)), add(a, scale(d, 0.6)), r + 0.35, r + 0.35, caps, lit);
   capsule(L, add(b, scale(d, -0.6)), add(b, scale(d, 0.8)), r + 0.35, r + 0.35, caps, lit);
 }
+
+/** How far (px) his cowl's greys go on past its edge to fill an open seam (sprite/seams.ts). */
+const COWL_SEAM = 3;
+/** How far (px) from his studs a seam is filled with his greys. */
+const COWL_SEAM_ROUND = 5;
 
 /** Clears pixels of a front layer that cover the head, so wraps sit under the chin. */
 function tuckUnderChin(g: DrawCtx, L: Layer): void {
@@ -1286,6 +1323,31 @@ export const ACCESSORY_ITEMS: ItemDef[] = [
       stampLeaning(g, 'capeFront', FOUNDER_COWL_NECK, r.neck, torso, 'torso', tint, cowlLine);
       stampLeaning(g, 'capeFront', FOUNDER_COWL_STUD_F, r.shoulderF, torso, 'upperArmF', tint, cowlLine);
       stampLeaning(g, 'nearArm.over', FOUNDER_COWL_NEAR, r.shoulderN, torso, 'upperArmN', tint, cowlLine);
+      // The near end and the stud ride the shoulders, the cowl round the neck the torso: as a shoulder moves
+      // from the neck (a wider body, a swung arm) the seam beside the gold stud opens and the background
+      // shows through (the owner, 2026-10-22: "aqui tiene unos aun en la hebilla o medallon de la capa"). What
+      // he drew beside each of them (his cowl, and under the stud the cuirass's top), riding with it, fills the
+      // seam from behind once the figure is drawn (fillSeams, sprite/seams.ts). His greys follow Cowl; the rest
+      // stays his. At rest too (the owner, 2026-10-22: "solen rellenar"): on the male body the pieces meet as he
+      // drew them and nothing goes in; on the bulky body the near end stands off the neck already at rest.
+      const seamTint = (_ch: string, hex: string): string => (FOUNDER_COWL_KIND[hex] === 'grey' ? retintHex(hex, FOUNDER_COWL, c) : hex);
+      const seam = new Layer(false);
+      const sg: DrawCtx = { ...g, L: () => seam };
+      stampLeaning(sg, 'capeFront', FOUNDER_COWL_SEAM_N, r.shoulderN, torso, 'torso', seamTint, cowlLine);
+      stampLeaning(sg, 'capeFront', FOUNDER_COWL_SEAM_F, r.shoulderF, torso, 'torso', seamTint, cowlLine);
+      addSeam(g, seam, { at: 'always' });
+      // At rest the bulky body's near end stands off the neck, past what he drew beside it: there his greys of
+      // the cowl go on from its edge, round his studs only. Only at rest: in the poses that move, what the seam
+      // leaves is closed by the pinhole pass (sprite/holes.ts), which does not run at rest.
+      const greys = new Set<number>();
+      const studs = new Set<number>();
+      for (const p of [FOUNDER_COWL_NECK, FOUNDER_COWL_NEAR, FOUNDER_COWL_STUD_F])
+        for (const [ch, hex] of Object.entries(p.colors)) {
+          const k = FOUNDER_COWL_KIND[hex];
+          if (k === 'grey') greys.add(g.m(tint(ch, hex), 'flat'));
+          else if (k === 'gold' || k === 'white' || k === 'stud' || k === 'steel') studs.add(g.m(tint(ch, hex), 'flat'));
+        }
+      addSeam(g, clothSeam(g, { depths: ['capeFront', 'nearArm.over'], cloth: greys, studs, reach: COWL_SEAM, round: COWL_SEAM_ROUND }), { walls: 3, at: 'idle', again: true });
     },
   },
   {

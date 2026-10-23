@@ -373,14 +373,14 @@
   "fireball": {
    "label": "Great Fireball (radius 1.5 m)",
    "file": "fireball.png",
-   "frameW": 276,
+   "frameW": 318,
    "frameH": 162,
    "anchor": [
-    180,
+    222,
     96
    ],
    "meters": [
-    4.84,
+    5.58,
     2.84
    ],
    "tags": [
@@ -404,15 +404,15 @@
   "fireball_great": {
    "label": "Great Fireball, enhanced (radius 2.25 m)",
    "file": "fireball_great.png",
-   "frameW": 306,
-   "frameH": 284,
+   "frameW": 383,
+   "frameH": 299,
    "anchor": [
-    166,
-    160
+    243,
+    175
    ],
    "meters": [
-    5.37,
-    4.98
+    6.72,
+    5.25
    ],
    "tags": [
     "vfx"

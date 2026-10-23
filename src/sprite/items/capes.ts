@@ -5,10 +5,11 @@
 // that depends on the pose, so capes trail behind in attacks and sway in idle.
 
 import { hexToRgb, retintHex } from '../color';
-import type { Depth, DrawCtx, ItemDef } from '../ctx';
+import { type Depth, type DrawCtx, type ItemDef, torsoNeck } from '../ctx';
 import { add, capsule, cylShade, ellipse, F_NO_OUTLINE, F_NO_TEXTURE, fine, GRID, len, lerp, Layer, norm, PartId, Pen, perp, poly, px, RES, scale, seam, sub, v, Vec } from '../raster';
 import { GROUND } from '../rig';
 import { sealCloth } from '../seal';
+import { addSeam, clothSeam } from '../seams';
 import { OWNER_CAPE_BACK, OWNER_CAPE_FRONT, OWNER_CAPE_PLATE, OWNER_CAPE_SHOULDER, PaintedPart } from './capeArt';
 import { FOUNDER_CAPE, FOUNDER_CAPE_CLOTH, FOUNDER_CAPE_KIND, FOUNDER_CAPE_REST } from './founderCapeArt';
 import { CRIMSON_CAPE_BACK, CRIMSON_CAPE_BASE, CRIMSON_CAPE_EDGE, CRIMSON_CAPE_FAR, CRIMSON_CAPE_LINE, CRIMSON_CAPE_NEAR } from './crimsonCapeArt';
@@ -95,7 +96,8 @@ export function capeWind(g: DrawCtx): Wind {
 /** Breathing-aware torso point for the shoulder line. */
 function topPt(g: DrawCtx) {
   const T = g.rig.T;
-  const dy = g.rig.neck.y - T(0.6, g.bp.torsoLen).y;
+  const n = torsoNeck(g);
+  const dy = g.rig.neck.y - T(n.x, n.y).y;
   return (x: number, y: number) => add(T(x, y), v(0, dy));
 }
 
@@ -470,12 +472,22 @@ function paintedPart(g: DrawCtx, L: Layer, p: PaintedPart, part: PartId, color: 
   });
 }
 
+/** His gold (the studs) among his cape's colours: warmer than his near-black cloth. */
+const isOwnerGold = (hex: string): boolean => {
+  const [r, , b] = hexToRgb(hex);
+  return r > b + 30;
+};
+
 /** The owner's cape recoloured: his black line stays, his gold follows the clasps, the cloth the cloak. */
 const ownerCapeColor = (cloth: string, gold: string) => (ch: string, hex: string) => {
   if (ch === 'a') return hex;
-  const [r, , b] = hexToRgb(hex);
-  return r > b + 30 ? retintHex(hex, '#b8913a', gold) : retintHex(hex, '#1c1b22', cloth);
+  return isOwnerGold(hex) ? retintHex(hex, '#b8913a', gold) : retintHex(hex, '#1c1b22', cloth);
 };
+
+/** How far (px) his cloak's cloth goes on past its edge to fill an open seam (sprite/seams.ts). */
+const OWNER_SEAM = 4;
+/** How far (px) from his studs a seam is filled with his cloth. */
+const OWNER_SEAM_ROUND = 5;
 
 /** His far-shoulder plate recoloured: his black line stays, his steel takes the plate's metal. */
 const ownerPlateColor = (metal: string) => (_ch: string, hex: string) => {
@@ -596,6 +608,16 @@ const CAPES: ItemDef[] = [
         paintedPart(g, F, OWNER_CAPE_FRONT, 'torso', tint, false, g.rig.neck);
         tuckUnderChin(g, F);
         paintedPart(g, g.L('nearArm.over'), OWNER_CAPE_SHOULDER, 'upperArmN', tint, false);
+        // The mantle hangs from the neck, the shoulder piece rides the near shoulder, the plate the far one
+        // and the hair the head: as one moves from the other the seam beside a stud opens and the background
+        // shows through (the owner, 2026-10-22: "arreglar igual capa"). His cloth of the mantle and the
+        // shoulder piece, continued, fills it from behind once the figure is drawn, as Solen's cowl does
+        // (sprite/seams.ts); not at rest, the frame as he drew it.
+        const cloth = new Set<number>();
+        const studs = new Set<number>();
+        for (const p of [OWNER_CAPE_FRONT, OWNER_CAPE_SHOULDER])
+          for (const [ch, hex] of Object.entries(p.colors)) if (ch !== 'a') (isOwnerGold(hex) ? studs : cloth).add(g.m(tint(ch, hex), 'flat'));
+        addSeam(g, clothSeam(g, { depths: ['capeFront', 'nearArm.over'], cloth, studs, reach: OWNER_SEAM, round: OWNER_SEAM_ROUND }), { walls: 3, again: true });
         return;
       }
       // Knocked out, the cloak is drawn to lie along the body instead.

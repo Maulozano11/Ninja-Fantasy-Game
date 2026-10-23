@@ -42,6 +42,8 @@ import { FOUNDER_CHEST, FOUNDER_CUIRASS_KIND, FOUNDER_SASH, FOUNDER_STEEL, FOUND
 import { FOUNDER_SKIRT, FOUNDER_SKIRT_KIND, FOUNDER_SKIRT_LEATHER, FOUNDER_SKIRT_STUD, FOUNDER_SKIRT_TUNIC } from './founderSkirtArt';
 import { sealCloth } from '../seal';
 import { isFemaleBody, type BodyType } from '../types';
+import { LYRA_CORSET_ITEM } from './lyraUpper';
+import { GILDED_TABARD } from './lyraLower';
 
 
 type Kind = 'cloth' | 'leather' | 'metal';
@@ -2888,6 +2890,8 @@ export const ARMOR_ITEMS: ItemDef[] = [
     statsArmor: 'Dark Knight Plate',
     draw: (g, [steel, trim]) => drawCrimsonPlate(g, steel, trim),
   },
+  // Lyra's corset, pauldron and bracers, the owner's pixels (items/lyraUpper.ts)
+  LYRA_CORSET_ITEM,
 ];
 
 // ---------------------------------------------------------------------------
@@ -3088,4 +3092,5 @@ export const SKIRT_ITEMS: ItemDef[] = [
       });
     },
   },
+  GILDED_TABARD,
 ];

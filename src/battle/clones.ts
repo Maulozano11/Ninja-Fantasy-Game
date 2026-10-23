@@ -1,12 +1,18 @@
 // The clone jutsu's clones (the jutsu with special 'clone'; docs/GAMEPLAY_DESIGN.md, "Shadow Clone",
-// the owner's answer of 2026-10-23): copies of the ninja standing on the map beside it. A clone is a
-// unit of its own (so it is drawn, struck, moved and aimed at like one) that takes no turns: it acts
-// in its summoner's. It flanks the foes it stands next to (+2 to melee attacks against them), joins
-// its summoner's blows and taijutsu in a combo, takes the blow aimed at its summoner, lasts 3 of the
-// summoner's turns or one blow, and can cast a little of the summoner's jutsu with the summoner's
-// chakra. Pure rules: no dice here (the engine rolls them).
+// the owner's answers of 2026-10-23): copies of the ninja standing on the map beside it. A clone is a
+// unit of its own (so it is drawn, struck, moved and aimed at like one). It flanks the foes it stands
+// next to (+2 to melee attacks against them), joins its summoner's blows and taijutsu in a combo,
+// takes the blow aimed at its summoner, lasts 3 of the summoner's turns or one blow, and can cast a
+// little of the summoner's jutsu with the summoner's chakra.
+//
+// It is played one of two ways (his second answer): it FOLLOWS its summoner (it keeps to its side,
+// takes no turn of its own and casts in its summoner's turn), or it is CONTROLLED like a ninja of the
+// party: its own turn in the initiative, right ABOVE its summoner's, to walk, strike and cast. A
+// player's clones come out controlled and act FIRST: their summoner's turn waits while they play
+// theirs (in the stealth phase too, to send one at an alarm, a trap or the guards' eyes). Pure
+// rules: no dice here (the engine rolls them).
 
-import type { BattleEvent, BattleState, Pt, Unit } from './types';
+import type { BattleEvent, BattleState, CloneMode, Pt, Unit } from './types';
 import { dist, fullCoverBetween, levelAtPt, steamAt } from './map';
 import { freeSpot } from './nav';
 import { JUTSU } from './jutsu';
@@ -38,6 +44,12 @@ export const CLONE = {
   /** What a jutsu of each rank takes of those points. */
   rankCost: { D: 1, C: 2 } as Record<string, number>,
 };
+
+/** How a clone is played: following its summoner (and saved before the choice existed), or controlled. */
+export const cloneMode = (u: Unit): CloneMode => u.clone?.mode ?? 'follow';
+
+/** How a new clone comes out (the owner: "cuando aparecen que salgan para controlarlos"): a player's controlled, the AI's following. */
+export const newCloneMode = (owner: Unit): CloneMode => (owner.controller === 'player' ? 'control' : 'follow');
 
 /** A clone still standing on the map (one that took its blow or ran out is gone: down 'fled'). */
 export const standingClone = (u: Unit | undefined): u is Unit => !!u?.clone && !u.down;
@@ -123,13 +135,13 @@ export function cloneSpot(s: BattleState, owner: Unit, c: Unit, taken: Pt[] = []
 }
 
 /** A clone of `owner`: the same look, sheet and numbers; 1 HP, no chakra of its own, no turns. */
-export function makeClone(s: BattleState, owner: Unit, n: number, enhanced: boolean): Unit {
+export function makeClone(s: BattleState, owner: Unit, n: number, enhanced: boolean, mode: CloneMode = 'follow'): Unit {
   const c: Unit = structuredClone(owner);
   c.id = `${owner.id}_clone${s.tick}_${n}`;
   c.name = `${owner.name}'s clone`;
   c.nameEs = owner.articleEs ? `Clon ${owner.articleEs === 'la' ? 'de la' : 'del'} ${owner.nameEs ?? owner.name}` : `Clon de ${owner.nameEs ?? owner.name}`;
   c.articleEs = 'el';
-  c.clone = { of: owner.id, turns: CLONE.turns, enhanced };
+  c.clone = { of: owner.id, turns: CLONE.turns, enhanced, mode };
   c.clonePoints = undefined;
   c.hp = 1;
   c.maxHp = 1;
@@ -141,7 +153,8 @@ export function makeClone(s: BattleState, owner: Unit, n: number, enhanced: bool
   c.cond = {};
   c.down = undefined;
   c.deathSaves = { ok: 0, bad: 0 };
-  c.turn = { move: 0, action: true, bonus: true, reaction: false, moved: 0 };
+  // Sneaking, it moves in this stealth turn like the party (in a fight its own turn gives it a budget).
+  c.turn = { move: s.phase === 'stealth' ? c.speed : 0, action: true, bonus: true, reaction: false, moved: 0 };
   c.intent = undefined;
   c.guard = undefined;
   c.charged = undefined;
@@ -170,7 +183,8 @@ export function summonSpots(s: BattleState, owner: Unit, enhanced: boolean): Pt[
 
 /**
  * The cast: its clones stand up beside the ninja (the ones still standing from an earlier cast go
- * first), with the points of jutsu they share.
+ * first), with the points of jutsu they share, and take their places in the initiative right above
+ * it (the owner: "aparezcan arriba del jugador que los invoco en la iniativa").
  */
 export function summonClones(s: BattleState, owner: Unit, enhanced: boolean, ev: BattleEvent[]): Unit[] {
   const spots = summonSpots(s, owner, enhanced);
@@ -178,14 +192,47 @@ export function summonClones(s: BattleState, owner: Unit, enhanced: boolean, ev:
   owner.clonePoints = enhanced ? CLONE.points.enhanced : CLONE.points.plain;
   const made: Unit[] = [];
   spots.forEach((p, i) => {
-    const c = makeClone(s, owner, i, enhanced);
+    const c = makeClone(s, owner, i, enhanced, newCloneMode(owner));
     c.pos = { ...p };
     c.facing = owner.facing;
     s.units[c.id] = c;
     made.push(c);
     ev.push({ t: 'clone', unit: c.id, on: true, by: owner.id, at: { ...p } });
   });
+  purgeOrder(s);
+  placeInOrder(s, owner, made);
   return made;
+}
+
+/**
+ * Clones take their places in the initiative order right above (before) their summoner, sharing its
+ * roll; whose turn it is stays the same. Nothing before the fighting (no order yet).
+ */
+export function placeInOrder(s: BattleState, owner: Unit, clones: Unit[]): void {
+  const at = s.order.indexOf(owner.id);
+  if (at < 0 || !clones.length) return;
+  const ids = clones.map((c) => c.id).filter((id) => !s.order.includes(id));
+  s.order.splice(at, 0, ...ids);
+  if (at <= s.turn) s.turn += ids.length;
+  for (const id of ids) s.initiative[id] = s.initiative[owner.id] ?? 0;
+}
+
+/**
+ * The clones gone (struck, run out, replaced) leave the initiative order. `s.turn` keeps pointing at
+ * whose turn it is; if that one left, at the entry after it. True if whose turn it was left.
+ */
+export function purgeOrder(s: BattleState): boolean {
+  const gone = (id: string) => {
+    const u = s.units[id];
+    return !!u?.clone && !!u.down;
+  };
+  if (!s.order.some(gone)) return false;
+  const was = s.order[s.turn];
+  const before = s.order.slice(0, s.turn).filter((id) => !gone(id)).length;
+  s.order = s.order.filter((id) => !gone(id));
+  for (const id of Object.keys(s.initiative)) if (gone(id)) delete s.initiative[id];
+  s.turn = before;
+  return was !== undefined && gone(was);
 }
 
 /** Why a clone goes. */
@@ -211,9 +258,9 @@ export function popClonesOf(s: BattleState, id: string, why: CloneEnd, ev: Battl
   for (const c of clonesOf(s, id)) popClone(s, c, why, ev);
 }
 
-/** The summoner's turn begins: its clones may cast again (an action and a bonus action each). */
+/** The summoner's turn begins: its following clones may cast again (an action and a bonus action each; a controlled one has its own turn). */
 export function refreshClones(s: BattleState, owner: Unit): void {
-  for (const c of clonesOf(s, owner.id)) c.turn = { move: 0, action: true, bonus: true, reaction: false, moved: 0 };
+  for (const c of clonesOf(s, owner.id)) if (cloneMode(c) === 'follow') c.turn = { move: 0, action: true, bonus: true, reaction: false, moved: 0 };
 }
 
 /** The summoner's turn ends: each clone has one turn fewer, and goes at 0. */
@@ -225,13 +272,15 @@ export function tickClones(s: BattleState, owner: Unit, ev: BattleEvent[]): void
 }
 
 /**
- * The summoner moved (a walk, a flash-in, a warp, Kawarimi, a push): its clones follow, each to the
- * best cell beside it (cloneSpot), at a run. One already where it should be stays.
+ * The summoner moved (a walk, a flash-in, a warp, Kawarimi, a push): its following clones follow,
+ * each to the best cell beside it (cloneSpot), at a run. One already where it should be stays; a
+ * controlled one goes its own way.
  */
 export function followClones(s: BattleState, owner: Unit, ev: BattleEvent[]): void {
   if (owner.down) return;
   const placed: Pt[] = [];
   for (const c of clonesOf(s, owner.id)) {
+    if (cloneMode(c) !== 'follow') continue;
     const p = cloneSpot(s, owner, c, placed);
     if (!p) continue;
     placed.push(p);
@@ -242,6 +291,7 @@ export function followClones(s: BattleState, owner: Unit, ev: BattleEvent[]): vo
   }
   // They face the way their summoner does once beside it.
   for (const c of clonesOf(s, owner.id)) {
+    if (cloneMode(c) !== 'follow') continue;
     const f = engaged(s, owner)[0];
     if (f && Math.abs(f.pos.x - c.pos.x) > 0.05) c.facing = f.pos.x > c.pos.x ? 1 : -1;
   }
@@ -260,12 +310,24 @@ export function cloneFlank(s: BattleState, a: Unit, t: Unit): number {
 export const comboClones = (s: BattleState, a: Unit, t: Unit): Unit[] => (a.clone ? [] : clonesOf(s, a.id).filter((c) => besideFoe(s, c.pos, t)));
 
 /**
- * The clone that takes a blow aimed at its summoner: the nearest one (the blow struck a clone; the
- * real ninja stood where that clone was).
+ * The clone that takes a blow aimed at its summoner: the nearest following one (the blow struck a
+ * clone; the real ninja stood where that clone was). Only a clone set to follow does it (the owner:
+ * "solo cuando estan en seguir cuando un enemigo ataca al jugador invocador pasa eso de que el clon
+ * absorbe el ataque y el invocador cambia de lugar con el clon"); a controlled one never does, even
+ * standing beside him (it can still be struck itself, and goes at one blow).
  */
 export function cloneTakesBlow(s: BattleState, t: Unit): Unit | undefined {
-  return clonesOf(s, t.id).sort((a, b) => dist(a.pos, t.pos) - dist(b.pos, t.pos))[0];
+  return clonesOf(s, t.id)
+    .filter((c) => cloneMode(c) === 'follow')
+    .sort((a, b) => dist(a.pos, t.pos) - dist(b.pos, t.pos))[0];
 }
+
+/**
+ * A clone the enemy takes for a ninja: a controlled one, walking and fighting on its own (they can't
+ * tell it from the real one, so they see, chase and strike it like any foe; the builder's reading of
+ * "como señuelo"). A following one stays a shadow at its summoner's side (it only fools them: fooledBy).
+ */
+export const decoyClone = (u: Unit): boolean => standingClone(u) && cloneMode(u) === 'control';
 
 /** One die of a jutsu's dice ("2d8+3" → "1d8"): a clone's blow in a taijutsu combo (proposal). */
 export const oneDieOf = (dice: string | undefined): string => {

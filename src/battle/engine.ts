@@ -38,7 +38,7 @@ import type { JutsuSpec } from './jutsu';
 import { KUNAI, enemyNameOf, enemyUnit, handsFree, unitFrom, wielded } from './units';
 import type { EnemyKind } from './units';
 import { hydraUnits } from './hydra';
-import { checkEnd, current, endTurn, startCombat } from './turns';
+import { beginTurn, checkEnd, current, endTurn, startCombat } from './turns';
 import { afterStealthAttack, alarm, canTakedown, dragBody, guardsTurn, openFight, scareAnimalsNear, stealthMove, STONE_RANGE, throwStone } from './stealth';
 import { conduct, electrify, groundEffects, plantTag, saveHit, springTrap, TAG, throwTag, trapAt, unitsInArea } from './hazards';
 import { blowSteam, pathArea, soak } from './ground';
@@ -63,7 +63,24 @@ import {
 } from './clans';
 import { reachTo, replanAgainst } from './intent';
 import { chargedFoe, chargeHolds, crackUnder, endCharge } from './charged';
-import { CLONE, besideFoe, cloneJutsuBlocker, cloneRankCost, cloneTakesBlow, clonesOf, comboClones, followClones, oneDieOf, popClone, popClonesOf, summonClones, summonSpots, summonerOf } from './clones';
+import {
+  CLONE,
+  besideFoe,
+  cloneJutsuBlocker,
+  cloneMode,
+  cloneRankCost,
+  cloneTakesBlow,
+  clonesOf,
+  comboClones,
+  followClones,
+  oneDieOf,
+  popClone,
+  popClonesOf,
+  summonClones,
+  summonSpots,
+  summonerOf,
+} from './clones';
+import type { CloneMode } from './types';
 
 // --- setup ---------------------------------------------------------------------------------
 
@@ -232,13 +249,19 @@ function dispatch(s: BattleState, a: Action, ev: BattleEvent[]): string | null {
   if (s.phase === 'ended') return 'battleOver';
   if (a.type === 'setController') {
     const u = s.units[a.unit];
-    // A commanded enemy or a beast that joined fights for the party, but nobody takes its reins.
-    if (!u || homeTeam(u) !== 'party' || u.joined) return 'noUnit';
+    // A commanded enemy or a beast that joined fights for the party, but nobody takes its reins; a
+    // clone goes with its summoner.
+    if (!u || homeTeam(u) !== 'party' || u.joined || u.clone) return 'noUnit';
     u.controller = a.controller;
     if (a.order) u.aiOrder = a.order;
+    for (const c of clonesOf(s, u.id)) c.controller = a.controller;
     return null;
   }
   if (s.pending) return a.type === 'react' ? react(s, a.unit, a.take, ev) : 'waitingReaction';
+  if (a.type === 'cloneMode') {
+    s.tick++;
+    return setCloneMode(s, a.unit, a.mode, ev);
+  }
   if (a.type === 'react') return 'nothingToReact';
   if (a.type === 'endStealthTurn') {
     if (s.phase !== 'stealth') return 'notStealth';
@@ -249,10 +272,8 @@ function dispatch(s: BattleState, a: Action, ev: BattleEvent[]): string | null {
   const u = s.units[a.unit];
   if (!u) return 'noUnit';
   if (u.clone) {
-    // A clone acts in its summoner's turn, and only casts (it follows its summoner on its own).
-    if (u.down) return 'cantAct';
-    if (s.phase !== 'combat' || current(s)?.id !== u.clone.of) return 'notYourTurn';
-    if (a.type !== 'jutsu') return 'cloneJutsuOnly';
+    const why = cloneMay(s, u, a);
+    if (why) return why;
   } else if (s.phase === 'combat') {
     if (current(s)?.id !== u.id) return 'notYourTurn';
   } else {
@@ -303,6 +324,68 @@ function dispatch(s: BattleState, a: Action, ev: BattleEvent[]): string | null {
       else stealthDone(s, u, ev);
       return null;
   }
+}
+
+/**
+ * What a clone may do, and when (clones.ts). A following one only casts, in its summoner's turn (any
+ * time while sneaking), and walks only at its side. A controlled one plays its own turn like a
+ * ninja (any time while sneaking): it walks, dashes, strikes in melee, casts, dodges, hides and
+ * crouches (and throws a stone, sneaking); no kunai, items, focus or shoves (the builder's proposal:
+ * a copy carries nothing of its own and has no chakra).
+ */
+function cloneMay(s: BattleState, u: Unit, a: Action): string | null {
+  if (u.down) return 'cantAct';
+  const stealth = s.phase === 'stealth';
+  if (stealth && u.team !== 'party') return 'cantAct';
+  if (stealth && s.stealthDone.includes(u.id)) return 'alreadyDone';
+  if (cloneMode(u) === 'follow') {
+    if (!stealth && current(s)?.id !== u.clone!.of) return 'notYourTurn';
+    return a.type === 'jutsu' ? null : 'cloneJutsuOnly';
+  }
+  if (!stealth && current(s)?.id !== u.id) return 'notYourTurn';
+  if (a.type === 'attack' && a.ranged) return 'cloneMeleeOnly';
+  const can = ['move', 'attack', 'jutsu', 'dash', 'disengage', 'dodge', 'hide', 'crouch', 'endTurn', ...(stealth ? ['stone'] : [])];
+  return can.includes(a.type) ? null : 'cloneCantDo';
+}
+
+/**
+ * A clone is switched to follow its summoner or to be controlled (the owner: "si les pones seguir
+ * sigan a tu jugador o que los puedas controlar como si fueran tu personaje"). Following, it runs to
+ * its summoner's side at once (and a turn of its own it was playing ends). Controlled in its
+ * summoner's turn, it plays its turn right away, before the rest of his (once a round).
+ */
+function setCloneMode(s: BattleState, id: string, mode: CloneMode, ev: BattleEvent[]): string | null {
+  const c = s.units[id];
+  if (!c?.clone) return 'noUnit';
+  const owner = summonerOf(s, c);
+  if (c.down || !owner || owner.down) return 'cantAct';
+  if (s.phase === 'combat') {
+    const cur = current(s)?.id;
+    if (cur !== c.id && cur !== owner.id) return 'notYourTurn';
+  } else if (c.team !== 'party') return 'cantAct';
+  if (cloneMode(c) === mode) return 'sameMode';
+  c.clone.mode = mode;
+  ev.push({ t: 'note', key: mode === 'follow' ? 'cloneFollows' : 'cloneControlled', params: { name: c.name, owner: owner.name } });
+  if (mode === 'follow') {
+    const own = s.phase === 'combat' && current(s)?.id === c.id;
+    followClones(s, owner, ev);
+    if (own) endTurn(s, ev);
+  } else if (s.phase === 'combat' && current(s)?.id === owner.id) clonesFirst(s, owner, [c], ev);
+  return null;
+}
+
+/**
+ * Controlled clones play their turns before the rest of their summoner's (the owner: "que salgan
+ * para controlarlos y moverlos primero que el resto del turno del jugador"): his turn waits (held)
+ * and the turn goes to the first of them (they stand right above him in the order); when they are
+ * done, his picks up where it was. One that already had its turn this round waits for the next.
+ */
+function clonesFirst(s: BattleState, owner: Unit, clones: Unit[], ev: BattleEvent[]): void {
+  const at = clones.filter((c) => cloneMode(c) === 'control' && c.clone!.acted !== s.round && !c.down).map((c) => s.order.indexOf(c.id)).filter((i) => i >= 0 && i < s.turn);
+  if (!at.length) return;
+  owner.turn.held = true;
+  s.turn = Math.min(...at);
+  beginTurn(s, ev);
 }
 
 /** A ninja is done for this stealth turn; when everyone is, the guards move. */
@@ -531,10 +614,11 @@ function weaponAttack(
     const str = abilityMod(a.stats.str);
     const dex = abilityMod(a.stats.dex);
     const mod = ranged ? dex : w.finesse ? Math.max(str, dex) : str;
-    let amount = rollDiceExpr(s, w.dice, roll.crit) + mod + (ranged ? 0 : effectMods(a.effects).meleeDamage);
+    // A clone's own blow is the owner's 1d6 ("si es ataque cuerpo a cuerpo 1d6"), like its blow in a combo.
+    let amount = a.clone ? rollDiceExpr(s, CLONE.comboDice, roll.crit) : rollDiceExpr(s, w.dice, roll.crit) + mod + (ranged ? 0 : effectMods(a.effects).meleeDamage);
     if (surprise) amount += rollDiceExpr(s, '1d6', roll.crit);
-    if (!ranged && hasEffect(a.effects, 'gates_open')) amount += rollDiceExpr(s, '1d8', roll.crit);
-    hits.push({ unit: t.id, amount: Math.max(1, amount), type: w.type, source: a.id, what: w.name, crit: roll.crit, knockout: o.knockout && !ranged, melee: !ranged, aimed: true, unseen: surprise, unblockable: edge });
+    if (!ranged && !a.clone && hasEffect(a.effects, 'gates_open')) amount += rollDiceExpr(s, '1d8', roll.crit);
+    hits.push({ unit: t.id, amount: Math.max(1, amount), type: a.clone ? 'Bludgeoning' : w.type, source: a.id, what: w.name, crit: roll.crit, knockout: o.knockout && !ranged, melee: !ranged, aimed: true, unseen: surprise, unblockable: edge });
     // A blow that lands on a foe a clone of its striker stands next to: the clone joins it (a combo).
     if (!ranged) for (const c of comboClones(s, a, t)) hits.push(comboHit(s, c, t, CLONE.comboDice, o.knockout));
   }
@@ -895,6 +979,9 @@ function doJutsu(s: BattleState, u: Unit, id: string, atIn: Pt, targetId: string
   const spec = enh ? enhanced(base) : base;
   const { cost, woven } = owner ? { cost: base.cost, woven: false } : jutsuCostParts(u, base, enh);
   if (payer.chakra < cost) return 'noChakra';
+  // A clone's own taijutsu strikes with one die of the jutsu (the owner: "si el clon usa una
+  // habilidad... se usa el dado"), as its blow in a combo does.
+  const struck = owner && base.nature === 'Taijutsu' && spec.dice ? { ...spec, dice: oneDieOf(spec.dice) } : spec;
   if (base.cast === 'bonus' ? !u.turn.bonus : !u.turn.action) return base.cast === 'bonus' ? 'noBonus' : 'noAction';
   // One charged hand at a time.
   if (base.handCharge && u.charged) return 'alreadyCharged';
@@ -971,11 +1058,9 @@ function doJutsu(s: BattleState, u: Unit, id: string, atIn: Pt, targetId: string
     const why = structureBlocker(s, w);
     if (why) return why;
   }
-  // The clone jutsu: once the fighting starts, with room beside the ninja for a clone.
-  if (spec.special === 'clone') {
-    if (s.phase !== 'combat') return 'combatOnly';
-    if (!summonSpots(s, u, enh).length) return 'noRoom';
-  }
+  // The clone jutsu: with room beside the ninja for a clone (sneaking too: the owner wants them sent
+  // at an alarm, a trap or the guards).
+  if (spec.special === 'clone' && !summonSpots(s, u, enh).length) return 'noRoom';
   if (stow) setArmed(u, false, 'free', ev);
   // A sword art draws the blade for free (handsBlocker made sure the free draw is left).
   else if (base.weapon === 'draw' && u.weapon.held && !u.armed) setArmed(u, true, 'free', ev);
@@ -1016,6 +1101,7 @@ function doJutsu(s: BattleState, u: Unit, id: string, atIn: Pt, targetId: string
   // The log says how many dice: one, two for a rank S (fanDice).
   if (fan) ev.push({ t: 'note', key: fanDice(spec) > 1 ? 'fanned2' : 'fanned', params: { name: u.name } });
   const hits: Hit[] = [];
+  let summoned: Unit[] = [];
   switch (spec.special) {
     case 'heal':
       heal(target!, rollDiceExpr(s, spec.dice ?? '2d8+3'), id, ev);
@@ -1029,7 +1115,7 @@ function doJutsu(s: BattleState, u: Unit, id: string, atIn: Pt, targetId: string
       break;
     }
     case 'clone':
-      summonClones(s, u, enh, ev);
+      summoned = summonClones(s, u, enh, ev);
       break;
     case 'mantle':
       // The Breeze Mantle: a dodge cast as a bonus action (attacks against the ninja have
@@ -1068,7 +1154,7 @@ function doJutsu(s: BattleState, u: Unit, id: string, atIn: Pt, targetId: string
       raiseGale(s, u, spec, at, ev);
       break;
     default:
-      hits.push(...jutsuHits(s, u, fan ? fanned(spec) : spec, target, at, ev));
+      hits.push(...jutsuHits(s, u, fan ? fanned(struck) : struck, target, at, ev));
   }
   // A taijutsu blow of the summoner's: its clones join in (the owner: "cuando usas una habilidad de taijutsu").
   if (!u.clone && base.nature === 'Taijutsu' && spec.melee) hits.push(...taijutsuCombo(s, u, spec, hits, ev));
@@ -1076,6 +1162,8 @@ function doJutsu(s: BattleState, u: Unit, id: string, atIn: Pt, targetId: string
   applyHits(s, hits, spec.loud ? loud(s, u) : silentAttack(s, u, spec, target, ev), ev);
   // A flash-in, a warp or a swap that lands a charged hand within reach of a foe sets it off.
   strikeCharged(s, u, ev);
+  // Controlled clones just summoned act first, before the rest of their summoner's turn.
+  if (summoned.length && s.phase === 'combat' && !s.pending && current(s)?.id === u.id) clonesFirst(s, u, summoned, ev);
   return null;
 }
 

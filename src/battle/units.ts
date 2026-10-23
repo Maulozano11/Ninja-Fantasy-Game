@@ -394,11 +394,26 @@ export function enemyCharacter(kind: EnemyKind, n: number, o: EnemyOptions = {})
   } as ShinobiCharacter;
 }
 
+/** The clone jutsu (the one whose special is 'clone'). */
+export const CLONE_JUTSU = 'shadow_clone';
+
+/**
+ * Which enemies know the clone jutsu (the owner, 2026-10-23: "los enemigos si lo pueden aprender pero
+ * capitanes o los enemigos mas debiles pero solo en dificultad Elegido (la mas dificil)"): every
+ * captain, and the weakest, the minions, only on the hardest difficulty. The builder's reading: his
+ * "Elegido" is the game's hardest difficulty, Legend (Leyenda); sub-bosses and bosses, which he
+ * didn't name, don't (yet).
+ */
+export function enemyKnowsClone(rank: Rank | undefined, difficulty: Difficulty): boolean {
+  return rank === 'captain' || (rank === 'minion' && difficulty === 'legend');
+}
+
 /** An enemy from its template: the template's clan and rank unless the encounter names others. */
 export function enemyUnit(kind: EnemyKind, n: number, pos: Pt, difficulty: Difficulty, o: EnemyOptions = {}): Unit {
   const t = TEMPLATES[kind];
   const u = unitFrom(enemyCharacter(kind, n, o), { team: 'enemy', pos, power: difficulty === 'story' ? 0.75 : 1, fresh: true });
   u.rank = o.rank ?? t.rank;
+  if (enemyKnowsClone(u.rank, difficulty) && JUTSU[CLONE_JUTSU] && !u.jutsus.includes(CLONE_JUTSU)) u.jutsus.push(CLONE_JUTSU);
   const nm = enemyNameOf(kind, o.clan);
   if (nm.nameEs !== nm.name) u.nameEs = numbered(nm.nameEs, o.no);
   if (nm.articleEs) u.articleEs = nm.articleEs;

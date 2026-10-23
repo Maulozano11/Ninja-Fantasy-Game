@@ -55,6 +55,8 @@ export function aiAction(s: BattleState): Action | null {
   if (!aiToAct(s)) return null;
   const u = current(s)!;
   const end: Action = { type: 'endTurn', unit: u.id };
+  // A controlled clone whose summoner went over to the AI: it goes back to following him (which ends its turn).
+  if (u.clone) return { type: 'cloneMode', unit: u.id, mode: 'follow' };
   if (u.kind === 'hydra_body') return end;
   if (u.kind === 'hydra_head') return headAction(s, u) ?? end;
   if (!u.turn.action) {

@@ -18,7 +18,7 @@ import { KUNAI, KUNAI_LONG, wielded } from './units';
 import { COMMAND, FORESIGHT_RANGE, SUBMISSION, SWAP, WARP, commandRefused, ownNodes, submissionRefused, swapBlocker, warpBlocker, warpLanding } from './clans';
 import { ownStructures, structureAt, structureBlocker } from './structures';
 import { chargedReach } from './charged';
-import { CLONE, clonesOf } from './clones';
+import { CLONE, clonesOf, decoyClone } from './clones';
 import { rngFor } from '../rules/rng';
 
 const avg = (dice?: string): number => {
@@ -32,7 +32,8 @@ export const standingUnit = (u: Unit): boolean => !u.down && !u.head?.severed;
  * Foes a unit knows about: standing, not hidden from it, and no steam between them: not lost in it,
  * nor outside it while the unit stands in it (unless right beside it, steamHides). An enemy in the
  * steam still remembers the plan it made (its intent) and goes on with it, or walks out (ai.ts).
- * Clones aren't among them: a plan aimed at their summoner may go astray to one (fooledBy).
+ * A following clone isn't among them (a plan aimed at its summoner may go astray to it: fooledBy);
+ * a controlled one, off on its own, is: they take it for a ninja (decoyClone).
  */
 export function visibleFoes(s: BattleState, u: Unit): Unit[] {
   return Object.values(s.units).filter(
@@ -40,7 +41,7 @@ export function visibleFoes(s: BattleState, u: Unit): Unit[] {
       f.team !== u.team &&
       standingUnit(f) &&
       f.kind !== 'hydra_body' &&
-      !f.clone &&
+      (!f.clone || decoyClone(f)) &&
       (f.cond.hidden === undefined || passivePerception(u) >= f.cond.hidden) &&
       !steamHides(s, u.pos, f.pos),
   );

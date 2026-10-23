@@ -14,6 +14,7 @@ import { portraitOf } from './unitArt';
 import type { ActionButton, ButtonTip } from './hud';
 import { UnitCard } from './hud';
 import { iconUrl, kitText, Piece, slotFrameUrl } from './kit';
+import { cloneColor } from './renderer';
 
 const CX = 800;
 const BOTTOM = 900;
@@ -24,6 +25,21 @@ function Face({ u, x, y, w, h, round }: { u: Unit; x: number; y: number; w: numb
     <div style={{ position: 'absolute', left: x, top: y, width: w, height: h, borderRadius: round ? '50%' : 2, overflow: 'hidden', background: '#16120c' }}>
       {src && <img src={src} alt="" draggable={false} style={{ width: '100%', height: '100%', objectFit: 'cover', imageRendering: 'pixelated' }} />}
     </div>
+  );
+}
+
+/**
+ * A clone's mark on its portrait in the turn row (it has its summoner's face): see-through, a ring
+ * and a tag in its chakra colour, as it stands on the map.
+ */
+function CloneMark({ u, x, y, w, lang }: { u: Unit; x: number; y: number; w: number; lang: Lang }) {
+  if (!u.clone || !u.look) return null;
+  const c = cloneColor(u.look);
+  return (
+    <>
+      <div style={{ position: 'absolute', left: x, top: y, width: w, height: w, borderRadius: '50%', boxShadow: `inset 0 0 0 2px ${c}`, background: `${c}40`, pointerEvents: 'none' }} />
+      <div style={{ position: 'absolute', left: x - 3, top: y + w - 7, width: w + 6, textAlign: 'center', ...kitText, fontSize: 7, lineHeight: '9px', color: '#16120c', background: c, borderRadius: 2, pointerEvents: 'none' }}>{T('cloneTag', undefined, lang)}</div>
+    </>
   );
 }
 
@@ -107,7 +123,10 @@ export function TopPlaque({
             if (i === 0) {
               return (
                 <button key={id} type="button" onClick={() => onPick(id)} title={unitName(u, lang)} style={{ position: 'absolute', left: x0, top: 82, width: 44, height: 44 }}>
-                  <Face u={u} x={6} y={6} w={32} h={32} />
+                  <div style={{ opacity: u.clone ? 0.75 : 1 }}>
+                    <Face u={u} x={6} y={6} w={32} h={32} />
+                  </div>
+                  <CloneMark u={u} x={6} y={6} w={32} lang={lang} />
                   <Piece p="init_active" x={0} y={0} />
                 </button>
               );
@@ -115,8 +134,11 @@ export function TopPlaque({
             const enemy = homeTeam(u) !== 'party';
             return (
               <button key={id} type="button" onClick={() => onPick(id)} title={unitName(u, lang)} style={{ position: 'absolute', left: x0 + 46 + (i - 1) * 40, top: 82, width: 36, height: 40, opacity: u.down ? 0.45 : 1 }}>
-                <Face u={u} x={4} y={4} w={28} h={28} round />
+                <div style={{ opacity: u.clone ? 0.75 : 1 }}>
+                  <Face u={u} x={4} y={4} w={28} h={28} round />
+                </div>
                 <Piece p={enemy ? 'init_enemy' : 'init_ally'} x={0} y={0} style={u.commanded ? { filter: 'hue-rotate(60deg)' } : undefined} />
+                <CloneMark u={u} x={4} y={4} w={28} lang={lang} />
               </button>
             );
           })}

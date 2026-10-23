@@ -1970,8 +1970,9 @@ describe('enemy clans are mixed (docs/CLANS_DESIGN.md, D6)', () => {
     const runs: [EncounterId, number, typeof four][] = [];
     for (const id of ['river_patrol', 'cedar_rogues', 'night_raid'] as EncounterId[]) for (const seed of [1, 2, 3, 4]) runs.push([id, seed, four]);
     // The mission's own party of three gives the enemies longer fights (more of them since Kagero
-    // opens with his Chidori, which ends some raids before a Kōton needs its wall).
-    for (let seed = 1; seed <= 16; seed++) runs.push(['night_raid', seed, four.slice(0, 3)]);
+    // opens with his Chidori, which ends some raids before a Kōton needs its wall, and since his
+    // clones join his blows: a captain knows the clone jutsu, battle/units.ts).
+    for (let seed = 1; seed <= 24; seed++) runs.push(['night_raid', seed, four.slice(0, 3)]);
     const seen = new Set<string>();
     for (const [id, seed, party] of runs) {
       let s = battleOf(id, seed, party);

@@ -11,10 +11,14 @@ import { dampAt } from './map';
 import { steamBurns, tickGround } from './ground';
 import { planEnemy, replanAgainst } from './intent';
 import { chargeHolds, mendCracks, tickCharge } from './charged';
-import { refreshClones, tickClones } from './clones';
+import { cloneMode, placeInOrder, purgeOrder, refreshClones, standingClone, tickClones } from './clones';
 
-/** Whether a unit takes turns (heads of the hydra act on their own; fallen ninjas roll death saves; clones act in their summoner's). */
-const takesTurns = (u: Unit): boolean => u.down !== 'dead' && u.down !== 'fled' && u.down !== 'ko' && u.down !== 'stable' && !u.clone;
+/**
+ * Whether a unit takes turns (heads of the hydra act on their own; fallen ninjas roll death saves). A
+ * clone takes one only when controlled, once a round (a following one acts in its summoner's turn).
+ */
+const takesTurns = (u: Unit, round?: number): boolean =>
+  u.down !== 'dead' && u.down !== 'fled' && u.down !== 'ko' && u.down !== 'stable' && (!u.clone || (cloneMode(u) === 'control' && (round === undefined || u.clone.acted !== round)));
 
 export const current = (s: BattleState): Unit | undefined => s.units[s.order[s.turn]];
 
@@ -23,7 +27,7 @@ export function startCombat(s: BattleState, ev: BattleEvent[], by: string | unde
   s.phase = 'combat';
   s.round = 1;
   const rolls: Record<string, number> = {};
-  const units = Object.values(s.units).filter((u) => takesTurns(u));
+  const units = Object.values(s.units).filter((u) => takesTurns(u) && !u.clone);
   for (const u of units) {
     if (u.kind === 'hydra_head') continue;
     const r = check(s, 'initiative', abilityMod(u.stats.dex) + (u.effects.some((e) => e.id === 'watchful') ? 2 : 0), 0);
@@ -33,6 +37,8 @@ export function startCombat(s: BattleState, ev: BattleEvent[], by: string | unde
   for (const u of units) if (u.kind === 'hydra_head' && u.head) rolls[u.id] = (rolls[u.head.body] ?? 0) - 0.001 * (u.head.index + 1);
   s.initiative = rolls;
   s.order = Object.keys(rolls).sort((a, b) => rolls[b] - rolls[a]);
+  // Clones summoned while sneaking stand right above their summoner (battle/clones.ts).
+  for (const id of [...s.order]) placeInOrder(s, s.units[id], Object.values(s.units).filter((c) => standingClone(c) && c.clone!.of === id));
   for (const id of surprised) {
     const u = s.units[id];
     // Watchful ninjas are never caught unaware.
@@ -57,11 +63,23 @@ export function beginTurn(s: BattleState, ev: BattleEvent[]): void {
   for (let guard = 0; guard < s.order.length * 2 + 2; guard++) {
     if (checkEnd(s, ev)) return;
     const u = current(s);
-    if (!u || !takesTurns(u) || (u.head && u.head.severed && !headRegrows(s, u, ev))) {
+    // A turn that waited while its new clones played theirs picks up where it was (clones.ts).
+    if (u?.turn.held) {
+      u.turn.held = false;
+      if (takesTurns(u) && !u.down) {
+        ev.push({ t: 'turn', unit: u.id, round: s.round });
+        return;
+      }
+      advance(s, ev);
+      continue;
+    }
+    if (!u || !takesTurns(u, s.round) || (u.head && u.head.severed && !headRegrows(s, u, ev))) {
       advance(s, ev);
       continue;
     }
     u.turn = { move: u.speed, action: true, bonus: true, reaction: true, moved: 0 };
+    // A controlled clone's one turn of this round.
+    if (u.clone) u.clone.acted = s.round;
     // Its clones may cast again this turn.
     refreshClones(s, u);
     u.cond.dodging = false;
@@ -184,7 +202,8 @@ function spendCommandTurn(s: BattleState, u: Unit, ev: BattleEvent[]): boolean {
 }
 
 function advance(s: BattleState, ev: BattleEvent[]): void {
-  s.turn += 1;
+  // Clones gone leave the order first (if it was one of theirs, the next entry is already up).
+  if (!purgeOrder(s)) s.turn += 1;
   if (s.turn >= s.order.length) {
     s.turn = 0;
     s.round += 1;

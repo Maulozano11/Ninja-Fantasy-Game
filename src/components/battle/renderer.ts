@@ -952,7 +952,7 @@ const CLONE_ALPHA = 0.8;
 const CLONE_WASH = 0.38;
 
 /** The colour a clone is washed in: its ninja's chakra colour (its own tint, or its burst's), light enough to show. */
-function cloneColor(look: SpriteAppearance): string {
+export function cloneColor(look: SpriteAppearance): string {
   const hex = look.chakra.tint ?? CHAKRA_COLORS.find((c) => c.id === look.chakra.color)?.hex ?? '#7dd3fc';
   const n = parseInt(hex.slice(1), 16);
   const luma = (0.299 * ((n >> 16) & 255) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) / 255;
@@ -2108,7 +2108,8 @@ function drawMarks(ctx: CanvasRenderingContext2D, sc: Scene): void {
       for (let i = 0; i < n; i++) {
         ctx.fillStyle = 'rgba(8, 10, 18, 0.8)';
         ctx.fillRect(x0 + i * (pip + gap) - 1, s.y - 1, pip + 2, pip + 2);
-        ctx.fillStyle = '#7dd3fc';
+        // Amber for a clone the player controls, sky for one that follows its ninja.
+        ctx.fillStyle = u.clone.mode === 'control' ? '#fcd34d' : '#7dd3fc';
         ctx.fillRect(x0 + i * (pip + gap), s.y, pip, pip);
       }
       continue;

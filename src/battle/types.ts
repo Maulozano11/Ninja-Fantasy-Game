@@ -109,6 +109,11 @@ export interface TurnBudget {
   dashed?: boolean;
   /** The free object interaction of the turn (drawing or stowing the weapon) was used. */
   interacted?: boolean;
+  /**
+   * Its turn waits, half played, while the clones it just summoned (or just took control of) act
+   * first (battle/clones.ts): the turn picks up where it was, with this budget, after theirs.
+   */
+  held?: boolean;
 }
 
 /** A guard's state in the stealth phase. */
@@ -239,7 +244,18 @@ export interface CloneOf {
   of: string;
   turns: number;
   enhanced: boolean;
+  /**
+   * 'follow': it keeps to its summoner's side and takes no turn of its own (it casts in its
+   * summoner's turn); 'control': its own turn in the initiative, right before its summoner's, played
+   * like a ninja's. A clone saved before the choice existed follows.
+   */
+  mode?: CloneMode;
+  /** The round of its last turn of its own (one a round, however often it is switched). */
+  acted?: number;
 }
+
+/** How a clone is played (the owner's answer of 2026-10-23: "si les pones seguir... o que los puedas controlar"). */
+export type CloneMode = 'follow' | 'control';
 
 /** Why a charged hand ended: its blow went off, it ran out of rounds, its ninja fell, its chakra was sealed, or it was let go (hand seals, the weapon drawn). */
 export type ChargeEnd = 'struck' | 'expired' | 'down' | 'sealed' | 'released';
@@ -496,6 +512,8 @@ export type Action =
   | { type: 'stabilize'; unit: string; target: string }
   | { type: 'flee'; unit: string }
   | { type: 'endTurn'; unit: string }
+  /** A clone follows its summoner, or is played like a ninja (battle/clones.ts). */
+  | { type: 'cloneMode'; unit: string; mode: CloneMode }
   | { type: 'react'; unit: string; take: boolean }
   // stealth phase
   | { type: 'stone'; unit: string; at: Pt }

@@ -21,7 +21,7 @@ import { auraEntered, commandBlocker, edgeFoe, nodeInSight, nodeUnder, ownNodeAt
 import { KUNAI, KUNAI_LONG, wielded } from '../../battle/units';
 import { STONE_RANGE } from '../../battle/stealth';
 import { TAG } from '../../battle/hazards';
-import { cloneJutsuBlocker, clonesOf, summonSpots, summonerOf } from '../../battle/clones';
+import { cloneJutsuBlocker, cloneMode, clonesOf, summonSpots, summonerOf } from '../../battle/clones';
 import { battleResult } from '../../battle/result';
 import type { PartyBattleResult } from '../../battle/result';
 import { useLang } from '../../i18n';
@@ -317,9 +317,10 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
     if (busy || state.phase === 'ended') return undefined;
     if (state.phase === 'combat') {
       if (!playerTurn) return undefined;
-      // One of its clones picked (clicked on, or the Clones button): it casts what it may.
+      // One of its following clones picked (clicked on, or the Clones button): it casts what it may.
+      // A controlled clone plays its own turn (it is then the one whose turn it is).
       const me = current(state);
-      const clone = me && selected ? clonesOf(state, me.id).find((c) => c.id === selected) : undefined;
+      const clone = me && selected ? clonesOf(state, me.id).find((c) => c.id === selected && cloneMode(c) === 'follow') : undefined;
       return clone ?? me;
     }
     return stealthParty.find((u) => u.id === selected) ?? stealthParty[0];
@@ -892,7 +893,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
       setSelected(u.id);
       return;
     }
-    if (mode.k === 'move' && actor.clone) {
+    if (mode.k === 'move' && actor.clone && cloneMode(actor) === 'follow') {
       setSelected(actorOwner?.id);
       return;
     }
@@ -981,7 +982,11 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
     const can = { action: u.turn.action, bonus: u.turn.bonus };
     const noAction = can.action ? null : t('r_noAction');
     const owner = actorOwner ?? u;
+    // A clone played by hand (its own turn, or any time sneaking): the HUD of a ninja, cut down to
+    // what a clone may do (engine.ts, cloneMay).
+    const own = !!u.clone && cloneMode(u) === 'control' && (stealth || current(state)?.id === u.id);
     if (u.clone) {
+      if (own) add({ id: 'attack', label: t('act_attack'), icon: ACTION_ICON.attack, disabled: !can.action, why: noAction, active: mode.k === 'attack' && !mode.ranged, help: t('help_cloneAttack') });
       // A clone picked: the jutsu it may cast with its summoner's chakra, back to the ninja, end the turn.
       for (const id of u.jutsus) {
         const sp = JUTSU[id];
@@ -1003,8 +1008,19 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
           help: `${t('cloneCasts')} · ${jutsuName(id, lang)} · ${sp.rank} · ${sp.range} m${sp.dice ? ` · ${sp.dice}` : ''}`,
         });
       }
-      add({ id: 'cloneBack', label: t('act_cloneBack'), icon: ACTION_ICON.end, help: t('help_cloneBack') });
-      add({ id: 'end', label: t('act_end'), icon: ACTION_ICON.end, tone: 'end', help: t('help_end') });
+      if (own) {
+        add({ id: 'dash', label: t('act_dash'), icon: ACTION_ICON.dash, disabled: !can.action, why: noAction, help: t('help_dash') });
+        if (!stealth) add({ id: 'dodge', label: t('act_dodge'), icon: ACTION_ICON.dodge, disabled: !can.action, why: noAction, help: t('help_dodge') });
+        add({ id: 'hide', label: t('act_hide'), icon: ACTION_ICON.hide, disabled: !can.action, why: noAction, help: t('help_hide') });
+        add({ id: 'crouch', label: t(u.cond.crouched ? 'act_stand' : 'act_crouch'), icon: ACTION_ICON.crouch, disabled: !u.cond.crouched && !can.bonus, help: t('help_crouch') });
+        if (stealth) add({ id: 'stone', label: t('act_stone'), icon: ACTION_ICON.stone, disabled: !can.action, active: mode.k === 'stone', help: t('help_stone') });
+        add({ id: 'cloneFollow', label: t('act_cloneFollow'), icon: ACTION_ICON.disengage, help: t('help_cloneFollow') });
+        add({ id: 'end', label: stealth ? t('done') : t('act_end'), icon: ACTION_ICON.end, tone: 'end', help: t('help_end') });
+      } else {
+        add({ id: 'cloneControl', label: t('act_cloneControl'), icon: ACTION_ICON.dash, help: t('help_cloneControl') });
+        add({ id: 'cloneBack', label: t('act_cloneBack'), icon: ACTION_ICON.end, help: t('help_cloneBack') });
+        if (!stealth) add({ id: 'end', label: t('act_end'), icon: ACTION_ICON.end, tone: 'end', help: t('help_end') });
+      }
       b.forEach((x, i) => {
         if (i < 9) x.hotkey = String(i + 1);
       });
@@ -1133,8 +1149,13 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
         setSelected(actorOwner?.id);
         return;
       }
-      if (id === 'end' && u.clone) {
-        if (actorOwner) act({ type: 'endTurn', unit: actorOwner.id });
+      if (id === 'cloneFollow' || id === 'cloneControl') {
+        act({ type: 'cloneMode', unit: u.id, mode: id === 'cloneFollow' ? 'follow' : 'control' });
+        return;
+      }
+      // A clone's own turn (or sneaking) ends its own; a following one picked ends its ninja's.
+      if (id === 'end' && u.clone && cloneMode(u) === 'follow') {
+        if (actorOwner && s.phase === 'combat') act({ type: 'endTurn', unit: actorOwner.id });
         return;
       }
       if (id.startsWith('passive:')) return;

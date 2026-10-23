@@ -8,6 +8,7 @@ import { cellCenter, cellOf, dist, gridFor, hideSpotAt, lineOfSight, getMap, pro
 import { pathCost, reachable, canStop, pathTo, stepCost } from './nav';
 import { passivePerception } from './combat';
 import { startCombat } from './turns';
+import { tickClones } from './clones';
 
 export const VISION = { day: 12, night: 7, near: 1.5, halfAngle: 50 };
 const PATROL_STEP = 4.5;
@@ -294,6 +295,8 @@ export function guardsTurn(s: BattleState, ev: BattleEvent[]): void {
     }
   }
   s.stealthTurn += 1;
+  // A stealth turn is one of its summoner's turns for a clone (3 in all, battle/clones.ts).
+  for (const u of party) if (!u.clone) tickClones(s, u, ev);
   for (const u of party) {
     u.turn = { move: u.speed, action: true, bonus: true, reaction: true, moved: 0 };
     // A warp edge lasts the turn it was won in.

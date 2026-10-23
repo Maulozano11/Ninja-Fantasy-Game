@@ -1,6 +1,7 @@
 // Seats (seats.ts): the owner's rock is a prop of its own, drawn apart from the character and swapped by
 // the scene (the owner, 2026-10-22: "puedes usar la piedra tambien como objeto pero ese objeto cambiara
-// dependiendo del escenario"), and every body reading or sitting sits on it: npm test.
+// dependiendo del escenario"); his two rocks are the read seat and the sit seat ("usar las dos una es para leer
+// y la otra cuando conversa sentada asi para todos los personajes tendran animaciones sentados"): npm test.
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
@@ -13,6 +14,7 @@ import { GRID, RES } from './raster';
 import { ANKLE_N, ankleLiftOf, BODY_PARAMS, drawRig, FAR_LIFT, READ_KEYS, READ_SEAT_TOP, SIT_KEYS } from './rig';
 import { DEFAULT_SEAT, onSeat, renderSeat, SEATS, seatFor, type SeatId } from './seats';
 import { SEAT_ROCK_TOP } from './seatRockArt';
+import { SEAT_ROCK_SIT_TOP } from './seatRockSitArt';
 import type { BodyType, SpriteAppearance, SpritePose } from './types';
 
 const lyra = LEGENDARY_PRESETS.find((p) => p.character.id === 'preset_lyra')!.character.appearance!;
@@ -24,9 +26,9 @@ const opaque = (rgba: Uint8ClampedArray) => {
 
 describe('seats', () => {
   it("are drawn apart from the character: the read and sit poses' sprites have no rock in them", () => {
-    const rock = renderSeat('seat_rock');
-    assert.ok(opaque(rock) > 1000, 'his rock');
     for (const [pose, k, frame] of [...[0, 1, 2].map((k) => ['read', k, READ_KEYS.indexOf(k as 0 | 1 | 2)] as const), ['sit', 0, 0] as const]) {
+      const rock = renderSeat(seatFor(pose)!);
+      assert.ok(opaque(rock) > 1000, `his ${pose} rock`);
       const f = renderSprite(lyra, pose, frame).rgba;
       // the rock's front face, below her lining, is empty in her sprite
       let bare = 0;
@@ -37,12 +39,13 @@ describe('seats', () => {
     }
   });
 
-  it('can be swapped by the scene, his rock by default', () => {
+  it('can be swapped by the scene, his read rock for reading and his sit rock for sitting by default', () => {
     assert.equal(DEFAULT_SEAT, 'seat_rock');
     assert.equal(seatFor('read'), 'seat_rock');
     assert.equal(seatFor('read', 'seat_none'), 'seat_none');
-    // his sit picture sits on his rock too
-    assert.equal(seatFor('sit'), 'seat_rock');
+    // sitting to talk, on the rock of his sit picture
+    assert.equal(seatFor('sit'), 'seat_rock_sit');
+    assert.equal(seatFor('sit', 'seat_rock'), 'seat_rock');
     assert.equal(opaque(renderSeat('seat_none')), 0, 'no seat of ours: the scene draws its own');
     // not seated, no seat
     assert.equal(seatFor('idle'), null);
@@ -60,9 +63,10 @@ describe('seats', () => {
 
   it('have their top where the seated poses sit, under the hips of every body', () => {
     assert.equal(SEAT_ROCK_TOP, READ_SEAT_TOP);
+    assert.equal(SEAT_ROCK_SIT_TOP, READ_SEAT_TOP);
     for (const id of Object.keys(SEATS) as SeatId[]) assert.equal(SEATS[id].top, READ_SEAT_TOP, id);
-    const rock = renderSeat('seat_rock');
-    const on = (x: number, y: number) => rock[(y * GRID + x) * 4 + 3] > 0;
+    const rocks = { read: renderSeat(seatFor('read')!), sit: renderSeat(seatFor('sit')!) };
+    const on = (pose: 'read' | 'sit', x: number, y: number) => rocks[pose][(y * GRID + x) * 4 + 3] > 0;
     for (const body of ['male', 'female', 'bulky', 'slender'] as BodyType[]) {
       // (sitting on his rock: the fitted female bodies; the male and bulky sit keeps the camp's log seat)
       const sits = BODY_PARAMS[body].fit ? SIT_KEYS.map((_, f) => ['sit', f] as const) : [];
@@ -72,7 +76,7 @@ describe('seats', () => {
         const above = READ_SEAT_TOP - r.pelvis.y * RES;
         assert.ok(above > 3.5 && above < 6, `${body} ${pose} ${f}: the pelvis ${above} px above the seat`);
         const px = Math.floor(r.pelvis.x * RES);
-        assert.ok(on(px, READ_SEAT_TOP + 2), `${body} ${f}: the rock under the hips`);
+        assert.ok(on(pose, px, READ_SEAT_TOP + 2), `${body} ${pose} ${f}: the rock under the hips`);
         // both feet on the body's own ground
         const bp = BODY_PARAMS[body];
         const ground = (s: 'N' | 'F') => (bp.fit ? bp.fit[`ankle${s}`].y : ANKLE_N - (s === 'F' ? FAR_LIFT : 0) + ankleLiftOf(bp, s));
@@ -152,7 +156,7 @@ describe("Lyra's legs on his rock", () => {
       assert.ok(cells.length > 500, `${name}: his legs (${cells.length} pixels)`);
       for (const flip of [false, true]) {
         // the camp lays the seat first, then the member over it, each mirrored on its own
-        const seat = flip ? mirror(renderSeat('seat_rock')) : renderSeat('seat_rock');
+        const seat = flip ? mirror(renderSeat(seatFor(pose)!)) : renderSeat(seatFor(pose)!);
         const her = flip ? mirror(f) : f;
         const laid = seat.slice();
         for (let i = 0; i < GRID * GRID; i++) if (her[i * 4 + 3]) laid.set(her.subarray(i * 4, i * 4 + 4), i * 4);
@@ -243,5 +247,50 @@ describe("Lyra's sword at her hip", () => {
     assert.deepEqual(taper(LYRA_SIT, 5), [1, 2, 2, 2, 3]);
     // and every read frame's blade ends in his tip (not his short tip of the read picture: one pixel, then three)
     for (const k of [0, 1, 2]) assert.deepEqual(taper(LYRA_READ[k], 5), [1, 2, 2, 2, 3], `read key ${k}`);
+  });
+
+  // The owner, 2026-10-22, of the read blade next to his sit picture's: "la espada nuestra se ve mas corta que en
+  // la referencia arregla esto alargandola y poniendola pixel a pixel con mi referencia".
+  it("is his sit picture's blade in every read frame, as long, pixel for pixel, whole in the game", () => {
+    /** A blade: its blues left of the guard (fine x below x1) and his line round them, {x,y: hex}. */
+    const bladeCells = (pieces: OwnerPiece[], x1: number) => {
+      const cells = cellsOf(pieces.filter((p) => p.owner === 'held'));
+      const at = new Map(cells.map((c) => [`${c.x},${c.y}`, c]));
+      const blues = cells.filter((c) => !c.line && c.x < x1 && rgb(c.hex)[2] > rgb(c.hex)[0] + 15);
+      const out = new Map(blues.map((c) => [`${c.x},${c.y}`, c.hex]));
+      for (const b of blues)
+        for (const [dx, dy] of [[-1, -1], [0, -1], [1, -1], [-1, 0], [1, 0], [-1, 1], [0, 1], [1, 1]]) {
+          const c = at.get(`${b.x + dx},${b.y + dy}`);
+          if (c?.line) out.set(`${c.x},${c.y}`, c.hex);
+        }
+      return out;
+    };
+    // his sit blade (left of his guard, his column 29: our 88), in the read frames one column right and one
+    // row up (where his sit guard lies on theirs)
+    const his = new Map([...bladeCells(LYRA_SIT, 88)].map(([k, h]) => {
+      const [x, y] = k.split(',').map(Number);
+      return [`${x + 1},${y - 1}`, h];
+    }));
+    const span = (m: Map<string, string>) => {
+      const xs = [...m.keys()].map((k) => +k.split(',')[0]);
+      return Math.max(...xs) - Math.min(...xs) + 1;
+    };
+    assert.ok(span(his) >= 24, `his sit blade is ${span(his)} columns long`);
+    for (const k of [0, 1, 2]) {
+      const ours = bladeCells(LYRA_READ[k], 89);
+      // as long as his, every pixel his, in his colour, and none more
+      assert.equal(span(ours), span(his), `read key ${k}: the blade's length`);
+      for (const [xy, h] of his) assert.equal(ours.get(xy), h, `read key ${k}: his blade's pixel ${xy}`);
+      for (const xy of ours.keys()) assert.ok(his.has(xy), `read key ${k}: ${xy} is not his blade`);
+      // all of it drawn in the game, facing right and mirrored as in the camp (inside the frame)
+      const f = renderSprite(lyra, 'read', READ_KEYS.indexOf(k as 0 | 1 | 2)).rgba;
+      const m = mirror(f);
+      for (const [xy, h] of ours) {
+        const [x, y] = xy.split(',').map(Number);
+        assert.ok(x > 0 && x < GRID - 1, `read key ${k}: ${xy} at the frame's edge`);
+        assert.equal(hexAt(f, x, y), h, `read key ${k}: ${xy} in the game`);
+        assert.equal(hexAt(m, GRID - 1 - x, y), h, `read key ${k}: ${xy} mirrored`);
+      }
+    }
   });
 });

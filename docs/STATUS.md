@@ -182,10 +182,14 @@ Merge checks (`git merge-tree` on the origin tips, nothing changed):
   `items/lyraSitArt.ts`, `ownerFrames.ts`), held over the 4-frame loop (the old sit only breathed; his
   picture has one frame); the sit rig of the fitted female bodies is posed toward his joints (`rig.ts`
   FIT_SIT) and sits on the seat prop like read; the male and bulky sit stays as it was (their standard is
-  his Roman sit on `body/male-skin-face`). The camp's sit spot now has his rock, not the log, for everyone. All three read frames' blades
-  end in his sit tip (narrowing 1, 2, 2, 2 pixels, about 3 px longer), turned with RotSprite to their angle;
-  nothing else in them changed. Question for him: his sit rock is drawn differently from the read rock (wider
-  to the left, other stones); should it become the seat prop, or a second rock?
+  his Roman sit on `body/male-skin-face`). His two rocks are two seat props, for every character (*"usar las
+  dos una es para leer y la otra cuando conversa sentada asi para todos los personajes tendran animaciones
+  sentados"*): `seat_rock` (his read picture) for read, `seat_rock_sit` (his sit picture,
+  `tools/refs/seat-rock-sit-from-ref.py` -> `seatRockSitArt.ts`) for sit; the camp's sit spot now has the sit
+  rock, not the log. Her read blade is his sit blade, whole and pixel for pixel (*"la espada nuestra se ve
+  mas corta que en la referencia arregla esto alargandola y poniendola pixel a pixel con mi referencia"*):
+  about 10 columns longer, laid unturned where his sit guard falls on each read frame's (his guard is the same
+  in all of them); the read guard and grip and everything else stay his read pixels.
 - Decided 2026-10-21 (later): Warp Strike is renamed **"Shooting-Star Thrust"** (Spanish **"Estocada Fugaz"**; the owner first said "Shooting Star", then chose these), after the clan's name (Ryusei = shooting star) and to stay clear of other games' "Warp Strike". The id `ryusei_warp` stays. To apply once `icons/sheets-8-11` is merged (it touches the same strings): names, hotbar label, help text, log, clan texts, D24.
 - Decided 2026-10-21: the Spanish names are **"Golpe Warp"** and **"Comando"** (the owner: "los dos"); `icons/sheets-8-11` brings them and updates D24 in `docs/CLANS_DESIGN.md`.
 - Jutsu pacing (owner: too fast, "like a flashing star"): a first pass is merged (`8ef28a9`: 560 ms

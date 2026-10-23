@@ -24,9 +24,7 @@ ZONES says which, in panel 1's columns: a pixel takes the owner of the last zone
 takes its colour. His black line goes with every owner it touches, so each one is closed in his line.
 """
 
-import json
 import os
-import subprocess
 import sys
 
 import numpy as np
@@ -56,17 +54,16 @@ REACH = {1: ((600, 95, 1450, 1085), 74)}
 # there, since the wider fit drifts a cell elsewhere), so his blade's last column (2) is his: three cells
 # of blade between his line.
 EDGE = {0: ((0, 95, 760, 1085), 3)}
-# Her sword ends in the tip of his sit picture (lyra_sit_ref.tip(); the owner, 2026-10-22, of "Pasando
-# pagina" next to that picture: "mira la referencia la punta es un poco mas larga y afilada"). In each
-# frame his blade is kept up to its last cross-section of full width, READ_BACK fine pixels back along it
-# from its end (panel 1's blade runs off his picture's edge at full width, so all of it is kept; in
-# "Leyendo" and "Pasando pagina" his short tip narrows over its last pixel); past it the blade is his sit
-# tip, his pixels and colours, taken from the same cross-section of his sit blade, turned to this blade's
-# angle with the repo's RotSprite (tools/refs/rotsprite.mts, as stampPiece turns his pieces; the angles
-# differ by a degree or two) and set where its line best goes on with this blade's own (sword_tip()).
-# TIP_X: the blade's columns, left of the guard (panel 1's columns).
-READ_BACK = {0: 0.0, 1: 1.0, 2: 1.0}
-TIP_X = 15
+# Her blade is his sit picture's (lyra_sit_ref.sit_blade(); the owner, 2026-10-22, of "Pasando pagina" next
+# to that picture: "mira la referencia la punta es un poco mas larga y afilada", then "la espada nuestra se ve
+# mas corta que en la referencia arregla esto alargandola y poniendola pixel a pixel con mi referencia"). In
+# each frame his guard and grip stay; his short blade (its blues left of BLADE_X and his line round them)
+# gives way to his sit blade, whole from the guard to the point, his pixels and colours as they are, laid
+# from the guard: his sit sword where its guard falls on this frame's (sword_blade()). His guard is the same
+# in the three frames and in his sit picture, so the sword points the same way in all of them and the blade
+# is not turned (his short read blades, drawn freehand to the panel's edge, lean up to 3 degrees steeper).
+# BLADE_X: the blade's columns, left of the guard (panel 1's columns).
+BLADE_X = 15
 # His grey page, and how far from it a pixel is still page.
 PAGE = (139, 139, 139)
 PAGE_TOL = 14
@@ -276,60 +273,46 @@ def to_frame(x, y):
     return x + OFFSET[0], y + OFFSET[1]
 
 
-def rotsprite(rows, pivot, deg):
-    """The repo's RotSprite (src/sprite/rotsprite.ts rotateTemplate, through tools/refs/rotsprite.mts):
-    the template's pixels turned by deg about its pivot cell, [(dx, dy, ch)] from the pivot."""
-    run = subprocess.run(['npx', 'tsx', os.path.join(os.path.dirname(os.path.abspath(__file__)), 'rotsprite.mts')],
-                         input=json.dumps({'rows': rows, 'pivot': pivot, 'deg': deg}), capture_output=True, text=True,
-                         check=True, cwd=P.REPO)
-    return [tuple(p) for p in json.loads(run.stdout)]
+def guard_cells(m, line, held, x1):
+    """A sword's guard and grip (every cell of it but its blade, lyra_sit_ref.blade_cells): {(x, y): his
+    line or not}."""
+    import lyra_sit_ref as S
+
+    g = held & ~S.blade_cells(m, line, held, x1)
+    return {(int(x), int(y)): bool(line[y, x]) for y, x in zip(*np.nonzero(g))}
 
 
-def sword_tip(k, held):
-    """Panel k's sword ending in his sit tip (READ_BACK): {(x, y): hex} in panel 1's columns (left of
-    column 0 too), his blade up to its cut and his sit tip past it. held: the sword's mask (owners())."""
+def sword_blade(k, held):
+    """Panel k's sword with his sit picture's blade: {(x, y): hex} in panel 1's columns (left of column 0
+    too), and where his sit picture's sword lies on this frame's ((dx, dy): his sit column and row less
+    this frame's). held: the sword's mask (owners())."""
     import lyra_sit_ref as S
 
     m, fg, line = frame(k)
-    cells, (os_, ds, ang_s), cut_s = S.tip()
-    o, d, ang = S.blade_axis(m, line, held, TIP_X)
-    b = S.blue(m) & held & ~line
-    b[:, TIP_X:] = False
-    cut = max(S.along(o, d, x, y) for y, x in zip(*np.nonzero(b))) - READ_BACK[k]
-    out = {}
-    for y, x in zip(*np.nonzero(held)):
-        if x >= TIP_X or S.along(o, d, x, y) <= cut:
-            out[(int(x), int(y))] = P.hexs(m[y, x])
-    # his sit tip as a template pivoted on the cell of its cut on his sit blade's axis, turned to this blade
-    hs = sorted({hx for _, _, hx, _ in cells})
-    ch = {hx: P.CHARS[i] for i, hx in enumerate(hs)}
-    of = {c: hx for hx, c in ch.items()}
-    x0 = min(c[0] for c in cells)
-    y0 = min(c[1] for c in cells)
-    grid = [['.'] * (max(c[0] for c in cells) - x0 + 1) for _ in range(max(c[1] for c in cells) - y0 + 1)]
-    for x, y, hx, _ in cells:
-        grid[y - y0][x - x0] = ch[hx]
-    ps = os_ + ds * cut_s
-    turned = rotsprite([''.join(r) for r in grid], [int(np.floor(ps[0])) - x0, int(np.floor(ps[1])) - y0], ang - ang_s)
-    pr = o + d * cut
-    base = (int(np.floor(pr[0])), int(np.floor(pr[1])))
-    # set where it goes on best with this blade: over the OVERLAP before the cut, his sit tip's line on this
-    # blade's line and its blade on this blade (ties: the nearest place, the first in this order)
+    sm, sfg, sline = S.frame()
+    sheld = S.owners()[1]['held']
+    mine = S.blade_cells(m, line, held, BLADE_X)
+    # his guard and grip, as they are
+    out = {(int(x), int(y)): P.hexs(m[y, x]) for y, x in zip(*np.nonzero(held & ~mine))}
+    # his sit sword laid on this frame's by its guard, where the blade meets it: where most of his sit
+    # guard's cells beside the blade (his line and the rest) fall on this guard's, so the blade goes on
+    # from this guard as it does from his sit guard; then where most of his sit guard falls on this one
+    # (ties: the first in this order)
+    here = guard_cells(m, line, held, BLADE_X)
+    there = guard_cells(sm, sline, sheld, S.BLADE_X)
+    blade = S.sit_blade()[0]
+    cells = {(x, y) for x, y, _ in blade}
+    joint = {g: ln for g, ln in there.items() if any((g[0] + a, g[1] + b) in cells for a, b in ((1, 0), (-1, 0), (0, 1), (0, -1)))}
     best = None
-    for oy in (0, -1, 1):
-        for ox in (0, -1, 1):
-            score = 0
-            for dx, dy, c in turned:
-                x, y = base[0] + ox + dx, base[1] + oy + dy
-                if not cut - S.OVERLAP < S.along(o, d, x, y) <= cut:
-                    continue
-                mine = 0 <= y < ROWS and 0 <= x < COLS and held[y, x]
-                score += 1 if mine and (of[c] == '#000000') == bool(line[y, x]) else -1
-            if best is None or score > best[0]:
-                best = (score, ox, oy)
-    _, ox, oy = best
-    for dx, dy, c in turned:
-        x, y = base[0] + ox + dx, base[1] + oy + dy
-        if S.along(o, d, x, y) > cut:
-            out[(x, y)] = of[c]
-    return out
+    for dy in range(-8, 9):
+        for dx in range(0, 30):
+            n = (sum(1 for (x, y), ln in joint.items() if here.get((x - dx, y - dy)) == ln),
+                 sum(1 for (x, y), ln in there.items() if here.get((x - dx, y - dy)) == ln))
+            if best is None or n > best[0]:
+                best = (n, dx, dy)
+    _, dx, dy = best
+    for x, y, hx in blade:
+        xy = (x - dx, y - dy)
+        if xy not in out:
+            out[xy] = hx
+    return out, (dx, dy)

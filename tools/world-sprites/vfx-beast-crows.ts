@@ -32,11 +32,15 @@
 // The anchor is the centre of the swarm's mass, the same point in both of his pictures. Facing right
 // (the renderer mirrors it when the swarm flies left). To merge into vfx-beasts.ts: import { crowSwarm }
 // from './vfx-beast-crows' and put it in BUILDERS in place of illusionCrow (['genjutsu', crowSwarm]).
+//
+// The characters' black line goes round the crows (solid-outline.ts, the owner's decision of 2026-10-22;
+// SOLID_OUTLINE=0 leaves it off); his loose feathers and wisps are too small to get one.
 
 import { mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { Canvas, WorldSprite, hex, writeGroup } from './kit';
 import * as REF_GENJUTSU from './vfx-beasts-ref-genjutsu';
+import { outlineSprite, solidOutlineOn, type SolidOutlineOptions } from './solid-outline';
 
 interface RefSheet {
   SIZE: [number, number];
@@ -69,8 +73,11 @@ function decode(ref: RefSheet): Record<string, Canvas[]> {
   return out;
 }
 
+/** The line's options for this beast. */
+export const CROWS_LINE: SolidOutlineOptions = {};
+
 /** The crow swarm (vfx_beasts/genjutsu): 'fly' (loop) and 'summon' (once), cropped to their union + 1 px. */
-export function crowSwarm(): WorldSprite {
+export function crowSwarm({ outline = solidOutlineOn() }: { outline?: boolean } = {}): WorldSprite {
   const f = decode(REF_GENJUTSU);
   const anims: [string, Canvas[], number, boolean][] = [
     ['fly', f.fly, 12, true],
@@ -99,7 +106,7 @@ export function crowSwarm(): WorldSprite {
   for (const [key, frames, fps, loop] of anims) out[key] = { frames: frames.map(crop), fps, loop };
   const [ax, ay] = REF_GENJUTSU.ANCHOR;
   const w = x1 - x0 + 1, h = y1 - y0 + 1;
-  return {
+  const s: WorldSprite = {
     name: 'genjutsu',
     label: 'Crow swarm (genjutsu)',
     meters: [Math.round((w / 57) * 10) / 10, Math.round((h / 57) * 10) / 10],
@@ -107,6 +114,7 @@ export function crowSwarm(): WorldSprite {
     tags: ['vfx'],
     anims: out,
   };
+  return outline ? outlineSprite(s, CROWS_LINE) : s;
 }
 
 /** No opaque pixel may touch a frame's border (the renderer would show a hard edge). */
@@ -126,8 +134,10 @@ function main(): void {
     console.error('vfx-beast-crows: set WORLD_OUT=<dir> (this sprite is waiting for approval; it is never written into src/assets).');
     process.exit(1);
   }
-  const sprite = crowSwarm();
-  checkBorders(sprite);
+  // The border check is on his art; the line may then take the clear pixel round it.
+  const art = crowSwarm({ outline: false });
+  checkBorders(art);
+  const sprite = solidOutlineOn() ? outlineSprite(art, CROWS_LINE) : art;
   // Each file is written whole: the group goes to a temp folder first and is then renamed into place.
   const tmp = join(root, `.${GROUP}.part`);
   rmSync(tmp, { recursive: true, force: true });

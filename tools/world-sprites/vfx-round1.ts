@@ -20,6 +20,12 @@
 // line takes the colour at the same place (by brightness, counted over the pixels) among the colours
 // of his water stream (vfx_water/stream and stream_head), so his shading reads the same; his line stays.
 //
+// The heads are solid: they carry the characters' black line (solid-outline.ts, the owner's decision
+// of 2026-10-22), outside his own line where it has a gap. Never on a cut where a head comes out of
+// the fire: where his Annihilation picture has fire (its wall, the fire behind and the breath) within
+// a pixel of it, as at the neck and the flame in the mouth. The fire wall is energy: no line.
+// SOLID_OUTLINE=0 leaves it off.
+//
 //   WORLD_OUT=<staging dir> npx tsx tools/world-sprites/vfx-round1.ts
 //
 // It refuses to run without WORLD_OUT, so it never writes into src/assets: copy the staged group
@@ -35,6 +41,8 @@ import { FIRE } from './vfx-a-fire-kit';
 import { palette } from './vfx-a-lib';
 import { FADE_N, S_FRAME, fadeCurve } from './vfx-a-fire-s';
 import { fan, key, turned } from './vfx-turn';
+import { outlineSprite, solidOutlineOn } from './solid-outline';
+import { FIRE_HEAD_HALF_OUTLINE, FIRE_HEAD_OUTLINE } from './solid-outline-sets';
 
 const ASSETS = join(import.meta.dirname, '../../src/assets/world');
 // The Annihilation's seed and its smoke (SMOKE_HIS in vfx-a-fire-s.ts, which does not export it).
@@ -131,6 +139,14 @@ const halfAll = (frames: Canvas[]): Canvas[] => {
 const head = refPiece('s_head');
 /** Where the head's mouth is in his piece (the right end of the flame in the open jaw). */
 const MOUTH: [number, number] = [284, 170];
+
+/** The characters' line round the heads (the cuts out of the fire left open, solid-outline-sets.ts); the fire wall unchanged. */
+function lined(s: WorldSprite): WorldSprite {
+  if (s.name === 'fire_head') return outlineSprite(s, FIRE_HEAD_OUTLINE);
+  if (s.name === 'fire_head_half') return outlineSprite(s, FIRE_HEAD_HALF_OUTLINE);
+  if (s.name === 'water_head') return outlineSprite(s);
+  return s;
+}
 
 /** His head, and its fade: burnt exactly as dragonLayers() burns it in annihilation_enh (without the sink). */
 function fireHeadFrames(): { idle: Canvas[]; fade: Canvas[] } {
@@ -263,7 +279,8 @@ function waterHead(): WorldSprite {
 
 const root = process.env.WORLD_OUT;
 if (!root) throw new Error('vfx-round1: set WORLD_OUT to the staging folder (this generator never writes into src/assets)');
-const sprites = [...fireHeads(), fireWallHalf(), waterHead()];
+const art = [...fireHeads(), fireWallHalf(), waterHead()];
+const sprites = solidOutlineOn() ? art.map(lined) : art;
 writeGroup('vfx_dragon', sprites, root);
 if (process.env.VFX_R1_CHECK) {
   // Every sprite's frames side by side at 2x over a dark green ground.

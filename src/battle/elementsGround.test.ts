@@ -365,7 +365,7 @@ describe('fire on wet ground makes steam ("vapor que es como una cortina de humo
     const note = line.events.find((e) => e.t === 'note' && e.key === 'steamBlown')!;
     assert.equal(logLine(note, line.state, 'es')!.text, 'El viento se lleva el vapor');
     assert.equal(logLine(note, line.state, 'en')!.text, 'The wind blows the steam away');
-    // A circle (the Rasenshuriken, aimed into the cloud: its surface is seen) blows it out from its middle.
+    // A circle (the Hurricane Star, aimed into the cloud: its surface is seen) blows it out from its middle.
     const c = scene(['rasenshuriken_wind']);
     c.steam = {};
     for (const x of cellsInArea(c, { kind: 'circle', center: c.units.rogue_0.pos, radius: 1 })) c.steam[cellKey(x)] = { rounds: STEAM_ROUNDS, by: 'a' };

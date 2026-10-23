@@ -11,7 +11,7 @@ import { GRID, opaqueBox, RES } from '../../sprite/raster';
 import { phaseBody, phaseFrame } from '../../sprite/phase';
 import { catchLook, releaseClear, renderThrown, thrownItem } from '../../sprite/thrown';
 import { throwRelease } from '../../sprite/grip';
-import type { SpriteAppearance, SpritePose } from '../../sprite/types';
+import type { ChakraColorId, SpriteAppearance, SpritePose } from '../../sprite/types';
 import type { Unit } from '../../battle/types';
 
 /** Where the feet touch the ground in a sprite frame (fine pixels). */
@@ -116,13 +116,22 @@ function toCanvas(rgba: Uint8ClampedArray, layers?: { back: Uint8ClampedArray; f
  * One frame of a unit's sprite as a canvas. `aura` adds the chakra burst of a cast or a charge
  * (only if the player turned it on for that moment in the creator), `empowered` for an enhanced jutsu.
  */
-export function unitFrame(u: Unit, look: SpriteAppearance, pose: SpritePose, frame: number, aura?: { mode: ChakraMode; tick: number; empowered?: boolean }): Cached {
+export function unitFrame(
+  u: Unit,
+  look: SpriteAppearance,
+  pose: SpritePose,
+  frame: number,
+  aura?: { mode: ChakraMode; tick: number; empowered?: boolean; burst?: { color: ChakraColorId; tint?: string } },
+): Cached {
   const n = framesOf(look, pose);
   const f = ((frame % n) + n) % n;
   const eye = dojutsuToEye(u.character?.dojutsu);
-  const wantAura = aura && ((aura.mode === 'cast' && look.chakra.onCast) || (aura.mode === 'charge' && look.chakra.onCharge) || aura.mode === 'aura');
-  const fxTick = wantAura ? aura!.tick % chakraLoop(look.chakra.color) : -1;
-  const key = `${idOf(look)}|${eye}|${pose}|${f}|${wantAura ? `${aura!.mode}${aura!.empowered ? '+' : ''}${fxTick}` : ''}`;
+  // `burst`: another burst than the ninja's own (a charged hand's Battle Static crackling round it).
+  const color = aura?.burst?.color ?? look.chakra.color;
+  const tint = aura?.burst ? aura.burst.tint : look.chakra.tint;
+  const wantAura = aura && (!!aura.burst || (aura.mode === 'cast' && look.chakra.onCast) || (aura.mode === 'charge' && look.chakra.onCharge) || aura.mode === 'aura');
+  const fxTick = wantAura ? aura!.tick % chakraLoop(color) : -1;
+  const key = `${idOf(look)}|${eye}|${pose}|${f}|${wantAura ? `${aura!.mode}${aura!.empowered ? '+' : ''}${fxTick}${aura!.burst ? `|${color}:${tint ?? ''}` : ''}` : ''}`;
   let c = frames.get(key);
   if (c) {
     frames.delete(key);
@@ -130,7 +139,7 @@ export function unitFrame(u: Unit, look: SpriteAppearance, pose: SpritePose, fra
     return c;
   }
   const spr = renderSpriteCached(look, pose, f, eye);
-  const fx = wantAura ? renderChakra(look.chakra.color, aura!.mode, fxTick, spr.rgba, spr.rig, look.chakra.tint, aura!.empowered) : null;
+  const fx = wantAura ? renderChakra(color, aura!.mode, fxTick, spr.rgba, spr.rig, tint, aura!.empowered) : null;
   c = { ...toCanvas(spr.rgba, fx), rig: spr.rig };
   frames.set(key, c);
   if (frames.size > MAX) frames.delete(frames.keys().next().value as string);

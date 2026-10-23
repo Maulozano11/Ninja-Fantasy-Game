@@ -21,7 +21,7 @@
 import { JUTSUS_DATA, LEGENDARY_PRESETS } from '../data/shinobiData';
 import type { ChakraNature, ClanType, JutsuDefinition, JutsuRank, ShinobiCharacter, ShinobiClassType } from '../types/shinobi';
 import { jutsuFitsClass } from './jutsuClass';
-import { fitLoadout, jutsuChoices, jutsuFitsNature, type JutsuSlot, type JutsuSwap, type Loadout, natureGated, refitSlots } from './jutsuNature';
+import { byRankDown, fitLoadout, jutsuChoices, jutsuFitsNature, type JutsuSlot, type JutsuSwap, type Loadout, natureGated, rankAtMost, refitSlots, REMOVED_JUTSUS, SLOT_CATEGORY } from './jutsuNature';
 import { type Growth, growthOf, NO_GROWTH } from './natureGrowth';
 
 /** The ranks a new ninja may learn in the creator. */
@@ -210,4 +210,38 @@ export function fitToGrowth(
     swapAllow(next, next.shinobiClass, nature, now),
     now.extra,
   );
+}
+
+/**
+ * A saved sheet's slots that name a removed jutsu (rules/jutsuNature.ts, REMOVED_JUTSUS: Yasaka no
+ * Magatama, the owner, 2026-10-22), each given the best jutsu the ninja may learn in that slot: what
+ * its nature (and its growth's elements), clan and class allow, of the removed jutsu's rank or lower,
+ * not one another slot holds. Of the removed jutsu's kind first (a genjutsu for the genjutsu), then of
+ * the ninja's own elements, then the rest; the highest rank first, so the slot loses as little as it
+ * can. A saved sheet is a made ninja and keeps its ranks, as on a type change (fitToType), so a lost
+ * rank S becomes a rank S. A slot with nothing to offer is left empty (''), as a type change leaves it.
+ * The other slots stay.
+ */
+export function refitRemoved(
+  c: Sheet & Pick<ShinobiCharacter, 'selectedJutsus' | 'clan' | 'shinobiClass'>,
+  nature: ChakraNature,
+): { loadout: Loadout; swaps: JutsuSwap[] } {
+  const growth = growthOf(c, nature);
+  const mine: string[] = [nature, ...growth.extra];
+  const out: Loadout = { ...c.selectedJutsus };
+  const swaps: JutsuSwap[] = [];
+  const slots = Object.keys(SLOT_CATEGORY) as JutsuSlot[];
+  for (const slot of slots) {
+    const from = out[slot];
+    const lost = Object.hasOwn(REMOVED_JUTSUS, from) ? REMOVED_JUTSUS[from] : undefined;
+    if (!lost) continue;
+    const taken = new Set(slots.filter((s) => s !== slot).map((s) => out[s]));
+    const kind = (j: JutsuDefinition) => (j.nature === lost.nature ? 0 : mine.includes(j.nature) ? 1 : 2);
+    const list = learnable(slot, nature, c.clan, c.shinobiClass, growth)
+      .filter((j) => rankAtMost(j.rank, lost.rank) && !taken.has(j.id))
+      .sort((a, b) => kind(a) - kind(b) || byRankDown(a, b));
+    out[slot] = list[0]?.id ?? '';
+    swaps.push({ slot, from, to: out[slot] });
+  }
+  return { loadout: out, swaps };
 }

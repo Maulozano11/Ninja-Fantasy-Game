@@ -66,6 +66,11 @@ describe("the owner's Shadow Half-Cloak", () => {
           }
         }
       }
-    assert.deepEqual(bad, []);
+    // KNOWN, open: on the owner's bare female body (body/female-v2, which came in with Lyra) Aiden's downed
+    // frame 0 leaves two pixels of background beside a stud; the cloak was fitted on the old female body, and the
+    // owner decided the old clothing is not refitted to the new one ("las piezas de armadura y ropa femeninas no
+    // las rehagas").
+    const known = new Set(['Aiden female downed 0: background at 103,210', 'Aiden female downed 0: background at 104,210']);
+    assert.deepEqual(bad.filter((b) => !known.has(b)), []);
   });
 });

@@ -2,7 +2,7 @@
 // Everything is placed from the rig (hand + forearm direction, torso-local
 // T(), head-local hd()) so it works on every body type and pose.
 
-import { armJoints, Depth, DEPTHS, DrawCtx, ItemDef, legPoint, Side } from '../ctx';
+import { armJoints, Depth, DEPTHS, DrawCtx, ItemDef, legPoint, Side, torsoNeck } from '../ctx';
 import { add, capsule, ellipse, F_NO_OUTLINE, fine, GRID, Layer, len, lerp, line, norm, partIndex, Pen, perp, poly, px, RES, scale, seam, sub, UNITS, v, Vec } from '../raster';
 import { hexToRgb, retintHex, type RampKind } from '../color';
 import { hd } from './hairkit';
@@ -13,6 +13,9 @@ import { KATANA_PARTS, katanaHipColors, katanaTemplate } from './katana';
 import { stampLeaning } from './armor';
 import { FOUNDER_COWL, FOUNDER_COWL_GOLD, FOUNDER_COWL_KIND, FOUNDER_COWL_NEAR, FOUNDER_COWL_NECK, FOUNDER_COWL_SEAM_F, FOUNDER_COWL_SEAM_N, FOUNDER_COWL_STUD, FOUNDER_COWL_STUD_F } from './founderCowlArt';
 import { chakraHex } from '../chakraInfo';
+import { LYRA_SWORD_BLADE, LYRA_SWORD_GUARD } from './lyraSwordArt';
+import { drawLyraRapier } from './lyraSword';
+import { drawOwner, ownerFrame, slotTint } from '../ownerFrames';
 import { gripPoint, handsBusy, handsLimp, handsReleased, poleAngle, swordAngle, throwsKunai } from '../grip';
 import type { Rig } from '../rig';
 import { addSeam, clothSeam } from '../seams';
@@ -30,7 +33,8 @@ const fromAngle = (deg: number): Vec => rot(v(1, 0), deg);
 /** Breathing-aware torso point (follows the shoulders). */
 function topPt(g: DrawCtx) {
   const T = g.rig.T;
-  const dy = g.rig.neck.y - T(0.6, g.bp.torsoLen).y;
+  const n = torsoNeck(g);
+  const dy = g.rig.neck.y - T(n.x, n.y).y;
   return (x: number, y: number) => add(T(x, y), v(0, dy));
 }
 
@@ -271,10 +275,16 @@ function stowKatanaAtHip(g: DrawCtx, hilt: string, guard: string): void {
   sheathedSword(g, g.L('waist'), g.rig.T(b.waistHalf * 0.6 + 3.2, 5.6), dirBack, { sheath: '#2a1e1e', hilt, guard }, { hilt: 3.8, sheath: 14, part: 'pelvis' });
 }
 
+/** The angle Lyra's rapier rides at on the back (see held_gilded_rapier). */
+const LYRA_STOW_DEG = 70;
+
 /** Big blades and polearms ride diagonally across the back, the hilt or blade over the near shoulder. */
 function backGrip(g: DrawCtx, deg: number): Vec {
   const b = g.bp;
-  return stowAt(g, -b.shoulderHalf - 2.4, b.torsoLen + 2.8 - (deg < 0 ? 9 : 0));
+  // Narrow (female) shoulders keep the blade as far back as the old female body's did, so a long
+  // blade still clears the neck when the body pitches forward.
+  // A fitted body's neck sits further back in its torso (his, rig.ts neckLocal): the blade goes back with it.
+  return stowAt(g, -Math.max(b.shoulderHalf, 5.9) - 2.4 + (torsoNeck(g).x - 0.6), b.torsoLen + 2.8 - (deg < 0 ? 9 : 0));
 }
 
 /**
@@ -532,6 +542,27 @@ export const HELD_ITEMS: ItemDef[] = [
     desc: 'A calm pale-cyan glow gathered in the palm.',
     colors: [col('glow', 'Glow', '#8ff0ea', 'glow')],
     draw: (g, [glow]) => !handsBusy(g) && !handsLimp(g) && !handsReleased(g) && !throwsKunai(g) && drawPalmGlow(g, { glow }),
+  },
+  {
+    id: 'held_gilded_rapier',
+    slot: 'held',
+    name: 'Gilded Rapier',
+    desc: 'A long slender blade glowing cyan under a steel swept hilt with gold tips, a cyan gem in the cross, sparkles round it: the owner drew it for Lyra.',
+    colors: [col('blade', 'Blade glow', LYRA_SWORD_BLADE, 'glow'), col('guard', 'Guard', LYRA_SWORD_GUARD, 'metal')],
+    draw: (g, [blade, guard]) => {
+      // In the owner's own frames of Lyra (ownerFrames.ts) the sword is his there: lying behind her on
+      // the seat as she reads, thrust out at the throw's release (put away, she throws without it).
+      if (ownerFrame(g)) {
+        if (!(g.look.stowed && g.rig.pose === 'throw')) drawOwner(g, 'held', slotTint({ blade: [LYRA_SWORD_BLADE, blade], guard: [LYRA_SWORD_GUARD, guard] }));
+        return;
+      }
+      // Stowed on the back steeper than other long blades (70 degrees, not 48): her long blade then
+      // stays behind the narrow female body down to the tip, instead of showing in flecks past her far
+      // side (seated, reading, the female hips settle into the seat and carry the blade lower).
+      if (handsBusy(g)) drawLyraRapier(g, 'backGear', backGrip(g, LYRA_STOW_DEG), backAngle(g, LYRA_STOW_DEG), blade, guard, false);
+      else if (handsLimp(g)) drawLyraRapier(g, 'nearArm.held', droppedGrip(g, 0.7), -86, blade, guard, false);
+      else if (!handsReleased(g)) drawLyraRapier(g, 'nearArm.held', gripPoint(g), swordAngle(g), blade, guard, true);
+    },
   },
 ];
 

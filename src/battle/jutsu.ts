@@ -82,6 +82,8 @@ export interface JutsuSeq {
    * cut travels, and a cut that leaves Bleeding splashes drops onto the screen. Never in a chakra colour.
    */
   blood?: boolean;
+  /** What a charged hand holds while its charge lasts (`handCharge`): a sheet's animation, drawn at the near hand. */
+  held?: { group: string; name: string; anim: string };
 }
 
 export type StageKind = 'dragonHead' | 'dragonStream' | 'waterDragon' | 'rockVolleys' | 'sealChain' | 'crescents' | 'crowDive' | 'hurricane' | 'woodDragon' | 'handLightning';
@@ -167,6 +169,13 @@ export interface JutsuSpec {
   douse?: boolean;
   /** How long the ground it soaks stays wet, in rounds (a water jutsu; WET_ROUNDS when unset). */
   wetRounds?: number;
+  /**
+   * Activated, not thrown (the owner, 2026-10-21: the Chidori, and the Rasengan when it is built): the
+   * cast charges the near hand with it for up to `rounds` of the caster's turns (shape 'self'), and
+   * its blow, one melee jutsu attack, goes off by itself the moment the caster moves within reach of
+   * a foe (battle/charged.ts). Its range is that reach.
+   */
+  handCharge?: { rounds: number };
   /** What it does to the ground around it. */
   env?: 'ignite' | 'electrify' | 'clearFoliage';
   /** A failed save adds Tension (the hydra's roar). */
@@ -215,8 +224,11 @@ const OVERRIDE: Record<string, Partial<JutsuSpec>> = {
   earth_wall_doryuheki: { shape: 'wall', special: 'earthWall', vfx: 'wall', length: 4.5 },
   earth_spear_doryuudan: { shape: 'line', width: 1.2, vfx: 'multi', seq: { stage: 'rockVolleys' } },
   wind_blade_daitoppa: { vfx: 'slash' },
-  // A thrust of the bare hand with the lightning gathered in it (the owner's answer 11): the weapon is put away.
-  chidori_lightning_blade: { vfx: 'hit', melee: true, weapon: 'stow', seq: { stage: 'handLightning' } },
+  // Activated (the owner, 2026-10-21: "chidori sera una habilidad que actives"): a bonus action charges
+  // the bare hand for up to 3 rounds, and its blow (a melee jutsu attack roll, 5d8) goes off by itself
+  // within reach of the first foe the ninja comes to. The weapon is put away; the thrust is still his
+  // lightning in the hand (the owner's answer 11).
+  chidori_lightning_blade: { shape: 'self', vfx: 'hit', melee: true, weapon: 'stow', handCharge: { rounds: 3 }, seq: { stage: 'handLightning', held: { group: 'vfx_charged', name: 'chidori_hand', anim: 'charged' } } },
   lightning_hound_raidon: { vfx: 'beast' },
   // Not a weapon attack (the owner): the weapon is put away for an unarmed combo.
   leaf_hurricane_senpuu: { shape: 'selfCircle', vfx: 'slash', melee: true, weapon: 'stow', seq: { stage: 'hurricane' } },
@@ -231,7 +243,6 @@ const OVERRIDE: Record<string, Partial<JutsuSpec>> = {
   rasenshuriken_wind: { vfx: 'sphere' },
   great_fire_annihilation: { vfx: 'breath', length: 12, effect: 'burning', sig: 'annihilation' },
   wood_golem_titan: { element: 'earth', vfx: 'blast' },
-  yasaka_magatama: { element: 'chakra', vfx: 'multi', width: 1.5 },
   night_guy_dragon: { element: 'chakra', vfx: 'beast', melee: true },
   // The rank D and C jutsu (the owner's answers of 2026-10-21; docs/GAMEPLAY_DESIGN.md, "Rank D and C
   // jutsu"). The projectiles fly apart, on three paths, to reach the target from different angles.

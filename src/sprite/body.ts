@@ -6,11 +6,19 @@
 // fine pixels (RES per design unit) for 128x128 detail.
 
 import { hexToRgb, hslToHex, makeRamp, mixHex, retintHex, rgbToHsl } from './color';
-import { armPoint, armRadius, armSpan, DrawCtx, fillTorso, FOOT_BARE, footDraw, handDraw, legSpan, Side, torsoPoly } from './ctx';
+import { armJoints, armPoint, armRadius, armSpan, Depth, DrawCtx, fillTorso, FOOT_BARE, footDraw, handDraw, handPose, legJoints, legSpan, Side, torsoPoly } from './ctx';
+import { type BasePiece, FEMALE_BASE, FEMALE_BASE_CLOTH, FEMALE_BASE_JOINTS, FEMALE_BASE_SKIN } from './femaleBaseArt';
+import { FEMALE_SHOULDER_N } from './femaleBodyArt';
 import { type PaintedEye, VALIANT_BROW_HAIR, VALIANT_EYE_COLORS, VALIANT_EYES, VALIANT_IRIS } from './eyeArt';
 import { VALIANT_HEAD, VALIANT_SKIN } from './headArt';
 import { FOUNDER_FACE_KIND, FOUNDER_HEAD, FOUNDER_IRIS, FOUNDER_SKIN } from './founderFaceArt';
-import { stampPiece } from './painted';
+import { KEEN_BROW_HAIR, KEEN_BROWS, KEEN_EYE_COLORS, KEEN_EYES, KEEN_IRIS } from './lyraEyeArt';
+import { LONG_NAPE, LONG_NECK_BACK, LONG_NECK_W } from './neck';
+import { LYRA_FACE_FAR_LINE, lyraFaceCells, stampLyraFace } from './lyraFace';
+import { LYRA_FACE_FAR_EYE } from './lyraFaceArt';
+import { drawOwner, slotTint } from './ownerFrames';
+import { segAngle, stampPiece } from './painted';
+import { rotateTemplate, stampTemplate, type TemplatePalette } from './rotsprite';
 import { ballShade, capsule, ellipse, F_NO_OUTLINE, F_NO_TEXTURE, GRID, Layer, PartId, Pen, poly, RES, seam, v, Vec } from './raster';
 import { isFemaleBody, type FaceShape } from './types';
 
@@ -18,6 +26,10 @@ const SCLERA = '#f4f1ee';
 const EYELINE = '#1b1420';
 
 export function drawBody(g: DrawCtx): void {
+  if (g.bp.fit) {
+    drawBaseBody(g);
+    return;
+  }
   const r = g.rig;
   const b = g.bp;
   const skin = (part: PartId, bias = 0): Pen => ({ mat: g.skin, part, bias });
@@ -34,27 +46,36 @@ export function drawBody(g: DrawCtx): void {
     const shin = skin(s === 'N' ? 'shinN' : 'shinF', bias);
     legSpan(g, L, s, 0, 1, 0, thigh, 'skin');
     legSpan(g, L, s, 1, 2, 0, shin, 'skin');
-    footDraw(g, L, s, FOOT_BARE);
+    // His heroines' legs: flat skin with a shadow rim just inside the line (see flatSkin).
+    if (isFemaleBody(r.body)) flatSkin(L, g.skin, s === 'F' ? 2 : 3);
+    // Every footwear item draws its own foot (sandals and wraps with the toes in skin), so the
+    // female bodies' short bare foot is left out under it rather than poking out past a boot's toe.
+    if (!(isFemaleBody(r.body) && g.has('feet'))) footDraw(g, L, s, FOOT_BARE);
   }
 
   // Torso + neck
   const torso = g.L('torso.body');
   fillTorso(g, torso, 0, skin('torso'));
-  if (b.bust > 0) sculptTorso(g, torso, g.skin, 'skin');
-  const neckTop = v(r.head.x + 0.4 * b.headScale, r.head.y + 4 * b.headScale);
-  capsule(torso, r.neck, neckTop, b.neckW, b.neckW * 0.95, skin('torso'), (x) => (x < r.neck.x - 0.6 ? 3 : 2));
+  if (isFemaleBody(r.body)) flatTorso(g, torso);
+  else if (b.bust > 0) sculptTorso(g, torso, g.skin, 'skin');
+  // The long neck (neck.ts) is the owner's heroines': slimmer, and set back under the chin as he drew it.
+  const long = g.look.neck === 'long';
+  const neckTop = v(r.head.x + 0.4 * b.headScale - (long ? LONG_NECK_BACK : 0), r.head.y + 4 * b.headScale);
+  const neckW = long ? Math.min(b.neckW, LONG_NECK_W) : b.neckW;
+  // (his is lit but for its far edge: a shade lighter, so it is lit where the chin's shadow falls on it)
+  capsule(torso, r.neck, neckTop, neckW, neckW * 0.95, skin('torso'), long ? (x) => (x < r.neck.x + 0.2 ? 4 : 3) : (x) => (x < r.neck.x - 0.6 ? 3 : 2));
   // Nape: the back of the neck, from under the skull down to the shoulders.
   // It fills the gap behind the tapered jaw when the hair doesn't hang there;
   // hair drawn over the head still covers it. It starts well inside the
   // skull's back edge and stays in shadow: the slim nape of the owner's Aiden,
   // the one neck every character has (the owner, 2026-10-22, removed the thick one).
   const fa = faceAnchor(g);
-  const napeX = (fa.nx - 3.5) / RES;
+  const napeX = (fa.nx - (long ? LONG_NAPE : 3.5)) / RES;
   poly(
     torso,
     [v(napeX, (fa.ny + 1) / RES), v(napeX, r.neck.y + 0.2), v(napeX - 0.8, r.neck.y + 1.2), v(r.neck.x, r.neck.y + 1.2), v(neckTop.x, (fa.ny + 1) / RES)],
     skin('torso'),
-    2,
+    long ? 4 : 2,
   );
 
   // Simple form shading only (no muscle lines): a soft chest shadow and collarbone light.
@@ -90,6 +111,135 @@ export function drawBody(g: DrawCtx): void {
   // Near arm (in front of everything on the torso)
   drawArm(g, g.L('nearArm.body'), 'N', skin('upperArmN'), skin('forearmN'));
   handDraw(g, g.L('nearArm.body'), 'N', skin('handN'));
+}
+
+// ---------------------------------------------------------------------------
+// The owner's bare female body (femaleBaseArt.ts), piece by piece on the fitted rig.
+// ---------------------------------------------------------------------------
+
+/** A colour of his near-black line (never recoloured). */
+const isInk = (hex: string): boolean => {
+  const [r, g, b] = hexToRgb(hex);
+  return 0.299 * r + 0.587 * g + 0.114 * b < 22;
+};
+
+/**
+ * The part above each joint: a piece's round cap over its joint is that part's pixels. A hand's cap of
+ * the wrist stays the hand's: a sleeve that takes the forearm off past its cuff leaves the wrist on it.
+ */
+const CAP_OF: Partial<Record<PartId, PartId>> = {
+  forearmN: 'upperArmN',
+  forearmF: 'upperArmF',
+  shinN: 'thighN',
+  shinF: 'thighF',
+  footN: 'shinN',
+  footF: 'shinF',
+};
+
+/** The screen angle (degrees) the torso's up points at. */
+const upAngle = (g: DrawCtx): number => (Math.atan2(g.rig.up.y, g.rig.up.x) * 180) / Math.PI;
+
+/**
+ * Stamps one of his body pieces with its pivot on `at`, its bone pointing along `deg`: at his angle
+ * every pixel is his. His skin follows the character's skin (skinTone: in his own skin, his colour),
+ * his line stays his, and his sports top and briefs take `cloth` (their colour slot) when it is given.
+ * At rest every pixel is his as he drew it. In any other pose the layer's outline turns a pixel left on
+ * its edge into his line: where the piece was cut from the next part of him and moved away from it, or
+ * where turning it lost a pixel of his line, so no piece is ever left cut open. `only` = 'cloth'
+ * stamps only the cloth (the sports top and briefs items draw it over the body in their colour).
+ */
+function stampBase(g: DrawCtx, depth: Depth, p: BasePiece, at: Vec, deg: number, part: PartId, cloth?: string, only?: 'cloth', bare = false, noCap = false): void {
+  const L = g.L(depth);
+  const rest = g.rig.pose === 'idle';
+  const pal = new Map<string, [number, number, PartId]>();
+  // A cap over the joint above is the upper piece's pixels: it counts as that part (a boot clears the
+  // shin below the knee, not the thigh's round over it).
+  const upper = CAP_OF[part] ?? part;
+  for (const [ch, hex] of Object.entries(p.colors)) {
+    const isCloth = p.cloth.includes(ch);
+    if ((only === 'cloth' && !isCloth) || (noCap && p.cap.includes(ch))) continue;
+    // `bare`: the sports top's straps off, his shoulder's skin under them
+    const strap = bare ? p.straps?.[ch] : undefined;
+    if (strap && only === 'cloth') continue;
+    const c = strap ? skinTone(strap, g.look.skin, FEMALE_BASE_SKIN) : isCloth ? (cloth ? retintHex(hex, FEMALE_BASE_CLOTH, cloth) : hex) : isInk(hex) ? hex : skinTone(hex, g.look.skin, FEMALE_BASE_SKIN);
+    pal.set(ch, [g.m(c, 'painted'), rest ? F_NO_OUTLINE | F_NO_TEXTURE : F_NO_TEXTURE, p.cap.includes(ch) ? upper : part]);
+  }
+  const ax = Math.floor(at.x * RES);
+  const ay = Math.floor(at.y * RES);
+  for (const q of rotateTemplate(p, deg - p.angle)) {
+    const e = pal.get(q.ch);
+    if (e) L.set(ax + q.dx, ay + q.dy, e[0], 3, e[2], e[1]);
+  }
+}
+
+/**
+ * His sports top (on the chest) or briefs (on the pelvis) in `color`, on the item's own layer over the
+ * body's (items/clothes.ts: the sports top and briefs items). The body always wears them in his black.
+ */
+export function drawBaseCloth(g: DrawCtx, which: 'top' | 'bottom', color: string): void {
+  if (!g.bp.fit) return;
+  const r = g.rig;
+  if (which === 'top') stampBase(g, 'torso.top', FEMALE_BASE.chest, r.neck, upAngle(g), 'torso', color, 'cloth');
+  else stampBase(g, 'torso.bottom', FEMALE_BASE.pelvis, r.pelvis, upAngle(g), 'pelvis', color, 'cloth');
+}
+
+/**
+ * The female bodies: his bare body (docs/reference/female-base-owner-reference.jpg) as his pieces on
+ * the rig fitted to his joints, back to front as he drew it: the far arm behind everything, the far
+ * leg, the near leg, the pelvis and chest over the legs, the head, and the near arm in front. Each limb
+ * is upper piece, lower piece and hand or foot, the lower one over the upper with its round cap over the
+ * joint. A hand turns with its forearm and a foot stands level under its ankle; under footwear the boot
+ * draws the foot. His hands are his closed fists; a hand round a weapon's grip, pointing, open or
+ * cradling a book is his heroines' small hand (handDraw), turned with the forearm too.
+ */
+function drawBaseBody(g: DrawCtx): void {
+  const r = g.rig;
+  const P = FEMALE_BASE;
+  const arm = (s: Side) => {
+    const j = armJoints(r, s);
+    const depth: Depth = s === 'N' ? 'nearArm.body' : 'farArm.body';
+    const fore = segAngle(j.elbow, j.wrist);
+    stampBase(g, depth, s === 'N' ? P.upperArmN : P.upperArmF, j.shoulder, segAngle(j.shoulder, j.elbow), s === 'N' ? 'upperArmN' : 'upperArmF');
+    const forePiece = s === 'N' ? P.forearmN : P.forearmF;
+    stampBase(g, depth, forePiece, j.elbow, fore, s === 'N' ? 'forearmN' : 'forearmF');
+    // A forearm longer than his (a look's longer arms, rig.ts solveFit) is his forearm drawn on along
+    // the bone by the difference, without its cap of the elbow: his own pixels, the wrist further out.
+    const hisFore = Math.hypot(...([0, 1] as const).map((k) => FEMALE_BASE_JOINTS[`wrist${s}`][k] - FEMALE_BASE_JOINTS[`elbow${s}`][k])) / RES;
+    const extra = Math.hypot(j.wrist.x - j.elbow.x, j.wrist.y - j.elbow.y) - hisFore;
+    if (extra > 0.25) {
+      const k = extra / Math.hypot(j.wrist.x - j.elbow.x, j.wrist.y - j.elbow.y);
+      const on = v(j.elbow.x + (j.wrist.x - j.elbow.x) * k, j.elbow.y + (j.wrist.y - j.elbow.y) * k);
+      stampBase(g, depth, forePiece, on, fore, s === 'N' ? 'forearmN' : 'forearmF', undefined, undefined, false, true);
+    }
+    const kind = handPose(g, s).kind;
+    // (his Lyra's open far hand, the 'long' arms, is his small hand: ctx.ts handPose)
+    if (kind === 'fist' || (kind === 'relaxed' && !(s === 'F' && g.look.arms === 'long'))) stampBase(g, depth, s === 'N' ? P.handN : P.handF, j.wrist, fore, s === 'N' ? 'handN' : 'handF');
+    else {
+      // his wrist under the small hand, so it stays on the forearm
+      stampBase(g, depth, s === 'N' ? P.wristN : P.wristF, j.wrist, fore, s === 'N' ? 'handN' : 'handF');
+      handDraw(g, g.L(depth), s, { mat: g.skin, part: s === 'N' ? 'handN' : 'handF', bias: s === 'F' ? -1 : 0 });
+    }
+  };
+  const leg = (s: Side) => {
+    const j = legJoints(r, s);
+    const depth: Depth = s === 'N' ? 'nearLeg.body' : 'farLeg.body';
+    stampBase(g, depth, s === 'N' ? P.thighN : P.thighF, j.hip, segAngle(j.hip, j.knee), s === 'N' ? 'thighN' : 'thighF');
+    stampBase(g, depth, s === 'N' ? P.shinN : P.shinF, j.knee, segAngle(j.knee, j.ankle), s === 'N' ? 'shinN' : 'shinF');
+    // Every footwear item draws its own foot.
+    if (!g.has('feet')) stampBase(g, depth, s === 'N' ? P.footN : P.footF, j.ankle, 0, s === 'N' ? 'footN' : 'footF');
+  };
+  arm('F');
+  leg('F');
+  leg('N');
+  const up = upAngle(g);
+  stampBase(g, 'torso.body', P.pelvis, r.pelvis, up, 'pelvis');
+  // Under a top or armour of another kind his sports top's straps come off: a dress with bare shoulders
+  // shows his shoulders, not the straps (the rest of the top stays under it).
+  const worn = (slot: 'armor' | 'top') => g.has(slot) && !g.look.slots[slot]!.id.endsWith('_none');
+  const dressed = worn('armor') || (worn('top') && !g.has('top', 'top_sports_bra'));
+  stampBase(g, 'torso.body', P.chest, r.neck, up, 'torso', undefined, undefined, dressed);
+  drawHead(g);
+  arm('N');
 }
 
 /** Torso-local coordinates of a design point: x along the shoulders (toward the face), y up from the pelvis. */
@@ -211,9 +361,75 @@ function drawArm(g: DrawCtx, L: Layer, s: Side, upper: Pen, fore: Pen): void {
   // Muscle definition: a lit crest along the biceps and along the forearm
   // muscle just below the elbow, on the side facing the light; a shadow line
   // under the forearm crest and at the inner elbow.
+  if (isFemaleBody(g.rig.body)) {
+    // The owner paints his heroines' arms flat: no muscle lines (see flatSkin). The near shoulder
+    // is his: Aurelia's bare shoulder (femaleBodyArt.ts), turned with the upper arm.
+    flatSkin(L, upper.mat, s === 'F' ? 2 : 3);
+    // His shoulder is the round of a hanging arm: turned far from his angle (an arm raised, swung
+    // across the chest or flung back) its line falls inside the arm and the torso and its round
+    // stands off the body, so there the shoulder is the body's own round, outlined like the rest.
+    const j = armJoints(g.rig, s);
+    const P = FEMALE_SHOULDER_N;
+    const turn = ((segAngle(j.shoulder, j.elbow) - P.angle + 540) % 360) - 180;
+    if (s === 'N' && Math.abs(turn) <= SHOULDER_TURN) {
+      const pal: TemplatePalette = { o: [upper.mat, 0], D: [upper.mat, 1], s: [upper.mat, 2], b: [upper.mat, 3] };
+      stampTemplate(L, P, j.shoulder, turn, pal, upper.part, { flags: F_NO_OUTLINE | F_NO_TEXTURE });
+    }
+    return;
+  }
   muscleLine(g, L, s, upper.mat, 0.22, 0.72, 0.42, 1);
   muscleLine(g, L, s, fore.mat, 1.06, 1.58, 0.4, 1);
   despeckle(L, upper.mat);
+}
+
+/** How far (degrees) the near upper arm may turn from his before his shoulder piece is left out (see drawArm). */
+export const SHOULDER_TURN = 30;
+
+/**
+ * Skin painted the way the owner paints his heroines (his game-scale pictures: Aurelia's and Saya's
+ * bare shoulders, Lyra's thighs): one flat tone (`base`) inside a rim one shade darker, the pixel
+ * just inside the line all round. A pixel on the silhouette's edge becomes the line in the layer's
+ * outline pass, so the rim is the pixel next to it. Hands, feet and his painted pieces
+ * (F_NO_TEXTURE) keep their own pixels.
+ */
+function flatSkin(L: Layer, mat: number, base: number): void {
+  const own = (x: number, y: number) => x >= 0 && y >= 0 && x < GRID && y < GRID && L.mat[y * GRID + x] === mat;
+  const edge = (x: number, y: number) => own(x, y) && !(own(x + 1, y) && own(x - 1, y) && own(x, y + 1) && own(x, y - 1));
+  const out: [number, number][] = [];
+  for (let y = 0; y < GRID; y++) {
+    for (let x = 0; x < GRID; x++) {
+      const i = y * GRID + x;
+      if (L.mat[i] !== mat || L.shade[i] === 0 || L.flags[i] & F_NO_TEXTURE || edge(x, y)) continue;
+      const rim = edge(x + 1, y) || edge(x - 1, y) || edge(x, y + 1) || edge(x, y - 1);
+      out.push([i, rim ? base - 1 : base]);
+    }
+  }
+  for (const [i, sh] of out) L.shade[i] = sh;
+}
+
+/**
+ * The female torso's bare skin, the owner's way (see flatSkin): flat, with his shadow only where a
+ * form turns under: a soft crease under the bust and the navel.
+ */
+function flatTorso(g: DrawCtx, L: Layer): void {
+  flatSkin(L, g.skin, 3);
+  const { forms } = bustForms(g);
+  for (let fy = 0; fy < GRID; fy++) {
+    for (let fx = 0; fx < GRID; fx++) {
+      const i = fy * GRID + fx;
+      if (L.mat[i] !== g.skin || L.shade[i] === 0) continue;
+      const [lx, ly] = torsoLocal(g, (fx + 0.5) / RES, (fy + 0.5) / RES);
+      const under = forms.some(([cx, cy, rx, ry]) => {
+        const u = (lx - cx) / rx;
+        return Math.abs(u) < 0.8 && Math.abs(ly - (cy - ry * 0.95 + 0.9 * u * u)) < 0.3;
+      });
+      if (under) L.reshade(fx, fy, 2);
+    }
+  }
+  const n = g.rig.T(1.5, (g.bp.waistY ?? 5.4) - 1.2);
+  const nx = Math.floor(n.x * RES);
+  const ny = Math.floor(n.y * RES);
+  if (L.has(nx, ny) && L.mat[ny * GRID + nx] === g.skin) L.reshade(nx, ny, 2);
 }
 
 /**
@@ -275,6 +491,9 @@ export function headAt(g: DrawCtx, dx: number, dy: number): Vec {
 }
 
 function drawHead(g: DrawCtx): void {
+  // Her face ('fine') in the owner's own frames of her (ownerFrames.ts): his face, eyes and neck there,
+  // pixel for pixel, in the character's skin and eye colour; her hair covers the rest of the head.
+  if (g.look.faceShape === 'fine' && drawOwner(g, 'face', (k, hex) => (k === 'eye' ? retintHex(hex, KEEN_IRIS, g.look.eyeColor) : slotTint({}, g.look.skin)(k, hex)))) return;
   if (g.look.faceShape === 'valiant') {
     drawValiantHead(g);
     drawFace(g);
@@ -321,6 +540,9 @@ function drawHead(g: DrawCtx): void {
   // Everything from the eye line down is the hand-drawn face template.
   const { nx, ny } = faceAnchor(g);
   for (let i = ny * GRID; i < GRID * GRID; i++) L.mat[i] = -1;
+  // Lyra's face ('fine') is narrower than the template: the skull stops short of his far face line, so
+  // its outline runs on up from his line.
+  if (g.look.faceShape === 'fine') for (let y = 0; y < ny; y++) for (let x = nx + LYRA_FACE_FAR_LINE; x < GRID; x++) L.mat[y * GRID + x] = -1;
   drawFace(g);
 }
 
@@ -384,7 +606,7 @@ function skinTone(hex: string, skin: string, base = VALIANT_SKIN): string {
  * square: the reference's original strong jaw, with a flat jaw line.
  * (valiant and founder, the owner's heads, are his pixels whole: see drawValiantHead, drawFounderHead.)
  */
-const FACE_LEFT: Record<Exclude<FaceShape, 'valiant' | 'founder'>, string[]> = {
+const FACE_LEFT: Record<Exclude<FaceShape, 'valiant' | 'founder' | 'fine'>, string[]> = {
   tapered: ['osbbbbb', 'ossbbbb', '.osbbbb', '..osbbb', '...osbb', '....osb', '.....os', '......o', '.......', '.......'],
   soft: ['osbbbbb', 'ossbbbb', 'ossbbbb', '.osbbbb', '..osbbb', '...osbb', '....osb', '.....oo', '.......', '.......'],
   square: ['osbbbbb', 'ossbbbb', 'osDsbbb', 'ossbbbb', '.osbbbs', '..osbbs', '...osbs', '....ooo', '.......', '.......'],
@@ -392,7 +614,8 @@ const FACE_LEFT: Record<Exclude<FaceShape, 'valiant' | 'founder'>, string[]> = {
 
 const faceLeft = (g: DrawCtx): string[] => {
   const s = g.look.faceShape;
-  return (s && s !== 'valiant' && s !== 'founder' && FACE_LEFT[s]) || FACE_LEFT.tapered;
+  // (Lyra's face, 'fine', has the default near cheek under her hair)
+  return (s && s !== 'valiant' && s !== 'founder' && s !== 'fine' && FACE_LEFT[s]) || FACE_LEFT.tapered;
 };
 
 const FACE_MAIN: Record<string, string[]> = {
@@ -449,6 +672,9 @@ const EYE_ROWS: Record<string, { near: string[]; far: string[] }> = {
   // The owner's eyes (src/sprite/eyeArt.ts), a row lower than ours and heavy-lidded: his brow (B) on
   // the row above the lash line, a single row of white and red iris under it. Drawn in his pixels.
   valiant: { near: VALIANT_EYES.open.near.letters, far: VALIANT_EYES.open.far.letters },
+  // The owner's Lyra's eyes (src/sprite/lyraEyeArt.ts), his pixels from his picture at our scale: two
+  // rows like his Aiden's, her black lash over a single row of white and green iris; her brows right over it.
+  keen: { near: KEEN_EYES.open.near.letters, far: KEEN_EYES.open.far.letters },
 };
 
 /** Closed eyes (knocked out): each eye a dark lid line across its middle row. */
@@ -505,6 +731,11 @@ export function faceCells(g: DrawCtx, skipBack = 0): Set<number> {
   faceLeft(g).forEach((row, r) => {
     for (let c = skipBack; c < row.length; c++) if (row[c] !== '.') add(nx - 7 + c, ny + r);
   });
+  if (g.look.faceShape === 'fine') {
+    // Lyra's face from the lash row down, over the template's near cheek.
+    for (const c of lyraFaceCells(nx, ny)) if (c.y >= ny) add(c.x, c.y);
+    return out;
+  }
   main.forEach((row, r) => {
     for (let c = 0; c < row.length; c++) if (row[c] !== '.') add(nx + c, ny + r);
   });
@@ -522,7 +753,9 @@ export function faceAnchor(g: DrawCtx): { nx: number; ny: number; ex: number; fx
   const nx = Math.floor((g.rig.head.x - 1.9 * k) * RES);
   const ny = Math.floor((g.rig.head.y + 1.0 * k) * RES);
   const valiant = g.look.faceShape === 'valiant';
-  return { nx, ny, ex: valiant ? nx + 1 : nx, fx: valiant ? nx + 8 : nx + 9, fy: ny };
+  // (Lyra's face, 'fine': her far eye where he drew it, closer in on her narrower face)
+  const far = g.look.faceShape === 'fine' ? LYRA_FACE_FAR_EYE : 9;
+  return { nx, ny, ex: valiant ? nx + 1 : nx, fx: valiant ? nx + 8 : nx + far, fy: ny };
 }
 
 function drawFace(g: DrawCtx): void {
@@ -560,7 +793,10 @@ function drawFace(g: DrawCtx): void {
   const lowered = g.rig.pose === 'read';
   // The owner's eyes ('valiant'): his pixels in each lid state, laid on the template's eye cells.
   const his = shape === 'valiant' ? VALIANT_EYES[closed ? 'closed' : lowered ? 'lowered' : 'open'] : undefined;
-  const eyes = his ? { near: his.near.letters, far: his.far.letters } : closed ? CLOSED_EYES : lowered ? EYE_ROWS.calm : EYE_ROWS[shape] || EYE_ROWS.standard;
+  // Lyra's eyes ('keen'): her pixels in each lid state, on our own eye cells and rows.
+  const lyra = shape === 'keen' ? KEEN_EYES[closed ? 'closed' : lowered ? 'lowered' : 'open'] : undefined;
+  const painted = his || lyra;
+  const eyes = painted ? { near: painted.near.letters, far: painted.far.letters } : closed ? CLOSED_EYES : lowered ? EYE_ROWS.calm : EYE_ROWS[shape] || EYE_ROWS.standard;
   const main = (FACE_MAIN[isFemaleBody(g.rig.body) ? 'female' : g.rig.body] || FACE_MAIN.male).map((row, r) => eyeRow(row, r, eyes));
 
   const put = (x: number, y: number, ch: string) => {
@@ -587,6 +823,16 @@ function drawFace(g: DrawCtx): void {
     main.forEach((row, r) => {
       for (let c = 0; c < row.length; c++) if (row[c] === 'm' || row[c] === 'M') put(ex + c, ny + r, row[c]);
     });
+  } else if (g.look.faceShape === 'fine') {
+    // Lyra's face (lyraFace.ts): the template's near cheek where her hair hides hers, her pixels over
+    // it, and only the eyes from the template (her mouth is her own).
+    faceLeft(g).forEach((row, r) => {
+      for (let c = 0; c < row.length; c++) put(nx - 7 + c, ny + r, row[c]);
+    });
+    stampLyraFace(g, L, nx, ny);
+    for (const [side, x0] of [['near', ex], ['far', fx]] as const) {
+      eyes[side].forEach((row, r) => [...row].forEach((ch, c) => !(ch in skinShade) && put(x0 + c, ny + r, ch)));
+    }
   } else {
     faceLeft(g).forEach((row, r) => {
       for (let c = 0; c < row.length; c++) put(nx - 7 + c, ny + r, row[c]);
@@ -613,12 +859,25 @@ function drawFace(g: DrawCtx): void {
     stamp(his.near, ex);
     stamp(his.far, fx);
   }
+  if (lyra) {
+    // Her pixels over the template's eye cells: her iris moves the way the eye colour moves her green;
+    // pale special eyes take our pale tones. Her lash and white stay his.
+    const tone = (letter: string, hex: string) => (letter === 'd' || letter === 'i' ? (pale ? ir[letter === 'd' ? 3 : 4] : retintHex(hex, KEEN_IRIS, iris)) : hex);
+    const stamp = (eye: PaintedEye, x0: number) =>
+      eye.rows.forEach((row, r) => {
+        for (let c = 0; c < row.length; c++) if (row[c] !== '.') L.set(x0 + c, ny + r, flat(tone(eye.letters[r][c], KEEN_EYE_COLORS[row[c]])), 3, 'head', F_NO_OUTLINE);
+      });
+    stamp(lyra.near, ex);
+    stamp(lyra.far, fx);
+  }
 
   // Overlays drawn on the face layer (no outline, above the skin). His eyes open a row lower than
   // ours (his lash line is the template's second row): what sits on the open eye follows them.
   const set = (x: number, y: number, hex: string) => F.set(x, y, g.m(hex, 'flat'), 3, 'head', F_NO_OUTLINE);
   const lash = his ? ny + 1 : ny;
-  if (female && (closed || lowered)) {
+  if (lyra) {
+    // her lashes are his pixels: no flick at the corners, open or shut
+  } else if (female && (closed || lowered)) {
     // the lashes of the closed or lowered lids
     set(ex - 1, ny + 1, EYELINE);
     set(ex - 1, ny + 2, EYELINE);
@@ -631,6 +890,12 @@ function drawFace(g: DrawCtx): void {
   // Special eye patterns (pupil marks on the red iris, veins, sage pigment); closed eyes show none.
   if (closed || lowered) {
     // nothing to see under the lids
+  } else if ((sp === 'tomoe1' || sp === 'tomoe3' || sp === 'pinwheel') && lyra) {
+    // Lyra's iris is a single row under her lash (her green, then its dark): the marks go on it, the
+    // far eye's dark green past one tomoe.
+    set(ex + 2, ny + 1, '#14040a');
+    if (sp !== 'tomoe1') set(fx + 1, ny + 1, '#14040a');
+    if (sp === 'pinwheel') set(ex + 3, ny + 1, '#14040a');
   } else if ((sp === 'tomoe1' || sp === 'tomoe3' || sp === 'pinwheel') && his) {
     // His iris is a single row under the lash: the marks go on his dark red, the near eye's first and
     // past one tomoe the far eye's too, so the near eye's red still shows.
@@ -657,15 +922,33 @@ function drawFace(g: DrawCtx): void {
     for (let x = -1; x <= 4; x++) set(ex + x, lash - 1, '#c2410c');
     for (let x = 0; x <= (his ? 2 : 3); x++) set(fx + x, lash - 1, '#c2410c');
     if (!closed && !lowered) {
-      // the bar pupil (on his two-pixel iris only its dark half, so the gold still shows)
-      set(ex + 2, ny + 2, '#120c18');
-      if (!his) set(ex + 3, ny + 2, '#120c18');
+      // the bar pupil (on his two-pixel iris only its dark half, so the gold still shows; on Lyra's
+      // single row of iris, her dark green's cell)
+      if (lyra) set(ex + 3, ny + 1, '#120c18');
+      else set(ex + 2, ny + 2, '#120c18');
+      if (!his && !lyra) set(ex + 3, ny + 2, '#120c18');
     }
   }
 
   // Brows (hair-colored), two rows above the lash; most bangs cover them. His eyes bring their own, and
   // his Solen's head has his brows in its pixels.
   if (his || g.look.faceShape === 'founder') return;
+  if (lyra) {
+    // Hers: her pixels, long and slanting down to the inner corner, in her hair's reds moved the way the
+    // hair colour moves her hair's mid red.
+    const hair = hairChoice?.colors[0];
+    for (const [side, x0] of [['near', ex], ['far', fx]] as const) {
+      const { at, rows } = KEEN_BROWS[side];
+      rows.forEach((row, r) => {
+        for (let c = 0; c < row.length; c++) {
+          if (row[c] === '.') continue;
+          const hex = KEEN_EYE_COLORS[row[c]];
+          set(x0 + at[0] + c, ny + at[1] + r, hair ? retintHex(hex, KEEN_BROW_HAIR, hair) : hex);
+        }
+      });
+    }
+    return;
+  }
   const br = makeRamp(hairChoice?.colors[0] || '#2a2230', 'hair');
   // Sharp and fierce eyes get brows angled down toward the nose.
   const sharp = shape === 'sharp' || shape === 'fierce';

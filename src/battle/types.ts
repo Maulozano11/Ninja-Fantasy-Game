@@ -208,10 +208,39 @@ export interface Unit {
   tripleNature?: { natures: string[]; spent: boolean };
   /** The nature of the last jutsu it cast this battle ('' for one with none): Triple Nature reads it. */
   lastNature?: string;
+  /** A jutsu held charged in the hand (the activated Chidori, later the Rasengan): see ChargedHand. */
+  charged?: ChargedHand;
   /** Battle bookkeeping for the mission result. */
   stats2: { critsTaken: number; critsLanded: number; pills: number; fell: boolean; fellToCrit: boolean; tension: number; jutsuCast: number };
   /** Skill proficiencies (Stealth, Perception, Medicine...). */
   skills: string[];
+}
+
+/**
+ * A melee jutsu held charged in the near hand (the owner, 2026-10-21: the Chidori becomes an activated
+ * state, "lo mismo para el rasengan"; docs/GAMEPLAY_DESIGN.md). Activated as a bonus action, it waits
+ * up to `rounds` of the ninja's own turns; the moment the ninja moves within reach of a foe it goes
+ * off by itself (battle/charged.ts) and ends. Kept out of `cond`, which a fall wipes.
+ */
+export interface ChargedHand {
+  jutsu: string;
+  enhanced: boolean;
+  /** Its own turns left, this one counted: at the start of a turn it loses one, and at 0 it fades unused. */
+  rounds: number;
+}
+
+/** Why a charged hand ended: its blow went off, it ran out of rounds, its ninja fell, its chakra was sealed, or it was let go (hand seals, the weapon drawn). */
+export type ChargeEnd = 'struck' | 'expired' | 'down' | 'sealed' | 'released';
+
+/**
+ * Ground cracked under a charged ninja's steps (the owner: "terreno dificil 1 turno"): difficult
+ * terrain (each step into it costs double) until the start of that ninja's next turn, so every other
+ * unit gets one turn with it. `round`: when it cracked (it goes after a round in any case, should its
+ * ninja take no more turns).
+ */
+export interface CrackCell {
+  by: string;
+  round: number;
 }
 
 /** The side a unit belongs to, whichever side a Command has it fighting on for now. */
@@ -418,6 +447,8 @@ export interface BattleState {
   walls: Wall[];
   /** Gales turning on the ground (the Gale Curtain); none in a battle saved before they existed. */
   zones?: GaleZone[];
+  /** Ground cracked by a charged ninja's steps: navigation cell ("c,r") → who cracked it (difficult terrain). */
+  cracks?: Record<string, CrackCell>;
   /**
    * Ground a water jutsu soaked (the owner, 2026-10-21: "pone el suelo donde pasa mojado por 2
    * turnos"): navigation cell ("c,r") → rounds it stays wet. Wet ground puts out flames and carries
@@ -493,10 +524,12 @@ export type BattleEvent =
   | { t: 'heal'; unit: string; amount: number; hp: number; source?: string }
   | { t: 'chakra'; unit: string; delta: number; chakra: number; reason: string }
   /**
+   * `released`: the blow of a hand charged with it (the activated Chidori) going off by itself as its
+   * ninja comes within reach of a foe (no cast: the charge was paid when it was activated).
    * `fanned`: a fire jutsu that went through a gale on the ground (the Gale Curtain) and burns
    * harder: the gale's id, and where the fire meets the wind (for the screen's swirl).
    */
-  | { t: 'jutsu'; unit: string; jutsu: string; at: Pt; shape: AreaShape | null; enhanced: boolean; fanned?: { zone: string; at: Pt } }
+  | { t: 'jutsu'; unit: string; jutsu: string; at: Pt; shape: AreaShape | null; enhanced: boolean; fanned?: { zone: string; at: Pt }; released?: boolean }
   | { t: 'down'; unit: string; state: Down }
   | { t: 'condition'; unit: string; cond: keyof Conditions | 'stood'; on: boolean }
   | { t: 'effect'; unit: string; effect: string; on: boolean }
@@ -512,6 +545,10 @@ export type BattleEvent =
   | { t: 'investigate'; guard: string; at: Pt }
   | { t: 'body'; unit: string; hidden: boolean }
   | { t: 'wall'; wall: Wall; on: boolean }
+  /** A hand is charged with a jutsu (the activated Chidori), or the charge ends (`end` says why). */
+  | { t: 'charged'; unit: string; jutsu: string; on: boolean; enhanced?: boolean; end?: ChargeEnd }
+  /** The ground cracks under a charged ninja's steps (these cells, "c,r", in the order stepped), or mends. `first`: its first cracks this turn. */
+  | { t: 'cracks'; unit: string; cells: string[]; on: boolean; first?: boolean }
   /** A gale on the ground starts turning, or dies down. */
   | { t: 'zone'; zone: GaleZone; on: boolean }
   | { t: 'wallHit'; wall: string; amount: number; hp: number; at: Pt }

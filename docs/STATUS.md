@@ -20,9 +20,10 @@ clean.
 
 **Character creator** (`src/components/CharacterCreator.tsx`, laid out like Baldur's Gate 3)
 - Steps: Origin, Clan, Class, Appearance, Abilities, Jutsu. Plus a pixel-paint editor.
-- 7 legend presets (`LEGENDARY_PRESETS`): Solen the Founder King (default sheet), Akira the Ember
+- 8 legend presets (`LEGENDARY_PRESETS`): Solen the Founder King (default sheet), Akira the Ember
   Ronin, **Aiden the Crimson Knight (the owner's art standard)**, Kaien the Storm Avenger, Hiro the
-  Sunburst Hero, Raiga the Warlord of Ash, Ren the Night Prince.
+  Sunburst Hero, Raiga the Warlord of Ash, Ren the Night Prince, **Lyra the Gilded Blade (the owner's first
+  heroine, on his bare female body)**.
 - Companions: Hana (Kōton, Medical), Kenji (Ryusei, Genjutsu), and every preset.
 - 5 classes (Ninjutsu, Taijutsu, Genjutsu, Medical, Bukijutsu) and 9 feats.
 - Appearance (`src/sprite/catalog.ts`):
@@ -84,7 +85,9 @@ Boss. Paths of Mastery: designed, not built.
   battle (`src/rules/feats.ts`).
 - VFX for 8 elements (fire, water, wind, lightning, earth, genjutsu, chakra, poison), all from the
   owner's v3 sheets: full effect set, walls in 3 orientations, a beast each. Signature effects:
-  Fireball / Great Fireball, Great Fire Annihilation (normal and enhanced), Kirin.
+  Fireball / Great Fireball, Great Fire Annihilation (normal and enhanced), Kirin. Solid effects
+  (beasts, rock, crystal, the poison and chakra walls' frames, wood, dragon heads) carry the
+  characters' black line, energy none (2026-10-22, `vfx/solid-outline-apply`).
 - Hotbar icons from the owner's sheets 1–7 and 12 (`src/assets/ui_icons/`): 10 jutsu, 3 for jutsu
   not built yet (Rasengan, Venom Surge, Water Stream), 17 actions, great_fireball.
 
@@ -147,6 +150,9 @@ screens (`CampaignMode.tsx`, `ArenaSandbox.tsx`) are English only.
 | `jutsu/tide-s` | pushed | The **Dragon Tsunami** (*Técnica de Agua: Dragón Tsunami*, `water_tide_s`), Water's S-rank, from his paint-over of our widest wave (`docs/reference/tide-s-owner-reference.jpg`: "a la ola pasame el sprite donde se ven mas olas para agregarle un kanji y una bestia animada que sera el jutsu en version mejorada clase s"): his curl wave, water dragon (head, horns, whiskers, jaw as pieces), kanji 水 with its glow and spray, lifted at 2x2 game px per pixel of his (`tools/refs/tide-s-from-ref.py` → `tools/world-sprites/vfx-tide-s-refdata.ts` → `vfx-tide-s.ts` → `src/assets/world/vfx_tide_s/`); the curl rises with the wave, the dragon surges out of it, roars and dives at the break, the kanji fades in, pulses and flashes (3.1 s wave). In `JUTSUS_DATA` as Water's S-rank (S-rank slot, level 10; 12 chakra +4, 6d8 STR half, 11.25 m 80-degree cone, sweep 3 m and knock-down, douses, ground wet one round longer: `wetRounds`); the rank-A Tide renamed *Técnica de Agua: Tsunami* (same id). Every water ninja can cast it in practice (`#combat`); `src/battle/tideS.test.ts`. Touches `jutsu.ts`, `ground.ts`, `engine.ts`, `shinobiData.ts`, `playback.ts`, `vfxSprites.ts`, `vfxTintPlan.ts`, `BattleScreen.tsx`, `BattleDemo.tsx`, the tests that pinned "Water has no S-rank" | **Approved by the owner** (2026-10-22: the animation, rank S, the names, and the numbers "por ahora"); ready to merge |
 | `battle/y-axis-test` | pushed | The owner's *"sobre el eje y hazme una prueba"* (2026-10-22). Finding: the battle already moves on the Y axis of the screen: the ground is a 2D plane (x across, z into the depth, 60 × 20 m, a hidden 0.5 m grid of 122 × 40 cells, 8 directions, a diagonal costs its true length), and reach, paths, areas, cover, sight, depth sorting and the AI all work in it. Added: a practice battle **Prueba del eje Y** (`depth_test` in `encounters.ts`, practice only: the party at the front edge, the rogues at the back, the fight runs up and down the screen); the camera may scroll the map's front edge above the hotbar (the front 2 m of depth were hidden under it; `BattleScreen.tsx`, `clampCam`); tests `src/battle/depth.test.ts`. Questions for him: whether "eje Y" means this depth or height (jumping, climbing, flying); front and back views for walking up and down the screen (new art); scaling by depth; the depth ratio (1 m deep = 38 px); diagonal cost; how much depth the camera shows (answered 2026-10-22: depth is what he meant and he wants height too, side views only, try 5-10-5; built on `battle/height-test`, which carries this branch) | **Test for the owner to try** (no art; not merged) |
 | `battle/height-test` | pushed (from `battle/y-axis-test`, the integration branch merged in) | His answers of 2026-10-22: "eje Y" is depth (it works) and he wants a sense of **height**; side views only; "vamos a probar 5-10-5". Then his paint-over of how maps show height (`docs/reference/map-height-owner-reference.jpg`, a vision, not art to lift): terraces, a cliff face between levels, stone stairs. **Found:** the 3 levels already existed (River Forest's hill camp and lookout): units drawn raised by their level (86 px a level), +2/−2 to hit from higher/lower ground, falls when shoved or swept off a ledge (1d6 a level), a cliff cost 4 m up and 1 m down (0.5/0.25 with the ninja jump), ramps free, the AI liked high ground a little; "ranged reaches further" was written but not built. **Built:** 5-10-5 diagonals (0.5 m, 1 m, 0.5 m... per 0.5 m cell, counted over the turn) in paths, reach, the preview's metres, dash and the AI, one switch `DIAGONAL_RULE` in `nav.ts`, the preview also showing the true length; climbing at half speed (3 m a level up, 1.5 m down), ladders (`MapDef.isClimb`, nobody stops on them), walls of 2 levels only by stairs, ladder or jump; kunai +1.5 m of range a level above; no blow, shove or melee jutsu across 2 levels; from 2 levels up low cover counts less and tents and crate stacks don't block sight; the ground blocks sight above the eye line (cliffs, the tower); the sprite rises smoothly up stairs, ledges and ladders, a climb plays at a walk, the shadow stays on the ground below with a dotted line; the move preview says "sube 3.0 m" and "6.0 m de ellos trepando". A practice battle **Prueba de altura** (`height_test` in `encounters.ts`, its own map `maps/heightTest.ts`, practice only): two terraces with cliff faces and stone stairs, a rock ledge, a watch tower with a ladder; placeholder ground painted in the browser from the map's formulas (`components/battle/placeholderArt.ts`, marked "ARTE PROVISIONAL"), props reused from the world art. Rules and proposals in `docs/GAMEPLAY_DESIGN.md` (Elevation, "Height in play", "Diagonals: 5-10-5"); tests `src/battle/height.test.ts`, `depth.test.ts` updated. Touches the hot files `engine.ts` (the walk counts diagonals, the ladder is mid-hop; 2-level reach in opportunity attacks, shoves and melee jutsu) and `BattleScreen.tsx` (the move preview text), plus `nav.ts`, `map.ts`, `combat.ts`, `intent.ts`, `stealth.ts`, `types.ts`, `playback.ts`, `renderer.ts`, `mapArt.ts`, `battleText.ts`, `BattleDemo.tsx`. River Forest's own art and layout are unchanged; its play changes with the new rules (cliff costs, the lookout looking down, sight over the lookout rock) | **Test for the owner to try** (rules are proposals; placeholder art; not merged) |
+| `jutsu/chidori-active` | pushed | The owner's activated Chidori (`docs/GAMEPLAY_DESIGN.md`, "The Chidori becomes an activated state"): a bonus action charges the hand for 3 rounds, the blow (a melee jutsu attack roll, 5d8) goes off by itself within reach of the first foe the ninja moves to, the ground cracks under its steps into difficult terrain for 1 turn; generic charged hand for the Rasengan later (`src/battle/charged.ts` + tests); the AI uses it; his lightning hand from his two paint-overs (`tools/refs/chidori-hand-from-ref.py`, `tools/world-sprites/vfx-chidori.ts` → `src/assets/world/vfx_charged/`), the aura, Battle Static's crackle and the ground cracks. Touches `engine.ts`, `shinobiData.ts` (the Chidori's cast time, range, save, description), `playback.ts`, `renderer.ts` | **Waiting for approval** (new art, and the rules' open points) |
+| `jutsu/rename-remove` | pushed | The owner's jutsu decisions of 2026-10-22: Rasenshuriken → *Técnica de Viento: Estrella Huracán* / Hurricane Star, Espejismo → *Técnica de Genjutsu: Mente retorcida* / Mind Twist (ids unchanged, Japanese names of their own), Yasaka no Magatama removed (data, battle spec, short name; Hana gets the Dragon Tsunami); a saved sheet with it loads with a replacement (`refitRemoved` in `src/rules/progression.ts`, `REMOVED_JUTSUS` in `jutsuNature.ts`, through `migrateCharacter`); `src/rules/jutsuRemoved.test.ts`. Touches `shinobiData.ts`, `missions.ts`, `jutsu.ts`, `BattleScreen.tsx` (SHORT), `ninja.ts`, the tests that pinned the old names | **His decisions**; not merged (no PR yet) |
+| `vfx/solid-outline`, `vfx/solid-outline-apply` | pushed | The characters' black line on solid jutsu (`tools/world-sprites/solid-outline.ts`, default on, `SOLID_OUTLINE=0` turns it off): every beast, the earth set's rock (walls, thrown rocks, spikes, the hit's, blast's and aura's rocks, the D/C rock bullets), the crystal walls, the poison walls' stone frame, the chakra barriers' gold frame, the wood dragon, the dragon heads and the Dragon Tsunami's dragon; never dust, mist, slime, panes, glow, shadows or a cut where a head comes out of the fire. The raiju's brown and the crane's teal line recoloured to black. Generators changed and rerun; 34 sheets in `src/assets/world/` changed (only line pixels; frames and anchors unchanged); `src/sprite/solidOutline.test.ts` | **Approved** by the owner (2026-10-22, *"1 si 2 cambia 3 si"*); `-apply` is ready to merge |
 | `worktree-*` | not on origin (local `6e2e8dc`) | Agent worktree leftovers | Stale |
 
 The tips are the pushed ones; fetch to see the latest. At this snapshot the owner's checkout had
@@ -161,6 +167,33 @@ Merge checks (`git merge-tree` on the origin tips, nothing changed):
   `camp/owner-ref` and `ryusei/phase` in `docs/reference/README.md`.
 - `ryusei-phase-owner-reference.jpg` and `poses/warp-throw-owner-reference.jpg` (on those branches)
   are the same image.
+
+- Decided 2026-10-23: the owner approved the Fireball / Great Fireball core animation and smoke trail (`vfx/fireball-core-smoke`, "aprovado") and the Chidori ground cracks ("me gusta ese efecto electrico en la tierra aprovado"); both are in the game.
+
+- Decided 2026-10-23: the map quality standard is `docs/reference/map-quality-owner-reference.png` ("el standard de calidad que quiero llegar del mapa es este"); his paint-over of our camp battle (`map-height-owner-reference.jpg`, on `battle/height-test`) shows how height and depth go in: terraces with rock cliff faces and stairs between levels. He will edit the world himself.
+
+- Decided 2026-10-23: the owner approved Lyra's sit pose ("lyra pose sentada aprovada": his sit picture on his sit rock, `heroine/lyra-v2` 6646042), then the rest of her.
+
+- Decided 2026-10-23: Lyra approved 100% ('lyra aprovada 100%'); merged (`heroine/lyra-v2` at `6646042`,
+  through `merge/lyra-approved`). What came in: the legend preset `preset_lyra` (Lyra, the Gilded Blade), every
+  part lifted from his game-scale picture (hair `hair_copper_braid`, eyes `keen`, face `fine`, blouse, corset,
+  skirt, tabard, pouch belt, thigh-high boots, the Gilded Rapier with its long blade); the owner's bare female
+  body (`body/female-v2` as Lyra's branch has it, 7fbba79: his pieces on a rig fitted to his joints, the sports
+  top and briefs as items, the Messy Ponytail hair); her long arms (`arms: 'long'`, "Brazos: Largos" in the
+  creator); her long neck (`neck: 'long'`, on her preset only: the neck picker stays removed, so she keeps the
+  neck she has today, and `migrateAppearance` keeps it while it drops the old slim and strong ones); his read
+  (three frames), sit (one frame) and throw frames 3-4 painted on her, every pixel his (`ownerFrames.ts`); her
+  far leg whole in read; the fitted female bodies' sit is his Lyra sit (`rig.ts` FIT_SIT; male and bulky keep
+  theirs); his two rocks as seat props for every character (`seats.ts`: `seat_rock` under read, `seat_rock_sit`
+  under sit; the camp shows the rocks under its read and sit spots). The neck fix he approved on
+  `body/female-v2` (f84e80e, the head on the neck through the throw) is not on Lyra's branch and is not in
+  yet. His read pose is now every body's read (male and bulky too); male and bulky keep their own sit. The
+  integration's later checks find four small things on the new female body, named in the tests as known and
+  open (the owner said the old women's clothing and armour are not refitted to it): the Shadow Half-Cloak's
+  slit (2 px, tackle 4) and 2 px beside its stud in Aiden's downed 0; Solen's cowl clasp, 1 px in combo 0 and
+  7; Aiden's sabaton a pixel short of the thigh in the throw's and the combo's back kick. Still open from her
+  branch: the male and bulky feet hang above his rock when they read; whether the other characters' throw
+  should follow his release.
 
 ## 3. Waiting for the owner
 
@@ -177,8 +210,8 @@ Merge checks (`git merge-tree` on the origin tips, nothing changed):
 
 - `jutsu/tide-s` (2026-10-22): the Dragon Tsunami is approved (look, rank S, names, numbers for now).
   Still open, small:
-  - Hana (Water, medic) keeps Yasaka no Magatama in her S-rank slot (see the class question below);
-    give her the Dragon Tsunami instead? (Practice battles let every water ninja cast it anyway.)
+  - Hana (Water, medic) has the Dragon Tsunami in her S-rank slot since he removed Yasaka no
+    Magatama (2026-10-22, `jutsu/rename-remove`): the only rank S her nature and class allow. Confirm.
   - His curl stands with its foot cut straight where his canvas ended (bottom left); and where his
     dragon and kanji covered the curl, the curl is continued with his own rings turned about the
     spiral's eye (seen while the dragon rises and dives and before the kanji shows).
@@ -262,15 +295,23 @@ Merge checks (`git merge-tree` on the origin tips, nothing changed):
   clan secret not, the type change swaps the jutsu, Light and Void only jutsu with no element, the
   random ninja's picks); Kaien's Fireball and Raiga's Earth Wall (kept; proposed: a formal second
   nature, Kaien Rayo + Fuego, Raiga Fuego + Tierra).
+- Decided 2026-10-22 (`jutsu/rename-remove`): **Rasenshuriken → "Estrella Huracán"** (Hurricane Star,
+  `rasenshuriken_wind`), **Espejismo/Mirage → "Mind Twist"** (`genjutsu_mirage`; Spanish "Mente
+  retorcida", our proposal, one line to change if he wants "Mind Twist" in Spanish too), ids
+  unchanged; **Yasaka no Magatama removed**: *"quitala del juego"* (he will make something else).
+  Hana gets the Dragon Tsunami in its place; a saved sheet with it loads with the best jutsu its
+  nature, class and clan allow in that slot, same rank or lower, or the slot empty
+  (`docs/GAMEPLAY_DESIGN.md`, "Jutsu names, and a removed jutsu"). Night Guy: he renames it later.
 - Decided 2026-10-22: the neck option was removed from the creator; every character keeps the slim nape (his Aiden's). Saved 'strong' necks load as slim.
 - Decided 2026-10-22: **Solen approved and merged** (`solen/owner-standard`): *"me encanta la pantorilla aprovado"*. He also said yes to filling the 1-pixel holes for every character and to fixing the stowed sword that pokes out (*"si arregla el hueco de 1 pixel a todos si haz el cambio en espada guardada"*); both are built on `fix/holes-stowed-sword` (idle left as drawn).
 - Decided 2026-10-22: **Aurelia stays in our format; small hands become a creator option for women.** He first said *"la referencia es una version nueva copiala las manos mas pequeñas ponlas como opcion en el juego para personajes femeninos"*, then, seeing that his new picture is about 4 rows taller than the female base body, cancelled the re-scale: *"no esta bien deja tu diseño a nuestro formato esta bien cancela la reescala esta bien como esta"*. So Aurelia keeps the pieces from the game-scale picture on the female base body; "Manos: Normales / Pequeñas" is offered on the female and slender bodies, Pequeñas from her picture. Being built on `heroine/aurelia-v2` with the skirt and far-knee fixes.
 - Decided 2026-10-22: **the S-rank Tide is approved, and the names**: *"rango S ola si me gusta la animacion la ola normal se llama tsunami y la rango s es dragon tsunami"*. The rank-A Tide is now *Técnica de Agua: Tsunami* / *Water Technique: Tsunami*; his dragon-and-kanji version is Water's S-rank jutsu *Técnica de Agua: Dragón Tsunami* / *Water Technique: Dragon Tsunami* (Water S is no longer empty: this replaces his "vacio por ahora"). Ids unchanged. Its numbers approved by the owner for now: *"aprovado los numeros de la ola por ahora"* (12 chakra +4; 6d8, STR half, enhanced 8d8; 11.25 m 80-degree cone; knock-down and 3 m sweep; douses; ground wet one round longer). Built on `jutsu/tide-s` (`docs/GAMEPLAY_DESIGN.md`, "The Tsunami and the Dragon Tsunami").
 - Decided 2026-10-22: **the Roman sit is built at game scale from his pose** (*"romano sentado a"*). His sit picture is drawn at 0.80 of our scale; option A keeps his pose as the exact guide (legs, arms, drape, rock, frame by frame) built with the Roman set's own pieces at our size, so a seated character is as tall as a standing one. His rock is the seat prop, scaled to fit. On `body/male-skin-face`.
-- Decided 2026-10-22: **his Lyra sitting and reading pictures are the new standard sit and read poses** for every character: *"copialo exacto me encanta estas poses nuevas de sentado y leyendo es el nuevo standard"*. She sits on a rock that is its own object and changes with the scene (*"puedes usar la piedra tambien como objeto pero ese objeto cambiara dependiendo del escenario"*); her hands are copied exactly (*"mira como estan sus manos se ven excelentes copialo igual"*). Being copied on `heroine/lyra-v2` (read in 3 frames, his throw frames 3-4); the sit picture is still to come as a file.
+- Decided 2026-10-22: **his Lyra sitting and reading pictures are the new standard sit and read poses** for every character: *"copialo exacto me encanta estas poses nuevas de sentado y leyendo es el nuevo standard"*. She sits on a rock that is its own object and changes with the scene (*"puedes usar la piedra tambien como objeto pero ese objeto cambiara dependiendo del escenario"*); her hands are copied exactly (*"mira como estan sus manos se ven excelentes copialo igual"*). Copied on `heroine/lyra-v2` (read in 3 frames, sit in 1, his throw frames 3-4, his two rocks as the read and sit seats) and merged with Lyra (2026-10-23, above).
 - Decided 2026-10-22: **the gap round 2 is approved and merged** (`jutsu/gap-set-2`): *"la ola torre suelo mojado ,vapor se ve bien aprovado"*. He will paint an S-rank upgraded Tide over our widest wave frame: *"a la ola pasame el sprite donde se ven mas olas para agregarle un kanji y una bestia animada que sera el jutsu en version mejorada clase s"*.
 - Decided 2026-10-22: **the slender body is removed** (`cleanup/remove-slender`): *"elimina el tipo de cuerpo delgado se ve horrible y ya no cumple nuestros standares y para que ya no gastes recursos en ese estilo"*. The creator offers male, female and bulky; no preset, companion or enemy used it. A saved look on it loads on the female body (`migrateAppearance`, `src/sprite/bodies.test.ts`). Male, female and bulky renders are byte-identical to before. Don't build or test new art for it; the open branches that still test it drop those cases when they merge.
 - Decided 2026-10-22: **Shiori is discarded, with everything about her** (`cleanup/remove-shiori`): *"shiori desechala esta horrible ese diseño"*, then *"todo lo que tenga que ver con ella"*. Her legend preset (`preset_gentle`, "Shiori, el Puño Suave") is gone, so 7 legends remain; this also drops one of the Naruto-derived designs (a Hinata copy, 4a). Hana, who was built on her sheet, keeps her own legacy fields and is unchanged in play. The items, feats and jutsu she wore are everyone's creator options and stay. A saved hero, roster entry or mission member made from her loads as a normal made ninja with its own data (test in `rules.test.ts`). `scripts/ai-battles.ts` plays Hiro fourth instead, so party A has no Northstar member now (D21's numbers were measured with her).
+- Decided 2026-10-22: **solid jutsu get the characters' black line; energy gets none** (*"1 si 2 cambia 3 si"*). 1: every effect that is solid gets the line: all the beasts, the earth walls (3 orientations) and the crystal walls, the wood dragon and its roots, the Dragon Tsunami's dragon, the Water Dragon and Dragon Fire/Flame heads, the earth's thrown rocks and spikes (on the rock, not its dust), the D/C rock bullets. 2: the raiju's brown and the crane's teal outlines become the characters' black (this replaces "they stay his" in `docs/GAMEPLAY_DESIGN.md`); no line on the lightning streaks or wind wisps. 3: the poison walls and the chakra barriers get it round their solid frame, never round the slime, pane or glow. Fire, lightning, wind, water, chakra, poison and genjutsu projectiles, auras, blasts, smoke and dust stay without a line. Built on `vfx/solid-outline-apply` (`docs/SPRITE_STYLE_GUIDE.md`, "Outline").
 - Decided 2026-10-22: **the headband stays, as plain cloth** (approved and merged the same day: *"si me gusta asi la bandana"*). The owner: *"deja la bandana pero quitale el diseño de puntitos referenciando un simbolo deja la pura bandana la pura tela"*. This replaces his earlier "quita las bandanas del juego ya no estara ninguna" (same day; the headband removal on `cleanup/remove-pieces`, "quitar bandanas", is replaced too). Built on `headband/plain-cloth`: the metal plate, its 7 emblems and the slash are gone from the drawing, the creator (Emblem picker, Plate colour, Slashed toggle) and the random ninja; position, tails and cloth colour stay, and every preset, companion and enemy keeps its band. Old saves drop `slashed`, `emblem` and `plate` on load (`migrateAppearance`, `sprite/legacy.ts`). Kaien's tag "Rogue Headband / Bandana de renegado" (the scratched plate) is now "Dark Headband / Bandana oscura". Waiting for his look at the before/after.
 - Decided 2026-10-21 (later still), his jutsu answers: *"1 d y c y los de su clan 2 propuestas 3
   sello explosivo es un item o herramienta consumible palma curativa es un jutsu de utilidad 4 si
@@ -284,7 +325,8 @@ Merge checks (`git merge-tree` on the origin tips, nothing changed):
 - Decided 2026-10-21 (later still), who learns the genjutsu, kenjutsu and taijutsu jutsu: *"9 los
   que elijan de clase genjutsu kenjutsu o taijutsu"*. Built on `chakra/progression`. Kenjutsu to
   the Maestro de Bukijutsu confirmed ("si bukijutsu sera kenjutsu"). **Still his**: Ninjutsu and
-  Medical learning none of the three; Hana (medic) keeping Yasaka no Magatama, marked.
+  Medical learning none of the three. (Hana, medic, kept Yasaka no Magatama, marked, until he
+  removed it on 2026-10-22; she has the Dragon Tsunami now.)
 - Decided 2026-10-21 (later still), the second and third element: *"nivel 5 suena bien para segundo
   elemento o subir de rango tu elemento principal proponme el feat ok con kaien y raiga"*. Built on
   `chakra/progression`: at level 5 a second element or a higher rank of the main element; Kaien
@@ -303,6 +345,11 @@ Merge checks (`git merge-tree` on the origin tips, nothing changed):
   como se vea en otros colores dejalo asi se ve muy bien la curacion siempre se vera verde"*: the
   black Kirin stays, the other colours stay, a heal is always green (built on `jutsu/d-c-set`).
 - Decided 2026-10-21 (later): **a new female standard** from the owner's four heroine pictures. He said our base bodies look "muy feos" next to his pictures: "sube la calidad de nuestro sprite para que se vea mas parecido aun a la referencia". The new female body (proportions, hands, feet, skin from his pixels) is being built on `body/female-v2` for his approval. He also said: "las piezas de armadura y ropa femeninas no las rehagas porque muy problablemente las borremos por no estar al nuevo stadard" - the existing female armour and clothing are NOT refitted to the new body; they will probably be deleted. Hairstyles, heads, eyes, weapons, capes and the heroines' parts do follow it. The male body stays (approved through the Aiden paint-over).
+- Decided 2026-10-23: the owner approved the female throw neck fix on `body/female-v2` (f84e80e, "aprovado" on the Lanzar 2-4 sheet: the head stays on the neck at its length). It goes into the game with the heroines, which are built on that body.
+- Decided 2026-10-23: **the bulky base body is approved** (`body/bulky-v2`, his bare broad man): *"hombre corpulento base aprovado"*. The broad man's shirt on the normal male looks buggy: *"copia el estilo que tiene romano y pasa los colores de pixel a ese y pasa los brazos de romano a ese ya que tambien esta sin mangas"* (rebuilt on `body/brawler-roman`, waiting for his approval).
+- Decided 2026-10-23: **the Bleeding Cut's blood stays** (`jutsu/bleeding-blood`, merged under the withdrawn delegation): *"la sangre se ve bien"*.
+- Decided 2026-10-23: **the Ascended set gets every fix the other characters got** (cast forearm, the strike's forearm, the throw's head "muy abajo", the standard read pose): *"ascendido necesita hacer todos los cambios y correciones que le hicimos a los demas"* (`sets/ascended-standard`). He will send an improved read picture showing the bandaged arms.
+- Decided 2026-10-23: **Scarlet stays and is rebuilt to the standard** of Roman, Ren and Aiden: *"scarlet lo dejaremos tenemos que reconfigurar al estandar se ve muy mal hecho comparado con romano o ren o aiden"* (`scarlet/standard`). His name is still open.
 - Decided 2026-10-21 (later that night): of the gaps' jutsu the owner approved the **Gale Curtain, Thunder Beam and Rubble Gust** ("los demas jutsus aprovados de esa seccion"). The Devouring Tide (now rank A) and the Whirlwind Tower get a second round on `jutsu/gap-set-2`, with his new element dynamic (water puts out fire, wet ground for 2 turns that conducts lightning, fire on wet ground makes steam that blocks vision and burns).
 - Decided 2026-10-21 (later that night): **the delegation is withdrawn**. The owner: "deja de autorizar cosas y dime que autorizaste". From now on nothing is approved or merged without his own yes. Merged under the delegation, and still open to his review or a revert: `ryusei/warp-throw` (Shooting-Star Thrust comet, phase body, throw/thrust poses), the critical animation of `ui/dice-d20`, `chakra/lightning-crackle` (Battle Static), `jutsu/bleeding-blood` (blood spray and screen drops), `jutsu/gap-set` (the five gap jutsu, the Gale Curtain's +1/+2 dice rule, swept units stopping 1.2 m from others), `vfx/ideas-round1` (round 1 effects, the new wood dragon and Chidori art, the pauses before melee blows so the die lands with the hit).
 - Decided 2026-10-21 (night): **a 24-hour delegation**. The owner: "estas aprovado para aprovar cosas como las que me estas pidiendo permiso por 24 horas" - until about 2026-10-22 night, his sessions may approve and merge the kind of work they were asking him to approve (finished art and features he requested, after the checks and a look at the images), and show him the result afterwards. Irreversible changes (save formats, renaming saved ids, deleting art), new dependencies, names and anything franchise-related still go to him.
@@ -334,6 +381,12 @@ Merge checks (`git merge-tree` on the origin tips, nothing changed):
   Zero-style noble set (black cape with red lining and high gold-trimmed collar, black-and-gold
   suit, rapier with gold guard and red jewel). (His icon sheets 8–11 are on `icons/sheets-8-11`.)
 
+- `jutsu/chidori-active` (2026-10-21): the activated Chidori built with his answers. Approve his
+  lightning in the hand (copied from both paint-overs), the crackle, the cracks (new art; redone
+  deeper and heavier on 2026-10-22 after "se ven muy debiles ahora"), and the
+  points left open: the blow is an attack roll (it was a CON save); the cracks slow their own ninja
+  too; only the ninja's own moves set it off (`docs/GAMEPLAY_DESIGN.md`).
+
 ## 4. Backlog
 
 ### 4a. Replace Naruto-derived names and designs (before any public release)
@@ -347,7 +400,7 @@ Generated art in `src/assets` adds more (icon files and manifests such as `rasen
 | sharingan | 31 | shinobiData 13, types/shinobi 5, CharacterCreator 3, campActivities 2, rules/rest 2, battle.test, ArenaSandbox, CampaignMode, RestCamp, ruleText, legacy |
 | byakugan | 15 | CharacterCreator 4, RestCamp 2, campActivities 2, shinobiData 2, types 2, CampaignMode, rest, legacy |
 | mangekyo / kamui / amaterasu / susanoo | 7 / 2 / 4 / 4 | shinobiData, types, legacy, CharacterCreator |
-| rasengan / rasenshuriken | 5 / 7 | shinobiData, types, legacy, units, BattleScreen, jutsu.ts |
+| rasengan / rasenshuriken | 5 / 13 | shinobiData, types, legacy, units; rasenshuriken is only the id `rasenshuriken_wind` now (the Hurricane Star), in data and tests |
 | chidori / raikiri | 22 / 1 | shinobiData 8, battle.test 6, units 2, others |
 | kirin | 16 | shinobiData 6, battle.test 5, vfxSprites 2, others |
 | hokage / akatsuki / konoha | 3 / 3 / 3 | types, legacy, shinobiData (Konoha Senpuu) |
@@ -371,12 +424,15 @@ What players see:
   (**wait for the owner**).
 - All 27 jutsu are Naruto techniques (Kage Bunshin, Shunshin, Kawarimi, Goukakyu, Suiryuudan,
   Doryuheki, Chidori, Raijuu Tsuiga, Konoha Senpuu, Mikazuki no Mai, Nehan Shouja, Kongou Fuusa,
-  Hakke 64 Palms, Mokuton, Kirin, Rasenshuriken, Gouka Mekkyaku, Mokujin, Yasaka no Magatama,
-  Night Guy).
+  Hakke 64 Palms, Mokuton, Kirin, Gouka Mekkyaku, Mokujin, Night Guy).
   - Decided 2026-10-22 (the owner, naming his icon sheets): Shunshin → **Desvanecer** ("Vanish",
     `body_flicker`) and Konoha Senpuu → **Patada huracán** ("Hurricane Kick", `leaf_hurricane_senpuu`);
     ids unchanged. He will rename Rasenshuriken and Night Guy himself, and plans to remove
     Yasaka no Magatama and make something else.
+  - Decided 2026-10-22 (later): Rasenshuriken → **Estrella Huracán** ("Hurricane Star",
+    `rasenshuriken_wind`), Espejismo/Mirage → **Mind Twist** ("Mente retorcida" in Spanish,
+    `genjutsu_mirage`), ids unchanged; Yasaka no Magatama removed from the game. Night Guy is left
+    for him to rename.
 - Feats and class text: Eight Gates, Tenketsu Lockout, feat id `sharingan_precog`.
 - Camp: "Sharingan reading", "Byakugan watch", "Close tenketsu", Ryusei's "Wood shelter" and
   "Wood skin".
@@ -429,7 +485,7 @@ remove the AI Studio leftovers (`README.md`, `metadata.json`, package name, unus
 
 ### 4f. Other
 - Battle abilities with no owner icon even after sheets 8–11: body flicker, explosive tag, mystical
-  palm, Kawarimi, wind blade, leaf hurricane, Rasenshuriken, wood golem, Yasaka, Night Guy,
+  palm, Kawarimi, wind blade, leaf hurricane, Hurricane Star, wood golem, Night Guy,
   Pursuing Flame.
 - Clan Paths of Mastery; clan reference pictures (CLANS_DESIGN: mechanics first, art after).
 - World sprites are paused (`tools/world-sprites/README.md`); the hydra art (`world/creatures/`)

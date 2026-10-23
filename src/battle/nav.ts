@@ -74,6 +74,9 @@ export function occupancy(s: BattleState): Map<number, Unit> {
   return occ;
 }
 
+/** A navigation cell as a key ("c,r"): cracked ground is kept by it (battle/charged.ts). */
+export const crackKey = (c: Cell): string => `${c.c},${c.r}`;
+
 export interface StepRules {
   /** The unit can afford walking on deep water this turn (2 chakra) or already paid. */
   waterWalk: boolean;
@@ -116,6 +119,8 @@ export function stepCost(s: BattleState, from: Cell, to: Cell, diag: boolean, ru
   if (water === 1) cost *= 2;
   else if (water === 2 && !rules.waterWalk) cost *= 2;
   cost += climbCost(s, from, to, rules);
+  // Ground cracked by a charged ninja's steps is difficult terrain (battle/charged.ts).
+  if (s.cracks && crackKey(to) in s.cracks) cost *= 2;
   if (rules.dragging) cost *= 2;
   return cost;
 }

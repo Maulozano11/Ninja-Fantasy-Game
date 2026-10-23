@@ -626,6 +626,32 @@ describe('the read on the bulky body', () => {
       }
     }
   });
+  it("the near shoulder is round: its back edge bows out past the straight cut from its top to its back (the owner, 2026-10-23: 'ahora redondea el hombro')", () => {
+    for (let fr = 0; fr < frameCount(rigPoseFor('read')); fr++) {
+      const f = renderSprite(his('bulky'), 'read', fr);
+      const arm = (x: number, y: number) => f.rgba[(y * GRID + x) * 4 + 3] > 0 && PARTS[f.part[y * GRID + x]] === 'upperArmN';
+      const jy = Math.floor(f.rig.shoulderN.y * RES) + 2;
+      // each row's furthest pixel back, the shoulder's top (its first row three wide) and its back
+      const back = new Map<number, number>();
+      for (let y = 0; y <= jy; y++) for (let x = 0; x < GRID; x++) if (arm(x, y)) {
+        back.set(y, x);
+        break;
+      }
+      const top = [...back].find(([y, x]) => arm(x + 1, y) && arm(x + 2, y))!;
+      const bx = Math.min(...[...back].filter(([y]) => y > top[0]).map(([, x]) => x));
+      // from its top round to its back the edge keeps within a pixel of the quarter circle there (a straight
+      // diagonal cut, the square corner, lies two pixels inside it)
+      const r = top[1] - bx;
+      assert.ok(r >= 3, `read ${fr}: the shoulder ${r} px from its top to its back`);
+      for (let y = top[0] + 1; y <= top[0] + r && back.has(y); y++) {
+        const f = (y - top[0]) / r;
+        const round = top[1] - r * Math.sqrt(1 - (1 - f) * (1 - f));
+        assert.ok(back.get(y)! <= round + 1, `read ${fr}: at ${y} the shoulder's back at ${back.get(y)}, ${(back.get(y)! - round).toFixed(1)} px inside its round`);
+      }
+      // and no hole in it: every pixel of the shoulder from its back to the neck's column is drawn
+      for (const [y, x] of back) if (y >= top[0] && y <= top[0] + r) for (let u = x; u <= top[1]; u++) assert.ok(f.rgba[(y * GRID + u) * 4 + 3] > 0, `read ${fr}: a hole at ${u},${y}`);
+    }
+  });
 });
 
 function hexRgb(h: string): number[] {

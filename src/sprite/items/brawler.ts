@@ -184,6 +184,115 @@ function upperArmOff(g: DrawCtx, s: Side, upTo: number): void {
   }
 }
 
+/**
+ * Reading, the near upper arm swings far forward of the torso while the cap over the shoulder follows the
+ * torso, and from the shoulder's top back to its back, and from there in to the sleeve, the edge ran as
+ * straight diagonals: a cut-off square corner (the owner on the bulky read: "ahora redondea el hombro"). Both
+ * corners are bowed out to a round, SHOULDER_BOW of the way from the straight cut to the quarter ellipse set in
+ * the corner: filled out with his shirt's cloth from the nearest pixel of his, his line along the new edge and
+ * none left inside.
+ */
+function roundShoulder(g: DrawCtx, L: Layer, s: Side, tint: Tint): void {
+  const j = armJoints(g.rig, s);
+  const part = partIndex(prt('upperArm', s));
+  const lines = new Set(Object.entries(SHIRT_KIND).filter(([, k]) => k === 'line').map(([hex]) => g.m(tint('', hex), 'flat')));
+  const line = g.m(tint('', '#000000'), 'flat');
+  g.after((layers) => {
+    const all = [...layers.values()];
+    const bare = (i: number) => all.every((l) => l.mat[i] < 0);
+    const arm = (i: number) => L.mat[i] >= 0 && L.part[i] === part;
+    const edge = (i: number) => [i - 1, i + 1, i - GRID, i + GRID].some(bare);
+    // each row's furthest pixel back, from the shoulder's top to below its joint
+    const jy = Math.floor(j.shoulder.y * RES) + 8;
+    const backOf = new Map<number, number>();
+    for (let y = 1; y <= jy; y++)
+      for (let x = 1; x < GRID - 1; x++)
+        if (arm(y * GRID + x)) {
+          backOf.set(y, x);
+          break;
+        }
+    // the shoulder's top: its first row three pixels wide from its back
+    let ay = -1;
+    for (const [y, x] of backOf)
+      if (arm(y * GRID + x + 1) && arm(y * GRID + x + 2)) {
+        ay = y;
+        break;
+      }
+    if (ay < 0) return;
+    // its back: the furthest column back above the joint (its first and last rows there), and below it where
+    // the edge has come in to the sleeve (the row before the edge stops coming in)
+    const sy = Math.floor(j.shoulder.y * RES) + 2;
+    let by = ay;
+    for (const [y, x] of backOf) if (y > ay && y <= sy && x < backOf.get(by)!) by = y;
+    const bx = backOf.get(by)!;
+    let by2 = by;
+    while (backOf.get(by2 + 1) === bx) by2++;
+    let cy = by2;
+    while (backOf.has(cy + 1) && backOf.get(cy + 1)! > backOf.get(cy)!) cy++;
+    const ax = backOf.get(ay)!;
+    const cx = backOf.get(cy)!;
+    // Each corner bowed out from its straight cut toward the quarter ellipse set in it (x for a row y, in
+    // pixel edges across and pixel centres down): above, from the top (ax, ay) to the back (bx, by); below,
+    // from the back (bx, by2) in to the sleeve (cx, cy).
+    const bows: { from: number; to: number; at: (y: number) => number }[] = [];
+    if (by - ay >= 3 && ax - bx >= 3)
+      bows.push({
+        from: ay,
+        to: by,
+        at: (y) => {
+          const f = (y - ay) / (by - ay);
+          const cut = ax - (ax - bx) * f;
+          return cut + SHOULDER_BOW * (ax - (ax - bx) * Math.sqrt(Math.max(0, 1 - (1 - f) * (1 - f))) - cut);
+        },
+      });
+    if (cy - by2 >= 2 && cx - bx >= 2)
+      bows.push({
+        from: by2,
+        to: cy,
+        at: (y) => {
+          const f = (y - by2) / (cy - by2);
+          const cut = bx + (cx - bx) * f;
+          return cut + SHOULDER_BOW * (cx - (cx - bx) * Math.sqrt(Math.max(0, 1 - f * f)) - cut);
+        },
+      });
+    if (!bows.length) return;
+    const wasEdge = new Set<number>();
+    const x1 = Math.max(ax, cx);
+    for (let y = ay - 1; y <= cy + 1; y++) for (let x = bx - 1; x <= x1 + 2; x++) if (arm(y * GRID + x) && edge(y * GRID + x)) wasEdge.add(y * GRID + x);
+    // the cloth nearest a pixel, of his inside the shoulder (not his line)
+    const cloth = (i: number) => {
+      let best = Infinity;
+      let q = -1;
+      for (let y = ay - 2; y <= cy + 6; y++)
+        for (let x = bx - 2; x <= x1 + 6; x++) {
+          const c = y * GRID + x;
+          if (!arm(c) || lines.has(L.mat[c])) continue;
+          const d = Math.hypot(x - (i % GRID), y - ((i / GRID) | 0));
+          if (d < best) [best, q] = [d, c];
+        }
+      return q;
+    };
+    const fill: [number, number][] = [];
+    for (const b of bows)
+      for (let y = b.from + 1; y < b.to; y++)
+        for (let x = bx; x < backOf.get(y)!; x++) {
+          const i = y * GRID + x;
+          if (x + 0.5 < b.at(y) || !bare(i)) continue;
+          const q = cloth(i);
+          if (q >= 0) fill.push([i, q]);
+        }
+    for (const [i, q] of fill) [L.mat[i], L.shade[i], L.part[i], L.flags[i]] = [L.mat[q], L.shade[q], part, L.flags[q]];
+    const filled = new Set(fill.map(([i]) => i));
+    // his line round the new edge; where his line was the edge and is now inside, his cloth
+    const inside: [number, number][] = [];
+    for (const i of wasEdge) if (lines.has(L.mat[i]) && !edge(i) && [i - 1, i + 1, i - GRID, i + GRID].some((q) => filled.has(q))) inside.push([i, cloth(i)]);
+    for (const [i, q] of inside) if (q >= 0) [L.mat[i], L.shade[i]] = [L.mat[q], L.shade[q]];
+    for (const i of filled) if (edge(i)) L.mat[i] = line;
+  });
+}
+/** How round the reading shoulder is: from 0 (the straight cut) to 1 (a quarter ellipse). */
+const SHOULDER_BOW = 1;
+
 /** His colours by what they are: his black line stays, each other kind follows its slot from his default. */
 const byKind = (kinds: Record<string, string>, slots: Record<string, [string, string]>, skin?: string): Tint => (_ch, hex) => {
   const k = kinds[hex];
@@ -370,6 +479,7 @@ export const BRAWLER_TOPS: ItemDef[] = [
         // Over the shoulder the sleeve rides the shoulder, following the arm part of the way.
         const cap = limbFit(g, s === 'N' ? SHIRT_CAP_N : SHIRT_CAP_F, `SHIRT_CAP_${s}`, MALE_FIT.cap, () => 1);
         const { at, deg } = capPlace(r, s, cap);
+        if (r.pose === 'read' && s === 'N') roundShoulder(g, L, s, tint);
         onLimb(g, L, cap, at, deg, prt('upperArm', s), tint);
       }
     },

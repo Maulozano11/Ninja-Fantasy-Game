@@ -52,12 +52,16 @@ describe('female bodies at the owner\'s game scale', () => {
   it('keeps a seated body\'s hips on the camp seat and its soles on the camp ground', () => {
     for (const pose of ['sit', 'read'] as SpritePose[]) {
       for (let f = 0; f < frameCount(pose); f++) {
-        const male = rows('male', pose, f)[1];
         for (const body of ['female', 'slender'] as BodyType[]) {
-          const m = drawRig('male', pose, f).pelvis.y;
+          // (the fitted bodies sit on his rock as they read, the male body's reading hips on it; the male
+          // and bulky sit keeps the camp's log)
+          const m = drawRig('male', 'read', pose === 'read' ? f : 0).pelvis.y;
           // the female hips settle up to two pixels further into the seat (rig.ts SEAT_SINK)
           assert.ok(Math.abs(drawRig(body, pose, f).pelvis.y - m) * RES <= 4, `${body} ${pose} ${f} hips`);
-          assert.ok(Math.abs(rows(body, pose, f)[1] - male) <= 1, `${body} ${pose} ${f} soles`);
+          // (sitting and reading, on the owner's rock, the male legs are too short to reach the ground and
+          // his feet hang: the female soles are on the ground she stands on)
+          const ground = rows(body, 'idle', 0)[1];
+          assert.ok(Math.abs(rows(body, pose, f)[1] - ground) <= 1, `${body} ${pose} ${f} soles`);
         }
       }
     }

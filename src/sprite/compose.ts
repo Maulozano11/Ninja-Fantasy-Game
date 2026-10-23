@@ -8,6 +8,7 @@ import { drawThrowKunai } from './items/accessories';
 import { drawHeadband } from './items/headband';
 import { add, F_NO_OUTLINE, F_NO_TEXTURE, GRID, Layer, MaterialTable, norm, PAD, PartId, partIndex, PARTS, perp, RES, scale, sub, v, Vec } from './raster';
 import { drawRig, Lay, layRig, Rig, rigPoseFor, turnPoint, turnRig } from './rig';
+import { carryHead } from './neck';
 import { drawCampFx } from './campfx';
 import { drawCastFx } from './castfx';
 import { applyTexture, frayHair } from './texture';
@@ -256,7 +257,8 @@ export function spriteLayers(look: SpriteAppearance, pose: SpritePose, frame: nu
 }
 
 function drawLayers(look: SpriteAppearance, pose: SpritePose, frame: number, eyeSpecial: EyeSpecial) {
-  const rig = drawRig(look.body, rigPoseFor(pose, look.cast?.style, look.stowed ? undefined : look.slots.held?.id), frame);
+  // (the long neck carries the head higher and further forward: neck.ts)
+  const rig = carryHead(drawRig(look.body, rigPoseFor(pose, look.cast?.style, look.stowed ? undefined : look.slots.held?.id), frame, look.arms), look.neck);
   const mats = new MaterialTable();
   const layers = new Map<Depth, Layer>();
   const equipped = new Map<SlotId, ItemDef>();

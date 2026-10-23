@@ -9,6 +9,7 @@ import { CAST_STYLE_INFO, defaultCastStyle } from '../../sprite/castInfo';
 import { CAST_STYLES } from '../../sprite/types';
 import { CLOTH_COLORS, CLOTH_FAMILIES, EYE_COLORS, HAIR_COLORS, SKIN_TONES } from '../../sprite/palettes';
 import type {
+  ArmType,
   BodyType,
   EyeShape,
   EyeSpecial,
@@ -127,11 +128,18 @@ const FACE_SHAPES: { id: FaceShape; label: string; sub: string }[] = [
   { id: 'square', label: 'Square', sub: 'Strong jaw' },
   { id: 'valiant', label: 'Valiant', sub: "Aiden's face" },
   { id: 'shade', label: 'Shade', sub: "Saya's face" },
+  { id: 'fine', label: 'Fine', sub: "Lyra's face" },
 ];
 
 const NECKS: { id: NeckType; label: string; sub: string }[] = [
   { id: 'slim', label: 'Slim', sub: 'Slender' },
   { id: 'strong', label: 'Strong', sub: 'Thick, muscular' },
+  { id: 'long', label: 'Long', sub: "Lyra's neck" },
+];
+
+const ARMS: { id: ArmType; label: string; sub: string }[] = [
+  { id: 'standard', label: 'Standard', sub: "The body's own" },
+  { id: 'long', label: 'Long', sub: "Lyra's arms" },
 ];
 
 const EYE_SHAPES: { id: EyeShape; label: string; sub?: string }[] = [
@@ -144,6 +152,7 @@ const EYE_SHAPES: { id: EyeShape; label: string; sub?: string }[] = [
   { id: 'piercing', label: 'Piercing' },
   { id: 'valiant', label: 'Valiant', sub: "Aiden's eyes" },
   { id: 'shade', label: 'Shade', sub: "Saya's eyes" },
+  { id: 'keen', label: 'Keen', sub: "Lyra's eyes" },
 ];
 
 const HEADBAND_POSITIONS: { id: HeadbandPosition; label: string }[] = [
@@ -353,6 +362,25 @@ export const AppearanceEditor: React.FC<{
                     }}
                   >
                     <SpriteThumb look={{ ...look, neck: n.id }} eye={eye} crop="head" />
+                  </OptionCard>
+                ))}
+              </div>
+            </div>
+            <div>
+              <SectionLabel>Arms</SectionLabel>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {ARMS.map((n) => (
+                  <OptionCard
+                    key={n.id}
+                    selected={(look.arms || 'standard') === n.id}
+                    label={n.label}
+                    sub={n.sub}
+                    onClick={() => {
+                      soundManager.playSelect();
+                      onChange({ ...look, arms: n.id });
+                    }}
+                  >
+                    <SpriteThumb look={{ ...look, arms: n.id }} eye={eye} />
                   </OptionCard>
                 ))}
               </div>

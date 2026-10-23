@@ -50,6 +50,15 @@ const ES: Record<string, string> = {
   Shade: 'Sombra',
   "Saya's eyes": 'Los ojos de Saya',
   "Saya's face": 'La cara de Saya',
+  Keen: 'Decididos',
+  "Lyra's eyes": 'Los ojos de Lyra',
+  Fine: 'Fina',
+  "Lyra's face": 'La cara de Lyra',
+  Long: 'Largo',
+  "Lyra's neck": 'El cuello de Lyra',
+  Arms: 'Brazos',
+  "The body's own": 'Los del cuerpo',
+  "Lyra's arms": 'Los brazos de Lyra',
   None: 'Ninguno',
   Forehead: 'Frente',
   Arm: 'Brazo',
@@ -160,6 +169,7 @@ const ES: Record<string, string> = {
   Studs: 'Tachas',
   Sole: 'Suela',
   Lining: 'Forro',
+  Blouse: 'Blusa',
   Gold: 'Oro',
   Dress: 'Vestido',
   Cape: 'Capa',
@@ -290,6 +300,14 @@ const ES: Record<string, string> = {
   // Saya's sword
   'Shade Saber': 'Sable de la Sombra',
   'A straight steel blade with gold dots down its middle under a gold swept hilt, gold sparkles round it: the owner painted it for Saya.': 'Una hoja recta de acero con puntos de oro por el centro bajo una guarda de lazo de oro, con destellos de oro alrededor: el dueño la pintó para Saya.',
+  // Lyra's hair (hair_copper_braid)
+  'Copper Braid': 'Trenza cobriza',
+  // Lyra's skirt (items/lyraLower.ts)
+  Stripes: 'Rayas',
+  'Thigh-high dark leather boots with gold cuffs, small round knee guards and studded ankle straps, the thigh bare above them.': 'Botas altas de cuero oscuro hasta el muslo, con puños de oro, rodilleras redondas pequeñas y correas con tachas en el tobillo; el muslo queda desnudo encima.',
+  // Lyra's sword
+  'Gilded Rapier': 'Estoque Dorado',
+  'Blade glow': 'Brillo de la hoja',
 };
 
 /** An editor label in the screen's language. */

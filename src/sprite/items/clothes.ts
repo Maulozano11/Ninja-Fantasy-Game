@@ -14,6 +14,8 @@ import { add, along, ellipse, F_NO_EDGE, F_NO_OUTLINE, F_NO_TEXTURE, GRID, Layer
 import { stampTemplate, TemplatePalette } from '../rotsprite';
 import { crimsonKind, GAUNTLET_F, GAUNTLET_N, GLOVE_LEATHER, GLOVE_STEEL, GLOVE_TONES, GLOVE_TRIM } from './sabatonsGauntletsArt';
 import { SAYA_SHADE_GLOVES } from './sayaUpper';
+import { LYRA_BLOUSE_ITEM } from './lyraUpper';
+import { POUCH_BELT, STRIPED_PLEATS } from './lyraLower';
 
 type Kind = 'cloth' | 'leather' | 'metal';
 const col = (key: string, label: string, def: string, kind: Kind = 'cloth') => ({ key, label, default: def, kind });
@@ -1255,6 +1257,8 @@ export const TOP_ITEMS: ItemDef[] = liftMain([
       highCollar(g, c, 4, 1.2);
     },
   },
+  // Lyra's blouse, the owner's pixels (items/lyraUpper.ts)
+  LYRA_BLOUSE_ITEM,
   // The owner's sports top from his bare female body (docs/reference/female-base-owner-reference.jpg):
   // his pixels on the chest (body.ts), in the colour picked. The body always wears it in his black.
   {
@@ -1451,6 +1455,7 @@ export const BOTTOM_ITEMS: ItemDef[] = liftMain([
       }
     },
   },
+  STRIPED_PLEATS,
   // The owner's briefs from his bare female body: his pixels on the pelvis (body.ts), in the colour picked.
   {
     id: 'bottom_briefs',
@@ -1696,6 +1701,7 @@ export const WAIST_ITEMS: ItemDef[] = liftMain([
   },
   // Saya's belts, pouch and scabbard, from the owner's Saya picture (sayaLower.ts)
   SHADE_BELTS_ITEM,
+  POUCH_BELT,
 ]);
 
 // ---------------------------------------------------------------------------

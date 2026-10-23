@@ -24,7 +24,7 @@ import {
   v,
   Vec,
 } from './raster';
-import { ankleLiftOf, BodyParams, neckLocal, Rig } from './rig';
+import { ankleLiftOf, BodyParams, drawRig, neckLocal, Rig } from './rig';
 import { gripAngle } from './grip';
 import { PixelTemplate, stampTemplate, TemplatePalette } from './rotsprite';
 import { FEMALE_HANDS } from './femaleBodyArt';
@@ -474,14 +474,34 @@ export interface HandPose {
   flipX: boolean;
 }
 
+/** How far (degrees) a hand hangs from straight down, along its forearm. */
+function hangOf(r: Rig, s: Side): number {
+  const j = armJoints(r, s);
+  const dir = norm(sub(j.hand, j.wrist));
+  const theta = (Math.atan2(dir.y, dir.x) * 180) / Math.PI;
+  return ((theta - 90 + 540) % 360) - 180;
+}
+
+/**
+ * His Lyra's hands (the 'long' arms, rig.ts LONG_ARMS: her near hand round her sword's grip, her open far
+ * hand, femaleBodyArt.ts) are cut from his picture of her, where they hang from her forearms at rest: on
+ * his fitted body they turn from that angle, so at rest every pixel is his, where he drew it.
+ */
+const LONG_REST = new Map<string, number>();
+function longRest(body: BodyType, s: Side): number {
+  const k = body + s;
+  let a = LONG_REST.get(k);
+  if (a === undefined) LONG_REST.set(k, (a = hangOf(drawRig(body, 'idle', 0, 'long'), s)));
+  return a;
+}
+
 export function handPose(g: DrawCtx, s: Side): HandPose {
   const j = armJoints(g.rig, s);
   const holding = s === 'N' && gripAngle(g) !== null;
-  const dir = norm(sub(j.hand, j.wrist));
-  const theta = (Math.atan2(dir.y, dir.x) * 180) / Math.PI;
   // A hand hanging within 30 degrees of straight down is stamped unrotated,
   // so every pixel stays exactly as drawn (the wrist bends a little instead).
-  const raw = ((theta - 90 + 540) % 360) - 180;
+  const long = !!g.bp.fit && g.look.arms === 'long';
+  const raw = long ? ((hangOf(g.rig, s) - longRest(g.rig.body, s) + 540) % 360) - 180 : hangOf(g.rig, s);
   // The female bodies' hands are the owner's small ones (5-7 px): turned a little they lose his
   // pixels for little gain, so they hang as drawn up to 45 degrees.
   // On a body fitted to the owner's pieces (BodyParams.fit) the hand turns with the forearm, always:
@@ -505,7 +525,10 @@ export function handPose(g: DrawCtx, s: Side): HandPose {
               ? 'grip'
               : j.shape === 'hold'
                 ? 'relaxed'
-                : 'fist';
+                : // his Lyra's free far hand hangs open (the 'long' arms, rig.ts LONG_ARMS)
+                  s === 'F' && g.look.arms === 'long' && (long ? Math.abs(rot) <= 45 : rot === 0)
+                  ? 'relaxed'
+                  : 'fist';
   return { kind, rot, flipX };
 }
 

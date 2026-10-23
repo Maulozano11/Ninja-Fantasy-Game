@@ -9,6 +9,7 @@ import { segAngle, stampPiece } from '../painted';
 import { ankleLiftOf } from '../rig';
 import { add, along, ellipse, GRID, norm, partIndex, Pen, RES, seam, sub, v } from '../raster';
 import { across, crease, fpx, limb, limbR, stitch, stud, tube, wrapStripes } from './clothes';
+import { LYRA_BOOTS } from './lyraBoots';
 import { BOOT_STEEL, BOOT_TRIM, crimsonKind, SABATON_FOOT_F, SABATON_FOOT_N, SABATON_SHIFT, SABATON_SHIN_F, SABATON_SHIN_N } from './sabatonsGauntletsArt';
 import { SHADE_WRAPS } from './sayaLegs';
 
@@ -451,4 +452,6 @@ export const FEET_ITEMS: ItemDef[] = [
     },
   },
   SHADE_WRAPS,
+  // Lyra's thigh-high boots, the owner's pixels (items/lyraBoots.ts)
+  LYRA_BOOTS,
 ];

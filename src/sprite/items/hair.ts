@@ -19,6 +19,7 @@ import type { DrawCtx, ItemDef } from '../ctx';
 import { ellipse, F_NO_OUTLINE, F_NO_TEXTURE, GRID, Layer, Pen, poly, v, Vec } from '../raster';
 import type { PaintedPart } from './capeArt';
 import { braid, BraidArt, hairTemplate, hd, hlock, lock, LockOpts } from './hairkit';
+import { HAIR_COPPER_BRAID } from './lyraHair';
 import { BASE_HAIR, BASE_HAIR_BASE, BASE_HAIR_LINE, BASE_HAIR_SKULL } from './baseHairArt';
 import { SAYA_HAIR } from './sayaHair';
 import { VALIANT_HAIR_BACK, VALIANT_HAIR_BASE, VALIANT_HAIR_FRONT, VALIANT_HAIR_LINE } from './valiantHairArt';
@@ -1824,6 +1825,8 @@ export const HAIR_ITEMS: ItemDef[] = [
     },
   },
   SAYA_HAIR,
+  // Lyra's hair, after the owner's first heroine picture (lyraHair.ts).
+  HAIR_COPPER_BRAID,
   {
     id: 'hair_messy_ponytail',
     slot: 'hair',

@@ -15,6 +15,7 @@ import { renderSpriteCached } from '../../sprite/compose';
 import { dojutsuToEye, getAppearance } from '../../sprite/legacy';
 import { CAMP_PROPS, FEET, FEET_X, frameCount, POSE_FPS, rigPoseFor } from '../../sprite/rig';
 import { GRID, opaqueBox, RES } from '../../sprite/raster';
+import { renderSeat, type SeatId } from '../../sprite/seats';
 import type { SpriteAppearance, SpritePose } from '../../sprite/types';
 import type { ShinobiCharacter } from '../../types/shinobi';
 import { worldSprite } from '../world/WorldSpriteView';
@@ -26,7 +27,15 @@ export const FIRE = { x: scene.fire.x, y: scene.fire.y, flameY: scene.fire.flame
  * Where the party stands round the fire (up to four), facing it: the camp pose each seat shows by
  * default and the prop that pose rests on (a seat under the hips, a rock behind the back).
  */
-export const SPOTS = scene.spots.map((s) => ({ x: s.x, y: s.y, flip: s.facing === 'left', pose: s.pose, support: (s as { support?: string }).support }));
+export const SPOTS = scene.spots.map((s) => ({
+  x: s.x,
+  y: s.y,
+  flip: s.facing === 'left',
+  pose: s.pose,
+  support: (s as { support?: string }).support,
+  // the seat prop a seated pose sits on here (sprite/seats.ts), when the scene picks one; else the default
+  seat: (s as { seat?: SeatId }).seat,
+}));
 
 /**
  * Where a pose's support goes, from the pose rig (design units from the feet at x 32): the seat's
@@ -296,6 +305,33 @@ export function gradedMember(m: ShinobiCharacter, pose: SpritePose, frame: numbe
   for (let yy = 0; yy < box.h; yy++) crop.set(graded.subarray(((box.y + yy) * GRID + box.x) * 4, ((box.y + yy) * GRID + box.x + box.w) * 4), yy * box.w * 4);
   const c = { canvas: toCanvas(crop, box.w, box.h), ox: box.x, oy: box.y };
   partyCache.set(key, c);
+  return c;
+}
+
+const seatCache = new Lru<{ canvas: HTMLCanvasElement; ox: number; oy: number }>(16);
+
+/**
+ * A seat prop (sprite/seats.ts) under a party member standing at (x, y), graded like the member: drawn
+ * at the member's own origin, mirrored with it, so the seat is under its hips.
+ */
+export function gradedSeat(seat: SeatId, x: number, y: number, flip: boolean, light: FireLight): { canvas: HTMLCanvasElement; ox: number; oy: number } | undefined {
+  const key = `${seat}|${x},${y}|${flip ? 1 : 0}|${lightKey(light)}`;
+  const hit = seatCache.get(key);
+  if (hit) return hit;
+  const src = renderSeat(seat);
+  let rgba = src;
+  if (flip) {
+    rgba = new Uint8ClampedArray(src.length);
+    for (let yy = 0; yy < GRID; yy++) for (let xx = 0; xx < GRID; xx++) rgba.set(src.subarray((yy * GRID + (GRID - 1 - xx)) * 4, (yy * GRID + (GRID - 1 - xx)) * 4 + 4), (yy * GRID + xx) * 4);
+  }
+  const fx = flip ? GRID - 1 - FEET.x : FEET.x;
+  const graded = gradeFrame(rgba, GRID, GRID, x - fx, y - FEET.y, y, light);
+  const box = opaqueBox(graded);
+  if (!box) return undefined;
+  const crop = new Uint8ClampedArray(box.w * box.h * 4);
+  for (let yy = 0; yy < box.h; yy++) crop.set(graded.subarray(((box.y + yy) * GRID + box.x) * 4, ((box.y + yy) * GRID + box.x + box.w) * 4), yy * box.w * 4);
+  const c = { canvas: toCanvas(crop, box.w, box.h), ox: box.x, oy: box.y };
+  seatCache.set(key, c);
   return c;
 }
 

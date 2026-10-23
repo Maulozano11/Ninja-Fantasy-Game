@@ -37,6 +37,8 @@ import {
   PLATE_WAIST,
 } from './crimsonPlateArt';
 import { SAYA_SHADE_ARMOR } from './sayaUpper';
+import { LYRA_CORSET_ITEM } from './lyraUpper';
+import { GILDED_TABARD } from './lyraLower';
 
 
 type Kind = 'cloth' | 'leather' | 'metal';
@@ -2615,6 +2617,8 @@ export const ARMOR_ITEMS: ItemDef[] = [
   },
   // Saya's ninja top and arm guards, from the owner's Saya picture (sayaUpper.ts)
   SAYA_SHADE_ARMOR,
+  // Lyra's corset, pauldron and bracers, the owner's pixels (items/lyraUpper.ts)
+  LYRA_CORSET_ITEM,
 ];
 
 // ---------------------------------------------------------------------------
@@ -2849,4 +2853,5 @@ export const SKIRT_ITEMS: ItemDef[] = [
   },
   // Saya's pleated skirt, from the owner's Saya picture (sayaLower.ts)
   SHADE_PLEATS,
+  GILDED_TABARD,
 ];

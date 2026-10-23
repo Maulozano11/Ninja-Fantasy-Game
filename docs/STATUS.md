@@ -142,6 +142,50 @@ Merge checks (`git merge-tree` on the origin tips, nothing changed):
   random ninja's picks); which ranks a new ninja may take ("low-rank ones only", not built); Kaien's
   Fireball and Raiga's Earth Wall (kept); Water has no S-rank jutsu and Wind one Element jutsu.
 - Decided 2026-10-21 (later): **a new female standard** from the owner's four heroine pictures. He said our base bodies look "muy feos" next to his pictures: "sube la calidad de nuestro sprite para que se vea mas parecido aun a la referencia". The new female body (proportions, hands, feet, skin from his pixels) is being built on `body/female-v2` for his approval. He also said: "las piezas de armadura y ropa femeninas no las rehagas porque muy problablemente las borremos por no estar al nuevo stadard" - the existing female armour and clothing are NOT refitted to the new body; they will probably be deleted. Hairstyles, heads, eyes, weapons, capes and the heroines' parts do follow it. The male body stays (approved through the Aiden paint-over). Proposal on `body/female-v2` (waiting for his approval, not pushed): his game-scale Lyra, Aurelia and Saya (`docs/reference/*-game-scale-owner-reference.jpg`) set the body: 92 px tall without hair, today's head size (his game-scale heads are as big as ours; only the skull trims 0.76 -> 0.70), longer torso and neck with a higher waist, narrower shoulders, slim knees, ankles 4 px lower on shorter feet, his hands (cut 1:1) and Aurelia's bare shoulder, and his flat skin (`tools/refs/female-body-from-ref.py` -> `src/sprite/femaleBodyArt.ts`). Saya's bugged weapons are taken out by `tools/refs/saya-game-scale-clean.py`. Male and bulky are byte-identical. If he approves, refit: the heroine branches re-lift their parts 1:1 onto the new joints (their boots and legs hang from an ankle about 4 px lower; Elise scales from her big picture); Aiden's sabatons already follow the new ankle; the female armour and clothing are not refitted (his decision). The proposal and its pictures: `cuerpo-v2/propuesta.md` in the session scratchpad. After his review of Aurelia on it ("haz estos cambios el standard de el cuerpo animaciones y sprites femeninos"): both arms hang where his heroines draw them (elbows at the waist, the near hand 4 px further out, the far fist 3-4 rows lower), seated hips settle into the seat, his near shoulder piece is left out when the arm turns far from his (no broken shoulder at the throw's wind-up), and his small hands turn only by quarter turns (no cut-off hand at the release); the rule is in `docs/SPRITE_STYLE_GUIDE.md` (the female standard). **Then (2026-10-21, latest) he sent his bare female body** (`docs/reference/female-base-owner-reference.jpg`: "aqui tienes una base del cuerpo femenino sin ropa para que entiendas la base del cuerpo") with Aurelia's bugs: hands apart at the throw's release, the shoulder missing at its wind-up, legs broken and "3 piernas o 3 botas" in sit, downed and others. On `body/female-v2` the female and slender bodies are now his body piece by piece (`tools/refs/female-base-body-from-ref.py` -> `src/sprite/femaleBaseArt.ts`, `body.ts` `drawBaseBody`) on a rig fitted to his joints (`rig.ts` `BodyFit`): at idle every pixel of the body is his; each limb is one piece with its hand or foot, a hand turns with its forearm, the shoulder's round goes with the arm, every joint carries a round cap; his sports top and briefs are also items (`top_sports_bra`, `bottom_briefs`). Tests: `src/sprite/femaleBase.test.ts`. Slender is his body too until he draws one. Waiting for his approval; the heroines re-pin their pieces on it (Aurelia on `heroine/aurelia-v2`). After his "error raro en el hombro espalda" on Saya's throw (2026-10-22): his neck is its own piece on the bone to the head (`FEMALE_BASE.neck`), so the release and follow-through no longer leave the neck standing on the chest behind the head; checked on every body and preset in `femaleBase.test.ts`. His next verdict ("es el cuello lo que se ve raro y hay que corregir y arreglar"): the throw moved the head by a fixed offset, twice the neck's length away, and the neck was drawn on to reach it. Now the head stays on the neck at its length, held up as he repainted the throw on Lyra (`docs/reference/poses/lyra-throw-owner-reference.jpg`; `rig.ts` `PoseFrame.neckPitch`, female and slender only; male and bulky still hang the head ahead of the chest at the release, as the warp-throw reference does). Waiting for his look.
+- Lyra (`heroine/lyra`, legend preset `preset_lyra`, his game-scale picture copied 1:1): waiting for his
+  approval. Two new appearance options come with her: the neck `long` (a slimmer neck carrying the head
+  2 px further forward, and on the male and bulky bodies 2 px higher; `src/sprite/neck.ts`) and the
+  face shape `fine` (his face for her, narrower than our template). On the new female body
+  (`heroine/lyra-v2`, merged with `body/female-v2`, waiting for his approval with the body): every piece
+  stands where he drew it, both arms and the sword included. A third new appearance option comes with her:
+  the arms `long` (`rig.ts` LONG_ARMS): his Lyra's forearms are 2-3 px longer than the female standard's
+  (his fists start on rows 176-177, the standard's on 173-174), so on her the fists (his hands) and the
+  sword are his, where he drew them, and her free far hand hangs open as he drew it. The owner decided
+  Lyra keeps her long arms ("lyra se queda con sus brazos largos"). Re-pinned on his bare female body
+  (`body/female-v2` 7fbba79): her pieces pinned to his joints, her forearms turned out at rest to his
+  Lyra's wrists (LONG_ARMS `restTurn`), her far hand his open one, no sports top under her blouse, her
+  pieces closed in the line when turned; at rest 47 pixels differ from his picture (before 52). Limbs
+  test: `src/sprite/lyraLimbs.test.ts`. Waiting for him: he repaints her throw frames 3-4 and her sitting
+  pose himself.
+- Decided 2026-10-22: **his Lyra reading picture is the new standard read pose** (and his sit picture, still
+  to come, the sit pose) for every character: *"copialo exacto me encanta estas poses nuevas de sentado y
+  leyendo es el nuevo standard"*; her hands copied exactly (*"mira como estan sus manos se ven excelentes
+  copialo igual"*); the rock is an object of its own that changes with the scene (*"puedes usar la piedra
+  tambien como objeto pero ese objeto cambiara dependiendo del escenario"*). Built on `heroine/lyra-v2`,
+  waiting for his look: her read pose is his three frames ("Atenta", "Leyendo", "Pasando pagina",
+  `docs/reference/lyra-read-owner-reference.jpg`, drawn at our scale) and her throw frames 3-4 his repaint
+  (`lyra-throw-owner-reference.jpg`, his figure 1.35 times ours, brought down), every pixel his
+  (`src/sprite/ownerFrames.ts`, `ownerFrames.test.ts`); the read rig of every body is posed toward his
+  joints (`rig.ts` READ, PoseAt), his book for every reader, and his rock is the first seat prop
+  (`src/sprite/seats.ts`, the camp draws it under the read spots). Questions for him: the male and bulky
+  legs are too short for his rock (their feet hang); which of his three rocks (they differ) is the prop;
+  should the other characters' throw follow his release. Fixed 2026-10-22 after his look (*"tiene cortada
+  la pierna corrigelo"*): the lift had cut her far shin's line and far foot at the next panel of his
+  picture; her legs are now whole in all three frames, and the earth he drew round her boots is the
+  seat's, not hers (`tools/refs/lyra_read_ref.py`, `seats.test.ts`). Then (*"yo aun veo el arma cortada"*):
+  in "Atenta" her sword runs off the left edge of his picture, and the lift closed it in a straight black
+  line; now his last column of the blade is read from his picture's edge and the blade ends in his tip of
+  "Leyendo" (same sword, one pixel left and down). "Leyendo" and "Pasando pagina" keep his own tip.
+  Then he sent his sit picture (`docs/reference/lyra-sit-owner-reference.jpg`) and said of "Pasando pagina"
+  next to it: *"mira la referencia la punta es un poco mas larga y afilada"*. Built on `heroine/lyra-v2`,
+  waiting for his look: her sit pose is his one frame, every pixel his (`tools/refs/lyra_sit_ref.py` ->
+  `items/lyraSitArt.ts`, `ownerFrames.ts`), held over the 4-frame loop (the old sit only breathed; his
+  picture has one frame); the sit rig of the fitted female bodies is posed toward his joints (`rig.ts`
+  FIT_SIT) and sits on the seat prop like read; the male and bulky sit stays as it was (their standard is
+  his Roman sit on `body/male-skin-face`). The camp's sit spot now has his rock, not the log, for everyone. All three read frames' blades
+  end in his sit tip (narrowing 1, 2, 2, 2 pixels, about 3 px longer), turned with RotSprite to their angle;
+  nothing else in them changed. Question for him: his sit rock is drawn differently from the read rock (wider
+  to the left, other stones); should it become the seat prop, or a second rock?
 - Decided 2026-10-21 (later): Warp Strike is renamed **"Shooting-Star Thrust"** (Spanish **"Estocada Fugaz"**; the owner first said "Shooting Star", then chose these), after the clan's name (Ryusei = shooting star) and to stay clear of other games' "Warp Strike". The id `ryusei_warp` stays. To apply once `icons/sheets-8-11` is merged (it touches the same strings): names, hotbar label, help text, log, clan texts, D24.
 - Decided 2026-10-21: the Spanish names are **"Golpe Warp"** and **"Comando"** (the owner: "los dos"); `icons/sheets-8-11` brings them and updates D24 in `docs/CLANS_DESIGN.md`.
 - Jutsu pacing (owner: too fast, "like a flashing star"): a first pass is merged (`8ef28a9`: 560 ms

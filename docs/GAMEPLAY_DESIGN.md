@@ -11,7 +11,8 @@ elements.
 
 - **Side-view 2.5D**: a wide stage seen from the side, with depth. Characters
   face left or right (sprites are mirrored). Elevation is shown as terraces and
-  platforms whose cliff faces turn toward the camera.
+  platforms whose cliff faces turn toward the camera. Jutsu art turns to follow
+  where it is aimed, up and down the screen too (see "Jutsu art follows its aim").
 - **Real proportions**: 1 m = 57 px across (a character is about 1.75 m =
   100 px), so barrels, tents, lanterns and trees have their real size.
 - **Steep camera with lots of depth** (more than *A King's Tale*): 1 m of depth
@@ -1792,3 +1793,60 @@ The vest and coat in the same picture are not a new character: *"el chaleco no e
 de jonin parece mas como tactico militar solo cambiale los colores y no lo hagas
 personaje es parte de los sets"*. They become clothing pieces in the sets, with
 new colours.
+
+## Jutsu art follows its aim (decided 2026-10-22)
+
+The Y-axis test (`battle/y-axis-test`) showed a cone aimed up the screen with
+its explosions and damage on the diagonal while the dragon and its fire wall
+rose beside the caster, side-on. The owner decided: yes, jutsu art turns to
+follow where it is aimed; **characters stay side-view only** (he said that is
+fine). Built on `battle/jutsu-aim`, waiting for his look at the captures.
+
+How each kind turns (`src/components/battle/aimPlan.ts`, tested in
+`aimPlan.test.ts`):
+
+- **By the angle on the screen, not on the ground.** 1 m of depth is 38 px for
+  57 across, so a 45-degree aim on the ground is about 34 degrees on the screen.
+- **Aimed straight across, nothing changes.** Turns go in 15-degree buckets and
+  within half a bucket of straight left or right the art is drawn exactly as
+  before (checked pixel for pixel against the old drawing).
+- **Turning keeps his pixels.** Art is turned with RotSprite (Scale2x, then
+  nearest-neighbour; `src/sprite/rotRgba.ts`), never smoothed or scaled: every
+  pixel is one of his. The turned frames are made in a worker and kept by
+  bucket; for the first frame or two the canvas's own nearest-neighbour turn
+  stands in.
+- **Projectiles** (bolt, sphere, the Fireball and Great Fireball, the fanned
+  Fireball, the Dragon Flame's fireballs): turned to their flight on the screen.
+- **Beasts stay upright**: one that runs on the ground (lightning hound, stone
+  drake, chakra griffin) leans at most 15 degrees, one that flies at most 45
+  (poison 30), and moves along its true path.
+- **Streams, beams, chains, volleys, the Spark Fan, the water dragon and the
+  rock bullets** already followed their aim (laid along the line, or his
+  pre-turned rows): unchanged.
+- **Breaths** (a cone's breath, the Rubble Gust's dust): each one turned to the
+  cone's aim. A rock bullet's own impact (`multi_hit`) sprays the way the shot
+  went.
+- **The Great Annihilation** (a side-view band of fire): laid along the cone's
+  middle in upright strips, so the flames keep rising straight up while the
+  band runs into the depth, and cut off where the cone ends. Aimed straight
+  into the depth it leans toward the side the caster faces (a band seen edge-on
+  would fold into a line).
+- **Walls** (earth, water, the Dragon Flame's fire wall): the sheet whose
+  direction on the screen is closest (across, 3/4 or into the depth), the 3/4
+  one mirrored for the other diagonal. The switch points are halfway on the
+  screen: about 24 and 70 degrees on the ground (they were 22.5 and 67.5).
+- **Dragon Flame Annihilation**: his wall and his dragon head rise behind the
+  ninja along the cone's aim (still drawn behind the ninja when "behind" is
+  nearer the camera), the wall in its turned sheet, the head turned toward the
+  cone (at most 45 degrees: a head rising out of a wall, not a projectile).
+  **Dragon Fire**: the same placement and head; his half wall has no turned
+  sheets and stands across the screen.
+- **Crescents** (Crescent Moon Dance, Leaf Hurricane): turned to where each
+  one flies.
+- **Wood Dragon**: rises behind the target along the aim, upright.
+- Not turned: impacts and blasts (round), auras, the Kirin and towers
+  (vertical), the Bleeding Cut's white cut (a swing across the target) and its
+  blood (it falls), the Devouring Tide and Tsunami (they already switch between
+  across and into-the-depth looks), the Nirvana crows (they dive across the
+  circle), the Chidori in the hand.
+

@@ -13,12 +13,14 @@ import { COMBO_KICKS, COMBO_TURNED, POSE_FPS, TACKLE_IMPACT_FRAME } from '../../
 import { BLOW_MS, CONDUCT_MS, DOUSE_MS, FAN_MS, FAN_ROLL, GROUND_FADE, TOWER_MS, TOWER_RISE, WAVE_CREST, WAVE_HOLD, blastMs, impactMs, keyCenter, signatureMs, skySignature } from './vfxSprites';
 import { jutsuTint, unitTint } from './vfxTintPlan';
 import { DRIP_MS, SCREEN_MS, SPRAY_DELAY, SPRAY_LANDED, SPRAY_MS, bleedingStarts, isBleedTick } from './bloodPlan';
-import { dist } from '../../battle/map';
+import { dist, getMap } from '../../battle/map';
 import { closestPoint } from '../../battle/structures';
 import { midpoint } from '../../battle/combat';
 import type { Bend } from './paths';
 import { bendsOf, seedOf } from './paths';
 import { CRESCENT, crescentStart, effectLands, vortexAt } from './stagePlan';
+import { aimBucket, dragonPlace, screenDeg } from './aimPlan';
+import type { Proj } from './aimPlan';
 import { edgeFoe } from '../../battle/clans';
 
 export interface UnitView {
@@ -199,9 +201,18 @@ export interface SpriteRun {
   mirror?: boolean;
   clip?: number;
   fade?: number;
+  /**
+   * The ground direction it points along (its aim; vfxSprites.ts drawRun, aimPlan.ts): a wall sheet
+   * stands in its orientation closest to it (wall, wall_diag, wall_depth), anything else is turned
+   * by its angle on the screen, at most `max` degrees either way. Straight across: drawn as it is.
+   */
+  aim?: { dx: number; dz: number; max?: number };
 }
 
 export type VolleyPath = 'high' | 'straight' | 'low';
+
+/** How far the Dragon Flame's and Dragon Fire's head turns toward an aim up or down the screen (degrees). */
+const DRAGON_TILT = 45;
 
 /** How high the casting hand is in the cast pose (px above the feet), and how far before the body (m). */
 const HAND_LIFT = 62;
@@ -418,6 +429,8 @@ export class Playback {
   private timers: { at: number; run: (now: number) => void }[] = [];
   /** Casts played so far: part of the seed of their varied paths, so two casts never fly alike. */
   private casts = 0;
+  /** The battle map's projection, for the staging that turns with the aim (aimPlan.ts); set by each jutsu. */
+  private px: Proj = { perM: 57, perMDepth: 38 };
   /** Sounds due later in something already playing (a Shooting-Star Thrust's throw and catch). */
   private cues: { at: number; name: SoundName }[] = [];
   /** The d20s on screen, the big window (one at a time) and the criticals landing. */
@@ -1151,14 +1164,19 @@ export class Playback {
         announce();
         this.setPose(a, 'cast', now, 900);
         const cone = ev.shape?.kind === 'cone' ? ev.shape : null;
-        const wallAt = ahead(-3.3, -0.37);
-        const mouth = ahead(-0.7, -0.37);
+        // Behind the ninja along the cone's aim (the owner, 2026-10-22: the art follows the aim): the
+        // wall in its sheet turned closest to the aim, the head turned toward it (leaning at most
+        // DRAGON_TILT: a head rising out of a wall, not a projectile). Straight across, as before.
+        const place = dragonPlace(this.px, from, cone?.dir ?? null, f, 3.3, 0.7, 0.37);
+        const wallAt = place.wall;
+        const mouth = place.mouth;
         const UP = 151;
-        piece({ group: 'vfx_fire', name: 'wall', element: 'fire', t0: CAST, from: wallAt, depth: wallAt.z, rows: [{ anim: 'rise', ms: 1000 }, { anim: 'idle', ms: 900 }, { anim: 'rise', ms: 1000, back: true }] });
+        piece({ group: 'vfx_fire', name: 'wall', element: 'fire', t0: CAST, from: wallAt, depth: place.depth, aim: place.aim, rows: [{ anim: 'rise', ms: 1000 }, { anim: 'idle', ms: 900 }, { anim: 'rise', ms: 1000, back: true }] });
         const headPath = [{ ms: 0, dy: -UP + 260 }, { ms: 400, dy: -UP }, { ms: 750, dy: -UP }, { ms: 1417, dy: -UP + 200 }];
-        piece({ group: 'vfx_dragon', name: 'fire_head', element: 'fire', t0: 950, from: mouth, depth: wallAt.z - 0.002, clip: 0, path: headPath, rows: [{ anim: 'idle', ms: 750 }, { anim: 'fade', ms: 667 }] });
+        const headAim = { ...place.aim, max: DRAGON_TILT };
+        piece({ group: 'vfx_dragon', name: 'fire_head', element: 'fire', t0: 950, from: mouth, depth: place.depth - 0.002, clip: 0, path: headPath, aim: headAim, rows: [{ anim: 'idle', ms: 750 }, { anim: 'fade', ms: 667 }] });
         // The fireball in its mouth until it spits.
-        piece({ group: 'vfx_fire', name: 'bolt', element: 'fire', t0: 1150, from: mouth, depth: wallAt.z - 0.001, path: [{ ms: 0, dy: -UP }], rows: [{ anim: 'fly', ms: 200 }] });
+        piece({ group: 'vfx_fire', name: 'bolt', element: 'fire', t0: 1150, from: mouth, depth: place.depth - 0.001, path: [{ ms: 0, dy: -UP }], aim: headAim, rows: [{ anim: 'fly', ms: 200 }] });
         const n = ev.enhanced ? 7 : 5;
         const dir = ((cone?.dir ?? (f > 0 ? 0 : 180)) * Math.PI) / 180;
         const spread = ((cone?.angle ?? 60) * Math.PI) / 180;
@@ -1195,11 +1213,14 @@ export class Playback {
         announce(260);
         this.setPose(a, 'cast', now, 900);
         const line = ev.shape?.kind === 'line' ? ev.shape : null;
-        const wallAt = ahead(-1.6, -0.32);
-        const mouth = ahead(-0.5, -0.32);
+        // Behind the ninja along the line's aim, the head turned toward it; his half wall has no
+        // turned sheets, so it stands across the screen whatever the aim.
+        const place = dragonPlace(this.px, from, line?.dir ?? null, f, 1.6, 0.5, 0.32);
+        const wallAt = place.wall;
+        const mouth = place.mouth;
         const UP = 106;
-        piece({ group: 'vfx_dragon', name: 'fire_wall_half', element: 'fire', t0: CAST, from: wallAt, depth: wallAt.z, rows: [{ anim: 'rise', ms: 1000 }, { anim: 'idle', ms: 590 }, { anim: 'rise', ms: 1000, back: true }] });
-        piece({ group: 'vfx_dragon', name: 'fire_head_half', element: 'fire', t0: 800, from: mouth, depth: wallAt.z - 0.002, clip: 0, path: [{ ms: 0, dy: -UP + 130 }, { ms: 300, dy: -UP }, { ms: 1200, dy: -UP }, { ms: 1867, dy: -UP + 100 }], rows: [{ anim: 'idle', ms: 1200 }, { anim: 'fade', ms: 667 }] });
+        piece({ group: 'vfx_dragon', name: 'fire_wall_half', element: 'fire', t0: CAST, from: wallAt, depth: place.depth, rows: [{ anim: 'rise', ms: 1000 }, { anim: 'idle', ms: 590 }, { anim: 'rise', ms: 1000, back: true }] });
+        piece({ group: 'vfx_dragon', name: 'fire_head_half', element: 'fire', t0: 800, from: mouth, depth: place.depth - 0.002, clip: 0, path: [{ ms: 0, dy: -UP + 130 }, { ms: 300, dy: -UP }, { ms: 1200, dy: -UP }, { ms: 1867, dy: -UP + 100 }], aim: { ...place.aim, max: DRAGON_TILT }, rows: [{ anim: 'idle', ms: 1200 }, { anim: 'fade', ms: 667 }] });
         // The whole line, wherever the point was aimed (areaEnd, as the Thunder Beam).
         const endAt = line ? areaEnd(line) : ahead(spec.length ?? 10.5);
         const GROW = 400;
@@ -1334,7 +1355,7 @@ export class Playback {
           if (i === 0 && !L) blow();
           else this.later(now, t, blow);
           this.later(now, t, () => h.sound('swing'));
-          piece({ group: 'vfx_chakra', name: 'slash', element: 'chakra', t0: t + STRIKE, from: blade, path: [{ ms: 0, at: blade, dy: -lift }, { ms: 300, at: past, dy: -lift }], rows: [{ anim: 'fly', ms: 360 }], fade: 90 });
+          piece({ group: 'vfx_chakra', name: 'slash', element: 'chakra', t0: t + STRIKE, from: blade, path: [{ ms: 0, at: blade, dy: -lift }, { ms: 300, at: past, dy: -lift }], aim: { dx: ux, dz: uz }, rows: [{ anim: 'fly', ms: 360 }], fade: 90 });
         }
         // The first crescent goes through the target.
         hits(L + STRIKE + 150);
@@ -1393,8 +1414,10 @@ export class Playback {
           const at0 = { x: from.x + ux * (0.9 + k * Math.max(0, d - 2.1)), z: from.z + uz * (0.9 + k * Math.max(0, d - 2.1)) };
           piece({ group: 'vfx_wood', name: 'wood_root', t0: CAST + i * 90, from: at0, depth: at0.z, clip: 0, path: [{ ms: 0, dy: 32 }, { ms: 160, dy: 0 }, { ms: 520, dy: 0 }, { ms: 820, dy: 34 }], rows: [{ anim: 'idle', ms: 820 }] });
         }
-        // His drawing faces left: behind the target as the caster sees it, turned to face it.
-        const behind = { x: to.x + (f > 0 ? 1 : -1) * 1.1, z: to.z };
+        // His drawing faces left: behind the target as the caster sees it, turned to face it; aimed
+        // up or down the screen, behind it along the aim (it stays upright: it rises out of the ground).
+        const across = aimBucket(screenDeg(this.px, ux, uz)) === 0;
+        const behind = across ? { x: to.x + (f > 0 ? 1 : -1) * 1.1, z: to.z } : { x: to.x + ux * 1.1, z: to.z + uz * 1.1 };
         const rise = CAST + n * 90 + 80;
         const RISE = 450;
         const HOLD = 350;
@@ -1407,7 +1430,7 @@ export class Playback {
           name: 'wood_dragon',
           t0: rise,
           from: behind,
-          depth: to.z - 0.02,
+          depth: Math.min(behind.z, to.z - 0.02),
           clip: 0,
           path: [{ ms: 0, dy: 160 }, { ms: RISE, dy: 0 }],
           rows: [{ anim: 'sway', ms: RISE + HOLD }, { anim: 'strike', ms: STRIKE + grip }, { anim: 'break', ms: BREAK + 120 }],
@@ -1500,7 +1523,7 @@ export class Playback {
           const { j, out, fly } = x;
           const t0 = L + slots[j % slots.length] + Math.floor(j / slots.length) * 90;
           const away = x.p.x < from.x - 0.01;
-          this.fx.push({ kind: 'sprite', element: 'wind', from: out, to: x.p, t0: at(t0), dur: fly + 60, run: { group: 'vfx_wind', name: 'slash', mirror: away, rows: [{ anim: 'fly', ms: fly + 60 }], path: [{ ms: 0, at: out, dy: -54 }, { ms: fly, at: x.p, dy: -54 }], fade: 60 } });
+          this.fx.push({ kind: 'sprite', element: 'wind', from: out, to: x.p, t0: at(t0), dur: fly + 60, run: { group: 'vfx_wind', name: 'slash', mirror: away, rows: [{ anim: 'fly', ms: fly + 60 }], path: [{ ms: 0, at: out, dy: -54 }, { ms: fly, at: x.p, dy: -54 }], fade: 60, aim: { dx: x.p.x - out.x, dz: x.p.z - out.z } } });
           first = Math.min(first, t0 + fly);
           end = Math.max(end, burst('wind', x.p, t0 + fly, 56, 'hit', undefined));
           this.later(now, t0, () => h.sound('swing'));
@@ -1533,6 +1556,7 @@ export class Playback {
     if (!a) return 0;
     const spec = JUTSU[ev.jutsu];
     const from = this.posOf(ev.unit, now);
+    this.px = getMap(state.mapId).px;
     if (Math.abs(ev.at.x - from.x) > 0.05) a.facing = ev.at.x > from.x ? 1 : -1;
     const caster = state.units[ev.unit];
     const head = caster?.kind === 'hydra_head';

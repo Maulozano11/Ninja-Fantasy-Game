@@ -14,12 +14,15 @@ import type { Fx, Held, VolleyPath } from './playback';
 import type { Scene } from './renderer';
 import { ELEMENT_COLORS, auraDx, foeHidden, fxPos, project, tintColors } from './renderer';
 import { WAIT, hurryVfxSheets, tintedSheet } from './vfxTintCache';
-import type { TintedSheet } from './vfxTintCache';
+import type { TintedFrame, TintedSheet } from './vfxTintCache';
 import { unitTint, wallElement } from './vfxTintPlan';
 import { keepAbove, wanderHeading, wanderPoint } from './paths';
 import type { Bend, XY } from './paths';
 import { cellCenter, dist, keyCell } from '../../battle/map';
 import { BLOOD_GROUP, screenSplats, splatAt } from './bloodPlan';
+import { AIM_STEP, BEAST_TILT, aimBucket, aimTurn, bandStep, screenDeg, wallSheet } from './aimPlan';
+import { turnedFrame } from './vfxTurn';
+import { areaEnd } from '../../battle/jutsu';
 
 /** A sheet, and its copy in a chakra colour when it plays in one. */
 type Sheet = NonNullable<ReturnType<typeof worldSprite>> & { tinted?: TintedSheet };
@@ -75,6 +78,94 @@ function blit(ctx: CanvasRenderingContext2D, s: Sheet, anim: string, frame: numb
     if (tf) ctx.drawImage(tf.img, X + tf.x, Y + tf.y);
     else ctx.drawImage(s.img, f * s.spec.frameW, a.row * s.spec.frameH, s.spec.frameW, s.spec.frameH, X, Y, s.spec.frameW, s.spec.frameH);
   };
+  draw();
+  if (glow > 0) {
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.globalAlpha = alpha * glow;
+    draw();
+  }
+  ctx.restore();
+}
+
+/**
+ * blit, with the frame turned `deg` degrees (a bucket of aimPlan.ts: the art follows its aim) round
+ * its anchor, by RotSprite (vfxTurn.ts), then mirrored to face left like blit. At 0 degrees it is blit
+ * itself, so an effect aimed straight across draws exactly as it always has. Until its turned frame
+ * is made, the canvas's own nearest-neighbour turn of the same pixels stands in.
+ */
+function blitTurned(ctx: CanvasRenderingContext2D, s: Sheet, anim: string, frame: number, x: number, y: number, mirror: boolean, deg: number, alpha = 1): void {
+  if (deg === 0) return blit(ctx, s, anim, frame, x, y, mirror, alpha);
+  const a = s.spec.anims[anim] ?? Object.values(s.spec.anims)[0];
+  if (!a) return;
+  const f = Math.max(0, Math.min(a.frames - 1, frame));
+  const tf = s.tinted?.frame(a.row, f);
+  if (tf === null) return;
+  if (tf === WAIT) {
+    waiting = true;
+    return;
+  }
+  const { frameW: W, frameH: H, anchor } = s.spec;
+  /** Asks for frame i of the row turned (its recoloured copy when it plays in a colour; null: not made yet). */
+  const ask = (i: number, t: TintedFrame | undefined) => {
+    const paint = (g: CanvasRenderingContext2D) => {
+      if (t) g.drawImage(t.img, t.x, t.y);
+      else g.drawImage(s.img, i * W, a.row * H, W, H, 0, 0, W, H);
+    };
+    return { paint, turned: turnedFrame(t ? t.img : s.img, t ? 'tint' : `${a.row}:${i}`, W, H, anchor, deg, paint) };
+  };
+  const { paint, turned } = ask(f, tf);
+  // Not made yet: the rest of the row is asked for too, so it is ready by the time it plays (in a
+  // chakra colour each frame is asked for as it plays: asking the recolouring for frames ahead would
+  // reorder its queue).
+  if (!turned && !s.tinted) for (let i = 0; i < a.frames; i++) if (i !== f) ask(i, undefined);
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.translate(Math.round(x), Math.round(y));
+  if (mirror) ctx.scale(-1, 1);
+  const draw = () => {
+    if (turned) ctx.drawImage(turned.img, -turned.ox, -turned.oy);
+    else {
+      ctx.save();
+      ctx.rotate((deg * Math.PI) / 180);
+      ctx.translate(-anchor[0], -anchor[1]);
+      paint(ctx);
+      ctx.restore();
+    }
+  };
+  draw();
+  if (glow > 0) {
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.globalAlpha = alpha * glow;
+    draw();
+  }
+  ctx.restore();
+}
+
+/** How wide (px) the strips of a band laid along its aim are (layBand). */
+const BAND_STRIP = 2;
+
+/**
+ * A side-view band (the Great Annihilation's fire running out across the screen) laid along a ground
+ * direction (aimPlan.ts bandStep): his frame cut into upright strips, each moved to where its part of
+ * the band lies on the screen and drawn whole (1:1, nearest neighbour), so the flames still rise
+ * straight up while the band runs into the depth; seen at an angle it is shorter across, the strips
+ * overlapping. Mirrored to run left.
+ */
+function layBand(ctx: CanvasRenderingContext2D, s: Sheet, anim: string, frame: number, x: number, y: number, st: { sx: number; sy: number; mirror: boolean }, alpha = 1): void {
+  const src = frameSource(s, anim, frame);
+  if (!src) return;
+  const [ax, ay] = s.spec.anchor;
+  ctx.save();
+  ctx.translate(Math.round(x), Math.round(y));
+  if (st.mirror) ctx.scale(-1, 1);
+  const draw = () => {
+    for (let c = 0; c < src.w; c += BAND_STRIP) {
+      const d = src.ox + c - ax;
+      const cw = Math.min(BAND_STRIP, src.w - c);
+      ctx.drawImage(src.img, src.sx + c, src.sy, cw, src.h, Math.round(d * st.sx), -ay + src.oy + Math.round(d * st.sy), cw, src.h);
+    }
+  };
+  ctx.globalAlpha = alpha;
   draw();
   if (glow > 0) {
     ctx.globalCompositeOperation = 'lighter';
@@ -432,8 +523,24 @@ function drawRun(ctx: CanvasRenderingContext2D, sc: Scene, f: Fx, ms: number): b
   }
   const p = runPoint(sc, f, ms);
   const alpha = r.fade && ms > f.dur - r.fade ? Math.max(0, (f.dur - ms) / r.fade) : 1;
+  // Pointed along its aim (aimPlan.ts): a wall stands in the sheet turned closest to it, anything
+  // else is turned by its angle on the screen. Aimed straight across, it is drawn as it always was.
+  let sh = s;
+  let mirror = !!r.mirror;
+  let deg = 0;
+  if (r.aim) {
+    const d = aimBucket(screenDeg(sc.map.px, r.aim.dx, r.aim.dz), AIM_STEP, r.aim.max ?? 90);
+    if (d !== 0 && r.name === 'wall') {
+      const v = wallSheet(sc.map.px, { x: 0, z: 0 }, { x: r.aim.dx, z: r.aim.dz });
+      const vs = v.name === 'wall' ? undefined : worldSprite(r.group, v.name);
+      if (vs && ready(vs)) {
+        sh = inTint(vs, f.element, v.name, f.tint);
+        mirror = v.mirror;
+      }
+    } else deg = d;
+  }
   if (r.clip === undefined) {
-    blit(ctx, s, anim, frame, p.x, p.y, !!r.mirror, alpha);
+    blitTurned(ctx, sh, anim, frame, p.x, p.y, mirror, deg, alpha);
     return true;
   }
   // Out of a wall: nothing below the line `clip` px over its ground point.
@@ -442,7 +549,7 @@ function drawRun(ctx: CanvasRenderingContext2D, sc: Scene, f: Fx, ms: number): b
   ctx.beginPath();
   ctx.rect(p.x - 4000, g.Y - r.clip - 8000, 8000, 8000);
   ctx.clip();
-  blit(ctx, s, anim, frame, p.x, p.y, !!r.mirror, alpha);
+  blitTurned(ctx, sh, anim, frame, p.x, p.y, mirror, deg, alpha);
   ctx.restore();
   return true;
 }
@@ -672,10 +779,13 @@ function drawFromSheets(ctx: CanvasRenderingContext2D, sc: Scene, f: Fx): boolea
       const beast = f.role === 'beast' && !sig ? worldSprite('vfx_beasts', el) : undefined;
       const name = sig ?? f.role ?? 'bolt';
       const own = sheet(el, name);
-      const s = beast && ready(beast) ? inTint(beast, el, el, f.tint, true) : own?.spec.anims.fly ? inTint(own, el, name, f.tint) : sheet(el, 'bolt', f.tint);
+      const runs = !!beast && ready(beast);
+      const s = runs ? inTint(beast, el, el, f.tint, true) : own?.spec.anims.fly ? inTint(own, el, name, f.tint) : sheet(el, 'bolt', f.tint);
       if (!s) return false;
       const p = flight(sc, f, t);
-      blit(ctx, s, 'fly', frameAt(s, 'fly', ms), p.x, p.y, left);
+      // Turned to its aim on the screen (a beast stays upright: it only leans, aimPlan BEAST_TILT).
+      const { deg } = aimTurn(sc.map.px, f.from, f.to, left, runs ? BEAST_TILT[el] ?? 15 : 90);
+      blitTurned(ctx, s, 'fly', frameAt(s, 'fly', ms), p.x, p.y, left, deg);
       return true;
     }
     case 'area': {
@@ -711,6 +821,17 @@ function drawFromSheets(ctx: CanvasRenderingContext2D, sc: Scene, f: Fx): boolea
       if (sig) {
         const s = sheet(el, sig, f.tint);
         if (!s) return false;
+        // Aimed off the horizontal, his fire runs along the cone's middle into the depth (laid in
+        // upright strips: the flames still rise straight up), cut off where the cone ends.
+        const cone = f.area && f.area.kind === 'cone' ? f.area : null;
+        const end = cone ? areaEnd(cone) : f.to;
+        const turned = cone !== null && aimTurn(sc.map.px, f.from, end, mirror).deg !== 0;
+        const st = cone ? bandStep(sc.map.px, cone.dir) : null;
+        const e = project(sc.map, end);
+        const put = (row: string, frame: number) => {
+          if (!turned || !st) return blit(ctx, s, row, frame, o.X, o.Y, mirror);
+          clipBeyond(ctx, { x: e.X, y: e.Y }, e.X - o.X, e.Y - o.Y, 24, () => layBand(ctx, s, row, frame, o.X, o.Y, st));
+        };
         // The wave rolls out (its surge may be split over several rows), burns, then dies back.
         const surge = surgeMs(s);
         const fade = animMs(s, 'fade');
@@ -719,13 +840,13 @@ function drawFromSheets(ctx: CanvasRenderingContext2D, sc: Scene, f: Fx): boolea
           for (const row of surgeRows(s)) {
             const d = animMs(s, row);
             if (at < d) {
-              blit(ctx, s, row, frameAt(s, row, at), o.X, o.Y, mirror);
+              put(row, frameAt(s, row, at));
               break;
             }
             at -= d;
           }
-        } else if (ms < f.dur - fade) blit(ctx, s, 'burn', frameAt(s, 'burn', ms - surge), o.X, o.Y, mirror);
-        else blit(ctx, s, 'fade', frameAt(s, 'fade', ms - (f.dur - fade)), o.X, o.Y, mirror);
+        } else if (ms < f.dur - fade) put('burn', frameAt(s, 'burn', ms - surge));
+        else put('fade', frameAt(s, 'fade', ms - (f.dur - fade)));
         return true;
       }
       const s = sheet(el, 'breath', f.tint);
@@ -739,11 +860,16 @@ function drawFromSheets(ctx: CanvasRenderingContext2D, sc: Scene, f: Fx): boolea
       // the middle) is drawn back by the difference, so its dust ends where the cone ends.
       const [ax] = s.spec.anchor;
       const off = Math.abs(ax - s.spec.frameW / 2) > s.spec.frameW * 0.25 ? ax - s.spec.frameW / 2 : 0;
+      // Each breath turned to the cone's aim on the screen, drawn back along it (straight across: back along x, as always).
+      const { deg } = aimTurn(sc.map.px, f.from, areaEnd(f.area), mirror);
+      const ux = Math.cos((deg * Math.PI) / 180) * (mirror ? -1 : 1);
+      const uy = Math.sin((deg * Math.PI) / 180);
+      const back = s.spec.frameW * 0.3 - off;
       for (let i = 0; i < steps; i++) {
         const k = (i + 0.5) / steps;
         if (t < k * 0.6) break;
         const p = project(sc.map, { x: f.from.x + Math.cos(rad) * len * k, z: f.from.z + Math.sin(rad) * len * k });
-        blit(ctx, s, 'fly', frameAt(s, 'fly', ms + i * 70), p.X - (mirror ? -1 : 1) * (s.spec.frameW * 0.3 - off), p.Y - 30, mirror, t > 0.8 ? (1 - t) / 0.2 : 1);
+        blitTurned(ctx, s, 'fly', frameAt(s, 'fly', ms + i * 70), p.X - ux * back, p.Y - 30 - uy * back, mirror, deg, t > 0.8 ? (1 - t) / 0.2 : 1);
       }
       return true;
     }
@@ -800,7 +926,9 @@ function drawFromSheets(ctx: CanvasRenderingContext2D, sc: Scene, f: Fx): boolea
       if (!s) return false;
       const p = project(sc.map, f.to);
       const anim = Object.keys(s.spec.anims)[0];
-      blit(ctx, s, anim, frameAt(s, anim, ms), p.X, p.Y - (f.lift?.[1] ?? 50), !!own && left);
+      // Its own impact sprays the way the shot went (turned to it on the screen); a hit is round.
+      const deg = own ? aimTurn(sc.map.px, f.from, f.to, left).deg : 0;
+      blitTurned(ctx, s, anim, frameAt(s, anim, ms), p.X, p.Y - (f.lift?.[1] ?? 50), !!own && left, deg);
       return true;
     }
     case 'aura': {
@@ -845,14 +973,12 @@ function drawFromSheets(ctx: CanvasRenderingContext2D, sc: Scene, f: Fx): boolea
  */
 export function drawWallSprite(ctx: CanvasRenderingContext2D, sc: Scene, w: Wall): boolean {
   const el = w.kind;
-  const angle = (Math.atan2(Math.abs(w.b.z - w.a.z), Math.abs(w.b.x - w.a.x)) * 180) / Math.PI;
-  const name = angle < 22.5 ? 'wall' : angle > 67.5 ? 'wall_depth' : 'wall_diag';
+  // The sheet whose direction on the screen is closest to the wall's (aimPlan.ts); the diagonal sheet
+  // runs from a near-left end to a far-right end ("/"), mirrored for "\".
+  const { name, mirror } = wallSheet(sc.map.px, w.a, w.b);
   // Without the turned sheet, the drawn wall (which follows any angle) stands in.
   const s = sheet(el, name, wallTint(sc, w));
   if (!s) return false;
-  // The diagonal sheet runs from a near-left end to a far-right end ("/"); mirror it for "\".
-  const [left, right] = w.a.x <= w.b.x ? [w.a, w.b] : [w.b, w.a];
-  const mirror = name === 'wall_diag' && left.z < right.z;
   const p = project(sc.map, { x: (w.a.x + w.b.x) / 2, z: (w.a.z + w.b.z) / 2 });
   const born = sc.pb.wallBorn.get(w.id);
   const ms = born === undefined ? Infinity : (sc.now - born) * sc.pb.speed;
@@ -947,11 +1073,16 @@ function drawSpreadBreath(ctx: CanvasRenderingContext2D, sc: Scene, f: Fx, s: Sh
   pts.sort((a, b) => a.d - b.d || a.off - b.off);
   const [ax] = s.spec.anchor;
   const alpha = t > 0.8 ? (1 - t) / 0.2 : 1;
+  // Each one turned to the cone's aim on the screen (straight across: unturned, as always).
+  const { deg } = aimTurn(sc.map.px, cone.origin, areaEnd(cone), mirror);
+  const sx = Math.cos((deg * Math.PI) / 180) * (mirror ? -1 : 1);
+  const sy = Math.sin((deg * Math.PI) / 180);
+  const mid = s.spec.frameW / 2 - ax;
   pts.forEach((q, i) => {
     if (t < (q.d / cone.length) * 0.6) return;
     const p = project(sc.map, { x: cone.origin.x + ux * q.d - uz * q.off, z: cone.origin.z + uz * q.d + ux * q.off });
     // blit puts his anchor on the point: move it so the frame's middle is there instead.
-    blit(ctx, s, 'fly', frameAt(s, 'fly', ms + i * 70), p.X - (mirror ? -1 : 1) * (s.spec.frameW / 2 - ax), p.Y - 30, mirror, alpha);
+    blitTurned(ctx, s, 'fly', frameAt(s, 'fly', ms + i * 70), p.X - sx * mid, p.Y - 30 - sy * mid, mirror, deg, alpha);
   });
   return true;
 }

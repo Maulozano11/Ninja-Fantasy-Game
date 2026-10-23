@@ -4,6 +4,7 @@ import { drawBody, faceCells, sculptClothes } from './body';
 import { fitsBody, getItem } from './catalog';
 import { hexToRgb } from './color';
 import { Depth, DEPTHS, DrawCtx, ItemDef, NO_OUTLINE_DEPTHS, resolveParts } from './ctx';
+import { mendGlitches } from './glitches';
 import { closePinholes } from './holes';
 import { fillSeams } from './seams';
 import { paintedFrame, wearsHisFigure } from './ownerFrames';
@@ -13,7 +14,7 @@ import { drawHeadband } from './items/headband';
 import { add, F_NO_OUTLINE, F_NO_TEXTURE, GRID, Layer, MaterialTable, norm, PAD, PartId, partIndex, PARTS, perp, RES, scale, sub, v, Vec } from './raster';
 import { drawRig, Lay, layRig, Rig, rigPoseFor, turnPoint, turnRig } from './rig';
 import { carryHead } from './neck';
-import { aureliaRig } from './aureliaHead';
+import { aureliaRig, onAureliaHead } from './aureliaHead';
 import { drawCampFx } from './campfx';
 import { drawCastFx } from './castfx';
 import { sealCloth } from './seal';
@@ -407,7 +408,13 @@ export function renderSprite(
   // The 1-pixel holes turned pieces leave (sprite/holes.ts), each closed with its neighbours' line or
   // colour. Idle is left exactly as drawn: it is the frame the owner's pictures were copied into; so are
   // the frames he painted himself (his Lyra reading, sitting and throwing, ownerFrames.ts).
-  if (pose !== 'idle' && !(wearsHisFigure(look) && paintedFrame(rig.pose, rig.frame))) closePinholes(rgba, part, top, (i) => top[i] === FX, (i) => (topMat[i] < 0 ? 0x07060b : parseInt(mats.ramps[topMat[i]][0].slice(1), 16)));
+  const lineOf = (i: number) => (topMat[i] < 0 ? 0x07060b : parseInt(mats.ramps[topMat[i]][0].slice(1), 16));
+  const hisFrame = wearsHisFigure(look) && !!paintedFrame(rig.pose, rig.frame);
+  if (pose !== 'idle' && !hisFrame) closePinholes(rgba, part, top, (i) => top[i] === FX, lineOf);
+  // The owner's standard characters (2026-10-23: "quiero que arregles solo los de la calidad standard"): off
+  // his pictures, the pockets, cracks and light edge pixels their moved pieces open are closed (glitches.ts).
+  // (her walk he approved pixel for pixel stays as it is: aureliaLegs.test.ts)
+  if (pose !== 'idle' && !hisFrame && standardLook(look) && !(onAureliaHead(look) && pose === 'walk')) mendGlitches(rgba, part, top, (i) => top[i] === FX, lineOf);
   const hair = new Uint8Array(N >> 3);
   const fx = new Uint8Array(N >> 3);
   for (let i = 0; i < N; i++) {
@@ -461,6 +468,11 @@ function layFrame(rgba: Uint8ClampedArray, part: Uint8Array, hair: Uint8Array, l
  * layer's own fill, so the two never stack into a 2px dark line. Silhouette
  * outlines (next to transparency) are always kept.
  */
+/** A look of the owner's standard characters on this branch: his Lyra, his Aurelia, his Roman set (cuirass and skirt). */
+function standardLook(look: SpriteAppearance): boolean {
+  return wearsHisFigure(look) || onAureliaHead(look) || (look.slots.armor?.id === 'armor_bronze' && look.slots.skirt?.id === 'skirt_imperial');
+}
+
 function thinDoubleOutlines(rgba: Uint8ClampedArray, top: Int16Array, isLine: Uint8Array): void {
   const N = GRID * GRID;
   const fixes: [number, number][] = [];

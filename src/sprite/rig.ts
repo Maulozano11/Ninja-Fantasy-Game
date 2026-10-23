@@ -327,6 +327,16 @@ interface PoseAt {
   /** Where his knees are, seated: a body whose legs are too short for the seat brings its knees toward them. */
   kneeN?: Vec;
   kneeF?: Vec;
+  /**
+   * Where his figure's neck is in his frame, when it is not where our torso can bring ours (`neck` is
+   * only the way the torso leans). His Lyra reading sits taller than the fitted female body can: her
+   * head stands higher over her shoulders as he drew her seated than his bare woman's. On a fitted body
+   * that is not his own figure in his painted frames (drawRig `painted`), the hands' 'frame' targets
+   * move with the neck from his to ours, so the book is held before the chest, under the chin, as she
+   * holds it, not before the face. (His sit picture's hands stay where he drew them: the far arm reaches
+   * out level from the shoulder, which is at his height.)
+   */
+  hisNeck?: Vec;
 }
 
 /**
@@ -659,7 +669,9 @@ const SIT = breathe(SIT_BASE, 4);
  * on the seat, the neck, the ankles and both hands where he drew them (fine pixels of the frame).
  */
 export const READ_SEAT_TOP = 184;
-const READ_AT: PoseAt = { pelvis: fp(108, READ_SEAT_TOP), seated: true, neck: fp(114, 150), ankleN: fp(123, 0), ankleF: fp(133, 0), ground: true, kneeN: fp(125, 186), kneeF: fp(134, 185) };
+// (his Lyra's neck in his read frames: her near iris starts at (112, 138), and the fitted body's neck is
+// 3.5 px behind and 6.5 px below its near iris)
+const READ_AT: PoseAt = { pelvis: fp(108, READ_SEAT_TOP), seated: true, neck: fp(114, 150), ankleN: fp(123, 0), ankleF: fp(133, 0), ground: true, kneeN: fp(125, 186), kneeF: fp(134, 185), hisNeck: fp(108.5, 144.5) };
 const READ_KEY_FRAMES: PoseFrame[] = [
   // Atenta: both hands under the book, the near one by the spine, the far one at its far end.
   { lean: 0, at: READ_AT, footN: v(0, 1), footF: v(0, 1), handN: at(117.5, 165), handF: at(129.5, 162), shapeN: 'cradle', shapeF: 'cradle' },
@@ -687,7 +699,7 @@ const READ: PoseFrame[] = READ_KEYS.map((k) => READ_KEY_FRAMES[k]);
  * loop) is not in his picture. The male and bulky bodies keep SIT (their own standard is the owner's sit
  * paint-over on a branch of its own).
  */
-const SIT_AT: PoseAt = { ...READ_AT, ankleF: fp(143, 0), kneeF: fp(137, 186) };
+const SIT_AT: PoseAt = { ...READ_AT, ankleF: fp(143, 0), kneeF: fp(137, 186), hisNeck: undefined };
 const FIT_SIT_KEY_FRAMES: PoseFrame[] = [
   // the near hand by the hip (hidden behind her tabard in his picture), the far one open, reaching out
   { lean: 0, at: SIT_AT, footN: v(0, 1), footF: v(0, 1), handN: at(110, 174), handF: at(144, 166), shapeN: 'relaxed', shapeF: 'open' },
@@ -1155,12 +1167,12 @@ export function buildRig(body: BodyType, pose: RigPose, frame: number): Rig {
 }
 
 /** The upright rig every layer is drawn with (compose.ts lays a 'downed' figure down afterwards). */
-export function drawRig(body: BodyType, pose: RigPose, frame: number, arms?: ArmType): Rig {
+export function drawRig(body: BodyType, pose: RigPose, frame: number, arms?: ArmType, painted = false): Rig {
   const bp = paramsFor(body, arms);
   const frames = (bp.fit && FIT_POSES[pose]) || POSES[pose] || POSES.idle;
   const f = frames[((frame % frames.length) + frames.length) % frames.length];
-  const r = solveRig(body, bp, pose, frame, f);
-  if (f.lie) r.lay = layFor(solveRig(body, bp, pose, 0, frames[0]));
+  const r = solveRig(body, bp, pose, frame, f, painted);
+  if (f.lie) r.lay = layFor(solveRig(body, bp, pose, 0, frames[0], painted));
   return r;
 }
 
@@ -1296,8 +1308,8 @@ export function turnRig(r: Rig, deg: number): Rig {
   };
 }
 
-function solveRig(body: BodyType, bp: BodyParams, pose: RigPose, frame: number, f: PoseFrame): Rig {
-  if (f.at) return solveAt(body, bp, pose, frame, f, f.at);
+function solveRig(body: BodyType, bp: BodyParams, pose: RigPose, frame: number, f: PoseFrame, painted = false): Rig {
+  if (f.at) return solveAt(body, bp, pose, frame, f, f.at, painted);
   if (bp.fit) return solveFit(body, bp, pose, frame, f, bp.fit);
 
   const leanRad = (f.lean * Math.PI) / 180;
@@ -1669,7 +1681,7 @@ function solveFit(body: BodyType, bp: BodyParams, pose: RigPose, frame: number, 
  * at his ankle (or on the body's own ground under it) and each hand at his hand, the body's own torso,
  * limb lengths and head on them.
  */
-function solveAt(body: BodyType, bp: BodyParams, pose: RigPose, frame: number, f: PoseFrame, a: PoseAt): Rig {
+function solveAt(body: BodyType, bp: BodyParams, pose: RigPose, frame: number, f: PoseFrame, a: PoseAt, painted = false): Rig {
   const fit = bp.fit;
   const base = BODY_PARAMS[body];
   // the body's torso joints (Rig.T coordinates) and limb lengths, as solveRig and solveFit have them
@@ -1731,8 +1743,10 @@ function solveAt(body: BodyType, bp: BodyParams, pose: RigPose, frame: number, f
   const shoulderN = add(T(loc.shoulderN.x, loc.shoulderN.y), breath);
   const shoulderF = add(T(loc.shoulderF.x, loc.shoulderF.y), breath);
   const chestFront = add(T(bp.chestHalf * 0.5, bp.torsoLen - 6), breath);
+  // (a fitted body other than his own figure holds its hands where his figure does from its own neck: PoseAt.hisNeck)
+  const held = fit && a.hisNeck && !painted ? sub(neck, a.hisNeck) : v(0, 0);
   const resolve = (t: HandTarget, shoulder: Vec, armLen: number): Vec => {
-    if (t.from === 'frame') return v(t.x, t.y);
+    if (t.from === 'frame') return add(v(t.x, t.y), held);
     if (t.from === 'chest') return add(chestFront, v(t.x, t.y));
     if (t.from === 'kneeN') return add(lN.mid, v(t.x, t.y));
     if (t.from === 'kneeF') return add(lF.mid, v(t.x, t.y));

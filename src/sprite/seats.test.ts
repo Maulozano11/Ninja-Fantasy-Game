@@ -103,7 +103,10 @@ describe('seats', () => {
         // the hands meet at the book before the chest, the far one up at the page in the third key
         assert.ok(r.handN.x * RES > 110 && r.handN.x * RES < 125, `${body} ${k}: near hand x ${r.handN.x * RES}`);
         assert.ok(r.handF.x * RES > r.handN.x * RES, `${body} ${k}: the far hand at the far end`);
-        if (k === 2) assert.ok(r.handF.y * RES < 158, `${body}: the far hand up at the page (${r.handF.y * RES})`);
+        // (up at the page: well above where it holds the cover reading; a fitted body that is not his Lyra holds
+        // the book from its own neck, rig.ts PoseAt.hisNeck, so the rows depend on the body)
+        const reading = drawRig(body, 'read', READ_KEYS.indexOf(1)).handF.y * RES;
+        if (k === 2) assert.ok(r.handF.y * RES < reading - 8, `${body}: the far hand up at the page (${r.handF.y * RES}, reading ${reading})`);
         // and it renders
         assert.ok(opaque(renderSprite(look, 'read', f).rgba) > 1000, `${body} ${k}`);
       }

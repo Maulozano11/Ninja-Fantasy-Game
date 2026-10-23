@@ -21,7 +21,52 @@ function book(g: DrawCtx): void {
   for (const p of LYRA_READ[readKey(g.rig.frame)]) if (p.owner === 'book') stampOwnerPiece(g, p);
   liftHands(g, g.L('nearArm.over'));
   // (his own figure's frame is his, pixel for pixel; on any other fitted body the book meets her own hands and clothes)
-  if (g.bp.fit && !wearsHisFigure(g.look)) closeBookGaps(g, g.L('nearArm.over'));
+  if (g.bp.fit && !wearsHisFigure(g.look)) {
+    liftStrays(g, g.L('nearArm.over'));
+    closeBookGaps(g, g.L('nearArm.over'));
+  }
+}
+
+/**
+ * His hands lifted over the book can leave a pixel or two of the forearm's end on the arm's layer, cut
+ * off from the arm where the wrist went with the hand: they go over the book with the hand they touch,
+ * so each arm stays one piece with its hand.
+ */
+function liftStrays(g: DrawCtx, dest: Layer): void {
+  for (const d of ['nearArm.body', 'farArm.body'] as const) {
+    const L = g.L(d);
+    const seen = new Uint8Array(GRID * GRID);
+    for (let s = 0; s < GRID * GRID; s++) {
+      if (L.mat[s] < 0 || seen[s]) continue;
+      const reg = [s];
+      seen[s] = 1;
+      for (let k = 0; k < reg.length; k++) {
+        const x = reg[k] % GRID;
+        const y = (reg[k] / GRID) | 0;
+        for (let dy = -1; dy <= 1; dy++) {
+          for (let dx = -1; dx <= 1; dx++) {
+            const X = x + dx;
+            const Y = y + dy;
+            if (X < 0 || Y < 0 || X >= GRID || Y >= GRID) continue;
+            const j = Y * GRID + X;
+            if (L.mat[j] >= 0 && !seen[j]) {
+              seen[j] = 1;
+              reg.push(j);
+            }
+          }
+        }
+      }
+      if (reg.length > 3) continue;
+      for (const i of reg) {
+        dest.mat[i] = L.mat[i];
+        dest.shade[i] = L.shade[i];
+        dest.part[i] = L.part[i];
+        dest.flags[i] = L.flags[i];
+        dest.used = true;
+        L.mat[i] = -1;
+      }
+    }
+  }
 }
 
 /**

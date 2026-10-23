@@ -369,3 +369,47 @@ folders.
   `hers-vs-pieces@8.png`.
 
       python3 -I tools/refs/lyra-boots-from-ref.py docs/reference/lyra-game-scale-owner-reference.jpg <out> src/sprite/items/lyraBootsArt.ts
+- `roman-skin-from-ref.py`, `roman-head-from-ref.py`, `roman-eyes-from-ref.py`: from the same picture, his skin on our
+  male bodies (upper arms down to the elbow, fists, and each leg whole for our thigh and our shin, registered as
+  his sandals are, the laces taken off across each row; continued along each limb where ours reaches past what
+  he shows; his darker shadow tone) and his face as the `roman` face and eye shapes (his head registered on
+  ours by its eyes and ear; on the male bodies the head is raised 3 px to where he painted it; his skull under the hair is our male skull's cells,
+  without his bangs' shadow, its line running into his ear's). Each writes a study at 8x (16x for the eyes)
+  into `<out>/study/`. `roman-test-pixels-from-ref.py` writes his skin pixels as he painted them
+  (`src/sprite/romanRefPixels.ts`) for `src/sprite/maleSkin.test.ts`, which checks the frames against his
+  picture, not against the lifted pieces.
+
+      python3 -I tools/refs/roman-skin-from-ref.py docs/reference/roman-owner-reference.jpg <out> src/sprite/maleSkinArt.ts
+      python3 -I tools/refs/roman-head-from-ref.py docs/reference/roman-owner-reference.jpg <out> src/sprite/romanHeadArt.ts
+      python3 -I tools/refs/roman-eyes-from-ref.py docs/reference/roman-owner-reference.jpg <out> src/sprite/romanEyeArt.ts
+      python3 -I tools/refs/roman-test-pixels-from-ref.py docs/reference/roman-owner-reference.jpg src/sprite/romanRefPixels.ts
+- `roman-neck-from-ref.py`, `roman-hair-from-ref.py`: his Roman head as the male standard (2026-10-23, "me gusta mas el
+  de mi dibujo"). On the male bodies the game raises the head 3 px under his face (`ROMAN_HEAD_UP`, written by
+  `roman-head-from-ref.py`), so the face stands where he painted it; the neck script lifts his skin between the chin
+  and the collar (and continues each column below it, behind the collar) and the hair script his dark spiky hair
+  (`hair_roman`: front, back with what his face hides filled in, and the shadow his locks cast on the forehead), both
+  registered on the face anchor. `roman-test-pixels-from-ref.py` also writes every pixel of his head, hair and neck
+  (`ROMAN_HEAD_PIXELS`) for `src/sprite/romanHead.test.ts`.
+
+      python3 -I tools/refs/roman-neck-from-ref.py docs/reference/roman-owner-reference.jpg <out> src/sprite/romanNeckArt.ts
+      python3 -I tools/refs/roman-hair-from-ref.py docs/reference/roman-owner-reference.jpg <out> src/sprite/items/romanHairArt.ts
+- `roman-sit-rock-from-ref.py`: the grey rock from the owner's Roman sit (`docs/reference/roman-sit-owner-reference.jpg`,
+  2000/240 picture px per pixel of his) as a seat prop (`src/sprite/seatBoulderArt.ts`, `src/sprite/seats.ts`). His
+  figure there is 80% of ours; he chose to build the sit at our scale ("romano sentado a"), so the rock is scaled by
+  1.25 (nearest neighbour) with it. Every cell one of his four frames shows is his; what his figure hides is his
+  front face 16 (else 8) rows below, else his nearest rock pixel, his line along the new edges. The sit pose
+  (`rig.ts` SIT) takes his joints off the same frames, scaled the same way. His rock is not in the game: the owner
+  chose two seat rocks for every character (`seat_rock_sit` to sit and talk, `seat_rock` to read, `src/sprite/seats.ts`),
+  so `seatBoulderArt.ts` was removed when `body/male-skin-face` was merged; the script still writes it where it is told.
+
+      python3 -I tools/refs/roman-sit-rock-from-ref.py [src/sprite/seatBoulderArt.ts] [study.png]
+- `roman-read-from-ref.py`: the book and hands of the owner's two frames of his Trunks reading
+  (`docs/reference/trunks-read-owner-reference.jpg`, about 17.3 picture px across and 16.8 down per pixel of his)
+  for the male read (`src/sprite/maleReadArt.ts`, drawn by `campfx.ts`), his answer "leer mira la referencia de
+  trunks y copiala a leer de romano". He painted over our read at our scale (one of his pixels is one fine pixel),
+  so every piece lands where he drew it. The book is his pixels; the hands are his hands' shape (gloved) with their
+  tones matched by brightness to his Roman fists' tones (the Roman's hands are bare), his black line kept. The
+  read pose (`rig.ts` READ_JOINTS) takes his joints off the same frames. His grid is found by
+  `owner_paintover.py` (copied byte for byte from `heroine/lyra-v2`), with a pitch per axis.
+
+      python3 -I tools/refs/roman-read-from-ref.py [src/sprite/maleReadArt.ts] [study.png]

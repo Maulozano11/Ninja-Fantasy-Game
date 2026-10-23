@@ -181,6 +181,40 @@ All item and preset names are original. Never use names, symbols or logos from e
 
 The headband is plain cloth only (the owner, 2026-10-22: "deja la pura bandana la pura tela"): no metal plate, no emblem or engraved village symbol, no slash across it (`items/headband.ts`). It replaced his earlier "quita las bandanas". Don't add a plate or symbol back.
 
+## Known errors — check every new character
+
+The owner, 2026-10-23, on Solen on the bulky body: *"aun tiene varios errores solen de parte del cuerpo
+separadas por pixeles blancos o algunos de sus brazos mal dibujados con pixeles blancos muertos y en la de
+victoria tambien esta separado el torso de las piernas ... recuerda todos los errores de todos los
+personajes y verifica que este y los futuros no los tengan"*. Every error he has found on a character so
+far, how to see it, and what catches it. A new character (look, item, body or pose) is not done until
+`src/sprite/standard.test.ts` passes with it and every frame has been looked at at 6x.
+
+`standard.test.ts` renders every legend preset, companion and enemy look, the default look, the Roman
+set and the broad man (dressed and bare) on the male, female and bulky bodies, every pose, one frame of
+each, and runs `findGlitches` (`src/sprite/glitches.ts`) on it. A new look is added to its `LOOKS` and
+must show none. Errors still on other branches' looks are listed in its `REPORTED` (remove an entry when
+its branch fixes it); what the owner accepts as drawn goes in `ACCEPTED`, with his words.
+
+| Error (his words) | How to see it | What catches it |
+|---|---|---|
+| White pinholes between turned pieces (*"pixeles blancos muertos"*, *"el hueco de 1 pixel"*) | 1-3 background pixels walled in by the figure, at a bent elbow, under a leaning torso, between cowl pieces | `holes.ts` closes them out of idle; `holes.test.ts` |
+| A white pocket between two parts (Ren's pocket under the chin; Solen's arm off his cape on the bulky body) | 4-14 background pixels walled in between two or more body parts (48 behind the cape) | `standard.test.ts` (pocket); on the bulky body `mendGlitches` fills it with the piece behind |
+| Body parts separated by a line of white (*"partes del cuerpo separadas por pixeles blancos"*): a fist off its bracer, a head off its neck in the throw, a seated thigh off its shin, a foot off its shin | a one-pixel line of background, 3 or more long, between two parts that meet (shoulder, elbow, wrist, hip, knee, ankle, neck, waist) | `standard.test.ts` (crack); `strike.test.ts` (head on the neck), `seats.test.ts` (seated legs), `boots.test.ts` (foot on the shin) |
+| A dead white pixel on a cut edge, his black line missing (*"pixeles blancos y cortados"*) | a light pixel of the figure next to the background (not a blade's glow, our face or hands) | `standard.test.ts` (edge); `bulky.test.ts`, `solen.test.ts` (his line round turned pieces) |
+| A light pixel alone among dark ones (white dots) | one light pixel with only line round it | `compose.ts` `mendLoneLights`; `bulky.test.ts` |
+| A piece floating apart, a speck, a weapon or sandal come loose | a piece of the figure not touching the rest | `standard.test.ts` (loose); `holes.test.ts`, `solen.test.ts`, `roman.test.ts`, `boots.test.ts` |
+| Specks, holes and crumbs in capes and skirts | white between strips, a crumb off the hem | `clothPixels.test.ts`, `seams.test.ts` (beside the studs) |
+| The torso apart from the legs at the waist (*"se corta el cuerpo por la mitad"*, *"esta separado el torso de las piernas"*) | background or bare belly between the cuirass and the skirt when a pose lifts the chest (victory's second frame) | `roman.test.ts`, `solen.test.ts` (his cuirass on the bulky body) |
+| A shoulder off the body (*"el hombro derecho ... desfasado del cuerpo para arriba"*) | the back of a shoulder rising above the torso's line when the arm swings forward | `bulky.test.ts` (the read) |
+| An arm folded the wrong way (*"brazos mal dibujados"*) | a folded arm whose elbow points up beside the head or out sideways, a white window inside the loop | `rig.ts` lets the hand down until the elbow hangs (bodies with a long upper arm); look at it |
+| A thin spike of a continued limb past the shoulder | a one- or two-pixel strip of skin rising above the shoulder | `stretchPiece` keeps a continued strip's length (`painted.ts`); look at it |
+| Skin peeking at the shoulders under a shirt | skin pixels at the top of the arm | `bulky.test.ts` (his shirt on the male) |
+| The ponytail covered by the clothes | the lock cut by the collar or the sleeve | `bulky.test.ts` (the lock over everything) |
+| A stowed weapon in front of the body | the blade over the chest or the legs | `holes.test.ts` (stowed weapon) |
+| A double (2 px) outline, a chewed hip, a stair or a spike in his black line, a knee spike | only by eye, at 6x | `compose.ts` thins double outlines; look at every frame |
+| Errors of other branches' characters (Ren's double chin and forearm widths, Aurelia's dress dent) | see those branches | their own tests |
+
 ## Checklist for a new item
 
 1. Render `npm run sprites -- item <id>` and check every body and pose.

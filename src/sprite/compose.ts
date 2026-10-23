@@ -4,6 +4,7 @@ import { drawBody, faceCells, sculptClothes } from './body';
 import { fitsBody, getItem } from './catalog';
 import { hexToRgb } from './color';
 import { Depth, DEPTHS, DrawCtx, ItemDef, NO_OUTLINE_DEPTHS, resolveParts } from './ctx';
+import { mendGlitches } from './glitches';
 import { closePinholes } from './holes';
 import { fillSeams } from './seams';
 import { clipStowed, drawThrowKunai } from './items/accessories';
@@ -411,7 +412,15 @@ export function renderSprite(
   mendLoneLights(rgba, topFlags);
   // The 1-pixel holes turned pieces leave (sprite/holes.ts), each closed with its neighbours' line or
   // colour. Idle is left exactly as drawn: it is the frame the owner's pictures were copied into.
-  if (pose !== 'idle') closePinholes(rgba, part, top, (i) => top[i] === FX, (i) => (topMat[i] < 0 ? 0x07060b : parseInt(mats.ramps[topMat[i]][0].slice(1), 16)));
+  const lineOf = (i: number) => (topMat[i] < 0 ? 0x07060b : parseInt(mats.ramps[topMat[i]][0].slice(1), 16));
+  if (pose !== 'idle') closePinholes(rgba, part, top, (i) => top[i] === FX, lineOf);
+  // On the bulky body the looks drawn on the male open gaps between their pieces (the owner on Solen there,
+  // 2026-10-23: "partes del cuerpo separadas por pixeles blancos ... pixeles blancos muertos"): its pockets,
+  // cracks and light edge pixels closed (glitches.ts); on the other bodies those of his broad man's pieces
+  // (F_OWNER, fitted to them). At rest on the bulky body his broad man is left as he drew him.
+  const his = (i: number) => !!(topFlags[i] & F_OWNER);
+  if (look.body === 'bulky') mendGlitches(rgba, part, top, (i) => top[i] === FX, lineOf, pose === 'idle' ? his : undefined);
+  else if (topFlags.some((fl) => fl & F_OWNER)) mendGlitches(rgba, part, top, (i) => top[i] === FX, lineOf, (i) => !his(i));
   const hair = new Uint8Array(N >> 3);
   const fx = new Uint8Array(N >> 3);
   for (let i = 0; i < N; i++) {

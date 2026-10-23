@@ -6,7 +6,7 @@
 
 import { hexToRgb, retintHex } from '../color';
 import { armDepth, armJoints, armPoint, armSpan, type Depth, DrawCtx, fillTorso, handDraw, handPose, ItemDef, legDepth, legJoints, legPoint, Side, torsoPoly } from '../ctx';
-import { continuedTo, limbOnly, PaintedPiece, PieceJoint, segAngle, stampBent, stampPiece, stretchPiece } from '../painted';
+import { continuedFrom, continuedTo, limbOnly, PaintedPiece, PieceJoint, segAngle, stampBent, stampPiece, stretchPiece } from '../painted';
 import { add, along, ellipse, F_NO_EDGE, F_NO_OUTLINE, F_NO_TEXTURE, GRID, Layer, lerp, norm, PAD, PartId, partIndex, PARTS, Pen, perp, poly, RES, scale, seam, ShadeFn, sub, v, Vec } from '../raster';
 import { stampTemplate, TemplatePalette } from '../rotsprite';
 import { BODY_PARAMS } from '../rig';
@@ -924,10 +924,13 @@ const FOUNDER_ARM_REACH = {
 /**
  * His piece of a limb on a body whose bone is longer than our male's he painted it on (the bulky body's
  * upper arm and forearm): rows of his repeated between the joint and the bone's end (stretchPiece), so his
- * upper arm still reaches his bracer at the elbow and his bracer his fist at the wrist.
+ * upper arm still reaches his bracer at the elbow and his bracer his fist at the wrist. On a far upper arm
+ * continued up to the shoulder (continuedTo) only his arm's own rows repeat: the strip keeps the length it
+ * has on the male, so it does not rise past the shoulder as a thin spike (the owner on Solen on the bulky
+ * body, 2026-10-23: "algunos de sus brazos mal dibujados").
  */
 const onLongerBone = (g: DrawCtx, p: PaintedPiece, bone: 'upperArm' | 'forearm'): PaintedPiece =>
-  g.bp[bone] > BODY_PARAMS.male[bone] ? stretchPiece(p, (g.bp[bone] - BODY_PARAMS.male[bone]) * RES, BODY_PARAMS.male[bone] * RES) : p;
+  g.bp[bone] > BODY_PARAMS.male[bone] ? stretchPiece(p, (g.bp[bone] - BODY_PARAMS.male[bone]) * RES, BODY_PARAMS.male[bone] * RES, continuedFrom(p)) : p;
 
 /** His pieces of an arm in this pose: whole at rest, the far arm reaching out his near arm mirrored, else only the limb. */
 const founderArmPieces = (g: DrawCtx, s: Side) => {

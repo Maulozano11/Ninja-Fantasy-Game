@@ -1420,12 +1420,33 @@ function solveRig(body: BodyType, pose: RigPose, frame: number, f: PoseFrame): R
     const k = (SIT_REACH * (bp.upperArm + bp.forearm) + bp.handR * 0.8) / d;
     return { from: 'frame', x: shoulderF.x + (p.x - shoulderF.x) * k, y: shoulderF.y + (p.y - shoulderF.y) * k, units: 'px' };
   };
+  // An arm whose upper arm is much longer than its forearm (the bulky body's) cannot fold its hand close
+  // to its shoulder: folded all the way, its elbow points wherever the hand is, up beside the head or out
+  // to the side (the owner on Solen there, 2026-10-23: "algunos de sus brazos mal dibujados"). Then the
+  // hand goes down the torso until the folded arm hangs, its elbow down, as the male's does.
+  const male = BODY_PARAMS.male;
+  const longUpper = bp.upperArm - bp.forearm > male.upperArm - male.forearm + 1;
+  const hangFolded = (shoulder: Vec, t: HandTarget, a: ReturnType<typeof solveArm>) => {
+    if (!longUpper) return a;
+    const least = bp.upperArm - bp.forearm + bp.handR * 0.8 + 1;
+    const p = sub(resolve(t, shoulder), shoulder);
+    const down = norm(v(-up.x, -up.y));
+    const across = norm(right);
+    const e = norm(sub(a.elbow, shoulder));
+    if (len(p) >= least || e.x * down.x + e.y * down.y >= Math.SQRT1_2) return a;
+    const dx = p.x * across.x + p.y * across.y;
+    const dd = Math.max(p.x * down.x + p.y * down.y, Math.sqrt(Math.max(0, least * least - dx * dx)));
+    const to = add(shoulder, add(scale(across, dx), scale(down, dd)));
+    return solveArm(shoulder, { from: 'frame', x: to.x - (pose === 'read' && bp.readShift ? bp.readShift[0] / RES : 0), y: to.y - (pose === 'read' && bp.readShift ? bp.readShift[1] / RES : 0), units: 'px' });
+  };
   const aF =
     pose === 'sit'
       ? solveArm(shoulderF, reachF(f.handF))
       : pose === 'read'
       ? [solveArm(shoulderF, foldF(f.handF), 1), solveArm(shoulderF, foldF(f.handF), -1)].reduce((a, b) => (b.elbow.x < a.elbow.x ? b : a))
-      : solveArm(shoulderF, rest ? arm(rest.F.x, rest.F.y) : f.handF);
+      : rest
+      ? solveArm(shoulderF, arm(rest.F.x, rest.F.y))
+      : hangFolded(shoulderF, f.handF, solveArm(shoulderF, f.handF));
 
   const headY = neck.y - 5.9 * bp.headScale + (f.headDy || 0);
   const headX = neck.x - 0.4 + (f.headDx || 0) + (bp.headDx || 0);

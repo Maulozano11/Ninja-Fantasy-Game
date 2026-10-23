@@ -542,7 +542,9 @@ describe("his shirt on the normal male, in the Roman's style", () => {
       for (let i = 0; i < GRID * GRID; i++) if (PARTS[dressed.part[i]] === side && sleeve.has(hexAt(i))) below = Math.max(below, ((i / GRID) | 0) + 1);
       let arm = 0;
       for (let i = below * GRID; i < GRID * GRID; i++) {
-        if (!isArm(i) || PARTS[dressed.part[i]] !== side) continue;
+        // (where the bare male's torso is there, it is not his arm: the crack between the sleeve and the
+        // torso closed with the line, glitches.ts)
+        if (!isArm(i) || PARTS[dressed.part[i]] !== side || PARTS[bare.part[i]] !== side) continue;
         assert.ok([0, 1, 2, 3].every((c) => dressed.rgba[i * 4 + c] === bare.rgba[i * 4 + c]), `upper arm pixel ${i % GRID},${(i / GRID) | 0}`);
         arm++;
       }

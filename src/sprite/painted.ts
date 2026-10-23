@@ -109,8 +109,15 @@ export function continuedTo(piece: PaintedPiece, to: number, inner: number, line
     rows.push('.'.repeat(Math.max(0, pad + shift(y))) + src);
   }
   rows[0] = [...rows[0]].map((ch) => (ch === '.' ? '.' : edge)).join('');
-  return { ...piece, rows, pivot: [piece.pivot[0] + pad, piece.pivot[1] - top] };
+  const out = { ...piece, rows, pivot: [piece.pivot[0] + pad, piece.pivot[1] - top] as [number, number] };
+  CONTINUED.set(out, r - piece.pivot[1]);
+  return out;
 }
+
+const CONTINUED = new WeakMap<PaintedPiece, number>();
+
+/** Where his own piece begins on a piece continuedTo ran on (rows past its pivot), or 0. */
+export const continuedFrom = (p: PaintedPiece): number => CONTINUED.get(p) ?? 0;
 
 /**
  * A joint a painted piece bends at (see stampBent): its cells within `r` fine pixels of `about` turn about
@@ -224,15 +231,18 @@ const stretched = new Map<PaintedPiece, Map<string, PaintedPiece>>();
  * the `bone` he painted it for, by repeating whole rows of his between the pivot and the bone's end, spread
  * evenly; each row after a repeat moves across as far as the bone runs across over a row (the piece's
  * angle), so a slanted limb keeps its slant. The rows past the bone's end move on whole. Every pixel is his.
+ * With `from`, only rows that many or more past the pivot repeat (the strip continuedTo ran up to the
+ * shoulder keeps its length: his limb itself lengthens).
  */
-export function stretchPiece(p: PaintedPiece, extra: number, bone: number): PaintedPiece {
+export function stretchPiece(p: PaintedPiece, extra: number, bone: number, from = 0): PaintedPiece {
   const a = (p.angle * Math.PI) / 180;
   const R = Math.round(bone * Math.sin(a));
   const E = Math.round(extra * Math.sin(a));
   if (E <= 0 || R <= 0) return p;
   let byKey = stretched.get(p);
   if (!byKey) stretched.set(p, (byKey = new Map()));
-  const key = `${R},${E}`;
+  const F = Math.max(0, Math.min(from, R - 1));
+  const key = `${R},${E},${F}`;
   const hit = byKey.get(key);
   if (hit) return hit;
   const [px, py] = p.pivot;
@@ -241,8 +251,8 @@ export function stretchPiece(p: PaintedPiece, extra: number, bone: number): Pain
   const src: { row: number; sh: number }[] = [];
   for (let j = 0; j < p.rows.length + E; j++) {
     const r = j - py;
-    const from = r <= 0 ? r : r <= R + E ? Math.ceil((r * R) / (R + E)) : r - E;
-    src.push({ row: from + py, sh: Math.round((r - from) * cot) });
+    const at = r <= F ? r : r <= R + E ? F + Math.ceil(((r - F) * (R - F)) / (R + E - F)) : r - E;
+    src.push({ row: at + py, sh: Math.round((r - at) * cot) });
   }
   const lo = Math.min(0, ...src.map((s) => s.sh));
   const hi = Math.max(0, ...src.map((s) => s.sh));

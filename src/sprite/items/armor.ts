@@ -1246,6 +1246,18 @@ function clearUnderCuirass(g: DrawCtx): void {
       if (x * r.up.x + y * r.up.y <= neck) L.mat[i] = -1;
     }
   }
+  // The bulky body's pelvis (his briefs' waistband and belly) lies on the near leg's layer (bulkyBody.ts):
+  // above the hips it goes too, so none of his belly peeks between the cuirass and the skirt.
+  if (r.body !== 'bulky') return;
+  const L = g.L(legDepth('N', 'body'));
+  if (!L.used) return;
+  for (let i = 0; i < L.mat.length; i++) {
+    if (L.mat[i] < 0 || L.part[i] !== torsoPart) continue;
+    const x = ((i % GRID) + 0.5) / RES - r.pelvis.x;
+    const y = (Math.floor(i / GRID) + 0.5) / RES - r.pelvis.y;
+    const h = x * r.up.x + y * r.up.y;
+    if (h > 1 && h <= neck) L.mat[i] = -1;
+  }
 }
 
 /**
@@ -1867,6 +1879,26 @@ const founderCuirassColor = (steel: string, sash: string, strap: string) => (_ch
 
 /** His chest for the bulky body: stretched as the bronze cuirass's is (see CUIRASS_CHEST_BULKY). */
 const FOUNDER_CHEST_BULKY = stretched(FOUNDER_CHEST, 4, 5, 1);
+/** The rows of his segmented abdomen on the bulky chest (the plates below the sash's buckle). */
+const FOUNDER_ABS_BULKY = [12, 18] as const;
+const FOUNDER_LONGER = new Map<number, PaintedPiece>();
+
+/**
+ * His chest on the bulky body's torso when a pose lifts it off the hips (victory's second frame): it
+ * lengthens by repeating rows of his abdomen, as the Roman's does (cuirassChest), so its lower edge stays
+ * on his skirt's belt and the body is not cut in two at the waist (the owner on Solen there, 2026-10-23:
+ * "en la de victoria tambien esta separado el torso de las piernas"). The male keeps his chest as it was.
+ */
+function founderChest(r: Rig): PaintedPiece {
+  if (r.body !== 'bulky') return FOUNDER_CHEST;
+  const torso = (r.neck.x - r.pelvis.x) * r.up.x + (r.neck.y - r.pelvis.y) * r.up.y;
+  const extra = Math.round((torso - r.bp.torsoLen) * RES);
+  if (extra <= 0) return FOUNDER_CHEST_BULKY;
+  let p = FOUNDER_LONGER.get(extra);
+  // (a row more than the torso grew: his lower lip lies on the belt, where his leaning skirt dips a pixel)
+  if (!p) FOUNDER_LONGER.set(extra, (p = stretched(FOUNDER_CHEST_BULKY, 0, 0, extra + 1, ...FOUNDER_ABS_BULKY)));
+  return p;
+}
 
 /**
  * Draws his steel cuirass over the torso, leaning with it about the neck (his sash and strap are part of
@@ -1879,7 +1911,7 @@ function drawFounderCuirass(g: DrawCtx, steel: string, sash: string, strap: stri
     return;
   }
   clearUnderCuirass(g);
-  stampLeaning(g, 'torso.armor', r.body === 'bulky' ? FOUNDER_CHEST_BULKY : FOUNDER_CHEST, r.neck, segAngle(r.pelvis, r.neck), 'torso', founderCuirassColor(steel, sash, strap), (hex) => FOUNDER_CUIRASS_KIND[hex] === 'line');
+  stampLeaning(g, 'torso.armor', founderChest(r), r.neck, segAngle(r.pelvis, r.neck), 'torso', founderCuirassColor(steel, sash, strap), (hex) => FOUNDER_CUIRASS_KIND[hex] === 'line');
 }
 
 /** Draws his skirt over the thighs, leaning with the torso about the pelvis: red follows Tunic, the leather Strips, his gold studs Studs; his black line and grey studs stay. */

@@ -447,3 +447,38 @@ function outside(rgba: Uint8ClampedArray): Uint8Array {
   return air;
 }
 
+
+describe('his cuirass on the bulky body', () => {
+  it("keeps the body in one piece at the waist in every pose and frame: above his skirt, his cuirass, never the body's skin", () => {
+    // The owner (2026-10-23): "en la de victoria tambien esta separado el torso de las piernas". His
+    // cuirass rides the neck and his skirt hangs from the pelvis: a chest lifted off the hips (victory's
+    // second frame) showed the bulky body's belly between them. Up lines along the torso's axis through its
+    // middle, the first pixel of the torso after the skirt's is one of his cuirass's colours.
+    const torso = partIndex('torso');
+    const pelvis = partIndex('pelvis');
+    const his = new Set(Object.values(cuirass.FOUNDER_CHEST.colors));
+    const l = look('bulky');
+    const bare: string[] = [];
+    for (const pose of POSES)
+      for (let f = 0; f < frameCount(rigPoseFor(pose, l.cast?.style, l.slots.held?.id)); f++) {
+        const fr = render(l, pose, f);
+        const r = fr.rig;
+        const n = Math.hypot(r.up.x, r.up.y);
+        const up = { x: r.up.x / n, y: r.up.y / n };
+        for (let o = -4; o <= 4; o++) {
+          let skirtSeen = false;
+          for (let k = -8; k <= 24; k++) {
+            const i = Math.floor(r.pelvis.y * RES + up.x * o + up.y * k) * GRID + Math.floor(r.pelvis.x * RES - up.y * o + up.x * k);
+            if (!opaque(fr.rgba, i)) continue;
+            if (fr.part[i] === pelvis) skirtSeen = true;
+            else if (fr.part[i] === torso && skirtSeen) {
+              const [cr, cg, cb] = [0, 1, 2].map((c) => fr.rgba[i * 4 + c]);
+              if (!his.has(hex(fr.rgba, i)) && Math.max(cr, cg, cb) + Math.min(cr, cg, cb) > 102) bare.push(`${pose} ${f} ${i % GRID},${(i / GRID) | 0} ${hex(fr.rgba, i)}`);
+              break;
+            }
+          }
+        }
+      }
+    assert.deepEqual(bare, []);
+  });
+});

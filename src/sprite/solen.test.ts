@@ -247,7 +247,8 @@ describe("the owner's Solen", () => {
       assert.ok(Math.abs(m.angle - (180 - his.angle)) < 0.01);
     }
     // The far arm reaches out when it is held out straight and near level: the cast at the runes, the throw's
-    // pointing arm, the combo's cross, and held out over the fire at camp.
+    // pointing arm, the combo's cross, and held out over the fire at camp. (Since the owner's Roman sit,
+    // body/male-skin-face, the bulky body's far arm in the sit is not held out level enough to count.)
     const has = (slot: string, id?: string) => slot === 'top' && id === 'top_founder';
     for (const body of ['male', 'bulky', 'female'] as BodyType[]) {
       const hits: string[] = [];
@@ -255,7 +256,8 @@ describe("the owner's Solen", () => {
         const rp = rigPoseFor(pose, 'runes', 'held_ice_crystal');
         for (let f = 0; f < frameCount(rp); f++) if (founderFarReach({ rig: buildRig(body, rp, f), has } as unknown as DrawCtx)) hits.push(`${pose} ${f}`);
       }
-      assert.deepEqual(hits.sort(), ['cast 0', 'cast 1', 'combo 2', 'sit 0', 'sit 1', 'sit 2', 'sit 3', 'throw 0', 'throw 1'], body);
+      const sit = body === 'bulky' ? [] : ['sit 0', 'sit 1', 'sit 2', 'sit 3'];
+      assert.deepEqual(hits.sort(), ['cast 0', 'cast 1', 'combo 2', ...sit, 'throw 0', 'throw 1'], body);
     }
     // Reaching out, the far forearm is as thick as his near bracer (it was his far one, a third as much).
     const bracer = limbOnly(bracers.STEEL_BRACER_N, (h) => bracers.STEEL_BRACER_KIND[h] === 'line');

@@ -22,7 +22,7 @@ const roman = (body: BodyType): SpriteAppearance => {
   l.slots.armor = { id: 'armor_bronze', colors: [] };
   l.slots.skirt = { id: 'skirt_imperial', colors: [], parts: { drapes: 'on' } };
   l.slots.hands = { id: 'hands_bronze_bracers', colors: [] };
-  l.slots.feet = { id: 'feet_gladiator_sandals', colors: [] };
+  l.slots.feet = { id: 'feet_gladiator_sandals', colors: [], parts: { paint: 'roman' } };
   delete l.slots.top;
   delete l.slots.bottom;
   return l;

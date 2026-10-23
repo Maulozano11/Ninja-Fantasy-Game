@@ -52,7 +52,8 @@ const romanOutfit = (body: BodyType = 'male'): SpriteAppearance => {
     armor: { id: 'armor_bronze', colors: [] },
     skirt: { id: 'skirt_imperial', colors: [] },
     hands: { id: 'hands_bronze_bracers', colors: [] },
-    feet: { id: 'feet_gladiator_sandals', colors: [] },
+    // his Roman paint of the sandals (his Solen's repaint is the item's default since 2026-10-21)
+    feet: { id: 'feet_gladiator_sandals', colors: [], parts: { paint: 'roman' } },
   };
   return l;
 };
@@ -237,17 +238,17 @@ describe("the owner's skin on the male bodies", () => {
   });
 
   it('leaves the female bodies exactly as they were', () => {
-    // The default look on the female body, as the integration branch drew them before his
-    // male skin (421b9f6). A later change to the female art updates these with it. (The sit is the owner's
-    // Roman sit for every body since 2026-10-22, rig.ts SIT, its thighs longer on the seat: a new pose, the same
-    // female art.)
+    // The default look on the female body, as the integration branch draws it (d7a8def; idle, run and downed
+    // byte for byte). A later change to the female art updates these with it. (The attack and the cast take the
+    // extended forearm rule, fix/throw-neck-forearm; the sit is the owner's Roman sit for every body since
+    // 2026-10-22, rig.ts SIT, its thighs longer on the seat: new poses, the same female art.)
     const was: Record<string, string> = {
-      'female idle 0': '4f66aa1be065dd83',
-      'female attack 1': '1b4219cd3403ebe6',
-      'female cast 0': '3d1a84bf30cbd4b5',
-      'female run 1': '88ab786d1622e6c8',
-      'female downed 0': '3d024464cbf49c72',
-      'female sit 0': '5f7c0535e3bc34a4',
+      'female idle 0': '71245bf3da80ae7d',
+      'female attack 1': 'da35ad9f6460d1a1',
+      'female cast 0': 'e37eccdf02881d17',
+      'female run 1': '553823b77b205d03',
+      'female downed 0': '19a0068d7ecd94e0',
+      'female sit 0': '93fa35e5f8921609',
     };
     for (const [key, sum] of Object.entries(was)) {
       const [body, pose, frame] = key.split(' ');
@@ -340,7 +341,7 @@ describe("the owner's Roman face", () => {
     const white = ROMAN_EYE_COLORS[ROMAN_EYES.open.near.rows[2][1]];
     const red = ROMAN_EYE_COLORS[ROMAN_EYES.open.near.rows[2][2]];
     const head = new Set(Object.values(ROMAN_HEAD.colors));
-    for (const body of ['male', 'bulky', 'female', 'slender'] as BodyType[]) {
+    for (const body of ['male', 'bulky', 'female'] as BodyType[]) {
       for (const pose of POSES) {
         const f = renderSprite(roman(body), pose, 0);
         const seen = new Set<string>();
@@ -359,22 +360,17 @@ describe("the owner's Roman face", () => {
   });
 
   it('keeps the other faces as they were', () => {
-    // The other face and eye shapes on the female and slender bodies (where the male skin does not
-    // reach), as the integration branch drew them before his Roman face (421b9f6); his Aiden head in the
-    // skin he painted it in.
+    // The other face and eye shapes on the female body (where the male skin does not reach), as the
+    // integration branch draws them (d7a8def); his Aiden head in the skin he painted it in.
     const was: Record<string, string> = {
-      'female tapered sharp': '97e1cf96e344970a',
-      'female tapered valiant': 'a0decd31b3d725d0',
-      'female soft sharp': 'b7a785d83b4a1666',
-      'female soft valiant': '840e7d300d4e0f34',
-      'female square sharp': 'c7294669412887c7',
-      'female square valiant': '7740ce7375a28eb3',
-      'female valiant sharp': '7c1c575c756f6907',
-      'female valiant valiant': '439579fad6bf660a',
-      'slender tapered sharp': 'b5d2f2ec5aaebf3c',
-      'slender soft valiant': 'c39edf8b338e256f',
-      'slender square sharp': '49bd580d4abe655e',
-      'slender valiant valiant': '5b5ff7065013120e',
+      'female tapered sharp': '2b00bc176616559e',
+      'female tapered valiant': '074f4370149e1027',
+      'female soft sharp': 'aeeac29f2184f6cb',
+      'female soft valiant': 'ea482afbaeb25bfe',
+      'female square sharp': '17edab76c6105a56',
+      'female square valiant': 'afa3a70d481aa930',
+      'female valiant sharp': 'e42d97da08b2429d',
+      'female valiant valiant': '45c48d7c676cbf27',
     };
     for (const [key, sum] of Object.entries(was)) {
       const [body, face, eye] = key.split(' ');

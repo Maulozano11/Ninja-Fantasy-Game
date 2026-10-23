@@ -8,8 +8,8 @@
 
 import { retintHex } from '../color';
 import { armDepth, armJoints, armReaches, DrawCtx, ItemDef, legDepth, legJoints, Side } from '../ctx';
-import { type PaintedPiece, segAngle, skinTone, stampLeaning, stampPiece } from '../painted';
-import { add, F_NO_OUTLINE, F_NO_TEXTURE, GRID, type Layer, partIndex, PartId, PARTS, RES, sub, v, Vec } from '../raster';
+import { type PaintedPiece, segAngle, skinTone, stampLeaning, stampPiece, stretchPiece } from '../painted';
+import { add, F_NO_OUTLINE, F_NO_TEXTURE, GRID, type Layer, len, partIndex, PartId, PARTS, RES, sub, v, Vec } from '../raster';
 import { NIGHT_SKIN } from '../nightHeadArt';
 import { sealCloth } from '../seal';
 import { closeAnkle, footTurn } from './ankle';
@@ -18,7 +18,7 @@ import { NIGHT_BOOT_FOOT_F, NIGHT_BOOT_FOOT_N, NIGHT_BOOT_GOLD, NIGHT_BOOT_SHIN_
 import { NIGHT_CAST_FORE_F, NIGHT_CAST_FORE_N, NIGHT_CAST_KIND } from './nightCastArmsArt';
 import { NIGHT_ARM_F, NIGHT_ARM_N, NIGHT_BUTTONS, NIGHT_JACKET, NIGHT_JACKET_BODY, NIGHT_JACKET_KIND, NIGHT_SLEEVE_F, NIGHT_SLEEVE_N } from './nightJacketArt';
 import { NIGHT_SKIRT, NIGHT_SKIRT_BASE, NIGHT_SKIRT_KIND, NIGHT_STUDS } from './nightSkirtArt';
-import { drawRig, GROUND, type Rig } from '../rig';
+import { BODY_PARAMS, drawRig, GROUND, type Rig } from '../rig';
 import { NIGHT_LEG_SHIFT, NIGHT_SHIN_F, NIGHT_SHIN_N, NIGHT_THIGH_F, NIGHT_THIGH_N, NIGHT_TROUSERS, NIGHT_TROUSERS_KIND } from './nightTrousersArt';
 
 type Kind = 'cloth' | 'leather' | 'metal';
@@ -598,7 +598,11 @@ export const NIGHT_ITEMS: ItemDef[] = [
         const j = legJoints(g.rig, s);
         const [hip, knee, ankle] = [j.hip, j.knee, j.ankle].map((p) => add(p, d));
         const L = legDepth(s, 'cloth');
-        stampPiece(g, L, s === 'N' ? NIGHT_THIGH_N : NIGHT_THIGH_F, hip, segAngle(hip, knee), `thigh${s}` as PartId, tint);
+        // On a frame whose thigh is longer than the body's (the seated thighs, rig.ts kneeLeg) his thigh is
+        // lengthened with it, his rows repeated (stretchPiece), so it still reaches the knee.
+        const bone = BODY_PARAMS[g.rig.body].thigh;
+        const thigh = stretchPiece(s === 'N' ? NIGHT_THIGH_N : NIGHT_THIGH_F, (len(sub(knee, hip)) - bone) * RES, bone * RES);
+        stampPiece(g, L, thigh, hip, segAngle(hip, knee), `thigh${s}` as PartId, tint);
         stampPiece(g, L, s === 'N' ? NIGHT_SHIN_N : NIGHT_SHIN_F, knee, segAngle(knee, ankle), `shin${s}` as PartId, tint);
       }
     },

@@ -444,3 +444,12 @@ folders.
   Fingerless Gloves). Its angle is his bare forearm's, fitted on its columns; its pivot his wrist on that line.
 
       python3 -I tools/refs/ren-sit-palm-from-ref.py src/sprite/items/nightSitPalmArt.ts [studyDir]
+- `ren-sit-from-ref.py` (with `ren_sit_painted_over.py`, written once by `ren-sit-painted-over.mts`): Ren seated on the male
+  body, the owner's repaint (`docs/reference/ren-sit-owner-reference.jpg`, the lower row of our sit sheet), his four frames pixel
+  for pixel: each cell found on his picture and brought onto our fine pixels by its scale and offset (fitted on the rock he did
+  not repaint), each fine pixel the median of its middle, his colours snapped to one palette of his; his figure off his page and
+  off our rock (over it, where the figure he painted over was), the page's blend round his edge peeled off, and the holes and
+  notches the game closes in every frame closed with his own pixel there. Cut by body part (nearest bone), pinned to the male
+  pelvis (`src/sprite/items/renSitArt.ts`, drawn by `src/sprite/renSit.ts` in place of our drawing on Ren's figure).
+
+      python3 -I tools/refs/ren-sit-from-ref.py [src/sprite/items/renSitArt.ts] [studyDir]

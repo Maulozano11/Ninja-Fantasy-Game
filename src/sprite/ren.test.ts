@@ -17,6 +17,8 @@ import * as kit from './items/nightBootsGlovesArt';
 import * as belt from './items/nightBeltArt';
 import * as cast from './items/nightCastArmsArt';
 import * as palm from './items/nightSitPalmArt';
+import { REN_SIT } from './items/renSitArt';
+import { jointPixel } from './ownerFrames';
 import * as hair from './items/nightHairArt';
 import * as jacket from './items/nightJacketArt';
 import * as katana from './items/katanaV2Art';
@@ -378,17 +380,20 @@ describe("the owner's Ren", () => {
         for (const t of fore) assert.equal(whole(t.piece, t.deg - t.piece.angle), null, `${where} forearm`);
         assert.equal(whole(palm.NIGHT_SIT_PALM_F, 0), null);
         const fr = renderSprite({ ...look(), body }, 'sit', frame, dojutsuToEye(REN.dojutsu));
-        // the far hand is his open palm, as many pixels as he drew it (turned whole), none of our hand beside it
-        const hand = partIndex('handF');
-        let n = 0;
-        for (let i = 0; i < GRID * GRID; i++) if (fr.part[i] === hand && opaque(fr.rgba, i)) n++;
-        const size = cells(palm.NIGHT_SIT_PALM_F);
-        assert.ok(n >= 0.85 * size && n <= 1.1 * size, `${where}: the far hand ${n} pixels, his palm ${size}`);
-        // his black line stays his black
-        const lines = new Set(Object.entries(palm.NIGHT_SIT_PALM_KIND).filter(([, k]) => k === 'line').map(([h]) => h));
-        let black = 0;
-        for (let i = 0; i < GRID * GRID; i++) if (fr.part[i] === hand && opaque(fr.rgba, i) && lines.has(hex(fr.rgba, i))) black++;
-        assert.ok(black >= 0.3 * n, `${where}: ${black} of the palm's ${n} pixels his line`);
+        // (on the male body his sit is his own repaint, every pixel his: see the next test)
+        if (body === 'bulky') {
+          // the far hand is his open palm, as many pixels as he drew it (turned whole), none of our hand beside it
+          const hand = partIndex('handF');
+          let n = 0;
+          for (let i = 0; i < GRID * GRID; i++) if (fr.part[i] === hand && opaque(fr.rgba, i)) n++;
+          const size = cells(palm.NIGHT_SIT_PALM_F);
+          assert.ok(n >= 0.85 * size && n <= 1.1 * size, `${where}: the far hand ${n} pixels, his palm ${size}`);
+          // his black line stays his black
+          const lines = new Set(Object.entries(palm.NIGHT_SIT_PALM_KIND).filter(([, k]) => k === 'line').map(([h]) => h));
+          let black = 0;
+          for (let i = 0; i < GRID * GRID; i++) if (fr.part[i] === hand && opaque(fr.rgba, i) && lines.has(hex(fr.rgba, i))) black++;
+          assert.ok(black >= 0.3 * n, `${where}: ${black} of the palm's ${n} pixels his line`);
+        }
         // one piece, on the rock: the hips on its top, nothing apart from the body
         assert.ok(Math.abs(rig.pelvis.y * RES - (SIT_SEAT_TOP - 5.4)) < 0.01, `${where}: the hips on the rock (${rig.pelvis.y * RES})`);
         assert.deepEqual(apart(fr.rgba), [], `${where}: pixels apart from the body`);
@@ -402,6 +407,60 @@ describe("the owner's Ren", () => {
     }
   });
 
+  it("seated on the male body, is the owner's repaint: his four frames pixel for pixel, on his rock, his skin and eyes following the character's", () => {
+    // the owner, on his repaint of our sit sheet: "copia la version de abajo la de arriba ignorala y va ser para
+    // el hombre normal no para el fornido como indica la imagen"
+    const rock = renderSeat(seatFor('sit')!);
+    for (let frame = 0; frame < frameCount('sit'); frame++) {
+      const where = `male sit ${frame}`;
+      const fr = renderSprite(look(), 'sit', frame, dojutsuToEye(REN.dojutsu));
+      const want = new Map<number, string>();
+      for (const p of REN_SIT[frame]) {
+        const [ax, ay] = jointPixel(fr.rig, p.joint);
+        assert.deepEqual([ax, ay], p.at, `${where}: the pelvis where he painted it`);
+        p.rows.forEach((row, j) => [...row].forEach((ch, i) => ch !== '.' && want.set((ay - p.pivot[1] + j) * GRID + ax - p.pivot[0] + i, p.colors[ch].toLowerCase())));
+      }
+      let off = 0;
+      for (let i = 0; i < GRID * GRID; i++) if ((want.get(i) ?? null) !== (opaque(fr.rgba, i) ? hex(fr.rgba, i) : null)) off++;
+      assert.equal(off, 0, `${where}: ${off} pixels not his`);
+      // whole, on the rock: nothing apart, no hole, no nick; his figure covers the rock's top under the hips
+      assert.deepEqual(apart(fr.rgba), [], `${where}: pixels apart from the body`);
+      const air = airOf(fr.rgba);
+      assert.deepEqual([findPinholes(fr.rgba, () => false, air), findNicks(fr.rgba, () => false, air)], [[], []], `${where}: holes or nicks`);
+      const px = Math.round(fr.rig.pelvis.x * RES);
+      let top = 0;
+      while (!rock[(top * GRID + px) * 4 + 3]) top++;
+      let low = top - 1;
+      while (low > 0 && !opaque(fr.rgba, low * GRID + px)) low--;
+      assert.ok(top - low <= 3, `${where}: ${top - low - 1} rows between him and his rock`);
+      // another skin: his skin follows it, his line stays
+      const dark = renderSprite({ ...look(), skin: '#8d5a3b' }, 'sit', frame, dojutsuToEye(REN.dojutsu));
+      let skin = 0;
+      let line = 0;
+      for (const p of REN_SIT[frame])
+        for (const [ch, k] of Object.entries(p.kinds)) {
+          const [ax, ay] = jointPixel(fr.rig, p.joint);
+          p.rows.forEach((row, j) => [...row].forEach((c, i) => {
+            if (c !== ch) return;
+            const n = (ay - p.pivot[1] + j) * GRID + ax - p.pivot[0] + i;
+            if (k === 'skin' && hex(dark.rgba, n) !== hex(fr.rgba, n)) skin++;
+            if (k === 'line') assert.equal(hex(dark.rgba, n), hex(fr.rgba, n), `${where}: his line moved`);
+            if (k === 'line') line++;
+          }));
+        }
+      assert.ok(skin > 100 && line > 100, `${where}: ${skin} skin pixels followed, ${line} line pixels`);
+    }
+    // not his figure (the bulky body, another hairstyle, another colour): our own sit
+    const own = (l: SpriteAppearance) => renderSprite(l, 'sit', 0, dojutsuToEye(REN.dojutsu));
+    const his0 = own(look());
+    for (const l of [{ ...look(), body: 'bulky' as BodyType }, { ...look(), slots: { ...look().slots, hair: { id: 'hair_long_lock', colors: [] } } }, { ...look(), slots: { ...look().slots, top: { id: 'top_night_jacket', colors: ['#7a1f1f'] } } }]) {
+      const fr = own(l);
+      let same = 0;
+      for (let i = 0; i < GRID * GRID; i++) if (opaque(fr.rgba, i) && opaque(his0.rgba, i) && hex(fr.rgba, i) === hex(his0.rgba, i)) same++;
+      assert.ok(same < 0.5 * his0.rgba.filter((_, k) => k % 4 === 3 && his0.rgba[k] > 0).length, `${l.body} ${l.slots.hair?.id}: drawn as his repaint`);
+    }
+  });
+
   it('leaves no dead pixel in any pose or frame, sword drawn or put away: no hole, nick or dot apart, no white that is not his', () => {
     // his colours: every colour of his pieces
     const his = new Set<string>();
@@ -409,7 +468,7 @@ describe("the owner's Ren", () => {
       if (typeof o === 'string' && /^#[0-9a-f]{6}$/i.test(o)) his.add(o.toLowerCase());
       else if (o && typeof o === 'object') for (const v of Object.values(o)) walk(v);
     };
-    walk([kit, belt, cast, hair, jacket, katana, skirt, trousers, NIGHT_HEAD, NIGHT_SKIN, NIGHT_EYES, NIGHT_EYE_COLORS, NIGHT_IRIS]);
+    walk([kit, belt, cast, hair, jacket, katana, skirt, trousers, NIGHT_HEAD, NIGHT_SKIN, NIGHT_EYES, NIGHT_EYE_COLORS, NIGHT_IRIS, REN_SIT]);
     // (and the grip wrap of the scabbard at his hip, lit and shaded: accessories.ts sheathedSword)
     for (const h of ['#d9d2c0', '#e1ded1']) his.add(h);
     // near-white colours not his come only with what he carries (the sword in hand, a kunai: parts

@@ -869,8 +869,12 @@ para las bestias elementales"*.
 - The flare when fire or lightning seals a hydra stump and the lightning that
   runs through water take the caster's colour too.
 - White is a cool silver on water, wind, lightning and earth, a faint gold on
-  fire. Outlines that are not black in his sheets (the raiju's brown, the
-  crane's teal, the lightning's blue ring) stay his.
+  fire. Outlines that are not black in his sheets (the lightning's blue ring)
+  stay his. The raiju's brown and the crane's teal were his too until the
+  owner changed them to the characters' black line (2026-10-22, *"2 cambia"*:
+  solid jutsu get the characters' black line, energy none; see
+  `docs/SPRITE_STYLE_GUIDE.md`, "Outline"). Like his other dark lines, the
+  black line is never tinted.
 - In the code: `src/sprite/vfxTint.ts` recolours (pure); the battle recolours
   each sheet once per colour, frame by frame, in workers while the battle opens
   and for any ninja who joins later (`src/components/battle/vfxTintCache.ts`,

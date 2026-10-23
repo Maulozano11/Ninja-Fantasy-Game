@@ -44,6 +44,16 @@ npm run sprites -- preset <presetId> out.png  # a preset in every pose
   own cloth continued round its studs (`clothSeam`: the Shadow Half-Cloak). Once the figure is drawn it goes
   in behind everything, only where nothing is drawn and the figure stands round it on all four sides. Idle
   only where he left the seam open: Solen's cowl on the bulky body (every other idle frame is byte-identical).
+- Jutsu effects (decided 2026-10-22, the owner: *"1 si 2 cambia 3 si"*): **solid jutsu get the characters'
+  black line, energy gets none.** Solid: the beasts, rock (earth walls, thrown rocks, spikes, rubble),
+  crystal walls, the poison walls' stone frame, the chakra barriers' gold frame, the wood dragon and roots,
+  the dragon heads. Energy: fire, lightning, wind, water, chakra, poison and genjutsu bolts and streams,
+  auras, blasts, smoke, dust, mist, slime, glow, spray. The line is 1 px outside the silhouette in the
+  characters' colour rule (never over a pixel of his, never a second line outside his own dark line), and
+  where his line is not dark (the raiju's brown, the crane's teal) it is recoloured to it. No line where an
+  effect comes out of something else (a head out of the fire, a dragon out of the wave, a root out of the
+  ground). The generators lay it with `tools/world-sprites/solid-outline.ts`; a new solid effect's generator
+  must too (`outlineSprite`, naming its own energy colours with `particleColour`).
 
 ## 3. Light and values
 

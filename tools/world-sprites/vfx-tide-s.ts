@@ -19,6 +19,11 @@
 //                       fades the kanji in, pulses the glow over it as light and flashes it at the break.
 //                       Never mirrored.
 //
+// The dragon is solid: it carries the characters' black line (solid-outline.ts, the owner's decision
+// of 2026-10-22), outside his own line where it has a gap, as opaque as the dragon while it fades in
+// and out; none along the water's surface it rises out of (the frame's lower edge). The curl wave,
+// its spray and the kanji are energy: no line. SOLID_OUTLINE=0 leaves it off.
+//
 //   WORLD_OUT=<staging dir> npx tsx tools/world-sprites/vfx-tide-s.ts
 //
 // It refuses to run without WORLD_OUT, so it never writes into src/assets: copy the staged group
@@ -27,6 +32,7 @@
 import { Canvas, Color, WorldSprite, writeGroup } from './kit';
 import { rotSprite } from './vfx-turn';
 import { TIDE_S_REF, TidePiece } from './vfx-tide-s-refdata';
+import { outlineSprite, solidOutlineOn } from './solid-outline';
 
 const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
 const R = TIDE_S_REF;
@@ -178,7 +184,7 @@ function main(): void {
   const L = R.layers;
   const sprites: WorldSprite[] = [
     still('curl', 'His curl wave of the S-rank Tide with his spray (each of his pixels 2x2); anchor: our crest point', [L.curl, ...R.spray]),
-    dragon(),
+    solidOutlineOn() ? outlineSprite(dragon()) : dragon(),
     still('kanji', 'His kanji 水 of the S-rank Tide (kanji) and its light aura (glow), each of his pixels 2x2; anchor: our crest point', [L.kanji, L.glow], ['kanji', 'glow']),
   ];
   writeGroup('vfx_tide_s', sprites);

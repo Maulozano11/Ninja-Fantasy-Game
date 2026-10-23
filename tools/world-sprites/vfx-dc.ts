@@ -14,6 +14,13 @@
 //                               (the Bleeding Cut): every pixel keeps its place and its light, only
 //                               the green is taken out.
 //
+// The earth bullets are rock: they carry the characters' black line, never their dust trail
+// (solid-outline.ts, the owner's decision of 2026-10-22). So they are cut from his multi as
+// vfx-earth-v3.ts builds it, before its line (a line turned with the rock would not stay 1 px), and
+// the line is laid on each turned frame. A frame keeps its size (a line pixel that would lie past its
+// edge would be left out; no turned rock reaches the edge today).
+// SOLID_OUTLINE=0 leaves the line off. Fire and lightning are energy: no line.
+//
 //   WORLD_OUT=<staging dir> npx tsx tools/world-sprites/vfx-dc.ts
 //
 // It refuses to run without WORLD_OUT, so it never writes into src/assets: copy the staged groups
@@ -24,6 +31,8 @@ import { join } from 'node:path';
 import { Canvas, WorldSprite, writeGroup } from './kit';
 import { fan, key, turned } from './vfx-turn';
 import { readPng } from './creatures-assemble';
+import { earthMultiArt, earthSoft } from './vfx-earth-v3';
+import { outlineSprite, solidOutlineOn } from './solid-outline';
 
 const ASSETS = join(import.meta.dirname, '../../src/assets/world');
 
@@ -222,7 +231,9 @@ const STEP = 6;
 function volley(): WorldSprite[] {
   const out: WorldSprite[] = [];
   for (const [el, m] of Object.entries(MULTI)) {
-    const { frames: raw, fps } = frames(`vfx_${el}`, 'multi');
+    // Earth: his multi without the line (the shipped sheet has it); the same frames as the sheet's before it.
+    const his = el === 'earth' ? earthMultiArt().anims.fly : null;
+    const { frames: raw, fps } = his ? { frames: his.frames, fps: his.fps } : frames(`vfx_${el}`, 'multi');
     const src = raw.map(unmarked);
     const labels = src.map((f) => cut(f, m.heads));
     if (process.env.VFX_DC_CHECK) writeCheck(process.env.VFX_DC_CHECK, el, src, labels);
@@ -233,7 +244,8 @@ function volley(): WorldSprite[] {
         return c;
       });
       const own = pointing(piece, labels, k, STEP);
-      out.push(turned(`${el}_multi_${n}`, `${el[0].toUpperCase()}${el.slice(1)} multi, ${m.label} ${n + 1} of 3 on its own (his frames; row a<deg> flies at that angle, a${own} is his)`, piece, m.heads[k], own, fan(STEP), fps));
+      const s = turned(`${el}_multi_${n}`, `${el[0].toUpperCase()}${el.slice(1)} multi, ${m.label} ${n + 1} of 3 on its own (his frames; row a<deg> flies at that angle, a${own} is his)`, piece, m.heads[k], own, fan(STEP), fps);
+      out.push(el === 'earth' && solidOutlineOn() ? outlineSprite(s, { particleColour: earthSoft(['multi']) }) : s);
     });
   }
   return out;

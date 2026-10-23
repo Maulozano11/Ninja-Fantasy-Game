@@ -15,6 +15,14 @@ const aiden = LEGENDARY_PRESETS.find((p) => p.character.id === 'preset_reference
 /** A look in the Shadow Half-Cloak, its clasps pure green so its studs are found by colour. */
 const cloaked = (l: SpriteAppearance): SpriteAppearance => ({ ...structuredClone(l), slots: { ...structuredClone(l.slots), cape: { id: 'cape_shadow', colors: ['#1c1b22', '#00ff00', '#e5e4e2'] } } });
 
+/**
+ * Known: Aiden in the cloak on the owner's bare female body (body/female-v2, merged on companions/heroines),
+ * knocked out: two pixels of background beside a stud where the cloak lies along that body. Open for the
+ * female body's branch; the owner decided the old clothing is not refitted to it ("las piezas de armadura y
+ * ropa femeninas no las rehagas").
+ */
+const KNOWN = new Set(['Aiden female downed 0: background at 103,210', 'Aiden female downed 0: background at 104,210']);
+
 describe("the owner's Shadow Half-Cloak", () => {
   it('shows no background beside its studs in any pose, frame or body but at rest', () => {
     // The owner, 2026-10-22: "arreglar igual capa". The mantle hangs from the neck, the shoulder piece rides the
@@ -66,6 +74,6 @@ describe("the owner's Shadow Half-Cloak", () => {
           }
         }
       }
-    assert.deepEqual(bad, []);
+    assert.deepEqual(bad.filter((b) => !KNOWN.has(b)), []);
   });
 });

@@ -116,6 +116,8 @@ export const T = strings({
   },
   you: { en: 'You', es: 'Tú' },
   levelLine: { en: 'Lv {level} · {clan} · {cls}', es: 'Nv {level} · {clan} · {cls}' },
+  // the village's party picker: the chakra type too, so each companion's element shows before she is picked
+  pickLine: { en: 'Lv {level} · {clan} · {nature} · {cls}', es: 'Nv {level} · {clan} · {nature} · {cls}' },
   statsLine: { en: '{hp} HP · {chakra} chakra · AC {ac}', es: '{hp} PV · {chakra} chakra · CA {ac}' },
   leaveBehind: { en: 'Leave behind', es: 'Dejar' },
   bring: { en: 'Bring', es: 'Llevar' },

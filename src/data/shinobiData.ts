@@ -1949,8 +1949,9 @@ export const LEGENDARY_PRESETS: { name: string; tag: string; nameEs?: string; ta
   // (docs/reference/lyra-game-scale-owner-reference.jpg) part by part: hair, eyes, blouse, corset,
   // skirt, tabard, belt, boots and rapier, each its own creator item in his colours (her skin is his,
   // so the bare thigh above the boots is his pixels). Name and title are provisional (the owner will
-  // rename her). Her numbers are the creator's formula; Koton's bonus (CON, INT) adds 5 max HP and 1
-  // max chakra. Wind chakra (a cutting wind, like her kenjutsu) in the cyan of her blade.
+  // rename her). A Water ninja of the Mirai (the owner, 2026-10-23: "haz lyra de agua y de clan
+  // mirai"; she was Koton and Wind): her numbers are the creator's formula with Mirai's bonus (DEX,
+  // INT), Water chakra in the cyan of her blade (his colour, kept).
   {
     name: 'Lyra, the Gilded Blade',
     tag: 'Gilded Corset · Gilded Rapier',
@@ -1961,7 +1962,7 @@ export const LEGENDARY_PRESETS: { name: string; tag: string; nameEs?: string; ta
       name: 'Lyra',
       title: 'The Gilded Blade',
       level: 5,
-      clan: 'Koton',
+      clan: 'Mirai',
       shinobiClass: 'Bukijutsu Master',
       stats: { str: 13, dex: 18, con: 14, int: 12, wis: 12, cha: 14 },
       palette: {
@@ -1983,22 +1984,25 @@ export const LEGENDARY_PRESETS: { name: string; tag: string; nameEs?: string; ta
       capeStyle: 'None',
       dojutsu: 'None',
       selectedFeats: ['one_handed_seals', 'sharingan_precog'],
+      // Her Wind jutsu refitted to Water as the creator refits a legend whose type changes (rules/
+      // progression.ts, fitToType): Wind's Great Breakthrough becomes the Geyser, Wind's S-rank Water's,
+      // the Dragon Tsunami. Her Kawarimi and her kenjutsu (a Bukijutsu Master's) stay; Mirai's secret.
       selectedJutsus: {
         slot1Utility: 'substitution_kawarimi',
-        slot2Elemental: 'wind_blade_daitoppa',
+        slot2Elemental: 'water_geyser',
         slot3Elemental: 'crescent_moon_dance',
-        slot4Clan: 'adamantine_sealing_chains',
-        slot5Ultimate: 'rasenshuriken_wind',
+        slot4Clan: 'dragon_fire_bomb',
+        slot5Ultimate: 'water_tide_s',
       },
       sheetVersion: 2,
-      maxHp: 49,
-      currentHp: 49,
-      maxChakra: 33,
-      currentChakra: 33,
-      armorClass: 18,
+      maxHp: 44,
+      currentHp: 44,
+      maxChakra: 32,
+      currentChakra: 32,
+      armorClass: 19,
       speed: 6,
-      jutsuSaveDC: 15,
-      jutsuAttackBonus: 7,
+      jutsuSaveDC: 16,
+      jutsuAttackBonus: 8,
       appearance: spriteLook({
         body: 'female',
         skin: '#fbc9aa',
@@ -2017,7 +2021,7 @@ export const LEGENDARY_PRESETS: { name: string; tag: string; nameEs?: string; ta
           feet: it('feet_gilded_thigh_boots'),
           held: it('held_gilded_rapier'),
         },
-        chakra: { color: 'green', tint: '#40cccb', onCharge: true, onCast: true, onVictory: true }, // Wind, in the cyan of her blade
+        chakra: { color: 'blue', tint: '#40cccb', onCharge: true, onCast: true, onVictory: true }, // Water, in the cyan of her blade
       }),
     },
   },

@@ -26,7 +26,21 @@ for playtesting.
   companions' level, Kenji, and the other legends. **Aurelia is the medic**
   (*"aurelia sera la nueva medica y con elemento viento amarillo"*): Medical
   Specialist, Wind in yellow, the healing palm. A heroine comes as her
-  companion or as her legend, not both.
+  companion or as her legend, not both. **Approved on 2026-10-23** (*"eso esta
+  bien"*), with the practice party (the hero and the three heroines).
+  - **Aurelia** (Kōton, Medical Specialist, Wind in yellow `#f0c818`): the
+    healing palm (`mystical_palm`), Wind's Whirl (`wind_whirl`), Great
+    Breakthrough (`wind_blade_daitoppa`), Kōton's chains
+    (`adamantine_sealing_chains`) and Wind's Rasenshuriken
+    (`rasenshuriken_wind`, S; being renamed *Estrella Huracán* on
+    `jutsu/rename-remove`). Approved (*"si"*).
+  - **Lyra** (Mirai, Bukijutsu Master, Water in the cyan of her blade; the
+    owner, 2026-10-23: *"haz lyra de agua y de clan mirai"*): Kawarimi, the
+    Geyser, the Dance of the Crescent Moon, Mirai's Dragon Flame Annihilation
+    and the Dragon Tsunami (`water_tide_s`, S). A saved copy of the old Lyra
+    (Kōton, Wind) loads as the new one.
+  - **Saya** (Ryusei, Bukijutsu Master, Fire) and **Kenji** (Ryusei, Genjutsu
+    Adept, Earth).
 - **Road:** a branching map of 4–6 nodes. Each node shows its type (battle,
   trap, curio, scene or camp) and its danger.
 - **Zone:** a stretch of the road with several nodes and one terrain (forest,

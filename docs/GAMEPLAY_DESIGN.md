@@ -1693,10 +1693,10 @@ So:
   (`tools/refs/tide-s-from-ref.py` → `vfx_tide_s`), run a little slower (2.2 s
   and the 0.9 s break).
 - **Practice**: every water ninja in the practice battles (`#combat`) can cast it
-  whatever its level, so it can be tried; missions are untouched. No companion
-  is of Water since the old medic was removed (2026-10-22): in practice Lyra
-  plays as a water ninja (her burst Water, her own colour) when the party has
-  none, so the Dragon Tsunami can still be tried (`BattleDemo.tsx`).
+  whatever its level, so it can be tried; missions are untouched. Lyra is a
+  Water ninja (the owner, 2026-10-23: *"haz lyra de agua y de clan mirai"*)
+  with the Dragon Tsunami in her own S-rank slot, so the practice party (the
+  hero and the three heroines) always has one who can cast it.
 
 ## Jutsu effects, round 1 (proposed 2026-10-21; the owner's answer the same day)
 

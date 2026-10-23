@@ -20,6 +20,8 @@ import { clanName } from '../../data/shinobiData';
 import type { ActivityId } from '../../data/campActivities';
 import { DEFAULT_SUPPLIES, endMissionAtVillage, isStanding } from '../../rules/mission';
 import { withPouches } from '../../rules/pouch';
+import { natureOf } from '../../rules/ninja';
+import { L } from '../creator/words';
 import {
   chooseFire,
   doActivity,
@@ -624,7 +626,7 @@ function Village({
                         {c.name}
                         {isHero && <span className="rounded bg-cyan-500 px-1 text-[9px] font-black uppercase text-slate-950">{T('you')}</span>}
                       </div>
-                      <div className="text-[10px] text-slate-400 truncate">{T('levelLine', { level: c.level, clan: clanName(c.clan), cls: className(c) })}</div>
+                      <div className="text-[10px] text-slate-400 truncate">{T('pickLine', { level: c.level, clan: clanName(c.clan), nature: L(natureOf(c)), cls: className(c) })}</div>
                       <div className="text-[10px] font-mono text-slate-500">{T('statsLine', { hp: c.maxHp, chakra: c.maxChakra, ac: c.armorClass })}</div>
                       <div className="mt-1 flex items-center gap-2">
                         {!isHero && (

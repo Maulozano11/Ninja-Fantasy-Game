@@ -10,29 +10,20 @@ import { createBattle } from '../../battle/engine';
 import { encounterSetup } from '../../battle/encounters';
 import type { EncounterId } from '../../battle/encounters';
 import type { PartyBattleResult } from '../../battle/result';
-import { canJoin, COMPANIONS, LYRA } from '../../data/missions';
+import { canJoin, COMPANIONS } from '../../data/missions';
 import { strings, useLang } from '../../i18n';
 import { BattleScreen } from './BattleScreen';
 import { Portrait } from './hud';
 import { unitFrom } from '../../battle/units';
 import { withPouches } from '../../rules/pouch';
 import { natureOf } from '../../rules/ninja';
-import { getAppearance } from '../../sprite/legacy';
 
 /**
  * Water's rank S, the Dragon Tsunami (the owner, 2026-10-22), castable in practice by every water
- * ninja so it can be tried: a ninja learns it only at level 10.
+ * ninja so it can be tried: a ninja learns it only at level 10. Lyra, a water ninja (the owner,
+ * 2026-10-23: "haz lyra de agua y de clan mirai"), has it in her own S-rank slot.
  */
 const PRACTICE_PREVIEW = 'water_tide_s';
-
-/**
- * Practice only: Lyra plays as a water ninja (her burst Water, her own colour kept) when the party has
- * none, so the Dragon Tsunami can still be tried. Since the water medic left, no companion is of Water.
- */
-function asWater(c: ShinobiCharacter): ShinobiCharacter {
-  const look = getAppearance(c);
-  return { ...c, appearance: { ...look, chakra: { ...look.chakra, color: 'blue', tint: look.chakra.tint ?? 'green' } } };
-}
 
 const S = strings({
   title: { en: 'Battle practice', es: 'Práctica de batalla' },
@@ -77,8 +68,7 @@ export const BattleDemo: React.FC<BattleDemoProps> = ({ character, start }) => {
   const party = useMemo(() => {
     const others = COMPANIONS.filter((c) => canJoin(c, character));
     const fresh = (c: ShinobiCharacter): ShinobiCharacter => ({ ...c, currentHp: c.maxHp, currentChakra: c.maxChakra, effects: [] });
-    const team = [fresh(character), ...others.slice(0, 3).map(fresh)];
-    return team.some((c) => natureOf(c) === 'Water') ? team : team.map((c) => (c.id === LYRA.id ? asWater(c) : c));
+    return [fresh(character), ...others.slice(0, 3).map(fresh)];
   }, [character]);
 
   const initial = useMemo(() => {

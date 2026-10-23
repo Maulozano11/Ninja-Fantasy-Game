@@ -145,7 +145,7 @@ describe('the legends', () => {
       preset_night: ['Lightning', '#36a0f0'], // was the blue Rising Tide
       preset_saya: ['Fire', '#b43134'], // the red of her scarf
       preset_aurelia: ['Wind', '#f0c818'], // the medic: Wind in yellow (the owner, 2026-10-22: "viento amarillo")
-      preset_lyra: ['Wind', '#40cccb'], // a heroine: wind in the cyan of her blade
+      preset_lyra: ['Water', '#40cccb'], // a heroine: Water (the owner, 2026-10-23: "haz lyra de agua"), in the cyan of her blade
     };
     assert.deepEqual(LEGENDARY_PRESETS.map((p) => p.character.id).sort(), Object.keys(want).sort());
     for (const { character: c } of LEGENDARY_PRESETS) {
@@ -154,7 +154,7 @@ describe('the legends', () => {
       assert.equal(loadoutNature(c), (ELEMENTS as string[]).includes(natureOf(c)) ? natureOf(c) : '', `${c.id}: its jutsu`);
       assert.equal(chakraHex(c.appearance!.chakra), want[c.id][1], `${c.id}: its colour`);
     }
-    // The heroines as companions have their legend's type and colour: Aurelia Wind in yellow, Lyra Wind
+    // The heroines as companions have their legend's type and colour: Aurelia Wind in yellow, Lyra Water
     // in her blade's cyan, Saya Fire in her scarf's red.
     for (const [c, id] of [[AURELIA, 'preset_aurelia'], [LYRA, 'preset_lyra'], [SAYA, 'preset_saya']] as const) {
       assert.equal(natureOf(c), want[id][0], c.id);

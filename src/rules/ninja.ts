@@ -2,8 +2,8 @@
 // effects (docs/MISSION_DESIGN.md). Every function returns a new character plus the events.
 
 import type { ChakraNature, ClanType, ShinobiCharacter } from '../types/shinobi';
-import { CLANS_DATA, DEFAULT_CHARACTER, LEGENDARY_PRESETS, SHINOBI_CLASSES } from '../data/shinobiData';
-import { chakraNature } from '../sprite/chakraNature';
+import { CLANS_DATA, DEFAULT_CHARACTER, JUTSUS_DATA, LEGENDARY_PRESETS, SHINOBI_CLASSES } from '../data/shinobiData';
+import { chakraNature, withNature } from '../sprite/chakraNature';
 import { getAppearance, migrateAppearance } from '../sprite/legacy';
 import type { ChakraColorId } from '../sprite/types';
 import type { BreakdownKind, ConvictionValue, EffectId, RuleEvent, SkillId } from '../types/mission';
@@ -11,8 +11,9 @@ import { savingThrow, SKILL_ABILITY } from './checks';
 import { deriveStats, effectiveMaxHp, SHEET_VERSION } from './derived';
 import type { BuildInput } from './derived';
 import { addEffect, EFFECTS, endMission, hasEffect, removeEffect, sanitizeEffects } from './effects';
-import { offNatureJutsus, ultimateToElement } from './jutsuNature';
-import { GROWTH_LEVEL } from './natureGrowth';
+import { jutsuFitsClass } from './jutsuClass';
+import { fitLoadout, offNatureJutsus, ultimateToElement } from './jutsuNature';
+import { GROWTH_LEVEL, growthOf } from './natureGrowth';
 import { tagJutsuToItem } from './pouch';
 import { checkRng, Dice, pick } from './rng';
 
@@ -297,6 +298,54 @@ export function addLegendNatures(c: ShinobiCharacter): ShinobiCharacter {
   };
 }
 
+/**
+ * Legends and companions the owner gave another clan and chakra type, by id: what a saved copy of each
+ * was, and what it is now (its preset in data/shinobiData.ts; the companion is made from it in
+ * data/missions.ts). Lyra, Koton and Wind, is a Water ninja of the Mirai (the owner, 2026-10-23: "haz
+ * lyra de agua y de clan mirai").
+ */
+export const LEGEND_REMADE: Readonly<Record<string, { was: { clan: ClanType; nature: ChakraNature }; now: { clan: ClanType; nature: ChakraNature } }>> = {
+  preset_lyra: { was: { clan: 'Koton', nature: 'Wind' }, now: { clan: 'Mirai', nature: 'Water' } },
+  companion_lyra: { was: { clan: 'Koton', nature: 'Wind' }, now: { clan: 'Mirai', nature: 'Water' } },
+};
+
+/**
+ * A saved copy of a remade legend or companion (the hero, the roster, a mission under way: LEGEND_REMADE)
+ * that is still what it was, its clan and its type both, loads as it is now:
+ * - the new clan, with the new clan's secret in the clan slot (as a new clan in the creator gives it);
+ * - the new type's burst, keeping the colour it showed (its own tint, or the old burst's natural colour);
+ * - its jutsu of the old element swapped for the new element's as the creator does for a legend whose
+ *   type changes (rules/progression.ts, fitToType: its own element first, the lowest rank first, what
+ *   its class allows; a legend keeps its rank, so the S-rank slot gets the new element's): Lyra's
+ *   Great Breakthrough becomes the Geyser and her Rasenshuriken the Dragon Tsunami, as on her preset;
+ * - each number the build derives moved by what the new clan's bonus changes (the formula with the new
+ *   clan minus the formula with the old one), so the creator's numbers come out as the formula gives
+ *   them and hand-made ones keep their hand-made part; a ninja at full HP or chakra stays full, a hurt
+ *   one keeps what it had under the new maxima.
+ * A copy whose player gave it another clan or type keeps that choice, as everything else it has (level,
+ * look, feats, the growth of level 5). A moved copy is no longer what it was, so the move happens once.
+ */
+export function remadeLegend(c: ShinobiCharacter): ShinobiCharacter {
+  const change = Object.hasOwn(LEGEND_REMADE, c.id) ? LEGEND_REMADE[c.id] : undefined;
+  if (!change || !c.selectedJutsus || c.clan !== change.was.clan || natureOf(c) !== change.was.nature) return c;
+  const { clan, nature } = change.now;
+  const look = getAppearance(c);
+  const chakra = { ...withNature(look.chakra, nature), tint: look.chakra.tint ?? look.chakra.color };
+  const secret = JUTSUS_DATA.find((j) => j.id === c.selectedJutsus.slot4Clan);
+  const jutsus = { ...c.selectedJutsus, slot4Clan: secret?.requiredClan === clan ? secret.id : CLANS_DATA[clan].signatureJutsuId };
+  const loadout = fitLoadout(jutsus, nature, clan, (j) => jutsuFitsClass(j, c.shinobiClass), growthOf(c, nature).extra).loadout;
+  const out: ShinobiCharacter = { ...c, clan, selectedJutsus: loadout, appearance: { ...look, chakra } };
+  if (Object.hasOwn(SHINOBI_CLASSES, c.shinobiClass)) {
+    const before = deriveStats(buildOf(c));
+    const after = deriveStats(buildOf(out));
+    for (const k of DERIVED_KEYS) {
+      const add = after[k] - before[k];
+      if (Number.isFinite(add) && Number.isFinite(c[k])) out[k] = c[k] + add;
+    }
+  }
+  return refit(c, out);
+}
+
 /** A sheet whose look still has the old headband plate, the slender body or a neck choice, with today's look (the same sheet if not). */
 function withTodaysLook(c: ShinobiCharacter): ShinobiCharacter {
   if (!c.appearance) return c;
@@ -328,12 +377,18 @@ export function tideToElement(c: ShinobiCharacter): ShinobiCharacter {
  * - the clan's ability bonus counted in its numbers, once (countClanBonus);
  * - its headband as plain cloth: the old plate's fields dropped (sprite/legacy.ts, migrateAppearance);
  * - a look on the slender body, which is gone, on the female body (migrateAppearance);
- * - a saved neck choice dropped: every look has today's slim nape (migrateAppearance).
+ * - a saved neck choice dropped: every look has today's slim nape but Lyra's long one (migrateAppearance);
+ * - a copy of a legend or companion the owner gave another clan and type (Lyra) with its new clan, type,
+ *   jutsu and numbers, once its numbers are today's (remadeLegend).
  * Hand-made numbers (the presets) keep their hand-made part; the other jutsu stay as they are, and of
- * the look only that old burst, the headband plate, the slender body and the neck change. A sheet that is already today's comes back as it is.
+ * the look only that old burst (and a remade legend's), the headband plate, the slender body and the neck change. A sheet that is already today's comes back as it is.
  */
 export function migrateCharacter(saved: ShinobiCharacter): ShinobiCharacter {
-  const c = tideToElement(addLegendNatures(updateLegendChakra(tagJutsuToItem(withTodaysLook(saved)))));
+  return remadeLegend(convertClan(tideToElement(addLegendNatures(updateLegendChakra(tagJutsuToItem(withTodaysLook(saved)))))));
+}
+
+/** Its clan converted, and the clan's ability bonus counted in its numbers once (migrateCharacter). */
+function convertClan(c: ShinobiCharacter): ShinobiCharacter {
   const clan = migrateClan(c.clan) ?? DEFAULT_CHARACTER.clan;
   const before = (c.sheetVersion ?? 1) < SHEET_VERSION;
   if (clan === c.clan && !before) return c;

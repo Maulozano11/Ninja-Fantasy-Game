@@ -232,7 +232,7 @@ function heroine(presetId: string, id: string): ShinobiCharacter {
 /** The medic, so camps can heal with jutsu and operate (the owner, 2026-10-22: "aurelia sera la nueva medica y con elemento viento amarillo"). */
 export const AURELIA: ShinobiCharacter = heroine('preset_aurelia', 'companion_aurelia');
 
-/** A swordswoman of the Koton, a Bukijutsu Master with Wind jutsu. */
+/** A swordswoman of the Mirai, a Bukijutsu Master with Water jutsu (the owner, 2026-10-23: "haz lyra de agua y de clan mirai"). */
 export const LYRA: ShinobiCharacter = heroine('preset_lyra', 'companion_lyra');
 
 /** A swordswoman of the Ryusei, a Bukijutsu Master with Fire jutsu and explosive tags. */

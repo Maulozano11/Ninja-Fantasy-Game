@@ -7,7 +7,7 @@
 // (screen-left, drawn in front); "far" limbs are on screen-right, behind.
 
 import { add, len, norm, PAD, RES, scale, sub, v, Vec } from './raster';
-import type { BodyType, CastStyle, SpritePose } from './types';
+import { isFemaleBody, type BodyType, type CastStyle, type SpritePose } from './types';
 
 export const GROUND = PAD.y + 60; // ground line under the body (shadow centre)
 /** The design x the feet stand on (the middle of the figure's box). */
@@ -121,9 +121,12 @@ export const BODY_PARAMS: Record<BodyType, BodyParams> = {
  */
 export type HandShape = 'relaxed' | 'fist' | 'open' | 'sign' | 'grip' | 'hold' | 'point' | 'cradle';
 
-/** Hand targets: relative to a landmark, in arm-length units ('arm') or pixels ('px'). */
+/**
+ * Hand targets: relative to a landmark, in arm-length units ('arm') or pixels ('px'); 'frame' is a
+ * point of the frame itself (design units), where the owner drew the hand (PoseFrame.at).
+ */
 interface HandTarget {
-  from: 'shoulder' | 'chest' | 'kneeN' | 'kneeF';
+  from: 'shoulder' | 'chest' | 'kneeN' | 'kneeF' | 'frame';
   x: number;
   y: number;
   units: 'arm' | 'px';
@@ -202,12 +205,54 @@ interface PoseFrame {
    * the upper left) and set on the ground line. See Rig.lay.
    */
   lie?: boolean;
+  /**
+   * A pose copied from the owner's own frames: where he put the body, in design units of the frame
+   * (PoseAt). Every body is posed toward the same points, so they all sit or move as he drew it.
+   */
+  at?: PoseAt;
+}
+
+/**
+ * Where an owner's frame puts the body (design units of the frame; fine pixels are twice these). The
+ * pelvis stands at `pelvis`, or, `seated`, rests on a seat whose top is `pelvis.y` (the hips seatedHip
+ * above it); the torso leans so that the neck is on the line from the pelvis to `neck` (each body keeps
+ * its own torso length); the ankles go to `ankleN` and `ankleF`, or with `ground` to those x on the
+ * ground (the ankle heights the body stands at); a foot its leg cannot reach slides back along the
+ * ground toward the hip. The hands take 'frame' targets. (The same design as heroine/lyra-v2's read.)
+ * With `kneeN`/`kneeF` (his knees, when his legs are longer than ours) the thigh lengthens for this frame
+ * so the knee comes as near his as our shin, standing on its ankle, lets it (kneeLeg); it never shortens.
+ */
+interface PoseAt {
+  pelvis: Vec;
+  seated?: boolean;
+  neck: Vec;
+  ankleN: Vec;
+  ankleF: Vec;
+  ground?: boolean;
+  kneeN?: Vec;
+  kneeF?: Vec;
+}
+
+/** A point of the frame, in fine pixels, as a hand target (PoseAt). */
+const at = (x: number, y: number): HandTarget => ({ from: 'frame', x: x / RES, y: y / RES, units: 'px' });
+/** A point of the frame, in fine pixels, in design units. */
+const fp = (x: number, y: number): Vec => v(x / RES, y / RES);
+
+/** How far above a seat's top a body's pelvis sits (design units), as the camp seat has always had it. */
+const seatedHip = (): number => 2.7;
+
+/**
+ * The lean (degrees) that puts the neck on the line from the pelvis to `neck`, for a torso whose neck
+ * sits at `local` (Rig.T coordinates): the angle of that line from the vertical, less the neck's own
+ * angle in the torso.
+ */
+function leanToward(neck: Vec, pelvis: Vec, local: Vec): number {
+  const phi = Math.atan2(neck.x - pelvis.x, pelvis.y - neck.y);
+  return ((phi - Math.atan2(local.x, local.y)) * 180) / Math.PI;
 }
 
 const arm = (x: number, y: number): HandTarget => ({ from: 'shoulder', x, y, units: 'arm' });
 const chest = (x: number, y: number): HandTarget => ({ from: 'chest', x, y, units: 'px' });
-/** A hand resting on (or near) a knee, in pixels from the knee joint. */
-const knee = (side: 'N' | 'F', x: number, y: number): HandTarget => ({ from: side === 'N' ? 'kneeN' : 'kneeF', x, y, units: 'px' });
 
 const IDLE: PoseFrame = {
   // Upright, chest slightly out, head over the shoulders (no hunch).
@@ -438,7 +483,9 @@ const DOWNED: PoseFrame[] = [DOWNED_BASE, { ...DOWNED_BASE, lean: -6.5 }];
 /**
  * Where the camp props go, for the scene that places them (design units from
  * the feet anchor at x FEET_X, y GROUND; fine pixels are twice these).
- * - SEAT_TOP: the top of the log seat under 'sit' and 'read' (26 px above the feet).
+ * - SEAT_TOP: the top of the log seat under the female bodies' 'read' (26 px above the feet; 'sit' sits on a
+ *   seat prop, seats.ts, whose top is SIT_SEAT_TOP, 6 px higher, his rock's; the male read sits on it too,
+ *   its hips at READ_SEAT_TOP, this row).
  * - SEAT_X: the middle of the seat under the hips, behind the feet.
  * - LEAN_X: the front face of the trunk, rock or pole a 'lean' rests against.
  */
@@ -469,25 +516,50 @@ const LEAN_BASE: PoseFrame = {
 };
 const LEAN = breathe(LEAN_BASE, 4);
 
-/**
- * Sit, 4 frames: on a log seat (CAMP_PROPS: its top 26 px above the feet,
- * under the hips), the feet on the ground at the anchor, leaning in a little
- * toward the fire: the near hand on the knee, the far palm out to the
- * flames. Gentle breathing.
- */
 const SEAT_HIP = 0.74;
 const SIT_LEGS = { hip: SEAT_HIP, footN: v(0.5, groundY(SEAT_HIP, 0.5)), footF: v(0.47, groundY(SEAT_HIP, 0.47)) };
-const SIT_BASE: PoseFrame = {
-  lean: 14,
-  pelvisDx: -8.5,
-  snap: true,
-  ...SIT_LEGS,
-  handN: knee('N', 0.6, -1.4),
-  handF: arm(0.82, 0.42),
-  shapeN: 'relaxed',
-  shapeF: 'open',
-};
-const SIT = breathe(SIT_BASE, 4);
+
+/**
+ * Sit, 4 frames: the owner's four frames of his Roman legionary seated on a rock
+ * (docs/reference/roman-sit-owner-reference.jpg, "Cuadro 1" to "Cuadro 4"), the standard sit for every
+ * character ("es el nuevo standard"). He drew the figure at 80% of ours; he chose "romano sentado a": his
+ * pose as the guide, at our scale, so a seated character is the size of a standing one. His joints are
+ * read off his frames scaled by 1.25 (his head on our male's head, then 6 px up so his soles stand on our
+ * ground line; SIT_JOINTS): the pelvis on his rock (the seat prop, seats.ts), the knees up and both feet
+ * on the ground where he drew them, the near fist on the lap, the far arm reaching forward with the palm
+ * open. Frame 3 is his "mouth open" frame (no face of ours opens its mouth yet); in frame 4 the near arm
+ * hangs lower, its fist lower on the lap. Every body is posed toward his joints (PoseAt; fine pixels).
+ *
+ * His legs are a fifth longer than ours at this scale. He chose "romano sentado opcion a" (2026-10-22): seated,
+ * the thighs lengthen so the knees sit where he put them (PoseAt kneeN/kneeF), and the seat's top is his,
+ * row 184, so the hips, the knees and the feet are all where he drew them. (Our shins stay ours, so each
+ * knee comes as near his as the shin standing on his ankle lets it.)
+ */
+export const SIT_SEAT_TOP = 184;
+const sitAt = (neck: [number, number], ankleN: number, ankleF: number, kneeN: [number, number], kneeF: [number, number]): PoseAt => ({
+  pelvis: fp(110, SIT_SEAT_TOP),
+  seated: true,
+  neck: fp(neck[0], neck[1]),
+  ankleN: fp(ankleN, 0),
+  ankleF: fp(ankleF, 0),
+  ground: true,
+  kneeN: fp(kneeN[0], kneeN[1]),
+  kneeF: fp(kneeF[0], kneeF[1]),
+});
+const SIT_KEY = { lean: 0, footN: v(0, 1), footF: v(0, 1), snap: true, shapeN: 'fist', shapeF: 'open' } as const;
+/** His neck, hands, knees and ankles per frame (fine pixels of our frame, his seat on row 184), that SIT poses toward (seats.test.ts). */
+const SIT_JOINTS = [
+  { neck: [118, 151], handN: [114.5, 177], handF: [147, 167.5], kneeN: [119, 191], kneeF: [134, 185], ankleN: 124, ankleF: 136 },
+  { neck: [119, 151], handN: [115, 177], handF: [148, 167.5], kneeN: [118, 191], kneeF: [133, 185], ankleN: 124, ankleF: 136 },
+  { neck: [117.5, 151], handN: [113.5, 177.5], handF: [147, 168.5], kneeN: [116, 191], kneeF: [130, 185], ankleN: 121, ankleF: 134 },
+  { neck: [117.5, 151], handN: [113, 180.5], handF: [147, 167.5], kneeN: [121, 191], kneeF: [136, 185], ankleN: 125, ankleF: 137 },
+] as const;
+const SIT: PoseFrame[] = SIT_JOINTS.map((j) => ({
+  ...SIT_KEY,
+  at: sitAt([j.neck[0], j.neck[1]], j.ankleN, j.ankleF, [j.kneeN[0], j.kneeN[1]], [j.kneeF[0], j.kneeF[1]]),
+  handN: at(j.handN[0], j.handN[1]),
+  handF: at(j.handF[0], j.handF[1]),
+}));
 
 /**
  * Read, 12 frames: on the same seat, a book held open in both hands over the
@@ -511,6 +583,66 @@ const READ: PoseFrame[] = Array.from({ length: 12 }, (_, i) => {
   // the far hand lifts the page corner as it turns
   const turn = i === 9 ? -1 : i === 10 ? -0.6 : 0;
   return { ...READ_BASE, chestDy: breath, handF: chest(7.4, 5.8 + turn) };
+});
+
+/**
+ * Read on the male bodies (male, bulky), 12 frames: the owner's two frames of his Trunks reading on a rock
+ * (docs/reference/trunks-read-owner-reference.jpg), his answer for the Roman: "leer mira la referencia de
+ * trunks y copiala a leer de romano". He painted them over our read at our scale (one of his pixels is one
+ * fine pixel: his cell (x, y) is our pixel (x + 83, y + 130), in his second frame (x + 84, y + 130)), so his
+ * joints are read off his figure one for one (READ_JOINTS, fine pixels of our frame):
+ * - frame 1, "Leyendo": the open book held up before him in both hands, the fingers over its lower edge, both
+ *   arms bent, the far forearm coming up from the lap;
+ * - frame 2 (labelled "Libro cerrado", but its pages face him: he reads it): the book raised in the near hand,
+ *   tilted toward his face, the near forearm across the body, the far hand behind the book.
+ * His decision (2026-10-23): "pon como estas poniendo (libro cerrado) en todas las poses de leer esa es la
+ * idea": the read is his frame 2 in every frame (READ_KEYS), the male read standard. His frame 1 stays in
+ * READ_JOINTS and maleReadArt.ts, unused, in case he wants it later as a pose of its own.
+ * His hips are where our read had them, on a seat whose top is READ_SEAT_TOP (row 190, the camp seat's: the
+ * rock under him, seats.ts, keeps its place, so its top shows behind his hips as his rock does behind his
+ * Trunks). The thighs lengthen to reach his knees (kneeLeg) and the feet stand on the ground under his boots.
+ * His book and his hands, in the Roman's skin, are campfx.ts's (maleReadArt.ts). The female bodies keep READ
+ * until her own read (heroine/lyra-v2).
+ */
+export const READ_SEAT_TOP = 190;
+/**
+ * His neck, hands, knees and ankles in his two read frames (fine pixels of our frame), that READ_MALE poses
+ * toward (seats.test.ts); `head`: how far (fine px) his head is lowered and moved forward from where our neck
+ * puts it, so that our eyes are on his.
+ */
+export const READ_JOINTS = [
+  { neck: [120, 157.4], head: [1, 2], handN: [118.5, 175], handF: [134, 176.5], kneeN: [114, 198], kneeF: [129, 193], ankleN: 115.5, ankleF: 129 },
+  { neck: [118, 157.4], head: [1, 3], handN: [122, 173.5], handF: [129, 168], kneeN: [114, 198], kneeF: [129, 193], ankleN: 115.5, ankleF: 129 },
+] as const;
+/**
+ * His frame 2 over the whole loop (12 frames at POSE_FPS.read, 4 seconds), held still: he drew one pose for it,
+ * and the loop holds it as the sit of his Lyra holds her one frame (no breathing or page turn he did not draw).
+ */
+export const READ_KEYS = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1] as const;
+const READ_MALE: PoseFrame[] = READ_KEYS.map((k) => {
+  const j = READ_JOINTS[k];
+  return {
+    lean: 0,
+    footN: v(0, 1),
+    footF: v(0, 1),
+    snap: true,
+    headDx: j.head[0] / RES,
+    headDy: j.head[1] / RES,
+    shapeN: 'cradle',
+    shapeF: 'cradle',
+    at: {
+      pelvis: fp(110, READ_SEAT_TOP),
+      seated: true,
+      neck: fp(j.neck[0], j.neck[1]),
+      ankleN: fp(j.ankleN, 0),
+      ankleF: fp(j.ankleF, 0),
+      ground: true,
+      kneeN: fp(j.kneeN[0], j.kneeN[1]),
+      kneeF: fp(j.kneeF[0], j.kneeF[1]),
+    },
+    handN: at(j.handN[0], j.handN[1]),
+    handF: at(j.handF[0], j.handF[1]),
+  };
 });
 
 /** Stance for the drills: feet apart, the near foot back. */
@@ -965,8 +1097,11 @@ export function buildRig(body: BodyType, pose: RigPose, frame: number): Rig {
 }
 
 /** The upright rig every layer is drawn with (compose.ts lays a 'downed' figure down afterwards). */
+/** Poses the male bodies (male, bulky) play in place of POSES' own: the owner's male standard where the female bodies keep theirs. */
+const MALE_POSES: Partial<Record<RigPose, PoseFrame[]>> = { read: READ_MALE };
+
 export function drawRig(body: BodyType, pose: RigPose, frame: number): Rig {
-  const frames = POSES[pose] || POSES.idle;
+  const frames = (!isFemaleBody(body) && MALE_POSES[pose]) || POSES[pose] || POSES.idle;
   const f = frames[((frame % frames.length) + frames.length) % frames.length];
   const r = solveRig(body, pose, frame, f);
   if (f.lie) r.lay = layFor(solveRig(body, pose, 0, frames[0]));
@@ -1072,10 +1207,37 @@ export function turnRig(r: Rig, deg: number): Rig {
 /** Where the head sits from the neck's foot at rest, in design units (the neck's length and lean). */
 export const NECK_REST = (bp: BodyParams): Vec => v(-0.4, -5.9 * bp.headScale);
 
+/**
+ * A leg toward an ankle target (PoseAt): a foot the leg cannot reach slides back along the ground toward
+ * the hip until the leg reaches it.
+ */
+function reachLeg(hip: Vec, t: Vec, thigh: number, shin: number): { mid: Vec; end: Vec } {
+  const l = thigh + shin - 0.05;
+  const dy = t.y - hip.y;
+  if (Math.hypot(t.x - hip.x, dy) <= l) return solve2(hip, t, thigh, shin, -1);
+  const dx = Math.sqrt(Math.max(0, l * l - dy * dy));
+  return solve2(hip, v(hip.x + Math.sign(t.x - hip.x) * dx, t.y), thigh, shin, -1);
+}
+
+/**
+ * A leg toward an ankle target with a knee target (PoseAt kneeN/kneeF): the ankle on its target, the knee
+ * on the point nearest the knee target that the shin, standing on the ankle, reaches, and the thigh as
+ * long as getting there takes; never shorter than the body's (then it is reachLeg's leg).
+ */
+function kneeLeg(hip: Vec, t: Vec, k: Vec, thigh: number, shin: number): { mid: Vec; end: Vec } {
+  const mid = add(t, scale(norm(sub(k, t)), shin));
+  return len(sub(mid, hip)) > thigh ? { mid, end: t } : reachLeg(hip, t, thigh, shin);
+}
+
 function solveRig(body: BodyType, pose: RigPose, frame: number, f: PoseFrame): Rig {
   const bp = BODY_PARAMS[body];
+  // A pose copied from the owner's frames (PoseAt): the pelvis where he put it (seated, on the seat's top),
+  // the torso leaning toward his neck.
+  const a = f.at;
+  const atPelvis = a ? (a.seated ? v(a.pelvis.x, a.pelvis.y - seatedHip()) : a.pelvis) : null;
+  const lean = a && atPelvis ? leanToward(a.neck, atPelvis, v(0.6, bp.torsoLen)) : f.lean;
 
-  const leanRad = (f.lean * Math.PI) / 180;
+  const leanRad = (lean * Math.PI) / 180;
   const up = v(Math.sin(leanRad), -Math.cos(leanRad));
   const right = v(Math.cos(leanRad), Math.sin(leanRad));
   const legLen = bp.thigh + bp.shin;
@@ -1088,7 +1250,7 @@ function solveRig(body: BodyType, pose: RigPose, frame: number, f: PoseFrame): R
   // `sink` and `snap` lower the pelvis while the feet stay where the pose puts
   // them (the knees take it up), `snap` onto the fine pixel grid.
   const moved = !!(f.sink || f.snap);
-  const pelvis = moved ? v(stand.x, snapDown(stand.y + (f.sink || 0), !!f.snap)) : stand;
+  const pelvis = atPelvis ?? (moved ? v(stand.x, snapDown(stand.y + (f.sink || 0), !!f.snap)) : stand);
 
   const T = (x: number, y: number): Vec => add(pelvis, add(scale(right, x), scale(up, y)));
 
@@ -1108,8 +1270,13 @@ function solveRig(body: BodyType, pose: RigPose, frame: number, f: PoseFrame): R
     fromN = add(hipN, back);
     fromF = add(hipF, back);
   }
-  const legN = solve2(hipN, add(fromN, scale(f.footN, legLen)), bp.thigh, bp.shin, -1);
-  const legF = solve2(hipF, add(fromF, add(scale(f.footF, legLen), v(0, FAR_HIP_LIFT - FAR_LIFT))), bp.thigh, bp.shin, -1);
+  // (PoseAt: each ankle where he drew it, or on the ground under it, the far one FAR_LIFT higher)
+  // (and with his knees, the thigh as long as reaching them takes: kneeLeg)
+  const atLeg = (hip: Vec, t: Vec, k?: Vec) => (k ? kneeLeg(hip, t, k, bp.thigh, bp.shin) : reachLeg(hip, t, bp.thigh, bp.shin));
+  const legN = a ? atLeg(hipN, a.ground ? v(a.ankleN.x, ANKLE_N) : a.ankleN, a.kneeN) : solve2(hipN, add(fromN, scale(f.footN, legLen)), bp.thigh, bp.shin, -1);
+  const legF = a
+    ? atLeg(hipF, a.ground ? v(a.ankleF.x, ANKLE_N - FAR_LIFT) : a.ankleF, a.kneeF)
+    : solve2(hipF, add(fromF, add(scale(f.footF, legLen), v(0, FAR_HIP_LIFT - FAR_LIFT))), bp.thigh, bp.shin, -1);
 
   const chestDy = f.chestDy || 0;
   const neck = add(T(0.6, bp.torsoLen), v(0, chestDy));
@@ -1119,6 +1286,7 @@ function solveRig(body: BodyType, pose: RigPose, frame: number, f: PoseFrame): R
 
   const armLen = bp.upperArm + bp.forearm + bp.handR;
   const resolve = (t: HandTarget, shoulder: Vec): Vec => {
+    if (t.from === 'frame') return v(t.x, t.y);
     if (t.from === 'chest') return add(chestFront, v(t.x, t.y));
     if (t.from === 'kneeN') return add(legN.mid, v(t.x, t.y));
     if (t.from === 'kneeF') return add(legF.mid, v(t.x, t.y));
@@ -1154,7 +1322,7 @@ function solveRig(body: BodyType, pose: RigPose, frame: number, f: PoseFrame): R
     bp,
     pose,
     frame,
-    lean: f.lean,
+    lean,
     pelvis,
     neck,
     up,

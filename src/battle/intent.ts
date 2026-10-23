@@ -13,12 +13,12 @@ import { lightningSeeds, unitsOnPatch, wetPatch } from './ground';
 import { canStop, occupancy, reachable } from './nav';
 import { JUTSU, MIN_AIM, areaOf, inArea } from './jutsu';
 import type { JutsuSpec } from './jutsu';
-import { passivePerception, saveMod } from './combat';
+import { passivePerception, saveMod, seesThrough } from './combat';
 import { KUNAI, KUNAI_LONG, wielded } from './units';
 import { COMMAND, FORESIGHT_RANGE, SUBMISSION, SWAP, WARP, commandRefused, ownNodes, submissionRefused, swapBlocker, warpBlocker, warpLanding } from './clans';
 import { ownStructures, structureAt, structureBlocker } from './structures';
 import { chargedReach } from './charged';
-import { CLONE, clonesOf, decoyClone } from './clones';
+import { CLONE, clonesOf, decoyClone, disguisedNow, figuresOf, ownerOfFigure } from './clones';
 import { rngFor } from '../rules/rng';
 
 const avg = (dice?: string): number => {
@@ -441,6 +441,16 @@ export function fooledBy(s: BattleState, u: Unit, i: Intent): Intent {
   if (!i.target || (i.kind !== 'melee' && i.kind !== 'ranged' && i.kind !== 'jutsu' && i.kind !== 'bite' && i.kind !== 'spit')) return i;
   const t = s.units[i.target];
   if (!t || t.team === u.team) return i;
+  // After a Shadow Shuffle the figures look alike (the owner's A): a foe that sees through goes for
+  // the real one, whichever figure it meant (it ignores the ones it knows are clones); one that
+  // doesn't picks among them, not knowing.
+  const owner = ownerOfFigure(s, t);
+  if (disguisedNow(s, owner)) {
+    if (seesThrough(s, u, owner)) return owner.id === t.id ? i : { ...i, target: owner.id, ...(i.at ? { at: { ...owner.pos } } : {}) };
+    const figs = figuresOf(s, owner);
+    const f = figs[Math.floor(rngFor(s.seed, 'shuffleFool', u.id, owner.id, owner.disguise!.n, s.round, s.turn, s.tick)() * figs.length)];
+    return { ...i, target: f.id, ...(i.at ? { at: { ...f.pos } } : {}) };
+  }
   const clones = clonesOf(s, t.id);
   if (!clones.length) return i;
   const rng = rngFor(s.seed, 'cloneFool', u.id, t.id, s.round, s.turn, s.tick);

@@ -6,12 +6,13 @@ import { effectMods, removeEffect, tickRound } from '../rules/effects';
 import { rollDie } from '../rules/rng';
 import type { BattleEvent, BattleState, Unit } from './types';
 import { homeTeam } from './types';
-import { check, damage, deathSave, nextRng, releaseCommand, rollDiceExpr } from './combat';
+import { check, damage, deathSave, nextRng, releaseCommand, rollDiceExpr, seesThrough, skillMod } from './combat';
 import { dampAt } from './map';
 import { steamBurns, tickGround } from './ground';
 import { planEnemy, replanAgainst } from './intent';
 import { chargeHolds, mendCracks, tickCharge } from './charged';
-import { cloneMode, placeInOrder, purgeOrder, refreshClones, standingClone, tickClones } from './clones';
+import { CLONE, cloneMode, disguisedNow, learnDisguise, placeInOrder, purgeOrder, refreshClones, standingClone, tickClones } from './clones';
+import { dist } from './map';
 
 /**
  * Whether a unit takes turns (heads of the hydra act on their own; fallen ninjas roll death saves). A
@@ -135,12 +136,28 @@ export function beginTurn(s: BattleState, ev: BattleEvent[]): void {
       advance(s, ev);
       continue;
     }
+    keenEyes(s, u, ev);
     // Confused: one turn in four is lost to the illusion.
     if (u.effects.some((e) => e.id === 'confused') && rollDie(nextRng(s), 4) === 1) {
       u.turn.action = false;
       ev.push({ t: 'note', key: 'confusedLoses', params: { name: u.name } });
     }
     return;
+  }
+}
+
+/**
+ * A keen-eyed foe (CLONE.keenClans) beside the real one of a Shadow Shuffle may uncover it on its turn
+ * (the owner's C): a Perception check (WIS) with advantage against the ninja's jutsu save DC, on the
+ * battle's dice. It then knows (and only it).
+ */
+function keenEyes(s: BattleState, u: Unit, ev: BattleEvent[]): void {
+  if (u.clone || !u.character || !CLONE.keenClans.includes(u.character.clan)) return;
+  for (const o of Object.values(s.units)) {
+    if (o.team === u.team || !disguisedNow(s, o) || dist(o.pos, u.pos) > CLONE.keenReach || seesThrough(s, u, o)) continue;
+    const roll = check(s, 'check', skillMod(u, 'perception'), o.saveDC, 'advantage');
+    ev.push({ t: 'check', unit: u.id, what: 'perception', roll });
+    if (roll.success) learnDisguise(o, u, ev);
   }
 }
 

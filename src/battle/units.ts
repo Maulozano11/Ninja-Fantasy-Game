@@ -74,6 +74,15 @@ export const handsFree = (u: Unit): boolean =>
 
 /** Thrown kunai and shuriken: everyone carries them. */
 export const KUNAI: Weapon = W('Kunai', '1d4', 'Piercing', 9, true);
+
+/**
+ * What a unit throws: a kunai for everyone today. The one place a thrown weapon of its own (the
+ * senbon, coming on `items/senbon`, a shuriken) slots in; a clone throws its summoner's (clones.ts).
+ */
+export const thrownOf = (u: Unit): Weapon => {
+  void u;
+  return KUNAI;
+};
 export const KUNAI_LONG = 18;
 
 export interface UnitOptions {

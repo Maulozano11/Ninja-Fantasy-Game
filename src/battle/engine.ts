@@ -35,7 +35,7 @@ import type { AttackPreview } from './combat';
 import { attackPreview, check, damage, heal, hostileAura, passivePerception, PERFECT_HIDE, reveal, revealOutOfHiding, rollDiceExpr, skillMod } from './combat';
 import { JUTSU, MIN_AIM, areaOf, enhanced, fanDice, fanned, fannedBy } from './jutsu';
 import type { JutsuSpec } from './jutsu';
-import { KUNAI, enemyNameOf, enemyUnit, handsFree, unitFrom, wielded } from './units';
+import { KUNAI, enemyNameOf, enemyUnit, handsFree, thrownOf, unitFrom, wielded } from './units';
 import type { EnemyKind } from './units';
 import { hydraUnits } from './hydra';
 import { beginTurn, checkEnd, current, endTurn, startCombat } from './turns';
@@ -76,6 +76,10 @@ import {
   oneDieOf,
   popClone,
   popClonesOf,
+  endDisguiseIfAlone,
+  revealDisguise,
+  shadowShuffle,
+  shuffleBlocker,
   summonClones,
   summonSpots,
   summonerOf,
@@ -230,7 +234,9 @@ export function applyAction(state: BattleState, action: Action): Outcome {
   const summoners = Object.values(s.units).filter((u) => u.clonePoints !== undefined && !u.down).map((u) => ({ u, at: { ...u.pos } }));
   const err = dispatch(s, action, ev);
   if (err) return { ok: false, reason: err, state, events: [] };
-  if (!s.pending) for (const { u, at } of summoners) if (!u.down && dist(u.pos, at) > 0.05) followClones(s, u, ev);
+  // (A Shadow Shuffle moves them all on purpose: nobody runs after anybody.)
+  const shuffled = action.type === 'shuffle' || (action.type === 'jutsu' && !!action.shuffle);
+  if (!s.pending && !shuffled) for (const { u, at } of summoners) if (!u.down && dist(u.pos, at) > 0.05) followClones(s, u, ev);
   settle(s, ev);
   return { ok: true, state: s, events: ev };
 }
@@ -287,8 +293,13 @@ function dispatch(s: BattleState, a: Action, ev: BattleEvent[]): string | null {
       return doMove(s, u, a.to, ev);
     case 'attack':
       return doAttack(s, u, a.target, !!a.ranged, !!a.knockout, ev);
-    case 'jutsu':
-      return doJutsu(s, u, a.jutsu, a.at, a.target, !!a.enhanced, ev, a.target2);
+    case 'jutsu': {
+      const err = doJutsu(s, u, a.jutsu, a.at, a.target, !!a.enhanced, ev, a.target2, !!a.shuffle);
+      if (!err) revealByJutsu(s, u, a.jutsu, a.target, ev);
+      return err;
+    }
+    case 'shuffle':
+      return doShuffle(s, u, ev);
     case 'dash':
     case 'disengage':
     case 'dodge':
@@ -304,8 +315,15 @@ function dispatch(s: BattleState, a: Action, ev: BattleEvent[]): string | null {
       return doDraw(u, ev);
     case 'shove':
       return doShove(s, u, a.target, a.mode, ev);
-    case 'item':
-      return doItem(s, u, a.item, a.target, a.at, ev);
+    case 'item': {
+      // No clone carries the party's backpack: using it (or being treated from it) gives the real one away.
+      const err = doItem(s, u, a.item, a.target, a.at, ev);
+      if (!err) {
+        revealDisguise(s, u, ev);
+        revealDisguise(s, a.target ? s.units[a.target] : undefined, ev);
+      }
+      return err;
+    }
     case 'stabilize':
       return doStabilize(s, u, a.target, ev);
     case 'flee':
@@ -343,7 +361,6 @@ function cloneMay(s: BattleState, u: Unit, a: Action): string | null {
     return a.type === 'jutsu' ? null : 'cloneJutsuOnly';
   }
   if (!stealth && current(s)?.id !== u.id) return 'notYourTurn';
-  if (a.type === 'attack' && a.ranged) return 'cloneMeleeOnly';
   const can = ['move', 'attack', 'jutsu', 'dash', 'disengage', 'dodge', 'hide', 'crouch', 'endTurn', ...(stealth ? ['stone'] : [])];
   return can.includes(a.type) ? null : 'cloneCantDo';
 }
@@ -365,6 +382,8 @@ function setCloneMode(s: BattleState, id: string, mode: CloneMode, ev: BattleEve
   } else if (c.team !== 'party') return 'cantAct';
   if (cloneMode(c) === mode) return 'sameMode';
   c.clone.mode = mode;
+  // Walking off on its own, it is no longer one of the look-alikes.
+  endDisguiseIfAlone(s, owner);
   ev.push({ t: 'note', key: mode === 'follow' ? 'cloneFollows' : 'cloneControlled', params: { name: c.name, owner: owner.name } });
   if (mode === 'follow') {
     const own = s.phase === 'combat' && current(s)?.id === c.id;
@@ -386,6 +405,38 @@ function clonesFirst(s: BattleState, owner: Unit, clones: Unit[], ev: BattleEven
   owner.turn.held = true;
   s.turn = Math.min(...at);
   beginTurn(s, ev);
+}
+
+/**
+ * The Shadow Shuffle (clones.ts), a bonus action for CLONE.shuffleCost chakra: the ninja and its
+ * following clones swap places in secret and look alike.
+ */
+function doShuffle(s: BattleState, u: Unit, ev: BattleEvent[]): string | null {
+  const why = shuffleBlocker(s, u);
+  if (why) return why;
+  if (effectMods(u.effects).noJutsu) return 'chakraSealed';
+  if (!u.turn.bonus) return 'noBonus';
+  if (u.chakra < CLONE.shuffleCost) return 'noChakra';
+  u.turn.bonus = false;
+  payShuffle(s, u, ev);
+  return null;
+}
+
+function payShuffle(s: BattleState, u: Unit, ev: BattleEvent[]): void {
+  u.chakra -= CLONE.shuffleCost;
+  ev.push({ t: 'chakra', unit: u.id, delta: -CLONE.shuffleCost, chakra: u.chakra, reason: 'shadowShuffle' });
+  shadowShuffle(s, u, ev);
+}
+
+/**
+ * What no clone can do gives the real one away (the owner's C): a jutsu of rank B or more (the clone
+ * jutsu aside), and being healed.
+ */
+function revealByJutsu(s: BattleState, u: Unit, id: string, targetId: string | undefined, ev: BattleEvent[]): void {
+  const j = JUTSU[id];
+  if (!j) return;
+  if (!u.clone && (j.rank === 'B' || j.rank === 'A' || j.rank === 'S') && j.special !== 'clone') revealDisguise(s, u, ev);
+  if (j.special === 'heal' && targetId) revealDisguise(s, s.units[targetId], ev);
 }
 
 /** A ninja is done for this stealth turn; when everyone is, the guards move. */
@@ -598,8 +649,10 @@ function weaponAttack(
   after: AfterHits,
   ev: BattleEvent[],
 ): boolean {
-  const w = ranged ? KUNAI : wielded(a);
+  const w = ranged ? thrownOf(a) : wielded(a);
   const adv = o.takedown ? combineAdvantage(pv.adv, 'advantage') : pv.adv;
+  // Its edge from the deceit is spent on this foe (the owner's B: the first attack).
+  if (pv.reasons.includes('deceived')) a.disguise?.struck.push(t.id);
   const roll = check(s, 'attack', pv.mod, pv.ac, adv, true);
   if (t.pos.x !== a.pos.x) a.facing = t.pos.x > a.pos.x ? 1 : -1;
   const reasons = o.takedown && !pv.reasons.includes('hidden') ? [...pv.reasons, 'unaware'] : pv.reasons;
@@ -614,11 +667,12 @@ function weaponAttack(
     const str = abilityMod(a.stats.str);
     const dex = abilityMod(a.stats.dex);
     const mod = ranged ? dex : w.finesse ? Math.max(str, dex) : str;
-    // A clone's own blow is the owner's 1d6 ("si es ataque cuerpo a cuerpo 1d6"), like its blow in a combo.
-    let amount = a.clone ? rollDiceExpr(s, CLONE.comboDice, roll.crit) : rollDiceExpr(s, w.dice, roll.crit) + mod + (ranged ? 0 : effectMods(a.effects).meleeDamage);
+    // A clone's own blow is the owner's 1d6 ("si es ataque cuerpo a cuerpo 1d6"), like its blow in a
+    // combo; what it throws (his "si podrian lanzar shurikens o kunai o senbons"), CLONE.throwDice.
+    let amount = a.clone ? rollDiceExpr(s, ranged ? CLONE.throwDice : CLONE.comboDice, roll.crit) : rollDiceExpr(s, w.dice, roll.crit) + mod + (ranged ? 0 : effectMods(a.effects).meleeDamage);
     if (surprise) amount += rollDiceExpr(s, '1d6', roll.crit);
     if (!ranged && !a.clone && hasEffect(a.effects, 'gates_open')) amount += rollDiceExpr(s, '1d8', roll.crit);
-    hits.push({ unit: t.id, amount: Math.max(1, amount), type: a.clone ? 'Bludgeoning' : w.type, source: a.id, what: w.name, crit: roll.crit, knockout: o.knockout && !ranged, melee: !ranged, aimed: true, unseen: surprise, unblockable: edge });
+    hits.push({ unit: t.id, amount: Math.max(1, amount), type: a.clone && !ranged ? 'Bludgeoning' : w.type, source: a.id, what: w.name, crit: roll.crit, knockout: o.knockout && !ranged, melee: !ranged, aimed: true, unseen: surprise, unblockable: edge });
     // A blow that lands on a foe a clone of its striker stands next to: the clone joins it (a combo).
     if (!ranged) for (const c of comboClones(s, a, t)) hits.push(comboHit(s, c, t, CLONE.comboDice, o.knockout));
   }
@@ -961,7 +1015,7 @@ export function jutsuCost(u: Unit, spec: JutsuSpec, enh: boolean): number {
   return jutsuCostParts(u, spec, enh).cost;
 }
 
-function doJutsu(s: BattleState, u: Unit, id: string, atIn: Pt, targetId: string | undefined, enh: boolean, ev: BattleEvent[], target2Id?: string): string | null {
+function doJutsu(s: BattleState, u: Unit, id: string, atIn: Pt, targetId: string | undefined, enh: boolean, ev: BattleEvent[], target2Id?: string, shuffle = false): string | null {
   const base = JUTSU[id];
   if (!base || !u.jutsus.includes(id)) return 'unknownJutsu';
   if (base.cast === 'reaction') return 'reactionOnly';
@@ -978,7 +1032,9 @@ function doJutsu(s: BattleState, u: Unit, id: string, atIn: Pt, targetId: string
   if (enh && !base.enhCost) return 'noEnhanced';
   const spec = enh ? enhanced(base) : base;
   const { cost, woven } = owner ? { cost: base.cost, woven: false } : jutsuCostParts(u, base, enh);
-  if (payer.chakra < cost) return 'noChakra';
+  // The clone jutsu cast with a Shadow Shuffle at once: its chakra on top (and its clones follow, to mingle).
+  if (shuffle && (base.special !== 'clone' || u.clone)) return 'noShuffle';
+  if (payer.chakra < cost + (shuffle ? CLONE.shuffleCost : 0)) return 'noChakra';
   // A clone's own taijutsu strikes with one die of the jutsu (the owner: "si el clon usa una
   // habilidad... se usa el dado"), as its blow in a combo does.
   const struck = owner && base.nature === 'Taijutsu' && spec.dice ? { ...spec, dice: oneDieOf(spec.dice) } : spec;
@@ -1115,7 +1171,8 @@ function doJutsu(s: BattleState, u: Unit, id: string, atIn: Pt, targetId: string
       break;
     }
     case 'clone':
-      summoned = summonClones(s, u, enh, ev);
+      summoned = summonClones(s, u, enh, ev, shuffle ? 'follow' : undefined);
+      if (shuffle && summoned.length) payShuffle(s, u, ev);
       break;
     case 'mantle':
       // The Breeze Mantle: a dodge cast as a bonus action (attacks against the ninja have
@@ -1277,6 +1334,7 @@ function jutsuHits(s: BattleState, u: Unit, spec: JutsuSpec, target: Unit | unde
       continue;
     }
     const pv = attackPreview(s, u, v, 'jutsu', { jutsuRange: spec.range, melee: spec.melee });
+    if (pv.reasons.includes('deceived')) u.disguise?.struck.push(v.id);
     const roll = check(s, 'attack', pv.mod, pv.ac, pv.adv, true);
     ev.push({ t: 'attack', unit: u.id, target: v.id, what: spec.id, roll, ranged: !spec.melee, ...(pv.reasons.length ? { reasons: pv.reasons } : {}), ...(pv.flank ? { flank: pv.flank } : {}) });
     // A critical does maximum damage (the dice at their highest, doubled, the bonus once).

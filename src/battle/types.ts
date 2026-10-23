@@ -217,6 +217,13 @@ export interface Unit {
   clone?: CloneOf;
   /** A ninja with clones standing: the points of jutsu they have left to cast together (battle/clones.ts). */
   clonePoints?: number;
+  /**
+   * The Shadow Shuffle (battle/clones.ts): the ninja and its following clones swapped places in
+   * secret and look the same. `n` counts the shuffles (each one is a new puzzle for every foe);
+   * `known`: the foes who know which figure is the real one; `struck`: the foes it has already
+   * struck from the deceit (its edge, once each).
+   */
+  disguise?: Disguise;
   /** Battle bookkeeping for the mission result. */
   stats2: { critsTaken: number; critsLanded: number; pills: number; fell: boolean; fellToCrit: boolean; tension: number; jutsuCast: number };
   /** Skill proficiencies (Stealth, Perception, Medicine...). */
@@ -252,6 +259,13 @@ export interface CloneOf {
   mode?: CloneMode;
   /** The round of its last turn of its own (one a round, however often it is switched). */
   acted?: number;
+}
+
+/** The Shadow Shuffle's secret (Unit.disguise). */
+export interface Disguise {
+  n: number;
+  known: string[];
+  struck: string[];
 }
 
 /** How a clone is played (the owner's answer of 2026-10-23: "si les pones seguir... o que los puedas controlar"). */
@@ -504,7 +518,10 @@ export interface BattleState {
 export type Action =
   | { type: 'move'; unit: string; to: Cell; sneak?: boolean }
   | { type: 'attack'; unit: string; target: string; ranged?: boolean; knockout?: boolean }
-  | { type: 'jutsu'; unit: string; jutsu: string; at: Pt; target?: string; enhanced?: boolean; target2?: string }
+  /** `shuffle`: the clone jutsu cast with a Shadow Shuffle at once (battle/clones.ts). */
+  | { type: 'jutsu'; unit: string; jutsu: string; at: Pt; target?: string; enhanced?: boolean; target2?: string; shuffle?: boolean }
+  /** The Shadow Shuffle: a ninja and its following clones swap places in secret (a bonus action). */
+  | { type: 'shuffle'; unit: string }
   | { type: 'dash' | 'disengage' | 'dodge' | 'hide' | 'focus' | 'crouch' | 'jump' | 'draw'; unit: string }
   | { type: 'shove'; unit: string; target: string; mode: 'prone' | 'push' }
   /** `tag` throws an explosive tag at a point; `tagTrap` hides one on the ground there. */

@@ -18,6 +18,7 @@ import { freeSpot } from './nav';
 import { JUTSU } from './jutsu';
 import type { JutsuSpec } from './jutsu';
 import { wielded } from './units';
+import { rngFor } from '../rules/rng';
 
 /**
  * The clones' numbers. The counts, the 3 turns and the jutsu they may cast are the owner's; the rest
@@ -43,6 +44,14 @@ export const CLONE = {
   fooled: 2,
   /** What a jutsu of each rank takes of those points. */
   rankCost: { D: 1, C: 2 } as Record<string, number>,
+  /** The Shadow Shuffle's chakra (proposal: the owner approved the trick, not its price). */
+  shuffleCost: 1,
+  /** Clans whose eyes see through the shuffle with advantage (proposal: the Mirai's Eye of Tomorrow). */
+  keenClans: ['Mirai'] as string[],
+  /** How near (m) a keen-eyed foe must stand to the real one to try to uncover it on its turn (proposal). */
+  keenReach: 1.6,
+  /** A clone's thrown weapon (a kunai, a shuriken, a senbon: the owner's "si podrian lanzar"): 1d4, no modifier, no ammo (proposal). */
+  throwDice: '1d4',
 };
 
 /** How a clone is played: following its summoner (and saved before the choice existed), or controlled. */
@@ -116,6 +125,9 @@ export function cloneSpot(s: BattleState, owner: Unit, c: Unit, taken: Pt[] = []
   const score = (p: Pt): number => {
     if (taken.some((q) => dist(q, p) < CLONE.near) || others.some((o) => dist(o.pos, p) < CLONE.near)) return -Infinity;
     let v = -Math.abs(levelAtPt(s, p) - lvl) * 4 - (steamAt(s, p) ? 6 : 0);
+    // Side by side rather than one behind the other: a figure straight in front of another (the
+    // same x, a little deeper) would be drawn over it.
+    for (const q of [owner.pos, ...taken]) if (Math.abs(q.x - p.x) < 0.75) v -= 3;
     let flank = 0;
     for (const f of foes) {
       if (!besideFoe(s, p, f)) continue;
@@ -143,6 +155,7 @@ export function makeClone(s: BattleState, owner: Unit, n: number, enhanced: bool
   c.articleEs = 'el';
   c.clone = { of: owner.id, turns: CLONE.turns, enhanced, mode };
   c.clonePoints = undefined;
+  c.disguise = undefined;
   c.hp = 1;
   c.maxHp = 1;
   c.tempHp = 0;
@@ -186,13 +199,13 @@ export function summonSpots(s: BattleState, owner: Unit, enhanced: boolean): Pt[
  * first), with the points of jutsu they share, and take their places in the initiative right above
  * it (the owner: "aparezcan arriba del jugador que los invoco en la iniativa").
  */
-export function summonClones(s: BattleState, owner: Unit, enhanced: boolean, ev: BattleEvent[]): Unit[] {
+export function summonClones(s: BattleState, owner: Unit, enhanced: boolean, ev: BattleEvent[], mode: CloneMode = newCloneMode(owner)): Unit[] {
   const spots = summonSpots(s, owner, enhanced);
   for (const old of clonesOf(s, owner.id)) popClone(s, old, 'recast', ev);
   owner.clonePoints = enhanced ? CLONE.points.enhanced : CLONE.points.plain;
   const made: Unit[] = [];
   spots.forEach((p, i) => {
-    const c = makeClone(s, owner, i, enhanced, newCloneMode(owner));
+    const c = makeClone(s, owner, i, enhanced, mode);
     c.pos = { ...p };
     c.facing = owner.facing;
     s.units[c.id] = c;
@@ -251,6 +264,74 @@ export function popClone(s: BattleState, c: Unit, why: CloneEnd, ev: BattleEvent
   const owner = s.units[c.clone.of];
   // The last of them gone: their jutsu go with them.
   if (owner && !clonesOf(s, owner.id).length) owner.clonePoints = undefined;
+  // No following clone left: nobody to be mistaken for (the owner's C).
+  if (owner) endDisguiseIfAlone(s, owner);
+}
+
+// --- the Shadow Shuffle (the owner: "Me encanta A+B+C juntas") ------------------------------
+
+/** The figures that look alike: the ninja and its following clones (a controlled one walks apart). */
+export const figuresOf = (s: BattleState, owner: Unit): Unit[] => [owner, ...clonesOf(s, owner.id).filter((c) => cloneMode(c) === 'follow')];
+
+/** A ninja in the middle of its Shadow Shuffle (with following clones still to be mistaken for). */
+export const disguisedNow = (s: BattleState, owner: Unit | undefined): owner is Unit => !!owner?.disguise && !owner.down && figuresOf(s, owner).length > 1;
+
+/** The ninja a figure may be: itself, or the summoner of a clone. */
+export const ownerOfFigure = (s: BattleState, u: Unit): Unit => (u.clone ? s.units[u.clone.of] ?? u : u);
+
+/** Why a ninja can't shuffle now (its clones), or null. The action and chakra are the engine's. */
+export function shuffleBlocker(s: BattleState, u: Unit): string | null {
+  if (u.clone) return 'cloneCantDo';
+  if (figuresOf(s, u).length < 2) return 'noClones';
+  return null;
+}
+
+/**
+ * The Shadow Shuffle (the owner's A, "Mezcla de sombras"): the ninja and its following clones swap
+ * places in secret, and the clones lose their chakra wash: they look exactly like it. Who stands
+ * where comes from the battle's seed and the moment (rngFor), never the battle's dice. Every foe
+ * starts the puzzle again (a new `n`): none knows, none has been struck from it yet.
+ */
+export function shadowShuffle(s: BattleState, u: Unit, ev: BattleEvent[]): void {
+  const figs = figuresOf(s, u);
+  const n = (u.disguise?.n ?? 0) + 1;
+  const spots = figs.map((f) => ({ pos: { ...f.pos }, facing: f.facing }));
+  const rng = rngFor(s.seed, 'shadowShuffle', u.id, n, s.tick);
+  for (let i = spots.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [spots[i], spots[j]] = [spots[j], spots[i]];
+  }
+  figs.forEach((f, i) => {
+    const to = spots[i];
+    if (dist(f.pos, to.pos) > 0.05) ev.push({ t: 'teleport', unit: f.id, from: { ...f.pos }, to: { ...to.pos }, log: false });
+    f.pos = { ...to.pos };
+    f.facing = to.facing;
+  });
+  u.disguise = { n, known: [], struck: [] };
+  ev.push({ t: 'note', key: 'shadowShuffle', params: { name: u.name } });
+}
+
+/**
+ * The trick is uncovered for every foe (the owner's C): the real one was hit (it bleeds, a clone goes
+ * up in smoke), or did what no clone can (an item, a jutsu of rank B or more, being healed).
+ */
+export function revealDisguise(s: BattleState, u: Unit | undefined, ev: BattleEvent[]): void {
+  if (!u?.disguise) return;
+  const was = disguisedNow(s, u);
+  u.disguise = undefined;
+  if (was) ev.push({ t: 'note', key: 'disguiseRevealed', params: { name: u.name } });
+}
+
+/** One foe now knows which figure is the real one (a keen eye beside it on its turn). */
+export function learnDisguise(u: Unit, foe: Unit, ev: BattleEvent[]): void {
+  if (!u.disguise || u.disguise.known.includes(foe.id)) return;
+  u.disguise.known.push(foe.id);
+  ev.push({ t: 'note', key: 'disguiseSeen', params: { name: foe.name, other: u.name } });
+}
+
+/** No following clone left beside it: the shuffle is over (quietly: there is no one to confuse). */
+export function endDisguiseIfAlone(s: BattleState, u: Unit): void {
+  if (u.disguise && figuresOf(s, u).length < 2) u.disguise = undefined;
 }
 
 /** Every clone of a ninja goes (it fell, fled, or cast them again). */

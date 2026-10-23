@@ -14,7 +14,8 @@ import { areaValue, bestCell, goalOf, headOptions, ninjaOptions, offensive, plan
 import type { Goal } from './intent';
 import { breakable, MAX_STRUCTURES, ownStructures, structureAt, structureAttack, structureBlocker, structureDist } from './structures';
 import { COMMAND, commandRefused, edgeFoe, ownNodes, submissionRefused, SWAP, WARP, warpBlocker, warpLanding } from './clans';
-import { cloneJutsuBlocker, clonesOf, summonSpots } from './clones';
+import { CLONE, cloneJutsuBlocker, clonesOf, disguisedNow, figuresOf, summonSpots } from './clones';
+import { seesThrough } from './combat';
 import { averageDice, parseDice } from '../rules/dice';
 
 /** Whether the battle is waiting on the AI (an AI unit's turn in the fighting). */
@@ -209,7 +210,24 @@ function fallback(s: BattleState, u: Unit): Action | null {
  */
 function bonusBefore(s: BattleState, u: Unit, i: Intent): Action | null {
   if (!u.turn.bonus) return null;
-  return summonFirst(s, u, i) ?? ryuseiWarp(s, u, i);
+  return summonFirst(s, u, i) ?? shuffleThreatened(s, u) ?? ryuseiWarp(s, u, i);
+}
+
+/** How near (m) a foe makes a ninja with clones feel threatened enough to shuffle (the builder's). */
+const THREAT = 8;
+
+/** A foe near enough to come at it this turn, that isn't fooled (no shuffle yet, or it saw through). */
+function threatened(s: BattleState, u: Unit): boolean {
+  return visibleFoes(s, u).some((f) => dist(f.pos, u.pos) <= THREAT && (!disguisedNow(s, u) || seesThrough(s, f, u)));
+}
+
+/**
+ * The Shadow Shuffle when threatened (the coordinator's ask: "AI clone users shuffle when threatened"):
+ * with following clones beside it, the bonus action and the chakra, and a foe near that isn't fooled.
+ */
+function shuffleThreatened(s: BattleState, u: Unit): Action | null {
+  if (u.clone || !u.turn.bonus || u.chakra < CLONE.shuffleCost || effectMods(u.effects).noJutsu || figuresOf(s, u).length < 2) return null;
+  return threatened(s, u) ? { type: 'shuffle', unit: u.id } : null;
 }
 
 /** The clone jutsu a ninja knows (the one whose special is 'clone'), if any. */
@@ -236,7 +254,9 @@ function summonFirst(s: BattleState, u: Unit, i: Intent): Action | null {
   const enhanced = spec.enhCost > 0 && u.chakra >= jutsuCost(u, spec, true) + 2 * plan;
   if (!enhanced && u.chakra < jutsuCost(u, spec, false) + plan) return null;
   if (!summonSpots(s, u, enhanced).length) return null;
-  return { type: 'jutsu', unit: u.id, jutsu: id, at: { ...u.pos }, enhanced };
+  // Threatened, and the chakra for it on top: it shuffles with them as they come.
+  const shuffle = threatened(s, u) && u.chakra >= jutsuCost(u, spec, enhanced) + plan + CLONE.shuffleCost;
+  return { type: 'jutsu', unit: u.id, jutsu: id, at: { ...u.pos }, enhanced, ...(shuffle ? { shuffle } : {}) };
 }
 
 const avgOf = (dice?: string): number => {

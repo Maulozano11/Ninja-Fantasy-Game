@@ -15,6 +15,16 @@ import type { ActionButton, ButtonTip } from './hud';
 import { UnitCard } from './hud';
 import { iconUrl, kitText, Piece, slotFrameUrl } from './kit';
 import { cloneColor } from './renderer';
+import { disguisedNow } from '../../battle/clones';
+
+/**
+ * A clone of a foe in the middle of its Shadow Shuffle is shown as its ninja (the player can't tell
+ * them apart either); the player's own look-alikes keep their mark (he knows which is which).
+ */
+export function shownAs(s: BattleState, u: Unit): Unit {
+  const owner = u.clone ? s.units[u.clone.of] : undefined;
+  return owner && homeTeam(owner) !== 'party' && disguisedNow(s, owner) ? owner : u;
+}
 
 const CX = 800;
 const BOTTOM = 900;
@@ -46,7 +56,8 @@ function CloneMark({ u, x, y, w, lang }: { u: Unit; x: number; y: number; w: num
 /** Who the target plaque shows: the unit under the cursor, else an enemy acting now, else the boss. */
 export function plaqueUnit(s: BattleState, hovered?: string, acting?: string): Unit | undefined {
   const live = (u?: Unit) => (u && u.down !== 'dead' && u.down !== 'fled' ? u : undefined);
-  const h = live(hovered ? s.units[hovered] : undefined);
+  const h0 = live(hovered ? s.units[hovered] : undefined);
+  const h = h0 && shownAs(s, h0);
   if (h) return h.kind === 'hydra_head' ? live(Object.values(s.units).find((x) => x.kind === 'hydra_body')) ?? h : h;
   const a = live(acting ? s.units[acting] : undefined);
   if (a && homeTeam(a) === 'enemy' && a.kind !== 'hydra_head') return a;
@@ -119,15 +130,15 @@ export function TopPlaque({
       ) : (
         <>
           {rotated.map((id, i) => {
-            const u = state.units[id];
+            const u = shownAs(state, state.units[id]);
             if (i === 0) {
               return (
                 <button key={id} type="button" onClick={() => onPick(id)} title={unitName(u, lang)} style={{ position: 'absolute', left: x0, top: 82, width: 44, height: 44 }}>
                   <div style={{ opacity: u.clone ? 0.75 : 1 }}>
                     <Face u={u} x={6} y={6} w={32} h={32} />
                   </div>
-                  <CloneMark u={u} x={6} y={6} w={32} lang={lang} />
                   <Piece p="init_active" x={0} y={0} />
+                  <CloneMark u={u} x={6} y={6} w={32} lang={lang} />
                 </button>
               );
             }

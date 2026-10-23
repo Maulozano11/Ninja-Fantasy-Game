@@ -1913,7 +1913,8 @@ How it is built (`src/battle/clones.ts`, the engine, the AI and the screen). The
 
 - **A clone is a unit on the map** that takes no turns of its own: it acts in its summoner's turn.
   It has the summoner's look, sheet, AC, jutsu attack and DC; 1 HP and no chakra of its own. Each
-  cast replaces the clones still standing. Only once the fighting starts (not in the stealth phase).
+  cast replaces the clones still standing. (Superseded by his second answer below: a clone may be
+  controlled and take turns of its own, and the jutsu is cast while sneaking too.)
 - **Where it stands** (*proposal*, the simplest readable way): on a free cell 0.9–1.6 m from its
   summoner, on his level, never closer than 0.9 m to anyone else (so it is never drawn over
   another unit). The player doesn't walk the clones: **they follow their summoner**. Whenever he
@@ -1937,7 +1938,7 @@ How it is built (`src/battle/clones.ts`, the engine, the AI and the screen). The
 - **One blow and it is gone**: any damage that hurts it sends it up in smoke. **A blow aimed at the
   summoner is taken by a clone first**, as before: the nearest clone goes up in smoke where the blow
   struck, and the summoner is where that clone stood (they trade places, so the screen shows which
-  was the copy). Area jutsu, traps and explosions strike clones like anyone (a save that leaves no
+  was the copy). **Only a clone set to follow does this** (his third answer, below). Area jutsu, traps and explosions strike clones like anyone (a save that leaves no
   damage leaves it standing). When the summoner falls or flees, his clones go.
 - **Foes can strike a clone directly** (*proposal*), and are **confused by them**: an enemy that plans
   a blow, a kunai or a jutsu at a ninja with clones goes at one of the clones instead **n times in
@@ -1964,7 +1965,132 @@ How it is built (`src/battle/clones.ts`, the engine, the AI and the screen). The
 - **On the screen**: the clone is the ninja's own frame, washed in his chakra colour with a 1 px line
   of it round the body, and a little see-through; it stands up in a puff of smoke and vanishes in
   one; a combo is the clone's own lunge and swing at the target ("¡Combo!").
-- **Open for him**: the numbers above (1d6 combo, one die for a taijutsu, the confusion odds, the
-  clone's own action for its jutsu); whether the player should walk the clones by hand later;
-  whether an enemy template should know the jutsu (none does today: the AI uses it for the party's
-  ninjas on the AI, Hiro in practice). The jutsu keeps its rank B in the creator.
+- **Open for him** (first round): the numbers above (1d6 combo, one die for a taijutsu, the confusion
+  odds, the clone's own action for its jutsu); whether the player should walk the clones by hand
+  later; whether an enemy template should know the jutsu. The jutsu keeps its rank B in the creator.
+  The combo dice, the walking and the enemies are answered below.
+
+### His second answer (2026-10-23): combo dice, follow or control, act first, enemies
+
+We asked him: combo damage (1d6 per weapon blow, one die of the jutsu for taijutsu); clones follow the
+summoner (not walkable by hand); the confusion odds n in n + 2; the clone's look; no enemy knows the
+jutsu. His answer, verbatim: *"si es ataque cuerpo a cuerpo 1d6, si es ataque cuerpo a cuerpo con jutsu
+en taijutsu se usa el dado (osea si el clon usa una habilidad o si el usuario usa una habilidad de
+taijutsu compatible con los clones ) si el usuario usa ataque cuerpo a cuerpo (con arma o mano) es 1d6
+2 aparecer alado tuyo y te siguen si les pones seguir sigan a tu jugador o que los puedas controlar
+como si fueran tu personaje y cuando aparecen que salgan para controlarlos y moverlos primero que el
+resto del turno del jugador y aparezcan arriba del jugador que los invoco en la iniativa para que si
+estoy en sigilo y quiero crear clones y mandarlo a activar la alarma o trampa o como señuelo se pueda
+los enemigos si lo pueden aprener pero capitanes o los enemigos mas debiles pero solo en dificultad
+Elegido (la mas dificil)"*.
+
+1. **Combo dice — decided.** The summoner's melee blow (weapon or hand) that lands: each clone beside
+   the foe adds **1d6**. A taijutsu melee jutsu compatible with clones (the summoner's): each clone
+   adds **one die of the jutsu** (Hurricane Kick 2d6+3 → 1d6, the Rush 2d8 → 1d8). A taijutsu a clone
+   casts itself also strikes with **one die of the jutsu** ("si el clon usa una habilidad... se usa
+   el dado"). A controlled clone's own blow is **1d6** too ("si es ataque cuerpo a cuerpo 1d6";
+   bludgeoning, no modifier).
+2. **Follow or control — decided** (he gave both): each clone has a **Seguir / Controlar** switch on
+   its action bar.
+   - **Seguir** (follow): it keeps to its summoner's side and runs after him whenever he moves, takes
+     no turn of its own (its entry in the initiative is skipped) and casts its jutsu in its summoner's
+     turn, as before (the Clones button, or a click on it). Set to follow during its own turn, it runs
+     back to him and its turn ends.
+   - **Controlar** (control): it is played like a ninja of the party, in **its own turn** (*proposal*
+     for what it may do: walk, dash, strike in melee for 1d6, throw (his fourth answer), cast its
+     jutsu from the shared points, dodge, hide, crouch, throw a stone while sneaking; no items, no
+     Focus chakra, no shoves: a copy carries nothing and has no chakra). It doesn't follow.
+   - **A player's clones come out controlled; the AI's follow** (*proposal*: the AI plays clones as
+     built). A party ninja switched to the AI switches its clones with it; a controlled clone whose
+     summoner is on the AI goes back to following.
+   - *Proposal*: switched to Controlar during its summoner's turn, a clone that hasn't had a turn this
+     round plays it at once (the same way as on the summon); each clone plays **one turn a round**,
+     however often it is switched.
+3. **Initiative and acting first — decided.** The clones take their places in the initiative **right
+   above their summoner** (they share his roll; their portraits show in the turn row, see-through,
+   with a «CLON» tag in his chakra colour; a controlled clone's turn pips over its head are amber,
+   a following one's sky blue). When a player summons, **his turn waits** (half played: his action
+   and steps kept) while his new clones play theirs; then it picks up where it was. In the next
+   rounds their turns come right before his. Gone clones leave the order.
+4. **In the stealth phase — decided** ("si estoy en sigilo y quiero crear clones y mandarlo a activar la
+   alarma o trampa o como señuelo"): the jutsu is cast while sneaking (silently: it is not loud). The
+   clone comes out controlled with a full stealth move and acts any time in the stealth turn, like
+   the party (it never holds the guards' turn up: the stealth turn ends when the real ninjas are
+   done). A stealth turn counts as one of its 3 turns. Guards see a clone like a ninja: they grow
+   suspicious of **it** (not of its summoner), turn and go to look at it, and raise the alarm at it.
+   It sets off traps like anyone: a wire (the bells) raises the alarm where it stands; a tag blows it
+   up (and raises the alarm). When the fight starts, the clones stand above their summoner in the
+   order.
+   *Proposal*: a controlled clone is, to the enemy, one more ninja: the AI sees it, plans for it and
+   strikes it (it can't tell it from the real one), so it is a decoy in the fight too. A following
+   clone stays a shadow at its summoner's side (it only fools them, the n in n + 2).
+5. **Enemies learn it — decided, the builder's reading of two words**: every **captain** knows the clone
+   jutsu on every difficulty (Kagero today), and the **minions** ("los enemigos más débiles") only on
+   the hardest difficulty. **Reading**: his "Elegido" is the game's hardest difficulty, which the
+   game calls **Legend / Leyenda** (there is no difficulty named Elegido); sub-bosses and bosses,
+   which he didn't name, don't know it (`enemyKnowsClone` in `src/battle/units.ts`). The enemy AI
+   summons, follows, flanks, combos, casts and shuffles (below) with them.
+   Balance seen (AI-vs-AI, the mission's party of three, 20 raids each): night raid on Normal 11
+   defeats before, 9 after (4 once the shuffle came); on Legend, with every minion summoning, the
+   party of three lost all 10 night raids tried and 2 of 10 cedar-road fights. For him to judge.
+6. **Still proposals** (he didn't change them): the confusion odds (n in n + 2) and the clone's look.
+
+His third answer (2026-10-23), verbatim: *"solo cuando estan en seguir cuando un enemigo ataca al
+jugador invocador pasa eso de que el clon absorbe el ataque y el invocador cambia de lugar con el
+clon"*. **Decided**: only a clone set to **Seguir** takes the blow aimed at its summoner (and they trade
+places). A controlled clone never does, even standing right beside him; it can still be struck
+itself, and goes up in smoke at one blow.
+
+### The Shadow Shuffle (his fourth answer, 2026-10-23)
+
+We proposed a deceit in three parts: A) *Mezcla de sombras* (Shadow Shuffle): when summoning, or as a
+bonus action while clones exist, the summoner and his clones swap places in secret and the clones lose
+their chakra tint (they look exactly like him); the player sees a small marker on the real one,
+enemies don't; an enemy that targets him picks among the identical figures unless it passes a
+Perception (WIS) check against his jutsu save DC (clans with special eyes or senses with advantage);
+1 chakra a shuffle. B) *Golpe desde el engaño*: while an enemy doesn't know which is real, the real
+one's first attack on it has advantage, and the enemy tends to ignore the figures it believes are
+clones. C) How it is uncovered: being hit (he bleeds instead of going up in smoke) reveals him to all;
+doing what no clone can (items, a jutsu of rank B or more, being healed) reveals him; a foe with a
+clan eye beside him may uncover him on its turn with the check; with no clones left there is nobody
+to confuse. His answer, verbatim: *"Me encanta A+B+C juntas me encanta pero los clones si podrian
+lanzar shurikens o kunai o senbons"*.
+
+**Decided: A, B and C together, and clones can throw** (so throwing doesn't give the real one away).
+As built (`src/battle/clones.ts`, `seesThrough` in `combat.ts`, the engine, the AI and the screen):
+
+- **A, the shuffle**: a bonus action (the **Mezcla de sombras** button, with following clones beside
+  him), or with the cast itself (**M** while aiming the clone jutsu; its clones then come out
+  following, to mingle). Its chakra: **1** (*proposal*, `CLONE.shuffleCost`). The ninja and his
+  *following* clones trade places in a puff of smoke (who goes where comes from the battle's seed,
+  never the battle's dice); a controlled clone walking apart is not one of the look-alikes. The
+  clones then look exactly like him: no chakra wash, no see-through, his HP bar over each, no turn
+  pips. The player's own real one wears a **small gold ▼** only the player sees; a foe's shuffle has
+  none (the player can't tell either: the turn row and the target plaque show the clones as him).
+- **Seeing through**: per foe and per shuffle, a Perception check (WIS + proficiency) against his jutsu
+  save DC, with advantage for a keen-eyed clan (*proposal*: the **Mirai**, the Eye of Tomorrow; no clan
+  has a sensor yet). Its d20 is the foe's secret for that shuffle (drawn from the seed, the foe, the
+  ninja and the shuffle's number), so planning stays pure; a new shuffle is a new puzzle for everyone.
+  A foe that doesn't see through, planning a blow, a kunai or a jutsu at him or one of the
+  look-alikes, picks one of them (each as likely). One that sees through goes for the real one,
+  whichever figure it meant (it ignores the ones it knows are clones).
+- **B, the blow from the deceit**: the real one's **first attack roll** on each foe that doesn't know
+  has **advantage** ("engañado" on the roll), once per foe and shuffle. A clone's attack has none.
+- **C, uncovered for everyone**: any damage to the real one ("¡Era el verdadero!", in the log and over
+  him); using an item, or being treated with one; casting a jutsu of rank B or more (the clone jutsu
+  itself aside); being healed by a jutsu. A kunai (or any throw) or a rank D or C jutsu doesn't: a
+  clone could do those. **Uncovered for one foe**: a keen-eyed foe (*proposal*: within 1.6 m) beside
+  the real one, at the start of its turn, rolls the check on the battle's dice; if it passes, it knows
+  ("Kagero no se deja engañar: …"). **Over**: when no following clone is left beside him.
+  Note: a following clone still takes a blow aimed at him (his third answer), so a blow at the real
+  one usually ends in smoke and a trade of places; the real one is hit by area jutsu, traps, blows
+  that can't be blocked, or once his following clones are gone.
+- **Clone throws** (his amendment): a controlled clone throws what its summoner throws (`thrownOf` in
+  `src/battle/units.ts`: a kunai for everyone today; the senbon from `items/senbon` slots in there).
+  *Proposal*: **1d4, no modifier** (`CLONE.throwDice`), with the clone's attack roll; nothing is spent
+  (nobody counts kunai today).
+- **The AI**: a ninja with following clones beside it shuffles (its bonus action) when a foe that
+  isn't fooled comes within 8 m (*proposal*), and summons with a shuffle when threatened and its
+  chakra covers it. Its foes are confused as above.
+- **Open for him**: the shuffle's price (1 chakra), which clans see through with advantage (the Mirai
+  only?) and how near a keen eye must stand (1.6 m), the clone's throw (1d4, no ammo), the AI's 8 m.

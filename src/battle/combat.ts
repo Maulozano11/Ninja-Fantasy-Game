@@ -11,8 +11,8 @@ import { SHINOBI_CLASSES } from '../data/shinobiData';
 import type { BattleEvent, BattleState, DamageType, Pt, RollInfo, Unit } from './types';
 import { homeTeam } from './types';
 import { coverBetween, dist, fullCoverBetween, hideSpotAt, levelAtPt, lineOfSight, steamAt } from './map';
-import { KUNAI, KUNAI_LONG, wielded } from './units';
-import { cloneFlank, popClone, popClonesOf } from './clones';
+import { KUNAI, KUNAI_LONG, thrownOf, wielded } from './units';
+import { CLONE, cloneFlank, disguisedNow, popClone, popClonesOf, revealDisguise } from './clones';
 
 /** The next dice stream of the battle. */
 export function nextRng(s: BattleState): Rng {
@@ -60,6 +60,26 @@ export function skillMod(u: Unit, skill: string): number {
 }
 
 export const passivePerception = (u: Unit): number => 10 + skillMod(u, 'perception');
+
+/**
+ * Whether a foe tells the real ninja from its look-alike clones after a Shadow Shuffle (the owner's A):
+ * it knows already (it was told: a reveal, its keen eye beside it), or its Perception check (WIS)
+ * against the ninja's jutsu save DC passes; a keen-eyed clan (CLONE.keenClans) rolls with advantage.
+ * The check is the foe's own secret for this shuffle: its d20 comes from the battle's seed, the foe,
+ * the ninja and the shuffle's number (rngFor), never the battle's dice, so planning stays pure and
+ * the same state always reads the same. Not shuffled: there is nothing to see through.
+ */
+export function seesThrough(s: BattleState, foe: Unit, owner: Unit): boolean {
+  if (!disguisedNow(s, owner)) return true;
+  const d = owner.disguise!;
+  if (d.known.includes(foe.id)) return true;
+  const rng = rngFor(s.seed, 'seeThrough', foe.id, owner.id, d.n);
+  const r1 = rollDie(rng, 20);
+  const r2 = rollDie(rng, 20);
+  const keen = !!foe.character && CLONE.keenClans.includes(foe.character.clan);
+  const d20 = keen ? Math.max(r1, r2) : r1;
+  return d20 === 20 || (d20 !== 1 && d20 + skillMod(foe, 'perception') >= owner.saveDC);
+}
 
 /** A hidden unit gives itself away (an attack, a loud jutsu). */
 export function reveal(u: Unit, ev: BattleEvent[]): void {
@@ -175,7 +195,7 @@ export function attackPreview(s: BattleState, a: Unit, t: Unit, kind: AttackKind
     mod = a.jutsuAttack + am.allRolls - 2 * (a.character?.exhaustion ?? 0);
     inRange = d <= (opts.jutsuRange ?? 9) + 0.1;
   } else {
-    const w = kind === 'ranged' ? KUNAI : wielded(a);
+    const w = kind === 'ranged' ? thrownOf(a) : wielded(a);
     const ab = kind === 'ranged' ? abilityMod(a.stats.dex) : w.finesse ? Math.max(abilityMod(a.stats.str), abilityMod(a.stats.dex)) : abilityMod(a.stats.str);
     mod = a.prof + ab + am.allRolls - 2 * (a.character?.exhaustion ?? 0) + (kind === 'ranged' ? am.dexRolls : 0);
     inRange = kind === 'ranged' ? d <= KUNAI_LONG + 0.1 : d <= w.reach + 0.1 + (t.kind === 'hydra_head' ? 2.5 : 0) + (t.bulk ?? 0);
@@ -215,6 +235,12 @@ export function attackPreview(s: BattleState, a: Unit, t: Unit, kind: AttackKind
   if (a.cond.prone) {
     advs.push('disadvantage');
     reasons.push('attackerProne');
+  }
+  // From the deceit (the owner's B): the real one's first attack on a foe that doesn't know which
+  // figure it is comes like a surprise.
+  if (!a.clone && a.disguise && !a.disguise.struck.includes(t.id) && !seesThrough(s, t, a)) {
+    advs.push('advantage');
+    reasons.push('deceived');
   }
   if (am.disadvAttacks) {
     advs.push('disadvantage');
@@ -312,6 +338,8 @@ export function damage(s: BattleState, t: Unit, raw: number, type: DamageType, o
     if (raw > 0) popClone(s, t, 'hit', ev);
     return;
   }
+  // The real one hurt after a Shadow Shuffle: it bleeds where a clone would go up in smoke (the owner's C).
+  if (raw > 0) revealDisguise(s, t, ev);
   if (t.head?.severed) {
     // A cut stump is sealed by fire, lightning or an explosion; otherwise the head grows back.
     const how = o.explosion ? 'explosion' : type === 'Fire' ? 'fire' : type === 'Lightning' ? 'lightning' : undefined;

@@ -16,7 +16,8 @@ import { fooledBy, planIntent } from './intent';
 import { aiAction, runAi } from './ai';
 import { battleResult } from './result';
 import { JUTSU } from './jutsu';
-import { CLONE, clonesOf } from './clones';
+import { CLONE, clonesOf, disguisedNow, figuresOf } from './clones';
+import { seesThrough } from './combat';
 import { encounterSetup } from './encounters';
 import { enemyKnowsClone } from './units';
 import { openFight } from './stealth';
@@ -559,7 +560,7 @@ describe('follow or control', () => {
     assert.ok(of(out.events, 'note').some((e) => e.key === 'cloneFollows'));
   });
 
-  it('a controlled clone strikes in melee for 1d6 (no kunai, no items) and casts its jutsu in its turn', () => {
+  it('a controlled clone strikes in melee for 1d6 (no items, no focus) in its own turn', () => {
     const t = summon(battle()).state;
     const c = clonesOf(t, 'a')[0];
     place(t, 'rogue_0', { x: c.pos.x + 1.2, z: c.pos.z });
@@ -567,7 +568,6 @@ describe('follow or control', () => {
     const d = of(blow.events, 'damage').filter((e) => e.unit === 'rogue_0' && e.source === c.id);
     assert.equal(d.length, 1);
     assert.ok(d[0].amount >= 1 && d[0].amount <= 6, `the owner's 1d6 (${d[0].amount})`);
-    assert.equal(applyAction(t, { type: 'attack', unit: c.id, target: 'rogue_0', ranged: true }).reason, 'cloneMeleeOnly');
     assert.equal(applyAction(t, { type: 'item', unit: c.id, item: 'pill' }).reason, 'cloneCantDo');
     assert.equal(applyAction(t, { type: 'focus', unit: c.id }).reason, 'cloneCantDo');
     // Not in Aki's turn: it has its own.
@@ -743,5 +743,176 @@ describe('enemies who know the clone jutsu', () => {
     assert.ok(seen.length);
     assert.ok(seen.every((c) => c.clone?.mode === 'follow' && c.team === 'enemy'));
     assert.equal(t.order.indexOf(seen[seen.length - 1].id), t.order.indexOf(k.id) - 1);
+  });
+});
+
+describe('the Shadow Shuffle (the owner: "Me encanta A+B+C juntas")', () => {
+  /** Aki with two following clones, the rogue 5 m off. */
+  function shuffled(seed = 11): BattleState {
+    const s0 = battle({ seed });
+    place(s0, 'rogue_0', { x: s0.units.a.pos.x + 5, z: s0.units.a.pos.z });
+    const s = follow(s0, true).state;
+    s.units.a.turn.bonus = true;
+    return ok(applyAction(s, { type: 'shuffle', unit: 'a' })).state;
+  }
+
+  it('A: a bonus action for 1 chakra: Aki and his following clones swap places in secret, and every foe starts unknowing', () => {
+    const s0 = battle();
+    const s = follow(s0, true).state;
+    s.units.a.turn.bonus = true;
+    const before = Object.fromEntries(figuresOf(s, 'a' in s.units ? s.units.a : s.units.a).map((f) => [f.id, { ...f.pos }]));
+    const spots = Object.values(before);
+    const out = ok(applyAction(s, { type: 'shuffle', unit: 'a' }));
+    const t = out.state;
+    assert.ok(disguisedNow(t, t.units.a));
+    assert.equal(t.units.a.chakra, s.units.a.chakra - CLONE.shuffleCost);
+    assert.equal(t.units.a.turn.bonus, false);
+    assert.deepEqual(t.units.a.disguise, { n: 1, known: [], struck: [] });
+    // The same cells, shared out again.
+    for (const f of figuresOf(t, t.units.a)) assert.ok(spots.some((p) => dist(p, f.pos) < 0.05));
+    assert.ok(of(out.events, 'note').some((e) => e.key === 'shadowShuffle'));
+    // The same state shuffles the same way.
+    assert.deepEqual(applyAction(s, { type: 'shuffle', unit: 'a' }).state.units.a.pos, t.units.a.pos);
+    // No following clone: nothing to shuffle with.
+    const none = battle();
+    assert.equal(applyAction(none, { type: 'shuffle', unit: 'a' }).reason, 'noClones');
+    // With the cast itself: its clones come out following, mingled.
+    const cast = ok(applyAction(battle(), { type: 'jutsu', unit: 'a', jutsu: CLONE_JUTSU, at: { ...s0.units.a.pos }, enhanced: true, shuffle: true }));
+    assert.ok(disguisedNow(cast.state, cast.state.units.a));
+    assert.equal(current(cast.state)?.id, 'a');
+    assert.equal(cast.state.units.a.chakra, 40 - JUTSU[CLONE_JUTSU].cost - JUTSU[CLONE_JUTSU].enhCost - CLONE.shuffleCost);
+  });
+
+  it('A: a foe that does not see through picks among the look-alikes; one that does goes for the real one', () => {
+    let fooledSeeds = 0;
+    let seeingSeeds = 0;
+    for (let seed = 1; seed <= 40; seed++) {
+      const s = shuffled(seed);
+      const r = s.units.rogue_0;
+      const plan = { kind: 'melee' as const, what: 'Blade', target: clonesOf(s, 'a')[0].id };
+      if (seesThrough(s, r, s.units.a)) {
+        seeingSeeds++;
+        assert.equal(fooledBy(s, r, plan).target, 'a', 'it ignores the clone it knows for one');
+      } else {
+        fooledSeeds++;
+        const picks = new Set<string>();
+        for (let tick = 0; tick < 60; tick++) picks.add(fooledBy({ ...s, tick }, r, { ...plan, target: 'a' }).target!);
+        assert.deepEqual([...picks].sort(), figuresOf(s, s.units.a).map((f) => f.id).sort());
+      }
+    }
+    assert.ok(fooledSeeds > 0 && seeingSeeds > 0, `${fooledSeeds} / ${seeingSeeds}`);
+  });
+
+  it('A: a keen-eyed clan (the Mirai) sees through more often', () => {
+    let plain = 0;
+    let keen = 0;
+    for (let seed = 1; seed <= 200; seed++) {
+      const s = shuffled(seed);
+      const r = s.units.rogue_0;
+      if (seesThrough(s, r, s.units.a)) plain++;
+      const k = structuredClone(r);
+      k.character = { ...k.character!, clan: 'Mirai' };
+      const m = structuredClone(r);
+      m.character = { ...m.character!, clan: 'Koton' };
+      if (seesThrough(s, k, s.units.a) && !seesThrough(s, m, s.units.a)) keen++;
+    }
+    assert.ok(keen > 10, `${keen}`);
+    void plain;
+  });
+
+  it('B: the real one strikes a foe that does not know with advantage, once', () => {
+    let s: BattleState | undefined;
+    for (let seed = 1; seed <= 40 && !s; seed++) {
+      const t = shuffled(seed);
+      if (!seesThrough(t, t.units.rogue_0, t.units.a)) s = t;
+    }
+    assert.ok(s);
+    place(s, 'rogue_0', { x: s.units.a.pos.x + 1.2, z: s.units.a.pos.z });
+    const pv = attackPreview(s, s.units.a, s.units.rogue_0, 'melee');
+    assert.ok(pv.reasons.includes('deceived'));
+    assert.equal(pv.adv, 'advantage');
+    const out = until(s, { type: 'attack', unit: 'a', target: 'rogue_0' }, (o) => !of(o.events, 'attack')[0]?.roll.success);
+    assert.ok(of(out.events, 'attack')[0].reasons?.includes('deceived'));
+    assert.deepEqual(out.state.units.a.disguise?.struck, ['rogue_0']);
+    assert.ok(!attackPreview(out.state, out.state.units.a, out.state.units.rogue_0, 'melee').reasons.includes('deceived'), 'only the first attack');
+    // A clone's blow has no such edge (it is the deceit, not the one it hides).
+    const c = clonesOf(s, 'a')[0];
+    assert.ok(!attackPreview(s, c, s.units.rogue_0, 'melee').reasons.includes('deceived'));
+  });
+
+  it('C: hit, the real one bleeds and everyone knows ("¡Era el verdadero!")', () => {
+    const s = shuffled();
+    s.units.rogue_0.cond.warpEdge = true; // unblockable: no clone takes it
+    place(s, 'rogue_0', { x: s.units.a.pos.x + 1.2, z: s.units.a.pos.z });
+    const r = turnOf(s, 'rogue_0');
+    const out = until(r, { type: 'attack', unit: 'rogue_0', target: 'a' }, (o) => of(o.events, 'damage').some((e) => e.unit === 'a'));
+    assert.equal(out.state.units.a.disguise, undefined);
+    assert.ok(of(out.events, 'note').some((e) => e.key === 'disguiseRevealed'));
+    assert.equal(logLine({ t: 'note', key: 'disguiseRevealed', params: { name: 'Aki' } }, s, 'es')?.text, '¡Era el verdadero! Aki queda al descubierto');
+  });
+
+  it('C: what no clone can do gives him away (an item, a rank B+ jutsu); a kunai, a rank C jutsu do not; with no following clone the trick is over', () => {
+    const s = shuffled();
+    s.supplies.soldierPills = 1;
+    s.units.a.chakra = 20;
+    s.units.a.turn.bonus = true;
+    const pill = ok(applyAction(s, { type: 'item', unit: 'a', item: 'pill' }));
+    assert.equal(pill.state.units.a.disguise, undefined);
+    assert.ok(of(pill.events, 'note').some((e) => e.key === 'disguiseRevealed'));
+    const kunai = ok(applyAction(s, { type: 'attack', unit: 'a', target: 'rogue_0', ranged: true }));
+    assert.ok(kunai.state.units.a.disguise, 'a clone could throw it too');
+    const c = structuredClone(s);
+    c.units.a.chakra = 40;
+    const rankC = ok(applyAction(c, { type: 'jutsu', unit: 'a', jutsu: C_WIND, at: { ...c.units.rogue_0.pos } }));
+    assert.ok(rankC.state.units.a.disguise, 'a clone may cast a rank C (enhanced)');
+    const rankB = Object.values(JUTSU).find((j) => j.rank === 'B' && !j.special && j.dmgType && !j.melee && !j.ability && j.cast !== 'reaction' && j.shape === 'single')!;
+    c.units.a.jutsus.push(rankB.id);
+    const cast = ok(applyAction(c, { type: 'jutsu', unit: 'a', jutsu: rankB.id, at: { ...c.units.rogue_0.pos }, target: 'rogue_0' }));
+    assert.equal(cast.state.units.a.disguise, undefined);
+    // Both clones taken in hand (they walk apart): no look-alike left.
+    let t = shuffled();
+    const [c1, c2] = clonesOf(t, 'a');
+    t = ok(applyAction(t, { type: 'cloneMode', unit: c1.id, mode: 'control' })).state;
+    assert.ok(disguisedNow(t, t.units.a), 'one look-alike still beside him');
+    t = ok(applyAction(t, { type: 'cloneMode', unit: c2.id, mode: 'control' })).state;
+    assert.equal(t.units.a.disguise, undefined);
+  });
+
+  it('C: a keen-eyed foe beside the real one may uncover him on its turn (it alone knows then)', () => {
+    let found = false;
+    for (let seed = 1; seed <= 80 && !found; seed++) {
+      const s = shuffled(seed);
+      s.units.rogue_0.character = { ...s.units.rogue_0.character!, clan: 'Mirai' };
+      if (seesThrough(s, s.units.rogue_0, s.units.a)) continue;
+      place(s, 'rogue_0', { x: s.units.a.pos.x + 1.2, z: s.units.a.pos.z });
+      const out = ok(applyAction(s, { type: 'endTurn', unit: 'a' }));
+      const st = out.state;
+      if (st.units.a.disguise?.known.includes('rogue_0')) {
+        found = true;
+        assert.ok(of(out.events, 'note').some((e) => e.key === 'disguiseSeen'));
+        assert.ok(seesThrough(st, st.units.rogue_0, st.units.a));
+        assert.ok(disguisedNow(st, st.units.a), 'the others still don’t know');
+      }
+    }
+    assert.ok(found, 'some seed uncovers him');
+  });
+
+  it('clones throw too (the owner: "los clones si podrian lanzar shurikens o kunai o senbons"): the thrown weapon, CLONE.throwDice', () => {
+    const t = summon(battle()).state;
+    const c = clonesOf(t, 'a')[0];
+    place(t, 'rogue_0', { x: c.pos.x + 5, z: c.pos.z });
+    const out = until(t, { type: 'attack', unit: c.id, target: 'rogue_0', ranged: true }, (o) => of(o.events, 'attack')[0]?.roll.success && !of(o.events, 'attack')[0]?.roll.crit);
+    assert.equal(of(out.events, 'attack')[0].what, 'Kunai');
+    const d = of(out.events, 'damage').find((e) => e.unit === 'rogue_0' && e.source === c.id)!;
+    assert.ok(d.amount >= 1 && d.amount <= 4, `1d4 (${d.amount})`);
+    assert.equal(d.dmgType, 'Piercing');
+  });
+
+  it('the AI: a ninja with clones beside it shuffles when a foe comes near', () => {
+    const s = summon(battle({ party: [{ character: hero({ id: 'a', name: 'Aki', clan: 'Koton' }), pos: { x: 8, z: 10 }, controller: 'ai' }] }), true).state;
+    s.units.a.turn.bonus = true;
+    s.units.a.turn.action = true;
+    place(s, 'rogue_0', { x: s.units.a.pos.x + 5, z: s.units.a.pos.z });
+    assert.deepEqual(aiAction(s), { type: 'shuffle', unit: 'a' });
   });
 });

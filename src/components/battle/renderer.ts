@@ -28,6 +28,7 @@ import { GRID, RES } from '../../sprite/raster';
 import { depthFx, drawAuraBack, drawCracks, drawDouses, drawWetGround, drawHeld, drawLinger, drawScreenBlood, drawVfxSprite, drawWallSprite, wallTint } from './vfxSprites';
 import { isTintElement, vfxTintColors } from '../../sprite/vfxTint';
 import { CHAKRA_COLORS } from '../../sprite/chakra';
+import { disguisedNow } from '../../battle/clones';
 import { jutsuTint } from './vfxTintPlan';
 
 export interface Camera {
@@ -894,8 +895,10 @@ function drawUnit(ctx: CanvasRenderingContext2D, sc: Scene, u: Unit, pos: Pt): v
         : undefined;
   const fr0 = unitFrame(u, look, v.pose, frame, aura);
   // A clone: the same frame, washed in its ninja's chakra colour with a line of it round the body,
-  // and a little see-through, so it is told apart from the real one at a glance.
-  const fr = u.clone ? { ...cloneFrame(fr0, cloneColor(look)), rig: fr0.rig } : fr0;
+  // and a little see-through, so it is told apart from the real one at a glance. After a Shadow
+  // Shuffle it looks exactly like its ninja (the owner's A).
+  const lookAlike = !!u.clone && disguisedNow(sc.state, sc.state.units[u.clone.of]);
+  const fr = u.clone && !lookAlike ? { ...cloneFrame(fr0, cloneColor(look)), rig: fr0.rig } : fr0;
   let lx = 0;
   let ly = 0;
   if (v.lunge) {
@@ -913,7 +916,7 @@ function drawUnit(ctx: CanvasRenderingContext2D, sc: Scene, u: Unit, pos: Pt): v
   const solid = (k: number, facing: 1 | -1 = v.facing, img: FrameCanvas = fr): void => {
     if (k <= 0) return;
     ctx.save();
-    ctx.globalAlpha = alpha * k * (hurt && Math.floor(now / 60) % 2 ? 0.55 : 1) * (u.clone ? CLONE_ALPHA : 1);
+    ctx.globalAlpha = alpha * k * (hurt && Math.floor(now / 60) % 2 ? 0.55 : 1) * (u.clone && !lookAlike ? CLONE_ALPHA : 1);
     // In the river the body sinks: deep water hides the legs, shallow water the feet.
     if (water !== 'none' && v.pose !== 'downed') {
       ctx.beginPath();
@@ -2099,7 +2102,23 @@ function drawMarks(ctx: CanvasRenderingContext2D, sc: Scene): void {
       top = { X: s.X, Y: s.Y - (v.pose === 'downed' ? 40 : 108) };
     }
     const s = toScreen(top.X, top.Y);
-    if (u.clone) {
+    // After a Shadow Shuffle a clone shows its ninja's bar (the foes see the same ninja twice), and
+    // the player's own real one wears a small gold mark only the player sees.
+    const real = u.clone ? sc.state.units[u.clone.of] : u;
+    const lookAlike = !!real && disguisedNow(state, real);
+    if (lookAlike && !u.clone && homeTeam(u) === 'party') {
+      ctx.fillStyle = '#fcd34d';
+      ctx.strokeStyle = 'rgba(8, 10, 18, 0.9)';
+      ctx.lineWidth = f(1.5);
+      ctx.beginPath();
+      ctx.moveTo(s.x - f(6), s.y - f(16));
+      ctx.lineTo(s.x + f(6), s.y - f(16));
+      ctx.lineTo(s.x, s.y - f(7));
+      ctx.closePath();
+      ctx.stroke();
+      ctx.fill();
+    }
+    if (u.clone && !lookAlike) {
       // A clone has no HP to show: one pip for each of its summoner's turns it has left.
       const n = u.clone.turns;
       const pip = f(5);
@@ -2116,7 +2135,8 @@ function drawMarks(ctx: CanvasRenderingContext2D, sc: Scene): void {
     }
     const w = f(u.kind === 'hydra_body' ? 80 : 34);
     const h = f(4);
-    const frac = Math.max(0, Math.min(1, v.hp / u.maxHp));
+    const shownHp = lookAlike && u.clone ? sc.pb.views.get(real.id)?.hp ?? real.hp : v.hp;
+    const frac = Math.max(0, Math.min(1, shownHp / (lookAlike && u.clone ? real.maxHp : u.maxHp)));
     ctx.fillStyle = 'rgba(8, 10, 18, 0.8)';
     ctx.fillRect(s.x - w / 2 - 1, s.y - 1, w + 2, h + 2);
     // An enemy under Command fights for the party for now: violet, not the hostile red.

@@ -6,8 +6,8 @@
 // drift his spray. They are decoded here from vfx-beasts-ref-water2.ts, so the build needs no images.
 //
 //   WORLD_OUT=<dir> npx tsx tools/world-sprites/vfx-beast-waterdragon.ts
-//   SOLID_OUTLINE=1 adds the characters' dark outline around his drake's body, not his spray
-//   (solid-outline.ts; a proposal, off by default so the sheet stays the approved one).
+//   His drake's body gets the characters' dark outline, his spray none (solid-outline.ts; the owner's
+//   decision of 2026-10-22). SOLID_OUTLINE=0 builds it without the line, as it was before.
 //
 // buildWaterDragon() is exported so the sprite can later join the vfx_beasts group.
 
@@ -16,7 +16,7 @@ import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { Canvas, WorldSprite, hex, writeGroup } from './kit';
 import * as REF from './vfx-beasts-ref-water2';
-import { solidOutlineFrames, solidOutlineRequested } from './solid-outline';
+import { solidOutlineFrames, solidOutlineOn } from './solid-outline';
 
 interface RefSheet {
   SIZE: [number, number];
@@ -72,11 +72,11 @@ function cropToUnion(frames: Canvas[], ax: number, ay: number): { frames: Canvas
 }
 
 /**
- * The owner's water drake: fly, 8 frames at 10 fps, looping. With `outline` each frame gets the
+ * The owner's water drake: fly, 8 frames at 10 fps, looping. With `outline` (the default) each frame gets the
  * characters' dark line outside his drake's body (his droplets keep none), before the crop, so the
  * frame keeps its clear border.
  */
-export function buildWaterDragon({ outline = solidOutlineRequested() }: { outline?: boolean } = {}): WorldSprite {
+export function buildWaterDragon({ outline = solidOutlineOn() }: { outline?: boolean } = {}): WorldSprite {
   let fly = refFrames(REF).fly;
   if (outline) {
     const lined = solidOutlineFrames(fly);

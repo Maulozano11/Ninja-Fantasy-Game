@@ -31,11 +31,15 @@
 // (the renderer mirrors it when the cobra flies left). To merge into vfx-beasts.ts: import
 // { cobraFromRef } from './vfx-beast-cobra' and put it in BUILDERS in place of venomCobra
 // (['poison', cobraFromRef]); the old procedural venomCobra can then go.
+//
+// The characters' black line goes round the cobra (solid-outline.ts, the owner's decision of 2026-10-22;
+// SOLID_OUTLINE=0 leaves it off), never round his purple venom mist.
 
 import { mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { Canvas, WorldSprite, hex, writeGroup } from './kit';
 import * as REF_POISON from './vfx-beasts-ref-poison';
+import { outlineSprite, solidOutlineOn, type SolidOutlineOptions } from './solid-outline';
 
 interface RefSheet {
   SIZE: [number, number];
@@ -69,8 +73,11 @@ function decode(ref: RefSheet): Record<string, Canvas[]> {
   return out;
 }
 
+/** The line's options for this beast. */
+export const COBRA_LINE: SolidOutlineOptions = { particleColour: (r, g, b) => b > g + 20 && r > g + 20 };
+
 /** The venom cobra (vfx_beasts/poison): 'fly' (loop), cropped to the union of its frames + 1 px. */
-export function cobraFromRef(): WorldSprite {
+export function cobraFromRef({ outline = solidOutlineOn() }: { outline?: boolean } = {}): WorldSprite {
   const f = decode(REF_POISON);
   const anims: [string, Canvas[], number, boolean][] = [['fly', f.fly, REF_POISON.FPS, true]];
   let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
@@ -96,7 +103,7 @@ export function cobraFromRef(): WorldSprite {
   for (const [key, frames, fps, loop] of anims) out[key] = { frames: frames.map(crop), fps, loop };
   const [ax, ay] = REF_POISON.ANCHOR;
   const w = x1 - x0 + 1, h = y1 - y0 + 1;
-  return {
+  const s: WorldSprite = {
     name: 'poison',
     label: 'Venom cobra (poison)',
     meters: [Math.round((w / 57) * 10) / 10, Math.round((h / 57) * 10) / 10],
@@ -104,6 +111,7 @@ export function cobraFromRef(): WorldSprite {
     tags: ['vfx'],
     anims: out,
   };
+  return outline ? outlineSprite(s, COBRA_LINE) : s;
 }
 
 /** No opaque pixel may touch a frame's border (the renderer would show a hard edge). */
@@ -123,8 +131,10 @@ function main(): void {
     console.error('vfx-beast-cobra: set WORLD_OUT=<dir> (this sprite is waiting for approval; it is never written into src/assets).');
     process.exit(1);
   }
-  const sprite = cobraFromRef();
-  checkBorders(sprite);
+  // The border check is on his art; the line may then take the clear pixel round it.
+  const art = cobraFromRef({ outline: false });
+  checkBorders(art);
+  const sprite = solidOutlineOn() ? outlineSprite(art, COBRA_LINE) : art;
   // Each file is written whole: the group goes to a temp folder first and is then renamed into place.
   const tmp = join(root, `.${GROUP}.part`);
   rmSync(tmp, { recursive: true, force: true });

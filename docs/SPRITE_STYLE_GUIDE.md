@@ -37,6 +37,16 @@ npm run sprites -- preset <presetId> out.png  # a preset in every pose
   background with the figure on three sides, one of them not line), and takes away stray specks of 1–2 pixels.
   Real gaps stay: anything bigger or open to the outside, a notch the line goes round, and what an effect
   walls in. **Idle is left exactly as drawn** (it is the frame his pictures were copied into).
+- Jutsu effects (decided 2026-10-22, the owner: *"1 si 2 cambia 3 si"*): **solid jutsu get the characters'
+  black line, energy gets none.** Solid: the beasts, rock (earth walls, thrown rocks, spikes, rubble),
+  crystal walls, the poison walls' stone frame, the chakra barriers' gold frame, the wood dragon and roots,
+  the dragon heads. Energy: fire, lightning, wind, water, chakra, poison and genjutsu bolts and streams,
+  auras, blasts, smoke, dust, mist, slime, glow, spray. The line is 1 px outside the silhouette in the
+  characters' colour rule (never over a pixel of his, never a second line outside his own dark line), and
+  where his line is not dark (the raiju's brown, the crane's teal) it is recoloured to it. No line where an
+  effect comes out of something else (a head out of the fire, a dragon out of the wave, a root out of the
+  ground). The generators lay it with `tools/world-sprites/solid-outline.ts`; a new solid effect's generator
+  must too (`outlineSprite`, naming its own energy colours with `particleColour`).
 
 ## 3. Light and values
 

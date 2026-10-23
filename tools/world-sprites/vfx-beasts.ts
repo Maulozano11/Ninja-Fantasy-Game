@@ -18,11 +18,18 @@
 // anchored to the surface (so the texture rides the motion). A part in front leaves a dark inner
 // line on the part behind it, and every part carries a 1 px outline tinted by its material.
 // Particles (spray, sparks, pebbles, petals, drips) go on top.
+//
+// The raiju, the crane and the stone drake carry the characters' black line round their bodies
+// (solid-outline.ts, the owner's decision of 2026-10-22; SOLID_OUTLINE=0 leaves it off): the raiju's
+// brown line and the crane's teal line are recoloured to it ("2 cambia"), their lightning streaks,
+// wind wisps and the drake's dust get none.
 
 import { existsSync, readFileSync, renameSync } from 'node:fs';
 import { join } from 'node:path';
 import { inflateSync } from 'node:zlib';
 import { CHARACTER_FEET, Canvas, Color, LIGHT, MATERIALS, WorldSprite, characterRef, hash, hex, mix, noise, previewDir, ramp, toHex, withAlpha, writeGroup } from './kit';
+import { outlineSprite, solidOutlineOn } from './solid-outline';
+import { CRANE_OUTLINE, DRAKE_OUTLINE, RAIJU_OUTLINE } from './solid-outline-sets';
 import * as REF_EARTH from './vfx-beasts-ref-earth';
 import * as REF_FIRE from './vfx-beasts-ref-fire';
 import * as REF_LIGHTNING from './vfx-beasts-ref-lightning';
@@ -430,7 +437,8 @@ function phoenix(): WorldSprite {
 
 function raiju(): WorldSprite {
   const f = refFrames(REF_LIGHTNING);
-  return beastSprite('lightning', 'Raiju (lightning)', [3, 1.5], [['fly', f.fly, 12, true]], ...REF_LIGHTNING.ANCHOR);
+  const s = beastSprite('lightning', 'Raiju (lightning)', [3, 1.5], [['fly', f.fly, 12, true]], ...REF_LIGHTNING.ANCHOR);
+  return solidOutlineOn() ? outlineSprite(s, RAIJU_OUTLINE) : s;
 }
 
 // =============================================================================================
@@ -634,7 +642,8 @@ interface CraneWing {
 
 function windCrane(): WorldSprite {
   const f = refFrames(REF_WIND);
-  return beastSprite('wind', 'Wind crane', [2.6, 2.0], [['fly', f.fly, 12, true]], ...REF_WIND.ANCHOR);
+  const s = beastSprite('wind', 'Wind crane', [2.6, 2.0], [['fly', f.fly, 12, true]], ...REF_WIND.ANCHOR);
+  return solidOutlineOn() ? outlineSprite(s, CRANE_OUTLINE) : s;
 }
 
 // =============================================================================================
@@ -659,7 +668,8 @@ function windCrane(): WorldSprite {
 function stoneDrake(): WorldSprite {
   const f = refFrames(REF_EARTH);
   // 3 px clear on every side (the other beasts keep 1).
-  return beastSprite('earth', 'Stone drake (earth)', [4.1, 2.5], [['fly', f.fly, 12, true]], REF_EARTH.ANCHOR[0], REF_EARTH.ANCHOR[1], 3);
+  const s = beastSprite('earth', 'Stone drake (earth)', [4.1, 2.5], [['fly', f.fly, 12, true]], REF_EARTH.ANCHOR[0], REF_EARTH.ANCHOR[1], 3);
+  return solidOutlineOn() ? outlineSprite(s, DRAKE_OUTLINE) : s;
 }
 
 // =============================================================================================

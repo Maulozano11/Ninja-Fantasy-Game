@@ -53,8 +53,8 @@ export interface CastChoice {
   jutsu?: Record<string, CastStyle>;
 }
 
-/** The eye options; valiant and night are the owner's own eyes from his Aiden and his Ren pictures, in his pixels; keen is his Lyra's, in her colours at our scale. */
-export type EyeShape = 'standard' | 'sharp' | 'round' | 'calm' | 'fierce' | 'bright' | 'piercing' | 'valiant' | 'night' | 'keen';
+/** The eye options; valiant, night and roman are the owner's own eyes from his Aiden, Ren and Roman pictures, in his pixels; keen is his Lyra's, in her colours at our scale. */
+export type EyeShape = 'standard' | 'sharp' | 'round' | 'calm' | 'fierce' | 'bright' | 'piercing' | 'valiant' | 'night' | 'keen' | 'roman';
 
 /**
  * The owner's heroines' long neck (neck.ts): his Lyra carries the head further forward on a slimmer neck.
@@ -72,8 +72,9 @@ export type ArmType = 'standard' | 'long';
  * from his Aiden picture (valiant: his skull, ear, cheeks, jaw and chin in his pixels), or from his Ren
  * picture (night: his narrower face with his own mouth, in his pixels); or his Lyra's face (fine: her
  * narrower face, mouth and chin in his pixels, under our skull).
+ * Or roman, from his Roman paint-over (his whole face with his nose and mouth, in his pixels).
  */
-export type FaceShape = 'tapered' | 'soft' | 'square' | 'valiant' | 'night' | 'founder' | 'fine';
+export type FaceShape = 'tapered' | 'soft' | 'square' | 'valiant' | 'night' | 'founder' | 'fine' | 'roman';
 
 /** Single-choice equipment slots, drawn back-to-front by depth (see compose.ts). */
 export type SlotId =

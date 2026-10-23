@@ -405,3 +405,35 @@ folders.
   `hers-vs-pieces@8.png`.
 
       python3 -I tools/refs/lyra-boots-from-ref.py docs/reference/lyra-game-scale-owner-reference.jpg <out> src/sprite/items/lyraBootsArt.ts
+- `roman-skin-from-ref.py`, `roman-head-from-ref.py`, `roman-eyes-from-ref.py`: from the same picture, his skin on our
+  male bodies (upper arms down to the elbow, fists, and each leg whole for our thigh and our shin, registered as
+  his sandals are, the laces taken off across each row; continued along each limb where ours reaches past what
+  he shows; his darker shadow tone) and his face as the `roman` face and eye shapes (his head registered on
+  ours by its eyes and ear, 3 px lower than he painted it; his skull under the hair is our male skull's cells,
+  without his bangs' shadow, its line running into his ear's). Each writes a study at 8x (16x for the eyes)
+  into `<out>/study/`. `roman-test-pixels-from-ref.py` writes his skin pixels as he painted them
+  (`src/sprite/romanRefPixels.ts`) for `src/sprite/maleSkin.test.ts`, which checks the frames against his
+  picture, not against the lifted pieces.
+
+      python3 -I tools/refs/roman-skin-from-ref.py docs/reference/roman-owner-reference.jpg <out> src/sprite/maleSkinArt.ts
+      python3 -I tools/refs/roman-head-from-ref.py docs/reference/roman-owner-reference.jpg <out> src/sprite/romanHeadArt.ts
+      python3 -I tools/refs/roman-eyes-from-ref.py docs/reference/roman-owner-reference.jpg <out> src/sprite/romanEyeArt.ts
+      python3 -I tools/refs/roman-test-pixels-from-ref.py docs/reference/roman-owner-reference.jpg src/sprite/romanRefPixels.ts
+- `roman-sit-rock-from-ref.py`: the grey rock from the owner's Roman sit (`docs/reference/roman-sit-owner-reference.jpg`,
+  2000/240 picture px per pixel of his) as a seat prop (`src/sprite/seatBoulderArt.ts`, `src/sprite/seats.ts`). His
+  figure there is 80% of ours; he chose to build the sit at our scale ("romano sentado a"), so the rock is scaled by
+  1.25 (nearest neighbour) with it. Every cell one of his four frames shows is his; what his figure hides is his
+  front face 16 (else 8) rows below, else his nearest rock pixel, his line along the new edges. The sit pose
+  (`rig.ts` SIT) takes his joints off the same frames, scaled the same way.
+
+      python3 -I tools/refs/roman-sit-rock-from-ref.py [src/sprite/seatBoulderArt.ts] [study.png]
+- `roman-read-from-ref.py`: the book and hands of the owner's two frames of his Trunks reading
+  (`docs/reference/trunks-read-owner-reference.jpg`, about 17.3 picture px across and 16.8 down per pixel of his)
+  for the male read (`src/sprite/maleReadArt.ts`, drawn by `campfx.ts`), his answer "leer mira la referencia de
+  trunks y copiala a leer de romano". He painted over our read at our scale (one of his pixels is one fine pixel),
+  so every piece lands where he drew it. The book is his pixels; the hands are his hands' shape (gloved) with their
+  tones matched by brightness to his Roman fists' tones (the Roman's hands are bare), his black line kept. The
+  read pose (`rig.ts` READ_JOINTS) takes his joints off the same frames. His grid is found by
+  `owner_paintover.py` (copied byte for byte from `heroine/lyra-v2`), with a pitch per axis.
+
+      python3 -I tools/refs/roman-read-from-ref.py [src/sprite/maleReadArt.ts] [study.png]

@@ -177,6 +177,14 @@ entonces es involuntario y entre mas niveles (max 3) mas dados de daño tira 2 n
 3d6 6 si es un personaje de largo alcance que le conviene estar lejos si , si es de corto alcance
 entonces si baja 7 aun no la pruebo espera con esa decision"*.
 
+His second round the same day, on what was still open (which jutsu reach further from above; a
+rock as high as a man hiding a ninja; walls of two levels; looking down from two levels), verbatim:
+*"jutsus sin alcance extra ; conos solo conos los demas si les da mas alcance la propuesta me gusta
+rocas altas y objetos altos para tapar la vista y tus propuestas del muro me gusta y el otro
+proponlo pero es similar solo inverso"*. Read as: only cones get no extra reach, everything else
+does; tall rocks and tall objects hide what is behind them; walls of two levels only by stairs,
+ladder or the ninja jump; and looking down works like looking up, the other way round.
+
 - **Drawing.** A ninja is drawn as high as the ground under its feet (one level = 86 px). Walking
   up a ramp, stairs, a ledge or a ladder moves the sprite up smoothly, step by step; a climb plays
   at a walk, slower than the ground it covers (the height counts double), so it is seen. While a
@@ -188,32 +196,46 @@ entonces si baja 7 aun no la pruebo espera con esa decision"*.
   step plus **1.5 m**. A **ladder** (or vines) is paid the same way for every bit of height: up a
   3 m tower's ladder, 6 m on top of the steps. Nobody stops on a ladder's rungs. (Before: 4 m up,
   1 m down, a guess never written here.)
-- **Walls of 2 levels or more (P)** (a 3 m cliff, a tower's sides) can't be climbed: take the
-  stairs or the ladder, or the **ninja jump** (bonus action: a level up costs 0.5 m, down 0.25 m;
-  this is the "wall run" above).
+- **Walls of 2 levels or more (D, his second round: "tus propuestas del muro me gusta")** (a 3 m
+  cliff, a tower's sides) can't be climbed: take the stairs or the ladder, or the **ninja jump**
+  (bonus action: a level up costs 0.5 m, down 0.25 m; this is the "wall run" above).
 - **High ground (as written above, unchanged):** +2 to hit from a level or more above the target,
   −2 from below.
 - **Range from high ground (D, his answer 2: "kunai shuriken y jutsus y todo lo que podria
-  afectarse con mas alcance").** Everything thrown or sent at something reaches **+1.5 m** further
-  for each full level above it: kunai and shuriken (normal and long range, also at a crate or a
-  Kōton structure), an explosive tag, a thrown stone, and every jutsu aimed at a target or a point
-  away from the caster (the fire bullets, the dragons, the Lightning Hound, the chains, a
-  fireball's, a geyser's or Kirin's point; `reachesFromAbove` in `src/battle/jutsu.ts`). It counts
-  the levels between the caster and the target or the point aimed at. What it doesn't change (our
-  reading, his to correct): a blow or a melee jutsu; a cone or a line, which start at the caster
-  and keep their size; a wall or a block raised from the ground; a heal; a warp; and what takes
-  the mind rather than flying there (a genjutsu, the Northstar's Command and Submission). The
-  move preview's "no llega" and the AI follow the same reach.
+  afectarse con mas alcance", and his second round: "conos solo conos los demas si les da mas
+  alcance").** Everything aimed at something reaches **+1.5 m** further for each full level above
+  it: kunai and shuriken (normal and long range, also at a crate or a Kōton structure), an
+  explosive tag, a thrown stone, and **every jutsu with a range but a cone**: one at a target (the
+  fire bullets, the dragons, the Lightning Hound, the chains, a genjutsu, the Northstar's Command
+  and Submission, the Healing Dew on a friend), one at a point (a fireball's, a geyser's or Kirin's
+  point, the Body Flicker, an earth wall or a water barrier, a Kōton block or wall), the Ryusei's
+  warp and swap to a Node, and a **line**, which runs 1.5 m longer a level the point it is aimed at
+  lies below the caster (the Thunder Beam from the tower reaches 12 m instead of 9). It counts the
+  levels between the caster and the target or the point aimed at (`reachesFromAbove`, `jutsuRange`,
+  `areaIn` in `src/battle/jutsu.ts`). Only a **cone** keeps its range and size (the Devouring Tide,
+  the fire breaths, the Spark Fan, the Rubble Gust, the hydra's roar). Nothing changes, as before,
+  for what reaches no further than a hand: a blow, a melee jutsu, the charged hand, a touch (the
+  Mystical Palm), nor for what works around the caster itself (clones, Kawarimi, the Leaf
+  Hurricane). The move preview's "Fuera de alcance", the drawn line and the AI follow the same
+  reach, and the preview says "+3.0 m de alcance por la altura" when the height is what makes it
+  reach.
 - **Reach (D, his answer 3: "no nadie solo bosses masivos (nuevo concepto que aun no
   implementamos)").** A blade, a shove, a takedown or a melee jutsu (the charged hand's blow too)
   doesn't reach **two levels** (3 m) up or down, for everyone: the rogue on the watch tower can't
   be stabbed from its foot. One level (a man on a 1.5 m ledge) is still in reach. No flanking
   across two levels. Later, **massive bosses** (a new kind of enemy, not built yet) will be the
   only ones that reach across two levels.
-- **Looking down (P).** From **two levels** above a thing (a watch tower over the field): half
-  cover from it doesn't count, three-quarters counts as half, and a tent, a stack of crates or a
-  bamboo fence no longer blocks sight. Trees and jutsu walls still do. The same works the other
-  way: a low crate can't cover a ninja on the tower.
+- **Looking down (D, his second round: "el otro proponlo pero es similar solo inverso").** The XCOM 2
+  rule from below works the other way from above, by the same sight line: standing **at the edge**
+  of a terrace, a cliff or the tower, a ninja sees the ones at the foot of it; standing **back from
+  the edge**, the edge hides the ones close to the base of the wall, and it sees only those further
+  out on the lower ground (5 m back on a one-level terrace: nobody within about 6 m of the cliff's
+  foot; 2 m back on the tower: nobody at its foot, one 10 m off yes). Kunai and jutsu that need
+  sight follow it. Built: it was already true of the sight line (below), now pinned by tests.
+- **Low cover from two levels up (P, unchanged).** From **two levels** above a thing (a watch
+  tower over the field): half cover from it doesn't count and three-quarters counts as half; a low
+  crate can't cover a ninja on the tower either. (Sight over a tent or a stack of crates from up
+  there now goes by their height, as below, not by this rule.)
 - **The ground blocks sight, as in XCOM 2 (D, his answer 4: "si estas muy pegado al muro no puedes
   ver a los que estan muy atras en terreno alto y si estuvieras mas atras si podrias verlos lo
   unicos enemigos o amigos que podrias ver serian los que estuvieran cerca del borde como en xcom
@@ -227,6 +249,17 @@ entonces si baja 7 aun no la pruebo espera con esa decision"*.
   at 1.5 m, eyes as high as a one-level terrace saw everything on it. It also means a rock as high
   as a man (the rock ledge, River Forest's lookout rock) hides a ninja right behind it from the
   ground, and from the tower one near its far side.
+- **Tall rocks and tall things hide (D, his second round: "rocas altas y objetos altos para tapar
+  la vista").** A tall thing on the map hides the same way as the ground: only where its top rises
+  above that sight line. Each has its height (its sprite's): a tree 5 to 9 m, the bamboo grove 6 m,
+  a tent 2 m, a stack of crates 1.6 m, a **boulder 1.3 m** (it hid nothing before; our reading of
+  "rocas altas"), a bamboo fence 1.2 m (`height` in `PROP_RULES`, `lineOfSight` in
+  `src/battle/map.ts`). So on flat ground they always hide what is behind them; from high above a
+  tent or a stack of crates hides only a ninja close behind it (from the tower 7 m off, one 2 m
+  behind the stack's middle is hidden, one 3.75 m behind is seen), and a tree still hides
+  everything behind it. Low or thin things (a crate, a barrel, a small rock, a plain fence, a stone
+  lantern, a signpost, a weapon rack) never hide; the low ones give cover. Burnt or broken, nothing
+  hides.
 - **Falling (D, his answer 5: "caer un nivel hace 1d6 pero solo cuando es involuntario ... si te
   empujan o el suelo donde estas colapsa entonces es involuntario y entre mas niveles (max 3) mas
   dados de daño tira 2 niveles 2d6 3 niveles 3d6").** Only an involuntary fall hurts: shoved or
@@ -1111,11 +1144,11 @@ folder (`WORLD_OUT`) until then. Approved so far: the river bridge.
 
   It was drawn because Earth had none; Kenji is Earth (his answer 1), but the
   art itself waits for his yes.
-- **Height ("Height in play" under Elevation):** his answers of 2026-10-23 decided climbing, range,
-  reach, sight, falling and the AI. Still proposals: walls of 2 levels only by stairs, ladder or the
-  ninja jump; from 2 levels up low cover counts less and tents and crate stacks don't block sight.
-  Our readings to confirm: which jutsu reach further from above (not cones, lines, walls, heals,
-  warps, genjutsu); a rock as high as a man now hides a ninja right behind it.
+- **Height ("Height in play" under Elevation):** his two rounds of answers of 2026-10-23 decided
+  climbing, range (only cones get none), reach, sight (from below and, the other way round, from
+  above), tall things hiding, walls of 2 levels, falling and the AI. Still a proposal: from 2
+  levels up low cover counts less. Our reading to confirm: the boulder (1.3 m) counts as a tall rock
+  and hides.
 - **5-10-5 (2026-10-22):** after trying it, keep it or go back to true-length diagonals
   (`DIAGONAL_RULE`, `src/battle/nav.ts`)? He hasn't tried it yet (2026-10-23: "espera con esa
   decision").

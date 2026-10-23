@@ -1,5 +1,10 @@
 """The owner's Scarlet's eyes (docs/reference/scarlet-owner-reference.jpg) as the 'noble' eye shape.
 
+Since 2026-10-23 they are lifted out of the reference painted at our scale (tools/refs/scarlet_standard.py
+FACE): his brown line over the lash, a heavy black lash as on the owner's Roman and Ren, his white and amber
+iris over his darker amber, the near eye's lower line; where the Roman's eyes sit on his face (the far eye
+at the anchor's column + 8). The MAP below is that. The rest describes how they were first made.
+
 His picture is his own pixel art at 1.8 of his pixels to one of ours (tools/refs/scarlet_ref.py), so
 his eyes are not lifted 1:1 as Aiden's were: they are lifted out of the reduced reference
 (scarlet_ref.reduced(), tools/refs/scarlet-study.py), where his head is brought down to 0.68 with his
@@ -60,18 +65,18 @@ import scarlet_ref as R  # noqa: E402
 # idle frame 0), where his head puts them: the near eye from x 124 (the face anchor's column 123 + 1;
 # his bangs there become skin), the far one from x 132 (+ 9).
 NEAR_AT = (124, 139)
-FAR_AT = (132, 139)
+FAR_AT = (131, 139)
 MAP = {
     'near': [
-        'sbBBBB',  # 139  his line over the lash: a mid brown, a darker one, the mid brown, its light end
-        'sLLLLB',  # 140  the lash: its outer end dark red-black, black on, its inner end a light brown
-        'sshidb',  # 141  his white, amber and dark amber; his skin's shade at the outer corner
-        'sBbdwb',  # 142  his lower line at the outer corner, the iris's dark lower edge, his glint
+        'ssBBBs',  # 139  his brown line over the lash
+        'LLLLLB',  # 140  the heavy black lash, its inner end a light brown
+        'shiidb',  # 141  his white, his amber, his darker amber at the inner side
+        'ssBdds',  # 142  his lower line at the outer corner, the iris's dark lower edge
     ],
     'far': [
-        'bbB',  # 139  his line over the far lash, at its outer end
+        'sBs',  # 139  his brown line over the far lash
         'LLL',  # 140  the lash
-        'dwL',  # 141  his dark amber and glint, the lash's dark outer end
+        'idL',  # 141  his amber and darker amber, the lash's dark outer end at the face's edge
     ],
 }
 FEATURES = 'BLhwdi'

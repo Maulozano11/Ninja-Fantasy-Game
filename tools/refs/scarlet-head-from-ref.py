@@ -1,5 +1,10 @@
 """The owner's Scarlet's head (docs/reference/scarlet-owner-reference.jpg) as the 'noble' face shape.
 
+Since 2026-10-23 his head is the reference painted at our scale (tools/refs/scarlet_standard.py face()):
+the owner's Roman face, the male face standard (roman-head-from-ref.py, his pixels), in Scarlet's skin, his
+mouth his own, the eyes drawn by the 'noble' eye shape. This script writes it as it stands there (head()).
+What follows describes the first version, lifted out of the reduction.
+
 His picture is his own pixel art at 1.8 of his pixels to one of ours (tools/refs/scarlet_ref.py), so
 his face is not lifted 1:1 as Aiden's was: it is lifted out of the reduced reference
 (scarlet_ref.reduced(), tools/refs/scarlet-study.py), where his head is brought down to 0.68 with his
@@ -47,62 +52,22 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import numpy as np  # noqa: E402
 
 import scarlet_ref as R  # noqa: E402
+import scarlet_standard as STD  # noqa: E402
 
 # Our face anchor at idle frame 0 (src/sprite/body.ts faceAnchor: the template's first column, its
 # lash row), from our head joint and the male head's scale: (123, 139).
 HEAD_SCALE = 0.78
 ANCHOR = (int(np.floor(R.OUR_JOINTS['head'][0] - 3.8 * HEAD_SCALE)), int(np.floor(R.OUR_JOINTS['head'][1] + 2 * HEAD_SCALE)))
-# The head, cell by cell, from (MAP_X, MAP_Y). Rows 126-138 are our male skull's outline (his hair
-# covers his); from 135 his far temple runs a column, then two, wider than ours, as he drew it. From
-# 139 (the anchor's row) the face: his line over the lash and his lash (the eye shape's), his eyes
-# (rows 141-142), his cheeks, his smile (146), his jaw and chin (146-149).
-MAP_X, MAP_Y = 114, 126
-MAP = [
-    '.......bbbbbbbb.........',  # 126  the skull's top
-    '......b66666666b........',  # 127
-    '....bb6666666666b.......',  # 128
-    '....b666666666666b......',  # 129
-    '...b66666666666666b.....',  # 130
-    '..bZ66666666666666b.....',  # 131
-    '..bZ66666666666666Zb....',  # 132
-    '..bZ66666666666666Zb....',  # 133
-    '..bZ66666666666666Zb....',  # 134
-    '..bZ66666666666666HHb...',  # 135  his far temple between his locks
-    '..bZ66666666666666HHb...',  # 136
-    '..bZ6666666666H666HHHb..',  # 137  his forehead between his bangs; his temple
-    '..bZ666666666HH666HHHb..',  # 138
-    '..bZ66666664444444HH4H..',  # 139  his line over the lash is the eye shape's: his lid under it
-    '..bZZ666664444446H444H..',  # 140  his lash is the eye shape's: his lid under it
-    '...bZ666666H666HHH42XH..',  # 141  his eyes are the eye shape's: his skin under them
-    '....bZ666664H66HHHHHHH..',  # 142
-    '.....bZ44444HHHHHHHHHH..',  # 143  his cheeks; his near cheek under his bangs
-    '......bZ444HHHHHHHHHH...',  # 144
-    '.......bZ44HHHHHHHHHH...',  # 145
-    '........bHHHHHHHHHHHb...',  # 146  his smile; his jaw line from here down to his chin
-    '.........HHHHHHHHHHH....',  # 147
-    '.........HHHHHHHHHH.....',  # 148
-    '...........HHHHHHH......',  # 149  his chin
-]
+# The box of our frame the head is written from (x, y, width, height): the skull, the face and the chin.
+MAP_X, MAP_Y, MAP_W, MAP_H = 112, 124, 26, 28
 # The skin he drew his face in: the lit colour of most of it (his preset's skin).
 SKIN = '#f8d4b8'
 
 
 def head():
-    """The head's colours in our frame (None where it is empty)."""
-    idx = R.reduced_index()
-    out = {}
-    for j, row in enumerate(MAP):
-        for i, ch in enumerate(row):
-            x, y = MAP_X + i, MAP_Y + j
-            if ch == '.':
-                continue
-            if ch == 'H':
-                k = int(idx[y, x])
-                assert k < len(R.PALETTE), (x, y)
-                out[(x, y)] = R.PALETTE[k]
-            else:
-                out[(x, y)] = R.PALETTE[R.CHARS.index(ch)]
-    return out
+    """The head's colours in our frame: his face as scarlet_standard paints it."""
+    lay = STD.face()
+    return {(int(x), int(y)): R.PALETTE[lay[y, x]] for y, x in zip(*np.nonzero(lay != 255))}
 
 
 def rgb(h):
@@ -114,7 +79,7 @@ def main():
     os.makedirs(out, exist_ok=True)
     px = head()
     assert SKIN in R.PALETTE
-    H, W = len(MAP), len(MAP[0])
+    H, W = MAP_H, MAP_W
     col = np.zeros((H, W, 3), np.int32)
     mask = np.zeros((H, W), bool)
     for (x, y), h in px.items():

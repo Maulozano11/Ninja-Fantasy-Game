@@ -24,16 +24,13 @@ export const BELT_TONES = ['#111014', '#111014', '#111014', '#211a24', '#39383c'
 /** What each colour of the ornaments is: his gold, his tassel's red, his strap (seen through the buckle) or his black line. */
 export const BELT_KIND: Record<string, 'gold' | 'red' | 'leather' | 'line'> = {
   '#040405': 'line',
-  '#111014': 'leather',
   '#4e3c2b': 'gold',
-  '#70583c': 'gold',
   '#7c1e2c': 'red',
   '#84141f': 'red',
   '#846542': 'gold',
   '#947650': 'gold',
   '#9e3b41': 'red',
   '#a8865d': 'gold',
-  '#ca9c75': 'gold',
 };
 
 /**
@@ -42,31 +39,28 @@ export const BELT_KIND: Record<string, 'gold' | 'red' | 'leather' | 'line'> = {
  * stamped upright there, the cross and the tassel hanging straight down.
  */
 export const BELT_AT = {
-  buckle: [1.8077, 1.6229],
+  buckle: [1.3080, 1.6403],
   cross: [-0.2434, 0.1936],
-  tassel: [3.7542, 0.0540],
-  star: [-2.3469, -2.7348],
+  tassel: [3.7367, -0.4457],
+  star: [-2.3818, -3.7342],
 } as const;
 
 /** His ring buckle on the front of the belt, its dark hole inside. */
 export const BELT_BUCKLE: PaintedPiece = {
-  pivot: [2, 1],
+  pivot: [1, 1],
   angle: 0.00,
   rows: [
-    '.JOS.',
-    'OadXJ',
-    'SddSF',
-    'JOSv.',
+    'JSSJ',
+    'SaaO',
+    'OaaJ',
+    'JOOv',
   ],
   colors: {
     a: '#040405',
-    d: '#111014',
     v: '#4e3c2b',
-    F: '#70583c',
     J: '#846542',
     O: '#947650',
     S: '#a8865d',
-    X: '#ca9c75',
   },
 };
 
@@ -76,19 +70,18 @@ export const BELT_CROSS: PaintedPiece = {
   angle: 0.00,
   rows: [
     '..J..',
+    '..S..',
     '.JSJ.',
-    'JOSOJ',
-    '.aOa.',
+    'JaSaJ',
+    '.JSJ.',
+    '..S..',
     '..J..',
-    '..O..',
-    '..J..',
-    '..F..',
+    '..v..',
   ],
   colors: {
     a: '#040405',
-    F: '#70583c',
+    v: '#4e3c2b',
     J: '#846542',
-    O: '#947650',
     S: '#a8865d',
   },
 };
@@ -118,12 +111,11 @@ export const BELT_STAR: PaintedPiece = {
   pivot: [0, 0],
   angle: 0.00,
   rows: [
-    'FJ',
-    'JO',
+    'JS',
+    'SJ',
   ],
   colors: {
-    F: '#70583c',
     J: '#846542',
-    O: '#947650',
+    S: '#a8865d',
   },
 };

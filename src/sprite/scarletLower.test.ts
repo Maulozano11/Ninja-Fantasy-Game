@@ -66,12 +66,12 @@ describe('pinstripe trousers', () => {
 describe('noble belt', () => {
   it("puts his ring buckle, cross, tassel and star where the reduced reference has them at rest", () => {
     const f = renderSprite(look('male', LOWER), 'idle', 0);
-    // their boxes' top left corners in the reduced reference (tools/refs/scarlet-lower-from-ref.py)
+    // their boxes' top left corners in the reference (tools/refs/scarlet_standard.py ORNAMENTS)
     for (const [piece, x0, y0] of [
       [BELT_BUCKLE, 128, 172],
       [BELT_CROSS, 124, 176],
-      [BELT_CORD, 134, 176],
-      [BELT_STAR, 122, 182],
+      [BELT_CORD, 134, 177],
+      [BELT_STAR, 122, 184],
     ] as const)
       piece.rows.forEach((row, dy) =>
         [...row].forEach((ch, dx) => {
@@ -85,9 +85,10 @@ describe('noble belt', () => {
       const f = renderSprite(look('male', { ...LOWER, waist: { id: 'waist_noble_belt', colors } }), 'idle', 0);
       return [hexAt(f.rgba, 173 * 256 + 131), hexAt(f.rgba, 179 * 256 + 134)];
     };
+    // the buckle's lit gold on its right (131, 173) and the tassel's cord (134, 179), as painted
     const [gold, red] = at();
-    assert.equal(gold, BELT_BUCKLE.colors.X);
-    assert.equal(red, BELT_CORD.colors.D);
+    assert.equal(gold, BELT_BUCKLE.colors[BELT_BUCKLE.rows[1][3]]);
+    assert.equal(red, BELT_CORD.colors[BELT_CORD.rows[2][0]]);
     const [g2, r2] = at(['#3a2416', '#c0c8d0', '#2050c0']);
     assert.notEqual(g2, gold);
     assert.notEqual(r2, red);

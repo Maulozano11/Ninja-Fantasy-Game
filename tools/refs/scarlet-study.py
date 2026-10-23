@@ -1,4 +1,12 @@
-"""The owner's Scarlet brought down to our scale: the reduced reference every Scarlet part copies.
+"""The owner's Scarlet at our scale: the reference every Scarlet part copies.
+
+Since 2026-10-23 (the owner: "scarlet ... tenemos que reconfigurar al estandar se ve muy mal hecho
+comparado con romano o ren o aiden") the reference is his Scarlet painted again at our scale, at the level
+of his own game-scale characters (tools/refs/scarlet_standard.py: his Ren's jacket, gloves and boots and
+his Roman face where the piece is the same kind, the rest painted by hand after his picture, every colour
+his): build() takes those layers and writes them as below. The first reduction, his picture brought down
+by sampling (what follows), is kept for comparison (--reduction): it read as noise next to his Ren and
+Roman.
 
 His picture (docs/reference/scarlet-owner-reference.jpg, tools/refs/scarlet_ref.py) is his own pixel
 art at 1.8 of his pixels to one of ours, in proportions that are not ours. This script:
@@ -44,7 +52,7 @@ with no items (a 256 x 256 PNG, tools/refs/scarlet-idle.mts writes it). The same
 the same bytes. Run from the repository root with python3 -I:
 
   npx tsx tools/refs/scarlet-idle.mts <out>
-  python3 -I tools/refs/scarlet-study.py <out> <out>/male-idle.png [--write]
+  python3 -I tools/refs/scarlet-study.py <out> <out>/male-idle.png [--write] [--reduction]
   python3 -I tools/refs/scarlet-study.py --palette
 """
 
@@ -648,7 +656,7 @@ def extend(r, box, side, ya, yb, to, c):
     return r
 
 
-def compose(lay):
+def compose(lay, patches=PATCHES):
     """The parts back to front, his black line and the PATCHES: (idx, part)."""
     box = REDUCED_BOX
     h, w = box[3] - box[1], box[2] - box[0]
@@ -659,16 +667,35 @@ def compose(lay):
         idx[put] = lay[name][put]
         part[put] = name
     idx = outline(idx, part)
-    idx = patch(idx, box, PATCHES)
+    idx = patch(idx, box, patches)
     part[idx < 0] = ''
     return idx, part
 
 
-def build(with_layers=False):
+def standard_layers():
+    """His Scarlet painted again at our scale (scarlet_standard.py), each part on our box: what the
+    reference is now."""
+    import scarlet_standard
+    x0, y0, x1, y1 = REDUCED_BOX
+    full = scarlet_standard.layers()
+    for name, a in full.items():
+        out = a.copy()
+        out[y0:y1, x0:x1] = 255
+        assert (out == 255).all(), '%s reaches out of the box' % name
+    return {n: np.where(a[y0:y1, x0:x1] == 255, -1, a[y0:y1, x0:x1].astype(int)) for n, a in full.items()}
+
+
+def build(with_layers=False, reduction=False):
+    """The reference: his Scarlet painted again at our scale (the standard), or with `reduction` his
+    picture brought down by sampling, as it was first made (shown beside it as before and after)."""
     mended = his()
     N, Q, N0, Q0, M = mended
-    lay = layers(mended)
-    idx, part = compose(lay)
+    if reduction:
+        lay = layers(mended)
+        idx, part = compose(lay)
+    else:
+        lay = standard_layers()
+        idx, part = compose(lay, [])
     return (N, Q, M, idx, part, lay) if with_layers else (N, Q, M, idx, part)
 
 
@@ -844,7 +871,7 @@ def main():
             print(h)
         return
     out, idle = sys.argv[1], sys.argv[2]
-    N, Q, M, idx, part, lay = build(with_layers=True)
+    N, Q, M, idx, part, lay = build(with_layers=True, reduction='--reduction' in sys.argv[3:])
     write_outputs(out, idle, N, Q, M, idx, part)
     if '--rows' in sys.argv[3:]:
         x0, y0, x1, y1 = map(int, sys.argv[sys.argv.index('--rows') + 1:sys.argv.index('--rows') + 5])

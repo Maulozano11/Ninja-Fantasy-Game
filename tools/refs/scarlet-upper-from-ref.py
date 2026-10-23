@@ -2,6 +2,10 @@
 white shirt with the red cravat (top_noble_shirt) and his long black coat with the gold trim
 (armor_scarlet_coat), without the cape (the owner did not want it).
 
+Since 2026-10-23 the reference is his Scarlet painted again at our scale (tools/refs/scarlet_standard.py):
+the belt's ornaments are where that paints them (scarlet_standard.ORNAMENTS), and each sleeve runs on to the
+wrist under the glove (the reference has it whole there), so a reaching forearm stays whole.
+
 His picture is his own pixel art at about 1.8 of his pixels to one of ours (scarlet_ref.py), so his
 clothes are not copied 1:1: they are the reduced reference's (scarlet-study.py: the coat, shirt and
 cravat at 0.57 across, his sleeves along our arms, every pixel one of his colours, his gold trims
@@ -65,6 +69,7 @@ import numpy as np  # noqa: E402
 from PIL import Image  # noqa: E402
 
 import scarlet_ref as R  # noqa: E402
+import scarlet_standard as STD  # noqa: E402
 
 G = R.GRID
 J = R.OUR_JOINTS
@@ -101,8 +106,9 @@ CRAVAT = '#7c1e2c'
 # His belt in the coat's opening (x0, y0, x1, y1, inclusive): its strap and buckle between the
 # coat's fronts; below it, between the skirts, his belt's cross, its small gold piece and its
 # tassel. They are the trousers' (scarlet-study.py), not the coat's.
-BELT = (126, 172, 132, 175)
-BELT_HANG = (121, 176, 133, 202)
+BELT = STD.BELT
+# His belt's ornaments hanging over the trousers below it (scarlet_standard.ORNAMENTS): the belt's.
+HANGING = [b for name, (b, _) in STD.ORNAMENTS.items() if name != 'buckle']
 # The coat's body is above this row, its skirts from it down (they overlap on the belt's rows, where
 # the skirts hang from the waist): the waist line the skirts hang from, row 172, is where his belt's
 # top edge is.
@@ -211,7 +217,9 @@ def build_coat(fig, parts, layers, body, lay):
     # shows another part, so the coat leaves it alone (the cells it hides there are not the coat's).
     behind = parts['armF'] | parts['handF'] | parts['legN'] | parts['legF']
     opening = box(*OPENING) & np.isin(tcls, ['W', 'R', 'S'])
-    belt = box(*BELT) | (box(*BELT_HANG) & (tor != NONE)) | ((xx == BELT_HANG[2] + 1) & (tcls == 'R') & (yy >= BELT_HANG[1]))
+    belt = box(*BELT)
+    for b in HANGING:
+        belt |= box(*b) & (tor != NONE)
     coat = (tor != NONE) & ~opening & ~belt & ~(behind & ~parts['torso'])
 
     # The body: down to the belt's lower edge. It covers our torso and a pixel round it (so a turned
@@ -259,12 +267,14 @@ def build_coat(fig, parts, layers, body, lay):
     # one on our far arm, what our torso hides of it included, where the far glove is not, and on
     # over a pixel round our far arm where our torso and legs hide it (his cloth nearest it), so a
     # turned arm never shows past it. Its edge our torso hides takes his line.
-    sn = parts['armN'].copy()
+    # (each sleeve runs on to the wrist under the glove: a reaching forearm stays whole between them)
+    arm_n = layers['armN']
+    sn = parts['armN'] | ((arm_n != NONE) & (parts['handN'] | parts['blade'] | parts['hilt']))
     arm_f = layers['armF']
-    sf = (arm_f != NONE) & ~parts['handF']
+    sf = arm_f != NONE
     ours_f = grow(np.isin(lay[..., 0], [PART['upperArmF'], PART['forearmF']])) & ~sf & ~parts['handF']
     ours_f &= (body != 0) & ~np.isin(body, far_arm) & (yy <= BODY_BOTTOM)
-    sidx = np.where(sn, fig, NONE).astype(np.int32)
+    sidx = np.where(parts['armN'], fig, np.where(sn, arm_n, NONE)).astype(np.int32)
     fidx = np.where(sf, arm_f, NONE).astype(np.int32)
     fidx = nearest_fill(fidx, ours_f, sf & (classes(arm_f) == 'C'))
     sf |= ours_f

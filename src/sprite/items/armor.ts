@@ -1166,8 +1166,8 @@ function coatColumns(g: Pick<DrawCtx, 'rig' | 'bp'>): Quad[] {
  * pixels further out on the near side and 2 on the far: his cloth carried on across each side.
  */
 const COAT_BULKY: [number, number][] = [
-  [-12, 4],
-  [8, 2],
+  [-11, 4],
+  [10, 2],
 ];
 const COAT_BODY_BULKY = widenPiece(COAT_BODY, COAT_BULKY);
 const COAT_HULL_BULKY = widenPiece(COAT_HULL, COAT_BULKY);
@@ -1175,7 +1175,7 @@ const COAT_HULL_BULKY = widenPiece(COAT_HULL, COAT_BULKY);
 /**
  * The coat for the female and slender figures, whose far arm hangs about 2 and 3 fine pixels further in
  * than the male's (behind the male's coat, the far hand would be lost). The far flank comes in as far:
- * in each row of a piece or sheet, the first `n` pixels of his plain cloth from column `from` on are
+ * in each row of a piece or sheet, the first `n` pixels of his cloth from column `from` on are
  * taken out (his line, lining, trims and gold stay), or in a row without them the first `n` empty
  * pixels before what the row still has there (his hem's tail comes in with the rest); rows with
  * neither (his chest and lapel) are left as they are. Each row is filled out again with empty pixels. Returns the rows and where each lost its cloth.
@@ -1185,22 +1185,19 @@ function narrowRows(rows: string[], from: number, n: number, cuts?: number[]): {
   const next = rows.map((r, y) => {
     let at = cuts ? cuts[y] : -1;
     if (!cuts) {
-      const run = (ch: string) => {
-        for (let x = from; x + n <= r.length; x++) if (r.slice(x, x + n) === ch.repeat(n) && (ch !== '.' || r.slice(x + n).replace(/\./g, ''))) return x;
+      const run = (ok: (s: string) => boolean, empty = false) => {
+        for (let x = from; x + n <= r.length; x++) if (ok(r.slice(x, x + n)) && (!empty || r.slice(x + n).replace(/\./g, ''))) return x;
         return -1;
       };
       // his plain cloth; where a row has none (his hem's tail), the empty pixels before what it has
-      at = run(PLAIN);
-      if (at < 0) at = run('.');
+      at = run((s) => [...s].every((ch) => SCARLET_CLOTH_CHARS.includes(ch)));
+      if (at < 0) at = run((s) => s === '.'.repeat(n), true);
     }
     out.push(at);
     return at < 0 ? r : r.slice(0, at) + r.slice(at + n) + '.'.repeat(n);
   });
   return { rows: next, cuts: out };
 }
-
-/** His plain coat cloth (the colour the Coat slot recolours from). */
-const PLAIN = 'f';
 
 const COAT_NARROW: Partial<Record<BodyType, number>> = { female: 2 };
 

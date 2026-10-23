@@ -124,6 +124,22 @@ folders.
 
       python3 -I tools/refs/poison-from-ref.py docs/reference/poison-set-owner-reference.jpg tools/world-sprites/vfx-poison-v3-refdata.ts <character.png> [reviewDir]
 
+- `scarlet_standard.py` (2026-10-23, the owner: "scarlet ... tenemos que reconfigurar al estandar"): his
+  Scarlet painted again at our scale, at the level of his game-scale characters. His picture is 1.8 of his
+  pixels to one of ours, so it cannot be copied 1:1, and the reduction below read as noise next to his Ren
+  and Roman. The new reference takes the owner's own game-scale pixels where the piece is the same kind
+  (his Ren's fingerless gloves; his Roman face, the male face standard), paints the rest by hand after his
+  Scarlet picture in his colours the way his game-scale characters are painted (a black line round and
+  between the pieces, flat zones of three or four tones lit from the upper left, no noise): the coat with
+  its gold-edged collar, lapels and fronts, the sleeves to gold-banded cuffs, the skirts with his tattered
+  hem and the purple lining, the shirt and cravat, the belt and its ornaments, the hair as locks, the tall
+  boots. `scarlet-study.py` writes it in place of the reduction (`--reduction` still writes the first one),
+  and every Scarlet part script below cuts its pieces from it. Rerun them all after a change:
+
+      npx tsx tools/refs/scarlet-idle.mts <out>
+      python3 -I tools/refs/scarlet-study.py <out> <out>/male-idle.png --write
+      (then each part script below, as written there)
+
 - `scarlet_ref.py`, `scarlet-study.py`, `scarlet-idle.mts`: the study of the owner's Scarlet
   (`docs/reference/scarlet-owner-reference.jpg`), the base every Scarlet part builds on. His picture
   is his own pixel art at about 1.8 of his pixels to one of ours (his pixel is 5.33 x 5.31 picture

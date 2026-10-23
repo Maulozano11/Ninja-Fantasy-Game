@@ -5,6 +5,7 @@ import { describe, it } from 'node:test';
 import { LEGENDARY_PRESETS } from '../data/shinobiData';
 import { deriveStats } from '../rules/derived';
 import { getItem } from './catalog';
+import { NOBLE_KIND } from './items/nobleBootsGlovesArt';
 import { renderSprite } from './compose';
 import { GRID, PARTS } from './raster';
 import type { SpritePose } from './types';
@@ -75,8 +76,8 @@ describe('the Scarlet legend', () => {
   });
 
   it('keeps his far hand in sight beside the coat on every body', () => {
-    // the curled fingertips of his far fist
-    const tips = new Set(['#b27758', '#be8867', '#9e654b']);
+    // the bare fingertips of his far fist (his glove's skin)
+    const tips = new Set(Object.entries(NOBLE_KIND).filter(([, k]) => k === 'skin').map(([hex]) => hex));
     for (const body of ['male', 'female', 'bulky']) {
       const f = frame(body, 'idle', 0);
       let n = 0;

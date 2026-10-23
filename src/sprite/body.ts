@@ -354,9 +354,9 @@ const PAINTED_HEADS: Partial<Record<FaceShape, PaintedHead>> = {
   valiant: { piece: VALIANT_HEAD, skin: VALIANT_SKIN, tint: retintSkin, mouth: true, ex: 1, fx: 8 },
   // His Roman face (src/sprite/romanHeadArt.ts): its eyes where his Aiden head has them.
   roman: { piece: ROMAN_HEAD, skin: ROMAN_SKIN, tint: retintSkinLifted, mouth: false, ex: 1, fx: 8 },
-  // Scarlet's (src/sprite/nobleHeadArt.ts): his near eye a column further in, past his bangs, his far
-  // one where ours is (his face runs a column wider there); his smile his own.
-  noble: { piece: NOBLE_HEAD, skin: NOBLE_SKIN, tint: retintSkin, mouth: false, ex: 1, fx: 9 },
+  // Scarlet's (src/sprite/nobleHeadArt.ts): his Roman face in Scarlet's skin, its eyes where the Roman's
+  // are, its mouth his own.
+  noble: { piece: NOBLE_HEAD, skin: NOBLE_SKIN, tint: retintSkin, mouth: false, ex: 1, fx: 8 },
   // His Ren's (src/sprite/nightHeadArt.ts): his narrower face with his own mouth.
   night: { piece: NIGHT_HEAD, skin: NIGHT_SKIN, tint: retintSkin, mouth: false, ex: 1, fx: 9 },
 };

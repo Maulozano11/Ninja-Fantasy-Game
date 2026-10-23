@@ -2630,8 +2630,8 @@ export const HAND_ITEMS: ItemDef[] = liftMain([
     desc: 'Black leather gloves that leave the fingertips bare.',
     colors: [col('main', 'Leather', NOBLE_GLOVE_LEATHER, 'leather')],
     draw: (g, [leather]) => {
-      // The owner's fingerless gloves from his Scarlet picture (2026-10-21;
-      // tools/refs/scarlet-gloves-boots-from-ref.py), brought down to our scale on our fists. Closed, each
+      // The owner's fingerless gloves on his Scarlet (2026-10-21; tools/refs/scarlet-gloves-boots-from-ref.py):
+      // since 2026-10-23 his own fingerless gloves from his Ren at our scale, in Scarlet's blacks. Closed, each
       // hand is his fist in place of ours: the near one round the grip (the same fist closes on nothing),
       // the far one hanging, his skin on the fingertips following the character's. Open, pointing, relaxed
       // or cradling (hand signs, casts, a book) it is our hand picture in his leather, the fingertips bare

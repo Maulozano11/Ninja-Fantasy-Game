@@ -1,6 +1,13 @@
 """The owner's sword from his Scarlet picture (docs/reference/scarlet-owner-reference.jpg), at our
 scale and held the way our swords are held.
 
+Since 2026-10-23 (raised to the standard of his game-scale swords, Aiden's flame longsword and Ren's Katana
+v2): each row of the blade is his black line, his dark steel, his red core two pixels wide (bright by the
+guard, darker toward the point), his grey bevel and his light steel edge with his glints, his black line,
+so it reads as one clean blade instead of seven flickering bands; the hilt is a steel cap round his red
+jewel, the grip, and the cross-guard as one solid steel bar lit along its top with his jewel on the blade.
+What follows describes how his colours were first read.
+
 His Scarlet holds a dark longsword in his near hand, hanging blade-down to the screen-left: a steel
 cap over a red jewel with a pink glint for a pommel, a dark steel grip, a cross-guard of steel bars
 with a red jewel where the blade leaves it, and a long dark blade: on the side the light comes from
@@ -86,106 +93,101 @@ HIS_Y0, HIS_DY = 116.8, 1.6426
 # in the comments (`--rows` prints them beside ours).
 BLADE_DY0 = 4
 BLADE = [
-    'dtbKBNd',  # 4   124 (under the guard's jewel)
-    'dtbxBRd',  # 5   125
-    'dtbWBNd',  # 6   127
-    'dtbKBNd',  # 7   129
-    'dtcPBRd',  # 8   130
-    'dtckBNd',  # 9   132
-    'dtbEBNd',  # 10  134
-    'dtbEBRd',  # 11  135
-    'dtcCBRd',  # 12  137
-    'dtckBRd',  # 13  139
-    'dncxBVd',  # 14  140: his glint
-    'dnbxBRd',  # 15  142
-    'dtbsBRd',  # 16  144
-    'dtbxBRd',  # 17  145
-    'dtbsBRd',  # 18  147
-    'dtbsBRd',  # 19  149
-    'dtbsBRd',  # 20  150
-    'dtbsBRd',  # 21  151
-    'dtcsBRd',  # 22  153
-    'dtbsBVd',  # 23  155: his glint
-    'dtbsBNd',  # 24  156
-    'dtbsBRd',  # 25  158
-    'dtbsBNd',  # 26  160
-    'dtckBNd',  # 27  162
-    'dtbsBNd',  # 28  163
-    'dtbkBRd',  # 29  165
-    'dtbsBNd',  # 30  166
-    '.dbkBRd',  # 31  168: his dark edge curves in, his light edge runs on
-    '.dbkwRd',  # 32  170: his pinks begin
-    '..dkLNd',  # 33  171
-    '..dksDV',  # 34  173: his glint on the edge
-    '...ksDd',  # 35  174: the core runs to the point
-    '....ksb',  # 36  176
-    '.....ib',  # 37  177
-    '.....b.',  # 38  178: the point
+    'atxKBRa',  # 4   by the guard: his brightest reds
+    'atxKBRa',  # 5
+    'atsxBVa',  # 6   his glint
+    'atsxBRa',  # 7
+    'atsxBRa',  # 8
+    'atsxBRa',  # 9
+    'atsxBRa',  # 10
+    'atsxBRa',  # 11
+    'atsxBRa',  # 12
+    'atsxBRa',  # 13
+    'atsxBVa',  # 14  his glint
+    'atsxBRa',  # 15
+    'atsxBRa',  # 16
+    'atsxBRa',  # 17
+    'atsxBRa',  # 18
+    'atsxBRa',  # 19
+    'atsxBRa',  # 20
+    'atsxBRa',  # 21
+    'atsxBRa',  # 22
+    'atsxBVa',  # 23  his glint
+    'atsxBRa',  # 24
+    'atsxBRa',  # 25
+    'atsxBRa',  # 26
+    'atsxBRa',  # 27
+    'atsxBRa',  # 28
+    'atssBRa',  # 29  the core darkens toward the point
+    'atssBRa',  # 30
+    '.atsBRa',  # 31  his dark edge curves in, his light edge runs on
+    '.atsxRa',  # 32
+    '..atsRa',  # 33
+    '..askRa',  # 34
+    '...akRa',  # 35
+    '....aRa',  # 36
+    '.....aa',  # 37  the point
 ]
 
-# The hilt, drawn by hand at our scale after his pixels: rows of scarlet_ref.CHARS (his colours) in
-# our template's cells, the first row at HILT_ORIGIN[1] and the first column at HILT_ORIGIN[0] from
-# the pivot cell. One layer per part (the layer is the colour slot that recolours it). Drawn over
-# the blade.
+# The hilt at our scale after his: rows of scarlet_ref.CHARS (his colours) in our template's cells, the
+# first row at HILT_ORIGIN[1] and the first column at HILT_ORIGIN[0] from the pivot cell. One layer per
+# part (the layer is the colour slot that recolours it), drawn over the blade: the pommel's steel cap
+# round his red jewel with its pink glint, the dark steel grip (under the fist), the cross-guard as one
+# steel bar across the blade, lit along its top, and his red jewel where the blade leaves it.
 HILT_ORIGIN = (-8, -11)
 HILT = {
     'grip': [
-        '..................',  # -11
-        '..................',
-        '..................',
-        '..................',
-        '..................',
-        '..................',
-        '..................',  # -5
-        '.....nt...........',
-        '.....nt...........',
-        '......nt..........',
-        '.......nt.........',
-        '.......nt.........',  # 0
-        '........nt........',
-        '.........nt.......',
+        '....................',  # -11
+        '....................',
+        '....................',
+        '....................',
+        '....................',
+        '....nt..............',  # -6
+        '....nt..............',
+        '.....nt.............',
+        '.....nt.............',
+        '......nt............',
+        '.......nt...........',
+        '.......nt...........',  # 0
+        '........nt..........',
+        '.........nt.........',
     ],
     'edge': [
-        '..................',  # -11
-        '..................',
-        '..................',
-        '..kKk.............',
-        '..k1C.............',
-        '...sk.............',
-        '....ir............',  # -5
-        '..................',
-        '..................',
-        '..................',
-        '..................',
-        '..................',  # 0
-        '..................',
-        '..................',
-        '..................',
-        '..........WC......',
-        '..........kK......',  # 5
+        '....................',  # -11
+        '....................',
+        '..x1................',  # -9
+        '..kx................',
+        '....................',
+        '....................',
+        '....................',  # -5
+        '....................',
+        '....................',
+        '....................',
+        '....................',
+        '....................',  # 0
+        '....................',
+        '....................',
+        '..........K1........',  # 3
     ],
     'guard': [
-        '..................',  # -11
-        '..................',
-        '..tB..............',
-        '..................',
-        '..................',
-        '..................',
-        '..................',  # -5
-        '..................',
-        '..................',
-        '...............N..',
-        '..............H...',
-        '..............N...',  # 0
-        '.............R....',
-        '.............V....',
-        '.........HR.H.....',
-        '.........H..BRNR3.',
-        '.........N........',  # 5
-        '........BN........',
-        '.......BR.........',
-        '......BN..........',
-        '......0...........',
+        '....................',  # -11
+        '..BR................',  # -10
+        '.B..R...............',
+        '.N..N...............',
+        '..Nt................',  # -7
+        '....................',
+        '....................',
+        '....................',
+        '....................',
+        '................RR..',  # -2
+        '...............RNN..',
+        '.............RRN....',  # 0
+        '............RNN.....',
+        '...........RN.......',
+        '.........RR.........',  # 3
+        '........RNN.........',
+        '.......RNN..........',
+        '......RN............',  # 6
     ],
 }
 # His black line round the hilt (and the blade's top, under the guard).

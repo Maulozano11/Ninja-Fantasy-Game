@@ -38,6 +38,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import numpy as np  # noqa: E402
 from PIL import Image  # noqa: E402
 
+import scarlet_standard as STD  # noqa: E402
 from scarlet_ref import CHARS, OUR_JOINTS, PALETTE, REF, grid, native, quantize, reduced, reduced_layers, rgb, save, ts_piece  # noqa: E402
 
 C = {ch: PALETTE[i] for i, ch in enumerate(CHARS[:len(PALETTE)])}
@@ -73,19 +74,14 @@ LINE = 'a'
 # inclusive), the pixels kept (his gold, the dark of the buckle's hole and the cross's lattice; not the
 # belt's or the trousers' colours round them), and the pivot pixel (where it hangs from, or for the
 # buckle its middle).
-ORNAMENTS = {
-    'buckle': ((128, 172, 132, 175), (130, 173)),
-    'cross': ((124, 176, 128, 183), (126, 176)),
-    'tassel': ((134, 176, 134, 181), (134, 176)),
-    'star': ((122, 182, 123, 183), (122, 182)),
-}
+ORNAMENTS = STD.ORNAMENTS
 GOLD = 'FJOSXvy'
 DARK = 'ad'
 # The buckle's hole and the cross's lattice: the dark pixels walled in by its gold.
-HOLES = {'buckle': [(129, 173), (130, 173), (129, 174), (130, 174)], 'cross': [(125, 179), (127, 179)]}
+HOLES = STD.ORNAMENT_HOLES
 # His red tassel in the picture (his pixels): the cord under the far gold knot, and its rows in ours.
 TASSEL = (92, 104, 97, 116)
-TASSEL_ROWS = range(177, 182)
+TASSEL_ROWS = STD.TASSEL_ROWS
 
 # The colours the Gold and Tassel slots recolour from: his gold, and his tassel's red.
 GOLD_BASE = 'S'

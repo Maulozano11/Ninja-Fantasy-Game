@@ -1,20 +1,20 @@
 """The owner's tall black boots and fingerless gloves from his Scarlet picture (docs/reference/scarlet-owner-reference.jpg).
 
-His picture is not at our scale (tools/refs/scarlet_ref.py): the study (tools/refs/scarlet-study.py) brought
-his figure down onto our male rig at idle frame 0 and drew his boots and gloves there at our scale after
-his, in his colours (scarlet_ref.reduced_layers()). This script cuts them into the pieces that ride our
+His picture is not at our scale (tools/refs/scarlet_ref.py): the reference (tools/refs/scarlet-study.py,
+painted at our scale by tools/refs/scarlet_standard.py) has his boots on our male rig at idle frame 0,
+painted the way the owner paints at our scale, and his fingerless gloves as the owner's own on his Ren,
+in Scarlet's colours (scarlet_ref.reduced_layers()). This script cuts them into the pieces that ride our
 rig, every pixel one of his colours:
 
   the boots   on each leg the shaft (his black line round its top, the cuff with his strap across it and
               its bronze buckle, his shine down the shin), which turns with the shin about the ankle, and
               the foot (his toe with its shine, his black sole), which stays flat on the ground like our
-              feet. The study left out his buckles and the far boot's ankle strap, a pixel or two at our
-              scale each: they are put back from his pixels (BUCKLES), in his bronze. Each shaft runs on
+              feet. Each shaft runs on
               two rows under the foot's top (inside the foot), so the shin can turn without a gap at the
               ankle.
   the gloves  the near fist round a grip and the far fist hanging closed: his black leather over the back
-              of the hand, lit on the side the light comes from, his skin on the fingertips (the far
-              fist's narrowed to his, MENDS). The fist without a weapon is the same fist; the open,
+              of the hand, lit on the side the light comes from, his skin on the fingertips. The fist
+              without a weapon is the same fist; the open,
               pointing, relaxed and cradling hands are our hand pictures in his leather (GLOVE_TONES),
               the fingertips bare in his skin (TIP_TONES).
 
@@ -43,10 +43,10 @@ import scarlet_ref as R  # noqa: E402
 # line to the row over his ankle's jog, the foot from there to his sole's line; the far boot's foot
 # starts where it widens toward the toe.
 PIECES = {
-    'shinN': ('legN', 196, 206),
-    'footN': ('legN', 207, 218),
-    'shinF': ('legF', 189, 200),
-    'footF': ('legF', 201, 210),
+    'shinN': ('legN', 193, 207),
+    'footN': ('legN', 208, 218),
+    'shinF': ('legF', 189, 203),
+    'footF': ('legF', 204, 210),
     'gloveN': ('handN', 0, 255),
     'gloveF': ('handF', 0, 255),
 }
@@ -62,19 +62,11 @@ JOINT = {
 }
 # Each shaft's run-on under the foot: (piece, its row they copy, first row, last row, first x, last x),
 # inside his line; the foot covers them at rest.
-RUN_ON = [('shinN', 206, 207, 208, 116, 122), ('shinF', 200, 201, 202, 133, 140)]
+RUN_ON = [('shinN', 207, 208, 209, 115, 122), ('shinF', 203, 204, 205, 133, 140)]
 
-# His buckles and the far boot's ankle strap, which the study left out: {(x, y): colour character
-# (scarlet_ref.CHARS)} in our frame. Near: his buckle sits on the outer end of the strap, a row under its
-# shine (his #5e4a33 at (60, 159), on the boot's edge); far: on the inner end, inside the boot's right
-# edge (his #4e3c2b over #332a1e at (93, 157-158)); the far ankle strap: his lit strap across the front
-# of the ankle (his #504e52 and #39383c at (93-95, 175-176)) to his buckle on the outside (#332a1e at
-# (96, 174-175)).
-BUCKLES = {
-    'shinN': {(117, 199): 'y'},
-    'shinF': {(139, 192): 'v', (139, 193): 'm'},
-    'footF': {(137, 201): 't', (138, 201): 'B', (139, 201): 't', (140, 201): 'm'},
-}
+# Cells put back by hand over the reference: {(x, y): colour character}. The reference painted at our
+# scale (scarlet_standard.py) has his buckles on the boots' straps, so none are needed now.
+BUCKLES = {}
 
 # His leather for our hand pictures' shades (line, crease, shadow, base, light), in scarlet_ref.CHARS: his
 # black line, his darkest leather for the creases, and the three greys the back of his near glove is lit
@@ -88,21 +80,12 @@ GLOVE_TONES = 'adjnt'
 TIP_TONES = 'aQX4'
 
 # Mends by hand, in our frame: (piece, x0, y0, rows); '.' keeps the pixel, any other character is that
-# colour of his. The far fist: the study's shows a whole row of fingers more than his and fingers across
-# its whole width; his glove covers the fist down to its last rows and his fingertips are a small patch
-# curled under it (his (103-106, 116-121): #b27758 and #be8867 over his browns #9e654b and #6f442a), so
-# the leather goes on a row and the fingertips narrow to his.
-MENDS = [
-    ('gloveF', 138, 176, [
-        '.adjfjfda',
-        'aadfQUfda',
-        '..aMzUba.',
-        '...aQUa..',
-    ]),
-]
+# colour of his. The gloves are the owner's own fingerless gloves from his Ren (scarlet_standard.py), so
+# none are needed now.
+MENDS = []
 
 LINE = {'#040405', '#0f0407'}
-BRONZE = {'#332a1e', '#4e3c2b', '#5e4a33', '#70583c'}
+BRONZE = {'#332a1e', '#4e3c2b', '#5e4a33', '#70583c', '#846542', '#947650', '#a8865d'}
 # The skin his face is painted in (the noble face's NOBLE_SKIN): the fingertips follow the character's
 # skin from it as his head does.
 SKIN = '#f8d4b8'

@@ -5,20 +5,14 @@ import type { PaintedEye } from './eyeArt';
 
 /** His colours, one character each. */
 export const NOBLE_EYE_COLORS: Record<string, string> = {
-  a: '#9e654b',
-  b: '#846542',
+  a: '#512619',
+  b: '#040405',
   c: '#be8867',
-  d: '#26060d',
-  e: '#0f0407',
-  f: '#b27758',
-  h: '#cfc9c8',
-  i: '#c88038',
-  j: '#9c5e1a',
-  k: '#6f442a',
-  l: '#ebe6e4',
-  m: '#512619',
-  n: '#040405',
-  p: '#dcd6d4',
+  d: '#ebe6e4',
+  e: '#c88038',
+  f: '#9c5e1a',
+  h: '#9e654b',
+  i: '#6f442a',
 };
 
 /** His eyes in each lid state: open, lowered (reading) and closed (knocked out). The near eye is six cells wide and four rows tall, the far one three and three. */
@@ -26,34 +20,34 @@ export const NOBLE_EYES: Record<'open' | 'lowered' | 'closed', { near: PaintedEy
   /** His eyes as he drew them: the line over the lash, the lash, his white and amber iris, the near one over his lower line and glint. */
   open: {
     near: {
-      letters: ['sbBBBB', 'sLLLLB', 'sshidb', 'sBbdwb'],
-      rows: ['..abac', '.deeef', '..hij.', '.a.kl.'],
+      letters: ['ssBBBs', 'LLLLLB', 'shiidb', 'ssBdds'],
+      rows: ['..aaa.', 'bbbbbc', '.deef.', '..hii.'],
     },
     far: {
-      letters: ['bbB', 'LLL', 'dwL'],
-      rows: ['..a', 'mnn', 'jpe'],
+      letters: ['sBs', 'LLL', 'idL'],
+      rows: ['.a.', 'bbb', 'efb'],
     },
   },
   /** Reading: the lash comes down a row (the lid's skin above it) over his white and iris, without the glint. */
   lowered: {
     near: {
-      letters: ['sbBBBB', 'sbbbbb', 'sLLLLB', 'sBhidb'],
-      rows: ['..abac', '......', '.deeef', '.ahij.'],
+      letters: ['ssBBBs', 'bbbbbb', 'LLLLLB', 'shiids'],
+      rows: ['..aaa.', '......', 'bbbbbc', '.deef.'],
     },
     far: {
-      letters: ['bbB', 'bbL', 'LLL'],
-      rows: ['..a', '..n', 'mne'],
+      letters: ['sBs', 'bbL', 'LLL'],
+      rows: ['.a.', '..b', 'bbb'],
     },
   },
   /** Knocked out: under the lash line the eye is shut (skin); the far eye keeps its lash's dark outer end. */
   closed: {
     near: {
-      letters: ['sbBBBB', 'sLLLLB', 'ssbbbb', 'sbbbbb'],
-      rows: ['..abac', '.deeef', '......', '......'],
+      letters: ['ssBBBs', 'LLLLLB', 'sbbbbb', 'ssbbbs'],
+      rows: ['..aaa.', 'bbbbbc', '......', '......'],
     },
     far: {
-      letters: ['bbB', 'LLL', 'bbL'],
-      rows: ['..a', 'mnn', '..e'],
+      letters: ['sBs', 'LLL', 'bbL'],
+      rows: ['.a.', 'bbb', '..b'],
     },
   },
 };

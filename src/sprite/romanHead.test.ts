@@ -8,7 +8,7 @@ import { hexToRgb, isLine } from './color';
 import { renderSprite } from './compose';
 import type { DrawCtx } from './ctx';
 import { ROMAN_HAIR_BACK, ROMAN_HAIR_BASE, ROMAN_HAIR_FRONT, ROMAN_HAIR_LINE } from './items/romanHairArt';
-import { appearanceFromLegacy, defaultAppearance } from './legacy';
+import { appearanceFromLegacy, defaultAppearance, getAppearance, withRomanHead } from './legacy';
 import { MALE_SKIN_BASE } from './maleSkinArt';
 import { GRID } from './raster';
 import { buildRig, frameCount, rigPoseFor } from './rig';
@@ -18,6 +18,7 @@ import { onRomanNeck, romanRig } from './romanNeck';
 import { ROMAN_HEAD_PIXELS, ROMAN_OFFSET } from './romanRefPixels';
 import { CAMP_POSES, MOVE_POSES, SPRITE_POSES, type BodyType, type SpriteAppearance, type SpritePose } from './types';
 import type { ShinobiCharacter } from '../types/shinobi';
+import { LEGENDARY_PRESETS } from '../data/shinobiData';
 
 const POSES = [...new Set([...SPRITE_POSES, ...MOVE_POSES, ...CAMP_POSES])] as SpritePose[];
 const hex = (rgba: Uint8ClampedArray, i: number) => '#' + [0, 1, 2].map((k) => rgba[i * 4 + k].toString(16).padStart(2, '0')).join('');
@@ -170,5 +171,31 @@ describe("the owner's Roman head on his neck", () => {
     assert.equal(old.faceShape, undefined);
     assert.equal(old.eyeShape, 'standard');
     assert.equal(old.eyeColor, '#3b82f6');
+  });
+
+  it("is the default male look with his hair and no headband (\"3 si\"); older characters keep theirs", () => {
+    const d = defaultAppearance();
+    assert.equal(d.slots.hair?.id, 'hair_roman');
+    assert.equal(d.headband.position, 'none');
+    const old = appearanceFromLegacy({ palette: {}, hairstyle: '', armorStyle: '' } as unknown as ShinobiCharacter);
+    assert.equal(old.slots.hair?.id, 'hair_sunburst');
+  });
+
+  it('is the new game hero\'s head on Solen\'s sheet ("1 si"); no legend takes it ("2 no")', () => {
+    const solen = LEGENDARY_PRESETS.find((p) => p.character.id === 'preset_founder')!.character;
+    const before = JSON.stringify(solen);
+    const look = getAppearance(solen);
+    const hero = withRomanHead(look);
+    assert.equal(hero.faceShape, 'roman');
+    assert.equal(hero.eyeShape, 'roman');
+    assert.equal(hero.eyeColor, ROMAN_IRIS);
+    assert.equal(hero.slots.hair?.id, 'hair_roman');
+    assert.ok(onRomanNeck(hero), 'on his neck');
+    // everything else is Solen's
+    const { faceShape: _f, eyeShape: _e, eyeColor: _c, slots: { hair: _h, ...slots }, ...rest } = hero;
+    const { faceShape: _f2, eyeShape: _e2, eyeColor: _c2, slots: { hair: _h2, ...slots2 }, ...rest2 } = look;
+    assert.deepEqual([slots, rest], [slots2, rest2]);
+    assert.equal(JSON.stringify(solen), before, 'the preset itself unchanged');
+    for (const p of LEGENDARY_PRESETS) assert.notEqual(getAppearance(p.character).faceShape, 'roman', p.character.id);
   });
 });

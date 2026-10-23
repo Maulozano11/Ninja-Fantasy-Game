@@ -27,12 +27,15 @@ const hex = (rgba: Uint8ClampedArray, i: number) => '#' + [0, 1, 2].map((k) => r
 
 /**
  * A look with the default head it had before his Roman head became the default (2026-10-23): our face,
- * our standard eyes in blue. The hashes pinned before that are of this head.
+ * our standard eyes in blue, our blond spikes and the forehead headband. The hashes pinned before that are
+ * of this head.
  */
 export const oldHead = (l: SpriteAppearance): SpriteAppearance => {
   delete l.faceShape;
   l.eyeShape = 'standard';
   l.eyeColor = '#3b82f6';
+  l.slots = { ...l.slots, hair: { id: 'hair_sunburst', colors: [] } };
+  l.headband = { ...l.headband, position: 'forehead' };
   return l;
 };
 

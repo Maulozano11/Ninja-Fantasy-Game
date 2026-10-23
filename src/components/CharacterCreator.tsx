@@ -87,6 +87,9 @@ export function characterFromImport(raw: unknown): ShinobiCharacter | null {
       // A sheet without a face shape was drawn with our default face: it keeps it (the default look's
       // newer Roman face is for new characters only).
       const { faceShape: _newer, ...base } = defaultAppearance();
+      // nor his hair and bare forehead (2026-10-23): a sheet without them keeps our spikes and headband
+      base.slots = { ...base.slots, hair: { id: 'hair_sunburst', colors: [] } };
+      base.headband = { ...base.headband, position: 'forehead' };
       out.appearance = mergeKind(base as unknown as Record<string, unknown>, out.appearance);
     }
     else delete out.appearance;

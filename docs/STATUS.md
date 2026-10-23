@@ -211,6 +211,13 @@ Merge checks (`git merge-tree` on the origin tips, nothing changed):
   after that, was removed (its script stays); the fitted female body keeps Lyra's read and sit; Lyra's frames
   (idle, read, sit, throw 3-4) and the plain female look are byte for byte the integration branch's.
 
+- Decided 2026-10-23: his answers on where his Roman head goes, *"1 si 2 no 3 si"*: (1) a new game's hero
+  (Solen's sheet, `freshNinja` in `App.tsx`) starts with his Roman head: face and eyes `roman` in his red, his
+  neck and `hair_roman` (`withRomanHead` in `src/sprite/legacy.ts`), the rest of Solen's look kept; the Solen
+  preset itself is unchanged. (2) No legend preset takes his head. (3) The default male look
+  (`defaultAppearance`, the creator's default) has `hair_roman` and no headband in place of the blond spikes
+  and forehead headband; saved characters, imported sheets and presets keep their hair and headband.
+
 ## 3. Waiting for the owner
 
 - `jutsu/tide-s` (2026-10-22): the Dragon Tsunami is approved (look, rank S, names, numbers for now).

@@ -81,7 +81,8 @@ const choice = (id: string, ...colors: (string | undefined)[]): ItemChoice => ({
 /**
  * The default look: the male body with the owner's Roman head as the male standard (2026-10-23, "porque
  * no tenemos la forma de cabeza y cuello de romano en el juego ? cambialo inmediatamente me gusta mas el
- * de mi dibujo"): his face, his eyes in his red, and with them his neck (romanNeck.ts).
+ * de mi dibujo"): his face, his eyes in his red, and with them his neck (romanNeck.ts). With them his hair
+ * and a bare forehead, in place of our blond spikes and headband (his answer of the same day, "3 si").
  */
 export function defaultAppearance(): SpriteAppearance {
   return {
@@ -92,16 +93,25 @@ export function defaultAppearance(): SpriteAppearance {
     eyeShape: 'roman',
     eyeColor: ROMAN_IRIS,
     slots: {
-      hair: choice('hair_sunburst'),
+      hair: choice('hair_roman'),
       top: choice('top_tee'),
       bottom: choice('bottom_shinobi'),
       feet: choice('feet_shinobi'),
     },
     accessories: [],
-    headband: { position: 'forehead', tails: false, cloth: '#1e3a8a' },
+    headband: { position: 'none', tails: false, cloth: '#1e3a8a' },
     chakra: { color: 'blue', onCharge: true, onCast: true, onVictory: false },
     pixelEdits: [],
   };
+}
+
+/**
+ * A look with the owner's Roman head: his face, his eyes in his red (on a male body his neck comes with
+ * them, romanNeck.ts) and his hair, the rest as it was. A new game's hero is Solen's sheet with this head
+ * (the owner, 2026-10-23: "1 si"); the Solen preset and the other legends keep their own ("2 no").
+ */
+export function withRomanHead(look: SpriteAppearance): SpriteAppearance {
+  return { ...look, faceShape: 'roman', eyeShape: 'roman', eyeColor: ROMAN_IRIS, slots: { ...look.slots, hair: choice('hair_roman') } };
 }
 
 export function appearanceFromLegacy(c: ShinobiCharacter): SpriteAppearance {

@@ -1379,6 +1379,11 @@ const DRAPE_FORWARD = 1;
 const DRAPE_BACK = 0.3;
 /** How much of the thigh's turn the cloth below the knee keeps (it hangs, nearly straight down). */
 const DRAPE_HANG = 0.25;
+/**
+ * On the bulky body, whose thighs are long and shins short, the cloth below the knee keeps half the thigh's
+ * turn: hanging from its lower knee nearly straight, its hem would stay behind a leg swung forward (sneaking).
+ */
+const DRAPE_HANG_BULKY = 0.5;
 /** The rows round the knee swept through the bend, so the cloth folds there without a gap. */
 const DRAPE_FOLD = 2;
 /** How many columns each panel reaches under its neighbours, so their seams never open. */
@@ -1442,7 +1447,10 @@ export function drapeStamps(r: Rig): DrapeStamp[] {
   const ox = Math.floor(rest.pelvis.x * RES) - P.pivot[0];
   const oy = Math.floor(rest.pelvis.y * RES) - P.pivot[1];
   const cell = (p: Vec): [number, number] => [Math.floor(p.x * RES) - ox, Math.floor(p.y * RES) - oy];
-  const knees = { N: cell(legJoints(rest, 'N').knee), F: cell(legJoints(rest, 'F').knee) };
+  // each knee where it is on this body at rest (the bulky body's thighs are longer than our male's), as a
+  // cell of his drape hung from that body's pelvis: the cloth folds at its own knees
+  const homeCell = (p: Vec): [number, number] => [Math.floor(p.x * RES) - Math.floor(home.pelvis.x * RES) + P.pivot[0], Math.floor(p.y * RES) - Math.floor(home.pelvis.y * RES) + P.pivot[1]];
+  const knees = { N: homeCell(legJoints(home, 'N').knee), F: homeCell(legJoints(home, 'F').knee) };
   const thighTurn = (s: Side) => {
     const now = legJoints(r, s);
     const was = legJoints(home, s);
@@ -1474,7 +1482,7 @@ export function drapeStamps(r: Rig): DrapeStamp[] {
     const hinge: [number, number] = on === 'both' ? [Math.round((x0 + x1) / 2), Math.round((knees.N[1] + knees.F[1]) / 2)] : knees[on];
     const extra = Math.round(on === 'both' ? (longer('N') + longer('F')) / 2 : longer(on));
     const hingeAt = turnedCell(at, [hinge[0] - pivot[0], hinge[1] - pivot[1] + Math.max(0, extra)], turn);
-    const hang = turn * DRAPE_HANG;
+    const hang = turn * (r.body === 'bulky' ? DRAPE_HANG_BULKY : DRAPE_HANG);
     const fold = hang - turn;
     // the rows round the knee swept through the fold (at least once, so no row opens between the thigh's
     // cloth and the cloth hanging from the knee); each panel reaches a column under its neighbours
@@ -1663,7 +1671,7 @@ export function skirtHoles(
  * drape straight below, above or beside it (his line where there is none), so his cloth goes on behind
  * whatever hides it, as his drape goes on behind his fist.
  */
-function closeSkirtHoles(L: Layer, drape: Layer, lines: Set<number>, line: number, layers: ReadonlyMap<Depth, Layer>): void {
+function closeSkirtHoles(L: Layer, drape: Layer, lines: Set<number>, line: number, layers: ReadonlyMap<Depth, Layer>, nicks = false): void {
   // what the figure shows at each cell: covered, and by the skirt (his drape and strips are the pelvis's)
   const cover = new Uint8Array(GRID * GRID);
   const top = new Int16Array(GRID * GRID).fill(-1);
@@ -1690,10 +1698,23 @@ function closeSkirtHoles(L: Layer, drape: Layer, lines: Set<number>, line: numbe
   for (let pass = 0; pass < 4; pass++) {
     const slits = new Set<number>();
     const holes = skirtHoles((i) => cover[i] === 1, drape, skirt, limbs, slits);
+    // (out of rest, a nick beside the skirt, open on one side only, is closed now as the frame's pinholes
+    // would be later, holes.ts: closed after the figure is flat, it would wall in the cells beside it)
+    if (nicks) {
+      const shut = new Set(holes);
+      for (let i = GRID; i < GRID * GRID - GRID; i++) {
+        const x = i % GRID;
+        if (cover[i] || shut.has(i) || x === 0 || x === GRID - 1 || i > (GROUND * RES - 1) * GRID) continue;
+        const sides = [i - 1, i + 1, i - GRID, i + GRID].filter((j) => cover[j]);
+        if (sides.length >= 3 && sides.some(skirt)) holes.push(i);
+      }
+    }
     if (!holes.length) break;
     for (const i of holes) {
       const x = i % GRID;
       const y = (i / GRID) | 0;
+      // never into the ground (a gap between the feet below the ground line is not his cloth's)
+      if (y > GROUND * RES - 1) continue;
       // a nick in his line closes with his line; elsewhere the nearest of his cloth goes on into the hole
       // (the slit beside an arm takes his cloth below it, as the script continues his drape behind his fist)
       const nick = !slits.has(i) && [[-1, 0], [1, 0], [0, -1], [0, 1]].some(([dx, dy]) => x + dx >= 0 && x + dx < GRID && y + dy >= 0 && y + dy < GRID && lines.has(L.mat[i + dy * GRID + dx]));
@@ -1756,7 +1777,7 @@ function drawDrape(g: DrawCtx, color: (ch: string, hex: string) => string): void
     L.set(x, y, cut ? line : tmp.mat[i], 3, 'pelvis', F_NO_TEXTURE | F_NO_OUTLINE);
   }
   const lines = new Set(blacks.map((ch) => pal[ch][0]));
-  g.after((layers) => closeSkirtHoles(L, tmp, lines, line, layers));
+  g.after((layers) => closeSkirtHoles(L, tmp, lines, line, layers, r.pose !== 'idle'));
 }
 
 /**
@@ -1775,7 +1796,57 @@ function drawPteruges(g: DrawCtx, tc: string, lc: string, sc: string, drapes: bo
     return k === 'line' || k === 'skin' || k === 'hair' ? hex : retintHex(hex, PTERUGES_LEATHER, strips);
   };
   if (drapes) drawDrape(g, color);
-  stampLeaning(g, g.L('torso.over').used ? 'torso.over' : 'skirt', PTERUGES_FRONT, r.pelvis, torso, 'pelvis', color);
+  const depth = g.L('torso.over').used ? 'torso.over' : 'skirt';
+  stampLeaning(g, depth, PTERUGES_FRONT, r.pelvis, torso, 'pelvis', color);
+  if (r.pose !== 'idle') g.after((layers) => closeWaist(g.rig, g.L(depth), layers));
+}
+
+/**
+ * The body kept in one piece at the waist (the owner on a victory: "se corta el cuerpo por la mitad"): his
+ * cuirass rides the neck and his strips hang from the pelvis, so a pose that bends the torso (the bulky
+ * body's longer torso, a punch) can open a gap of a pixel or three between them. Up each line along the
+ * torso through the waist, background between the skirt and the chest takes the skirt's pixel below it:
+ * his strips go on up under the cuirass's edge. At rest nothing is open, and nothing is touched.
+ */
+function closeWaist(r: Rig, L: Layer, layers: ReadonlyMap<Depth, Layer>): void {
+  const covered = new Uint8Array(GRID * GRID);
+  const part = new Int16Array(GRID * GRID).fill(-1);
+  for (const d of DEPTHS) {
+    const l = layers.get(d);
+    if (!l?.used) continue;
+    for (let i = 0; i < GRID * GRID; i++) {
+      if (l.mat[i] < 0) continue;
+      covered[i] = 1;
+      part[i] = l.part[i];
+    }
+  }
+  const torso = partIndex('torso');
+  const pelvis = partIndex('pelvis');
+  const n = Math.hypot(r.up.x, r.up.y) || 1;
+  const up = { x: r.up.x / n, y: r.up.y / n };
+  const fill: [number, number][] = [];
+  for (let o = -7; o <= 7; o++) {
+    let below = -1;
+    let gap: number[] = [];
+    for (let k = -8; k <= 24; k++) {
+      const x = Math.floor(r.pelvis.x * RES - up.y * o + up.x * k);
+      const y = Math.floor(r.pelvis.y * RES + up.x * o + up.y * k);
+      if (x < 0 || y < 0 || x >= GRID || y >= GRID) break;
+      const i = y * GRID + x;
+      if (covered[i] && part[i] === pelvis) {
+        below = L.mat[i] >= 0 ? i : below;
+        gap = [];
+      } else if (!covered[i]) {
+        if (below >= 0) gap.push(i);
+      } else {
+        if (part[i] === torso && below >= 0 && gap.length && gap.length <= 3) for (const j of gap) fill.push([j, below]);
+        if (part[i] === torso) break;
+        below = -1;
+        gap = [];
+      }
+    }
+  }
+  for (const [i, j] of fill) if (L.mat[i] < 0) L.set(i % GRID, (i / GRID) | 0, L.mat[j], L.shade[j], 'pelvis', L.flags[j]);
 }
 
 // ---------------------------------------------------------------------------

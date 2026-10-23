@@ -7,8 +7,8 @@
 import { hexToRgb, hslToHex, retintHex, rgbToHsl } from './color';
 import { armDepth, armJoints, DrawCtx, handDraw, handPose, legDepth, legJoints, Side } from './ctx';
 import { BULKY_BASE, BULKY_BASE_BRIEFS, BULKY_BASE_KIND, BULKY_BASE_SKIN } from './bulkyBaseArt';
-import { segAngle, type PaintedPiece } from './painted';
-import { add, F_NO_OUTLINE, F_NO_TEXTURE, F_OWNER, F_SEAL, Layer, lerp, PartId, RES, sub, Vec } from './raster';
+import { segAngle, stretchPiece, type PaintedPiece } from './painted';
+import { add, F_NO_OUTLINE, F_NO_TEXTURE, F_OWNER, F_SEAL, Layer, len, lerp, PartId, RES, sub, Vec } from './raster';
 import { drawRig, turnPoint, type Rig } from './rig';
 import type { BodyType } from './types';
 import { stampTemplate, type TemplatePalette } from './rotsprite';
@@ -128,7 +128,11 @@ export function drawBulkyBase(g: DrawCtx): void {
     const thigh = s === 'N' ? B.thighN : B.thighF;
     const shin = s === 'N' ? B.shinN : B.shinF;
     const foot = s === 'N' ? B.footN : B.footF;
-    onBone(L, thigh, hip, segAngle(hip, knee), pal(thigh), s === 'N' ? 'thighN' : 'thighF');
+    // A seated thigh longer than the body's (rig.ts kneeLeg): his thigh lengthened with it, rows of his
+    // repeated between the hip and the knee (stretchPiece), so it still meets his shin at the knee.
+    const bone = r.bp.thigh;
+    const long = stretchPiece(thigh, (len(sub(knee, hip)) - bone) * RES, bone * RES);
+    onBone(L, long, hip, segAngle(hip, knee), pal(long), s === 'N' ? 'thighN' : 'thighF');
     onBone(L, shin, knee, segAngle(knee, ankle), pal(shin), s === 'N' ? 'shinN' : 'shinF');
     onBone(L, foot, ankle, foot.angle, pal(foot), s === 'N' ? 'footN' : 'footF');
   };

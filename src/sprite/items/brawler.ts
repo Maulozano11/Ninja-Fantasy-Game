@@ -16,8 +16,8 @@ import { armDepth, armJoints, Depth, DrawCtx, handDraw, handPose, ItemDef, legDe
 import { limbRefit, refit } from '../fit';
 import { BOOTS_PART } from './bootsPart';
 import { clothPen, limb } from './clothes';
-import { segAngle, type PaintedPiece } from '../painted';
-import { F_NO_OUTLINE, F_NO_TEXTURE, F_OWNER, F_SEAL, GRID, Layer, partIndex, PartId, PARTS, RES, Vec } from '../raster';
+import { segAngle, stretchPiece, type PaintedPiece } from '../painted';
+import { F_NO_OUTLINE, F_NO_TEXTURE, F_OWNER, F_SEAL, GRID, Layer, len, partIndex, PartId, PARTS, RES, sub, Vec } from '../raster';
 import { BODY_PARAMS, type BodyParams } from '../rig';
 import { rotateTemplate, stampTemplate, type TemplatePalette } from '../rotsprite';
 import { BULKY_BASE_BRIEFS } from '../bulkyBaseArt';
@@ -283,7 +283,6 @@ function sleeveOver(g: DrawCtx, s: Side, p: PaintedPiece, tint: Tint): void {
     if (!L || !cells.size) return;
     const set: [number, number][] = [];
     const line = g.m(SHIRT_MALE_LINE, 'flat');
-    if (process.env.DBG && s === 'N') for (const [d, LL] of layers) for (const i of [153 * GRID + 109, 155 * GRID + 109]) if (LL.mat[i] >= 0) console.log(d, i % GRID, (i / GRID) | 0, LL.part[i], LL.mat[i], LL.shade[i], LL.flags[i], isEdge(LL, i), along(i), hemAt(across(i)), across(i), cells.has(i));
     for (let i = 0; i < GRID * GRID; i++) {
       if (L.mat[i] < 0 || L.part[i] !== part) continue;
       // The arm's outline round the sleeve is the shirt's black line, not the skin's.
@@ -410,7 +409,10 @@ export const BRAWLER_BOTTOMS: ItemDef[] = [
         const L = g.L(legDepth(s, 'cloth'));
         const { hip, knee, ankle } = legJoints(r, s);
         const shin = limbFit(g, s === 'N' ? JEANS_SHIN_N : JEANS_SHIN_F, `JEANS_SHIN_${s}`, MALE_FIT.shin, (b) => b.shin);
-        const thigh = limbFit(g, s === 'N' ? JEANS_THIGH_N : JEANS_THIGH_F, `JEANS_THIGH_${s}`, MALE_FIT.thigh, (b) => b.thigh);
+        // A seated thigh longer than the body's (rig.ts kneeLeg): his jeans' thigh lengthened with it, rows
+        // of his repeated (stretchPiece), so it still meets the shin at the knee.
+        const fit = limbFit(g, s === 'N' ? JEANS_THIGH_N : JEANS_THIGH_F, `JEANS_THIGH_${s}`, MALE_FIT.thigh, (b) => b.thigh);
+        const thigh = stretchPiece(fit, (len(sub(knee, hip)) - g.bp.thigh) * RES, g.bp.thigh * RES);
         onLimb(g, L, shin, knee, segAngle(knee, ankle), prt('shin', s), tint);
         onLimb(g, L, thigh, hip, segAngle(hip, knee), prt('thigh', s), tint);
       }

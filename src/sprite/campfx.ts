@@ -119,8 +119,10 @@ const isLine = (hex: string): boolean => [1, 3, 5].every((i) => parseInt(hex.sli
 function stampRead(g: DrawCtx, L: Layer, p: ReadPiece, part: PartId, color: (hex: string) => string): void {
   const pens: Record<string, number> = {};
   for (const [ch, hex] of Object.entries(p.colors)) pens[ch] = g.m(color(hex), 'flat');
+  // (on a body built bigger than his male, moved with its hands: rig.ts BodyParams.readShift)
+  const [dx, dy] = g.bp.readShift ?? [0, 0];
   p.rows.forEach((row, j) => {
-    for (let i = 0; i < row.length; i++) if (row[i] !== '.') L.set(p.at[0] + i, p.at[1] + j, pens[row[i]], 3, part, F_NO_TEXTURE | F_NO_OUTLINE);
+    for (let i = 0; i < row.length; i++) if (row[i] !== '.') L.set(p.at[0] + dx + i, p.at[1] + dy + j, pens[row[i]], 3, part, F_NO_TEXTURE | F_NO_OUTLINE);
   });
 }
 

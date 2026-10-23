@@ -247,8 +247,9 @@ export function stretchPiece(p: PaintedPiece, extra: number, bone: number): Pain
   const lo = Math.min(0, ...src.map((s) => s.sh));
   const hi = Math.max(0, ...src.map((s) => s.sh));
   // (a pivot above the piece: the rows between it and the piece are empty, and repeat as such)
-  const rows = src.map(({ row, sh }) => '.'.repeat(sh - lo) + (p.rows[row] ?? '').padEnd(W, '.') + '.'.repeat(hi - sh));
-  const out: PaintedPiece = { ...p, rows, pivot: [px - lo, py] };
+  const grow = (from: string[]) => src.map(({ row, sh }) => '.'.repeat(sh - lo) + (from[row] ?? '').padEnd(W, '.') + '.'.repeat(hi - sh));
+  // (its open edge, PaintedPiece.seal, lengthened with it)
+  const out: PaintedPiece = { ...p, rows: grow(p.rows), pivot: [px - lo, py], ...(p.seal ? { seal: grow(p.seal) } : {}) };
   byKey.set(key, out);
   return out;
 }

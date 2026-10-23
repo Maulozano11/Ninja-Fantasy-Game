@@ -78,11 +78,19 @@ export interface BodyParams {
    */
   idleHands?: { N: Vec; F: Vec };
   /**
-   * The body's legs are the owner's painted pieces, each riding one bone (the bulky body, bulkyBody.ts): a
-   * pose copied from his frames (PoseAt) keeps the body's own thigh length instead of lengthening it to his
-   * knees (kneeLeg), so his thigh and shin pieces still meet at the knee.
+   * The body's legs are the owner's painted pieces, each riding one bone (the bulky body, bulkyBody.ts). A
+   * pose copied from his frames (PoseAt) lengthens its thighs to his knees (kneeLeg) as on every body, and
+   * the painted thigh is lengthened with the bone (stretchPiece: rows of his repeated), so his thigh and
+   * shin pieces still meet at the knee (the owner on the bulky sit, 2026-10-23: "que hagas que se le hagan
+   * mas largas como romano para alcanzar el suelo ... pero a su proporcion").
    */
   paintedLegs?: boolean;
+  /**
+   * The male read (READ_MALE, his Trunks frame 2) on a body built bigger than the male he drew it on: his
+   * book, his hands and the hand targets moved by this many fine pixels (x, y), so the book is held before
+   * this body's chest and its arms hold it as his do.
+   */
+  readShift?: [number, number];
 }
 
 export const BODY_PARAMS: Record<BodyType, BodyParams> = {
@@ -160,6 +168,7 @@ export const BODY_PARAMS: Record<BodyType, BodyParams> = {
     headDx: 1.5,
     idleHands: { N: { x: 0.109, y: 0.914 }, F: { x: 0.3, y: 0.927 } },
     paintedLegs: true,
+    readShift: [4, -2],
   },
 };
 
@@ -576,6 +585,8 @@ const SIT_LEGS = { seat: true, hip: SEAT_HIP, footN: v(0.5, groundY(SEAT_HIP, 0.
  * knee comes as near his as the shin standing on his ankle lets it.)
  */
 export const SIT_SEAT_TOP = 184;
+/** How straight his far arm reaches out on the seat: the wrist this share of the arm's length from the shoulder (about his, 0.95, on the male). */
+const SIT_REACH = 0.95;
 const sitAt = (neck: [number, number], ankleN: number, ankleF: number, kneeN: [number, number], kneeF: [number, number]): PoseAt => ({
   pelvis: fp(110, SIT_SEAT_TOP),
   seated: true,
@@ -1269,14 +1280,7 @@ function solveRig(body: BodyType, pose: RigPose, frame: number, f: PoseFrame): R
   // A pose copied from the owner's frames (PoseAt): the pelvis where he put it (seated, on the seat's top),
   // the torso leaning toward his neck.
   const a = f.at;
-  let atPelvis = a ? (a.seated ? v(a.pelvis.x, a.pelvis.y - seatedHip()) : a.pelvis) : null;
-  // A body of his painted legs keeps its thighs (paintedLegs): seated on a seat its legs cannot reach the
-  // ground from, its hips come down the seat until the feet stand on the ground (the near leg nearly straight).
-  if (a && atPelvis && a.seated && a.ground && bp.paintedLegs) {
-    const reach = 0.93 * (bp.thigh + bp.shin);
-    const low = ANKLE_N + ankleLiftOf(bp, 'N') - reach - 0.3;
-    if (atPelvis.y < low) atPelvis = v(atPelvis.x, low);
-  }
+  const atPelvis = a ? (a.seated ? v(a.pelvis.x, a.pelvis.y - seatedHip()) : a.pelvis) : null;
   const lean = a && atPelvis ? leanToward(a.neck, atPelvis, v(0.6, bp.torsoLen)) : f.lean;
 
   const leanRad = (lean * Math.PI) / 180;
@@ -1331,8 +1335,9 @@ function solveRig(body: BodyType, pose: RigPose, frame: number, f: PoseFrame): R
   };
   // (PoseAt: each ankle where he drew it, or on the ground under it, the far one FAR_LIFT higher; on a body
   // with `ankleLift` the ground ankles stand as low as its standing ones)
-  // (and with his knees, the thigh as long as reaching them takes: kneeLeg; not on a body of his painted legs)
-  const atLeg = (hip: Vec, t: Vec, k?: Vec) => (k && !bp.paintedLegs ? kneeLeg(hip, t, k, bp.thigh, bp.shin) : reachLeg(hip, t, bp.thigh, bp.shin));
+  // (and with his knees, the thigh as long as reaching them takes: kneeLeg; a body of his painted legs
+  // lengthens its painted thighs with it, bulkyBody.ts)
+  const atLeg = (hip: Vec, t: Vec, k?: Vec) => (k ? kneeLeg(hip, t, k, bp.thigh, bp.shin) : reachLeg(hip, t, bp.thigh, bp.shin));
   const farLift = bp.farLift ?? FAR_LIFT;
   const legN = a
     ? atLeg(hipN, a.ground ? v(a.ankleN.x, ANKLE_N + liftN) : a.ankleN, a.kneeN)
@@ -1350,7 +1355,7 @@ function solveRig(body: BodyType, pose: RigPose, frame: number, f: PoseFrame): R
 
   const armLen = bp.upperArm + bp.forearm + bp.handR;
   const resolve = (t: HandTarget, shoulder: Vec): Vec => {
-    if (t.from === 'frame') return v(t.x, t.y);
+    if (t.from === 'frame') return pose === 'read' && bp.readShift ? v(t.x + bp.readShift[0] / RES, t.y + bp.readShift[1] / RES) : v(t.x, t.y);
     if (t.from === 'chest') return add(chestFront, v(t.x, t.y));
     if (t.from === 'kneeN') return add(legN.mid, v(t.x, t.y));
     if (t.from === 'kneeF') return add(legF.mid, v(t.x, t.y));
@@ -1368,7 +1373,34 @@ function solveRig(body: BodyType, pose: RigPose, frame: number, f: PoseFrame): R
   // At rest a body may hold its arms as its owner's picture does (BodyParams.idleHands).
   const rest = pose === 'idle' ? bp.idleHands : undefined;
   const aN = solveArm(shoulderN, rest ? arm(rest.N.x, rest.N.y) : f.handN, f.bendN ?? 1);
-  const aF = solveArm(shoulderF, rest ? arm(rest.F.x, rest.F.y) : f.handF);
+  // Reading, the far hand is behind the book close under its shoulder: its elbow folds back behind the body,
+  // as his Trunks holds it, never out past the book. On an arm whose upper arm is too much longer than its
+  // forearm to fold that close (the bulky body's), the hand goes down behind the book until it can.
+  const foldF = (t: HandTarget): HandTarget => {
+    if (pose !== 'read' || t.from !== 'frame') return t;
+    const p = resolve(t, shoulderF);
+    const least = bp.upperArm - bp.forearm + bp.handR * 0.8 + 1;
+    const dx = p.x - shoulderF.x;
+    const dy = Math.max(p.y - shoulderF.y, Math.sqrt(Math.max(0, least * least - dx * dx)));
+    return { from: 'frame', x: shoulderF.x + dx, y: shoulderF.y + dy, units: 'px' };
+  };
+  // Seated, the far arm reaches out to his open hand (SIT_JOINTS, measured on the male): an arm longer than
+  // the male's reaches as far further out, so it is as straight as his (the bulky body's, in its proportion).
+  // (the hand as far out as holds this arm as straight as his, SIT_REACH of its length)
+  const reachF = (t: HandTarget): HandTarget => {
+    const male = BODY_PARAMS.male;
+    if (pose !== 'sit' || t.from !== 'frame' || bp.upperArm + bp.forearm <= male.upperArm + male.forearm) return t;
+    const p = resolve(t, shoulderF);
+    const d = len(sub(p, shoulderF));
+    const k = (SIT_REACH * (bp.upperArm + bp.forearm) + bp.handR * 0.8) / d;
+    return { from: 'frame', x: shoulderF.x + (p.x - shoulderF.x) * k, y: shoulderF.y + (p.y - shoulderF.y) * k, units: 'px' };
+  };
+  const aF =
+    pose === 'sit'
+      ? solveArm(shoulderF, reachF(f.handF))
+      : pose === 'read'
+      ? [solveArm(shoulderF, foldF(f.handF), 1), solveArm(shoulderF, foldF(f.handF), -1)].reduce((a, b) => (b.elbow.x < a.elbow.x ? b : a))
+      : solveArm(shoulderF, rest ? arm(rest.F.x, rest.F.y) : f.handF);
 
   const headY = neck.y - 5.9 * bp.headScale + (f.headDy || 0);
   const headX = neck.x - 0.4 + (f.headDx || 0) + (bp.headDx || 0);

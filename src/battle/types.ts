@@ -62,7 +62,10 @@ export interface Conditions {
   focusing?: boolean;
   /** Can't act on its first turn. */
   surprised?: boolean;
-  /** Shadow clone decoy: the next attack that would hit it strikes the clone instead. */
+  /**
+   * The old clone decoy (a battle saved before the clones stood on the map, battle/clones.ts): the
+   * next attack that would hit it strikes the clone instead.
+   */
   clone?: boolean;
   /** Crouched (stealth and behind cover). */
   crouched?: boolean;
@@ -205,6 +208,10 @@ export interface Unit {
   lastNature?: string;
   /** A jutsu held charged in the hand (the activated Chidori, later the Rasengan): see ChargedHand. */
   charged?: ChargedHand;
+  /** A clone of another ninja, standing on the map (battle/clones.ts): it takes no turns of its own. */
+  clone?: CloneOf;
+  /** A ninja with clones standing: the points of jutsu they have left to cast together (battle/clones.ts). */
+  clonePoints?: number;
   /** Battle bookkeeping for the mission result. */
   stats2: { critsTaken: number; critsLanded: number; pills: number; fell: boolean; fellToCrit: boolean; tension: number; jutsuCast: number };
   /** Skill proficiencies (Stealth, Perception, Medicine...). */
@@ -222,6 +229,16 @@ export interface ChargedHand {
   enhanced: boolean;
   /** Its own turns left, this one counted: at the start of a turn it loses one, and at 0 it fades unused. */
   rounds: number;
+}
+
+/**
+ * What makes a unit a clone (battle/clones.ts): the ninja it copies (whose turns it acts in and whose
+ * chakra its jutsu cost), the summoner's turns it has left, and whether an enhanced cast made it.
+ */
+export interface CloneOf {
+  of: string;
+  turns: number;
+  enhanced: boolean;
 }
 
 /** Why a charged hand ended: its blow went off, it ran out of rounds, its ninja fell, its chakra was sealed, or it was let go (hand seals, the weapon drawn). */
@@ -389,6 +406,8 @@ export interface Hit {
   unseen?: boolean;
   /** Can't be blocked: no clone, Kawarimi or Premonitory Evasion stops it. */
   unblockable?: boolean;
+  /** A clone's blow joining its summoner's (a combo; `source` is the clone): it lands only on a target still standing. */
+  combo?: boolean;
   /** The Mirai let Premonitory Evasion go for this hit (Kawarimi may still be offered). */
   evadeDeclined?: boolean;
   /** Knocked down on a failed save (a ninja only: big creatures don't fall). */
@@ -511,7 +530,8 @@ export type BattleEvent =
   | { t: 'weapon'; unit: string; armed: boolean; cost: 'free' | 'bonus' }
   | { t: 'act'; unit: string; act: 'dash' | 'disengage' | 'dodge' | 'focus' | 'crouch' | 'stand' | 'jump' | 'item' | 'stone' }
   /** `reasons`: why the roll had advantage or disadvantage (the preview's keys: 'aura', 'behind'…). */
-  | { t: 'attack'; unit: string; target: string; what: string; roll: RollInfo; ranged: boolean; reasons?: string[] }
+  /** `flank`: the +2 of a clone standing next to the target (battle/clones.ts), counted in the roll's modifier. */
+  | { t: 'attack'; unit: string; target: string; what: string; roll: RollInfo; ranged: boolean; reasons?: string[]; flank?: number }
   /** `ab`: the ability the save is made with (dex, wis…). */
   | { t: 'save'; unit: string; what: string; roll: RollInfo; ab?: string }
   | { t: 'check'; unit: string; what: string; roll: RollInfo }
@@ -564,7 +584,14 @@ export type BattleEvent =
   | { t: 'kawarimi'; unit: string; from: Pt; to: Pt }
   /** `what`: the blow or jutsu stepped away from. */
   | { t: 'evade'; unit: string; from: Pt; to: Pt; source?: string; what?: string }
-  | { t: 'clone'; unit: string; on: boolean }
+  /**
+   * A clone stands up (`on`) or goes up in smoke (battle/clones.ts): `unit` is the clone, `by` its
+   * summoner, `at` where (where the blow struck, for one that took its summoner's), `why` it went.
+   * A battle saved before the clones stood on the map has the old decoy's: `unit` the ninja, nothing else.
+   */
+  | { t: 'clone'; unit: string; on: boolean; by?: string; at?: Pt; why?: 'blow' | 'hit' | 'expired' | 'down' | 'recast' }
+  /** A clone joins its summoner's blow at `target` in a combo (its damage follows, the clone its source). */
+  | { t: 'combo'; unit: string; by: string; target: string }
   | { t: 'sever'; unit: string }
   /** `source`: whose fire or lightning sealed it (its flare takes that ninja's chakra colour on the screen). */
   | { t: 'seal'; unit: string; how: 'fire' | 'lightning' | 'explosion'; source?: string }

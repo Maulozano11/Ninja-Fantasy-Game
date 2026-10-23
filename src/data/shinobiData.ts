@@ -275,9 +275,11 @@ export const JUTSUS_DATA: JutsuDefinition[] = [
     range: 3,
     damageType: 'Force',
     enhancementChakraCost: 2,
-    enhancementEffect: 'Creates 2 shadow clones instead of 1, confusing enemy targeting.',
-    description: 'Summons a solid physical clone that can distract foes, provide flanking advantage (+2 on attack rolls), and absorb 1 attack.',
-    descriptionEs: 'Crea un clon sólido que distrae a los enemigos, ayuda a flanquear y recibe un golpe por ti.',
+    enhancementEffect: 'Creates 2 clones instead of 1; between them they can cast one rank C jutsu or two rank D jutsu of yours, with your chakra.',
+    description:
+      'Summons a solid clone of yourself on a cell beside you, which follows you. It gives +2 to melee attacks against a foe it stands next to, strikes with you in a combo when you attack that foe or use a taijutsu, takes the next blow aimed at you, and confuses foes. It lasts 3 of your turns or until it takes a blow, and can cast one of your rank D jutsu with your chakra.',
+    descriptionEs:
+      'Crea un clon sólido de ti en una casilla a tu lado, que te sigue. Da +2 a los ataques cuerpo a cuerpo contra un enemigo a su lado, ataca contigo en un combo cuando golpeas a ese enemigo o usas un taijutsu, recibe el próximo golpe dirigido a ti y confunde a los enemigos. Dura 3 de tus turnos o hasta que recibe un golpe, y puede lanzar uno de tus jutsus de rango D con tu chakra (potenciado: 2 clones, que entre los dos lanzan un jutsu de rango C o dos de rango D).',
   },
   {
     id: 'body_flicker',

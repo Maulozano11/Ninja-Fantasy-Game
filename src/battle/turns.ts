@@ -11,9 +11,10 @@ import { dampAt } from './map';
 import { steamBurns, tickGround } from './ground';
 import { planEnemy, replanAgainst } from './intent';
 import { chargeHolds, mendCracks, tickCharge } from './charged';
+import { refreshClones, tickClones } from './clones';
 
-/** Whether a unit takes turns (heads of the hydra act on their own; fallen ninjas roll death saves). */
-const takesTurns = (u: Unit): boolean => u.down !== 'dead' && u.down !== 'fled' && u.down !== 'ko' && u.down !== 'stable';
+/** Whether a unit takes turns (heads of the hydra act on their own; fallen ninjas roll death saves; clones act in their summoner's). */
+const takesTurns = (u: Unit): boolean => u.down !== 'dead' && u.down !== 'fled' && u.down !== 'ko' && u.down !== 'stable' && !u.clone;
 
 export const current = (s: BattleState): Unit | undefined => s.units[s.order[s.turn]];
 
@@ -61,6 +62,8 @@ export function beginTurn(s: BattleState, ev: BattleEvent[]): void {
       continue;
     }
     u.turn = { move: u.speed, action: true, bonus: true, reaction: true, moved: 0 };
+    // Its clones may cast again this turn.
+    refreshClones(s, u);
     u.cond.dodging = false;
     // The Breeze Mantle lasts until the start of its next turn: the screen hears it end.
     if (u.cond.mantle) {
@@ -153,6 +156,8 @@ export function endTurn(s: BattleState, ev: BattleEvent[]): void {
     // A warp edge not struck with is gone.
     if (u.cond.warpEdge) u.cond.warpEdge = false;
     if (u.commanded) spendCommandTurn(s, u, ev);
+    // Its clones have one of its turns fewer (3 in all, the one they were summoned in counted).
+    tickClones(s, u, ev);
     // An enemy commits to its next move now, so a Mirai can read it.
     if (u.team === 'enemy') commitPlan(s, u, ev);
   }
@@ -214,8 +219,9 @@ function advance(s: BattleState, ev: BattleEvent[]): void {
  */
 export function checkEnd(s: BattleState, ev: BattleEvent[]): boolean {
   if (s.phase === 'ended') return true;
-  const enemies = Object.values(s.units).filter((u) => homeTeam(u) === 'enemy' && u.kind !== 'hydra_head');
-  const party = Object.values(s.units).filter((u) => homeTeam(u) === 'party' && !u.joined);
+  // Clones don't count: a side whose ninjas are all down has lost, whatever copies of them still stand.
+  const enemies = Object.values(s.units).filter((u) => homeTeam(u) === 'enemy' && u.kind !== 'hydra_head' && !u.clone);
+  const party = Object.values(s.units).filter((u) => homeTeam(u) === 'party' && !u.joined && !u.clone);
   let outcome: BattleState['outcome'];
   if (enemies.every((u) => u.down)) outcome = 'victory';
   else if (party.every((u) => u.down)) outcome = party.some((u) => u.down === 'fled') ? 'fled' : 'defeat';

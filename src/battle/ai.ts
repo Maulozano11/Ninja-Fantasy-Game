@@ -14,6 +14,8 @@ import { areaValue, bestCell, goalOf, headOptions, ninjaOptions, offensive, plan
 import type { Goal } from './intent';
 import { breakable, MAX_STRUCTURES, ownStructures, structureAt, structureAttack, structureBlocker, structureDist } from './structures';
 import { COMMAND, commandRefused, edgeFoe, ownNodes, submissionRefused, SWAP, WARP, warpBlocker, warpLanding } from './clans';
+import { cloneJutsuBlocker, clonesOf, summonSpots } from './clones';
+import { averageDice, parseDice } from '../rules/dice';
 
 /** Whether the battle is waiting on the AI (an AI unit's turn in the fighting). */
 export function aiToAct(s: BattleState): boolean {
@@ -61,8 +63,9 @@ export function aiAction(s: BattleState): Action | null {
     const t = plan?.target ? s.units[plan.target] : undefined;
     if (u.turn.dashed && t && standingUnit(t)) return moveToward(s, u, goalOf(s, u, { kind: 'melee', what: u.weapon.name, target: t.id })!) ?? leaveSteam(s, u, plan) ?? end;
     // Its action spent (a charge that landed in steam, a blow struck from inside it): it walks out
-    // with the movement it has left, so it doesn't start its next turn burning there.
-    return leaveSteam(s, u, plan) ?? bonusAfter(s, u) ?? afterAction(s, u) ?? end;
+    // with the movement it has left, so it doesn't start its next turn burning there. Its clones
+    // cast what they may.
+    return leaveSteam(s, u, plan) ?? cloneCasts(s, u) ?? bonusAfter(s, u) ?? afterAction(s, u) ?? end;
   }
   // Enemies follow the plan they committed to (what a Mirai saw); allies plan each turn.
   let intent = u.team === 'enemy' && stillValid(s, u, u.intent) ? u.intent : planIntent(s, u);
@@ -198,10 +201,82 @@ function fallback(s: BattleState, u: Unit): Action | null {
   return null;
 }
 
-/** The bonus action, before the plan: a Ryusei warps to a Node beside a foe its feet can't reach this turn. */
+/**
+ * The bonus action, before the plan: a ninja who knows the clone jutsu summons its clones for a fight
+ * in melee; a Ryusei warps to a Node beside a foe its feet can't reach this turn.
+ */
 function bonusBefore(s: BattleState, u: Unit, i: Intent): Action | null {
   if (!u.turn.bonus) return null;
-  return ryuseiWarp(s, u, i);
+  return summonFirst(s, u, i) ?? ryuseiWarp(s, u, i);
+}
+
+/** The clone jutsu a ninja knows (the one whose special is 'clone'), if any. */
+const cloneJutsu = (u: Unit): string | undefined => u.jutsus.find((id) => JUTSU[id]?.special === 'clone');
+
+/**
+ * A ninja who knows the clone jutsu and has none standing summons them when it means to strike in
+ * melee this turn (a blow or a melee jutsu at a foe it can reach): they flank the foe and join its
+ * blows (clones.ts). Enhanced (2 clones) when its chakra covers that and its plan twice over; plain
+ * when it covers the plain cast and the plan; otherwise not at all.
+ */
+function summonFirst(s: BattleState, u: Unit, i: Intent): Action | null {
+  const id = cloneJutsu(u);
+  if (!id || u.clone || s.phase !== 'combat' || effectMods(u.effects).noJutsu || clonesOf(s, u.id).length) return null;
+  const spec = JUTSU[id];
+  if (spec.cast === 'bonus' ? !u.turn.bonus : !u.turn.action) return null;
+  if (handsBlocker(u, spec)) return null;
+  const t = i.target ? s.units[i.target] : undefined;
+  const j = i.kind === 'jutsu' ? JUTSU[i.what] : undefined;
+  if (!t || t.team === u.team || !(i.kind === 'melee' || j?.melee)) return null;
+  const reach = j?.melee ? j.range + (t.bulk ?? 0) : reachTo(u, t);
+  if (dist(u.pos, t.pos) > reach + walkBudget(u) + 0.1) return null;
+  const plan = j ? jutsuCost(u, j, false) : 0;
+  const enhanced = spec.enhCost > 0 && u.chakra >= jutsuCost(u, spec, true) + 2 * plan;
+  if (!enhanced && u.chakra < jutsuCost(u, spec, false) + plan) return null;
+  if (!summonSpots(s, u, enhanced).length) return null;
+  return { type: 'jutsu', unit: u.id, jutsu: id, at: { ...u.pos }, enhanced };
+}
+
+const avgOf = (dice?: string): number => {
+  const d = dice ? parseDice(dice) : null;
+  return d ? averageDice(d) : 0;
+};
+
+/**
+ * Once its summoner's action is spent, a clone casts one of the jutsu it may (clones.ts): a damage
+ * jutsu from where it stands at the foe it is worth most against (what it would deal, by how many it
+ * catches: areaValue), or a heal for a friend at half its HP or less. Its summoner pays, so a damage
+ * jutsu waits until the summoner has as much chakra again left over. Every pick is checked against
+ * the engine first (reach, sight, hands).
+ */
+function cloneCasts(s: BattleState, u: Unit): Action | null {
+  if (u.clonePoints === undefined || effectMods(u.effects).noJutsu) return null;
+  let best: { a: Action; v: number } | undefined;
+  const consider = (a: Action, v: number) => {
+    if (v <= 0 || (best && v <= best.v)) return;
+    if (applyAction(s, a).ok) best = { a, v };
+  };
+  for (const c of clonesOf(s, u.id)) {
+    for (const id of c.jutsus) {
+      const j = JUTSU[id];
+      if (!j || cloneJutsuBlocker(s, c, j) || u.chakra < j.cost) continue;
+      if (j.cast === 'bonus' ? !c.turn.bonus : !c.turn.action) continue;
+      if (j.special === 'heal') {
+        for (const f of Object.values(s.units)) {
+          if (f.team !== u.team || f.clone || f.kind !== 'ninja' || f.down === 'dead' || f.down === 'fled' || f.down === 'ko') continue;
+          if (!f.down && f.hp > f.maxHp * 0.5) continue;
+          consider({ type: 'jutsu', unit: c.id, jutsu: id, at: { ...f.pos }, target: f.id }, avgOf(j.dice) * (f.down ? 2 : 1.2));
+        }
+        continue;
+      }
+      if (!offensive(j) || u.chakra < j.cost * 2) continue;
+      for (const f of visibleFoes(s, c)) {
+        const hits = areaValue(s, c, j, f);
+        consider({ type: 'jutsu', unit: c.id, jutsu: id, at: { ...f.pos }, target: j.shape === 'single' ? f.id : undefined }, avgOf(j.dice) * hits * (1 + 0.5 * (1 - f.hp / Math.max(1, f.maxHp))));
+      }
+    }
+  }
+  return best?.a ?? null;
 }
 
 /** A blow from `p` reaches the target (and no metal wall stands between). */

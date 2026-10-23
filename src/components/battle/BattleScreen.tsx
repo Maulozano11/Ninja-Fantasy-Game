@@ -21,6 +21,7 @@ import { auraEntered, commandBlocker, edgeFoe, nodeInSight, nodeUnder, ownNodeAt
 import { KUNAI, KUNAI_LONG, wielded } from '../../battle/units';
 import { STONE_RANGE } from '../../battle/stealth';
 import { TAG } from '../../battle/hazards';
+import { cloneJutsuBlocker, clonesOf, summonSpots, summonerOf } from '../../battle/clones';
 import { battleResult } from '../../battle/result';
 import type { PartyBattleResult } from '../../battle/result';
 import { useLang } from '../../i18n';
@@ -314,9 +315,17 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
   );
   const actor: Unit | undefined = useMemo(() => {
     if (busy || state.phase === 'ended') return undefined;
-    if (state.phase === 'combat') return playerTurn ? current(state) : undefined;
+    if (state.phase === 'combat') {
+      if (!playerTurn) return undefined;
+      // One of its clones picked (clicked on, or the Clones button): it casts what it may.
+      const me = current(state);
+      const clone = me && selected ? clonesOf(state, me.id).find((c) => c.id === selected) : undefined;
+      return clone ?? me;
+    }
     return stealthParty.find((u) => u.id === selected) ?? stealthParty[0];
   }, [busy, state, playerTurn, stealthParty, selected]);
+  /** The ninja whose turn it is when a clone of its acts (its chakra pays, its bars show). */
+  const actorOwner = actor?.clone ? summonerOf(state, actor) : actor;
 
   useEffect(() => {
     if (actor && actor.id !== selected) setSelected(actor.id);
@@ -532,6 +541,11 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
         label = why ? reasonLine(why) : jutsuName(spec.id, lang);
         if (!why) sub = T('aimSave', { save: (lang === 'es' ? SAVE_ES : SAVE_EN).wis, dc: actor.saveDC });
       } else if (mode.picked) label = T('aimSecond');
+    } else if (mode.k === 'jutsu' && spec && spec.special === 'clone') {
+      // The clone jutsu: the cells its clones would stand on light up (E for two).
+      o.reach = { cells: summonSpots(s, actor, mode.enhanced).map(cellOf), tone: 'dash' };
+      label = jutsuName(spec.id, lang, mode.enhanced);
+      sub = T(mode.enhanced ? 'aimClones2' : 'aimClones');
     } else if (mode.k === 'jutsu' && spec) {
       const self = spec.shape === 'self' || spec.shape === 'selfCircle';
       if (!self) o.range = { at: actor.pos, radius: spec.range };
@@ -547,7 +561,9 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
           o.area = { shape: area, tone: spec.special === 'heal' ? 'heal' : 'enemy' };
           // As the engine reaches them: nobody behind a metal wall from where it bursts (D13).
           const origin = spec.shape === 'selfCircle' || spec.shape === 'cone' || spec.shape === 'line' ? actor.pos : at;
-          const hit = Object.values(s.units).filter((u) => !u.down && (u.id !== actor.id || spec.shape === 'circle') && inAreaLoose(area, u) && !fullCoverBetween(s, origin, u.pos));
+          // Nor a ninja's own clones (nor, for a clone's jutsu, its summoner): they are one ninja.
+          const kin = actor.clone?.of ?? actor.id;
+          const hit = Object.values(s.units).filter((u) => !u.down && (u.id !== actor.id || spec.shape === 'circle') && u.clone?.of !== kin && !(actor.clone && u.id === kin) && inAreaLoose(area, u) && !fullCoverBetween(s, origin, u.pos));
           o.targets = hit.filter((u) => u.team !== actor.team).map((u) => u.id);
           o.warn = hit.filter((u) => u.team === actor.team).map((u) => u.id);
           label = T('aimHits', { n: hit.length });
@@ -870,6 +886,16 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
       if (u?.team === 'party' && s.phase === 'stealth') setSelected(u.id);
       return;
     }
+    // A clone of the ninja whose turn it is: clicked, it is picked (to cast); with a clone picked, a
+    // click anywhere else goes back to the ninja.
+    if (mode.k === 'move' && u && actorOwner && u.id !== actor.id && clonesOf(s, actorOwner.id).some((c) => c.id === u.id)) {
+      setSelected(u.id);
+      return;
+    }
+    if (mode.k === 'move' && actor.clone) {
+      setSelected(actorOwner?.id);
+      return;
+    }
     switch (mode.k) {
       case 'move':
         if (u && u.team === 'party' && u.id !== actor.id && s.phase === 'stealth' && stealthParty.some((x) => x.id === u.id)) {
@@ -954,6 +980,41 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
     };
     const can = { action: u.turn.action, bonus: u.turn.bonus };
     const noAction = can.action ? null : t('r_noAction');
+    const owner = actorOwner ?? u;
+    if (u.clone) {
+      // A clone picked: the jutsu it may cast with its summoner's chakra, back to the ninja, end the turn.
+      for (const id of u.jutsus) {
+        const sp = JUTSU[id];
+        if (!sp) continue;
+        const blocked = cloneJutsuBlocker(state, u, sp);
+        const spent = sp.cast === 'bonus' ? (can.bonus ? null : t('r_noBonus')) : noAction;
+        const why = (blocked ? t(`r_${blocked}` as TKey) : null) ?? spent ?? (owner.chakra < sp.cost ? t('r_noChakra') : handsBlocker(u, sp) ? t(`r_${handsBlocker(u, sp)}` as TKey) : null);
+        add({
+          id: `jutsu:${id}`,
+          label: jutsuShort(id, lang),
+          icon: ABILITY_ICON[id] ?? ELEMENT_ICON[sp.element] ?? ACTION_ICON.focus,
+          badge: sp.cost,
+          tone: 'jutsu',
+          element: sp.element,
+          disabled: !!why,
+          why,
+          active: mode.k === 'jutsu' && mode.id === id,
+          tip: jutsuTip(sp, sp.cost, lang),
+          help: `${t('cloneCasts')} · ${jutsuName(id, lang)} · ${sp.rank} · ${sp.range} m${sp.dice ? ` · ${sp.dice}` : ''}`,
+        });
+      }
+      add({ id: 'cloneBack', label: t('act_cloneBack'), icon: ACTION_ICON.end, help: t('help_cloneBack') });
+      add({ id: 'end', label: t('act_end'), icon: ACTION_ICON.end, tone: 'end', help: t('help_end') });
+      b.forEach((x, i) => {
+        if (i < 9) x.hotkey = String(i + 1);
+      });
+      return b;
+    }
+    // Its clones can still cast: a button picks them (a click on a clone does too).
+    const casters = clonesOf(state, u.id).filter((c) => c.jutsus.length);
+    if (!more && casters.length && (u.clonePoints ?? 0) > 0) {
+      add({ id: 'clones', label: t('act_clones'), icon: ACTION_ICON.focus, badge: u.clonePoints, tone: 'jutsu', help: T('help_clones', { n: u.clonePoints ?? 0 }, lang) });
+    }
     if (!more) {
       add({ id: 'attack', label: t('act_attack'), icon: ACTION_ICON.attack, disabled: !can.action, why: noAction, active: mode.k === 'attack' && !mode.ranged, help: t('help_attack') });
       add({ id: 'throw', label: t('act_throw'), icon: ACTION_ICON.throw, disabled: !can.action, why: noAction, active: mode.k === 'attack' && mode.ranged, help: t('help_throw') });
@@ -1051,7 +1112,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
       x.hotkey = String(i + 1);
     });
     return b;
-  }, [actor, more, mode, state, lang, map]);
+  }, [actor, actorOwner, more, mode, state, lang, map]);
 
   const press = useCallback(
     (id: string) => {
@@ -1062,12 +1123,33 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
         setMore((m) => !m);
         return;
       }
+      if (id === 'clones') {
+        // The next of its clones that can still cast.
+        const list = clonesOf(s, u.id).filter((c) => c.jutsus.length);
+        if (list.length) setSelected(list[0].id);
+        return;
+      }
+      if (id === 'cloneBack') {
+        setSelected(actorOwner?.id);
+        return;
+      }
+      if (id === 'end' && u.clone) {
+        if (actorOwner) act({ type: 'endTurn', unit: actorOwner.id });
+        return;
+      }
       if (id.startsWith('passive:')) return;
       if (id.startsWith('jutsu:')) {
         const jid = id.slice(6);
         const sp = JUTSU[jid];
         if (!sp) return;
         if (!tipSeen('tip_jutsu')) setTip('tip_jutsu');
+        // The clone jutsu is aimed like the others, so E can make it enhanced (2 clones): a click on
+        // the map, or its button again, casts it.
+        if (sp.special === 'clone' && sp.enhCost) {
+          if (mode.k === 'jutsu' && mode.id === jid) act({ type: 'jutsu', unit: u.id, jutsu: jid, at: u.pos, enhanced: mode.enhanced });
+          else setMode({ k: 'jutsu', id: jid, enhanced: false });
+          return;
+        }
         if (sp.shape === 'self') {
           act({ type: 'jutsu', unit: u.id, jutsu: jid, at: u.pos });
           return;
@@ -1126,7 +1208,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
       }
       void s;
     },
-    [actor, act],
+    [actor, actorOwner, act, mode],
   );
 
   // Keyboard.
@@ -1240,10 +1322,11 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
   const cardUnit = actor ?? turnUnit;
   const cardView = cardUnit ? pb.views.get(cardUnit.id) : undefined;
   // The party's own: an enemy under Command fights alongside it but isn't one of them.
-  const party = Object.values(state.units).filter((u) => homeTeam(u) === 'party');
+  const party = Object.values(state.units).filter((u) => homeTeam(u) === 'party' && !u.clone);
   // The HUD: who the target plaque shows, and whose medallion and bars the action dock carries.
   const plaque = plaqueUnit(state, hover?.unit, pb.turnUnit);
-  const dockUnit = actor ?? (cardUnit && homeTeam(cardUnit) === 'party' ? cardUnit : undefined);
+  // A clone picked: its summoner's bars and chakra (which pays), with the clone's own action pips.
+  const dockUnit = actor?.clone && actorOwner ? { ...actorOwner, turn: actor.turn } : actorOwner ?? (cardUnit && homeTeam(cardUnit) === 'party' ? cardUnit : undefined);
 
   const promptText = (): { title: string; text: string } | null => {
     if (!pending || !reactor) return null;
@@ -1678,6 +1761,7 @@ function reasonsText(pv: ReturnType<typeof attackPreview>, lang: ReturnType<type
   if (pv.cover) parts.push(T(pv.cover === 5 ? 'cover5' : 'cover2', undefined, lang));
   if (pv.height > 0) parts.push(T('heightUp', undefined, lang));
   if (pv.height < 0) parts.push(T('heightDown', undefined, lang));
+  if (pv.flank) parts.push(T('cloneFlank', undefined, lang));
   return parts.join(' · ');
 }
 

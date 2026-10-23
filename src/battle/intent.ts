@@ -18,6 +18,8 @@ import { KUNAI, KUNAI_LONG, wielded } from './units';
 import { COMMAND, FORESIGHT_RANGE, SUBMISSION, SWAP, WARP, commandRefused, ownNodes, submissionRefused, swapBlocker, warpBlocker, warpLanding } from './clans';
 import { ownStructures, structureAt, structureBlocker } from './structures';
 import { chargedReach } from './charged';
+import { CLONE, clonesOf } from './clones';
+import { rngFor } from '../rules/rng';
 
 const avg = (dice?: string): number => {
   const d = dice ? parseDice(dice) : null;
@@ -30,6 +32,7 @@ export const standingUnit = (u: Unit): boolean => !u.down && !u.head?.severed;
  * Foes a unit knows about: standing, not hidden from it, and no steam between them: not lost in it,
  * nor outside it while the unit stands in it (unless right beside it, steamHides). An enemy in the
  * steam still remembers the plan it made (its intent) and goes on with it, or walks out (ai.ts).
+ * Clones aren't among them: a plan aimed at their summoner may go astray to one (fooledBy).
  */
 export function visibleFoes(s: BattleState, u: Unit): Unit[] {
   return Object.values(s.units).filter(
@@ -37,6 +40,7 @@ export function visibleFoes(s: BattleState, u: Unit): Unit[] {
       f.team !== u.team &&
       standingUnit(f) &&
       f.kind !== 'hydra_body' &&
+      !f.clone &&
       (f.cond.hidden === undefined || passivePerception(u) >= f.cond.hidden) &&
       !steamHides(s, u.pos, f.pos),
   );
@@ -72,7 +76,8 @@ export function areaValue(s: BattleState, u: Unit, j: JutsuSpec, at: Unit): numb
   if (!area) return 1 + conductValue(s, u, j, at, null);
   let v = 0;
   for (const o of Object.values(s.units)) {
-    if (!standingUnit(o) || o.kind === 'hydra_body') continue;
+    // A clone caught in it is worth nothing either way (it is no foe to beat, no friend to spare).
+    if (!standingUnit(o) || o.kind === 'hydra_body' || o.clone) continue;
     if (o.id === u.id && (j.shape === 'selfCircle' || j.shape === 'cone' || j.shape === 'line')) continue;
     if (!inArea(area, o.pos)) continue;
     // Friends caught in the blast weigh more than foes: the AI only risks it for a crowd.
@@ -157,7 +162,7 @@ export function warpStrikeAt(s: BattleState, u: Unit, t: Unit): Pt | null {
 }
 
 /** Foes of a side still standing (not the hydra's body, which nobody fights directly). */
-const foesOf = (s: BattleState, u: Unit): Unit[] => Object.values(s.units).filter((o) => o.team !== u.team && standingUnit(o) && o.kind !== 'hydra_body');
+const foesOf = (s: BattleState, u: Unit): Unit[] => Object.values(s.units).filter((o) => o.team !== u.team && standingUnit(o) && o.kind !== 'hydra_body' && !o.clone);
 
 /**
  * What a Spatial Swap with `t` (on one of the Ryusei's Nodes, within reach of the swap) is worth;
@@ -174,7 +179,7 @@ export function swapValue(s: BattleState, u: Unit, t: Unit | undefined): number 
     if (t.hp > t.maxHp * 0.5 || u.hp < u.maxHp * 0.5 || !struck(t.pos) || struck(u.pos)) return 0;
     return 6 + 10 * (1 - t.hp / t.maxHp);
   }
-  const mine = Object.values(s.units).filter((o) => o.id !== u.id && o.team === u.team && o.kind === 'ninja' && standingUnit(o) && dist(o.pos, u.pos) <= 2.5);
+  const mine = Object.values(s.units).filter((o) => o.id !== u.id && o.team === u.team && o.kind === 'ninja' && !o.clone && standingUnit(o) && dist(o.pos, u.pos) <= 2.5);
   const theirs = Object.values(s.units).filter((o) => o.id !== t.id && o.team === t.team && standingUnit(o) && dist(o.pos, u.pos) <= 3);
   const fails = 1 - successChance(saveMod(t, 'str'), u.saveDC, 'none', true);
   if (mine.length < 2 || theirs.length || fails < 0.5) return 0;
@@ -244,7 +249,7 @@ const walkLeft = (u: Unit): number => Math.max(0, u.turn.move - (u.cond.prone ? 
 export function ninjaOptions(s: BattleState, u: Unit, next = false): Option[] {
   const out: Option[] = [];
   const foes = visibleFoes(s, u);
-  const friends = Object.values(s.units).filter((o) => o.team === u.team && o.kind === 'ninja' && o.down !== 'dead' && o.down !== 'fled' && o.down !== 'ko');
+  const friends = Object.values(s.units).filter((o) => o.team === u.team && o.kind === 'ninja' && !o.clone && o.down !== 'dead' && o.down !== 'fled' && o.down !== 'ko');
   const strMod = abilityMod(u.stats.str);
   const dexMod = abilityMod(u.stats.dex);
   const wMod = u.weapon.finesse ? Math.max(strMod, dexMod) : strMod;
@@ -418,10 +423,30 @@ export function headOptions(s: BattleState, u: Unit): Option[] {
 export function planIntent(s: BattleState, u: Unit, next = false): Intent | undefined {
   if (u.kind === 'hydra_body') return { kind: 'defend', what: 'thrash' };
   const opts = u.kind === 'hydra_head' ? headOptions(s, u) : ninjaOptions(s, u, next);
-  if (opts.length) return opts[0].intent;
+  if (opts.length) return fooledBy(s, u, opts[0].intent);
   // Nothing in reach: close in on the nearest foe.
   const foes = visibleFoes(s, u).sort((a, b) => dist(u.pos, a.pos) - dist(u.pos, b.pos));
   return foes.length && u.speed > 0 ? { kind: 'move', what: 'advance', target: foes[0].id } : undefined;
+}
+
+/**
+ * The clones confuse their summoner's foes (the owner's answer of 2026-10-23): a blow, a kunai or a
+ * jutsu planned at a ninja with clones goes at one of its clones instead, n times in n + 2 with n
+ * clones standing (1 in 3 with one, 1 in 2 with two; the builder's proposal, CLONE). Who it picks
+ * comes from the battle's seed and the moment (the same state always plans the same), never from a
+ * roll of the battle's dice.
+ */
+export function fooledBy(s: BattleState, u: Unit, i: Intent): Intent {
+  if (!i.target || (i.kind !== 'melee' && i.kind !== 'ranged' && i.kind !== 'jutsu' && i.kind !== 'bite' && i.kind !== 'spit')) return i;
+  const t = s.units[i.target];
+  if (!t || t.team === u.team) return i;
+  const clones = clonesOf(s, t.id);
+  if (!clones.length) return i;
+  const rng = rngFor(s.seed, 'cloneFool', u.id, t.id, s.round, s.turn, s.tick);
+  const r = rng() * (clones.length + CLONE.fooled);
+  if (r >= clones.length) return i;
+  const c = clones[Math.floor(r)];
+  return { ...i, target: c.id, ...(i.at ? { at: { ...c.pos } } : {}) };
 }
 
 /** Where a plan takes a unit: the point it heads for and the spots it can carry the plan out from. */
@@ -515,7 +540,7 @@ export function stepToward(s: BattleState, u: Unit, g: Goal, budget: number, ope
  * not onto a spot another enemy already means to stop on.
  */
 export function planEnemy(s: BattleState, u: Unit): void {
-  if (u.team !== 'enemy' || u.down) {
+  if (u.team !== 'enemy' || u.down || u.clone) {
     u.intent = undefined;
     return;
   }
@@ -545,7 +570,7 @@ export function replanAgainst(s: BattleState, id: string, ev: BattleEvent[]): vo
 }
 
 /** The Eye of Tomorrow in the party: the Mirai who can read the enemies' next moves. */
-export const miraiSeers = (s: BattleState): Unit[] => Object.values(s.units).filter((u) => u.team === 'party' && !u.down && u.character?.clan === 'Mirai');
+export const miraiSeers = (s: BattleState): Unit[] => Object.values(s.units).filter((u) => u.team === 'party' && !u.down && !u.clone && u.character?.clan === 'Mirai');
 
 /**
  * An enemy acting on its turn has begun to carry its plan out (it walked, or spent its action or

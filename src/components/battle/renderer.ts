@@ -27,6 +27,7 @@ import { edgeFoe, leavesNodes, nodeUnder, WARP, warpLanding } from '../../battle
 import { GRID, RES } from '../../sprite/raster';
 import { depthFx, drawAuraBack, drawCracks, drawDouses, drawWetGround, drawHeld, drawLinger, drawScreenBlood, drawVfxSprite, drawWallSprite, wallTint } from './vfxSprites';
 import { isTintElement, vfxTintColors } from '../../sprite/vfxTint';
+import { CHAKRA_COLORS } from '../../sprite/chakra';
 import { jutsuTint } from './vfxTintPlan';
 
 export interface Camera {
@@ -891,7 +892,10 @@ function drawUnit(ctx: CanvasRenderingContext2D, sc: Scene, u: Unit, pos: Pt): v
       : charge
         ? { mode: 'aura' as const, tick: Math.floor(now / 83), empowered: true, burst: { color: 'cyan' as const, tint: jutsuTint(charge, u) } }
         : undefined;
-  const fr = unitFrame(u, look, v.pose, frame, aura);
+  const fr0 = unitFrame(u, look, v.pose, frame, aura);
+  // A clone: the same frame, washed in its ninja's chakra colour with a line of it round the body,
+  // and a little see-through, so it is told apart from the real one at a glance.
+  const fr = u.clone ? { ...cloneFrame(fr0, cloneColor(look)), rig: fr0.rig } : fr0;
   let lx = 0;
   let ly = 0;
   if (v.lunge) {
@@ -909,7 +913,7 @@ function drawUnit(ctx: CanvasRenderingContext2D, sc: Scene, u: Unit, pos: Pt): v
   const solid = (k: number, facing: 1 | -1 = v.facing, img: FrameCanvas = fr): void => {
     if (k <= 0) return;
     ctx.save();
-    ctx.globalAlpha = alpha * k * (hurt && Math.floor(now / 60) % 2 ? 0.55 : 1);
+    ctx.globalAlpha = alpha * k * (hurt && Math.floor(now / 60) % 2 ? 0.55 : 1) * (u.clone ? CLONE_ALPHA : 1);
     // In the river the body sinks: deep water hides the legs, shallow water the feet.
     if (water !== 'none' && v.pose !== 'downed') {
       ctx.beginPath();
@@ -940,6 +944,60 @@ function drawUnit(ctx: CanvasRenderingContext2D, sc: Scene, u: Unit, pos: Pt): v
     ctx.stroke();
     ctx.restore();
   }
+}
+
+/** How solid a clone is drawn (it is a copy: a little see-through). */
+const CLONE_ALPHA = 0.8;
+/** How much of its chakra colour washes over a clone's body. */
+const CLONE_WASH = 0.38;
+
+/** The colour a clone is washed in: its ninja's chakra colour (its own tint, or its burst's), light enough to show. */
+function cloneColor(look: SpriteAppearance): string {
+  const hex = look.chakra.tint ?? CHAKRA_COLORS.find((c) => c.id === look.chakra.color)?.hex ?? '#7dd3fc';
+  const n = parseInt(hex.slice(1), 16);
+  const luma = (0.299 * ((n >> 16) & 255) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) / 255;
+  // A black chakra would vanish into the black line: its clone glows violet instead.
+  return luma < 0.2 ? '#c4b5fd' : hex;
+}
+
+const cloneFrames = new WeakMap<HTMLCanvasElement, Map<string, FrameCanvas>>();
+
+/** A frame as a clone shows it: a 1 px line of `color` round the figure, and the body washed in it (cached per frame and colour). */
+function cloneFrame(fr: FrameCanvas, color: string): FrameCanvas {
+  let byColor = cloneFrames.get(fr.canvas);
+  if (!byColor) cloneFrames.set(fr.canvas, (byColor = new Map()));
+  const hit = byColor.get(color);
+  if (hit) return hit;
+  const w = fr.canvas.width;
+  const h = fr.canvas.height;
+  const sil = document.createElement('canvas');
+  sil.width = w;
+  sil.height = h;
+  const sg = sil.getContext('2d')!;
+  sg.drawImage(fr.canvas, 0, 0);
+  sg.globalCompositeOperation = 'source-in';
+  sg.fillStyle = color;
+  sg.fillRect(0, 0, w, h);
+  const c = document.createElement('canvas');
+  c.width = w + 2;
+  c.height = h + 2;
+  const g = c.getContext('2d')!;
+  for (const [dx, dy] of [[0, 1], [2, 1], [1, 0], [1, 2]]) g.drawImage(sil, dx, dy);
+  g.drawImage(fr.canvas, 1, 1);
+  // The wash: the colour over the body only (its own pixels), the line it already has kept.
+  const body = document.createElement('canvas');
+  body.width = w;
+  body.height = h;
+  const bg = body.getContext('2d')!;
+  bg.drawImage(fr.canvas, 0, 0);
+  bg.globalCompositeOperation = 'source-atop';
+  bg.globalAlpha = CLONE_WASH;
+  bg.fillStyle = color;
+  bg.fillRect(0, 0, w, h);
+  g.drawImage(body, 1, 1);
+  const out = { canvas: c, ox: fr.ox - 1, oy: fr.oy - 1 };
+  byColor.set(color, out);
+  return out;
 }
 
 /** A unit frame drawn with its feet at (x0, y0 + FEET.y), mirrored when it faces left. */
@@ -2041,6 +2099,20 @@ function drawMarks(ctx: CanvasRenderingContext2D, sc: Scene): void {
       top = { X: s.X, Y: s.Y - (v.pose === 'downed' ? 40 : 108) };
     }
     const s = toScreen(top.X, top.Y);
+    if (u.clone) {
+      // A clone has no HP to show: one pip for each of its summoner's turns it has left.
+      const n = u.clone.turns;
+      const pip = f(5);
+      const gap = f(3);
+      const x0 = s.x - (n * pip + (n - 1) * gap) / 2;
+      for (let i = 0; i < n; i++) {
+        ctx.fillStyle = 'rgba(8, 10, 18, 0.8)';
+        ctx.fillRect(x0 + i * (pip + gap) - 1, s.y - 1, pip + 2, pip + 2);
+        ctx.fillStyle = '#7dd3fc';
+        ctx.fillRect(x0 + i * (pip + gap), s.y, pip, pip);
+      }
+      continue;
+    }
     const w = f(u.kind === 'hydra_body' ? 80 : 34);
     const h = f(4);
     const frac = Math.max(0, Math.min(1, v.hp / u.maxHp));

@@ -12,6 +12,7 @@ import type { BattleEvent, BattleState, DamageType, Pt, RollInfo, Unit } from '.
 import { homeTeam } from './types';
 import { coverBetween, dist, fullCoverBetween, hideSpotAt, levelAtPt, lineOfSight, steamAt } from './map';
 import { KUNAI, KUNAI_LONG, wielded } from './units';
+import { cloneFlank, popClone, popClonesOf } from './clones';
 
 /** The next dice stream of the battle. */
 export function nextRng(s: BattleState): Rng {
@@ -116,6 +117,8 @@ export interface AttackPreview {
   /** Why there is advantage or disadvantage (keys for the screen). */
   reasons: string[];
   inRange: boolean;
+  /** The +2 of a clone of the attacker's side standing next to the target (a melee attack; in `mod`). */
+  flank?: number;
   /**
    * Why the attack can't be made at all, as the engine refuses it: a kunai with no line of sight
    * ('noSight'), a blow across a Kōton metal wall ('blocked': full cover, nothing passes).
@@ -125,7 +128,8 @@ export interface AttackPreview {
 
 function flanked(s: BattleState, attacker: Unit, target: Unit): boolean {
   for (const ally of Object.values(s.units)) {
-    if (ally.id === attacker.id || ally.team !== attacker.team || !standing(ally)) continue;
+    // A clone flanks its own way: +2, not advantage (cloneFlank).
+    if (ally.id === attacker.id || ally.team !== attacker.team || !standing(ally) || ally.clone) continue;
     if (dist(ally.pos, target.pos) > wielded(ally).reach + 0.1) continue;
     // An ally behind a metal wall can't strike the target.
     if (fullCoverBetween(s, ally.pos, target.pos)) continue;
@@ -142,7 +146,7 @@ function flanked(s: BattleState, attacker: Unit, target: Unit): boolean {
 export const AURA_RADIUS = 4.5;
 
 /** A Northstar ninja still standing: its Aura of Sovereignty is up. */
-export const sovereign = (u: Unit): boolean => u.kind === 'ninja' && !u.down && u.character?.clan === 'Northstar';
+export const sovereign = (u: Unit): boolean => u.kind === 'ninja' && !u.down && !u.clone && u.character?.clan === 'Northstar';
 
 /** The Northstar of another side whose aura a unit stands in (its attack rolls have disadvantage). */
 export function hostileAura(s: BattleState, a: Unit): Unit | undefined {
@@ -245,8 +249,10 @@ export function attackPreview(s: BattleState, a: Unit, t: Unit, kind: AttackKind
   }
   const adv = combineAdvantage(...advs);
   const ac = t.ac + tm.ac + cover;
-  const total = mod + height;
-  const out: AttackPreview = { mod: total, ac, cover, height, adv, chance: hitChance(total, ac, adv), reasons, inRange };
+  // A clone next to the target: +2 to a blow at it (the owner's answer of 2026-10-23).
+  const flank = close ? cloneFlank(s, a, t) : 0;
+  const total = mod + height + flank;
+  const out: AttackPreview = { mod: total, ac, cover, height, adv, chance: hitChance(total, ac, adv), reasons, inRange, ...(flank ? { flank } : {}) };
   // The engine's refusals: a kunai needs the line of sight, a blow can't cross a metal wall.
   const blocked = kind === 'ranged' ? (lineOfSight(s, a.pos, t.pos) ? undefined : 'noSight') : kind === 'melee' && fullCoverBetween(s, a.pos, t.pos) ? 'blocked' : undefined;
   return blocked ? { ...out, blocked } : out;
@@ -301,6 +307,11 @@ export const HEAD_REGROW = 2;
  */
 export function damage(s: BattleState, t: Unit, raw: number, type: DamageType, o: DamageOpts, ev: BattleEvent[]): void {
   if (t.down === 'dead' || t.down === 'fled') return;
+  // A clone goes up in smoke at the first blow that hurts (the owner: "hasta que recibe un golpe").
+  if (t.clone) {
+    if (raw > 0) popClone(s, t, 'hit', ev);
+    return;
+  }
   if (t.head?.severed) {
     // A cut stump is sealed by fire, lightning or an explosion; otherwise the head grows back.
     const how = o.explosion ? 'explosion' : type === 'Fire' ? 'fire' : type === 'Lightning' ? 'lightning' : undefined;
@@ -348,8 +359,9 @@ export function damage(s: BattleState, t: Unit, raw: number, type: DamageType, o
     return;
   }
   // A commanded unit that drops goes back to its own side (and falls as one of them). A beast that
-  // joined isn't a party member: it falls like a foe would, with no death saves.
+  // joined isn't a party member: it falls like a foe would, with no death saves. Its clones go.
   releaseCommand(t, ev);
+  popClonesOf(s, t.id, 'down', ev);
   if (t.team === 'party' && !t.joined) {
     t.stats2.fell = true;
     if (o.crit) t.stats2.fellToCrit = true;

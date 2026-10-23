@@ -63,6 +63,7 @@ import {
 } from './clans';
 import { reachTo, replanAgainst } from './intent';
 import { chargedFoe, chargeHolds, crackUnder, endCharge } from './charged';
+import { CLONE, besideFoe, cloneJutsuBlocker, cloneRankCost, cloneTakesBlow, clonesOf, comboClones, followClones, oneDieOf, popClone, popClonesOf, summonClones, summonSpots, summonerOf } from './clones';
 
 // --- setup ---------------------------------------------------------------------------------
 
@@ -208,8 +209,11 @@ export function applyAction(state: BattleState, action: Action): Outcome {
   // A state from before the clans (an older save or peer) has no Weapon Nodes yet.
   s.nodes ??= [];
   const ev: BattleEvent[] = [];
+  // Where the ninjas with clones stood: a ninja that moved has its clones follow it (clones.ts).
+  const summoners = Object.values(s.units).filter((u) => u.clonePoints !== undefined && !u.down).map((u) => ({ u, at: { ...u.pos } }));
   const err = dispatch(s, action, ev);
   if (err) return { ok: false, reason: err, state, events: [] };
+  if (!s.pending) for (const { u, at } of summoners) if (!u.down && dist(u.pos, at) > 0.05) followClones(s, u, ev);
   settle(s, ev);
   return { ok: true, state: s, events: ev };
 }
@@ -244,7 +248,12 @@ function dispatch(s: BattleState, a: Action, ev: BattleEvent[]): string | null {
   }
   const u = s.units[a.unit];
   if (!u) return 'noUnit';
-  if (s.phase === 'combat') {
+  if (u.clone) {
+    // A clone acts in its summoner's turn, and only casts (it follows its summoner on its own).
+    if (u.down) return 'cantAct';
+    if (s.phase !== 'combat' || current(s)?.id !== u.clone.of) return 'notYourTurn';
+    if (a.type !== 'jutsu') return 'cloneJutsuOnly';
+  } else if (s.phase === 'combat') {
     if (current(s)?.id !== u.id) return 'notYourTurn';
   } else {
     if (u.team !== 'party' || u.down) return 'cantAct';
@@ -299,7 +308,7 @@ function dispatch(s: BattleState, a: Action, ev: BattleEvent[]): string | null {
 /** A ninja is done for this stealth turn; when everyone is, the guards move. */
 function stealthDone(s: BattleState, u: Unit, ev: BattleEvent[]): void {
   s.stealthDone.push(u.id);
-  const waiting = Object.values(s.units).filter((o) => o.team === 'party' && !o.down && o.controller === 'player' && !s.stealthDone.includes(o.id));
+  const waiting = Object.values(s.units).filter((o) => o.team === 'party' && !o.down && !o.clone && o.controller === 'player' && !s.stealthDone.includes(o.id));
   if (!waiting.length) guardsTurn(s, ev);
 }
 
@@ -354,7 +363,8 @@ function stepHazards(s: BattleState, u: Unit, p: Pt, ev: BattleEvent[]): boolean
  */
 function provoker(s: BattleState, u: Unit, hop: Pt[], skip: string[]): Unit | undefined {
   for (const r of Object.values(s.units)) {
-    if (r.team === u.team || r.kind !== 'ninja' || r.down || skip.includes(r.id)) continue;
+    // A clone strikes only alongside its summoner (a combo), never on its own.
+    if (r.team === u.team || r.kind !== 'ninja' || r.down || r.clone || skip.includes(r.id)) continue;
     if (!r.turn.reaction || r.cond.surprised) continue;
     // Nothing reaches across a metal wall.
     if (fullCoverBetween(s, r.pos, u.pos)) continue;
@@ -510,7 +520,7 @@ function weaponAttack(
   const roll = check(s, 'attack', pv.mod, pv.ac, adv, true);
   if (t.pos.x !== a.pos.x) a.facing = t.pos.x > a.pos.x ? 1 : -1;
   const reasons = o.takedown && !pv.reasons.includes('hidden') ? [...pv.reasons, 'unaware'] : pv.reasons;
-  ev.push({ t: 'attack', unit: a.id, target: t.id, what: w.name, roll, ranged, ...(reasons.length ? { reasons } : {}) });
+  ev.push({ t: 'attack', unit: a.id, target: t.id, what: w.name, roll, ranged, ...(reasons.length ? { reasons } : {}), ...(pv.flank ? { flank: pv.flank } : {}) });
   if (leavesNodes(a) && (ranged || !roll.success)) addNode(s, a, t.pos, ev);
   const edge = !!a.cond.warpEdge;
   if (edge) a.cond.warpEdge = false;
@@ -525,9 +535,16 @@ function weaponAttack(
     if (surprise) amount += rollDiceExpr(s, '1d6', roll.crit);
     if (!ranged && hasEffect(a.effects, 'gates_open')) amount += rollDiceExpr(s, '1d8', roll.crit);
     hits.push({ unit: t.id, amount: Math.max(1, amount), type: w.type, source: a.id, what: w.name, crit: roll.crit, knockout: o.knockout && !ranged, melee: !ranged, aimed: true, unseen: surprise, unblockable: edge });
+    // A blow that lands on a foe a clone of its striker stands next to: the clone joins it (a combo).
+    if (!ranged) for (const c of comboClones(s, a, t)) hits.push(comboHit(s, c, t, CLONE.comboDice, o.knockout));
   }
   applyHits(s, hits, after, ev);
   return !!s.pending;
+}
+
+/** A clone's blow in a combo at `t`: `dice` of bludgeoning, no modifier (CLONE; the builder's proposal). */
+function comboHit(s: BattleState, c: Unit, t: Unit, dice: string, knockout?: boolean): Hit {
+  return { unit: t.id, amount: Math.max(1, rollDiceExpr(s, dice)), type: 'Bludgeoning', source: c.id, what: 'combo', melee: true, combo: true, knockout };
 }
 
 function opportunityAttack(s: BattleState, r: Unit, m: Unit, ev: BattleEvent[], resume: NonNullable<AfterHits['resumeWalk']>): boolean {
@@ -623,10 +640,28 @@ function applyHits(s: BattleState, hits: Hit[], after: AfterHits, ev: BattleEven
     const h = queue.shift()!;
     const t = s.units[h.unit];
     if (!t || t.down === 'dead' || t.down === 'fled') continue;
+    if (h.combo) {
+      // A clone's blow in a combo: only at a foe still up, and only from a clone still there.
+      const c = h.source ? s.units[h.source] : undefined;
+      if (t.down || !c || c.down) continue;
+      if (t.pos.x !== c.pos.x) c.facing = t.pos.x > c.pos.x ? 1 : -1;
+      ev.push({ t: 'combo', unit: c.id, by: c.clone?.of ?? c.id, target: t.id });
+    }
+    // A clone struck: any blow that hurts sends it up in smoke (combat.ts, damage).
+    if (t.clone) {
+      if (h.amount > 0) damage(s, t, h.amount, h.type, { source: h.source }, ev);
+      continue;
+    }
     const blockable = h.aimed && h.amount > 0 && !h.unblockable;
     if (blockable && t.cond.clone) {
       t.cond.clone = false;
       ev.push({ t: 'clone', unit: t.id, on: false });
+      continue;
+    }
+    // A blow aimed at a ninja with clones strikes one of them: the real one stood where it was.
+    const decoy = blockable ? cloneTakesBlow(s, t) : undefined;
+    if (decoy) {
+      takeBlow(s, t, decoy, ev);
       continue;
     }
     if (blockable && !h.evadeDeclined && canEvade(s, t, h)) {
@@ -654,6 +689,20 @@ function applyHits(s: BattleState, hits: Hit[], after: AfterHits, ev: BattleEven
     landHit(s, t, h, ev);
   }
   finishAfter(s, after, ev, resumed);
+}
+
+/**
+ * A clone takes the blow aimed at its summoner (the owner: it lasts "hasta que recibe un golpe"): it
+ * goes up in smoke where the blow struck, and the summoner is where that clone stood (they trade
+ * places, so the screen shows which one was the copy).
+ */
+function takeBlow(s: BattleState, t: Unit, c: Unit, ev: BattleEvent[]): void {
+  const from = { ...t.pos };
+  const to = { ...c.pos };
+  c.pos = from;
+  popClone(s, c, 'blow', ev, from);
+  t.pos = to;
+  ev.push({ t: 'teleport', unit: t.id, from, to });
 }
 
 function landHit(s: BattleState, t: Unit, h: Hit, ev: BattleEvent[]): void {
@@ -832,11 +881,20 @@ function doJutsu(s: BattleState, u: Unit, id: string, atIn: Pt, targetId: string
   const base = JUTSU[id];
   if (!base || !u.jutsus.includes(id)) return 'unknownJutsu';
   if (base.cast === 'reaction') return 'reactionOnly';
-  if (effectMods(u.effects).noJutsu) return 'chakraSealed';
+  // A clone casts with its summoner's chakra (its plain cost), within the points its summoner's
+  // clones share (the owner: "a costa del chakra del invocador").
+  const owner = u.clone ? summonerOf(s, u) : undefined;
+  if (u.clone) {
+    const why = cloneJutsuBlocker(s, u, base);
+    if (why) return why;
+    if (enh) return 'noEnhanced';
+  }
+  const payer = owner ?? u;
+  if (effectMods(payer.effects).noJutsu) return 'chakraSealed';
   if (enh && !base.enhCost) return 'noEnhanced';
   const spec = enh ? enhanced(base) : base;
-  const { cost, woven } = jutsuCostParts(u, base, enh);
-  if (u.chakra < cost) return 'noChakra';
+  const { cost, woven } = owner ? { cost: base.cost, woven: false } : jutsuCostParts(u, base, enh);
+  if (payer.chakra < cost) return 'noChakra';
   if (base.cast === 'bonus' ? !u.turn.bonus : !u.turn.action) return base.cast === 'bonus' ? 'noBonus' : 'noAction';
   // One charged hand at a time.
   if (base.handCharge && u.charged) return 'alreadyCharged';
@@ -913,19 +971,29 @@ function doJutsu(s: BattleState, u: Unit, id: string, atIn: Pt, targetId: string
     const why = structureBlocker(s, w);
     if (why) return why;
   }
+  // The clone jutsu: once the fighting starts, with room beside the ninja for a clone.
+  if (spec.special === 'clone') {
+    if (s.phase !== 'combat') return 'combatOnly';
+    if (!summonSpots(s, u, enh).length) return 'noRoom';
+  }
   if (stow) setArmed(u, false, 'free', ev);
   // A sword art draws the blade for free (handsBlocker made sure the free draw is left).
   else if (base.weapon === 'draw' && u.weapon.held && !u.armed) setArmed(u, true, 'free', ev);
   // Hand seals for another jutsu let a charged hand go.
   if (u.charged && needsSeals(u, base)) endCharge(u, 'released', ev);
-  // Pay, and spend the action.
-  u.chakra -= cost;
-  if (cost) ev.push({ t: 'chakra', unit: u.id, delta: -cost, chakra: u.chakra, reason: id });
+  // Pay, and spend the action (a clone's own: its summoner's stays).
+  payer.chakra -= cost;
+  if (cost) ev.push({ t: 'chakra', unit: payer.id, delta: -cost, chakra: payer.chakra, reason: id });
+  if (owner) {
+    // Told before the cast itself (the saves against it follow its jutsu event straight away).
+    owner.clonePoints = (owner.clonePoints ?? 0) - (cloneRankCost(base) ?? 0);
+    ev.push({ t: 'note', key: 'cloneCasts', params: { name: owner.name, n: owner.clonePoints } });
+  }
   if (woven && u.tripleNature) {
     u.tripleNature.spent = true;
     ev.push({ t: 'note', key: 'tripleNature', params: { name: u.name } });
   }
-  if (!base.ability) {
+  if (!base.ability && !owner) {
     u.stats2.jutsuCast += 1;
     u.lastNature = base.nature ?? '';
   }
@@ -961,8 +1029,7 @@ function doJutsu(s: BattleState, u: Unit, id: string, atIn: Pt, targetId: string
       break;
     }
     case 'clone':
-      u.cond.clone = true;
-      ev.push({ t: 'clone', unit: u.id, on: true });
+      summonClones(s, u, enh, ev);
       break;
     case 'mantle':
       // The Breeze Mantle: a dodge cast as a bonus action (attacks against the ninja have
@@ -1003,11 +1070,44 @@ function doJutsu(s: BattleState, u: Unit, id: string, atIn: Pt, targetId: string
     default:
       hits.push(...jutsuHits(s, u, fan ? fanned(spec) : spec, target, at, ev));
   }
+  // A taijutsu blow of the summoner's: its clones join in (the owner: "cuando usas una habilidad de taijutsu").
+  if (!u.clone && base.nature === 'Taijutsu' && spec.melee) hits.push(...taijutsuCombo(s, u, spec, hits, ev));
   if (spec.loud && s.phase === 'combat') scareAnimalsNear(s, at, 6, ev);
   applyHits(s, hits, spec.loud ? loud(s, u) : silentAttack(s, u, spec, target, ev), ev);
   // A flash-in, a warp or a swap that lands a charged hand within reach of a foe sets it off.
   strikeCharged(s, u, ev);
   return null;
+}
+
+/**
+ * A summoner's taijutsu that struck foes: each of its clones joins in with a blow of one die of the
+ * jutsu's dice (the builder's proposal), at the foes struck in turn, flashing in beside the foe if
+ * it isn't there already (taijutsu is "boosted by clones", whether they stood next to the foe or not).
+ */
+function taijutsuCombo(s: BattleState, u: Unit, spec: JutsuSpec, hits: Hit[], ev: BattleEvent[]): Hit[] {
+  const struck: Unit[] = [];
+  for (const h of hits) {
+    const t = s.units[h.unit];
+    if (h.source !== u.id || h.combo || h.amount <= 0 || !t || t.team === u.team || t.down || struck.includes(t)) continue;
+    struck.push(t);
+  }
+  if (!struck.length) return [];
+  const out: Hit[] = [];
+  clonesOf(s, u.id).forEach((c, i) => {
+    const t = struck[i % struck.length];
+    if (!besideFoe(s, c.pos, t)) {
+      // Beside the foe, clear of everyone else when it can be (so it isn't drawn over them).
+      const crowd = Object.values(s.units).filter((o) => o.id !== c.id && o.id !== t.id && !o.down && !o.bulk);
+      const roomy = freeSpot(s, c, t.pos, CLONE.near, CLONE.reach - 0.05, (p) => (crowd.some((o) => dist(o.pos, p) < CLONE.near) ? -Infinity : -dist(p, c.pos)));
+      const to = roomy !== t.pos ? roomy : freeSpot(s, c, t.pos, 0.4, 1.5, (p) => -dist(p, c.pos));
+      if (to === t.pos) return;
+      if (to.x !== c.pos.x) c.facing = to.x > c.pos.x ? 1 : -1;
+      c.pos = to;
+      ev.push({ t: 'move', unit: c.id, path: [{ ...to }], run: true, jutsu: spec.id });
+    }
+    out.push(comboHit(s, c, t, oneDieOf(spec.dice)));
+  });
+  return out;
 }
 
 // --- a charged hand (the activated Chidori; battle/charged.ts) ------------------------------
@@ -1066,7 +1166,9 @@ function silentAttack(s: BattleState, u: Unit, spec: JutsuSpec, target: Unit | u
 function jutsuHits(s: BattleState, u: Unit, spec: JutsuSpec, target: Unit | undefined, at: Pt, ev: BattleEvent[]): Hit[] {
   const area = areaOf(spec, u.pos, at);
   const fromCaster = spec.shape === 'selfCircle' || spec.shape === 'cone' || spec.shape === 'line';
-  const victims = area ? unitsInArea(s, area, fromCaster ? [u.id] : [], fromCaster ? u.pos : at) : target ? [target] : [];
+  // A ninja's jutsu never strikes its own clones, nor a clone's jutsu its summoner (they are one ninja).
+  const kin = u.clone?.of ?? u.id;
+  const victims = area ? unitsInArea(s, area, fromCaster ? [u.id] : [], fromCaster ? u.pos : at).filter((v) => v.clone?.of !== kin && (!u.clone || v.id !== kin)) : target ? [target] : [];
   const type = spec.dmgType ?? 'Force';
   const amount = spec.dice ? rollDiceExpr(s, spec.dice) : 0;
   // Areas dent the Kōton structures they reach (an illusion doesn't).
@@ -1088,7 +1190,7 @@ function jutsuHits(s: BattleState, u: Unit, spec: JutsuSpec, target: Unit | unde
     }
     const pv = attackPreview(s, u, v, 'jutsu', { jutsuRange: spec.range, melee: spec.melee });
     const roll = check(s, 'attack', pv.mod, pv.ac, pv.adv, true);
-    ev.push({ t: 'attack', unit: u.id, target: v.id, what: spec.id, roll, ranged: !spec.melee, ...(pv.reasons.length ? { reasons: pv.reasons } : {}) });
+    ev.push({ t: 'attack', unit: u.id, target: v.id, what: spec.id, roll, ranged: !spec.melee, ...(pv.reasons.length ? { reasons: pv.reasons } : {}), ...(pv.flank ? { flank: pv.flank } : {}) });
     // A critical does maximum damage (the dice at their highest, doubled, the bonus once).
     if (roll.success) hits.push({ unit: v.id, amount: roll.crit && spec.dice ? rollDiceExpr(s, spec.dice, true) : amount, type, source: u.id, what: spec.id, crit: roll.crit, ...extra });
   }
@@ -1488,5 +1590,6 @@ function doFlee(s: BattleState, u: Unit, ev: BattleEvent[]): string | null {
   u.down = 'fled';
   u.cond = {};
   ev.push({ t: 'fled', unit: u.id });
+  popClonesOf(s, u.id, 'down', ev);
   return null;
 }

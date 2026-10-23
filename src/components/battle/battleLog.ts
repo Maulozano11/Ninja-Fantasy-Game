@@ -90,8 +90,10 @@ export function logLine(ev: BattleEvent, s: BattleState, lang: Lang, wallOf = (i
       }
       const target = ev.target.startsWith('prop:') ? '🛢' : nameOf(s, ev.target, lang);
       const p = { a: nameOf(s, ev.unit, lang), t: target, roll: rollText(ev.roll, lang), ac: ev.roll.dc };
-      if (!ev.roll.success) return { text: t('l_attackMiss', p), tone: 'text-slate-400' };
-      return ev.roll.crit ? { text: t('l_attackCrit', p), tone: 'text-yellow-300' } : { text: t('l_attackHit', p) };
+      // A clone next to the target: the roll counts its +2, and the line says so.
+      const flank = ev.flank ? ` (${t('l_flank')})` : '';
+      if (!ev.roll.success) return { text: t('l_attackMiss', p) + flank, tone: 'text-slate-400' };
+      return ev.roll.crit ? { text: t('l_attackCrit', p) + flank, tone: 'text-yellow-300' } : { text: t('l_attackHit', p) + flank };
     }
     case 'damage': {
       // A critical always does maximum damage (the owner's rule): the line says so.
@@ -127,8 +129,17 @@ export function logLine(ev: BattleEvent, s: BattleState, lang: Lang, wallOf = (i
     case 'node':
       // A Weapon Node lands, or the Ryusei's oldest fades for a fourth.
       return { text: t(ev.on ? 'l_node' : 'l_nodeGone', { t: nameOf(s, ev.node.owner, lang) }), tone: 'text-cyan-300' };
-    case 'clone':
-      return ev.on ? null : { text: t('l_clone') };
+    case 'clone': {
+      // A battle saved before the clones stood on the map: the old decoy's line.
+      if (!ev.by) return ev.on ? null : { text: t('l_clone') };
+      const a = nameOf(s, ev.by, lang);
+      if (ev.on) return { text: t('l_cloneUp', { a }), tone: 'text-sky-300' };
+      if (ev.why === 'blow') return { text: t('l_cloneBlow', { a }), tone: 'text-emerald-300' };
+      if (ev.why === 'recast') return null;
+      return { text: t(ev.why === 'expired' ? 'l_cloneExpired' : ev.why === 'down' ? 'l_cloneDown' : 'l_cloneHit', { t: nameOf(s, ev.unit, lang) }), tone: 'text-slate-400' };
+    }
+    case 'combo':
+      return { text: t('l_combo', { c: nameOf(s, ev.unit, lang), t: nameOf(s, ev.target, lang) }), tone: 'text-sky-300' };
     case 'sever':
       return { text: t('l_sever'), tone: 'text-rose-300 font-semibold' };
     case 'seal':
@@ -253,7 +264,9 @@ export function floatLabel(ev: BattleEvent, s: BattleState, lang: Lang): string 
     case 'slowed':
       return t('slowed');
     case 'clone':
-      return ev.on ? null : lang === 'es' ? '¡Clon!' : 'Clone!';
+      return ev.on || ev.why === 'recast' || ev.why === 'expired' ? null : lang === 'es' ? '¡Clon!' : 'Clone!';
+    case 'combo':
+      return t('f_combo');
     case 'sever':
       return t('severed');
     case 'seal':

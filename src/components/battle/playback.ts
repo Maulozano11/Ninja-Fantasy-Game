@@ -2218,7 +2218,46 @@ export class Playback {
         h.sound('explosion');
         h.shake(6);
         return 380;
-      case 'clone':
+      case 'clone': {
+        if (ev.by && ev.at) {
+          // A clone on the map (battle/clones.ts): it stands up in a puff of smoke beside its
+          // summoner, in its pose and facing its way; it goes up in smoke where it stood (or where
+          // the blow aimed at its summoner struck), and is gone.
+          const at = ev.at;
+          this.fx.push({ kind: 'smoke', element: 'chakra', from: at, to: at, t0: now, dur: 520 });
+          if (ev.on) {
+            const u = state.units[ev.unit];
+            const by = this.view(ev.by);
+            if (u) {
+              this.views.set(u.id, {
+                pos: { ...at },
+                facing: by?.facing ?? u.facing,
+                pose: 'idle',
+                poseT0: now,
+                stride: 0,
+                hp: 1,
+                tempHp: 0,
+                chakra: 0,
+                armed: by?.armed ?? u.armed,
+                hidden: false,
+                crouched: false,
+                hurtUntil: 0,
+              });
+            }
+            h.sound('kawarimi');
+            return 220;
+          }
+          const v = this.view(ev.unit);
+          if (v) {
+            v.pos = { ...at };
+            v.walk = undefined;
+            v.fade = { t0: now, dur: 160 };
+          }
+          if (ev.why !== 'recast' && ev.why !== 'expired') h.roll(ev);
+          if (label) this.float(label, '#e9d8a6', at, now);
+          h.sound('kawarimi');
+          return ev.why === 'blow' ? 120 : 250;
+        }
         if (ev.on) this.fx.push({ kind: 'aura', element: 'chakra', from: this.posOf(ev.unit, now), to: this.posOf(ev.unit, now), t0: now, dur: 600, unit: ev.unit });
         else {
           this.fx.push({ kind: 'smoke', element: 'chakra', from: this.posOf(ev.unit, now), to: this.posOf(ev.unit, now), t0: now, dur: 500 });
@@ -2226,6 +2265,22 @@ export class Playback {
         }
         if (!ev.on && label) this.float(label, '#e9d8a6', this.posOf(ev.unit, now), now);
         return 250;
+      }
+      case 'combo': {
+        // A clone joins its summoner's blow: it lunges at the target with its own swing.
+        const a = this.view(ev.unit);
+        if (!a) return 0;
+        const from = this.posOf(ev.unit, now);
+        const to = this.posOf(ev.target, now);
+        if (Math.abs(to.x - from.x) > 0.05) a.facing = to.x > from.x ? 1 : -1;
+        this.setPose(a, 'attack', now, 520);
+        const d = Math.max(0.01, dist(from, to));
+        a.lunge = { dx: ((to.x - from.x) / d) * 14, dy: ((to.z - from.z) / d) * 6, t0: now, dur: 420 };
+        this.fx.push({ kind: 'slash', element: 'chakra', from, to, t0: now + 150 / this.speed, dur: 260, lift: [60, 60] });
+        if (label) this.float(label, '#7dd3fc', from, now, { rise: 120 });
+        h.sound('swing');
+        return 300;
+      }
       case 'sever': {
         const v = this.view(ev.unit);
         if (v) {

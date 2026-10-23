@@ -279,6 +279,11 @@ export function ActionDock({
     setHov(b && x !== undefined ? { id: b.id, x } : null);
     onHover(b);
   };
+  // A slot pressed to act empties the bar while the action plays (its mouse-leave never comes): its
+  // pop-up mustn't come back with the bar.
+  React.useEffect(() => {
+    if (hov && !buttons.some((b) => b.id === hov.id)) setHov(null);
+  }, [buttons, hov]);
   const end = buttons.find((b) => b.id === 'end');
   const skills = buttons.filter((b) => SKILL(b) && b !== end);
   const items = buttons.filter((b) => !SKILL(b) && b !== end);

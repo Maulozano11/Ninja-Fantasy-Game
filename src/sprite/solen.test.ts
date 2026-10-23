@@ -482,3 +482,53 @@ describe('his cuirass on the bulky body', () => {
     assert.deepEqual(bare, []);
   });
 });
+
+describe('his throw on the bulky body', () => {
+  // the owner on Solen's bulky throw, 2026-10-23: "ahi tienes unos pixeles muertos y el problema del cuello"
+  const PARTS_OF = (names: string[]) => new Set(names.map((n) => partIndex(n as Parameters<typeof partIndex>[0])));
+  it('leaves no slit of background into his near arm in any throw frame', () => {
+    const arm = PARTS_OF(['upperArmN', 'forearmN']);
+    for (const body of ['bulky'] as BodyType[]) {
+      for (let f = 0; f < frameCount('throw'); f++) {
+        const fr = render(look(body), 'throw', f);
+        const slits: string[] = [];
+        for (let y = 1; y < GRID - 1; y++)
+          for (let x = 1; x < GRID - 1; x++) {
+            const i = y * GRID + x;
+            if (opaque(fr.rgba, i)) continue;
+            if ([i - 1, i + 1, i - GRID, i + GRID].filter((q) => opaque(fr.rgba, q) && arm.has(fr.part[q])).length >= 3) slits.push(`${x},${y}`);
+          }
+        assert.deepEqual(slits, [], `${body} throw ${f}`);
+      }
+    }
+  });
+  it('walls in no background round his neck when the head turns forward (the release and follow-through)', () => {
+    for (const body of ['bulky', 'male'] as BodyType[]) {
+      for (const f of [3, 4]) {
+        const fr = render(look(body), 'throw', f);
+        const nx = Math.floor(fr.rig.neck.x * RES);
+        const ny = Math.floor(fr.rig.neck.y * RES);
+        const R = 16;
+        const seen = new Set<number>();
+        for (let y = ny - R; y <= ny + R; y++)
+          for (let x = nx - R; x <= nx + R; x++) {
+            const i0 = y * GRID + x;
+            if (seen.has(i0) || opaque(fr.rgba, i0)) continue;
+            // the background reached from here: walled in if it never gets out of the window round the neck
+            const gap = [i0];
+            seen.add(i0);
+            let open = false;
+            for (let k = 0; k < gap.length; k++)
+              for (const q of [gap[k] - 1, gap[k] + 1, gap[k] - GRID, gap[k] + GRID]) {
+                if (Math.abs((q % GRID) - nx) > R || Math.abs(((q / GRID) | 0) - ny) > R) open = true;
+                else if (!seen.has(q) && !opaque(fr.rgba, q)) {
+                  seen.add(q);
+                  gap.push(q);
+                }
+              }
+            assert.ok(open, `${body} throw ${f}: ${gap.length} px of background walled in at ${x},${y}`);
+          }
+      }
+    }
+  });
+});

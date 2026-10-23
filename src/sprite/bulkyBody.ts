@@ -5,10 +5,10 @@
 // an edge of his that a pose bares is closed with his line (compose.ts).
 
 import { hexToRgb, hslToHex, retintHex, rgbToHsl } from './color';
-import { armDepth, armJoints, DrawCtx, handDraw, handPose, legDepth, legJoints, Side } from './ctx';
+import { armDepth, armJoints, type Depth, DrawCtx, handDraw, handPose, legDepth, legJoints, Side } from './ctx';
 import { BULKY_BASE, BULKY_BASE_BRIEFS, BULKY_BASE_KIND, BULKY_BASE_SKIN } from './bulkyBaseArt';
 import { segAngle, stretchPiece, type PaintedPiece } from './painted';
-import { add, F_NO_OUTLINE, F_NO_TEXTURE, F_OWNER, F_SEAL, Layer, len, lerp, PartId, RES, sub, Vec } from './raster';
+import { add, F_NO_OUTLINE, F_NO_TEXTURE, F_OWNER, F_SEAL, GRID, Layer, len, lerp, partIndex, PartId, RES, sub, Vec } from './raster';
 import { drawRig, turnPoint, type Rig } from './rig';
 import type { BodyType } from './types';
 import { stampTemplate, type TemplatePalette } from './rotsprite';
@@ -143,4 +143,110 @@ export function drawBulkyBase(g: DrawCtx): void {
   leg('N');
   onTorso(g.L('torso.body'), B.chest, r.neck, lean, pal(B.chest), 'torso');
   arm('N');
+  if (r.neckPitch !== undefined) g.after((layers) => closeNape(g, layers, neckShadow(g), 3));
+  if (r.pose === 'throw') g.after((layers) => closeArmSlits(g, layers, 'N'));
+}
+
+/**
+ * Throwing, a slit of background into his arm (its turned pieces' edge stepping in, as under the near elbow
+ * raised in the coil: the owner on Solen's throw, "ahi tienes unos pixeles muertos"): a background pixel his
+ * arm closes on three sides is filled, until none is left; filled on the outside it is his line, inside his
+ * skin beside it.
+ */
+function closeArmSlits(g: DrawCtx, layers: ReadonlyMap<Depth, Layer>, s: Side): void {
+  const L = layers.get(armDepth(s, 'body'));
+  if (!L) return;
+  const all = [...layers.values()];
+  const bare = (i: number) => all.every((l) => l.mat[i] < 0);
+  const parts = new Set([partIndex(s === 'N' ? 'upperArmN' : 'upperArmF'), partIndex(s === 'N' ? 'forearmN' : 'forearmF')]);
+  // (his arm and what lies on it, a sleeve or a bracer: the topmost of them there)
+  const armAt = (i: number) => {
+    let top: Layer | undefined;
+    for (const l of all) if (l.mat[i] >= 0) top = l;
+    return top && parts.has(top.part[i]) ? top : undefined;
+  };
+  const lines = new Set(Object.entries(BULKY_BASE_KIND).filter(([, k]) => k === 'line').map(([hex]) => g.m(hex, 'flat')));
+  const line = g.m('#000000', 'flat');
+  const filled = new Set<number>();
+  for (let pass = 0; pass < 4; pass++) {
+    const next: number[] = [];
+    for (let i = GRID + 1; i < GRID * (GRID - 1) - 1; i++) {
+      if (!bare(i) || filled.has(i)) continue;
+      if ([i - 1, i + 1, i - GRID, i + GRID].filter((q) => armAt(q) || filled.has(q)).length >= 3) next.push(i);
+    }
+    if (!next.length) break;
+    for (const i of next) {
+      const nb = [i - 1, i + 1, i - GRID, i + GRID].filter((q) => armAt(q));
+      const q = nb.find((k) => !lines.has(armAt(k)!.mat[k])) ?? nb[0];
+      const from = q === undefined ? L : armAt(q)!;
+      const k = q ?? [i - 1, i + 1, i - GRID, i + GRID].find((n) => filled.has(n))!;
+      L.mat[i] = from.mat[k];
+      L.shade[i] = from.shade[k];
+      L.part[i] = from.part[k];
+      L.flags[i] = from.flags[k];
+      filled.add(i);
+    }
+  }
+  // his line along the outside of what was filled, and not inside it
+  for (const i of filled) {
+    const out = [i - 1, i + 1, i - GRID, i + GRID].some((q) => bare(q));
+    if (out) L.mat[i] = line;
+  }
+}
+
+/** The most background a gap behind the nape may hold to be closed (fine px): a gap, not the space under an arm. */
+const NAPE_GAP = 10;
+
+/** His skin in the shadow of his neck: the chest piece's darkest skin, in the character's skin. */
+function neckShadow(g: DrawCtx): number {
+  const skins = Object.values(BULKY_BASE.chest.colors).filter((hex) => BULKY_BASE_KIND[hex] === 'skin');
+  const lum = (hex: string) => hexToRgb(hex).reduce((a, c, k) => a + c * [0.299, 0.587, 0.114][k], 0);
+  return g.m(ownerSkin(skins.reduce((a, b) => (lum(b) < lum(a) ? b : a)), BULKY_BASE_SKIN, g.look.skin), 'flat');
+}
+
+/**
+ * With the head turned forward on the neck (the throw's release, Rig.neckPitch) the back of the head comes
+ * down over the collar, and between the hair, the collar and the shoulder a few pixels of background were
+ * walled in behind the nape (the owner on Solen's throw: "el problema del cuello"). Each such gap beside the
+ * head is closed with the skin in the shadow of the neck (`mat` at `shade`), so the nape reads as a neck under
+ * the hair. On every body (body.ts for the others).
+ */
+export function closeNape(g: DrawCtx, layers: ReadonlyMap<Depth, Layer>, mat: number, shade: number): void {
+  const all = [...layers.values()];
+  const L = layers.get('torso.body');
+  if (!L) return;
+  const bare = (i: number) => all.every((l) => l.mat[i] < 0);
+  const head = partIndex('head');
+  const isHead = (i: number) => all.some((l) => l.mat[i] >= 0 && l.part[i] === head);
+  const nx = Math.floor(g.rig.neck.x * RES);
+  const ny = Math.floor(g.rig.neck.y * RES);
+  const R = 16;
+  const seen = new Set<number>();
+  for (let y = ny - R; y <= ny + R; y++)
+    for (let x = nx - R; x <= nx + R; x++) {
+      const i0 = y * GRID + x;
+      if (x < 1 || y < 1 || x >= GRID - 1 || y >= GRID - 1 || seen.has(i0) || !bare(i0)) continue;
+      // the gap: all the background reached from here (within the window round the neck; reaching its edge, open)
+      const gap = [i0];
+      seen.add(i0);
+      let open = false;
+      for (let k = 0; k < gap.length; k++) {
+        const i = gap[k];
+        for (const q of [i - 1, i + 1, i - GRID, i + GRID]) {
+          const qx = q % GRID;
+          const qy = (q / GRID) | 0;
+          if (Math.abs(qx - nx) > R || Math.abs(qy - ny) > R || qx < 1 || qy < 1 || qx >= GRID - 1 || qy >= GRID - 1) {
+            open = true;
+            continue;
+          }
+          if (!seen.has(q) && bare(q)) {
+            seen.add(q);
+            gap.push(q);
+          }
+        }
+      }
+      if (open) continue;
+      if (gap.length > NAPE_GAP || !gap.some((i) => [i - 1, i + 1, i - GRID, i + GRID].some(isHead))) continue;
+      for (const i of gap) L.set(i % GRID, (i / GRID) | 0, mat, shade, 'torso', F_NO_TEXTURE | F_NO_OUTLINE | F_OWNER);
+    }
 }

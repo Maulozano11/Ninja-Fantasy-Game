@@ -11,7 +11,7 @@ import { type PaintedEye, VALIANT_BROW_HAIR, VALIANT_EYE_COLORS, VALIANT_EYES, V
 import { VALIANT_HEAD, VALIANT_SKIN } from './headArt';
 import { FOUNDER_FACE_KIND, FOUNDER_HEAD, FOUNDER_IRIS, FOUNDER_SKIN } from './founderFaceArt';
 import { STERN_BROW_HAIR, STERN_EYE_COLORS, STERN_EYES, STERN_HEAD, STERN_IRIS, STERN_SKIN } from './sternFaceArt';
-import { drawBulkyBase } from './bulkyBody';
+import { closeNape, drawBulkyBase } from './bulkyBody';
 import { type PaintedPiece, stampPiece } from './painted';
 import { ROMAN_EYE_COLORS, ROMAN_EYES, ROMAN_IRIS } from './romanEyeArt';
 import { ROMAN_HEAD, ROMAN_SKIN } from './romanHeadArt';
@@ -55,6 +55,8 @@ export function drawBody(g: DrawCtx): void {
     drawHead(g);
     return;
   }
+  // (the head turned forward on the neck: no background walled in behind the nape, bulkyBody.ts closeNape)
+  if (r.neckPitch !== undefined) g.after((layers) => closeNape(g, layers, g.skin, 1));
 
   // Far arm (behind the torso, one shade darker)
   drawArm(g, g.L('farArm.body'), 'F', skin('upperArmF', -1), skin('forearmF', -1));

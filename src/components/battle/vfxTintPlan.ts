@@ -5,6 +5,7 @@
 // recoloured sheets.
 
 import type { JutsuSpec } from '../../battle/jutsu';
+import { ELEMENTAL_SLASH, unitImbueElements } from '../../battle/imbue';
 import type { Unit, Wall } from '../../battle/types';
 import { isTintElement, vfxTintIsNatural, vfxTintOf } from '../../sprite/vfxTint';
 import type { TintElement } from '../../sprite/vfxTint';
@@ -140,22 +141,31 @@ function stageSheets(stage: NonNullable<NonNullable<JutsuSpec['seq']>['stage']>,
 /**
  * The sheets to recolour for a unit's jutsu, each in the colour it plays in (jutsuTint): its chakra
  * colour (none when Natural or his colour already), and its heals' green whatever its colour, so a
- * heal is ready in green before it is cast.
+ * heal is ready in green before it is cast. An Elemental Slash throws the element on the weapon: the
+ * crescent and the hit of each element the unit can put there, in its chakra colour (playback.ts
+ * elementSlash; earth's obsidian keeps its own).
  */
 export function unitTintSheets(u: Pick<Unit, 'look' | 'character' | 'jutsus'>, specOf: (id: string) => JutsuSpec | undefined): { ref: TintSheetRef; color: string }[] {
   const out: { ref: TintSheetRef; color: string }[] = [];
   const seen = new Set<string>();
+  const add = (ref: TintSheetRef, color: string) => {
+    // One sheet can play in two colours (the water aura: a heal's green, a water mantle's chakra colour).
+    const key = `${ref.group}/${ref.name}/${color}`;
+    if (seen.has(key) || vfxTintIsNatural(ref.element, color, { beast: ref.beast, sprite: ref.name })) return;
+    seen.add(key);
+    out.push({ ref, color });
+  };
   for (const id of u.jutsus) {
     const spec = specOf(id);
     const color = jutsuTint(spec, u);
     if (!spec || !color) continue;
-    for (const ref of tintSheetsOf(spec)) {
-      // One sheet can play in two colours (the water aura: a heal's green, a water mantle's chakra colour).
-      const key = `${ref.group}/${ref.name}/${color}`;
-      if (seen.has(key) || vfxTintIsNatural(ref.element, color, { beast: ref.beast, sprite: ref.name })) continue;
-      seen.add(key);
-      out.push({ ref, color });
-    }
+    for (const ref of tintSheetsOf(spec)) add(ref, color);
+  }
+  const color = u.jutsus.includes(ELEMENTAL_SLASH) ? unitTint(u) : undefined;
+  for (const e of color ? unitImbueElements(u) : []) {
+    if (e === 'Earth') continue;
+    const el = e.toLowerCase() as TintElement;
+    for (const name of ['slash', 'hit']) add({ group: `vfx_${el}`, name, element: el }, color!);
   }
   return out;
 }

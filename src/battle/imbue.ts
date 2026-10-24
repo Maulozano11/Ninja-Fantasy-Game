@@ -25,6 +25,17 @@ export const WEAPON_ELEMENT = 'weapon_element';
 /** The class that has it. */
 export const IMBUE_CLASS = 'Bukijutsu Master';
 
+/**
+ * Elemental Slash (Corte elemental), the Weapon Master's second class ability: the element on the
+ * weapon thrown off it in one cut, an attack at range. The owner (2026-10-23), verbatim: "ahora pon en
+ * el juego una habilidad para maestro de armas que si tienes la mejora de arma que dura 3 turnos puedes
+ * tambien tener una opcion de lanzar la habilidad en un slash del elemento que tengas para usarlo como
+ * habilidad de largo alcance para maestro de armas", and then "el tajo sera un bonus action y elimina la
+ * mejora del arma": only while the element is on the weapon, a bonus action, and the element leaves the
+ * weapon with it. The rest (its chakra, its range, its roll and its damage) is the builder's proposal.
+ */
+export const ELEMENTAL_SLASH = 'elemental_slash';
+
 /** The elements a weapon can take: the five elemental natures (no genjutsu, no Light or Void). */
 export type ImbueElement = 'Fire' | 'Lightning' | 'Wind' | 'Water' | 'Earth';
 export const IMBUE_ELEMENTS: readonly ImbueElement[] = ['Fire', 'Lightning', 'Wind', 'Water', 'Earth'];
@@ -43,6 +54,11 @@ export const WATER_REACH = 1.5;
 export const WIND_PUSH = 1.5;
 /** Earth: the lowest natural d20 that is a critical hit with obsidian on the edge (proposal: 19–20). */
 export const EARTH_CRIT = 19;
+
+/** Elemental Slash: chakra it costs (proposal: a little; the element on the weapon, paid for already, goes with it). */
+export const SLASH_COST = 1;
+/** Elemental Slash: how far it flies (m; proposal: as the rank D and C jutsu thrown at one target, 9 m), water's 1.5 m more. */
+export const SLASH_RANGE = 9;
 
 /**
  * The damage each element adds. Fire and lightning are their own; the game has no water, wind or
@@ -76,7 +92,7 @@ export const imbueElementOf = (nature: ChakraNature | string | undefined): Imbue
  */
 export function classAbilities(shinobiClass: string | undefined, natures: ChakraNature | string | undefined | readonly (ChakraNature | string)[]): string[] {
   const list = Array.isArray(natures) ? natures : [natures];
-  return shinobiClass === IMBUE_CLASS && list.some((n) => imbueElementOf(n)) ? [WEAPON_ELEMENT] : [];
+  return shinobiClass === IMBUE_CLASS && list.some((n) => imbueElementOf(n)) ? [WEAPON_ELEMENT, ELEMENTAL_SLASH] : [];
 }
 
 /**
@@ -125,8 +141,21 @@ export function imbueBlocker(u: Unit, element?: ImbueElement): string | null {
   return null;
 }
 
-/** Why it ended: its rounds ran out, its ninja fell, its chakra was sealed. */
-export type ImbueEnd = 'expired' | 'down' | 'sealed';
+/** How far an Elemental Slash flies with this element: water's reaches its 1.5 m further, as the blade does. */
+export const slashRange = (element: ImbueElement | null | undefined): number => SLASH_RANGE + (element === 'Water' ? WATER_REACH : 0);
+
+/**
+ * Why the unit can't throw an Elemental Slash now, or null (the engine checks the bonus action, the
+ * chakra, the range and the sight itself): no element on its weapon, no weapon to hold.
+ */
+export function slashBlocker(u: Pick<Unit, 'imbued' | 'weapon'>): string | null {
+  if (!u.imbued) return 'noImbue';
+  if (!u.weapon.held) return 'noBlade';
+  return null;
+}
+
+/** Why it ended: its rounds ran out, its ninja fell, its chakra was sealed, it left the weapon in an Elemental Slash. */
+export type ImbueEnd = 'expired' | 'down' | 'sealed' | 'slashed';
 
 /** Puts the element on the weapon for its rounds. */
 export function startImbue(u: Unit, element: ImbueElement, ev: BattleEvent[]): void {

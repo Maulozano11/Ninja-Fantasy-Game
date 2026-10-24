@@ -175,6 +175,10 @@ const TABLE = strings({
     en: 'Bonus action, {c} chakra: your element on the weapon in hand for {r} of your turns (this one counted). Every blow of it that hits adds {d}. Fire: a crit sets the foe burning. Lightning: a crit leaves it numb. Wind: a crit blows it back {p} m. Water: +{m} m reach, and it puts out flames. Earth, sharp obsidian: it crits on 19–20. Not on thrown kunai.',
     es: 'Acción adicional, {c} chakra: tu elemento en el arma que empuñas durante {r} de tus turnos (este incluido). Cada golpe suyo que acierta suma {d}. Fuego: un crítico deja quemado al enemigo. Rayo: un crítico lo deja entumecido. Viento: un crítico lo empuja {p} m. Agua: +{m} m de alcance, y apaga las llamas. Tierra, obsidiana filosa: hace crítico con 19–20. No en los kunai lanzados.',
   },
+  help_elemental_slash: {
+    en: 'Bonus action, {c} chakra, {n} m ({w} m with water): only while your element is on the weapon. It leaves the weapon in one slash at a foe in sight: the weapon’s attack roll, and a hit deals the weapon’s die + {d} of the element. A crit does what the blade’s does: fire burns, lightning numbs, wind blows the foe back {p} m, earth crits on {k}–20; water puts out flames. The element is gone from the weapon.',
+    es: 'Acción adicional, {c} chakra, {n} m ({w} m con agua): solo con tu elemento en el arma. Sale del arma en un corte contra un enemigo a la vista: la tirada de ataque del arma, y si acierta hace el dado del arma + {d} del elemento. Un crítico hace lo mismo que la hoja: el fuego quema, el rayo entumece, el viento empuja al enemigo {p} m, la tierra hace crítico con {k}–20; el agua apaga las llamas. El elemento deja el arma.',
+  },
   help_ryusei_swap: {
     en: 'Action, 3 chakra, 18 m: swap places with anyone standing on one of your Nodes. An enemy can resist with a STR save.',
     es: 'Acción, 3 chakra, 18 m: intercambia el lugar con quien esté sobre uno de tus Nodos. Un enemigo puede resistirse con una salvación de FUE.',
@@ -269,6 +273,7 @@ const TABLE = strings({
   r_handsBusy: { en: 'Hands busy: stow the weapon first (bonus action).', es: 'Manos ocupadas: guarda el arma primero (acción adicional).' },
   r_noElement: { en: 'Only the five elements (fire, lightning, wind, water, earth) go onto a weapon.', es: 'Solo los cinco elementos (fuego, rayo, viento, agua, tierra) pasan al arma.' },
   r_alreadyImbued: { en: 'The weapon already carries the element.', es: 'El arma ya lleva el elemento.' },
+  r_noImbue: { en: 'Only with your element on the weapon (Weapon Element Enhancement).', es: 'Solo con tu elemento en el arma (Potenciación elemental del arma).' },
   r_noBlade: { en: 'A sword art: it needs a blade in hand.', es: 'Arte de espada: necesita un arma en la mano.' },
   r_drawFirst: { en: 'Draw the weapon first (bonus action).', es: 'Desenvaina el arma primero (acción adicional).' },
   r_chakraSealed: { en: 'Chakra sealed.', es: 'Chakra sellado.' },
@@ -390,6 +395,12 @@ const TABLE = strings({
   l_imbueEnd_Water: { en: "The water runs off {a}'s weapon", es: 'El agua se escurre del arma de {a}' },
   l_imbueEnd_Earth: { en: "The obsidian crumbles off {a}'s weapon", es: 'La obsidiana se desprende del arma de {a}' },
   l_imbueSealed: { en: "Sealed chakra leaves {a}'s weapon plain", es: 'El chakra sellado deja el arma de {a} sin elemento' },
+  // Elemental Slash: the element leaves the weapon in the cut (the owner: "elimina la mejora del arma").
+  l_imbueSlashed_Fire: { en: "The flames leave {a}'s weapon in a slash", es: 'Las llamas salen del arma de {a} en un corte' },
+  l_imbueSlashed_Lightning: { en: "The lightning leaves {a}'s weapon in a slash", es: 'El rayo sale del arma de {a} en un corte' },
+  l_imbueSlashed_Wind: { en: "The wind leaves {a}'s weapon in a slash", es: 'El viento sale del arma de {a} en un corte' },
+  l_imbueSlashed_Water: { en: "The water leaves {a}'s weapon in a slash", es: 'El agua sale del arma de {a} en un corte' },
+  l_imbueSlashed_Earth: { en: "The obsidian leaves {a}'s weapon in a slash", es: 'La obsidiana sale del arma de {a} en un corte' },
   f_imbue_Fire: { en: 'Flames!', es: '¡Llamas!' },
   f_imbue_Lightning: { en: 'Lightning!', es: '¡Rayo!' },
   f_imbue_Wind: { en: 'Wind!', es: '¡Viento!' },

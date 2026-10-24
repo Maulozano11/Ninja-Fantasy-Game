@@ -410,6 +410,12 @@ action y elimina la mejora del arma"*.
   throw that element off the weapon in a slash, an attack **at long range**.
 - It is a **bonus action** (the action stays free: the master can still strike that turn).
 - It **ends the enhancement**: the element leaves the weapon with the slash.
+- Water: *"el de agua apaga las llamas y pone mojado abajo del objetivo"*: a water slash puts out the target's
+  flames **and leaves the ground under the target wet**: the same wet ground a water jutsu leaves (`soak` in
+  `src/battle/ground.ts`: a 1 m circle round the target, as a water jutsu thrown at one target soaks, for
+  WET_ROUNDS; its art, and what fire and lightning do on it, are the ones the game has), with its log line ("El
+  suelo queda mojado"). *Our assumption, to confirm with him:* on every water slash that hits, as the dousing,
+  not only on a critical hit; a miss leaves the ground dry.
 
 **The rest is the builder's proposal, waiting for his numbers** (constants in `src/battle/imbue.ts`):
 - Name *Corte elemental* (*Elemental Slash*), the same on the button. Id `elemental_slash`.
@@ -428,8 +434,9 @@ action y elimina la mejora del arma"*.
 - A hit deals **the weapon's die + 1d4 of the element** (the damage types of the table above), no ability
   modifier (a bonus-action blow, like an off-hand one in 5e). A critical hit: the dice at their maximum, doubled
   (his crit rule), and **the element's rider as on the blade**: fire sets the foe burning, lightning leaves it
-  Numb (2 rounds), wind blows it back 1.5 m, obsidian crits on a natural 19; water puts out the foe's flames.
-  It does nothing to the ground (it sets no fire there, and doesn't run through water).
+  Numb (2 rounds), wind blows it back 1.5 m, obsidian crits on a natural 19; water puts out the foe's flames and
+  wets the ground under it (his rule, above). The other elements do nothing to the ground (fire sets none
+  alight, lightning doesn't run through water).
 - The AI keeps the element on the blade while the blade can reach a foe this turn (walking there counted), and
   throws it at the foe it is likeliest to hit (the most wounded on a tie) when none can be reached, or, its blow
   struck, on the element's last turn, before it fades anyway (`slashAway` in `src/battle/ai.ts`).

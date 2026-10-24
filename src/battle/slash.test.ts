@@ -15,6 +15,7 @@ import { wielded } from './units';
 import { ELEMENTAL_SLASH, EARTH_CRIT, IMBUE_DAMAGE, SLASH_COST, SLASH_RANGE, WATER_REACH, WEAPON_ELEMENT, classAbilities, slashRange, startImbue } from './imbue';
 import type { ImbueElement } from './imbue';
 import { JUTSU } from './jutsu';
+import { dampAt } from './map';
 import { logLine } from '../components/battle/battleLog';
 import type { Action, BattleEvent, BattleState } from './types';
 
@@ -185,6 +186,35 @@ describe('Elemental Slash: what a hit does', () => {
   it(`obsidian crits on ${EARTH_CRIT}`, () => {
     const { atk } = thrown('Earth', (d) => d === EARTH_CRIT);
     assert.ok(atk.roll.crit && atk.roll.success, 'a 19 hits and crits even against AC 30');
+  });
+
+  it('water puts out the flames and leaves the ground under the target wet, as a water jutsu does', () => {
+    // The owner: "el de agua apaga las llamas y pone mojado abajo del objetivo". On any hit (as the dousing), not only a crit.
+    const { out, foe } = thrown('Water', (_d, crit, ok) => ok && !crit);
+    const wet = out.events.find((e) => e.t === 'ground' && e.kind === 'wet' && e.on);
+    assert.ok(wet?.t === 'ground' && wet.cells.length > 0, 'the ground is soaked');
+    assert.ok(dampAt(out.state, foe.pos), 'under the target');
+    assert.equal(logLine(wet!, setup('Water'), 'es')?.text, 'El suelo queda mojado');
+    assert.equal(logLine(wet!, setup('Water'), 'en')?.text, 'The ground is soaked');
+    // A burning foe's flames go out.
+    for (let seed = 1; seed < 400; seed++) {
+      const s = setup('Water', 6, seed);
+      const f = foeOf(s);
+      f.ac = 1;
+      f.hp = f.maxHp = 200;
+      f.effects = [{ id: 'burning', remaining: 3 }];
+      const o = act(s, slash(s));
+      const atk = o.events.find((e) => e.t === 'attack');
+      if (atk?.t !== 'attack' || !atk.roll.success) continue;
+      assert.ok(!o.state.units[f.id].effects.some((e) => e.id === 'burning'));
+      return;
+    }
+    throw new Error('no hit');
+  });
+
+  it('a fire slash leaves no wet ground; a water slash that misses leaves none either', () => {
+    assert.ok(!thrown('Fire', (_d, _c, ok) => ok).out.events.some((e) => e.t === 'ground'));
+    assert.ok(!thrown('Water', (_d, _c, ok) => !ok).out.events.some((e) => e.t === 'ground'));
   });
 
   it('a miss deals nothing, and the element is gone all the same', () => {

@@ -559,7 +559,8 @@ function imbuedHit(s: BattleState, a: Unit, h: Hit, element: NonNullable<ReturnT
  * rest is the builder's proposal: the weapon's attack roll, at range like a jutsu thrown at one
  * target (cover, a foe close by, the height), obsidian's edge critting on 19 as on the blade; a hit
  * deals the weapon's die and the element's, with the element's extra on a critical as on the blade
- * (imbuedHit), and no ability modifier (a bonus-action blow, like an off-hand one in 5e).
+ * (imbuedHit), and no ability modifier (a bonus-action blow, like an off-hand one in 5e). Water also
+ * wets the ground under the target (his rule; on every hit, as its dousing: our reading).
  */
 function elementalSlash(s: BattleState, u: Unit, t: Unit, ev: BattleEvent[]): void {
   const element = u.imbued!.element;
@@ -582,6 +583,9 @@ function elementalSlash(s: BattleState, u: Unit, t: Unit, ev: BattleEvent[]): vo
     const hit: Hit = { unit: t.id, amount: Math.max(1, rollDiceExpr(s, w.dice, roll.crit)), type: w.type, source: u.id, what: ELEMENTAL_SLASH, crit: roll.crit, aimed: true, unblockable: edge };
     imbuedHit(s, u, hit, element);
     hits.push(hit);
+    // Water puts out the flames and leaves the ground under the target wet (the owner: "el de agua
+    // apaga las llamas y pone mojado abajo del objetivo"), as a water jutsu at one target soaks it.
+    if (element === 'Water') soak(s, { kind: 'circle', center: { ...t.pos }, radius: 1 }, u.id, ev);
   }
   if (s.phase === 'combat') scareAnimalsNear(s, t.pos, 6, ev);
   applyHits(s, hits, loud(s, u), ev);

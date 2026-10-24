@@ -194,6 +194,9 @@ def kind(c):
         return 'red'
     if 280 <= hd < 335:
         return 'plum'
+    # (a grey with a cold blue cast: his silver and steel)
+    if s < 0.4 and b >= r + 8 and b >= g - 5 and L > 40:
+        return 'steel'
     return 'warm'
 
 

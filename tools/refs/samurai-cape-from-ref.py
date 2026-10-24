@@ -19,9 +19,11 @@ def build():
     cape = P['cape']
     consts = [
         ('SAMURAI_CAPE', *cape, 'His cape: red cloth flowing back from behind the waist, its folds and dark inside.', S.OUR_JOINTS['male']['neck'], 90.0),
+        ('SAMURAI_CAPE_BAND', *P['cape_band'], "His cape's top carried on behind his tassets to the near hip.", S.OUR_JOINTS['male']['neck'], 90.0),
         ('SAMURAI_CAPE_FAR', *P['cape_f'], 'The edge of his cape he drew beside the far leg, behind it.', S.OUR_JOINTS['male']['neck'], 90.0),
     ]
-    bases = {'SAMURAI_CAPE_RED': S.middle(cape[1], cape[0], ('red', 'dark'))}
+    base = P['cape_base']
+    bases = {'SAMURAI_CAPE_RED': S.middle(base[1], base[0], ('red', 'dark'))}
     return S.module(S.header('samurai-cape-from-ref.py', "The owner's samurai cape"), consts, bases, 'SAMURAI_CAPE')
 
 

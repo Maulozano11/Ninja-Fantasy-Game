@@ -44,28 +44,28 @@ export const SAMURAI_OBI_KIND: Record<string, 'dark' | 'gold' | 'hair' | 'line' 
 
 /** Where each piece lands in our male idle frame 0, unturned: the fine pixel of its first row's first cell. */
 export const SAMURAI_OBI_REST: Record<string, [number, number]> = {
-  SAMURAI_OBI: [115, 165],
+  SAMURAI_OBI: [112, 165],
 };
 
 /** His obi: the gold rope sash round the waist and its knot hanging at the front. It rides the torso about the pelvis. */
 export const SAMURAI_OBI: PaintedPiece = {
-  pivot: [12, 11],
+  pivot: [15, 11],
   angle: -89.65,
   rows: [
-    'aaa...a................',
-    'abacbbddddefaahddadadd.',
-    'abbaaabbbidjhbacdddabba',
-    'aabddkaabbbbbbbabbbaaa.',
-    'abablhldaaaabmbbabbadd.',
-    'aabbbbnpbjdqaajbbabaaba',
-    'aaaaabbbbbbbaddbabbbab.',
-    'aarstaaaaaaabdbabbabca.',
-    'auvpwxmxnasyzdarrxAada.',
-    '..........azdaaBvC.a...',
-    '..........ajdaaaaa.....',
-    '..........bdzaDEFGa....',
-    '.........aHcbaDDFG.....',
-    '..........jjbaaaaa.....',
+    '...aaa...a................',
+    'abbabacbbddddefaahddadadd.',
+    'abbabbaaabbbidjhbacdddabba',
+    'abbaabddkaabbbbbbbabbbaaa.',
+    'abbabablhldaaaabmbbabbadd.',
+    'ab.aabbbbnpbjdqaajbbabaaba',
+    'ab.aaaaabbbbbbbaddbabbbab.',
+    'ar.aarstaaaaaaabdbabbabca.',
+    'au.auvpwxmxnasyzdarrxAada.',
+    'azzz.........azdaaBvC.a...',
+    'ajjj.........ajdaaaaa.....',
+    'abbbb........bdzaDEFGa....',
+    'aHHHH.......aHcbaDDFG.....',
+    '.............jjbaaaaa.....',
   ],
   colors: {
     a: '#000113',

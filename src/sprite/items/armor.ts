@@ -1107,7 +1107,7 @@ const ROMAN_OLD_DEFAULTS: Record<string, string> = {
 const romanSlot = (hex: string): string => ROMAN_OLD_DEFAULTS[hex.toLowerCase()] ?? hex;
 
 /** Past this lean (degrees from his picture) a piece is turned with RotSprite; up to it, sheared. */
-const LEAN_SHEAR = 20;
+export const LEAN_SHEAR = 20;
 
 /**
  * Stamps his piece leaning `deg` about its pivot. A small lean shears it, each row moved across whole

@@ -787,11 +787,13 @@ def hull(points, H, W):
     return m
 
 
-def fill_hull(col, mask, extra, allowed, line):
+def fill_hull(col, mask, extra, allowed, line, along=None):
     """A limb piece filled out to its whole shape where pieces in front hide it at rest: the convex hull of
     its pixels and `extra` (cells it reaches under: a knee guard, up to the hip), and in it every cell
     `allowed` (hidden at rest) the piece does not have takes its nearest pixel of his that is not his line;
-    a filled cell on the hull's edge is his line."""
+    a filled cell on the hull's edge is his line. With `along` (a step (dy, dx)), a cell takes instead the
+    first pixel of his that is not his line found stepping that way from it (his folds carried on along
+    their run), its nearest only where that way meets none."""
     H, W = mask.shape
     pts = list(zip(*np.nonzero(mask | extra)))
     hm = hull(pts, H, W)
@@ -799,7 +801,16 @@ def fill_hull(col, mask, extra, allowed, line):
     src = [(y, x) for y, x in zip(*np.nonzero(mask)) if kind(col[y, x]) != 'line']
     c = col.copy()
     for y, x in zip(*np.nonzero(add)):
-        q = min(src, key=lambda p: ((p[0] - y) ** 2 + (p[1] - x) ** 2, p))
+        q = None
+        if along is not None:
+            yy, xx = y + along[0], x + along[1]
+            while 0 <= yy < H and 0 <= xx < W:
+                if mask[yy, xx] and kind(col[yy, xx]) != 'line':
+                    q = (yy, xx)
+                    break
+                yy, xx = yy + along[0], xx + along[1]
+        if q is None:
+            q = min(src, key=lambda p: ((p[0] - y) ** 2 + (p[1] - x) ** 2, p))
         c[y, x] = col[q]
     m = mask | add
     edge = add & ~(np.roll(hm, 1, 0) & np.roll(hm, -1, 0) & np.roll(hm, 1, 1) & np.roll(hm, -1, 1))
@@ -965,10 +976,14 @@ def his_game(name):
     return (x - OFFSET[0], y - OFFSET[1])
 
 
-# How many rows of the cape's top are carried on behind the tassets, and how far below his chest the do
+# How many rows of the cape's top are filled out behind the tassets at the hip, and how far below his chest the do
 # is carried on under the sash.
-CAPE_BAND = 3
+CAPE_BAND = 10
+CAPE_BASE_ROWS = 3
+# The way his cape's folds run (dy, dx): down to the left, from the waist to the hem.
+CAPE_FOLD = (1, -1)
 DO_BELOW = 6
+DO_BEHIND_HAND = 12
 # His chin's row below the face anchor: his head's line below it that bounds none of his head is the collar's.
 CHIN_ROWS = 7
 
@@ -1007,7 +1022,15 @@ def pieces(rgb=None, label=None):
     # and down under the sash to the tassets (a torso lengthened in a pose never parts from the sash)
     ys, xs = np.nonzero(m)
     m, c, _ = continue_cols(c, m, range(xs.min() + 1, xs.max()), ys.max() + DO_BELOW, 1, line, inset=1, allowed=under('obi', 'kusazuri', 'hand_n', 'kote_n', 'hand_f', 'kote_f'))
+    # and on down behind the near hand on the hip (only there: the tassets are drawn behind the do)
+    m, c, _ = continue_cols(c, m, range(xs.min() + 1, xs.max()), ys.max() + DO_BEHIND_HAND, 1, line, inset=1, allowed=under('hand_n', 'kote_n'))
     out['do'] = (m, c)
+    # the sash on round the waist under the near forearm (bared when the arm moves off the hip), along its
+    # rows to the near shoulder's column
+    m, c = out['obi']
+    ys, xs = np.nonzero(m)
+    m, c, _ = continue_rows(c, m, range(ys.min() + 1, ys.max()), int(np.floor(sx)), -1, line, allowed=under('kote_n', 'hand_n'))
+    out['obi'] = (m, c)
     # the hakama's legs: each leg his cloth, under its knee guard his cloth beside it along the row, and up
     # under the tassets to the hip each column of his carried up (his folds run on up the thigh)
     for s in ('n', 'f'):
@@ -1020,16 +1043,23 @@ def pieces(rgb=None, label=None):
         for x in (xs.min(), xs.max()):
             reach[top, x] = True
         front = under('knee_n', 'knee_f', 'kusazuri', 'obi', 'hand_n', 'hand_f', 'shin_n', 'shin_f')
-        m, c = fill_hull(c, m, reach, front, line)
+        m, c = fill_hull(c, m, reach, front, line, along=(1, 0))
         out['thigh_' + s] = (m, c)
-    # the cape: his cloth as he drew it, and its top CAPE_BAND rows behind his tassets carried on to the
-    # near hip along each row (it hangs from behind the waist: moved, it never comes away from the body); behind the legs
-    # it is the legs' to show
+    # the cape: his cloth as he drew it, and its top behind his tassets filled out to the near hip (it hangs
+    # from behind the waist as wide as the waist: moved, it never comes away from the body and never shows a
+    # stalk), CAPE_BAND rows deep there; behind the legs it is the legs' to show
     m, c = cut(rgb, label, ['cape'])
     ys, xs = np.nonzero(m)
     hidden = under('kusazuri', 'obi', 'hand_n', 'kote_n')
-    m, c, _ = continue_rows(c, m, range(ys.min(), ys.min() + CAPE_BAND), int(np.floor(his_game('hipN')[0])), 1, line, close=False, allowed=hidden)
+    hx = int(np.floor(his_game('hipN')[0]))
     out['cape'] = (m, c)
+    reach = np.zeros_like(m)
+    reach[ys.min(), hx] = reach[ys.min() + CAPE_BAND, hx] = True
+    mb, cb = fill_hull(c, m, reach, hidden, line, along=CAPE_FOLD)
+    out['cape_band'] = (mb & ~m, cb)
+    # (the colour slot's base as it was taken when the cape's top was carried on only CAPE_BASE_ROWS rows)
+    mo, co, _ = continue_rows(c, m, range(ys.min(), ys.min() + CAPE_BASE_ROWS), hx, 1, line, close=False, allowed=hidden)
+    out['cape_base'] = (mo, co)
     out['cape_f'] = cut(rgb, label, ['cape_f'])
     # the head: face and hair
     head = label == 'head'

@@ -20,11 +20,11 @@ import { SAMURAI_SKIN } from '../samuraiHeadArt';
 import { sealCloth } from '../seal';
 import type { BodyType } from '../types';
 import { closeAnkle, footTurn } from './ankle';
-import { stampLeaning } from './armor';
+import { LEAN_SHEAR, stampLeaning } from './armor';
 import { capeWind, paintedBack } from './capes';
 import { clothPen, glove } from './clothes';
 import { SAMURAI_ARM_CORD, SAMURAI_ARM_GOLD, SAMURAI_ARM_IRON, SAMURAI_ARMS_KIND, SAMURAI_GLOVE, SAMURAI_HAND_F, SAMURAI_HAND_N, SAMURAI_KOTE_F, SAMURAI_KOTE_N, SAMURAI_SLEEVE_F, SAMURAI_SLEEVE_N } from './samuraiArmsArt';
-import { SAMURAI_CAPE, SAMURAI_CAPE_FAR, SAMURAI_CAPE_KIND, SAMURAI_CAPE_RED, SAMURAI_CAPE_REST } from './samuraiCapeArt';
+import { SAMURAI_CAPE, SAMURAI_CAPE_BAND, SAMURAI_CAPE_FAR, SAMURAI_CAPE_KIND, SAMURAI_CAPE_RED, SAMURAI_CAPE_REST } from './samuraiCapeArt';
 import { SAMURAI_COLLAR, SAMURAI_DO, SAMURAI_DO_KIND, SAMURAI_DO_REST, SAMURAI_GOLD, SAMURAI_LACING, SAMURAI_LACQUER, SAMURAI_SODE_F, SAMURAI_SODE_N } from './samuraiDoArt';
 import { SAMURAI_HAIR, SAMURAI_HAIR_BASE, SAMURAI_HAIR_CORD, SAMURAI_HAIR_KIND } from './samuraiHairArt';
 import { SAMURAI_HAKAMA, SAMURAI_HAKAMA_KIND, SAMURAI_THIGH_F, SAMURAI_THIGH_N } from './samuraiHakamaArt';
@@ -234,6 +234,18 @@ export interface TassetStamp {
 }
 
 /**
+ * Where a point hung from his waist (our rest frame, rig units) is carried when the torso turns `deg` from
+ * rest: as stampLeaning carries the obi about the pelvis, sheared (each row only sideways) up to LEAN_SHEAR,
+ * turned beyond, so what hangs from the sash stays on it.
+ */
+function onWaist(r: Rig, home: Rig, at: Vec, deg: number): Vec {
+  const d = sub(at, home.pelvis);
+  const t = (deg * Math.PI) / 180;
+  if (Math.abs(deg) <= LEAN_SHEAR) return add(r.pelvis, v(d.x - d.y * Math.sin(t), d.y));
+  return add(r.pelvis, v(d.x * Math.cos(t) - d.y * Math.sin(t), d.x * Math.sin(t) + d.y * Math.cos(t)));
+}
+
+/**
  * His kusazuri as plates hung from the waist, back to front: each panel turns with its thigh about its hip
  * (the front panel halfway between both, about the pelvis), lying on the thigh as it swings forward and
  * only a little as it swings back; with the legs apart the front panel is swept from one thigh's turn to the
@@ -244,23 +256,22 @@ export function tassetStamps(g: DrawCtx): TassetStamp[] {
   const r = g.rig;
   const home = samuraiRestRig(g.look);
   const [ox, oy] = SAMURAI_KUSAZURI_REST.SAMURAI_KUSAZURI;
+  const torso = segAngle(r.pelvis, r.neck) - segAngle(home.pelvis, home.neck);
+  // (the thigh's turn against the waist the panels hang from: a body bent or lying down with its legs
+  // turns the panels once, with the waist)
   const thighTurn = (s: Side) => {
     const now = legJoints(r, s);
     const was = legJoints(home, s);
-    const w = wrap180(segAngle(now.hip, now.knee) - segAngle(was.hip, was.knee));
+    const w = wrap180(segAngle(now.hip, now.knee) - segAngle(was.hip, was.knee) - torso);
     return w < 0 ? w * TASSET_FORWARD : w * TASSET_BACK;
   };
-  const torso = segAngle(r.pelvis, r.neck) - segAngle(home.pelvis, home.neck);
   const out: TassetStamp[] = [];
   const panel = (x0: number, x1: number, on: Side | 'both', turn: number) => {
     // hung from the sash: turned about its own top (the middle of its columns on its first row), which is
     // carried with the pelvis, so it never comes away from the waist; at rest every pixel where he drew it
     const top = SAMURAI_KUSAZURI.rows.findIndex((row) => [...row].slice(x0, x1 + 1).some((ch) => ch !== '.'));
     const pivot: [number, number] = [Math.round((x0 + x1) / 2), top];
-    const rest = v((ox + pivot[0] + 0.5) / RES, (oy + pivot[1] + 0.5) / RES);
-    const d = sub(rest, home.pelvis);
-    const t = (torso * Math.PI) / 180;
-    const at = add(r.pelvis, v(d.x * Math.cos(t) - d.y * Math.sin(t), d.x * Math.sin(t) + d.y * Math.cos(t)));
+    const at = onWaist(r, home, v((ox + pivot[0] + 0.5) / RES, (oy + pivot[1] + 0.5) / RES), torso);
     void on;
     out.push({ piece: tassetCut(x0, x1, pivot), at, deg: SAMURAI_KUSAZURI.angle + torso + turn });
   };
@@ -355,10 +366,13 @@ const CAPE_TOP: [number, number] = [112, 182];
 /** How far (degrees) his cape swings back for each design unit of the pose's wind (capes.ts capeWind), and the most. */
 const CAPE_SWING = 2.4;
 const CAPE_SWING_MAX = 32;
+/** How much of the torso's lean his cape takes on: it hangs from the waist, so a body bent forward (crouched,
+ * sneaking) carries where it hangs from but the cloth still falls toward the ground. */
+const CAPE_TURN = 0.35;
 let CAPE_HUNG: PaintedPiece | undefined;
 
 /**
- * His cape hung from behind the waist: it turns with the torso, and the pose's wind (the same as every
+ * His cape hung from behind the waist: where it hangs from turns with the torso (the cloth only part of the way), and the pose's wind (the same as every
  * cape's: trailing in a run, flying back in a strike, swaying at rest) swings it back about where it hangs,
  * whole, so his folds stay his folds and it never comes apart; it never goes into the ground (crouched or
  * kneeling the cloth ends on the ground line on his line). Knocked out it lies along the back as the other
@@ -377,15 +391,21 @@ function drawCape(g: DrawCtx, c: string): void {
   const swing = Math.max(-8, Math.min(CAPE_SWING_MAX, -w.dx * CAPE_SWING + w.wave));
   const [ox, oy] = SAMURAI_CAPE_REST.SAMURAI_CAPE;
   if (!CAPE_HUNG) CAPE_HUNG = { ...SAMURAI_CAPE, pivot: [CAPE_TOP[0] - ox, CAPE_TOP[1] - oy] };
-  const rad = (t * Math.PI) / 180;
-  const d = sub(v((CAPE_TOP[0] + 0.5) / RES, (CAPE_TOP[1] + 0.5) / RES), home.pelvis);
-  const at = add(r.pelvis, v(d.x * Math.cos(rad) - d.y * Math.sin(rad), d.x * Math.sin(rad) + d.y * Math.cos(rad)));
-  stampLeaning(g, 'capeBack', CAPE_HUNG, at, SAMURAI_CAPE.angle + t + swing, 'back', color, lineOf(SAMURAI_CAPE_KIND));
+  const at = onWaist(r, home, v((CAPE_TOP[0] + 0.5) / RES, (CAPE_TOP[1] + 0.5) / RES), t);
+  const deg = SAMURAI_CAPE.angle + CAPE_TURN * t + swing;
+  stampLeaning(g, 'capeBack', CAPE_HUNG, at, deg, 'back', color, lineOf(SAMURAI_CAPE_KIND));
+  // its top carried on behind the tassets to the hip, while the legs stand as at rest (with the legs moved
+  // the tassets and hakama no longer hide it and it would show as a stalk from the hip to the cloth)
+  const legsStill = samuraiLegsStill(r, g.look);
+  {
+    const [bx, by] = SAMURAI_CAPE_REST.SAMURAI_CAPE_BAND;
+    stampLeaning(g, 'capeBack', { ...SAMURAI_CAPE_BAND, pivot: [CAPE_TOP[0] - bx, CAPE_TOP[1] - by] }, at, deg, 'back', color, lineOf(SAMURAI_CAPE_KIND));
+  }
   // the edge he drew beside the far leg, only while the legs stand and the cape hangs as at rest (moved, it
   // is behind the leg)
-  if (Math.abs(swing) < 3 && samuraiLegsStill(r, g.look)) {
+  if (Math.abs(swing) < 3 && legsStill) {
     const [fx, fy] = SAMURAI_CAPE_REST.SAMURAI_CAPE_FAR;
-    stampLeaning(g, 'capeBack', { ...SAMURAI_CAPE_FAR, pivot: [CAPE_TOP[0] - fx, CAPE_TOP[1] - fy] }, at, SAMURAI_CAPE.angle + t + swing, 'back', color, lineOf(SAMURAI_CAPE_KIND));
+    stampLeaning(g, 'capeBack', { ...SAMURAI_CAPE_FAR, pivot: [CAPE_TOP[0] - fx, CAPE_TOP[1] - fy] }, at, deg, 'back', color, lineOf(SAMURAI_CAPE_KIND));
   }
   // the hem on the ground line
   const L = g.L('capeBack');

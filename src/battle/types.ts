@@ -488,7 +488,7 @@ export interface BattleState {
 }
 
 /** The items used in battle. */
-export type ItemId = 'pill' | 'bandage' | 'antidote' | 'tag' | 'tagTrap' | 'poison' | 'healSenbon';
+export type ItemId = 'pill' | 'bandage' | 'antidote' | 'tag' | 'tagTrap' | 'poison' | 'healSenbon' | 'potion';
 
 /** What a player or the AI wants to do. */
 export type Action =
@@ -499,7 +499,10 @@ export type Action =
   | { type: 'dash' | 'disengage' | 'dodge' | 'hide' | 'focus' | 'crouch' | 'jump' | 'draw'; unit: string }
   | { type: 'shove'; unit: string; target: string; mode: 'prone' | 'push' }
   /** `tag` throws an explosive tag at a point; `tagTrap` hides one on the ground there. */
-  /** `poison` coats the ninja's own weapons (bonus action); `healSenbon` throws a senbon dipped in a healing potion at an ally. */
+  /**
+   * `poison` coats the ninja's own weapons (bonus action; never an ally's); `healSenbon` throws a
+   * senbon dipped in a healing potion at an ally; `potion` drinks one (bonus action, on oneself).
+   */
   | { type: 'item'; unit: string; item: ItemId; target?: string; at?: Pt }
   | { type: 'stabilize'; unit: string; target: string }
   | { type: 'flee'; unit: string }

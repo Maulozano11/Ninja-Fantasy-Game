@@ -9,7 +9,7 @@ import type { WindowKind } from '../dice/diceData';
 import type { SpritePose } from '../../sprite/types';
 import { JUTSU, areaEnd, nearSegment } from '../../battle/jutsu';
 import type { JutsuSpec, StageKind, VfxElement, VfxRole } from '../../battle/jutsu';
-import { COMBO_KICKS, COMBO_TURNED, POSE_FPS, TACKLE_IMPACT_FRAME } from '../../sprite/rig';
+import { COMBO_KICKS, COMBO_TURNED, POSE_FPS, TACKLE_IMPACT_FRAME, THROW_RELEASE_FRAME } from '../../sprite/rig';
 import { BLOW_MS, CONDUCT_MS, DOUSE_MS, FAN_MS, FAN_ROLL, GROUND_FADE, TOWER_MS, TOWER_RISE, WAVE_CREST, WAVE_HOLD, blastMs, impactMs, keyCenter, signatureMs, skySignature } from './vfxSprites';
 import { jutsuTint, unitTint } from './vfxTintPlan';
 import { DRIP_MS, SCREEN_MS, SPRAY_DELAY, SPRAY_LANDED, SPRAY_MS, bleedingStarts, isBleedTick } from './bloodPlan';
@@ -56,6 +56,11 @@ export interface UnitView {
   phase?: { from: Pt; to: Pt; t0: number };
   /** The one frame a one-shot pose holds while it is set (the Chidori's hand drawn back as it gathers). */
   holdFrame?: number;
+  /**
+   * Throwing a senbon until then (ms): the 'throw' pose with the weapon stowed and a senbon in the
+   * near fist until it leaves it (renderer.ts senbonLook; the owner, 2026-10-24).
+   */
+  senbonUntil?: number;
   /** What crackles in the near hand, drawn at the hand in every pose (the Chidori's lightning). */
   held?: Held;
   /**
@@ -235,6 +240,9 @@ const HAND_LIFT = 62;
 /** How long the Chidori's lightning gathers in the hand before the ninja moves (ms at speed 1). */
 const HAND_GATHER = 760;
 const HAND_DX = 0.6;
+/** A senbon throw (ms at speed 1): the 'throw' pose's frames up to the release, and the whole pose held a moment. */
+const SENBON_RELEASE = (THROW_RELEASE_FRAME * 1000) / POSE_FPS.throw;
+const SENBON_THROW = SENBON_RELEASE + 420;
 /** Where a cast leaves the hand of a ninja standing at `p` and facing `facing`. */
 const handOf = (p: Pt, facing: number): Pt => ({ x: p.x + facing * HAND_DX, z: p.z });
 
@@ -862,6 +870,12 @@ export class Playback {
   /** Runs `run` `ms` (at speed 1) from now. */
   private later(now: number, ms: number, run: (now: number) => void): void {
     this.timers.push({ at: now + ms / this.speed, run });
+  }
+
+  /** The senbon throw: the 'throw' pose, held on its last frame, the weapon stowed meanwhile (renderer.ts). */
+  private throwSenbon(v: UnitView, now: number): void {
+    this.setPose(v, 'throw', now, SENBON_THROW);
+    v.senbonUntil = now + SENBON_THROW / this.speed;
   }
 
   private setPose(v: UnitView, pose: SpritePose, now: number, dur?: number): void {
@@ -1944,11 +1958,17 @@ export class Playback {
           if (!ev.roll.success) this.float(label ?? 'Miss', '#cbd5e1', to, now + 350);
           return 120;
         }
-        this.setPose(a, 'attack', now, 520);
-        if (ev.ranged) {
-          // A senbon flies as its own needle (coated or not); a kunai as a streak, green when coated.
-          const needle = ev.what === 'Senbon' ? (ev.coated ? 'poison' : 'steel') : undefined;
-          this.fx.push({ kind: 'kunai', element: 'chakra', from, to, t0: now + 120 / this.speed, dur: needle ? 300 : 260, lift: [70, 60], ...(needle ? { needle } : {}), ...(ev.coated ? { coated: true } : {}) });
+        // A senbon is thrown like any thrown object (the owner, 2026-10-24): the throw pose, the weapon
+        // stowed, the needle leaving the fist at the release.
+        const needle = ev.ranged && ev.what === 'Senbon' ? (ev.coated ? 'poison' : 'steel') : undefined;
+        if (needle) this.throwSenbon(a, now);
+        else this.setPose(a, 'attack', now, 520);
+        if (needle) {
+          this.fx.push({ kind: 'kunai', element: 'chakra', from, to, t0: now + SENBON_RELEASE / this.speed, dur: 300, lift: [74, 60], needle });
+          h.sound('swing');
+        } else if (ev.ranged) {
+          // A kunai flies as a streak, green when coated.
+          this.fx.push({ kind: 'kunai', element: 'chakra', from, to, t0: now + 120 / this.speed, dur: 260, lift: [70, 60], ...(ev.coated ? { coated: true } : {}) });
           h.sound('swing');
         } else {
           const d = Math.max(0.01, dist(from, to));
@@ -1957,10 +1977,10 @@ export class Playback {
           h.sound('swing');
         }
         if (!ev.roll.success) {
-          this.float(label ?? 'Miss', '#cbd5e1', to, now + 260);
+          this.float(label ?? 'Miss', '#cbd5e1', to, now + (needle ? SENBON_RELEASE + 300 : 260) / this.speed);
           h.sound('miss');
         }
-        return ev.ranged ? 420 : 380;
+        return needle ? SENBON_RELEASE + 300 : ev.ranged ? 420 : 380;
       }
       case 'jutsu': {
         // A fire through a gale (the Gale Curtain): the effects it pushes now burn brighter from where
@@ -2012,11 +2032,10 @@ export class Playback {
         return 110;
       }
       case 'coat': {
-        // The poison goes on: a breath of the venom's green round the ninja.
+        // The poison goes on: no aura (the owner, 2026-10-24: "no pongas la aura de veneno"), only the
+        // word; the green sheen and the drip show on the weapon itself (sprite/coat.ts).
         if (!ev.on) return 0;
-        const at = this.posOf(ev.unit, now);
-        this.fx.push({ kind: 'aura', element: 'poison', from: at, to: at, t0: now, dur: 900, unit: ev.unit });
-        if (label) this.float(label, '#a3e635', at, now, { rise: 112 });
+        if (label) this.float(label, '#a3e635', this.posOf(ev.unit, now), now, { rise: 112 });
         return 450;
       }
       case 'healSenbon': {
@@ -2026,13 +2045,13 @@ export class Playback {
         const to = this.posOf(ev.target, now);
         if (a) {
           if (Math.abs(to.x - from.x) > 0.05) a.facing = to.x > from.x ? 1 : -1;
-          this.setPose(a, 'attack', now, 520);
+          this.throwSenbon(a, now);
         }
-        const t1 = now + 120 / this.speed;
-        this.fx.push({ kind: 'kunai', element: 'chakra', from, to, t0: t1, dur: 340, lift: [70, 60], needle: 'heal' });
+        const t1 = now + SENBON_RELEASE / this.speed;
+        this.fx.push({ kind: 'kunai', element: 'chakra', from, to, t0: t1, dur: 340, lift: [74, 60], needle: 'heal' });
         this.fx.push({ kind: 'heal', element: 'chakra', from: to, to, t0: t1 + 300 / this.speed, dur: 1100, unit: ev.target });
         h.sound('swing');
-        return 520;
+        return SENBON_RELEASE + 340;
       }
       case 'heal': {
         const v = this.view(ev.unit);

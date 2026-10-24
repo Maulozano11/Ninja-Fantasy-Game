@@ -35,6 +35,12 @@ export const WEAPON_POISON = 'weapon_poison';
  */
 export const ENEMY_POISON: Partial<Record<string, number>> = { rogue: 1 };
 
+/** A healing potion drunk (bonus action, on oneself): the same 2d4 + 2, with no WIS bonus. */
+export const POTION_DICE = '2d4+2';
+
+/** The AI drinks a potion at half its HP or less when no medic of its side stands within this (m). */
+export const MEDIC_NEAR = 12;
+
 /** A healing senbon heals a potion of healing (5e: 2d4 + 2). */
 export const HEAL_SENBON_DICE = '2d4+2';
 /** How far a healing senbon can be thrown: the senbon's normal range (it has to land just right). */

@@ -346,6 +346,67 @@ describe('the healing senbon: a senbon dipped in a healing potion, thrown at an 
   });
 });
 
+describe('the healing potion drunk, and only one\'s own weapon coated (the owner, 2026-10-24)', () => {
+  it('drinking a potion: a bonus action and a potion, 2d4+2 with no WIS bonus even for a medic', () => {
+    for (let k = 0; k < 12; k++) {
+      const s = turnOf(createBattle(setup()).state, 'h');
+      s.rolls += k;
+      s.units.h.hp = 1;
+      const out = ok(applyAction(s, { type: 'item', unit: 'h', item: 'potion' }));
+      const heal = out.events.find((e) => e.t === 'heal');
+      assert.ok(heal && heal.t === 'heal' && heal.unit === 'h' && heal.amount >= 4 && heal.amount <= 10, '2d4+2, no WIS');
+      assert.equal(out.state.supplies.healingPotions, SUPPLIES.healingPotions - 1);
+      assert.equal(out.state.units.h.turn.bonus, false);
+      assert.equal(out.state.units.h.turn.action, true, 'the action is still there');
+      assert.equal(out.state.units.h.senbon, SENBON_CASE, 'no senbon spent');
+    }
+  });
+
+  it('a potion is drunk by oneself only, not at full HP, nor without the bonus action or a potion', () => {
+    const s = turnOf(createBattle(setup()).state, 'h');
+    s.units.h.hp = 5;
+    place(s, 'a', 'h', 1.5);
+    s.units.a.hp = 0;
+    s.units.a.down = 'downed';
+    assert.equal(applyAction(s, { type: 'item', unit: 'h', item: 'potion', target: 'a' }).reason, 'onlySelf', 'a fallen ally takes the healing senbon');
+    const full = structuredClone(s);
+    full.units.h.hp = full.units.h.maxHp;
+    assert.equal(applyAction(full, { type: 'item', unit: 'h', item: 'potion' }).reason, 'fullHp');
+    const dry = structuredClone(s);
+    dry.supplies.healingPotions = 0;
+    assert.equal(applyAction(dry, { type: 'item', unit: 'h', item: 'potion' }).reason, 'noneLeft');
+    const spent = structuredClone(s);
+    spent.units.h.turn.bonus = false;
+    assert.equal(applyAction(spent, { type: 'item', unit: 'h', item: 'potion' }).reason, 'noBonus');
+  });
+
+  it('weapon poison coats only one\'s own weapons: never an ally\'s', () => {
+    const s = turnOf(createBattle(setup()).state, 'a');
+    place(s, 'h', 'a', 1.5);
+    const out = applyAction(s, { type: 'item', unit: 'a', item: 'poison', target: 'h' });
+    assert.equal(out.reason, 'ownWeapon');
+    assert.equal(s.supplies.weaponPoison, SUPPLIES.weaponPoison, 'no vial spent');
+    assert.equal(s.units.h.coat, undefined);
+    assert.ok(ok(applyAction(s, { type: 'item', unit: 'a', item: 'poison', target: 'a' })).state.units.a.coat, 'naming oneself is fine');
+  });
+
+  it('the AI drinks a potion at half its HP or less, unless a medic of its side stands near', () => {
+    const s = turnOf(createBattle(setup()).state, 'a');
+    s.units.a.controller = 'ai';
+    s.units.a.hp = Math.floor(s.units.a.maxHp * 0.4);
+    // Hana is a medic: out of 12 m it drinks, within them it waits for her.
+    assert.equal(s.units.h.character?.shinobiClass, 'Medical Specialist');
+    s.units.h.pos = freeAt(s, 'h', { x: s.units.a.pos.x + 14, z: s.units.a.pos.z + 4 });
+    assert.deepEqual(aiAction(s), { type: 'item', unit: 'a', item: 'potion' }, 'the medic far: it drinks');
+    const near = structuredClone(s);
+    near.units.h.pos = freeAt(near, 'h', { x: near.units.a.pos.x + 1, z: near.units.a.pos.z + 5 });
+    assert.notDeepEqual(aiAction(near), { type: 'item', unit: 'a', item: 'potion' }, 'a medic near: no potion');
+    const healthy = structuredClone(s);
+    healthy.units.a.hp = healthy.units.a.maxHp;
+    assert.notDeepEqual(aiAction(healthy), { type: 'item', unit: 'a', item: 'potion' });
+  });
+});
+
 describe('the backpack', () => {
   it('a mission sets out with 2 vials of weapon poison and 2 healing potions (proposal)', () => {
     assert.equal(DEFAULT_SUPPLIES.weaponPoison, 2);

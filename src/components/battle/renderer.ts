@@ -138,6 +138,20 @@ const onGround = (f: Fx): boolean => f.kind === 'electric' && f.sig === 'water';
 /** Where an effect is now: with its unit when it follows it (Evasion's eyes), else where it started. */
 export const fxPos = (sc: Scene, f: Fx): Pt => (f.follow && f.unit ? sc.pb.posOf(f.unit, sc.now) : f.from);
 
+const senbonLooks = new WeakMap<SpriteAppearance, SpriteAppearance>();
+
+/**
+ * The look a ninja throws a senbon with (the owner, 2026-10-24: "el senbon deberia lanzarse como
+ * cualquier arma objeto con la animacion de arrojar sin la espada o arma que tengan"): its weapon
+ * stowed (at the belt or on the back, as for hand seals) and a senbon in the near fist until it
+ * leaves it (sprite/items/accessories.ts drawThrowKunai). One object per look, so its frames are kept.
+ */
+function senbonLook(look: SpriteAppearance): SpriteAppearance {
+  let l = senbonLooks.get(look);
+  if (!l) senbonLooks.set(look, (l = { ...look, stowed: true, pouchSenbon: true }));
+  return l;
+}
+
 /** Screen pixels from a unit's feet to the middle of its drawn body, for centring an aura on it. */
 export function auraDx(sc: Scene, id: string | undefined): number {
   const u = id ? sc.state.units[id] : undefined;
@@ -870,8 +884,10 @@ function drawUnit(ctx: CanvasRenderingContext2D, sc: Scene, u: Unit, pos: Pt): v
     ctx.restore();
   }
 
-  const look = lookOf({ ...u, armed: v.armed });
-  if (!look) return;
+  const look0 = lookOf({ ...u, armed: v.armed });
+  if (!look0) return;
+  // A senbon throw: the weapon stowed, a senbon in the fist until the release.
+  const look = v.senbonUntil !== undefined && now < v.senbonUntil ? senbonLook(look0) : look0;
   // Gait frames follow the distance walked, so the feet stay planted.
   let frame: number;
   const stride = STRIDE[v.pose];
@@ -879,7 +895,7 @@ function drawUnit(ctx: CanvasRenderingContext2D, sc: Scene, u: Unit, pos: Pt): v
   else {
     const n = framesOf(look, v.pose);
     const elapsed = ((now - v.poseT0) * sc.pb.speed) / 1000;
-    const oneShot = v.pose === 'attack' || v.pose === 'hurt' || v.pose === 'cast' || v.pose === 'tackle' || v.pose === 'combo';
+    const oneShot = v.pose === 'attack' || v.pose === 'hurt' || v.pose === 'cast' || v.pose === 'tackle' || v.pose === 'combo' || v.pose === 'throw';
     frame = Math.floor(elapsed * fpsOf(v.pose));
     if (oneShot) frame = Math.min(frame, n - 1);
     if (v.holdFrame !== undefined) frame = v.holdFrame;

@@ -1127,7 +1127,7 @@ interface IconSpec {
   name: string;
   /** His label under the slot (his sheet). */
   label?: string;
-  sheet: '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' | '10' | '11' | '13' | '14' | '15' | '16' | '17' | '18' | '19' | '20' | '21' | '22';
+  sheet: '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' | '10' | '11' | '13' | '14' | '15' | '16' | '17' | '18' | '19' | '20' | '21' | '22' | '24';
   /** An edit the owner asked for, made on his window (his pixels) before anything else; returns what it did, for the manifest. */
   edit?: (W: F) => string;
   /** What the hand-drawn part of the owner's edit is at each size, for the manifest. */
@@ -2914,6 +2914,12 @@ const ICONS: IconSpec[] = [
   LATER({ id: 'genjutsu_mirage', name: 'Mirage', label: 'MIND TWIST', sheet: '21', marks: [OUTLINE('the near-black outline of his hooded ninja'), LIGHTS('his violet spiral and shards', 0.65)] }),
   LATER({ id: 'wind_whirlwind_tower', name: 'Whirlwind Tower', label: 'TORRE TORBEL', sheet: '21', marks: [OUTLINE('the dark outlines of his tower and blocks'), LIGHTS('the light bands of his tornado', 0.8)] }),
   LATER({ id: 'rasenshuriken_wind', name: 'Rasenshuriken', label: 'RASENSHURIKEN', sheet: '22', marks: [OUTLINE('the dark outlines of his rocks'), LIGHTS('the light strands of his green spiral', 0.8)] }),
+  // Sheet 24 (2026-10-24, the senbon set): his pixels are not on one grid across the picture, so
+  // tools/refs/icons-from-ref-24.py measures it per slot; his windows (50 to 54 of his pixels) are
+  // made as those of his 240x134 sheets. His third icon (coating with a healing potion) is left out.
+  LATER({ id: 'senbon', name: 'Senbon', label: 'SENBON', sheet: '24', marks: [OUTLINE('the dark outlines of his needles and their rings'), LIGHTS('his cyan sparks and the needles\' shine', 0.75)] }),
+  LATER({ id: 'poison', name: 'Weapon Poison', label: 'UNTAR VENENO', sheet: '24', marks: [OUTLINE('the dark outlines of his bottle and blade'), LIGHTS('his green venom and the blade\'s lit edge', 0.75)] }),
+  LATER({ id: 'healSenbon', name: 'Healing Senbon', label: 'SENBON CURATIVO', sheet: '24', marks: [OUTLINE('the dark outlines of his needles'), LIGHTS('his white sparkles and the green glow', 0.8)] }),
 ];
 
 // --- the slot frame (sheet 1's, read only) ------------------------------------------------------------

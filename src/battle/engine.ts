@@ -64,7 +64,7 @@ import {
 } from './clans';
 import { reachTo, replanAgainst } from './intent';
 import { chargedFoe, chargeHolds, crackUnder, endCharge } from './charged';
-import { carriesCoat, coatLeft, HEAL_SENBON_DICE, HEAL_SENBON_RANGE, healSenbonBonus, POISON_DC, POISON_DICE, POISON_HITS, poisonLeft, potionsLeft, SENBON, senbonLeft, spendPoison, WEAPON_POISON } from './senbon';
+import { carriesCoat, coatLeft, POTION_DICE, HEAL_SENBON_DICE, HEAL_SENBON_RANGE, healSenbonBonus, POISON_DC, POISON_DICE, POISON_HITS, poisonLeft, potionsLeft, SENBON, senbonLeft, spendPoison, WEAPON_POISON } from './senbon';
 import { activeImbue, EARTH_CRIT, IMBUE_DAMAGE, IMBUE_DICE, imbueBlocker, imbueHolds, startImbue, unitImbueElement, WIND_PUSH, type ImbueElement } from './imbue';
 
 // --- setup ---------------------------------------------------------------------------------
@@ -1466,7 +1466,8 @@ const near = (u: Unit, t: Unit): boolean => u.id === t.id || dist(u.pos, t.pos) 
 
 function doItem(s: BattleState, u: Unit, item: ItemId, targetId: string | undefined, at: Pt | undefined, ev: BattleEvent[]): string | null {
   // Weapon poison (bonus action): from the backpack, or an enemy's own pouch.
-  if (item === 'poison') return coatWeapons(s, u, ev);
+  // Only one's own weapons (the owner, 2026-10-24: coating an ally's weapon, "no").
+  if (item === 'poison') return targetId && targetId !== u.id ? 'ownWeapon' : coatWeapons(s, u, ev);
   // The backpack is the party's: a commanded enemy or a beast that joined doesn't get into it.
   if (homeTeam(u) !== 'party' || u.joined) return 'noItems';
   if (item === 'pill') {
@@ -1509,6 +1510,7 @@ function doItem(s: BattleState, u: Unit, item: ItemId, targetId: string | undefi
     return null;
   }
   if (item === 'healSenbon') return healSenbon(s, u, targetId, ev);
+  if (item === 'potion') return drinkPotion(s, u, targetId, ev);
   const t = targetId ? s.units[targetId] : u;
   if (!t || t.team !== u.team || !targetable(t)) return 'badTarget';
   if (!near(u, t)) return 'outOfRange';
@@ -1579,6 +1581,22 @@ function healSenbon(s: BattleState, u: Unit, targetId: string | undefined, ev: B
   ev.push({ t: 'act', unit: u.id, act: 'item' });
   ev.push({ t: 'healSenbon', unit: u.id, target: t.id });
   heal(t, Math.max(1, rollDiceExpr(s, HEAL_SENBON_DICE) + healSenbonBonus(u)), 'healSenbon', ev);
+  return null;
+}
+
+/**
+ * A healing potion drunk (bonus action, on oneself; the owner, 2026-10-24: it can be drunk too): it
+ * heals POTION_DICE, with no WIS bonus. Never poured into a fallen ally: that is the healing senbon's.
+ */
+function drinkPotion(s: BattleState, u: Unit, targetId: string | undefined, ev: BattleEvent[]): string | null {
+  if (targetId && targetId !== u.id) return 'onlySelf';
+  if (!u.turn.bonus) return 'noBonus';
+  if (potionsLeft(s, u) < 1) return 'noneLeft';
+  if (u.hp >= u.maxHp) return 'fullHp';
+  u.turn.bonus = false;
+  s.supplies.healingPotions = potionsLeft(s, u) - 1;
+  ev.push({ t: 'act', unit: u.id, act: 'item' });
+  heal(u, Math.max(1, rollDiceExpr(s, POTION_DICE)), 'potion', ev);
   return null;
 }
 

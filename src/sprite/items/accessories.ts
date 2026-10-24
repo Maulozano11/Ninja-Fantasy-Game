@@ -6,7 +6,7 @@ import { armJoints, Depth, DEPTHS, DrawCtx, ItemDef, legPoint, Side, torsoNeck }
 import { add, capsule, ellipse, F_NO_OUTLINE, fine, GRID, Layer, len, lerp, line, norm, partIndex, Pen, perp, poly, px, RES, scale, seam, sub, UNITS, v, Vec } from '../raster';
 import { hexToRgb, retintHex, type RampKind } from '../color';
 import { hd } from './hairkit';
-import { CRYSTAL_SWORD, drawPaintedWeapon, drawWeapon, KUNAI } from './weapons';
+import { CRYSTAL_SWORD, drawPaintedWeapon, drawWeapon, KUNAI, SENBON } from './weapons';
 import { FLAME_LONGSWORD, FLAME_SWORD_FLAME, FLAME_SWORD_GOLD } from './flameSwordArt';
 import { AURELIA_STAFF_GOLD, AURELIA_STAFF_ORB, DAWN_STAFF } from './aureliaStaffArt';
 import { dawnStaffInFarHand, dawnStaffRest, drawDawnFarFist, drawDawnStaff } from './aureliaStaff';
@@ -408,9 +408,14 @@ function droppedGrip(g: DrawCtx, at: number, off = 1.2): Vec {
   return v(x, lerp(r.pelvis, r.ankleN, at).y);
 }
 
-/** Hands without a weapon winding up a throw (or that caught the kunai they threw) hold a kunai from the pouch (see throwsKunai), in the Kunai item's colours. */
+/**
+ * Hands without a weapon winding up a throw (or that caught the kunai they threw) hold a kunai from
+ * the pouch (see throwsKunai), in the Kunai item's colours; a senbon throw holds a senbon instead.
+ */
 export function drawThrowKunai(g: DrawCtx): void {
-  if (throwsKunai(g)) drawWeapon(g, 'nearArm.held', KUNAI, gripPoint(g), swordAngle(g), { blade: '#aab4c2', grip: '#3a3346', guard: '#aab4c2', wrap: '#e2dccb' });
+  if (!throwsKunai(g)) return;
+  if (g.look.pouchSenbon) drawWeapon(g, 'nearArm.held', SENBON, gripPoint(g), swordAngle(g), { blade: '#b9c2cf', grip: '#3a3346', guard: '#8a94a3' });
+  else drawWeapon(g, 'nearArm.held', KUNAI, gripPoint(g), swordAngle(g), { blade: '#aab4c2', grip: '#3a3346', guard: '#aab4c2', wrap: '#e2dccb' });
 }
 
 /** The flame longsword's colours: its blade and jewels turned from his flame red, its gold from his gold. */

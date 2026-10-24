@@ -1066,6 +1066,8 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
       add({ id: 'tagTrap', label: t('act_tagTrap'), icon: ACTION_ICON.tagTrap, badge: s.supplies.explosiveTags, disabled: !can.action || s.supplies.explosiveTags < 1, active: mode.k === 'item' && mode.item === 'tagTrap', help: t('help_tagTrap') });
       // Weapon poison (a bonus action) and the healing senbon (battle/senbon.ts).
       add({ id: 'poison', label: t('act_poison'), icon: ACTION_ICON.poison, badge: poisonLeft(s, u), disabled: !can.bonus || poisonLeft(s, u) < 1 || coatLeft(u) > 0, why: !can.bonus ? t('r_noBonus') : coatLeft(u) > 0 ? t('r_coated') : t('r_noneLeft'), help: t('help_poison') });
+      // His icon is still to come: a drawn placeholder meanwhile.
+      add({ id: 'potion', label: t('act_potion'), icon: ACTION_ICON.potion, badge: potionsLeft(s, u), disabled: !can.bonus || potionsLeft(s, u) < 1 || u.hp >= u.maxHp, why: !can.bonus ? t('r_noBonus') : potionsLeft(s, u) < 1 ? t('r_noneLeft') : t('r_fullHp'), help: t('help_potion') });
       add({ id: 'healSenbon', label: t('act_healSenbon'), icon: ACTION_ICON.healSenbon, badge: potionsLeft(s, u), disabled: !can.action || potionsLeft(s, u) < 1 || senbonLeft(u) < 1, why: noAction ?? (senbonLeft(u) < 1 ? t('r_noSenbon') : t('r_noneLeft')), active: mode.k === 'item' && mode.item === 'healSenbon', help: t('help_healSenbon') });
       if (downedAlly) add({ id: 'stabilize', label: t('act_stabilize'), icon: ACTION_ICON.stabilize, disabled: !can.action, active: mode.k === 'stabilize', help: t('help_stabilize') });
       if (stealth) add({ id: 'stone', label: t('act_stone'), icon: ACTION_ICON.stone, disabled: !can.action, active: mode.k === 'stone', help: t('help_stone') });
@@ -1122,6 +1124,9 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
           return;
         case 'poison':
           act({ type: 'item', unit: u.id, item: 'poison' });
+          return;
+        case 'potion':
+          act({ type: 'item', unit: u.id, item: 'potion' });
           return;
         case 'healSenbon':
           setMode((m) => (m.k === 'item' && m.item === 'healSenbon' ? { k: 'move' } : { k: 'item', item: 'healSenbon' }));

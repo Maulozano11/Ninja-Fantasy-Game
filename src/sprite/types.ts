@@ -188,6 +188,12 @@ export interface SpriteAppearance {
    * put, a technique in the palm is not drawn meanwhile). See grip.ts throwsKunai.
    */
   pouchKunai?: boolean;
+  /**
+   * In battle: the ninja throws a senbon (battle/senbon.ts): in the wind-up of 'throw' the near fist
+   * holds a senbon from the case in place of the pouch kunai (the owner, 2026-10-24: thrown "como
+   * cualquier arma objeto con la animacion de arrojar sin la espada"; the weapon is stowed).
+   */
+  pouchSenbon?: boolean;
 }
 
 /** Special eye patterns, derived from the character's dojutsu. */

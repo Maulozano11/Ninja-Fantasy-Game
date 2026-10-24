@@ -188,6 +188,19 @@ export const KUNAI: PixelTemplate = {
   ],
 };
 
+/**
+ * A senbon in the fist (battle/senbon.ts): a steel needle with a ring at its tail, as in the owner's
+ * senbon icon (docs/reference/icons-owner-reference-24.jpg); 16 px like the needle in flight.
+ */
+export const SENBON: PixelTemplate = {
+  pivot: [5, 1],
+  rows: [
+    '.bb..............',
+    'b..b2334444455555',
+    '.bb..............',
+  ],
+};
+
 export interface WeaponColors {
   blade: string;
   grip: string;

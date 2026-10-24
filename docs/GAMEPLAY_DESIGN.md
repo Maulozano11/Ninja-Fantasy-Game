@@ -1995,7 +1995,7 @@ for now; its S-rank slot offers its element's (and nothing for Light or Void).
   repo: it is one sheet of the generated chakra set (every element's set has a
   `multi`), no other jutsu flies it today, and deleting art is his call.
 
-## Senbon, weapon poison and the healing senbon (the owner, 2026-10-23; built on `items/senbon`, waiting for his yes)
+## Senbon, weapon poison and the healing senbon (the owner, 2026-10-23 and 2026-10-24; built on `items/senbon`)
 
 His words: *"...los clones si podrian lanzar shurikens o kunai o senbons mete los senbons como nueva
 arma arrojadiza y hay que agregar una opcion para poder inbuir las armas en veneno y los senbons
@@ -2004,10 +2004,12 @@ el healer)"*. (The clones throwing shuriken, kunai or senbon is on `jutsu/shadow
 
 **Decided by him**: senbon are a new thrown weapon; weapons can be coated (imbued) with poison; a
 senbon can be dipped in a healing potion and thrown at an ally to heal: one more way for the healer to
-heal. **Everything below that is a number, a cost or a rule detail is our proposal**, kept as
-constants in `src/battle/senbon.ts` so he can change any of it in one place.
+heal. The numbers below were our proposal (constants in `src/battle/senbon.ts`); **he accepted them**
+on 2026-10-24 (*"1 si ... 3 si 4 si 5 no"*: the numbers yes, the bag and the save yes, drinking a
+potion yes, coating an ally's weapon no), after his art answer (*"aprovado arte de senbon ... lo
+demas esta bien por ahora"*).
 
-### The senbon (proposal)
+### The senbon (numbers accepted 2026-10-24)
 
 - A thin steel needle, thrown like a 5e dart: **1d4 piercing**, finesse (DEX), **normal range 6 m**,
   up to **18 m** with disadvantage, and **+1 to hit** (a light needle flies true; the kunai has none,
@@ -2018,13 +2020,19 @@ constants in `src/battle/senbon.ts` so he can change any of it in one place.
 - Thrown with a free hand, as a kunai: a two-handed weapon is let go of for free. At foes only (a
   crate, a barrel or a Kōton wall takes a kunai). A Ryusei's senbon leaves a Weapon Node, as a kunai does.
 - In battle: the **Senbon** button beside *Arrojar arma* (its badge is the case's count).
+- **Thrown like any thrown object** (his words: *"el senbon deberia lanzarse como cualquier arma
+  objeto con la animacion de arrojar sin la espada o arma que tengan"*): the throw pose ('throw'),
+  the held weapon stowed meanwhile (at the belt or on the back, as for hand seals) and a senbon in the
+  near fist until it leaves it; the needle flies from the release. The same for the steel, the
+  poisoned and the healing senbon.
 
-### Weapon poison (proposal)
+### Weapon poison (numbers accepted 2026-10-24)
 
 - A new backpack item, **Veneno para armas** / Weapon poison: a mission sets out with **2 vials**.
   Some enemies carry their own: each **rogue** has one (`ENEMY_POISON`).
 - **Bonus action**: one vial coats the ninja's blade *and* its throwing pouch (kunai, shuriken,
-  senbon). The coat lasts **3 hits** or until the battle ends; one coat at a time.
+  senbon). The coat lasts **3 hits** or until the battle ends; one coat at a time. **Only one's own
+  weapons** (his answer, *"5 no"*: an ally's weapon is never coated; the engine refuses it).
 - Each blow that **lands** with a coated weapon (a blade in hand, or anything thrown; fists and palm
   techniques take none) spends a hit, and the target makes a **CON save, DC 12**: failed, **1d4
   poison** damage and **Poisoned** (the existing effect: disadvantage on attacks and checks, cured
@@ -2039,7 +2047,7 @@ constants in `src/battle/senbon.ts` so he can change any of it in one place.
   damage landing first and the poison's save after it. Coated blows are worth a little more to it (the save's chance times the poison). In
   AI-vs-AI fights it is rare: the ninjas there mostly cast jutsu.
 
-### The healing senbon (proposal)
+### The healing senbon (numbers accepted 2026-10-24)
 
 - **Senbon curativo** / Healing senbon (**action**): a senbon dipped in a **healing potion** (a new
   backpack item, **Pociones curativas**: a mission sets out with **2**), thrown at an **ally up to
@@ -2047,29 +2055,42 @@ constants in `src/battle/senbon.ts` so he can change any of it in one place.
   fallen ally back up. It spends **a potion and a senbon**.
 - **The healer's own**: a **Medical Specialist** adds its **WIS modifier** to the heal (it knows where
   the needle does the most good), and its AI values it a quarter more.
-- Never at a foe (it heals: refused) nor at the thrower (a potion is drunk, not thrown at oneself:
-  drinking one is an open question below). Enemies have no potions.
+- Never at a foe (it heals: refused) nor at the thrower (a potion is drunk, not thrown at oneself).
+  Enemies have no potions.
 - The AI: an ally on the AI with potions and senbon throws one at a friend at half its HP or less
   (or fallen) within 6 m of where it can walk to; worth most to a medic on the Support order.
 
-### How they look (new art: waiting for his approval, on `items/senbon` only)
+### Drinking a healing potion (decided 2026-10-24, *"4 si"*; the details are our proposal)
 
-- `tools/world-sprites/vfx-senbon.ts` → `src/assets/world/vfx_senbon/` (needle): the needle in flight at
+- **Beber poción** / Drink potion (**bonus action**, 1 potion): the ninja drinks one itself and heals
+  **2d4 + 2**, with **no WIS bonus** (a medic's skill is in the needle, not the drinking).
+- Only on oneself: never poured into a fallen ally (the healing senbon is for that).
+- The AI drinks one with its bonus action at half its HP or less, with a potion in the backpack and
+  no medic of its side within 12 m (`MEDIC_NEAR`).
+- Its hotbar icon is a drawn placeholder until he paints one.
+
+### How they look
+
+- **Approved** (2026-10-24, *"aprovado arte de senbon"*): `tools/world-sprites/vfx-senbon.ts` →
+  `src/assets/world/vfx_senbon/` (needle): the needle in flight at
   16 angles, 16 px long, the 1 px black line, light from the upper left; plain steel, coated (its
   front half green, poison dripping) and healing (pale, in a soft green-white glow, no line round the
   glow, sparkles trailing).
 - `src/sprite/coat.ts`: a coated weapon on the figure: the held weapon's own pixels take the venom's
   green (his black line untouched) and drops gather on its lowest edge and fall (8 frames); with no
   weapon in hand the drops fall from the near fist.
-- `tools/ui/ui-icons-senbon.py` → hotbar icons `senbon`, `poison`, `healSenbon`
-  (`src/assets/ui_icons/`), ours in the manner of his painted icons.
-- The coat going on plays the poison aura; the healing senbon lands in the heals' green.
+- The hotbar icons are **his** (2026-10-24, *"puse las habilidades de hotbar de senbon untar arma
+  veneno ... y senbon curativo ponlo como iconos sustituyendo los tuyos"*): sheet 24
+  (`docs/reference/icons-owner-reference-24.jpg`), Senbon, Untar veneno and Senbon curativo, made by
+  `tools/refs/icons-from-ref-24.py` and `tools/ui/ui-icons-23.ts` (`manifest_24.json`); ours are gone.
+  His fourth, *Untar pocisión de cura*, is not used: *"ignora untar arma con posicion no lo pondremos"*.
+- Coating plays **no aura** (*"no pongas la aura de veneno"*): only the *¡Veneno!* word, and the
+  sheen and drip on the weapon. The healing senbon lands in the heals' green.
 
-### Open questions (his)
+### His answers (2026-10-24)
 
-1. The numbers: senbon 1d4, +1, 6/18 m, 10 a case; poison DC 12, 1d4 + Poisoned, 3 hits; healing
-   2d4 + 2 (+ WIS for a medic), 6 m; 2 vials and 2 potions a mission; a vial for each rogue.
-2. Can a healing potion also be drunk (a bonus action, on oneself), or only thrown on a senbon?
-3. Can the poison coat an ally's weapon (an action, beside them), or only one's own?
-4. Should the medic get more (a longer reach, two needles at once at a higher level)?
-5. The art: the needle, the coated look, the healing glow and the three icons.
+1. The numbers: **yes**. 2. The art: his comments above. 3. Weapon poison and healing potions in the
+   mission bag (and the save): **yes**. 4. Drinking a potion: **yes** (above). 5. Coating an ally's
+   weapon: **no**. 6. More for the medic: *"dame ideas"*; his choices are in "The medic's kit" below.
+- The **mission bag** (decided): `weaponPoison` and `healingPotions` join the saved backpack; a run
+  saved before them loads with 0 of each.

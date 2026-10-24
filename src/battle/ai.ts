@@ -13,7 +13,7 @@ import { current } from './turns';
 import { areaValue, bestCell, goalOf, headOptions, ninjaOptions, offensive, planIntent, reachTo, standingUnit, stepToward, swapValue, visibleFoes, WALL, wallCover } from './intent';
 import type { Goal } from './intent';
 import { breakable, MAX_STRUCTURES, ownStructures, structureAt, structureAttack, structureBlocker, structureDist } from './structures';
-import { coatLeft, poisonLeft, potionsLeft, senbonLeft } from './senbon';
+import { coatLeft, MEDIC_CLASS, MEDIC_NEAR, poisonLeft, potionsLeft, senbonLeft } from './senbon';
 import { IMBUE_COST, imbueBlocker, type ImbueElement, unitImbueElements, WATER_REACH, WEAPON_ELEMENT } from './imbue';
 import { COMMAND, commandRefused, edgeFoe, ownNodes, submissionRefused, SWAP, WARP, warpBlocker, warpLanding } from './clans';
 
@@ -209,7 +209,17 @@ function fallback(s: BattleState, u: Unit): Action | null {
  */
 function bonusBefore(s: BattleState, u: Unit, i: Intent): Action | null {
   if (!u.turn.bonus) return null;
-  return ryuseiWarp(s, u, i) ?? imbueFirst(s, u, i) ?? coatFirst(s, u, i);
+  return drinkFirst(s, u) ?? ryuseiWarp(s, u, i) ?? imbueFirst(s, u, i) ?? coatFirst(s, u, i);
+}
+
+/**
+ * A healing potion drunk first (bonus action): at half its HP or less, with a potion in the backpack
+ * and no medic of its side standing within MEDIC_NEAR (who would heal it better).
+ */
+function drinkFirst(s: BattleState, u: Unit): Action | null {
+  if (u.kind !== 'ninja' || u.hp > u.maxHp * 0.5 || potionsLeft(s, u) < 1) return null;
+  const medic = Object.values(s.units).some((o) => o.id !== u.id && o.team === u.team && !o.down && o.character?.shinobiClass === MEDIC_CLASS && dist(o.pos, u.pos) <= MEDIC_NEAR);
+  return medic ? null : { type: 'item', unit: u.id, item: 'potion' };
 }
 
 /**

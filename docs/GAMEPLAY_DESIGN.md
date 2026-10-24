@@ -408,6 +408,62 @@ at its edge, no black line; the obsidian is solid and carries the characters' bl
 line. The energy takes the ninja's chakra colour like his jutsu; the obsidian keeps
 its own.
 
+### Elemental Slash (the owner, 2026-10-23; on `class/elemental-slash`, waiting for his yes)
+
+The owner, verbatim: *"ahora pon en el juego una habilidad para maestro de armas que si tienes la mejora de
+arma que dura 3 turnos puedes tambien tener una opcion de lanzar la habilidad en un slash del elemento que
+tengas para usarlo como habilidad de largo alcance para maestro de armas"*, and then *"el tajo sera un bonus
+action y elimina la mejora del arma"*.
+
+**Decided by him:**
+- The Bukijutsu Master has a second class ability: **while Weapon Element Enhancement is on its weapon**, it can
+  throw that element off the weapon in a slash, an attack **at long range**.
+- It is a **bonus action** (the action stays free: the master can still strike that turn).
+- It **ends the enhancement**: the element leaves the weapon with the slash.
+- Water: *"el de agua apaga las llamas y pone mojado abajo del objetivo"*: a water slash puts out the target's
+  flames **and leaves the ground under the target wet**: the same wet ground a water jutsu leaves (`soak` in
+  `src/battle/ground.ts`: a 1 m circle round the target, as a water jutsu thrown at one target soaks, for
+  WET_ROUNDS; its art, and what fire and lightning do on it, are the ones the game has), with its log line ("El
+  suelo queda mojado"). *Our assumption, to confirm with him:* on every water slash that hits, as the dousing,
+  not only on a critical hit; a miss leaves the ground dry.
+
+**The rest is the builder's proposal, waiting for his numbers** (constants in `src/battle/imbue.ts`):
+- Name *Corte elemental* (*Elemental Slash*), the same on the button. Id `elemental_slash`.
+- Who: whoever has Weapon Element Enhancement (it comes with it, `classAbilities`); usable only with an element
+  on the weapon ("Solo con tu elemento en el arma"). It throws the element on the weapon now, whichever of its
+  elements that is.
+- **1 chakra** (a little: the element, paid for already, goes with it). No hand seals; sealed chakra stops it; a
+  weapon put away is drawn for it (free, once a turn, as a sword art draws it).
+- The economy: the enhancement is itself a bonus action, so the slash comes on a later turn of it (its second or
+  third). A blow struck before the slash in the same turn still carries the element; one after it doesn't.
+- Range **9 m** (as the rank D and C jutsu thrown at one target, 7.5 to 12 m), **10.5 m with water** (its
+  1.5 m longer reach). One foe in sight; not at a friend.
+- The roll: **the weapon's attack** (proficiency and STR, or the better of STR and DEX with a finesse weapon), at
+  range like a jutsu thrown at one target: cover counts, a foe within 1.5 m gives disadvantage, the height
+  (±2), steam, a prone target (disadvantage). A Ryusei's warp edge goes with it.
+- A hit deals **the weapon's die + 1d4 of the element** (the damage types of the table above), no ability
+  modifier (a bonus-action blow, like an off-hand one in 5e). A critical hit: the dice at their maximum, doubled
+  (his crit rule), and **the element's rider as on the blade**: fire sets the foe burning, lightning leaves it
+  Numb (2 rounds), wind blows it back 1.5 m, obsidian crits on a natural 19; water puts out the foe's flames and
+  wets the ground under it (his rule, above). The other elements do nothing to the ground (fire sets none
+  alight, lightning doesn't run through water).
+- The AI keeps the element on the blade while the blade can reach a foe this turn (walking there counted), and
+  throws it at the foe it is likeliest to hit (the most wounded on a tie) when none can be reached, or, its blow
+  struck, on the element's last turn, before it fades anyway (`slashAway` in `src/battle/ai.ts`).
+- The hotbar: a *Corte elemental* button after *Arma elemental*, in the colour of the element on the weapon; a
+  crescent icon until he paints one. Aiming shows the reach (10.5 m with water) and, over a foe, the chance and
+  the dice ("1d8+1d4").
+- The log: "Aki lanza Corte elemental", then the element leaving the weapon ("Las llamas salen del arma de Aki
+  en un corte", "El rayo sale…", "El viento sale…", "El agua sale…", "La obsidiana sale…"), then the roll's miss
+  or the damage.
+
+**How it looks (waiting for his approval; `elementSlash` in `src/components/battle/playback.ts`):** the attack
+pose's cut, the element still on the blade as it rises; on the strike frame the element leaves the blade (its
+loop is gone) as his crescent of that element (`vfx_<element>/slash`, the crescents of his element sheets) flying
+from the blade at blade height to the target, 75 ms a metre (300 ms at least), where his hit of that element
+bursts (`vfx_<element>/hit`) with a small shake; a miss flies on 2 m past the target and fades. The attack's die
+lands as the crescent arrives. In the ninja's chakra colour, as on the weapon; earth in its own.
+
 ## Party, missions and defeat
 
 - A party of up to 4. Each ally is played by a person or by the AI, depending

@@ -234,6 +234,10 @@ const HAND_LIFT = 62;
 /** How long the Chidori's lightning gathers in the hand before the ninja moves (ms at speed 1). */
 const HAND_GATHER = 760;
 const HAND_DX = 0.6;
+/** How high an Elemental Slash's crescent flies (px above the feet: the blade's height, as the Leaf Hurricane's). */
+const SLASH_LIFT = 54;
+/** How long an Elemental Slash's crescent takes to fly (ms at speed 1): per metre, and at the least. */
+const SLASH_FLY = { perM: 75, min: 300 } as const;
 /** Where a cast leaves the hand of a ninja standing at `p` and facing `facing`. */
 const handOf = (p: Pt, facing: number): Pt => ({ x: p.x + facing * HAND_DX, z: p.z });
 
@@ -1568,6 +1572,51 @@ export class Playback {
     v.held = { group: 'vfx_hand', name: 'lightning_hand', element, tint, t0: now, end: now + ms / this.speed, rows: [{ anim: 'gather', ms: 330 }, { anim: crackle, ms: HAND_GATHER - 330 }, ...after, { anim: crackle, ms: 1 }] };
   }
 
+  /**
+   * Elemental Slash: the attack pose's cut, the element still on the blade as it rises; on the strike
+   * frame the element leaves the blade (its loop is gone) as his crescent of that element (the
+   * element sheet's slash) flying from the blade to the target, where his hit of the element bursts.
+   * One that misses flies on past and fades. In the caster's chakra colour, earth in its own, as on
+   * the weapon. Returns the wait before the attack's die is thrown, so it lands as the cut arrives.
+   */
+  private elementSlash(ev: Extract<BattleEvent, { t: 'jutsu' }>, a: UnitView, from: Pt, now: number, label: string | null, caster: Unit | undefined): number {
+    const h = this.hooks;
+    const el = ev.element!.toLowerCase() as VfxElement;
+    const tint = ev.element === 'Earth' || !caster ? undefined : unitTint(caster);
+    const at = (ms: number) => now + ms / this.speed;
+    h.sound('jutsu', el);
+    if (label) this.float(label, '#fde68a', from, now, { rise: 128, dur: 1400 });
+    this.setPose(a, 'attack', now, 900);
+    // The blade comes down on the attack pose's second frame: the element leaves it there.
+    const strike = 1000 / POSE_FPS.attack + 30;
+    this.later(now, strike, () => {
+      a.imbue = undefined;
+      h.sound('swing');
+    });
+    const out = crescentStart(from, ev.at);
+    const d = dist(out, ev.at);
+    const fly = Math.max(SLASH_FLY.min, d * SLASH_FLY.perM);
+    const miss = this.missedNext(ev.unit);
+    // A miss flies on 2 m past the target, fading.
+    const k = d > 0.01 ? 2 / d : 0;
+    const past = { x: ev.at.x + (ev.at.x - out.x) * k, z: ev.at.z + (ev.at.z - out.z) * k };
+    const over = miss ? SLASH_FLY.perM * 2 : 0;
+    const path = [{ ms: 0, at: out, dy: -SLASH_LIFT }, { ms: fly, at: ev.at, dy: -SLASH_LIFT }, ...(miss ? [{ ms: fly + over, at: past, dy: -SLASH_LIFT }] : [])];
+    const dur = fly + over + 60;
+    this.fx.push({ kind: 'sprite', element: el, tint, from: out, to: miss ? past : ev.at, t0: at(strike), dur, run: { group: `vfx_${el}`, name: 'slash', mirror: ev.at.x < from.x - 0.01, rows: [{ anim: 'fly', ms: dur }], path, fade: miss ? over : 60 } });
+    let end = strike + dur;
+    if (!miss) {
+      const hitMs = impactMs(el, 'hit', 800);
+      this.fx.push({ element: el, tint, kind: 'burst', from, to: ev.at, t0: at(strike + fly), dur: hitMs, lift: [SLASH_LIFT, SLASH_LIFT], role: 'hit' });
+      this.shakeAt(now, strike + fly, 2);
+      end = strike + fly + hitMs;
+    }
+    this.hitAt = at(strike + fly);
+    this.lingerUntil = Math.max(this.lingerUntil, at(end));
+    // The attack's die is thrown next, to land as the cut arrives (at once with the dice off).
+    return Math.max(strike, strike + fly - (this.diceOn ? CLICK_MS : 0));
+  }
+
   /** The jutsu event: the cast, its flight and its effects (the staged ones apart). Returns how long to wait. */
   private playJutsu(ev: Extract<BattleEvent, { t: 'jutsu' }>, now: number, state: BattleState, label: string | null): number {
     const h = this.hooks;
@@ -1605,6 +1654,7 @@ export class Playback {
       if (label) this.float(label, '#fde68a', from, now, { rise: 128, dur: 1400 });
       return 90;
     }
+    if (spec?.special === 'slash' && ev.element) return this.elementSlash(ev, a, from, now, label, caster);
     // An enhanced jutsu's cast pose plays its chakra burst empowered.
     if (!head) a.castEnhanced = !!ev.enhanced;
     if (spec?.seq || spec?.pose || spec?.vfxSet) {
@@ -2185,6 +2235,8 @@ export class Playback {
         }
         v.imbue = undefined;
         v.imbueAct = undefined;
+        // Thrown off in an Elemental Slash: the cut itself shows it go (playJutsu).
+        if (ev.end === 'slashed') return 0;
         this.fx.push({ kind: 'smoke', element: 'chakra', from: v.pos, to: v.pos, t0: now, dur: 380 });
         return 150;
       }

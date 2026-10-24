@@ -14,7 +14,7 @@ import { imbueChoice, runAi } from './ai';
 import { beginTurn } from './turns';
 import { unitFrom, wielded } from './units';
 import { reachTo } from './intent';
-import { EARTH_CRIT, IMBUE_COST, IMBUE_DAMAGE, IMBUE_ELEMENTS, IMBUE_PENDING, IMBUE_ROUNDS, WATER_REACH, WEAPON_ELEMENT, classAbilities, imbueElementOf, startImbue, unitImbueElements } from './imbue';
+import { EARTH_CRIT, ELEMENTAL_SLASH, IMBUE_COST, IMBUE_DAMAGE, IMBUE_ELEMENTS, IMBUE_PENDING, IMBUE_ROUNDS, WATER_REACH, WEAPON_ELEMENT, classAbilities, imbueElementOf, startImbue, unitImbueElements } from './imbue';
 import type { ImbueElement } from './imbue';
 import { logLine } from '../components/battle/battleLog';
 import type { Action, BattleEvent, BattleState } from './types';
@@ -90,7 +90,7 @@ const damages = (ev: BattleEvent[], unit: string) => ev.filter((e): e is Extract
 
 describe('Weapon Element Enhancement: who has it', () => {
   it('a Bukijutsu Master of one of the five elements, never another class or a nature with no element (no genjutsu)', () => {
-    for (const n of ['Fire', 'Water', 'Wind', 'Lightning', 'Earth'] as const) assert.deepEqual(classAbilities('Bukijutsu Master', n), [WEAPON_ELEMENT], n);
+    for (const n of ['Fire', 'Water', 'Wind', 'Lightning', 'Earth'] as const) assert.deepEqual(classAbilities('Bukijutsu Master', n), [WEAPON_ELEMENT, ELEMENTAL_SLASH], n);
     // water's new effect comes with it (vfx/weapon-water-v2): no element waits
     assert.deepEqual([...IMBUE_PENDING], []);
     for (const n of ['Light', 'Void', 'Shadow', 'Spirit', 'Genjutsu'] as const) assert.deepEqual(classAbilities('Bukijutsu Master', n), [], n);

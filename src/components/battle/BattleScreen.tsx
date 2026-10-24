@@ -19,7 +19,7 @@ import { foreseen } from '../../battle/intent';
 import { MAX_STRUCTURES, STRUCTURE_AC, breakable, jutsuWallAt, ownStructures, structureAt, structureAttack, structureBlocker, structureDist } from '../../battle/structures';
 import { auraEntered, commandBlocker, edgeFoe, nodeInSight, nodeUnder, ownNodeAt, ownNodes, submissionBlocker, submissionRefused, swapBlocker, warpBlocker, warpLanding } from '../../battle/clans';
 import { KUNAI, KUNAI_LONG, wielded } from '../../battle/units';
-import { EARTH_CRIT, IMBUE_COST, IMBUE_DICE, IMBUE_ROUNDS, imbueBlocker, type ImbueElement, unitImbueElements, WATER_REACH, WEAPON_ELEMENT, WIND_PUSH } from '../../battle/imbue';
+import { EARTH_CRIT, ELEMENTAL_SLASH, IMBUE_COST, IMBUE_DICE, IMBUE_ROUNDS, imbueBlocker, type ImbueElement, slashBlocker, slashRange, SLASH_COST, SLASH_RANGE, unitImbueElements, WATER_REACH, WEAPON_ELEMENT, WIND_PUSH } from '../../battle/imbue';
 import { ELEMENT_ES } from '../../game/ruleText';
 import { STONE_RANGE } from '../../battle/stealth';
 import { TAG } from '../../battle/hazards';
@@ -534,6 +534,20 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
         label = why ? reasonLine(why) : jutsuName(spec.id, lang);
         if (!why) sub = T('aimSave', { save: (lang === 'es' ? SAVE_ES : SAVE_EN).wis, dc: actor.saveDC });
       } else if (mode.picked) label = T('aimSecond');
+    } else if (mode.k === 'jutsu' && spec && spec.special === 'slash') {
+      // Elemental Slash: how far the element on the weapon flies (water's further), and over a foe
+      // the weapon's chance to hit it at range, with the weapon's die and the element's.
+      const range = slashRange(actor.imbued?.element);
+      o.range = { at: actor.pos, radius: range };
+      if (hu && hu.team !== actor.team) {
+        const striker = drawsFree(actor);
+        const pv = attackPreview(s, striker, hu, 'jutsu', { jutsuRange: range + (hu.bulk ?? 0) + (hu.kind === 'hydra_head' ? 2.5 : 0), weapon: true });
+        const seen = lineOfSight(s, actor.pos, hu.pos);
+        o.targets = [hu.id];
+        label = !pv.inRange ? T('aimNoReach') : !seen ? reasonLine(sightWhy(s, actor.pos, hu.pos)) : T('aimChance', { p: Math.round(pv.chance * 100), dice: `${wielded(striker).dice}+${IMBUE_DICE}` });
+        sub = pv.inRange && seen ? reasonsText(pv, lang) : null;
+        if (planLine) sub = sub ? `${sub} · ${planLine}` : planLine;
+      }
     } else if (mode.k === 'jutsu' && spec) {
       const self = spec.shape === 'self' || spec.shape === 'selfCircle';
       if (!self) o.range = { at: actor.pos, radius: spec.range };
@@ -989,11 +1003,14 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
         // type's, and its second element once unlocked), in that element's colour.
         const choices: (ImbueElement | undefined)[] = id === WEAPON_ELEMENT ? unitImbueElements(u) : [undefined];
         for (const choice of choices.length ? choices : [undefined]) {
-          const el = choice ? (choice.toLowerCase() as JutsuSpec['element']) : sp.element;
+          // Elemental Slash takes the colour of the element on the weapon now.
+          const on = id === ELEMENTAL_SLASH ? u.imbued?.element : choice;
+          const el = on ? (on.toLowerCase() as JutsuSpec['element']) : sp.element;
           // Clan abilities with nothing to work on: Command, Submission and Swap before the fighting,
           // Warp and Swap with no Node down, Submission with no beast or summon on the field.
-          // Weapon Element Enhancement: already on the weapon, or no weapon to put it on.
-          const imbueWhy = sp.special === 'imbue' ? imbueBlocker(u, choice) : null;
+          // Weapon Element Enhancement: already on the weapon, or no weapon to put it on. Elemental
+          // Slash: no element on the weapon to throw.
+          const imbueWhy = sp.special === 'imbue' ? imbueBlocker(u, choice) : sp.special === 'slash' ? slashBlocker(u) : null;
           const idle = imbueWhy
             ? t(`r_${imbueWhy}` as TKey)
             : stealth && (sp.special === 'command' || sp.special === 'submission' || sp.special === 'swap')
@@ -1603,6 +1620,7 @@ const SHORT: Record<string, [string, string]> = {
   northstar_submission: ['Submit', 'Sumisión'],
   mirai_evasion: ['Evasion', 'Evasión'],
   weapon_element: ['Element blade', 'Arma elemental'],
+  elemental_slash: ['Element slash', 'Corte elemental'],
   fire_three_embers: ['Embers', 'Brasas'],
   wind_whirl: ['Whirl', 'Remolino'],
   wind_breeze_mantle: ['Mantle', 'Manto'],
@@ -1648,6 +1666,7 @@ function jutsuEffect(sp: JutsuSpec, lang: ReturnType<typeof useLang>): string {
 /** The pop-up of a jutsu's slot: its full name, rank, how it is cast, what it does, its description, and enhanced. */
 /** The numbers a help line names (Weapon Element Enhancement's come from battle/imbue.ts). */
 function helpParams(id: string): Record<string, string | number> | undefined {
+  if (id === ELEMENTAL_SLASH) return { c: SLASH_COST, n: SLASH_RANGE, w: SLASH_RANGE + WATER_REACH, d: IMBUE_DICE, p: WIND_PUSH, k: EARTH_CRIT };
   if (id !== WEAPON_ELEMENT) return undefined;
   return { c: IMBUE_COST, r: IMBUE_ROUNDS, d: IMBUE_DICE, p: WIND_PUSH, m: WATER_REACH, k: EARTH_CRIT };
 }

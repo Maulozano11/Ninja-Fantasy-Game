@@ -6,6 +6,7 @@ import { fitsBody, getItem } from './catalog';
 import { hexToRgb } from './color';
 import { Depth, DEPTHS, DrawCtx, ItemDef, NO_OUTLINE_DEPTHS, resolveParts } from './ctx';
 import { mendGlitches } from './glitches';
+import { keptFill } from './keptFills';
 import { closePinholes } from './holes';
 import { fillSeams } from './seams';
 import { paintedFrame, wearsHisFigure } from './ownerFrames';
@@ -15,6 +16,7 @@ import { drawHeadband } from './items/headband';
 import { add, F_NO_OUTLINE, F_NO_TEXTURE, F_OWNER, F_SEAL, GRID, Layer, MaterialTable, norm, PAD, PartId, partIndex, PARTS, perp, RES, scale, sub, v, Vec } from './raster';
 import { drawRig, Lay, layRig, Rig, rigPoseFor, turnPoint, turnRig } from './rig';
 import { carryHead } from './neck';
+import { aureliaRig, onAureliaHead } from './aureliaHead';
 import { drawCampFx } from './campfx';
 import { drawCastFx } from './castfx';
 import { sealCloth } from './seal';
@@ -290,9 +292,11 @@ export function spriteLayers(look: SpriteAppearance, pose: SpritePose, frame: nu
 
 function drawLayers(look: SpriteAppearance, pose: SpritePose, frame: number, eyeSpecial: EyeSpecial, heldOnly?: Rig) {
   // heldOnly: just the held item (or the kunai bare hands throw) on that rig, no body (sprite/thrown.ts).
-  // (the long neck carries the head higher and further forward: neck.ts; his Roman face on a male body
-  // stands higher on his neck: romanNeck.ts)
-  const rig = heldOnly ?? romanRig(carryHead(drawRig(look.body, rigPoseFor(pose, look.cast?.style, look.stowed ? undefined : look.slots.held?.id), frame, look.arms), look.neck), look);
+  // (the long neck carries the head higher and further forward: neck.ts; Aurelia's face stands her head
+  // where the owner drew it: aureliaHead.ts; his Roman face on a male body stands higher on his neck:
+  // romanNeck.ts)
+  // (his own figure in his painted frames sits on his joints; any other look holds its hands from its own neck: rig.ts PoseAt.hisNeck)
+  const rig = heldOnly ?? aureliaRig(romanRig(carryHead(drawRig(look.body, rigPoseFor(pose, look.cast?.style, look.stowed ? undefined : look.slots.held?.id), frame, look.arms, wearsHisFigure(look)), look.neck), look), look);
   const mats = new MaterialTable();
   const layers = new Map<Depth, Layer>();
   const equipped = new Map<SlotId, ItemDef>();
@@ -444,16 +448,25 @@ export function renderSprite(
   // colour. Idle is left exactly as drawn: it is the frame the owner's pictures were copied into; so are
   // the frames he painted himself (his Lyra reading, sitting and throwing, ownerFrames.ts).
   const lineOf = (i: number) => (topMat[i] < 0 ? 0x07060b : parseInt(mats.ramps[topMat[i]][0].slice(1), 16));
-  if (pose !== 'idle' && !(wearsHisFigure(look) && paintedFrame(rig.pose, rig.frame))) closePinholes(rgba, part, top, (i) => top[i] === FX, lineOf);
+  const hisFrame = wearsHisFigure(look) && !!paintedFrame(rig.pose, rig.frame);
+  if (pose !== 'idle' && !hisFrame) closePinholes(rgba, part, top, (i) => top[i] === FX, lineOf);
+  // The owner's standard characters (2026-10-23: "quiero que arregles solo los de la calidad standard"): off
+  // his pictures, the cracks and light edge pixels their moved pieces open are closed; a pocket only where he saw
+  // it filled and left it (glitches.ts, keptFills.ts).
+  // (her walk he approved pixel for pixel stays as it is: aureliaLegs.test.ts)
+  const who = pose === 'idle' || hisFrame ? null : standardOf(look);
+  const kept = who ? (px: number[]) => keptFill(`${who}@${look.body}`, pose, frame, px) : undefined;
   // On the bulky body the looks drawn on the male open gaps between their pieces (the owner on Solen there,
-  // 2026-10-23: "partes del cuerpo separadas por pixeles blancos ... pixeles blancos muertos"): its pockets,
-  // cracks and light edge pixels closed (glitches.ts); on the other bodies those of his broad man's pieces
-  // (F_OWNER, fitted to them). At rest on the bulky body his broad man is left as he drew him.
+  // 2026-10-23: "partes del cuerpo separadas por pixeles blancos ... pixeles blancos muertos"): its cracks and
+  // light edge pixels closed (glitches.ts; a pocket is a real separation and stays, the owner: "porfavor no lo
+  // repitas mas en ningun personaje"); on the other bodies those of his broad man's pieces (F_OWNER, fitted to
+  // them). At rest on the bulky body his broad man is left as he drew him.
   const his = (i: number) => !!(topFlags[i] & F_OWNER);
   if (look.body === 'bulky') {
-    // a crack or edge it closes can leave a 1-pixel hole beside it: closed as the others (a pocket, larger, is left open)
-    if (mendGlitches(rgba, part, top, (i) => top[i] === FX, lineOf, pose === 'idle' ? his : undefined).length && pose !== 'idle') closePinholes(rgba, part, top, (i) => top[i] === FX, lineOf);
+    // a crack or edge it closes can leave a 1-pixel hole beside it: closed as the others
+    if (mendGlitches(rgba, part, top, (i) => top[i] === FX, lineOf, pose === 'idle' ? his : undefined, kept).length && pose !== 'idle') closePinholes(rgba, part, top, (i) => top[i] === FX, lineOf);
   }
+  else if (who && !(who === 'aurelia' && pose === 'walk')) mendGlitches(rgba, part, top, (i) => top[i] === FX, lineOf, undefined, kept);
   else if (topFlags.some((fl) => fl & F_OWNER)) mendGlitches(rgba, part, top, (i) => top[i] === FX, lineOf, (i) => !his(i));
   const hair = new Uint8Array(N >> 3);
   const fx = new Uint8Array(N >> 3);
@@ -508,6 +521,13 @@ function layFrame(rgba: Uint8ClampedArray, part: Uint8Array, hair: Uint8Array, l
  * layer's own fill, so the two never stack into a 2px dark line. Silhouette
  * outlines (next to transparency) are always kept.
  */
+/** Which of the owner's standard characters a look is on this branch (keptFills.ts names), or null: his Lyra, his Aurelia, his Roman set (cuirass and skirt). */
+function standardOf(look: SpriteAppearance): string | null {
+  if (wearsHisFigure(look)) return 'lyra';
+  if (onAureliaHead(look)) return 'aurelia';
+  return look.slots.armor?.id === 'armor_bronze' && look.slots.skirt?.id === 'skirt_imperial' ? 'roman' : null;
+}
+
 function thinDoubleOutlines(rgba: Uint8ClampedArray, top: Int16Array, isLine: Uint8Array): void {
   const N = GRID * GRID;
   const fixes: [number, number][] = [];

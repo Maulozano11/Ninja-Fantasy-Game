@@ -14,6 +14,7 @@ import { stampTemplate, TemplatePalette } from '../rotsprite';
 import { BODY_PARAMS } from '../rig';
 import { sealCloth } from '../seal';
 import { crimsonKind, GAUNTLET_F, GAUNTLET_N, GLOVE_LEATHER, GLOVE_STEEL, GLOVE_TONES, GLOVE_TRIM } from './sabatonsGauntletsArt';
+import { WAIST_DAWN_SASH } from './aureliaLower';
 import { BRACER_BRONZE, BRACER_F, BRACER_N, ROMAN_KIT_KIND } from './bracersSandalsArt';
 import { BOOTS_PART } from './bootsPart';
 import { sandalPieces } from './feet';
@@ -1988,6 +1989,8 @@ export const WAIST_ITEMS: ItemDef[] = liftMain([
       tseam(g, L, CX - 0.3, 3.6, CX - 0.3, 0.9, 1);
     },
   },
+  // Aurelia, the owner's fourth heroine (aureliaLower.ts)
+  WAIST_DAWN_SASH,
   POUCH_BELT,
 ]);
 

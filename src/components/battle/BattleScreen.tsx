@@ -1404,7 +1404,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
                 <ScrollText size={13} /> {T('log')}
               </button>
             </div>
-            <div className="text-[11px] text-[#c8d3dc]">{T('supplies', { p: state.supplies.soldierPills, b: state.supplies.bandages, a: state.supplies.antidotes, t: state.supplies.explosiveTags })}</div>
+            <div className="text-[11px] text-[#c8d3dc]">{T('supplies', { p: state.supplies.soldierPills, b: state.supplies.bandages, a: state.supplies.antidotes, t: state.supplies.explosiveTags, v: state.supplies.weaponPoison ?? 0, h: state.supplies.healingPotions ?? 0 })}</div>
             <div className="border-t border-[#3a2f1f] pt-2 flex flex-col gap-1">
               <span className="text-[10px] uppercase tracking-widest text-[#a8a08c]">{T('menuLeave')}</span>
               <div className="flex flex-wrap gap-1">

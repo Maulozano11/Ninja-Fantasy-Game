@@ -74,8 +74,8 @@ export const T = strings({
   objectiveBattle: { en: 'Objective battle', es: 'Batalla del objetivo' },
   partyFights: { en: 'The party fights together', es: 'El grupo pelea unido' },
   partyHelp: {
-    en: 'You control all four on the battle map; any of them can be handed to the AI with an order (Aggressive, Defensive, Support). Soldier pills, bandages, antidotes and explosive tags are used in battle.',
-    es: 'Controlas a los cuatro en el mapa de batalla; puedes pasar cualquiera a la IA con una orden (Agresivo, Defensivo, Apoyo). Las píldoras, vendas, antídotos y sellos explosivos se usan en la batalla.',
+    en: 'You control all four on the battle map; any of them can be handed to the AI with an order (Aggressive, Defensive, Support). Soldier pills, bandages, antidotes, explosive tags, weapon poison and healing potions are used in battle.',
+    es: 'Controlas a los cuatro en el mapa de batalla; puedes pasar cualquiera a la IA con una orden (Agresivo, Defensivo, Apoyo). Las píldoras, vendas, antídotos, sellos explosivos, el veneno para armas y las pociones curativas se usan en la batalla.',
   },
   raidBells: { en: 'The bells on the perimeter woke everyone: nobody starts surprised. Traps set at camp wait on the raiders’ paths.', es: 'Las campanas del perímetro despertaron a todos: nadie empieza sorprendido. Las trampas del campamento esperan en el camino de los asaltantes.' },
   raidNoBells: { en: 'No bells on the perimeter: whoever wasn’t on watch is caught asleep and loses the first turn. Traps set at camp wait on the raiders’ paths.', es: 'Sin campanas en el perímetro: quien no hacía guardia despierta tarde y pierde el primer turno. Las trampas del campamento esperan en el camino de los asaltantes.' },

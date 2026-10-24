@@ -98,7 +98,7 @@ const TABLE = strings({
   cancel: { en: 'Cancel', es: 'Cancelar' },
   skipAnim: { en: 'Speed up', es: 'Acelerar' },
   enhancedToggle: { en: 'Enhanced (+{n} chakra)', es: 'Potenciado (+{n} chakra)' },
-  supplies: { en: 'Pills {p} · Bandages {b} · Antidotes {a} · Tags {t}', es: 'Píldoras {p} · Vendas {b} · Antídotos {a} · Sellos {t}' },
+  supplies: { en: 'Pills {p} · Bandages {b} · Antidotes {a} · Tags {t} · Poison {v} · Potions {h}', es: 'Píldoras {p} · Vendas {b} · Antídotos {a} · Sellos {t} · Veneno {v} · Pociones {h}' },
 
   // actions
   act_attack: { en: 'Attack', es: 'Atacar' },

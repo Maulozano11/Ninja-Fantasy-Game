@@ -223,6 +223,9 @@ describe('weapon poison: coating the weapons', () => {
     const s = turnOf(s0, 'rogue_0');
     place(s, 'rogue_0', 'a', 1.5);
     s.units.rogue_0.intent = { kind: 'melee', what: s.units.rogue_0.weapon.name, target: 'a' };
+    // A Bukijutsu Master puts its element on its weapon first, with the same bonus action (battle/imbue.ts).
+    assert.equal(aiAction(s)?.type, 'jutsu', 'the element comes first');
+    s.units.rogue_0.jutsus = s.units.rogue_0.jutsus.filter((j) => j !== 'weapon_element');
     const a = aiAction(s);
     assert.deepEqual(a, { type: 'item', unit: 'rogue_0', item: 'poison' });
     const t = ok(applyAction(s, a!)).state;

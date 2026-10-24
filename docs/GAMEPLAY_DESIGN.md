@@ -2034,7 +2034,9 @@ constants in `src/battle/senbon.ts` so he can change any of it in one place.
 - The AI coats its weapons (the rogues with their own vial, allies on the AI with the backpack's)
   just before a blow with a blade or a throw it can make from where it stands, or with the bonus
   action left over when its next turn's plan is such a blow; never for a jutsu, and never against
-  the hydra. Coated blows are worth a little more to it (the save's chance times the poison). In
+  the hydra. A Bukijutsu Master puts its element on the weapon first (Weapon Element Enhancement
+  takes the same bonus action); poison and element can be on one weapon together, the element's
+  damage landing first and the poison's save after it. Coated blows are worth a little more to it (the save's chance times the poison). In
   AI-vs-AI fights it is rare: the ninjas there mostly cast jutsu.
 
 ### The healing senbon (proposal)

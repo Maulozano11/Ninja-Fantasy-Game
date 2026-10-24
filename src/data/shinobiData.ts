@@ -176,8 +176,8 @@ export const SHINOBI_CLASSES: Record<
     hitDie: 10,
     chakraDie: 8,
     savingProficiencies: ['DEX', 'INT'],
-    classFeatures: 'Flowing Blade: Can deflect 1 ranged projectile per round as a reaction, and add DEX to all weapon damage. Weapon Element Enhancement: as a bonus action, puts the ninja\'s element (fire, lightning, wind, water or earth; never genjutsu) on the weapon in hand for a few turns: fire sets it alight, lightning crackles round it, wind swirls round it, water lengthens its reach and earth covers it in sharp obsidian.',
-    classFeaturesEs: 'Hoja fluida: puede desviar 1 proyectil a distancia por ronda como reacción, y suma la DES a todo el daño de arma. Potenciación elemental del arma: como acción adicional, pone el elemento del ninja (fuego, rayo, viento, agua o tierra; nunca genjutsu) en el arma que empuña durante unos turnos: el fuego la prende en llamas, el rayo chisporrotea a su alrededor, el viento gira en torno a ella, el agua alarga su alcance y la tierra la cubre de obsidiana filosa.',
+    classFeatures: 'Flowing Blade: Can deflect 1 ranged projectile per round as a reaction, and add DEX to all weapon damage. Weapon Element Enhancement: as a bonus action, puts the ninja\'s element (fire, lightning, wind, water or earth; never genjutsu) on the weapon in hand for a few turns: fire sets it alight, lightning crackles round it, wind swirls round it, water lengthens its reach and earth covers it in sharp obsidian. Elemental Slash: with the element on the weapon, as a bonus action, throws it off the weapon in a slash at a foe at range; the element leaves the weapon.',
+    classFeaturesEs: 'Hoja fluida: puede desviar 1 proyectil a distancia por ronda como reacción, y suma la DES a todo el daño de arma. Potenciación elemental del arma: como acción adicional, pone el elemento del ninja (fuego, rayo, viento, agua o tierra; nunca genjutsu) en el arma que empuña durante unos turnos: el fuego la prende en llamas, el rayo chisporrotea a su alrededor, el viento gira en torno a ella, el agua alarga su alcance y la tierra la cubre de obsidiana filosa. Corte elemental: con el elemento en el arma, como acción adicional, lo lanza en un corte contra un enemigo a distancia; el elemento deja el arma.',
   },
 };
 
@@ -1916,6 +1916,85 @@ export const LEGENDARY_PRESETS: { name: string; tag: string; nameEs?: string; ta
     },
   },
   // ── The noble swordsman (end) ────────────────────────────────────────────────────────────────────
+  // ── Heroine: Aurelia (begin) ───────────────────────────────────────────────────────────────────
+  // The owner's fourth heroine, copied from his picture of her at our game's scale
+  // (docs/reference/aurelia-escala-juego-owner-reference.jpg, one of his pixels per one of ours):
+  // hair, eyes, dress bodice and sleeves, skirt, sash, boots and staff, each its own creator item in
+  // his colours. Name and title are provisional (the owner will rename her). Her numbers are the
+  // creator's formula; Koton's bonus (CON +2, INT +1) adds 5 max HP and 1 max chakra.
+  {
+    name: 'Aurelia, the Dawn Priestess',
+    tag: 'Dawn Vestment · Dawn Staff',
+    nameEs: 'Aurelia, la Sacerdotisa del Alba',
+    tagEs: 'Vestidura del alba · Báculo del alba',
+    character: {
+      id: 'preset_aurelia',
+      name: 'Aurelia',
+      title: 'The Dawn Priestess',
+      level: 5,
+      clan: 'Koton',
+      shinobiClass: 'Medical Specialist',
+      stats: { str: 10, dex: 14, con: 14, int: 12, wis: 18, cha: 15 },
+      palette: {
+        skinTone: '#f4c6a5',
+        hairColor: '#f6daa2',
+        eyeColor: '#235384',
+        armorPrimary: '#f5eddb',
+        armorSecondary: '#f5bc47',
+        clothColor: '#f5eddb',
+        headbandCloth: '#1e3a8a',
+        headbandPlate: '#cbd5e1',
+        chakraAuraColor: '#fedfa0',
+        accentColor: '#f5bc47',
+      },
+      hairstyle: 'Itachi Low Ribbon',
+      armorStyle: 'Ronin Wanderer Cloak',
+      headbandPosition: 'Neck',
+      weaponStyle: 'Unarmed Brawler',
+      capeStyle: 'None',
+      dojutsu: 'None',
+      selectedFeats: ['chakra_prodigy', 'sharingan_precog'],
+      // Light chakra: no element, so the jutsu with none (the healing palm, the feathers). Her Yasaka no
+      // Magatama was removed from the game (the owner, 2026-10-22: "quitala del juego"); a Light medic has
+      // no other rank S to learn, so the slot is empty, as loading an old sheet leaves it (refitRemoved).
+      selectedJutsus: {
+        slot1Utility: 'mystical_palm',
+        slot2Elemental: 'temple_of_nirvana',
+        slot3Elemental: 'leaf_hurricane_senpuu',
+        slot4Clan: 'adamantine_sealing_chains',
+        slot5Ultimate: '',
+      },
+      sheetVersion: 2,
+      maxHp: 43,
+      currentHp: 43,
+      maxChakra: 42,
+      currentChakra: 42,
+      armorClass: 13,
+      speed: 7,
+      jutsuSaveDC: 15,
+      jutsuAttackBonus: 7,
+      appearance: spriteLook({
+        body: 'female',
+        skin: '#f4c6a5',
+        eyeShape: 'dawn',
+        eyeColor: '#235384',
+        // her face and head where the owner drew them (2026-10-23: "copia la forma de cara cuello y peinado pixel a pixel")
+        faceShape: 'aurelia',
+        // his Aurelia's own small hands (the owner, 2026-10-22: "las manos mas pequeñas ponlas como opcion")
+        hands: 'small',
+        slots: {
+          hair: it('hair_dawn_bun'),
+          armor: it('armor_dawn_vestment'),
+          skirt: it('skirt_dawn_panels'),
+          waist: it('waist_dawn_sash'),
+          feet: it('feet_dawn_boots'),
+          held: it('held_dawn_staff'),
+        },
+        chakra: { color: 'white', tint: '#fac856', onCharge: true, onCast: true, onVictory: true }, // Light, in her staff's gold
+      }),
+    },
+  },
+  // ── Heroine: Aurelia (end) ─────────────────────────────────────────────────────────────────────
 ];
 
 export const DEFAULT_CHARACTER: ShinobiCharacter = LEGENDARY_PRESETS[0].character;

@@ -143,13 +143,15 @@ describe('the legends', () => {
       preset_sunburst: ['Wind', '#f27c18'], // was the orange Cinder Nova
       preset_warlord: ['Fire', '#a54ce0'], // was the violet Spectral Guardian
       preset_night: ['Lightning', '#36a0f0'], // was the blue Rising Tide
+      preset_aurelia: ['Light', '#fac856'], // a heroine: Light, no element, in her staff's gold
       preset_lyra: ['Wind', '#40cccb'], // a heroine: wind in the cyan of her blade
       preset_noble_swordsman: ['Lightning', '#5fb3e2'], // the noble swordsman: lightning in the pale blue of his blade
     };
     assert.deepEqual(LEGENDARY_PRESETS.map((p) => p.character.id).sort(), Object.keys(want).sort());
     for (const { character: c } of LEGENDARY_PRESETS) {
       assert.equal(natureOf(c), want[c.id][0], c.id);
-      assert.equal(natureOf(c), loadoutNature(c), `${c.id}: its jutsu`);
+      // A type that is no element (Aurelia's Light) has jutsu of no element.
+      assert.equal(loadoutNature(c), (ELEMENTS as string[]).includes(natureOf(c)) ? natureOf(c) : '', `${c.id}: its jutsu`);
       assert.equal(chakraHex(c.appearance!.chakra), want[c.id][1], `${c.id}: its colour`);
     }
     // Hana, the water medic (was the green Leafwind Spiral), keeps her green.

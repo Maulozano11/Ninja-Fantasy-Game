@@ -28,7 +28,7 @@ import { GRID, RES } from '../../sprite/raster';
 import { depthFx, drawAuraBack, drawCracks, drawDouses, drawWetGround, drawHeld, drawLinger, drawScreenBlood, drawVfxSprite, drawWallSprite, wallTint } from './vfxSprites';
 import { isTintElement, vfxTintColors } from '../../sprite/vfxTint';
 import { jutsuTint, unitTint } from './vfxTintPlan';
-import { IMBUE_FPS, IMBUE_LOOP } from '../../sprite/imbue';
+import { ACTIVATE_FRAMES, IMBUE_FPS, IMBUE_LOOP } from '../../sprite/imbue';
 import type { ImbueFx } from '../../sprite/imbue';
 
 export interface Camera {
@@ -895,7 +895,9 @@ function drawUnit(ctx: CanvasRenderingContext2D, sc: Scene, u: Unit, pos: Pt): v
         : undefined;
   // The element on the weapon in hand (Weapon Element Enhancement; sprite/imbue.ts draws it on the
   // weapon in the frame), its energy in the ninja's chakra colour, obsidian in its own.
-  const imbue = v.imbue && v.armed && !u.down ? { fx: v.imbue.toLowerCase() as ImbueFx, tick: Math.floor((now * IMBUE_FPS) / 1000) % IMBUE_LOOP, tint: v.imbue === 'Earth' ? undefined : unitTint(u) } : undefined;
+  // While it goes onto the weapon (its activation, in the victory pose) its activation's frames play instead.
+  const act = v.imbueAct && now < v.imbueAct.end ? Math.min(ACTIVATE_FRAMES - 1, Math.floor(((now - v.imbueAct.t0) / (v.imbueAct.end - v.imbueAct.t0)) * ACTIVATE_FRAMES)) : undefined;
+  const imbue = v.imbue && v.armed && !u.down ? { fx: v.imbue.toLowerCase() as ImbueFx, tick: Math.floor((now * IMBUE_FPS) / 1000) % IMBUE_LOOP, tint: v.imbue === 'Earth' ? undefined : unitTint(u), step: act } : undefined;
   const fr = unitFrame(u, look, v.pose, frame, aura, imbue);
   let lx = 0;
   let ly = 0;

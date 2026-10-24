@@ -53,8 +53,8 @@ export interface CastChoice {
   jutsu?: Record<string, CastStyle>;
 }
 
-/** The eye options; valiant, roman and noble are the owner's own eyes from his Aiden, Roman and noble swordsman pictures, in his pixels; keen is his Lyra's, in her colours at our scale. */
-export type EyeShape = 'standard' | 'sharp' | 'round' | 'calm' | 'fierce' | 'bright' | 'piercing' | 'valiant' | 'keen' | 'roman' | 'noble';
+/** The eye options; valiant, roman and noble are the owner's own eyes from his Aiden, Roman and noble swordsman pictures, in his pixels; dawn is his Aurelia's, in her pixels at our scale; keen is his Lyra's, in her colours at our scale. */
+export type EyeShape = 'standard' | 'sharp' | 'round' | 'calm' | 'fierce' | 'bright' | 'piercing' | 'valiant' | 'dawn' | 'keen' | 'roman' | 'noble';
 
 /**
  * The owner's heroines' long neck (neck.ts): his Lyra carries the head further forward on a slimmer neck.
@@ -68,13 +68,21 @@ export type NeckType = 'long';
 export type ArmType = 'standard' | 'long';
 
 /**
+ * Hand size on the female bodies: the body's own (default), or small: his Aurelia's smaller hands in his
+ * pixels (body.ts smallHand). Ignored on the male and bulky bodies.
+ */
+export type HandSize = 'normal' | 'small';
+
+/**
  * Near-side cheek and jaw: V-line (default), fuller, or a strong flat jaw; or the owner's own head
  * from his Aiden picture (valiant: his skull, ear, cheeks, jaw and chin in his pixels); or his Lyra's
- * face (fine: her narrower face, mouth and chin in his pixels, under our skull).
+ * face (fine: her narrower face, mouth and chin in his pixels, under our skull); or his Aurelia's face
+ * (aurelia: her ear, cheeks, mouth, jaw and chin in his pixels from his game-scale picture, under our skull;
+ * on a female body her head stands where he drew it, src/sprite/aureliaHead.ts).
  * Or roman, from his Roman paint-over (his whole face with his nose and mouth, in his pixels); or noble, from his
  * noble swordsman (his face at our scale, his mouth included, in his pixels).
  */
-export type FaceShape = 'tapered' | 'soft' | 'square' | 'valiant' | 'founder' | 'fine' | 'roman' | 'noble';
+export type FaceShape = 'tapered' | 'soft' | 'square' | 'valiant' | 'founder' | 'fine' | 'aurelia' | 'roman' | 'noble';
 
 /** Single-choice equipment slots, drawn back-to-front by depth (see compose.ts). */
 export type SlotId =
@@ -164,6 +172,8 @@ export interface SpriteAppearance {
   arms?: ArmType;
   /** Missing on older saves; treated as 'tapered'. */
   faceShape?: FaceShape;
+  /** Missing on older saves; treated as 'normal'. */
+  hands?: HandSize;
   /** How jutsus are cast. Missing on older saves; treated as 'runes'. */
   cast?: CastChoice;
   slots: Partial<Record<SlotId, ItemChoice>>;

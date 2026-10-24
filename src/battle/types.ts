@@ -533,8 +533,10 @@ export type BattleEvent =
    * ninja comes within reach of a foe (no cast: the charge was paid when it was activated).
    * `fanned`: a fire jutsu that went through a gale on the ground (the Gale Curtain) and burns
    * harder: the gale's id, and where the fire meets the wind (for the screen's swirl).
+   * `element`: the element an Elemental Slash throws off the weapon (it has left the weapon by the
+   * time the screen plays it).
    */
-  | { t: 'jutsu'; unit: string; jutsu: string; at: Pt; shape: AreaShape | null; enhanced: boolean; fanned?: { zone: string; at: Pt }; released?: boolean }
+  | { t: 'jutsu'; unit: string; jutsu: string; at: Pt; shape: AreaShape | null; enhanced: boolean; fanned?: { zone: string; at: Pt }; released?: boolean; element?: 'Fire' | 'Lightning' | 'Wind' | 'Water' | 'Earth' }
   | { t: 'down'; unit: string; state: Down }
   | { t: 'condition'; unit: string; cond: keyof Conditions | 'stood'; on: boolean }
   | { t: 'effect'; unit: string; effect: string; on: boolean }
@@ -553,7 +555,7 @@ export type BattleEvent =
   /** A hand is charged with a jutsu (the activated Chidori), or the charge ends (`end` says why). */
   | { t: 'charged'; unit: string; jutsu: string; on: boolean; enhanced?: boolean; end?: ChargeEnd }
   /** The element goes onto the weapon (Weapon Element Enhancement), or leaves it (`end` says why). */
-  | { t: 'imbue'; unit: string; element: 'Fire' | 'Lightning' | 'Wind' | 'Water' | 'Earth'; on: boolean; end?: 'expired' | 'down' | 'sealed' }
+  | { t: 'imbue'; unit: string; element: 'Fire' | 'Lightning' | 'Wind' | 'Water' | 'Earth'; on: boolean; end?: 'expired' | 'down' | 'sealed' | 'slashed' }
   /** The ground cracks under a charged ninja's steps (these cells, "c,r", in the order stepped), or mends. `first`: its first cracks this turn. */
   | { t: 'cracks'; unit: string; cells: string[]; on: boolean; first?: boolean }
   /** A gale on the ground starts turning, or dies down. */

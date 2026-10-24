@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { DEFAULT_CHARACTER } from '../data/shinobiData';
 import { getAppearance } from './legacy';
-import { bladeOf, IMBUE_FX, IMBUE_LOOP, imbueLayers, renderImbue, waterReach, waterReachPx } from './imbue';
+import { ACTIVATE_FRAMES, bladeOf, IMBUE_FX, IMBUE_LOOP, imbueLayers, renderImbue, renderImbueActivation, waterReach, waterReachPx } from './imbue';
 import { frameCount, rigPoseFor } from './rig';
 import { CAMP_POSES, MOVE_POSES, SPRITE_POSES } from './types';
 import { GRID } from './raster';
@@ -113,5 +113,39 @@ describe('the five elements on it', () => {
       assert.deepEqual(renderImbue(fx, 0, b, undefined).front, own.front);
       assert.notDeepEqual(renderImbue(fx, 0, b, 'violet').front, own.front, fx);
     }
+  });
+});
+
+describe('the activation (the owner: "hazle una animacion para activar la mejora de elemento con la pose de victoria")', () => {
+  const b = bladeOf(look, 'victory', 0)!;
+  const along = (i: number) => ((i % GRID) + 0.5 - b.hx) * b.dx + (((i / GRID) | 0) + 0.5 - b.hy) * b.dy;
+  const far = (rgba: Uint8ClampedArray) => {
+    let m = -Infinity;
+    for (let i = 0; i < GRID * GRID; i++) if (rgba[i * 4 + 3]) m = Math.max(m, along(i));
+    return m;
+  };
+
+  it('holds the weapon raised in the victory pose', () => {
+    assert.ok(b, 'a blade in the victory pose');
+    assert.ok(b.dy < -0.5, `raised: ${b.dy}`);
+  });
+
+  it('gathers in the hand, surges up the blade, flares and settles, for every element', () => {
+    for (const fx of IMBUE_FX) {
+      const frames = Array.from({ length: ACTIVATE_FRAMES }, (_, s) => renderImbueActivation(fx, s, b).front);
+      // gathering: nothing up the blade yet, only about the hand
+      assert.ok(far(frames[0]) < b.start + 4, `${fx}: ${far(frames[0])}`);
+      // the surge runs up the blade: each frame reaches further than the last
+      for (let s = 4; s <= 6; s++) assert.ok(far(frames[s]) > far(frames[s - 1]), `${fx} ${s}: ${far(frames[s])} after ${far(frames[s - 1])}`);
+      // the flare reaches past the effect's own end (its rays), the last frame is the loop with a faint halo
+      const loop = renderImbue(fx, ACTIVATE_FRAMES - 1, b).front;
+      assert.ok(far(frames[7]) > far(loop), `${fx} flare`);
+      assert.ok(opaque(frames[ACTIVATE_FRAMES - 1]) >= opaque(loop), `${fx} settles on the loop`);
+    }
+  });
+
+  it('the energy takes the chakra colour; obsidian keeps its own', () => {
+    for (const fx of ['fire', 'lightning', 'wind', 'water'] as const) assert.notDeepEqual(renderImbueActivation(fx, 5, b, 'violet').front, renderImbueActivation(fx, 5, b).front, fx);
+    assert.deepEqual(renderImbueActivation('earth', 5, b, 'violet').front, renderImbueActivation('earth', 5, b).front);
   });
 });

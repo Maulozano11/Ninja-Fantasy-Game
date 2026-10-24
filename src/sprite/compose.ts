@@ -428,7 +428,9 @@ export function renderSprite(
   // the frames he painted himself (his Lyra reading, sitting and throwing, ownerFrames.ts).
   const lineOf = (i: number) => (topMat[i] < 0 ? 0x07060b : parseInt(mats.ramps[topMat[i]][0].slice(1), 16));
   const hisFrame = wearsHisFigure(look) && !!paintedFrame(rig.pose, rig.frame);
-  if (pose !== 'idle' && !hisFrame) closePinholes(rgba, part, top, (i) => top[i] === FX, lineOf);
+  // (in the officer's coats idle too: the owner on his idle, 2026-10-24, "se ve bien solo le falta corregir
+  // pixeles negros blancos": the holes his arms in our pose open, never his own pixels)
+  if ((pose !== 'idle' || wearsNavyCoat(look)) && !hisFrame) closePinholes(rgba, part, top, (i) => top[i] === FX, lineOf);
   // The owner's standard characters (2026-10-23: "quiero que arregles solo los de la calidad standard"): off
   // his pictures, the cracks and light edge pixels their moved pieces open are closed; a pocket only where he saw
   // it filled and left it (glitches.ts, keptFills.ts).
@@ -489,6 +491,11 @@ function layFrame(rgba: Uint8ClampedArray, part: Uint8Array, hair: Uint8Array, l
  * outlines (next to transparency) are always kept.
  */
 /** Which of the owner's standard characters a look is on this branch (keptFills.ts names), or null: his Lyra, his Aurelia, his Roman set (cuirass and skirt). */
+/** The owner's navy officer's coats (items/navy.ts). */
+function wearsNavyCoat(look: SpriteAppearance): boolean {
+  return !!look.slots.top?.id.startsWith('top_navy_coat');
+}
+
 function standardOf(look: SpriteAppearance): string | null {
   if (wearsHisFigure(look)) return 'lyra';
   if (onAureliaHead(look)) return 'aurelia';

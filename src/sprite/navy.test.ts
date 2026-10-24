@@ -10,8 +10,10 @@ import { renderSprite, spriteLayers } from './compose';
 import { DEPTHS } from './ctx';
 import { dojutsuToEye, getAppearance } from './legacy';
 import { NAVY_REF } from './navyRefPixels';
-import { GRID } from './raster';
-import type { ItemChoice, SpriteAppearance } from './types';
+import { findPinholes } from './holes';
+import { GRID, RES } from './raster';
+import { frameCount } from './rig';
+import { CAMP_POSES, type ItemChoice, MOVE_POSES, SPRITE_POSES, type SpriteAppearance } from './types';
 
 const OFFICER = LEGENDARY_PRESETS.find((p) => p.character.id === 'preset_navy_officer')!.character;
 const hex = (rgba: Uint8ClampedArray, i: number) => '#' + [0, 1, 2].map((k) => rgba[i * 4 + k].toString(16).padStart(2, '0')).join('');
@@ -65,7 +67,9 @@ function differences(look: SpriteAppearance, pic: string): string[] {
       if (!opaque(f.rgba, p) || hex(f.rgba, p) !== want) out.push(`${ax + i},${ay + j}: ${opaque(f.rgba, p) ? hex(f.rgba, p) : 'empty'} for ${want}`);
     }
   });
-  for (let p = 0; p < GRID * GRID; p++) if (opaque(f.rgba, p) && !inRef.has(p) && !arm(p)) out.push(`${p % GRID},${(p / GRID) | 0}: drawn outside his figure`);
+  // (a hole his arms in our pose open between his pieces, mended in his line or colour: compose.ts closePinholes)
+  const mended = (p: number) => top[p] === '';
+  for (let p = 0; p < GRID * GRID; p++) if (opaque(f.rgba, p) && !inRef.has(p) && !arm(p) && !mended(p)) out.push(`${p % GRID},${(p / GRID) | 0}: drawn outside his figure`);
   return out;
 }
 
@@ -75,6 +79,45 @@ describe("the owner's navy officer", () => {
       assert.deepEqual(differences(outfit(pic), pic).slice(0, 10), []);
     });
   }
+
+  it('in every pose on both bodies the coat meets the belt, and the trouser legs reach the knees (seated too)', () => {
+    for (const body of ['male', 'bulky'] as const)
+      for (const pic of ['high', 'dark'])
+        for (const [pose, frame] of [['walk', 0], ['victory', 1], ['pierce', 2], ['sit', 0], ['read', 0], ['crouch', 0]] as const) {
+          const l = { ...outfit(pic), body };
+          const f = renderSprite(l, pose, frame, dojutsuToEye(OFFICER.dojutsu));
+          const r = f.rig;
+          const at = (x: number, y: number) => Math.floor(y * RES) * GRID + Math.floor(x * RES);
+          // the torso's axis from a few px above the pelvis down to just above it (the pelvis joint itself is the
+          // crotch, open in a wide stance): no background between coat and belt
+          for (let k = 1; k <= 6; k++) {
+            const t = k / 6;
+            const x = r.pelvis.x + (r.neck.x - r.pelvis.x) * 0.25 * t;
+            const y = r.pelvis.y + (r.neck.y - r.pelvis.y) * 0.25 * t;
+            assert.ok(opaque(f.rgba, at(x, y)), `${body} ${pic} ${pose} ${frame}: waist open at ${Math.floor(x * RES)},${Math.floor(y * RES)}`);
+          }
+          // each thigh, hip to knee
+          for (const s of ['N', 'F'] as const)
+            for (let k = 1; k < 8; k++) {
+              const [h, n] = [r[`hip${s}`], r[`knee${s}`]];
+              const x = h.x + ((n.x - h.x) * k) / 8;
+              const y = h.y + ((n.y - h.y) * k) / 8;
+              assert.ok(opaque(f.rgba, at(x, y)), `${body} ${pic} ${pose} ${frame}: thigh ${s} open at ${Math.floor(x * RES)},${Math.floor(y * RES)}`);
+            }
+        }
+  });
+
+  it('no dead pixels: no hole of background inside the figure, in any frame of any pose, on either body', () => {
+    // the owner on his idle, 2026-10-24: "se ve bien solo le falta corregir pixeles negros blancos"
+    for (const body of ['male', 'bulky'] as const)
+      for (const pic of ['high', 'folded', 'open', 'buttoned', 'dark'])
+        for (const pose of [...SPRITE_POSES, ...MOVE_POSES, ...CAMP_POSES])
+          for (let frame = 0; frame < frameCount(pose); frame++) {
+            const f = renderSprite({ ...outfit(pic), body }, pose, frame, dojutsuToEye(OFFICER.dojutsu));
+            const holes = findPinholes(f.rgba, (i) => !!((f.fx[i >> 3] >> (i & 7)) & 1)).flat().map((i) => `${i % GRID},${(i / GRID) | 0}`);
+            assert.deepEqual(holes, [], `${body} ${pic} ${pose} ${frame}`);
+          }
+  });
 
   it('every part is its own creator option; the clothes are made for the male bodies only', () => {
     const men = [

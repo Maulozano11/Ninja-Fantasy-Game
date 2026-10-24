@@ -741,14 +741,20 @@ def continue_rows(col, mask, rows, x_to, direction, line, period=1, close=True, 
         # (from_x: each row's colour at that column of his, the middle of a plate band, carried out)
         src = [from_x] if from_x is not None else [inner - direction * k for k in range(period)]
         if not all(0 <= q < m.shape[1] and mask[y, q] and kind(col[y, q]) != 'line' for q in src):
-            continue
+            # his line or a gap there: the first pixel of his further in that is not his line
+            q = inner
+            while 0 <= q < m.shape[1] and mask[y, q] and kind(col[y, q]) == 'line':
+                q -= direction
+            if not (0 <= q < m.shape[1] and mask[y, q]) or from_x is not None:
+                continue
+            src = [q]
         x = edge
         k = 0
         while (x - x_to) * direction < 0:
             x += direction
             if m[y, x] or (allowed is not None and not allowed[y, x]):
                 continue
-            c[y, x] = col[y, src[k % period]]
+            c[y, x] = col[y, src[k % len(src)]]
             m[y, x] = True
             filled[y, x] = True
             k += 1
@@ -959,12 +965,20 @@ def his_game(name):
     return (x - OFFSET[0], y - OFFSET[1])
 
 
+# How many rows of the cape's top are carried on behind the tassets, and how far below his chest the do
+# is carried on under the sash.
+CAPE_BAND = 3
+DO_BELOW = 6
+# His chin's row below the face anchor: his head's line below it that bounds none of his head is the collar's.
+CHIN_ROWS = 7
+
+
 def pieces(rgb=None, label=None):
     """game() cut into the pieces the items stamp: {name: (mask, colours)} in game() pixels. Each piece is
     its regions' pixels with his line round them (cut()); where something in front hides it at rest and a
     pose shows it, it is continued from his pixels (continue_rows, continue_cols), closed on his line:
       sleeve_n, sleeve_f  his mail up under the shoulder guard to the shoulder
-      do                  the chest under the near arm, out to the near shoulder
+      do                  the chest under the near arm, out to the near shoulder, and down under the sash
       thigh_n, thigh_f    the hakama's legs, under the knee guards and up under the tassets to the hips
       cape                behind the tassets, on to the middle of the back
     The head is cut into the face (FACE_BOX: skin, glints and the line in and round them) and the hair
@@ -990,6 +1004,9 @@ def pieces(rgb=None, label=None):
     sx, sy = his_game('shoulderN')
     ys, xs = np.nonzero(m)
     m, c, _ = continue_rows(c, m, range(ys.min() + 1, ys.max()), int(np.floor(sx)), -1, line, allowed=under('sode_n', 'sleeve_n', 'kote_n', 'hand_n', 'head'), from_x=int(np.floor(his_game('neck')[0])) - 4)
+    # and down under the sash to the tassets (a torso lengthened in a pose never parts from the sash)
+    ys, xs = np.nonzero(m)
+    m, c, _ = continue_cols(c, m, range(xs.min() + 1, xs.max()), ys.max() + DO_BELOW, 1, line, inset=1, allowed=under('obi', 'kusazuri', 'hand_n', 'kote_n', 'hand_f', 'kote_f'))
     out['do'] = (m, c)
     # the hakama's legs: each leg his cloth, under its knee guard his cloth beside it along the row, and up
     # under the tassets to the hip each column of his carried up (his folds run on up the thigh)
@@ -1005,14 +1022,13 @@ def pieces(rgb=None, label=None):
         front = under('knee_n', 'knee_f', 'kusazuri', 'obi', 'hand_n', 'hand_f', 'shin_n', 'shin_f')
         m, c = fill_hull(c, m, reach, front, line)
         out['thigh_' + s] = (m, c)
-    # the cape: his cloth as he drew it, and behind his tassets carried on to the middle of his back along
-    # each row (it hangs from behind the waist: moved, it never comes away from the body); behind the legs
+    # the cape: his cloth as he drew it, and its top CAPE_BAND rows behind his tassets carried on to the
+    # near hip along each row (it hangs from behind the waist: moved, it never comes away from the body); behind the legs
     # it is the legs' to show
     m, c = cut(rgb, label, ['cape'])
-    ks = np.nonzero(label == 'kusazuri')[0]
     ys, xs = np.nonzero(m)
     hidden = under('kusazuri', 'obi', 'hand_n', 'kote_n')
-    m, c, _ = continue_rows(c, m, range(ys.min(), ks.max() + 1), int(np.floor(his_game('pelvis')[0])), 1, line, close=False, allowed=hidden)
+    m, c, _ = continue_rows(c, m, range(ys.min(), ys.min() + CAPE_BAND), int(np.floor(his_game('hipN')[0])), 1, line, close=False, allowed=hidden)
     out['cape'] = (m, c)
     out['cape_f'] = cut(rgb, label, ['cape_f'])
     # the head: face and hair
@@ -1024,7 +1040,15 @@ def pieces(rgb=None, label=None):
     face |= head & box & (K == 'line') & near4(face)
     out['face'] = (face, rgb.copy())
     hair = head & ~(face & (K != 'line'))
-    out['hair'] = (hair, rgb.copy())
+    # his line at the head's foot that bounds nothing of his head (it lies along the collar between the hair
+    # and the far shoulder): drawn only while the head stands on the neck as at rest (samurai.ts), so it
+    # never floats beside the chin
+    solid = head & (K != 'line')
+    below_chin = np.zeros_like(head)
+    below_chin[FACE_ANCHOR[1] - OFFSET[1] + CHIN_ROWS:, :] = True
+    collar = hair & (K == 'line') & ~near8(solid) & below_chin
+    out['hair'] = (hair & ~collar, rgb.copy())
+    out['collar'] = (collar, rgb.copy())
     return out
 
 

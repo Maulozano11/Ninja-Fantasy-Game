@@ -57,7 +57,7 @@ export const SAMURAI_HAIR: PaintedPiece = {
     '......aaa.............a......',
     '.......ba..a.........a.......',
     '.....aabba..a........a.......',
-    '.....jkabba..aa.....aaaaaaa..',
+    '.....jkabba..aa.....aa.......',
   ],
   colors: {
     a: '#000113',

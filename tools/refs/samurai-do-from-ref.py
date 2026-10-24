@@ -24,6 +24,7 @@ def build():
     consts = [
         ('SAMURAI_DO', *do, 'His do: the chest, its gold-patterned top band, the plates and the red lacing, from his collar to the sash. It rides the torso about the neck.', S.OUR_JOINTS['male']['neck'], torso),
         ('SAMURAI_SODE_N', *sode_n, 'His near shoulder guard: the layered plates with their gold rims and red lacing. It rides the near shoulder.', S.his_joint('shoulderN'), S.angle('shoulderN', 'elbowN')),
+        ('SAMURAI_COLLAR', *P['collar'], 'His line between his hair and the far shoulder at rest, beside the chin.', S.OUR_JOINTS['male']['neck'], torso),
         ('SAMURAI_SODE_F', *sode_f, 'His far shoulder guard, behind the chest. It rides the far shoulder.', S.his_joint('shoulderF'), S.angle('shoulderF', 'elbowF')),
     ]
     bases = {

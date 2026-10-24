@@ -25,7 +25,7 @@ import { capeWind, paintedBack } from './capes';
 import { clothPen, glove } from './clothes';
 import { SAMURAI_ARM_CORD, SAMURAI_ARM_GOLD, SAMURAI_ARM_IRON, SAMURAI_ARMS_KIND, SAMURAI_GLOVE, SAMURAI_HAND_F, SAMURAI_HAND_N, SAMURAI_KOTE_F, SAMURAI_KOTE_N, SAMURAI_SLEEVE_F, SAMURAI_SLEEVE_N } from './samuraiArmsArt';
 import { SAMURAI_CAPE, SAMURAI_CAPE_FAR, SAMURAI_CAPE_KIND, SAMURAI_CAPE_RED, SAMURAI_CAPE_REST } from './samuraiCapeArt';
-import { SAMURAI_DO, SAMURAI_DO_KIND, SAMURAI_DO_REST, SAMURAI_GOLD, SAMURAI_LACING, SAMURAI_LACQUER, SAMURAI_SODE_F, SAMURAI_SODE_N } from './samuraiDoArt';
+import { SAMURAI_COLLAR, SAMURAI_DO, SAMURAI_DO_KIND, SAMURAI_DO_REST, SAMURAI_GOLD, SAMURAI_LACING, SAMURAI_LACQUER, SAMURAI_SODE_F, SAMURAI_SODE_N } from './samuraiDoArt';
 import { SAMURAI_HAIR, SAMURAI_HAIR_BASE, SAMURAI_HAIR_CORD, SAMURAI_HAIR_KIND } from './samuraiHairArt';
 import { SAMURAI_HAKAMA, SAMURAI_HAKAMA_KIND, SAMURAI_THIGH_F, SAMURAI_THIGH_N } from './samuraiHakamaArt';
 import { SAMURAI_KUSAZURI, SAMURAI_KUSAZURI_KIND, SAMURAI_KUSAZURI_REST, SAMURAI_TASSET_GOLD, SAMURAI_TASSET_LACING, SAMURAI_TASSET_LACQUER } from './samuraiKusazuriArt';
@@ -141,6 +141,12 @@ function drawDo(g: DrawCtx, lacquer: string, lacing: string, gold: string): void
   torsoOff(g);
   stampPiece(g, 'farArm.armor', SAMURAI_SODE_F, r.shoulderF, sodeAngle(r, 'F', SAMURAI_SODE_F), 'upperArmF', color, line);
   stampLeaning(g, 'torso.armor', pinned(SAMURAI_DO, SAMURAI_DO_REST.SAMURAI_DO, samuraiRestRig(g.look).neck, 'do'), r.neck, segAngle(r.pelvis, r.neck), 'torso', color, line);
+  // his line between the hair and the far shoulder, only while the head stands on the neck as at rest
+  const home = samuraiRestRig(g.look);
+  const lift = sub(sub(r.head, r.neck), sub(home.head, home.neck));
+  if (Math.hypot(lift.x, lift.y) < 0.25 && Math.abs(segAngle(r.pelvis, r.neck) - segAngle(home.pelvis, home.neck)) < 1) {
+    stampLeaning(g, 'torso.armor', pinned(SAMURAI_COLLAR, SAMURAI_DO_REST.SAMURAI_COLLAR, home.neck, 'collar'), r.neck, segAngle(r.pelvis, r.neck), 'torso', color, line);
+  }
   stampPiece(g, 'nearArm.armor', SAMURAI_SODE_N, r.shoulderN, sodeAngle(r, 'N', SAMURAI_SODE_N), 'upperArmN', color, line);
 }
 

@@ -4,8 +4,8 @@
 import type { PaintedPiece } from '../painted';
 
 /** His colours the colour slots recolour from (at these, every pixel is his). */
-export const SAMURAI_LACQUER = '#413736';
-export const SAMURAI_LACING = '#66151c';
+export const SAMURAI_LACQUER = '#3b2c27';
+export const SAMURAI_LACING = '#610c23';
 export const SAMURAI_GOLD = '#b8733a';
 
 /** What each of his colours is, as the script sorts them (tools/refs/samurai_ref.py kind). */
@@ -87,6 +87,7 @@ export const SAMURAI_DO_KIND: Record<string, 'dark' | 'gold' | 'hair' | 'line' |
 export const SAMURAI_DO_REST: Record<string, [number, number]> = {
   SAMURAI_DO: [112, 145],
   SAMURAI_SODE_N: [105, 142],
+  SAMURAI_COLLAR: [134, 145],
   SAMURAI_SODE_F: [136, 147],
 };
 
@@ -116,7 +117,13 @@ export const SAMURAI_DO: PaintedPiece = {
     'amma.a..kmmmmnmmn00nummm8.',
     'ammakaammmmaaaaaaaaaaaaaaa',
     'akkaaa9kkakkmmmmuu0uu0mmk.',
-    '.....a.........aa...a.a...',
+    '.mm..a.mmmmmmnmaa00namam8.',
+    '.mm....mmmmmmnmmn00nummm8.',
+    '.mm....mmmmmmnmmn00nummm8.',
+    '.mm....mmmmmmnmmn00nummm8.',
+    '.m.....mmmmmmnmmn00nummm8.',
+    '.m.....mmmmmmnmmn00nummm8.',
+    '.aa....aaaaaaaaaaaaaaaaaa.',
   ],
   colors: {
     a: '#000113',
@@ -237,6 +244,18 @@ export const SAMURAI_SODE_N: PaintedPiece = {
     D: '#d09044',
     E: '#4c2b1d',
     F: '#080b17',
+  },
+};
+
+/** His line between his hair and the far shoulder at rest, beside the chin. */
+export const SAMURAI_COLLAR: PaintedPiece = {
+  pivot: [-7, 2],
+  angle: -89.65,
+  rows: [
+    'aaaaa',
+  ],
+  colors: {
+    a: '#000113',
   },
 };
 

@@ -56,6 +56,10 @@ SODE_TOP = [(40, 34), (58, 34), (58, 39), (40, 39)]
 # The point the head is shrunk about (his pixels): his chin over his neck. It lands where the body's
 # shrink puts it, so the head stays on his neck.
 HEAD_ANCHOR = (71.0, 39.0)
+# His face in his picture (his pixel corners: x0, y0, x1, y1): his forehead under the bangs, his brows, eyes,
+# nose, mouth and chin. Shrunk on its own by whole rows and columns of his, his eyes, brows and the skin
+# between them weighing most (drop_costs face=True); the rest of his head (the hair) read pixel by pixel.
+FACE_NATIVE = (64, 25, 85, 40)
 # Where game()'s pixel (0, 0) lies in our 256 x 256 frame: his near sole on our near sole's row (218), his
 # neck over our neck's column.
 OFFSET = (76, 112)
@@ -182,54 +186,85 @@ def kinds(a):
 
 
 def dots(a, K):
-    """His lacing dots: a red pixel with no red beside it (4-neighbours) on a plate."""
+    """His lacing dots: a red pixel on a plate with at most one red beside it (4-neighbours: his dots are
+    one pixel or two stacked), the rest of its neighbours his plate (steel or dark)."""
     red = K == 'red'
     H, W = red.shape
     out = np.zeros_like(red)
     for y in range(1, H - 1):
         for x in range(1, W - 1):
-            if red[y, x] and not (red[y - 1, x] or red[y + 1, x] or red[y, x - 1] or red[y, x + 1]):
+            if not red[y, x]:
+                continue
+            nb = [(y - 1, x), (y + 1, x), (y, x - 1), (y, x + 1)]
+            if sum(red[q] for q in nb) <= 1 and sum(K[q] in ('steel', 'dark') for q in nb) >= 2:
                 out[y, x] = True
     return out
 
 
-def drop_costs(a, K, m, axis):
-    """What leaving out each of his rows (axis 0) or columns (axis 1) of region `m` would lose: how unlike
-    its nearer neighbour it is inside the region (his line against anything else, a glint, gold or a lacing
-    dot against anything else, and the region's edge, count most)."""
+def undotted(a, K, D):
+    """His picture with his lacing dots taken off the plates: each dot pixel the plate's colour beside it on
+    its row (left first, past the other pixel of a two-pixel dot), so the plates shrink by their bands and
+    edges alone and the dots are laid back on a grid after (plate_dots())."""
+    b = a.copy()
+    H, W = D.shape
+    for y, x in zip(*np.nonzero(D)):
+        for d in (1, 2, -1, -2, 3, -3):
+            q = x - d
+            if 0 <= q < W and not D[y, q] and K[y, q] in ('steel', 'dark'):
+                b[y, x] = a[y, q]
+                break
+    return b
+
+
+def unlikeness(a, K, m, axis, face=False):
+    """How unlike two of his rows (axis 0) or columns (axis 1) are inside region `m`: U(i, j). His line
+    against anything else, gold against anything else and the region's edge count most; a lit rim against
+    the plate's body (10 to 25 levels) counts as a band he drew. With `face`, skin against his line or a
+    glint (his eyes, brows, nose and mouth) weighs most of all."""
     if axis == 1:
         a, K, m = a.transpose(1, 0, 2), K.T, m.T
     n = a.shape[0]
+    memo = {}
 
-    def unlike(i, j):
-        if j < 0 or j >= n:
+    def U(i, j):
+        if j < 0 or j >= n or i < 0 or i >= n:
             return 1e9
+        key = (min(i, j), max(i, j))
+        if key in memo:
+            return memo[key]
         both = m[i] | m[j]
         d = np.abs(a[i] - a[j]).max(axis=1)
-        k = np.where(d > 40, 2.0, np.where(d > 20, 1.0, np.where(d > 8, 0.3, 0.0)))
+        k = np.where(d > 10, 4.0, np.where(d > 6, 0.5, 0.0))
         k = np.where(K[i] != K[j], 3.0, k)
         k = np.where((K[i] != K[j]) & ((K[i] == 'line') | (K[j] == 'line') | (K[i] == 'gold') | (K[j] == 'gold')), 6.0, k)
         k = np.where(m[i] != m[j], 6.0, k)
-        return float((k * both).sum())
+        if face:
+            sk = (K[i] == 'skin') | (K[j] == 'skin')
+            k = np.where(sk & (K[i] != K[j]), 14.0, k)
+            k = np.where((K[i] == 'white') != (K[j] == 'white'), 20.0, k)
+        memo[key] = float((k * both).sum())
+        return memo[key]
 
-    return np.array([min(unlike(i, i - 1), unlike(i, i + 1)) for i in range(n)])
+    return U
 
 
-def keep(n_src, count, scale, origin, cost):
+def keep(n_src, count, scale, origin, U):
     """Which of his rows (or columns) fine rows 0..count-1 show: fine row k about his row
-    origin + (k + 0.5) * scale - 0.5, within a row or two of it, one after another or with rows left out
-    between, those left out costing least (drop_costs())."""
+    origin + (k + 0.5) * scale - 0.5, within two or three rows of it, one after another or with up to three
+    rows left out between. Leaving rows out between two kept ones costs how unlike each is to the nearer of
+    those two (unlikeness()): so a run of a plate's body rows keeps one of them between its lit rim and the
+    next gap line, his line and his gold are kept, and rows like their neighbours go."""
     ideal = [origin + (k + 0.5) * scale - 0.5 for k in range(count)]
-    near = lambda t: [c for c in range(int(np.floor(t)) - 1, int(np.floor(t)) + 3) if 0 <= c < n_src]
+    near = lambda t: [c for c in range(int(np.floor(t)) - 2, int(np.floor(t)) + 4) if 0 <= c < n_src]
     best = [{c: (abs(c - ideal[0]) * 1e-2, None) for c in near(ideal[0])}]
     for k in range(1, count):
         row = {}
         for c in near(ideal[k]):
             got = None
-            for prev in (c - 1, c - 2, c - 3):
+            for prev in (c - 1, c - 2, c - 3, c - 4):
                 if prev not in best[-1]:
                     continue
-                v = best[-1][prev][0] + sum(cost[q] for q in range(prev + 1, c)) + abs(c - ideal[k]) * 1e-2
+                v = best[-1][prev][0] + sum(min(U(q, prev), U(q, c)) for q in range(prev + 1, c)) + abs(c - ideal[k]) * 1e-2
                 if got is None or v < got[0]:
                     got = (v, prev)
             if got is not None:
@@ -248,6 +283,7 @@ def keep(n_src, count, scale, origin, cost):
 LINE_COVER = 0.45
 GOLD_COVER = 0.25
 GLINT_COVER = 0.15
+RED_COVER = 0.2
 
 
 def reading(a, K, D, line, m, scale, origin, j, i):
@@ -278,7 +314,10 @@ def reading(a, K, D, line, m, scale, origin, j, i):
     if dot:
         return a[dot[0]], cells
     pick = [c for c in cells if K[c[1], c[2]] != 'line']
-    if cover('gold') >= GOLD_COVER:
+    if cover('red') >= RED_COVER and cover('red') < 0.9:
+        # a red cord through his hair or his armour (on his red cloth every pixel is red)
+        pick = [c for c in pick if K[c[1], c[2]] == 'red']
+    elif cover('gold') >= GOLD_COVER:
         pick = [c for c in pick if K[c[1], c[2]] == 'gold']
     mean = sum(w * a[y, x] for w, y, x in pick) / sum(w for w, y, x in pick)
     best = min(pick, key=lambda c: (int(np.abs(a[c[1], c[2]] - mean).sum()), c[1], c[2]))
@@ -310,22 +349,39 @@ REGIONS = {
     'cape': [(3, 86), (44, 86), (44, 121), (40, 121), (38, 142), (31, 157), (3, 157)],
     'hakama': [(30, 98), (98, 98), (98, 143), (30, 143)],
 }
-# The groups of lamellar plates (bands, rims and lacing rows): shrunk by keeping whole rows and columns of
-# his (keep()), so each plate keeps its lit rim, its lacing row and its seam; the rest is read pixel by pixel
-# under each footprint (reading()).
-PLATES = ('sode_n', 'do', 'kusazuri')
+# How each group of regions is shrunk:
+#   'plates'  his lamellar plates (the do, the tassets, the shoulder guards): whole rows and columns of his
+#             kept (keep()), so each lame keeps its gap line, its lit top row and its body, and his gold
+#             trims stay continuous lines; his lacing dots are taken off first and laid back one per dot of
+#             his where it lands, never two touching (plate_dots());
+#   'keep'    whole rows and columns of his kept (the arms, the legs, the sash, the knee guards, the head);
+#   'read'    each fine pixel one of his colours under it, nearest their mean (the cloth: the cape, the
+#             hakama), its specks then taken off by clean().
 GROUPS = {
-    'arm_n': ('hand_n', 'kote_n', 'sleeve_n'),
-    'sode_n': ('sode_n',),
-    'arm_f': ('hand_f', 'kote_f', 'sleeve_f', 'sode_f'),
-    'do': ('do',),
-    'obi': ('obi',),
-    'kusazuri': ('kusazuri',),
-    'hakama': ('hakama', 'knee_n', 'knee_f'),
-    'leg_n': ('shin_n', 'foot_n'),
-    'leg_f': ('shin_f', 'foot_f'),
-    'cape': ('cape', 'cape_f'),
+    'arm_n': (('hand_n', 'kote_n', 'sleeve_n'), 'keep'),
+    'sode_n': (('sode_n',), 'plates'),
+    'arm_f': (('hand_f', 'kote_f', 'sleeve_f'), 'keep'),
+    'sode_f': (('sode_f',), 'plates'),
+    'do': (('do',), 'plates'),
+    'obi': (('obi',), 'keep'),
+    # each panel of the tassets with its own lames (they curve round the hip at different heights)
+    'kz_n': (('kz_n',), 'plates'),
+    'kz_c': (('kz_c',), 'plates'),
+    'kz_f': (('kz_f',), 'plates'),
+    'hakama': (('hakama',), 'read'),
+    'knee_n': (('knee_n',), 'keep'),
+    'knee_f': (('knee_f',), 'keep'),
+    'leg_n': (('shin_n', 'foot_n'), 'keep'),
+    'leg_f': (('shin_f', 'foot_f'), 'keep'),
+    'cape': (('cape', 'cape_f'), 'read'),
 }
+# Where a group's lames run straight across (his pixel columns x0, x1): its rows are chosen by what they
+# show there (each lame's gap line, lit top row and body), not by the cords and mail beside them.
+LAME_COLS = {'do': (69, 85)}
+# His tassets' panels (his pixel columns where each begins): the near panel, the front panel, the far panel.
+KUSAZURI_PANELS = {'kz_n': 0, 'kz_c': 68, 'kz_f': 87}
+# Back to front: each group over what is behind it.
+GROUP_ORDER = ('cape', 'sode_f', 'arm_f', 'leg_f', 'leg_n', 'hakama', 'knee_f', 'knee_n', 'kz_f', 'kz_n', 'kz_c', 'do', 'obi', 'sode_n', 'arm_n')
 
 
 def regions(a):
@@ -354,58 +410,107 @@ def regions(a):
 def reduce(a):
     """His figure at our scale before cleaning (game() cleans it): (rgb, which region each pixel came
     from, '' for none), in a frame whose (0, 0) is fine pixel (-PAD, -PAD) of the body's shrink about his
-    picture's corner. Each fine pixel is one of his pixels (reading()), and its region the one most of its
-    footprint is in."""
+    picture's corner. Every fine pixel is one of his pixels (GROUPS says how each group chooses them)."""
     R = regions(a)
+    fx0, fy0, fx1, fy1 = FACE_NATIVE
+    box = np.zeros(R['head'].shape, bool)
+    box[fy0:fy1, fx0:fx1] = True
+    R['face_r'] = R['head'] & box
+    R['hair_r'] = R['head'] & ~box
+    xx = np.arange(box.shape[1])[None, :]
+    starts = sorted(KUSAZURI_PANELS.items(), key=lambda kv: kv[1])
+    for k, (n, x0) in enumerate(starts):
+        x1 = starts[k + 1][1] if k + 1 < len(starts) else box.shape[1]
+        R[n] = R['kusazuri'] & (xx >= x0) & (xx < x1)
     K = kinds(a)
     D = dots(a, K)
     line = his_line(a)
+    flat = undotted(a, K, D)
+    FK = kinds(flat)
     H, W, _ = a.shape
     size = (int(np.ceil(H / BODY_SCALE)) + 2 * PAD, int(np.ceil(W / BODY_SCALE)) + 2 * PAD)
     rgb = np.full(size + (3,), 255, np.int32)
     label = np.full(size, '', dtype='<U10')
 
-    def put(names, scale, origin, at, plates=False):
+    def put(names, scale, origin, at, how, face=False, lames=None):
         m = np.zeros(R['head'].shape, bool)
         for n in names:
             m |= R[n]
         ys, xs = np.nonzero(m)
-        if plates:
-            # his lamellar plates: whole rows and columns of his kept, those like a neighbour left out
-            j0 = int(np.floor((ys.min() - origin[1]) / scale))
-            j1 = int(np.ceil((ys.max() + 1 - origin[1]) / scale))
-            i0 = int(np.floor((xs.min() - origin[0]) / scale))
-            i1 = int(np.ceil((xs.max() + 1 - origin[0]) / scale))
-            rows = keep(m.shape[0], j1 - j0, scale, origin[1] + j0 * scale, drop_costs(a, K, m, 0))
-            cols = keep(m.shape[1], i1 - i0, scale, origin[0] + i0 * scale, drop_costs(a, K, m, 1))
-            for jj, r in enumerate(rows):
-                for ii, c in enumerate(cols):
-                    if m[r, c]:
-                        y, x = at[1] + j0 + jj + PAD, at[0] + i0 + ii + PAD
-                        rgb[y, x] = a[r, c]
-                        label[y, x] = next(n for n in names if R[n][r, c])
+        j0 = int(np.floor((ys.min() - origin[1]) / scale))
+        j1 = int(np.ceil((ys.max() + 1 - origin[1]) / scale))
+        i0 = int(np.floor((xs.min() - origin[0]) / scale))
+        i1 = int(np.ceil((xs.max() + 1 - origin[0]) / scale))
+        if how == 'read':
+            for j in range(j0, j1):
+                for i in range(i0, i1):
+                    got = reading(a, K, D, line, m, scale, origin, j, i)
+                    if got is None:
+                        continue
+                    c, cells = got
+                    y, x = at[1] + j + PAD, at[0] + i + PAD
+                    rgb[y, x] = c
+                    share = {n: sum(w for w, cy, cx in cells if R[n][cy, cx]) for n in names}
+                    label[y, x] = ALIAS.get(max(names, key=lambda n: share[n]), max(names, key=lambda n: share[n]))
             return
-        for j in range(int(np.floor((ys.min() - origin[1]) / scale)), int(np.ceil((ys.max() + 1 - origin[1]) / scale))):
-            for i in range(int(np.floor((xs.min() - origin[0]) / scale)), int(np.ceil((xs.max() + 1 - origin[0]) / scale))):
-                got = reading(a, K, D, line, m, scale, origin, j, i)
-                if got is None:
-                    continue
-                c, cells = got
-                y, x = at[1] + j + PAD, at[0] + i + PAD
-                rgb[y, x] = c
-                share = {n: sum(w for w, cy, cx in cells if R[n][cy, cx]) for n in names}
-                label[y, x] = max(names, key=lambda n: share[n])
+        src, SK = (flat, FK) if how == 'plates' else (a, K)
+        rm = m
+        if lames:
+            rm = m.copy()
+            rm[:, :lames[0]] = False
+            rm[:, lames[1]:] = False
+        rows = keep(m.shape[0], j1 - j0, scale, origin[1] + j0 * scale, unlikeness(src, SK, rm, 0, face))
+        cols = keep(m.shape[1], i1 - i0, scale, origin[0] + i0 * scale, unlikeness(src, SK, m, 1, face))
+        for jj, r in enumerate(rows):
+            for ii, c in enumerate(cols):
+                if m[r, c]:
+                    y, x = at[1] + j0 + jj + PAD, at[0] + i0 + ii + PAD
+                    rgb[y, x] = src[r, c]
+                    n = next(n for n in names if R[n][r, c])
+                    label[y, x] = ALIAS.get(n, n)
+        if how == 'plates':
+            plate_dots(a, D & m, rows, cols, (at[0] + i0 + PAD, at[1] + j0 + PAD), rgb, label)
 
-    # back to front: each group over what is behind it
-    for g in ('cape', 'arm_f', 'leg_f', 'leg_n', 'hakama', 'kusazuri', 'do', 'obi', 'sode_n', 'arm_n'):
-        put(GROUPS[g], BODY_SCALE, (0.0, 0.0), (0, 0), g in PLATES)
-    # the head about his chin, which lands where the body's shrink puts that point
+    for g in GROUP_ORDER:
+        names, how = GROUPS[g]
+        put(names, BODY_SCALE, (0.0, 0.0), (0, 0), how, lames=LAME_COLS.get(g))
+    # the head about his chin, which lands where the body's shrink puts that point; his eyes, brows and the
+    # skin between them weigh most (his face readable under the bangs)
     hx, hy = HEAD_ANCHOR
-    put(('head',), HEAD_SCALE, HEAD_ANCHOR, (int(round(hx / BODY_SCALE)), int(round(hy / BODY_SCALE))))
+    at = (int(round(hx / BODY_SCALE)), int(round(hy / BODY_SCALE)))
+    put(('hair_r',), HEAD_SCALE, HEAD_ANCHOR, at, 'read')
+    put(('face_r',), HEAD_SCALE, HEAD_ANCHOR, at, 'keep', face=True)
     return rgb, label
 
 
+def plate_dots(a, D, rows, cols, at, rgb, label):
+    """His lacing dots laid back on the shrunk plates: each dot of his (a pixel or two stacked) on the fine
+    pixel whose kept row and column are nearest it, in his colour, where the plate's body is (not his line,
+    gold or a lit rim, not another region), and never touching another dot (8-neighbours), so they stand in
+    his columns and rows as a grid, not a smear."""
+    rows = np.array(rows)
+    cols = np.array(cols)
+    placed = set()
+    seen = np.zeros_like(D)
+    for y, x in sorted(zip(*np.nonzero(D))):
+        if seen[y, x]:
+            continue
+        seen[y, x] = True
+        if y + 1 < D.shape[0] and D[y + 1, x]:
+            seen[y + 1, x] = True
+        fy = at[1] + int(np.argmin(np.abs(rows - y)))
+        fx = at[0] + int(np.argmin(np.abs(cols - x)))
+        if not label[fy, fx] or kind(rgb[fy, fx]) not in ('steel', 'dark'):
+            continue
+        if any((fy + dy, fx + dx) in placed for dy in (-1, 0, 1) for dx in (-1, 0, 1)):
+            continue
+        rgb[fy, fx] = a[y, x]
+        placed.add((fy, fx))
+
+
 PAD = 12
+# The head's two parts are one region, his head.
+ALIAS = {'face_r': 'head', 'hair_r': 'head', 'kz_n': 'kusazuri', 'kz_c': 'kusazuri', 'kz_f': 'kusazuri'}
 
 
 def his_line(a):
@@ -416,14 +521,30 @@ def his_line(a):
     return cols[i]
 
 
-def clean(rgb, label, line):
+# The cloth read pixel by pixel (GROUPS 'read'): its specks are taken off by clean().
+CLOTH = ('hakama', 'cape', 'cape_f')
+# His mail (a fine checker of two of his colours) on these regions.
+MAIL = ('sleeve_n', 'sleeve_f')
+
+
+def mail_colours(a):
+    """His mail's two colours: the commonest two of his blue-black and blue-grey (kind 'hair') pixels on
+    his sleeves, the darker first."""
+    R = regions(a)
+    m = (R['sleeve_n'] | R['sleeve_f']) & (kinds(a) == 'hair')
+    cols, counts = np.unique(a[m].reshape(-1, 3), axis=0, return_counts=True)
+    top = sorted(range(len(cols)), key=lambda i: (-counts[i], tuple(cols[i])))[:2]
+    return sorted((cols[i] for i in top), key=lambda c: luma(c))
+
+
+def clean(rgb, label, line, mail):
     """The reduction cleaned with his palette only (the owner's "Reducir y limpiar yo"):
       - his 1 px line all round the figure: a pixel of the figure beside the white round it is his line;
-      - a lone speck (a pixel unlike all four neighbours, which are one colour of his among themselves)
-        takes that colour, unless it is his line, a glint, gold or a lacing dot (a red pixel on a plate):
-        what the shrink left of a fold or a mottle he drew bigger;
-      - his line never stands in a row of two where one of its pixels has no line pixel beside it along
-        the run: a pixel of line touching the figure's inside on both sides across is kept.
+      - his mail a 1 px checker of his two mail colours (mail_colours()) wherever the shrink left his mail;
+      - on his cloth (CLOTH), a speck (a colour none of its eight neighbours has) takes the colour most of
+        its neighbours have, so his folds read as his folds, not speckle (his line stays);
+      - a light speck off his face (a pixel much lighter than everything round it that is not his gold):
+        what the shrink kept of a highlight he drew bigger takes the colour round it.
     Returns (rgb, label)."""
     rgb = rgb.copy()
     label = label.copy()
@@ -443,33 +564,27 @@ def clean(rgb, label, line):
             if fig[y, x] and (out[y - 1, x] or out[y + 1, x] or out[y, x - 1] or out[y, x + 1]):
                 rgb[y, x] = line
                 K[y, x] = 'line'
+    # his mail checker
+    for y in range(H):
+        for x in range(W):
+            if label[y, x] in MAIL and K[y, x] == 'hair':
+                rgb[y, x] = mail[(x + y) % 2]
+    near = [(dy, dx) for dy in (-1, 0, 1) for dx in (-1, 0, 1) if dy or dx]
     for y in range(1, H - 1):
         for x in range(1, W - 1):
-            if not fig[y, x] or K[y, x] in ('line', 'white', 'gold', 'red'):
+            if not fig[y, x] or K[y, x] == 'line':
                 continue
-            nb = [(y - 1, x), (y + 1, x), (y, x - 1), (y, x + 1)]
-            if not all(fig[q] for q in nb):
+            nb = [(y + dy, x + dx) for dy, dx in near if fig[y + dy, x + dx]]
+            cols = [tuple(rgb[q]) for q in nb if K[q] != 'line']
+            if not cols:
                 continue
-            c0 = rgb[nb[0]]
-            if all((rgb[q] == c0).all() for q in nb) and not (rgb[y, x] == c0).all():
-                rgb[y, x] = c0
-                K[y, x] = kind(c0)
-    # His lacing dots stand 3 to 5 of his pixels apart: shrunk, one beside another (8-neighbours) is a
-    # smear of red. Of two touching dots the first (row by row) stays; the other takes the commonest colour
-    # of its neighbours that is not red or his line (the plate it sits on).
-    kept = np.zeros_like(fig)
-    for y in range(1, H - 1):
-        for x in range(1, W - 1):
-            if K[y, x] != 'red' or any(K[q] == 'red' for q in ((y - 1, x), (y + 1, x), (y, x - 1), (y, x + 1))):
-                continue
-            if kept[y - 1:y + 2, x - 1:x + 2].any():
-                nb = [tuple(rgb[y + dy, x + dx]) for dy in (-1, 0, 1) for dx in (-1, 0, 1) if (dy or dx) and K[y + dy, x + dx] not in ('red', 'line', '')]
-                if nb:
-                    c = max(sorted(set(nb)), key=nb.count)
-                    rgb[y, x] = c
-                    K[y, x] = kind(c)
-                    continue
-            kept[y, x] = True
+            mode = np.array(max(sorted(set(cols)), key=cols.count))
+            if label[y, x] in CLOTH and tuple(rgb[y, x]) not in cols:
+                rgb[y, x] = mode
+                K[y, x] = kind(mode)
+            elif label[y, x] != 'head' and K[y, x] != 'gold' and luma(rgb[y, x]) > 150 and all(luma(rgb[q]) < luma(rgb[y, x]) - 50 for q in nb):
+                rgb[y, x] = mode
+                K[y, x] = kind(mode)
     return rgb, label
 
 
@@ -482,7 +597,7 @@ def game():
         a = palette(native())
         rgb, label = reduce(a)
         _GAME['line'] = his_line(a)
-        _GAME['g'] = clean(rgb, label, _GAME['line'])
+        _GAME['g'] = clean(rgb, label, _GAME['line'], mail_colours(a))
     rgb, label = _GAME['g']
     return rgb.copy(), label.copy()
 

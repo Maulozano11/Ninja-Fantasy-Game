@@ -1885,7 +1885,7 @@ export const LEGENDARY_PRESETS: { name: string; tag: string; nameEs?: string; ta
       selectedJutsus: {
         slot1Utility: 'body_flicker',
         slot2Elemental: 'fireball_goukakyu',
-        slot3Elemental: 'crescent_moon_dance',
+        slot3Elemental: 'taijutsu_rush',
         slot4Clan: 'dragon_fire_bomb',
         slot5Ultimate: 'great_fire_annihilation',
       },

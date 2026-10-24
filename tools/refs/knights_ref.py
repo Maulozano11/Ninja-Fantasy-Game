@@ -305,7 +305,7 @@ REGIONS_FIG = {
     # each piece (his picture's coordinates) and take every kind; the cape takes what they leave.
     'dragon': {
         'fur': None, 'fur_f': None,
-        'blade': ([(195, 81), (201, 81), (238, 113), (238, 122), (230, 123), (192, 90)], 'strip'),
+        'blade': ([(193, 82), (198, 82), (237, 113), (237, 119), (230, 122), (190, 91)], 'strip'),
         'hilt': ([(160, 61), (168, 60), (176, 67), (177, 72), (173, 73), (160, 68)], None),
         'guard': ([(183, 72), (192, 72), (194, 78), (191, 84), (187, 88), (182, 92), (178, 91), (178, 85), (181, 79)], None),
         'hand_n': ([(172, 70), (186, 70), (186, 80), (172, 80)], None),
@@ -370,7 +370,7 @@ GROUPS = {
     'skirt': (('tasset_n', 'tasset_c', 'tasset_f'), 'keep'),
     'chest': (('chest',), 'keep'),
     'belt': (('belt',), 'keep'),
-    'fur': (('fur', 'fur_f'), 'read'),
+    'fur': (('fur', 'fur_f'), 'keep'),
     'pauldron_n': (('pauldron_n',), 'keep'),
     'arm_n': (('upper_n', 'fore_n', 'hand_n'), 'keep'),
     'sword': (('hilt', 'guard', 'blade'), 'keep'),
@@ -513,6 +513,7 @@ def keep(n_src, count, scale, origin, U):
 LINE_COVER = 0.45
 GOLD_COVER = 0.25
 GLINT_COVER = 0.15
+SKIN_COVER = 0.4
 
 
 def reading(a, K, line, m, scale, origin, j, i, first=False):
@@ -540,7 +541,10 @@ def reading(a, K, line, m, scale, origin, j, i, first=False):
         w, y, x = max((c for c in cells if K[c[1], c[2]] == 'white'), key=lambda c: (c[0], -c[1], -c[2]))
         return a[y, x], cells
     pick = [c for c in cells if K[c[1], c[2]] != 'line']
-    if cover('gold') >= GOLD_COVER:
+    if first and cover('skin') >= SKIN_COVER:
+        # his face before his hair's dark reds: the cheek beside the eye reads as his skin, not a smear
+        pick = [c for c in pick if K[c[1], c[2]] == 'skin']
+    elif cover('gold') >= GOLD_COVER:
         pick = [c for c in pick if K[c[1], c[2]] == 'gold']
     mean = sum(w * a[y, x] for w, y, x in pick) / sum(w for w, y, x in pick)
     best = min(pick, key=lambda c: (int(np.abs(a[c[1], c[2]] - mean).sum()), c[1], c[2]))
@@ -619,17 +623,19 @@ def reduce(fig):
 
 # The flame blade is redrawn clean at our scale (the owner's "the flame blade as clean bands of his oranges with
 # a bright core"): its axis and half width fitted on his blade, each fine pixel across it one band of his
-# colours (BLADE_BANDS of them between his line on either edge, each the commonest of his pixels at that
-# distance from the axis), in two stretches along it (from the guard, and the tip from BLADE_TIP of its
+# colours (BLADE_BANDS of them between his line on either edge, each his commonest colour on the line of his
+# blade nearest that distance from the axis), in two stretches along it (from the guard, and the tip from BLADE_TIP of its
 # length), his line round it. Every colour is his.
 BLADE_BANDS = 4
-BLADE_TIP = 0.6
+BLADE_TIP = 0.8
 
 
 def blade_fit(lab, a):
-    """His blade's axis: (centre, along, across, (t0, t1), half width at each whole t, colours by (zone,
-    band)), in his pixels."""
-    m = lab == 'blade'
+    """His blade's axis: (centre, along, across, (t0, t1), half width at each whole t, half width of the
+    bands, colours by (stretch, band)), in his pixels. Fitted on his flame (his flame, core and glints, not
+    his line nor what lies beside the blade)."""
+    K = kinds(a)
+    m = (lab == 'blade') & np.isin(K, ('flame', 'gold', 'white'))
     ys, xs = np.nonzero(m)
     P = np.stack([xs + 0.5, ys + 0.5], 1)
     c = P.mean(0)
@@ -639,25 +645,32 @@ def blade_fit(lab, a):
     n = np.array([-d[1], d[0]])
     t = (P - c) @ d
     q = (P - c) @ n
-    t1 = float(t.max())
-    # (from where his flame shows past the guard)
-    K0 = kinds(a)
-    t0 = float(min(t[i] for i in range(len(xs)) if K0[ys[i], xs[i]] == 'flame'))
+    # (the middle of his blade across: his flame is not always even about the fitted axis)
+    c = c + n * float(np.median(q))
+    q = q - float(np.median(q))
+    t0, t1 = float(t.min()), float(t.max())
     half = {}
-    for k in range(int(np.floor(t0)), int(np.ceil(t1)) + 1):
-        sel = np.abs(t - k) <= 2
-        half[k] = float(np.median([max(-q[sel].min(), q[sel].max())])) if sel.any() else 0.0
-    # his colours inside his line: by stretch along and band across
-    K = kinds(a)
-    inner = [(t[i], q[i], tuple(a[ys[i], xs[i]])) for i in range(len(xs)) if K[ys[i], xs[i]] != 'line']
-    hw = float(np.median([abs(v[1]) for v in inner])) * 2
+    for k in range(int(np.floor(t0)) - 1, int(np.ceil(t1)) + 2):
+        sel = np.abs(t - k) <= 2.5
+        half[k] = float(np.percentile(np.abs(q[sel]), 90)) if sel.sum() >= 3 else 0.0
+    hw = float(np.median([v for v in half.values() if v > 0]))
+    # (no wider than his blade is along most of it: by the guard his flame meets the guard's own)
+    half = {k: min(v, hw + 0.4) for k, v in half.items()}
+    # his colours inside his line, by stretch along and band across (all of his blade's pixels there)
+    mb = (lab == 'blade') & (K != 'line')
+    ys2, xs2 = np.nonzero(mb)
+    P2 = np.stack([xs2 + 0.5, ys2 + 0.5], 1) - c
+    t2, q2 = P2 @ d, P2 @ n
     table = {}
     for z, (za, zb) in enumerate(((t0, t0 + (t1 - t0) * BLADE_TIP), (t0 + (t1 - t0) * BLADE_TIP, t1))):
         for b in range(BLADE_BANDS):
-            lo, hi = -hw + 2 * hw * b / BLADE_BANDS, -hw + 2 * hw * (b + 1) / BLADE_BANDS
-            got = [col for tt, qq, col in inner if lo <= qq < hi and za <= tt <= zb]
-            if not got:
-                got = [col for tt, qq, col in inner if lo <= qq < hi]
+            # the band's middle, at his nearest pixel across: his commonest colour on that line of his blade
+            # (his bright core stays a line of his core, his edge his edge)
+            mid = -hw + (b + 0.5) * 2 * hw / BLADE_BANDS
+            off = int(np.floor(mid + 0.5))
+            pick = lambda zz, o, ks: [tuple(a[ys2[i], xs2[i]]) for i in range(len(xs2)) if int(np.floor(q2[i] + 0.5)) == o and zz[0] <= t2[i] <= zz[1] and K[ys2[i], xs2[i]] in ks]
+            fire = ('flame', 'gold', 'white')
+            got = pick((za, zb), off, fire) or pick((t0, t1), off, fire) or pick((t0, t1), off, fire + ('red',))
             table[(z, b)] = max(sorted(set(got)), key=got.count)
     return c, d, n, (t0, t1), half, hw, table
 
@@ -676,7 +689,7 @@ def clean_blade(rgb, label, lab, a, line):
             q = float((p - c) @ n)
             if t < t0 or t > t1:
                 continue
-            w = half.get(int(round(t)), 0.0) - 1.0
+            w = half.get(int(round(t)), 0.0)
             if abs(q) <= w:
                 inside_[y, x] = True
                 band[y, x] = min(BLADE_BANDS - 1, max(0, int((q + hw) / (2 * hw) * BLADE_BANDS)))
@@ -731,7 +744,10 @@ def components(mask, conn8):
 # The largest hole in the figure the cleaning closes (fine pixels).
 HOLE = 3
 # The cloth and fur read pixel by pixel: their specks are taken off by clean().
-CLOTH = ('cape', 'cape_f', 'fur', 'fur_f')
+CLOTH = ('cape', 'cape_f')
+# The fur: his whites and greys in FUR_TONES tones (fur_tufts()).
+FUR = ('fur', 'fur_f')
+FUR_TONES = 4
 
 
 def mode_of(cols):
@@ -772,6 +788,24 @@ def clean(rgb, label, line, a):
             nb = [(y + dy, x + dx) for dy, dx in ((1, 0), (-1, 0), (0, 1), (0, -1)) if label[y + dy, x + dx]]
             rgb[y, x] = mode_of([tuple(rgb[q]) for q in nb])
             label[y, x] = mode_of([label[q] for q in nb])
+    # a 1 px slit between two pieces the shrink parted (figure on both sides, across or up and down) where
+    # his picture has none: what is round it
+    for _ in range(3):
+        slits = []
+        for y in range(1, H - 1):
+            for x in range(1, W - 1):
+                if label[y, x] or not ((label[y, x - 1] and label[y, x + 1]) or (label[y - 1, x] and label[y + 1, x])):
+                    continue
+                ny, nx = (y - PAD) * BODY_SCALE, (x - PAD) * BODY_SCALE
+                if his_bg[max(0, int(np.floor(ny))):int(np.ceil(ny + BODY_SCALE)), max(0, int(np.floor(nx))):int(np.ceil(nx + BODY_SCALE))].any():
+                    continue
+                slits.append((y, x))
+        for y, x in slits:
+            nb = [(y + dy, x + dx) for dy, dx in ((1, 0), (-1, 0), (0, 1), (0, -1)) if label[y + dy, x + dx]]
+            rgb[y, x] = mode_of([tuple(rgb[q]) for q in nb])
+            label[y, x] = mode_of([label[q] for q in nb])
+        if not slits:
+            break
     fig = label != ''
     out = np.zeros_like(fig)
     stack = [(y, x) for y in (0, H - 1) for x in range(W)] + [(y, x) for x in (0, W - 1) for y in range(H)]
@@ -790,22 +824,142 @@ def clean(rgb, label, line, a):
                 rgb[y, x] = line
                 K[y, x] = 'line'
     near = [(dy, dx) for dy in (-1, 0, 1) for dx in (-1, 0, 1) if dy or dx]
+    # (read from the figure as it stands before this pass: a speck taken off never makes its neighbour one)
+    was = rgb.copy()
+    Kw = K.copy()
     for y in range(1, H - 1):
         for x in range(1, W - 1):
             if not fig[y, x] or K[y, x] == 'line' or head[y, x]:
                 continue
             nb = [(y + dy, x + dx) for dy, dx in near if fig[y + dy, x + dx]]
-            cols = [tuple(rgb[q]) for q in nb if K[q] != 'line']
+            cols = [tuple(was[q]) for q in nb if Kw[q] != 'line']
             if not cols:
                 continue
             mode = np.array(mode_of(cols))
             if label[y, x] in CLOTH and tuple(rgb[y, x]) not in cols:
                 rgb[y, x] = mode
                 K[y, x] = kind(mode)
-            elif label[y, x] not in ('blade',) and K[y, x] != 'gold' and luma(rgb[y, x]) > 150 and all(luma(rgb[q]) < luma(rgb[y, x]) - 50 for q in nb):
+            elif label[y, x] not in ('blade',) and K[y, x] != 'gold' and luma(rgb[y, x]) > 150 and all(luma(was[q]) < luma(rgb[y, x]) - 50 for q in nb):
                 rgb[y, x] = mode
                 K[y, x] = kind(mode)
     return rgb, label
+
+
+# Where his mail is (the dark knight's): the pieces it is on.
+MAIL_ON = ('chest', 'upper_n', 'upper_f', 'pauldron_n', 'pauldron_f')
+
+
+def mail_area(a, lab):
+    """His mail in his picture: where his pixels make a checker (each lighter or darker than all four of its
+    neighbours, by MAIL_STEP levels), most of a 3 x 3 window round it, on the pieces of MAIL_ON. (mask, his
+    two mail colours: the dark and the light.)"""
+    L = luma(a)
+    H, W = L.shape
+    ext = np.zeros((H, W), bool)
+    for y in range(1, H - 1):
+        for x in range(1, W - 1):
+            nb = [L[y - 1, x], L[y + 1, x], L[y, x - 1], L[y, x + 1]]
+            ext[y, x] = all(v > L[y, x] + MAIL_STEP for v in nb) or all(v < L[y, x] - MAIL_STEP for v in nb)
+    on = np.isin(lab, MAIL_ON)
+    ext &= on
+    dens = np.zeros((H, W))
+    for dy in (-1, 0, 1):
+        for dx in (-1, 0, 1):
+            dens += np.roll(np.roll(ext, dy, 0), dx, 1)
+    m = (dens >= 5) & on
+    if not m.any():
+        return m, None
+    cols = [tuple(a[y, x]) for y, x in zip(*np.nonzero(m & ext))]
+    Ls = sorted(set(cols), key=lambda c: luma(np.array(c)))
+    darks = [c for c in cols if luma(np.array(c)) < np.median([luma(np.array(v)) for v in cols])]
+    lights = [c for c in cols if c not in darks]
+    return m, (np.array(mode_of(darks)), np.array(mode_of(lights)))
+
+
+MAIL_STEP = 18
+
+
+def lay_mail(rgb, label, fig):
+    """His mail at our scale as a clean 1 px checker of his two mail colours (the owner's rule), wherever the
+    shrink put a fine pixel whose middle is on his mail; his line and his straps' leather stay."""
+    a = his()
+    m, two = mail_area(a, labels(fig, a))
+    if two is None:
+        return
+    H, W = label.shape
+    for y in range(H):
+        for x in range(W):
+            if label[y, x] not in MAIL_ON:
+                continue
+            ny, nx = int((y - PAD + 0.5) * BODY_SCALE), int((x - PAD + 0.5) * BODY_SCALE)
+            if 0 <= ny < m.shape[0] and 0 <= nx < m.shape[1] and m[ny, nx] and kind(rgb[y, x]) not in ('line', 'brown', 'gold'):
+                rgb[y, x] = two[(x + y) % 2]
+
+
+def gems(a, lab):
+    """His glowing gems (the dragon knight's): clusters of his pure reds (red over 225, green under 80) on his
+    armour, joined when within two of his pixels. For each: (his centre, his gem red, his highlight: the
+    lightest of his fire colours within two pixels)."""
+    r, g = a[..., 0], a[..., 1]
+    m = (r > 225) & (g < 80) & ~np.isin(lab, ('blade', 'cape', 'cape_f', 'hilt', 'guard', ''))
+    grown = near8(m) | m
+    out = []
+    K = kinds(a)
+    for c in components(grown, True):
+        px = [p for p in c if m[p]]
+        if not px:
+            continue
+        cy = float(np.mean([p[0] for p in px])) + 0.5
+        cx = float(np.mean([p[1] for p in px])) + 0.5
+        red = np.array(mode_of([tuple(a[p]) for p in px]))
+        near_ = [(y, x) for y in range(int(cy) - 2, int(cy) + 3) for x in range(int(cx) - 2, int(cx) + 3) if K[y, x] in ('flame', 'gold', 'white')]
+        hi = max(near_, key=lambda q: (float(luma(a[q])), -q[0], -q[1]))
+        out.append(((cx, cy), red, a[hi]))
+    return out
+
+
+def lay_gems(rgb, label, fig):
+    """His gems at our scale at least 2 x 2 (the owner's rule): his gem red on the fine pixels his gem's middle
+    falls among, his highlight on the upper left one."""
+    a = his()
+    for (cx, cy), red, hi in gems(a, labels(fig, a)):
+        fx, fy = cx / BODY_SCALE + PAD, cy / BODY_SCALE + PAD
+        x0, y0 = int(np.floor(fx - 0.5)), int(np.floor(fy - 0.5))
+        for y in (y0, y0 + 1):
+            for x in (x0, x0 + 1):
+                if label[y, x] and label[y, x] not in ('blade', 'hilt', 'guard'):
+                    rgb[y, x] = hi if (y, x) == (y0, x0) else red
+
+
+def fur_tufts(rgb, label):
+    """His fur as clumpy tufts of his whites and greys, not noise (the owner's rule for the fur): each fur
+    pixel of his (not his line) takes the commonest of his fur colours in its band of lightness (FUR_TONES
+    bands, each as many of his pixels), and a tone standing alone (none of its four neighbours shares it)
+    takes the tone most of its eight neighbours have."""
+    H, W = label.shape
+    m = np.isin(label, FUR) & (luma(rgb) >= 14)
+    if not m.any():
+        return
+    ys, xs = np.nonzero(m)
+    Ls = np.array([float(luma(rgb[y, x])) for y, x in zip(ys, xs)])
+    edges = [np.percentile(Ls, 100 * k / FUR_TONES) for k in range(FUR_TONES + 1)]
+    band = np.clip(np.searchsorted(edges[1:-1], Ls, side='right'), 0, FUR_TONES - 1)
+    tones = []
+    for b in range(FUR_TONES):
+        cols = [tuple(rgb[ys[i], xs[i]]) for i in range(len(ys)) if band[i] == b]
+        tones.append(np.array(mode_of(cols)))
+    T = np.full((H, W), -1)
+    for i in range(len(ys)):
+        T[ys[i], xs[i]] = band[i]
+    T0 = T.copy()
+    for y, x in zip(ys, xs):
+        n4 = [T0[y + dy, x + dx] for dy, dx in ((1, 0), (-1, 0), (0, 1), (0, -1)) if 0 <= y + dy < H and 0 <= x + dx < W]
+        if T0[y, x] not in n4:
+            n8 = [T0[y + dy, x + dx] for dy in (-1, 0, 1) for dx in (-1, 0, 1) if (dy or dx) and 0 <= y + dy < H and 0 <= x + dx < W and T0[y + dy, x + dx] >= 0]
+            if n8:
+                T[y, x] = mode_of(n8)
+    for y, x in zip(ys, xs):
+        rgb[y, x] = tones[T[y, x]]
 
 
 def game(fig):
@@ -818,6 +972,11 @@ def game(fig):
             if fig == 'dark':
                 paste_blade(rgb, label, 'paladin', fig)
             rgb, label = clean(rgb, label, his_line(a), a)
+            fur_tufts(rgb, label)
+            if fig == 'dark':
+                lay_mail(rgb, label, fig)
+            if fig == 'dragon':
+                lay_gems(rgb, label, fig)
             # one head on the three, one blade on the paladin and the dark knight: laid on again after the
             # cleaning, so each is the very piece the game stamps
             if fig != 'paladin':

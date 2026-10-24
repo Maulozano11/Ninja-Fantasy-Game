@@ -405,7 +405,7 @@ export function rigPoseFor(pose: SpritePose, style: CastStyle = 'runes', held?: 
 function trainingFor(held: string | undefined): RigPose {
   if (held === 'held_gilded_rapier') return 'train';
   if (held === 'held_naginata') return 'trainPole';
-  if (held === 'held_katana' || held === 'held_crystal' || held === 'held_ice_crystal' || held === 'held_flame_sword' || held === 'held_kunai') return 'train';
+  if (held === 'held_katana' || held === 'held_crystal' || held === 'held_ice_crystal' || held === 'held_flame_sword' || held === 'held_jewel_sabre' || held === 'held_kunai') return 'train';
   return 'trainFist';
 }
 

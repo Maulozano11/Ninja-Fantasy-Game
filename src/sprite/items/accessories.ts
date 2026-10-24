@@ -8,6 +8,7 @@ import { hexToRgb, retintHex, type RampKind } from '../color';
 import { hd } from './hairkit';
 import { CRYSTAL_SWORD, drawPaintedWeapon, drawWeapon, KUNAI } from './weapons';
 import { FLAME_LONGSWORD, FLAME_SWORD_FLAME, FLAME_SWORD_GOLD } from './flameSwordArt';
+import { JEWEL_SABRE, JEWEL_SABRE_BLADE, JEWEL_SABRE_GOLD, JEWEL_SABRE_JEWEL, JEWEL_SABRE_KIND } from './jewelSabreArt';
 import { ICE_SWORD, ICE_SWORD_BLADE, ICE_SWORD_KIND } from './iceSwordArt';
 import { KATANA_PARTS, katanaHipColors, katanaTemplate } from './katana';
 import { stampLeaning } from './armor';
@@ -491,6 +492,25 @@ export const HELD_ITEMS: ItemDef[] = [
       // His grip crosses his fist at the hand joint (higher in the fist than our other blades' grip
       // point): held there, at rest every pixel is his and his gauntlet's place is our fist's.
       else if (!handsReleased(g)) drawPaintedWeapon(g, 'nearArm.held', FLAME_LONGSWORD, g.rig.handN, swordAngle(g), tint);
+    },
+  },
+  {
+    id: 'held_jewel_sabre',
+    slot: 'held',
+    name: 'Jewel Sabre',
+    desc: 'A long sabre with a glowing pale-blue blade under a gold cross-guard set with a red jewel, on a gold grip: the owner painted it for his noble swordsman.',
+    colors: [col('blade', 'Blade', JEWEL_SABRE_BLADE, 'glow'), col('guard', 'Guard', JEWEL_SABRE_GOLD, 'metal'), col('jewel', 'Jewel', JEWEL_SABRE_JEWEL, 'metal')],
+    draw: (g, [blade, gold, jewel]) => {
+      // His sword, his pixels at our scale (2026-10-24; tools/refs/noble-sabre-from-ref.py): held by its grip at
+      // the hand joint as his other painted swords are, so at rest every pixel is his. His line stays; his
+      // blues follow the blade's colour, his gold the guard's, his red the jewel's.
+      const tint = (_ch: string, hex: string) => {
+        const k = JEWEL_SABRE_KIND[hex];
+        return k === 'line' ? hex : k === 'blade' ? retintHex(hex, JEWEL_SABRE_BLADE, blade) : k === 'red' ? retintHex(hex, JEWEL_SABRE_JEWEL, jewel) : retintHex(hex, JEWEL_SABRE_GOLD, gold);
+      };
+      if (handsBusy(g)) drawPaintedWeapon(g, 'backGear', JEWEL_SABRE, backGrip(g, 48), backAngle(g, 48), tint);
+      else if (handsLimp(g)) drawPaintedWeapon(g, 'nearArm.held', JEWEL_SABRE, droppedGrip(g, 0.7), -86, tint);
+      else if (!handsReleased(g)) drawPaintedWeapon(g, 'nearArm.held', JEWEL_SABRE, g.rig.handN, swordAngle(g), tint);
     },
   },
   {

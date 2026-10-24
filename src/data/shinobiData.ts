@@ -1841,6 +1841,81 @@ export const LEGENDARY_PRESETS: { name: string; tag: string; nameEs?: string; ta
     },
   },
   // ── Heroine: Lyra (end) ────────────────────────────────────────────────────────────────────────
+  // ── The noble swordsman (begin) ──────────────────────────────────────────────────────────────────
+  // The owner's new male character (docs/reference/noble-swordsman-owner-reference.jpg, 2026-10-24): his
+  // picture brought to our scale and lifted part by part (tools/refs/noble-*-from-ref.py), every part its own
+  // creator option, worn here in his colours. Name, title and numbers are provisional (the owner names him);
+  // the numbers are the creator's formula for his sheet.
+  {
+    name: 'The Noble Swordsman',
+    tag: 'Royal Cape · Jewel Sabre',
+    nameEs: 'El Espadachín Noble',
+    tagEs: 'Capa real · Sable de la joya',
+    character: {
+      id: 'preset_noble_swordsman',
+      name: 'The Noble Swordsman',
+      title: 'The Noble Swordsman',
+      level: 5,
+      clan: 'Ryusei',
+      shinobiClass: 'Bukijutsu Master',
+      stats: { str: 14, dex: 18, con: 14, int: 12, wis: 12, cha: 16 },
+      palette: {
+        skinTone: '#e8a781',
+        hairColor: '#22243d',
+        eyeColor: '#901020',
+        armorPrimary: '#141228',
+        armorSecondary: '#d68e48',
+        clothColor: '#141228',
+        headbandCloth: '#7b3825',
+        headbandPlate: '#cbd5e1',
+        chakraAuraColor: '#5fb3e2',
+        accentColor: '#4c0d1e',
+      },
+      hairstyle: 'Knight Pointed Helm',
+      armorStyle: 'Ronin Wanderer Cloak',
+      headbandPosition: 'Forehead',
+      weaponStyle: 'Katana Blade',
+      capeStyle: 'None',
+      dojutsu: 'None',
+      selectedFeats: ['chakra_prodigy'],
+      selectedJutsus: {
+        slot1Utility: 'body_flicker',
+        slot2Elemental: 'lightning_jolt',
+        slot3Elemental: 'crescent_moon_dance',
+        slot4Clan: 'wood_dragon_jutsu',
+        slot5Ultimate: 'kirin_thunder',
+      },
+      sheetVersion: 2,
+      maxHp: 44,
+      currentHp: 44,
+      maxChakra: 36,
+      currentChakra: 36,
+      armorClass: 16,
+      speed: 7,
+      jutsuSaveDC: 16,
+      jutsuAttackBonus: 8,
+      appearance: spriteLook({
+        skin: '#e8a781',
+        faceShape: 'noble',
+        eyeShape: 'noble',
+        eyeColor: '#901020',
+        slots: {
+          hair: it('hair_noble'),
+          top: it('top_noble_coat'),
+          armor: it('armor_noble_front'),
+          bottom: it('bottom_noble_trousers'),
+          feet: it('feet_noble_boots'),
+          hands: it('hands_noble_cuffs'),
+          waist: it('waist_noble_belt'),
+          cape: it('cape_royal'),
+          held: it('held_jewel_sabre'),
+        },
+        accessories: [it('acc_noble_headband')],
+        chakra: { color: 'yellow', tint: '#5fb3e2', onCharge: true, onCast: true, onVictory: true }, // Lightning, in the pale blue of his blade
+      }),
+    },
+  },
+  // ── The noble swordsman (end) ────────────────────────────────────────────────────────────────────
 ];
 
 export const DEFAULT_CHARACTER: ShinobiCharacter = LEGENDARY_PRESETS[0].character;

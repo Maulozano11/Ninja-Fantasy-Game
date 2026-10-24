@@ -23,6 +23,7 @@ import { braid, BraidArt, hairTemplate, hd, hlock, lock, LockOpts } from './hair
 import { HAIR_COPPER_BRAID } from './lyraHair';
 import { BASE_HAIR, BASE_HAIR_BASE, BASE_HAIR_LINE, BASE_HAIR_SKULL } from './baseHairArt';
 import { ROMAN_HAIR_BACK, ROMAN_HAIR_BASE, ROMAN_HAIR_FRONT, ROMAN_HAIR_LINE, ROMAN_HAIR_SHADE } from './romanHairArt';
+import { NOBLE_HAIR_BACK, NOBLE_HAIR_BASE, NOBLE_HAIR_FRONT, NOBLE_HAIR_KIND } from './nobleHairArt';
 import { VALIANT_HAIR_BACK, VALIANT_HAIR_BASE, VALIANT_HAIR_FRONT, VALIANT_HAIR_LINE } from './valiantHairArt';
 import { FOUNDER_HAIR_BACK, FOUNDER_HAIR_BASE, FOUNDER_HAIR_FRONT, FOUNDER_HAIR_LINE } from './founderHairArt';
 
@@ -1877,6 +1878,22 @@ export const HAIR_ITEMS: ItemDef[] = [
       paintedHair(g, g.L('head.body'), ROMAN_HAIR_SHADE, (_ch, hex) => retintSkinLifted(hex, ROMAN_SKIN, g.look.skin), true);
       paintedHair(g, g.L('hairFront'), ROMAN_HAIR_FRONT, tint);
       trimSkull(g, ROMAN_HAIR_BACK);
+    },
+  },
+  {
+    id: 'hair_noble',
+    slot: 'hair',
+    name: 'Noble Spikes',
+    desc: 'Spiky black hair lit in blue-grey: locks over the crown and the brow, strands over the ear and the cheeks. Painted by the owner for his noble swordsman.',
+    colors: hairColor(NOBLE_HAIR_BASE),
+    draw: (g, [c]) => {
+      // The owner's hair on his noble swordsman, his pixels at our scale (2026-10-24; tools/refs/
+      // noble-hair-from-ref.py), drawn as his Aiden's hair is: over the head every lock and line of his, behind
+      // it the same hair with what his face hides filled in.
+      const tint = (_ch: string, hex: string) => (NOBLE_HAIR_KIND[hex] === 'line' ? hex : retintHex(hex, NOBLE_HAIR_BASE, c));
+      paintedHair(g, g.L('hairBack'), NOBLE_HAIR_BACK, tint);
+      paintedHair(g, g.L('hairFront'), NOBLE_HAIR_FRONT, tint);
+      trimSkull(g, NOBLE_HAIR_BACK);
     },
   },
 ];

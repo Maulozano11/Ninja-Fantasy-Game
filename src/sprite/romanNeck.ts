@@ -11,6 +11,7 @@ import { type Depth, DEPTHS, type DrawCtx } from './ctx';
 import { takesMaleSkin } from './maleSkin';
 import { F_NO_OUTLINE, F_NO_TEXTURE, GRID, type Layer, RES, v } from './raster';
 import type { Rig } from './rig';
+import { NOBLE_HEAD_UP } from './nobleHeadArt';
 import { ROMAN_HEAD_UP, ROMAN_SKIN } from './romanHeadArt';
 import { ROMAN_NECK } from './romanNeckArt';
 import type { SpriteAppearance } from './types';
@@ -18,10 +19,21 @@ import type { SpriteAppearance } from './types';
 /** Whether this look stands his Roman head on his neck: his face on a male body (male, bulky). */
 export const onRomanNeck = (look: SpriteAppearance): boolean => look.faceShape === 'roman' && takesMaleSkin(look.body);
 
-/** The rig with the head raised to where he painted it, for his face on a male body; any other look's rig as it is. */
+/**
+ * How far his face raises the head on a male body (fine pixels): his Roman head stands where he painted it on
+ * his neck, and his noble swordsman's head as high, where his picture has it above his high collar (his neck
+ * there is hidden by the collar and the cravat). Every other face keeps our head height.
+ */
+export function headUp(look: SpriteAppearance): number {
+  if (!takesMaleSkin(look.body)) return 0;
+  return look.faceShape === 'roman' ? ROMAN_HEAD_UP : look.faceShape === 'noble' ? NOBLE_HEAD_UP : 0;
+}
+
+/** The rig with the head raised to where he painted it, for his Roman or noble face on a male body; any other look's rig as it is. */
 export function romanRig(rig: Rig, look: SpriteAppearance): Rig {
-  if (!onRomanNeck(look)) return rig;
-  return { ...rig, head: v(rig.head.x, rig.head.y - ROMAN_HEAD_UP / RES) };
+  const up = headUp(look);
+  if (!up) return rig;
+  return { ...rig, head: v(rig.head.x, rig.head.y - up / RES) };
 }
 
 /**

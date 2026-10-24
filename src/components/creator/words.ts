@@ -290,6 +290,27 @@ const ES: Record<string, string> = {
   // Lyra's sword
   'Gilded Rapier': 'Estoque Dorado',
   'Blade glow': 'Brillo de la hoja',
+  // The owner's noble swordsman (2026-10-24; names provisional, the owner names them)
+  Noble: 'Noble',
+  "The noble's face": 'La cara del noble',
+  "The noble's eyes": 'Los ojos del noble',
+  'Noble Coat': 'Casaca noble',
+  'Noble Breastplate': 'Pechera noble',
+  'Noble Trousers': 'Pantalón noble',
+  'Noble Boots': 'Botas nobles',
+  'Noble Cuffs': 'Puños nobles',
+  'Noble Belt': 'Cinturón noble',
+  'Royal Cape': 'Capa real',
+  'Noble Headband': 'Bandana noble',
+  'Noble Spikes': 'Puntas nobles',
+  'Jewel Sabre': 'Sable de la joya',
+  Outside: 'Exterior',
+  Piping: 'Vivos',
+  Chains: 'Cadenas',
+  Cravat: 'Corbatín',
+  Panel: 'Panel',
+  Seams: 'Costuras',
+  Jewel: 'Joya',
 };
 
 /** An editor label in the screen's language. */

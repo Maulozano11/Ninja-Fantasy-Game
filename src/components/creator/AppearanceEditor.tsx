@@ -127,6 +127,7 @@ const FACE_SHAPES: { id: FaceShape; label: string; sub: string }[] = [
   { id: 'founder', label: 'Founder', sub: "Solen's face" },
   { id: 'fine', label: 'Fine', sub: "Lyra's face" },
   { id: 'roman', label: 'Roman', sub: "The Roman's face" },
+  { id: 'noble', label: 'Noble', sub: "The noble's face" },
 ];
 
 const ARMS: { id: ArmType; label: string; sub: string }[] = [
@@ -145,6 +146,7 @@ const EYE_SHAPES: { id: EyeShape; label: string; sub?: string }[] = [
   { id: 'valiant', label: 'Valiant', sub: "Aiden's eyes" },
   { id: 'keen', label: 'Keen', sub: "Lyra's eyes" },
   { id: 'roman', label: 'Roman', sub: "The Roman's eyes" },
+  { id: 'noble', label: 'Noble', sub: "The noble's eyes" },
 ];
 
 const HEADBAND_POSITIONS: { id: HeadbandPosition; label: string }[] = [

@@ -913,7 +913,7 @@ function sayaFace(g: DrawCtx, at: (x: number, y: number, hex: string) => void): 
       const ch = row[c];
       if (ch === '.') continue;
       const hex = SAYA_FACE.colors[ch];
-      at(ox + c, oy + r, ch === SAYA_FACE_LINE ? hex : skinTone(hex, skin, SAYA_FACE_SKIN));
+      at(ox + c, oy + r, ch === SAYA_FACE_LINE ? hex : skinTone(hex, SAYA_FACE_SKIN, skin));
     }
   });
 }

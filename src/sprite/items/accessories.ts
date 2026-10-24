@@ -17,6 +17,7 @@ import { FOUNDER_COWL, FOUNDER_COWL_GOLD, FOUNDER_COWL_KIND, FOUNDER_COWL_NEAR, 
 import { chakraHex } from '../chakraInfo';
 import { LYRA_SWORD_BLADE, LYRA_SWORD_GUARD } from './lyraSwordArt';
 import { drawLyraRapier } from './lyraSword';
+import { drawHeroineSword, HK_SWORD_GEM, HK_SWORD_HILT, HK_SWORD_PARTS, HK_SWORD_STEEL, heroineSwordPreview } from './heroineKnightSword';
 import { drawOwner, ownerFrame, slotTint } from '../ownerFrames';
 import { gripPoint, handsBusy, handsLimp, handsReleased, poleAngle, swordAngle, throwsKunai } from '../grip';
 import type { Rig } from '../rig';
@@ -493,6 +494,20 @@ export const HELD_ITEMS: ItemDef[] = [
       // His grip crosses his fist at the hand joint (higher in the fist than our other blades' grip
       // point): held there, at rest every pixel is his and his gauntlet's place is our fist's.
       else if (!handsReleased(g)) drawPaintedWeapon(g, 'nearArm.held', FLAME_LONGSWORD, g.rig.handN, swordAngle(g), tint);
+    },
+  },
+  {
+    id: 'held_heroine_longsword',
+    slot: 'held',
+    name: 'Heroine Longsword',
+    desc: 'A long straight blade, pale blue and bright along the edge, under a silver cross-guard with a blue gem: the owner drew it for his heroine knights.',
+    colors: [col('blade', 'Blade', HK_SWORD_STEEL, 'metal'), col('hilt', 'Hilt', HK_SWORD_HILT, 'metal'), col('gem', 'Gem', HK_SWORD_GEM, 'metal')],
+    parts: HK_SWORD_PARTS,
+    partsPreview: (_look, parts) => heroineSwordPreview(parts),
+    draw: (g, colors, parts) => {
+      if (handsBusy(g)) drawHeroineSword(g, 'backGear', backGrip(g, 48), backAngle(g, 48), colors, parts);
+      else if (handsLimp(g)) drawHeroineSword(g, 'nearArm.held', droppedGrip(g, 0.7), -86, colors, parts);
+      else if (!handsReleased(g)) drawHeroineSword(g, 'nearArm.held', gripPoint(g), swordAngle(g), colors, parts);
     },
   },
   {

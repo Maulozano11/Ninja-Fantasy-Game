@@ -25,6 +25,9 @@ import { type PaintedPiece, segAngle, stampPiece } from './painted';
 import { rotateTemplate, stampTemplate, type TemplatePalette } from './rotsprite';
 import { ROMAN_EYE_COLORS, ROMAN_EYES, ROMAN_IRIS } from './romanEyeArt';
 import { ROMAN_HEAD, ROMAN_SKIN } from './romanHeadArt';
+import { HK_EYE_COLORS, HK_EYES, HK_IRIS } from './heroineKnightEyeArt';
+import { HK_FACE, HK_FACE_SKIN } from './heroineKnightFaceArt';
+import { HK_EYE_COLS } from './heroineKnightsJointsArt';
 import { drawRomanNeck } from './romanNeck';
 import { ballShade, capsule, ellipse, F_NO_OUTLINE, F_NO_TEXTURE, GRID, Layer, PartId, Pen, poly, RES, seam, v, Vec } from './raster';
 import { type EyeShape, isFemaleBody, type FaceShape } from './types';
@@ -573,6 +576,8 @@ const PAINTED_HEADS: Partial<Record<FaceShape, PaintedHead>> = {
   valiant: { head: VALIANT_HEAD, skin: VALIANT_SKIN, ex: 1, fx: 8, mouth: true, tint: (hex, from, to) => skinTone(hex, to, from) },
   // His Roman face (src/sprite/romanHeadArt.ts): its eyes where his Aiden head has them, his own mouth.
   roman: { head: ROMAN_HEAD, skin: ROMAN_SKIN, ex: 1, fx: 8, mouth: false, tint: retintSkinLifted },
+  // His heroine knights' face (src/sprite/heroineKnightFaceArt.ts): her eyes where he drew them, her own mouth.
+  gallant: { head: HK_FACE, skin: HK_FACE_SKIN, ex: HK_EYE_COLS[0], fx: HK_EYE_COLS[1], mouth: false, tint: (hex, from, to) => skinTone(hex, to, from) },
 };
 const paintedHead = (g: DrawCtx): PaintedHead | undefined => (g.look.faceShape ? PAINTED_HEADS[g.look.faceShape] : undefined);
 
@@ -588,6 +593,7 @@ interface PaintedEyes {
 const PAINTED_EYES: Partial<Record<EyeShape, PaintedEyes>> = {
   valiant: { eyes: VALIANT_EYES, colors: VALIANT_EYE_COLORS, iris: VALIANT_IRIS, brow: VALIANT_BROW_HAIR },
   roman: { eyes: ROMAN_EYES, colors: ROMAN_EYE_COLORS, iris: ROMAN_IRIS },
+  gallant: { eyes: HK_EYES, colors: HK_EYE_COLORS, iris: HK_IRIS },
 };
 
 function drawHead(g: DrawCtx): void {
@@ -709,7 +715,7 @@ export function skinTone(hex: string, skin: string, base: string = VALIANT_SKIN)
  * square: the reference's original strong jaw, with a flat jaw line.
  * (valiant, roman and founder, the owner's heads, are his pixels whole: see drawPaintedHead, drawFounderHead.)
  */
-const FACE_LEFT: Record<Exclude<FaceShape, 'valiant' | 'founder' | 'fine' | 'aurelia' | 'roman'>, string[]> = {
+const FACE_LEFT: Record<Exclude<FaceShape, 'valiant' | 'founder' | 'fine' | 'aurelia' | 'roman' | 'gallant'>, string[]> = {
   tapered: ['osbbbbb', 'ossbbbb', '.osbbbb', '..osbbb', '...osbb', '....osb', '.....os', '......o', '.......', '.......'],
   soft: ['osbbbbb', 'ossbbbb', 'ossbbbb', '.osbbbb', '..osbbb', '...osbb', '....osb', '.....oo', '.......', '.......'],
   square: ['osbbbbb', 'ossbbbb', 'osDsbbb', 'ossbbbb', '.osbbbs', '..osbbs', '...osbs', '....ooo', '.......', '.......'],
@@ -718,7 +724,7 @@ const FACE_LEFT: Record<Exclude<FaceShape, 'valiant' | 'founder' | 'fine' | 'aur
 const faceLeft = (g: DrawCtx): string[] => {
   const s = g.look.faceShape;
   // (Lyra's face, 'fine', has the default near cheek under her hair)
-  return (s && s !== 'valiant' && s !== 'founder' && s !== 'fine' && s !== 'aurelia' && s !== 'roman' && FACE_LEFT[s]) || FACE_LEFT.tapered;
+  return (s && s !== 'valiant' && s !== 'founder' && s !== 'fine' && s !== 'aurelia' && s !== 'roman' && s !== 'gallant' && FACE_LEFT[s]) || FACE_LEFT.tapered;
 };
 
 /** Aurelia's face (aureliaFaceArt.ts) in fine pixels, its pivot on the face anchor. */
@@ -1030,8 +1036,10 @@ function drawFace(g: DrawCtx): void {
   // Overlays drawn on the face layer (no outline, above the skin). His eyes open a row lower than
   // ours (his lash line is the template's second row): what sits on the open eye follows them.
   const set = (x: number, y: number, hex: string) => F.set(x, y, g.m(hex, 'flat'), 3, 'head', F_NO_OUTLINE);
-  const lash = his ? ny + 1 : ny;
-  if (lyra) {
+  // (the heroine knights' eyes, 'gallant', are laid as Lyra's: his lash on the anchor row, the iris under it)
+  const rowed = !!lyra || shape === 'gallant';
+  const lash = his && !rowed ? ny + 1 : ny;
+  if (rowed) {
     // her lashes are his pixels: no flick at the corners, open or shut
   } else if (female && (closed || lowered)) {
     // the lashes of the closed or lowered lids
@@ -1047,7 +1055,7 @@ function drawFace(g: DrawCtx): void {
   // Special eye patterns (pupil marks on the red iris, veins, sage pigment); closed eyes show none.
   if (closed || lowered) {
     // nothing to see under the lids
-  } else if ((sp === 'tomoe1' || sp === 'tomoe3' || sp === 'pinwheel') && lyra) {
+  } else if ((sp === 'tomoe1' || sp === 'tomoe3' || sp === 'pinwheel') && rowed) {
     // Lyra's iris is a single row under her lash (her green, then its dark): the marks go on it, the
     // far eye's dark green past one tomoe.
     set(ex + 2, ny + 1, '#14040a');

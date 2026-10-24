@@ -1,0 +1,276 @@
+// The owner's heroine knights' thighs, his pixels at our scale (tools/refs/hk-legs-from-ref.py from
+// docs/reference/heroine-knights-owner-reference.jpg, shrunk and cleaned by tools/refs/heroine_knights_ref.py).
+// Generated: rerun the script to change it.
+import type { PaintedPiece } from '../painted';
+
+/** His colours the colour slots recolour from (at these, every pixel is his). */
+export const HK_PALADIN_LEG_PLATE = '#766c70';
+export const HK_PALADIN_LEG_TRIM = '#f5be44';
+export const HK_ROGUE_LEGGINGS = '#3b3038';
+export const HK_DRAGON_LEG_SCALES = '#3e2025';
+
+/** What each of his colours is, as the script sorts them (tools/refs/heroine_knights_ref.py kind). */
+export const HK_LEGS_KIND: Record<string, 'gold' | 'ivory' | 'line' | 'plum' | 'red' | 'skin' | 'steel' | 'warm'> = {
+  '#000100': 'line',
+  '#0d1018': 'warm',
+  '#241c27': 'plum',
+  '#251515': 'warm',
+  '#262430': 'warm',
+  '#280c1b': 'plum',
+  '#300c1a': 'red',
+  '#301c1d': 'warm',
+  '#310d1b': 'red',
+  '#39201c': 'warm',
+  '#3b3038': 'plum',
+  '#3e2025': 'red',
+  '#42241a': 'warm',
+  '#422a25': 'warm',
+  '#4c2224': 'red',
+  '#4c2b22': 'warm',
+  '#543423': 'warm',
+  '#562c2e': 'red',
+  '#5a4e58': 'steel',
+  '#5e585e': 'steel',
+  '#602e31': 'red',
+  '#6a2d31': 'red',
+  '#6a3a2a': 'warm',
+  '#6c432c': 'warm',
+  '#6d6467': 'steel',
+  '#71645e': 'warm',
+  '#766c70': 'steel',
+  '#7a7673': 'steel',
+  '#873b37': 'red',
+  '#877669': 'warm',
+  '#877a72': 'steel',
+  '#907a6c': 'warm',
+  '#91423a': 'red',
+  '#9a4d42': 'red',
+  '#a44f48': 'red',
+  '#ae9a7a': 'ivory',
+  '#b25540': 'warm',
+  '#b48037': 'warm',
+  '#b85c4f': 'red',
+  '#bb5944': 'warm',
+  '#c5b498': 'ivory',
+  '#c68272': 'warm',
+  '#c97c62': 'warm',
+  '#ccbe9a': 'ivory',
+  '#d26a55': 'warm',
+  '#de8266': 'warm',
+  '#df9e44': 'warm',
+  '#e0d1aa': 'ivory',
+  '#e2dec0': 'ivory',
+  '#efab88': 'skin',
+  '#f2ba4e': 'gold',
+  '#f5be44': 'gold',
+  '#f8c453': 'gold',
+};
+
+/** Where each piece lands in our female idle frame 0, unturned: the fine pixel of its first row's first cell. */
+export const HK_LEGS_REST: Record<string, [number, number]> = {
+  HK_PALADIN_THIGH_N: [112, 179],
+  HK_PALADIN_THIGH_F: [134, 184],
+  HK_ROGUE_THIGH_N: [113, 180],
+  HK_ROGUE_THIGH_F: [124, 182],
+  HK_DRAGON_THIGH_N: [109, 173],
+  HK_DRAGON_THIGH_F: [132, 173],
+};
+
+/** The paladin's near ivory and gold cuisse. It rides the thigh about the hip. */
+export const HK_PALADIN_THIGH_N: PaintedPiece = {
+  pivot: [8, -2],
+  angle: 103.24,
+  rows: [
+    '.aaa..aa..a',
+    '.abcaadaeea',
+    '.abfhiajjka',
+    '..almanlpqa',
+    '..alrsqlpqa',
+    '...aatqlpqa',
+    '....juvlpqa',
+    'aa...qlptqa',
+    '.kqj...nkaa',
+    'a..aa...a..',
+  ],
+  colors: {
+    a: '#000100',
+    b: '#ae9a7a',
+    c: '#71645e',
+    d: '#b48037',
+    e: '#262430',
+    f: '#ccbe9a',
+    h: '#907a6c',
+    i: '#f5be44',
+    j: '#766c70',
+    k: '#0d1018',
+    l: '#e0d1aa',
+    m: '#df9e44',
+    n: '#6d6467',
+    p: '#877669',
+    q: '#5a4e58',
+    r: '#f2ba4e',
+    s: '#7a7673',
+    t: '#877a72',
+    u: '#e2dec0',
+    v: '#5e585e',
+  },
+};
+
+/** The paladin's far ivory and gold cuisse. It rides the thigh about the hip. */
+export const HK_PALADIN_THIGH_F: PaintedPiece = {
+  pivot: [-1, -8],
+  angle: 80.54,
+  rows: [
+    '...a...',
+    '.bcaada',
+    '.bcaeea',
+    '.cfaeee',
+    'aa..aee',
+    '....a..',
+  ],
+  colors: {
+    a: '#000100',
+    b: '#c5b498',
+    c: '#5a4e58',
+    d: '#f8c453',
+    e: '#310d1b',
+    f: '#5e585e',
+  },
+};
+
+/** The rogue's near thigh in dark leggings, bare where her skirt is torn. It rides the thigh about the hip. */
+export const HK_ROGUE_THIGH_N: PaintedPiece = {
+  pivot: [7, -3],
+  angle: 103.24,
+  rows: [
+    'a......a.a...',
+    'abbcccabbbbc.',
+    '.acccadaabbc.',
+    '.acccadddaac.',
+    '..acaddeddaa.',
+    '...caeeeddafa',
+    'a...aeehhaffa',
+    '.bb...ehhfff.',
+    '.baa...ahfff.',
+    '.a......aa...',
+  ],
+  colors: {
+    a: '#000100',
+    b: '#241c27',
+    c: '#3b3038',
+    d: '#c97c62',
+    e: '#efab88',
+    f: '#280c1b',
+    h: '#c68272',
+  },
+};
+
+/** The rogue's far thigh in dark leggings, bare where her skirt is torn. It rides the thigh about the hip. */
+export const HK_ROGUE_THIGH_F: PaintedPiece = {
+  pivot: [9, -6],
+  angle: 80.54,
+  rows: [
+    '.aaab',
+    '.aaab',
+    'baabb',
+    '.bac.',
+    '.bbbb',
+    '.dd..',
+  ],
+  colors: {
+    a: '#3b3038',
+    b: '#000100',
+    c: '#c97c62',
+    d: '#280c1b',
+  },
+};
+
+/** The dragon's near copper scale cuisse. It rides the thigh about the hip. */
+export const HK_DRAGON_THIGH_N: PaintedPiece = {
+  pivot: [11, 4],
+  angle: 103.24,
+  rows: [
+    '.a............',
+    '.b............',
+    '..............',
+    '..............',
+    '..............',
+    '.....a...a....',
+    '....acdefhaaaa',
+    '....acijakaala',
+    '....amanalappa',
+    '.....aafcallla',
+    '.....aqqfarrpa',
+    '......assartpa',
+    '.......llnulpa',
+    'aaaaa...nnrlaa',
+    'ababllv...taba',
+    '.barrwva...aba',
+    '.a...a......aa',
+  ],
+  colors: {
+    a: '#000100',
+    b: '#300c1a',
+    c: '#4c2224',
+    d: '#562c2e',
+    e: '#bb5944',
+    f: '#b85c4f',
+    h: '#6a2d31',
+    i: '#9a4d42',
+    j: '#de8266',
+    k: '#873b37',
+    l: '#301c1d',
+    m: '#91423a',
+    n: '#6a3a2a',
+    p: '#251515',
+    q: '#602e31',
+    r: '#4c2b22',
+    s: '#d26a55',
+    t: '#422a25',
+    u: '#6c432c',
+    v: '#3e2025',
+    w: '#543423',
+  },
+};
+
+/** The dragon's far copper scale cuisse. It rides the thigh about the hip. */
+export const HK_DRAGON_THIGH_F: PaintedPiece = {
+  pivot: [1, 3],
+  angle: 80.54,
+  rows: [
+    'a........',
+    'ab.......',
+    'ab.......',
+    'ac.......',
+    'ad.......',
+    'aa.......',
+    '.........',
+    '.........',
+    'aaa......',
+    'aea......',
+    'afha.....',
+    'afia..aa.',
+    'afjeakla.',
+    'amniabab.',
+    'amnlabbb.',
+    'apmiaabb.',
+    'aha..abba',
+    'a.....a.a',
+  ],
+  colors: {
+    a: '#000100',
+    b: '#300c1a',
+    c: '#a44f48',
+    d: '#b25540',
+    e: '#301c1d',
+    f: '#39201c',
+    h: '#251515',
+    i: '#3e2025',
+    j: '#42241a',
+    k: '#b85c4f',
+    l: '#562c2e',
+    m: '#4c2b22',
+    n: '#6a3a2a',
+    p: '#543423',
+  },
+};

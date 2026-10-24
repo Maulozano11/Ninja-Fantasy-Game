@@ -53,8 +53,8 @@ export interface CastChoice {
   jutsu?: Record<string, CastStyle>;
 }
 
-/** The eye options; valiant and roman are the owner's own eyes from his Aiden and Roman pictures, in his pixels; dawn is his Aurelia's, in her pixels at our scale; keen is his Lyra's, in her colours at our scale. */
-export type EyeShape = 'standard' | 'sharp' | 'round' | 'calm' | 'fierce' | 'bright' | 'piercing' | 'valiant' | 'dawn' | 'keen' | 'roman';
+/** The eye options; valiant and roman are the owner's own eyes from his Aiden and Roman pictures, in his pixels; gallant his heroine knights' green eyes, shrunk to our scale; dawn is his Aurelia's, in her pixels at our scale; keen is his Lyra's, in her colours at our scale. */
+export type EyeShape = 'standard' | 'sharp' | 'round' | 'calm' | 'fierce' | 'bright' | 'piercing' | 'valiant' | 'dawn' | 'keen' | 'roman' | 'gallant';
 
 /**
  * The owner's heroines' long neck (neck.ts): his Lyra carries the head further forward on a slimmer neck.
@@ -79,9 +79,10 @@ export type HandSize = 'normal' | 'small';
  * face (fine: her narrower face, mouth and chin in his pixels, under our skull); or his Aurelia's face
  * (aurelia: her ear, cheeks, mouth, jaw and chin in his pixels from his game-scale picture, under our skull;
  * on a female body her head stands where he drew it, src/sprite/aureliaHead.ts).
- * Or roman, from his Roman paint-over (his whole face with his nose and mouth, in his pixels).
+ * Or roman, from his Roman paint-over (his whole face with his nose and mouth, in his pixels); or gallant,
+ * from his heroine knights (her face shrunk to our Lyra's head size, on the female body).
  */
-export type FaceShape = 'tapered' | 'soft' | 'square' | 'valiant' | 'founder' | 'fine' | 'aurelia' | 'roman';
+export type FaceShape = 'tapered' | 'soft' | 'square' | 'valiant' | 'founder' | 'fine' | 'aurelia' | 'roman' | 'gallant';
 
 /** Single-choice equipment slots, drawn back-to-front by depth (see compose.ts). */
 export type SlotId =

@@ -55,8 +55,9 @@ export function randomAppearance(): SpriteAppearance {
     version: 1,
     body,
     skin: pick(SKIN_TONES.slice(0, 9)),
-    eyeShape: pick<EyeShape>(['standard', 'sharp', 'round', 'calm', 'fierce', 'bright', 'piercing', 'valiant', 'dawn', 'keen', 'roman']),
-    faceShape: pick<FaceShape>(['tapered', 'tapered', 'soft', 'square', 'valiant', 'founder', 'fine', 'aurelia', 'roman']),
+    eyeShape: pick<EyeShape>(['standard', 'sharp', 'round', 'calm', 'fierce', 'bright', 'piercing', 'valiant', 'dawn', 'keen', 'roman', 'gallant']),
+    // (the heroine knights' face is a woman's: on the female body only)
+    faceShape: pick<FaceShape>(['tapered', 'tapered', 'soft', 'square', 'valiant', 'founder', 'fine', 'aurelia', 'roman', ...(body === 'female' ? (['gallant'] as FaceShape[]) : [])]),
     cast: { style: pick(CAST_STYLES) },
     eyeColor: pick(EYE_COLORS),
     slots,

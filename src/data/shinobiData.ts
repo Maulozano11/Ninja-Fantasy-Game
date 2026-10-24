@@ -2103,7 +2103,7 @@ export const LEGENDARY_PRESETS: { name: string; tag: string; nameEs?: string; ta
       selectedJutsus: {
         slot1Utility: 'body_flicker',
         slot2Elemental: 'chidori_lightning_blade',
-        slot3Elemental: 'fireball_goukakyu',
+        slot3Elemental: 'lightning_hound_raidon',
         slot4Clan: 'dragon_fire_bomb',
         slot5Ultimate: 'kirin_thunder',
       },

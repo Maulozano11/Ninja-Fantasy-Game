@@ -6,7 +6,7 @@ import type { PaintedPiece } from '../painted';
 
 /** His colours the colour slots recolour from (at these, every pixel is his). */
 export const COAT_DARK_CLOTH = '#2a182c';
-export const COAT_DARK_GOLD = '#b87b44';
+export const COAT_DARK_GOLD = '#c0783b';
 export const COAT_DARK_LINING = '#440e21';
 export const COAT_DARK_ACCENT = '#821a20';
 
@@ -331,9 +331,9 @@ export const COAT_DARK_TAILS: PaintedPiece = {
     '.aAADGbuH....................CCaBa.',
     '.aIdDbbJD....................aCaDa.',
     '....BuDuD.....................affJa',
-    '......JJ.......................aKEa',
-    '.......u........................aa.',
-    '................................aa.',
+    '.....EJJ.......................aKEa',
+    '.....e.u........................aa.',
+    '.....ah.........................aa.',
     '................................a..',
   ],
   colors: {

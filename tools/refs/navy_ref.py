@@ -1056,7 +1056,8 @@ BODY_PARTS = [
     # the coat's body from the collar to the belt (his frogging, piping and scrollwork)
     ('coat', [(84, 44), (127, 42), (129, 60), (127, 88), (88, 88), (86, 70)], ALL),
     # the boots: the folded brown cuffs with gold trim, the black shafts and feet
-    ('boot_n', [(66, 146), (93, 146), (93, 176), (91, 200), (64, 200), (66, 176)], ('dark', 'line', 'gold', 'brown', 'grey', 'white', 'wine')),
+    # (the near tail's tip hangs beside the near boot's cuff, x 67-76: the tail's)
+    ('boot_n', [(77, 146), (93, 146), (93, 176), (91, 200), (64, 200), (66, 178), (76, 160)], ('dark', 'line', 'gold', 'brown', 'grey', 'white', 'wine')),
     ('boot_f', [(100, 146), (128, 146), (128, 180), (146, 185), (146, 200), (104, 200), (101, 178)], ('dark', 'line', 'gold', 'brown', 'grey', 'white', 'wine')),
     # the coat's tails below the belt: the front flaps with their scrolls, the long near tail down to the
     # scabbard's side, the far tail, and the burgundy lining between the legs

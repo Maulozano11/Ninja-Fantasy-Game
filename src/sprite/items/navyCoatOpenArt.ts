@@ -6,7 +6,7 @@ import type { PaintedPiece } from '../painted';
 
 /** His colours the colour slots recolour from (at these, every pixel is his). */
 export const COAT_OPEN_CLOTH = '#191e32';
-export const COAT_OPEN_GOLD = '#c48d45';
+export const COAT_OPEN_GOLD = '#bc8e52';
 export const COAT_OPEN_LINING = '#1c0c17';
 
 /** What each of his colours is, as the script sorts them (tools/refs/navy_ref.py kind). */
@@ -292,10 +292,12 @@ export const COAT_OPEN_TAILS: PaintedPiece = {
     'ebbaaepb.....................bttneb.',
     'b.baaeb.......................bbsvb.',
     '..baedb.........................bcb.',
-    '.................................beb',
-    '.................................beb',
-    '.................................bb.',
-    '.................................b..',
+    '..baeb...........................beb',
+    '..beeb...........................beb',
+    '...bcb...........................bb.',
+    '...bb............................b..',
+    '....b...............................',
+    '....b...............................',
   ],
   colors: {
     a: '#0b0e21',

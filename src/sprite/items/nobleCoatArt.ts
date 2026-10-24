@@ -70,7 +70,6 @@ export const NOBLE_COAT_REST: Record<string, [number, number]> = {
   NOBLE_SLEEVE_F_UPPER: [131, 149],
   NOBLE_SLEEVE_F_LOWER: [134, 164],
   NOBLE_TAILS: [104, 169],
-  NOBLE_SHIRT: [113, 146],
 };
 
 /** The torso: it rides the torso about the neck. */
@@ -327,44 +326,5 @@ export const NOBLE_TAILS: PaintedPiece = {
     Q: '#ce9054',
     R: '#d68e48',
     S: '#cc8a42',
-  },
-};
-
-/** The plain shirt (worn without the cape, or as the Plain Noble Shirt): it rides the torso about the neck. */
-export const NOBLE_SHIRT: PaintedPiece = {
-  pivot: [14, 1],
-  angle: -89.65,
-  rows: [
-    '......aaaaaaaaaaaaa......',
-    '....aabcddddeeeeeeeaa....',
-    '..aabbbddddeeeeeeeebbaa..',
-    '..abbddddddeeeeeeeeeebba.',
-    '.abdddddddeeeeeeeeeeeeba.',
-    'abbddddddeeeeeeeeeeeeeeba',
-    'abddddddeeeeeeeeeeeeeeeba',
-    'addddddeeeeeeeeeeeeeeeffa',
-    'addddddeeeeeeeeeeeeeefffa',
-    '.adddddeeeeeeeeeeeeeefffa',
-    '.addddeeeeeeeeeeeeeeffffa',
-    '..adddeeeeeeeeeeeeeefaffa',
-    '..adddeeeeeeeeeeeeefa.afa',
-    '..addeeeeeeeeeeeeeefa..aa',
-    '...adeeeeeeeeeeffffa.....',
-    '...adeeeeeeeeefffffa.....',
-    '...aeeeeeeeeeeefffffa....',
-    '...aeeeeeeeeeeffffffa....',
-    '...aeeeeeeeeeeeffffffaa..',
-    '....aeeeeeeeeeefffffffa..',
-    '....aeeeeeeeeeffffffffa..',
-    '....aeeeeeeeeeffffffffa..',
-    '.....aaaaaaaaaaaaaaaaa.a.',
-  ],
-  colors: {
-    a: '#000008',
-    b: '#d68e48',
-    c: '#fab262',
-    d: '#22243d',
-    e: '#141228',
-    f: '#13111f',
   },
 };

@@ -295,7 +295,6 @@ const ES: Record<string, string> = {
   "The noble's face": 'La cara del noble',
   "The noble's eyes": 'Los ojos del noble',
   'Noble Coat': 'Casaca noble',
-  'Plain Noble Shirt': 'Camisa noble lisa',
   'Noble Breastplate': 'Pechera noble',
   'Noble Trousers': 'Pantalón noble',
   'Noble Boots': 'Botas nobles',

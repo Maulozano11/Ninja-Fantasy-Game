@@ -25,6 +25,8 @@ import { type PaintedPiece, segAngle, stampPiece } from './painted';
 import { rotateTemplate, stampTemplate, type TemplatePalette } from './rotsprite';
 import { ROMAN_EYE_COLORS, ROMAN_EYES, ROMAN_IRIS } from './romanEyeArt';
 import { ROMAN_HEAD, ROMAN_SKIN } from './romanHeadArt';
+import { OUTFIT_EYE_COLORS, OUTFIT_EYES, OUTFIT_IRIS } from './outfitEyeArt';
+import { OUTFIT_EYE_COLS, OUTFIT_HEAD, OUTFIT_SKIN } from './outfitHeadArt';
 import { drawRomanNeck } from './romanNeck';
 import { ballShade, capsule, ellipse, F_NO_OUTLINE, F_NO_TEXTURE, GRID, Layer, PartId, Pen, poly, RES, seam, v, Vec } from './raster';
 import { type EyeShape, isFemaleBody, type FaceShape } from './types';
@@ -573,6 +575,8 @@ const PAINTED_HEADS: Partial<Record<FaceShape, PaintedHead>> = {
   valiant: { head: VALIANT_HEAD, skin: VALIANT_SKIN, ex: 1, fx: 8, mouth: true, tint: (hex, from, to) => skinTone(hex, to, from) },
   // His Roman face (src/sprite/romanHeadArt.ts): its eyes where his Aiden head has them, his own mouth.
   roman: { head: ROMAN_HEAD, skin: ROMAN_SKIN, ex: 1, fx: 8, mouth: false, tint: retintSkinLifted },
+  // His face from his three outfits (src/sprite/outfitHeadArt.ts): his eyes where he drew them, his own mouth.
+  wanderer: { head: OUTFIT_HEAD, skin: OUTFIT_SKIN, ex: OUTFIT_EYE_COLS[0], fx: OUTFIT_EYE_COLS[1], mouth: false, tint: retintSkinLifted },
 };
 const paintedHead = (g: DrawCtx): PaintedHead | undefined => (g.look.faceShape ? PAINTED_HEADS[g.look.faceShape] : undefined);
 
@@ -588,6 +592,7 @@ interface PaintedEyes {
 const PAINTED_EYES: Partial<Record<EyeShape, PaintedEyes>> = {
   valiant: { eyes: VALIANT_EYES, colors: VALIANT_EYE_COLORS, iris: VALIANT_IRIS, brow: VALIANT_BROW_HAIR },
   roman: { eyes: ROMAN_EYES, colors: ROMAN_EYE_COLORS, iris: ROMAN_IRIS },
+  wanderer: { eyes: OUTFIT_EYES, colors: OUTFIT_EYE_COLORS, iris: OUTFIT_IRIS },
 };
 
 function drawHead(g: DrawCtx): void {
@@ -709,7 +714,7 @@ export function skinTone(hex: string, skin: string, base: string = VALIANT_SKIN)
  * square: the reference's original strong jaw, with a flat jaw line.
  * (valiant, roman and founder, the owner's heads, are his pixels whole: see drawPaintedHead, drawFounderHead.)
  */
-const FACE_LEFT: Record<Exclude<FaceShape, 'valiant' | 'founder' | 'fine' | 'aurelia' | 'roman'>, string[]> = {
+const FACE_LEFT: Record<Exclude<FaceShape, 'valiant' | 'founder' | 'fine' | 'aurelia' | 'roman' | 'wanderer'>, string[]> = {
   tapered: ['osbbbbb', 'ossbbbb', '.osbbbb', '..osbbb', '...osbb', '....osb', '.....os', '......o', '.......', '.......'],
   soft: ['osbbbbb', 'ossbbbb', 'ossbbbb', '.osbbbb', '..osbbb', '...osbb', '....osb', '.....oo', '.......', '.......'],
   square: ['osbbbbb', 'ossbbbb', 'osDsbbb', 'ossbbbb', '.osbbbs', '..osbbs', '...osbs', '....ooo', '.......', '.......'],
@@ -718,7 +723,7 @@ const FACE_LEFT: Record<Exclude<FaceShape, 'valiant' | 'founder' | 'fine' | 'aur
 const faceLeft = (g: DrawCtx): string[] => {
   const s = g.look.faceShape;
   // (Lyra's face, 'fine', has the default near cheek under her hair)
-  return (s && s !== 'valiant' && s !== 'founder' && s !== 'fine' && s !== 'aurelia' && s !== 'roman' && FACE_LEFT[s]) || FACE_LEFT.tapered;
+  return (s && s !== 'valiant' && s !== 'founder' && s !== 'fine' && s !== 'aurelia' && s !== 'roman' && s !== 'wanderer' && FACE_LEFT[s]) || FACE_LEFT.tapered;
 };
 
 /** Aurelia's face (aureliaFaceArt.ts) in fine pixels, its pivot on the face anchor. */
@@ -797,6 +802,9 @@ const EYE_ROWS: Record<string, { near: string[]; far: string[] }> = {
   // His Roman eyes (src/sprite/romanEyeArt.ts), where his Aiden eyes sit: a heavy black line, brow and
   // lash in one, and a single row of white and red iris under it. Drawn in his pixels.
   roman: { near: ROMAN_EYES.open.near.letters, far: ROMAN_EYES.open.far.letters },
+  // His eyes from his three outfits (src/sprite/outfitEyeArt.ts): his lash, his blue iris and its glint.
+  // Drawn in his pixels.
+  wanderer: { near: OUTFIT_EYES.open.near.letters, far: OUTFIT_EYES.open.far.letters },
 };
 
 /** Closed eyes (knocked out): each eye a dark lid line across its middle row. */

@@ -63,6 +63,11 @@ const ES: Record<string, string> = {
   "The body's own": 'Los del cuerpo',
   "Lyra's arms": 'Los brazos de Lyra',
   "The Roman's eyes": 'Los ojos del romano',
+  // the head of the owner's three new outfits (provisional names: he names them)
+  Wanderer: 'Errante',
+  "The wanderer's face": 'La cara del errante',
+  "The wanderer's eyes": 'Los ojos del errante',
+  Mail: 'Malla',
   None: 'Ninguno',
   Forehead: 'Frente',
   Arm: 'Brazo',

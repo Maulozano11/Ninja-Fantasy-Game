@@ -1965,7 +1965,7 @@ function handFrame(g: DrawCtx, s: Side, grow = 0) {
 }
 
 /** Glove over the hand; with `cut` the finger ends stay bare. */
-function glove(g: DrawCtx, s: Side, pen: Pen, grow: number, cut: boolean): void {
+export function glove(g: DrawCtx, s: Side, pen: Pen, grow: number, cut: boolean): void {
   const L = g.L(armDepth(s, 'armor'));
   const tmp = new Layer();
   handDraw(g, tmp, s, pen, grow);

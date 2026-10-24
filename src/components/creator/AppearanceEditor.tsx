@@ -129,6 +129,7 @@ const FACE_SHAPES: { id: FaceShape; label: string; sub: string }[] = [
   { id: 'fine', label: 'Fine', sub: "Lyra's face" },
   { id: 'aurelia', label: 'Serene', sub: "Aurelia's face" },
   { id: 'roman', label: 'Roman', sub: "The Roman's face" },
+  { id: 'wanderer', label: 'Wanderer', sub: "The wanderer's face" },
 ];
 
 const ARMS: { id: ArmType; label: string; sub: string }[] = [
@@ -153,6 +154,7 @@ const EYE_SHAPES: { id: EyeShape; label: string; sub?: string }[] = [
   { id: 'dawn', label: 'Dawn', sub: "Aurelia's eyes" },
   { id: 'keen', label: 'Keen', sub: "Lyra's eyes" },
   { id: 'roman', label: 'Roman', sub: "The Roman's eyes" },
+  { id: 'wanderer', label: 'Wanderer', sub: "The wanderer's eyes" },
 ];
 
 const HEADBAND_POSITIONS: { id: HeadbandPosition; label: string }[] = [

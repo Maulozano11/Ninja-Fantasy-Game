@@ -1,0 +1,55 @@
+// The owner's joints in his three outfits, his pixels at our scale (tools/refs/outfits-joints-from-ref.py from
+// docs/reference/three-outfits-owner-reference.jpg, shrunk and cleaned by tools/refs/outfits_ref.py).
+// Generated: rerun the script to change it.
+
+/** His joints in our frame (fine pixels) for each of his figures: where the game stands our rig's joints at rest in his outfit. */
+export const OUTFIT_HIS: Record<'armored' | 'rogue' | 'tactical', Record<string, [number, number]>> = {
+  armored: {
+    shoulderN: [108.51, 154.01],
+    elbowN: [106.51, 167.01],
+    wristN: [105.01, 177.51],
+    handN: [107.01, 181.01],
+    shoulderF: [136.01, 153.01],
+    elbowF: [140.51, 166.51],
+    wristF: [142.51, 176.01],
+    handF: [143.01, 179.51],
+    hipN: [116.01, 178.01],
+    kneeN: [114.51, 195.01],
+    ankleN: [112.01, 209.51],
+    hipF: [133.01, 176.01],
+    kneeF: [135.51, 193.01],
+    ankleF: [136.01, 206.01],
+  },
+  rogue: {
+    shoulderN: [111.01, 153.01],
+    elbowN: [107.51, 166.01],
+    wristN: [106.51, 175.51],
+    handN: [108.01, 179.01],
+    shoulderF: [136.01, 153.01],
+    elbowF: [138.01, 166.01],
+    wristF: [141.01, 174.01],
+    handF: [141.51, 177.51],
+    hipN: [118.01, 180.01],
+    kneeN: [114.51, 194.01],
+    ankleN: [112.01, 208.01],
+    hipF: [134.01, 179.01],
+    kneeF: [137.01, 194.01],
+    ankleF: [137.01, 207.01],
+  },
+  tactical: {
+    shoulderN: [110.01, 152.01],
+    elbowN: [108.01, 165.01],
+    wristN: [107.01, 175.01],
+    handN: [107.51, 178.51],
+    shoulderF: [137.01, 153.01],
+    elbowF: [139.01, 165.01],
+    wristF: [142.01, 174.51],
+    handF: [142.01, 177.01],
+    hipN: [118.01, 180.01],
+    kneeN: [113.01, 195.01],
+    ankleN: [111.01, 209.01],
+    hipF: [134.01, 179.01],
+    kneeF: [138.01, 194.01],
+    ankleF: [137.01, 207.01],
+  },
+};

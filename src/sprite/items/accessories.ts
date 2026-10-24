@@ -281,7 +281,7 @@ function stowKatanaAtHip(g: DrawCtx, hilt: string, guard: string): void {
 const LYRA_STOW_DEG = 70;
 
 /** Big blades and polearms ride diagonally across the back, the hilt or blade over the near shoulder. */
-function backGrip(g: DrawCtx, deg: number): Vec {
+export function backGrip(g: DrawCtx, deg: number): Vec {
   const b = g.bp;
   // Narrow (female) shoulders keep the blade as far back as the old female body's did, so a long
   // blade still clears the neck when the body pitches forward.
@@ -296,7 +296,7 @@ function backGrip(g: DrawCtx, deg: number): Vec {
  * the back as it does standing, instead of sticking out under the chin or past the chest. What would
  * still show in front of the body is cut away by clipStowed.
  */
-const backAngle = (g: DrawCtx, deg: number): number => deg + g.rig.lean;
+export const backAngle = (g: DrawCtx, deg: number): number => deg + g.rig.lean;
 
 /** A piece of a stowed weapon at most this big (in pixels), seen apart from the rest of it, is cut away. */
 const STOW_SLIVER = 6;
@@ -402,7 +402,7 @@ export function clipStowed(g: DrawCtx, layers: ReadonlyMap<Depth, Layer>): void 
  * lying flat toward the head, lit edge on top. `at` is how far down the body
  * (0 hips .. 1 ankles) its grip lies.
  */
-function droppedGrip(g: DrawCtx, at: number, off = 1.2): Vec {
+export function droppedGrip(g: DrawCtx, at: number, off = 1.2): Vec {
   const r = g.rig;
   const x = (r.lay?.groundX ?? r.pelvis.x + 4) - off;
   return v(x, lerp(r.pelvis, r.ankleN, at).y);

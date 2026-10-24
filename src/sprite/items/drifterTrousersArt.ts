@@ -1,0 +1,203 @@
+// The owner's leather rogue: the wrapped trousers, his pixels at our scale (tools/refs/drifter-trousers-from-ref.py from
+// docs/reference/three-outfits-owner-reference.jpg, shrunk and cleaned by tools/refs/outfits_ref.py).
+// Generated: rerun the script to change it.
+import type { PaintedPiece } from '../painted';
+
+/** His colours the colour slots recolour from (at these, every pixel is his). */
+export const DRIFTER_TROUSERS_CLOTH = '#212227';
+
+/** What each of his colours is, as the script sorts them (tools/refs/outfits_ref.py kind). */
+export const DRIFTER_TROUSERS_KIND: Record<string, 'brown' | 'dark' | 'hair' | 'line' | 'steel'> = {
+  '#000116': 'line',
+  '#00011f': 'line',
+  '#01010d': 'line',
+  '#0e101d': 'hair',
+  '#141a2a': 'hair',
+  '#181822': 'dark',
+  '#1c2234': 'hair',
+  '#1e1e2a': 'hair',
+  '#212227': 'dark',
+  '#221c1e': 'dark',
+  '#272a32': 'hair',
+  '#2a2524': 'dark',
+  '#2c2b31': 'dark',
+  '#2d2d2f': 'steel',
+  '#322826': 'brown',
+  '#323338': 'steel',
+  '#38302f': 'brown',
+  '#3b3436': 'steel',
+  '#3b3c40': 'steel',
+  '#413833': 'brown',
+  '#493d3e': 'brown',
+  '#4a4646': 'steel',
+  '#51473e': 'brown',
+  '#575c62': 'steel',
+  '#737c7f': 'steel',
+};
+
+/** Where each piece lands in our male idle frame 0, unturned: the fine pixel of its first row's first cell. */
+export const DRIFTER_TROUSERS_REST: Record<string, [number, number]> = {
+  DRIFTER_TROUSERS_THIGH_N: [110, 172],
+  DRIFTER_TROUSERS_THIGH_F: [126, 172],
+  DRIFTER_TROUSERS_SHIN_N: [110, 198],
+  DRIFTER_TROUSERS_SHIN_F: [129, 200],
+};
+
+/** His near trouser leg, wrapped, with the round knee pad. It rides the thigh about the hip. */
+export const DRIFTER_TROUSERS_THIGH_N: PaintedPiece = {
+  pivot: [8, 8],
+  angle: 104.04,
+  rows: [
+    '.....a...aaa.a...',
+    '.....abcbacdeaec.',
+    '.....abfcacbbaab.',
+    '......aaabaaaahb.',
+    '......abbbbbiabj.',
+    '......abbkblmbii.',
+    '.....aaakjanabii.',
+    '.....akiaaiaejel.',
+    '.....bbbniibeeei.',
+    '....abbibiaeiiib.',
+    '....abbbambiiibb.',
+    '....aaaaakjiiebba',
+    '....aecpqajieieba',
+    '....aedaibiiiila.',
+    '...aaaanaeiibeba.',
+    '...abbjaeiibeea..',
+    '...aaieaiiiebla..',
+    '....aeajiieeba...',
+    '...allaaaaeela...',
+    '..aaahbrddala....',
+    '..acdebsdcaea....',
+    '..aeehdrddbaa....',
+    '..aajhdrrdbaa....',
+    '.abaebtddcaaa....',
+    'aallabbdlbaa.....',
+    'alljaaebbaa......',
+    'alleeaaaaaa......',
+    'a................',
+  ],
+  colors: {
+    a: '#000116',
+    b: '#181822',
+    c: '#322826',
+    d: '#413833',
+    e: '#212227',
+    f: '#221c1e',
+    h: '#0e101d',
+    i: '#323338',
+    j: '#2c2b31',
+    k: '#2d2d2f',
+    l: '#141a2a',
+    m: '#4a4646',
+    n: '#3b3c40',
+    p: '#01010d',
+    q: '#3b3436',
+    r: '#493d3e',
+    s: '#51473e',
+    t: '#38302f',
+  },
+};
+
+/** His far trouser leg with its knee pad. It rides the thigh about the hip. */
+export const DRIFTER_TROUSERS_THIGH_F: PaintedPiece = {
+  pivot: [8, 7],
+  angle: 78.69,
+  rows: [
+    '........a.....',
+    'bcdcefeha.....',
+    'ffaaaaaaaaa...',
+    'ffaffafijfa...',
+    'jjajjjjfjja...',
+    'eeaeeeefaea...',
+    'efaekffffaa...',
+    'ijffhfajjffa..',
+    'fhaaajjjjjfa..',
+    'iaahfkkjjiaa..',
+    'hahffkeeaaka..',
+    'aaaaalmkknaa..',
+    'aaakbbbaajjpa.',
+    '.aakfaajjjjfa.',
+    '..aaaaaaajbba.',
+    '..akkblllqraa.',
+    '..aakbbaaaaaa.',
+    '..aafjjjjaaaa.',
+    '..affffjaimsaa',
+    '...aaaaaabbmla',
+    '...afbbblflssa',
+    '...affbfbklssa',
+    '...abbblkkllla',
+    '...aiaaafhhlfa',
+    '...aiiaiathha.',
+    '..afiufffhaaa.',
+    '..aifuifppiiia',
+    '...aifpieeeja.',
+    '...avaaaaaaaa.',
+  ],
+  colors: {
+    a: '#000116',
+    b: '#322826',
+    c: '#3b3c40',
+    d: '#575c62',
+    e: '#323338',
+    f: '#181822',
+    h: '#0e101d',
+    i: '#141a2a',
+    j: '#2c2b31',
+    k: '#212227',
+    l: '#413833',
+    m: '#51473e',
+    n: '#01010d',
+    p: '#1e1e2a',
+    q: '#737c7f',
+    r: '#221c1e',
+    s: '#493d3e',
+    t: '#2a2524',
+    u: '#1c2234',
+    v: '#00011f',
+  },
+};
+
+/** His near trouser leg below the knee pad, tucked into the boot. It rides the shin about the knee. */
+export const DRIFTER_TROUSERS_SHIN_N: PaintedPiece = {
+  pivot: [4, -4],
+  angle: 100.12,
+  rows: [
+    'a....aaaaaa',
+    'abbccdeeffa',
+    'aaecdddhffa',
+    'aiaafffffa.',
+    'aijaaaaaaa.',
+    'a.aa.......',
+  ],
+  colors: {
+    a: '#000116',
+    b: '#181822',
+    c: '#212227',
+    d: '#323338',
+    e: '#0e101d',
+    f: '#141a2a',
+    h: '#272a32',
+    i: '#322826',
+    j: '#493d3e',
+  },
+};
+
+/** His far trouser leg below the knee pad. It rides the shin about the knee. */
+export const DRIFTER_TROUSERS_SHIN_F: PaintedPiece = {
+  pivot: [8, -6],
+  angle: 90.00,
+  rows: [
+    'abaaaaaaaa',
+    '.acddddaea',
+    '.aeeeddada',
+    '.aa....aaa',
+  ],
+  colors: {
+    a: '#000116',
+    b: '#00011f',
+    c: '#322826',
+    d: '#413833',
+    e: '#181822',
+  },
+};

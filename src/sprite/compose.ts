@@ -21,6 +21,7 @@ import { drawCastFx } from './castfx';
 import { sealCloth } from './seal';
 import { maleSkinRamp, paintMaleSkin } from './maleSkin';
 import { romanRig } from './romanNeck';
+import { outfitRig } from './outfitRig';
 import { applyTexture, frayHair } from './texture';
 import { isFemaleBody, type EyeSpecial, type PixelEdit, type SlotId, type SpriteAppearance, type SpritePose } from './types';
 
@@ -276,9 +277,9 @@ function drawLayers(look: SpriteAppearance, pose: SpritePose, frame: number, eye
   // heldOnly: just the held item (or the kunai bare hands throw) on that rig, no body (sprite/thrown.ts).
   // (the long neck carries the head higher and further forward: neck.ts; Aurelia's face stands her head
   // where the owner drew it: aureliaHead.ts; his Roman face on a male body stands higher on his neck:
-  // romanNeck.ts)
+  // romanNeck.ts; his three outfits stand the arms and legs where he drew them: outfitRig.ts)
   // (his own figure in his painted frames sits on his joints; any other look holds its hands from its own neck: rig.ts PoseAt.hisNeck)
-  const rig = heldOnly ?? aureliaRig(romanRig(carryHead(drawRig(look.body, rigPoseFor(pose, look.cast?.style, look.stowed ? undefined : look.slots.held?.id), frame, look.arms, wearsHisFigure(look)), look.neck), look), look);
+  const rig = heldOnly ?? outfitRig(aureliaRig(romanRig(carryHead(drawRig(look.body, rigPoseFor(pose, look.cast?.style, look.stowed ? undefined : look.slots.held?.id), frame, look.arms, wearsHisFigure(look)), look.neck), look), look), look);
   const mats = new MaterialTable();
   const layers = new Map<Depth, Layer>();
   const equipped = new Map<SlotId, ItemDef>();

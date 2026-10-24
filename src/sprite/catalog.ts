@@ -8,6 +8,7 @@ import { CAPE_ITEMS } from './items/capes';
 import { BOTTOM_ITEMS, HAND_ITEMS, TOP_ITEMS, WAIST_ITEMS } from './items/clothes';
 import { FEET_ITEMS } from './items/feet';
 import { HAIR_ITEMS } from './items/hair';
+import { NIGHT_ITEMS } from './items/night';
 import { OUTFIT_ITEMS } from './items/outfits';
 import type { BodyType, SlotId } from './types';
 
@@ -24,6 +25,8 @@ export const ALL_ITEMS: ItemDef[] = [
   ...CAPE_ITEMS,
   ...HELD_ITEMS,
   ...ACCESSORY_ITEMS,
+  // the owner's Ren, part by part (the jacket, belt, skirt, trousers and boots)
+  ...NIGHT_ITEMS,
   ...OUTFIT_ITEMS,
 ];
 

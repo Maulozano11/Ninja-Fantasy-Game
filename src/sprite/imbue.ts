@@ -629,6 +629,155 @@ export function imbueLayers(look: SpriteAppearance, pose: SpritePose, frame: num
   return b ? renderImbue(fx, tick, b, tint, fx === 'water' ? steadyReach(look, pose, frame, eye, b) : undefined) : null;
 }
 
+// --- the activation ------------------------------------------------------------------------------
+// The owner (2026-10-23): "hazle una animacion para activar la mejora de elemento con la pose de victoria".
+// NEW ART, waiting for his approval (vfx/weapon-imbue-activation). Played once in the victory pose (the
+// weapon raised) as the element goes onto the weapon, then the loop above takes over: the element gathers
+// into the hand, surges up the blade from the hand to the tip, flares off the point, and settles.
+
+/** Frames of the activation, and how long it plays (ms at speed 1). */
+export const ACTIVATE_FRAMES = 10;
+export const ACTIVATE_MS = 1000;
+/** Where its stages end, as parts of the activation: gathering into the hand, the surge up the blade, the flare. */
+const GATHER = 0.3;
+const SURGE = 0.7;
+const FLARE = 0.9;
+
+/** Each element's light for the activation, from its own ramp above: the white core down to its edge tone. */
+const ACT_TONES: Record<ImbueFx, { core: string; light: string; mid: string; edge: string }> = {
+  fire: { core: FIRE[7], light: FIRE[6], mid: FIRE[4], edge: FIRE[2] },
+  lightning: { core: BOLT.core, light: BOLT.pale, mid: BOLT.light, edge: BOLT.ring },
+  wind: { core: WIND.pale, light: WIND.light, mid: WIND.mid, edge: WIND.back },
+  water: { core: WATER.foam, light: WATER.pale, mid: WATER.light, edge: WATER.body },
+  earth: { core: OBSIDIAN.glint, light: OBSIDIAN.sheen, mid: OBSIDIAN.light, edge: OBSIDIAN.mid },
+};
+
+/** Copies `src`'s pixels into `p` where `keep` says (source over what is there). */
+function copyInto(p: Paint, src: Uint8ClampedArray, keep: (x: number, y: number) => boolean): void {
+  for (let i = 0; i < GRID * GRID; i++) {
+    const a = src[i * 4 + 3];
+    if (!a) continue;
+    const x = i % GRID;
+    const y = (i / GRID) | 0;
+    if (!keep(x, y)) continue;
+    const o = i * 4;
+    const hex = `#${[src[o], src[o + 1], src[o + 2]].map((v) => v.toString(16).padStart(2, '0')).join('')}`;
+    p.put(x, y, hex, a);
+  }
+}
+
+/** A soft round glow of `r` px about (cx, cy): the core in the middle, the light round it, the edge thin and faint. */
+function glow(p: Paint, cx: number, cy: number, r: number, t: { core: string; light: string; mid: string; edge: string }, strength = 1): void {
+  for (let y = Math.floor(cy - r - 1); y <= cy + r + 1; y++)
+    for (let x = Math.floor(cx - r - 1); x <= cx + r + 1; x++) {
+      const d = Math.hypot(x + 0.5 - cx, y + 0.5 - cy) / Math.max(0.5, r);
+      if (d > 1.15) continue;
+      if (d < 0.4) p.put(x, y, t.core, 255 * strength);
+      else if (d < 0.75) p.put(x, y, t.light, 230 * strength);
+      else if (d < 1) p.put(x, y, t.mid, 170 * strength);
+      else p.put(x, y, t.edge, 90 * strength);
+    }
+}
+
+/**
+ * The activation in one of its frames (0 .. ACTIVATE_FRAMES - 1) on a frame's blade: the element gathers
+ * into the hand (motes of its light drawn in from round it), surges up the blade from the hand to the tip
+ * (the loop's own pixels up to a bright front), flares off the point (rays and a halo round the whole
+ * effect), and settles into the loop. As renderImbue: two layers, the energy in the ninja's chakra colour.
+ */
+export function renderImbueActivation(fx: ImbueFx, step: number, b: Blade, tint?: string, reach?: number): { back: Uint8ClampedArray; front: Uint8ClampedArray } {
+  const s = Math.max(0, Math.min(ACTIVATE_FRAMES - 1, Math.round(step)));
+  const p = (s + 1) / ACTIVATE_FRAMES;
+  const t = ACT_TONES[fx];
+  const loop = renderImbue(fx, s, b, undefined, reach);
+  const back = new Paint();
+  const front = new Paint();
+  const along = (x: number, y: number) => (x + 0.5 - b.hx) * b.dx + (y + 0.5 - b.hy) * b.dy;
+  const end = b.tip + (fx === 'water' ? reach ?? waterReach(b) : 6);
+  if (p <= GATHER + 1e-6) {
+    // Motes of the element drawn in to the hand from round it, a glow growing in the fist.
+    const q = p / GATHER;
+    for (let m = 0; m < 8; m++) {
+      const a = (m / 8) * Math.PI * 2 + q * 1.6;
+      const r = 4 + 20 * (1 - q) + 2 * hash(m, 3);
+      const x = b.hx + Math.cos(a) * r;
+      const y = b.hy + Math.sin(a) * r * 0.8;
+      front.put(x, y, t.core);
+      front.put(x + 1, y, t.light);
+      front.put(x - Math.cos(a) * 2, y - Math.sin(a) * 1.6, t.mid, 200);
+      front.put(x - Math.cos(a) * 3.5, y - Math.sin(a) * 2.8, t.edge, 130);
+    }
+    glow(front, b.hx, b.hy, 1.5 + 2.5 * q, t, 0.6 + 0.4 * q);
+  } else if (p <= SURGE + 1e-6) {
+    // The surge: the loop's pixels from the hand up to a front running to the tip, the front lit.
+    const q = (p - GATHER) / (SURGE - GATHER);
+    const at0 = b.start - 2 + q * (end - b.start + 2);
+    copyInto(back, loop.back, (x, y) => along(x, y) <= at0);
+    copyInto(front, loop.front, (x, y) => along(x, y) <= at0);
+    for (let i = 0; i < GRID * GRID; i++) {
+      if (!front.rgba[i * 4 + 3]) continue;
+      const x = i % GRID;
+      const y = (i / GRID) | 0;
+      const d = at0 - along(x, y);
+      if (d < 2) front.put(x, y, t.core, 230);
+      else if (d < 5) front.put(x, y, t.light, 160);
+    }
+    const [fx0, fy0] = at(b, at0, 0);
+    glow(front, fx0, fy0, 3.2, t);
+    glow(front, b.hx, b.hy, 2.5, t, 0.5 * (1 - q));
+  } else {
+    // The flare, then settling: the whole loop, a halo round it and rays off the point while it flares.
+    copyInto(back, loop.back, () => true);
+    copyInto(front, loop.front, () => true);
+    const flare = p <= FLARE + 1e-6 ? 1 - (p - SURGE) / (FLARE - SURGE) * 0.45 : 0.25;
+    const halo = new Paint();
+    for (let i = 0; i < GRID * GRID; i++) {
+      if (front.rgba[i * 4 + 3] || back.rgba[i * 4 + 3]) continue;
+      const x = i % GRID;
+      const y = (i / GRID) | 0;
+      let near = 0;
+      for (const [ox, oy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) if (front.alpha(x + ox, y + oy) > 100) near = 1;
+      if (!near) for (const [ox, oy] of [[2, 0], [-2, 0], [0, 2], [0, -2], [1, 1], [-1, -1], [1, -1], [-1, 1]]) if (front.alpha(x + ox, y + oy) > 100) near = 2;
+      if (near === 1) halo.put(x, y, t.light, 150 * flare);
+      else if (near === 2) halo.put(x, y, t.mid, 80 * flare);
+    }
+    for (let i = 0; i < GRID * GRID; i++) {
+      const a = halo.rgba[i * 4 + 3];
+      if (!a) continue;
+      const o = i * 4;
+      front.put(i % GRID, (i / GRID) | 0, `#${[halo.rgba[o], halo.rgba[o + 1], halo.rgba[o + 2]].map((v) => v.toString(16).padStart(2, '0')).join('')}`, a);
+    }
+    if (p <= FLARE + 1e-6) {
+      // The flash: the whole effect lit toward its core as it flares.
+      for (let i = 0; i < GRID * GRID; i++) if (front.rgba[i * 4 + 3] > 60) front.put(i % GRID, (i / GRID) | 0, t.core, 120 * flare);
+      const [ex, ey] = at(b, end, 0);
+      const big = flare;
+      for (let r = 0; r < 8; r++) {
+        const a = (r / 8) * Math.PI * 2 + 0.3;
+        const L = (r % 2 ? 8 : 15) * big;
+        front.line(ex, ey, ex + Math.cos(a) * L, ey + Math.sin(a) * L, t.light, 220);
+        front.line(ex, ey, ex + Math.cos(a) * L * 0.5, ey + Math.sin(a) * L * 0.5, t.core);
+      }
+      glow(front, ex, ey, 3.5 * big, t);
+      // Sparks of the element thrown off as it flares.
+      for (let k = 0; k < 6; k++) {
+        const a = hash(k, s, 5) * Math.PI * 2;
+        const d = 6 + 10 * hash(k, s, 6) + (1 - big) * 8;
+        front.put(ex + Math.cos(a) * d, ey + Math.sin(a) * d, k % 2 ? t.core : t.light);
+      }
+    }
+  }
+  if (fx === 'earth' || !tint) return { back: back.rgba, front: front.rgba };
+  const sheet = { width: GRID, height: GRID };
+  return { back: tintVfx(back.rgba, fx, tint, sheet), front: tintVfx(front.rgba, fx, tint, sheet) };
+}
+
+/** The activation's frame `step` on this frame's weapon in hand, or null when the frame holds none. */
+export function imbueActivationLayers(look: SpriteAppearance, pose: SpritePose, frame: number, fx: ImbueFx, step: number, tint?: string, eye: EyeSpecial = 'none'): { back: Uint8ClampedArray; front: Uint8ClampedArray } | null {
+  const b = bladeOf(look, pose, frame, eye);
+  return b ? renderImbueActivation(fx, step, b, tint, fx === 'water' ? steadyReach(look, pose, frame, eye, b) : undefined) : null;
+}
+
 const steady = new Map<string, number | null>();
 
 /**

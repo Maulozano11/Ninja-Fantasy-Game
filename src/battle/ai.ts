@@ -10,7 +10,7 @@ import { JUTSU, MIN_AIM } from './jutsu';
 import { KUNAI_LONG } from './units';
 import { applyAction, chargeLanding, handsBlocker, jutsuCost } from './engine';
 import { current } from './turns';
-import { areaValue, bestCell, goalOf, headOptions, ninjaOptions, offensive, planIntent, reachTo, standingUnit, stepToward, swapValue, visibleFoes, WALL, wallCover } from './intent';
+import { aiView, areaValue, bestCell, goalOf, headOptions, ninjaOptions, offensive, planIntent, reachTo, standingUnit, stepToward, swapValue, visibleFoes, WALL, wallCover } from './intent';
 import type { Goal } from './intent';
 import { breakable, MAX_STRUCTURES, ownStructures, structureAt, structureAttack, structureBlocker, structureDist } from './structures';
 import { IMBUE_COST, imbueBlocker, type ImbueElement, unitImbueElements, WATER_REACH, WEAPON_ELEMENT } from './imbue';
@@ -136,7 +136,7 @@ function carryOut(s: BattleState, u: Unit, i: Intent): Action | null {
       if (j.handCharge) return u.charged || !u.turn.bonus ? null : { type: 'jutsu', unit: u.id, jutsu: j.id, at: { ...u.pos } };
       // A charge with no clear run to its target from here: strike or close in another way.
       if (g.ready && j.charge && !chargeLanding(s, u, t)) return null;
-      if (g.ready) return { type: 'jutsu', unit: u.id, jutsu: j.id, at: { ...t.pos }, target: j.shape === 'single' ? t.id : undefined };
+      if (g.ready) return { type: 'jutsu', unit: u.id, jutsu: j.id, at: { ...t.pos }, target: j.shape === 'single' ? t.id : undefined, ...(j.toEdge ? { view: aiView(s, t.pos) } : {}) };
       return moveToward(s, u, g, i.to) ?? (j.melee ? breakThrough(s, u, t) : null);
     }
     case 'command':

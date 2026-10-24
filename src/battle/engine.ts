@@ -27,20 +27,22 @@ import type {
   TimeOfDay,
   Trap,
   Unit,
+  ViewRect,
 } from './types';
 import { homeTeam } from './types';
 import { cellBlocked, cellCenter, cellOf, clearRun, coverBetween, dampAt, dist, fullCoverBetween, getMap, gridFor, hideSpotAt, idx, inGrid, levelAtPt, lineOfSight, propRules, sameCell, segmentsCross, waterAtPt } from './map';
 import { canStop, freeSpot, occupancy, pathTo, pathTouchesDeep, reachable, stepCost } from './nav';
 import type { AttackPreview } from './combat';
 import { attackPreview, check, damage, heal, hostileAura, passivePerception, PERFECT_HIDE, reveal, revealOutOfHiding, rollDiceExpr, skillMod } from './combat';
-import { JUTSU, MIN_AIM, areaOf, enhanced, fanDice, fanned, fannedBy } from './jutsu';
+import { JUTSU, MIN_AIM, areaOf, enhanced, fanDice, fanned, fannedBy, inArea } from './jutsu';
+import { fitView, inView, lineInView, lineToView, viewAround } from './farView';
 import type { JutsuSpec } from './jutsu';
 import { KUNAI, enemyNameOf, enemyUnit, handsFree, unitFrom, wielded } from './units';
 import type { EnemyKind } from './units';
 import { hydraUnits } from './hydra';
 import { checkEnd, current, endTurn, startCombat } from './turns';
 import { afterStealthAttack, alarm, canTakedown, dragBody, guardsTurn, openFight, scareAnimalsNear, stealthMove, STONE_RANGE, throwStone } from './stealth';
-import { conduct, electrify, groundEffects, plantTag, saveHit, springTrap, TAG, throwTag, trapAt, unitsInArea } from './hazards';
+import { conduct, electrify, groundEffects, onMapUnits, padOf, plantTag, saveHit, springTrap, TAG, throwTag, trapAt, unitsInArea } from './hazards';
 import { blowSteam, pathArea, soak } from './ground';
 import { breakable, damageStructure, faceToward, hitStructuresIn, jutsuWallAt, raiseStructure, STRUCTURE_AC, structureAt, structureAttack, structureBlocker } from './structures';
 import {
@@ -259,7 +261,7 @@ function dispatch(s: BattleState, a: Action, ev: BattleEvent[]): string | null {
     case 'attack':
       return doAttack(s, u, a.target, !!a.ranged, !!a.knockout, ev);
     case 'jutsu':
-      return doJutsu(s, u, a.jutsu, a.at, a.target, !!a.enhanced, ev, a.target2, a.element);
+      return doJutsu(s, u, a.jutsu, a.at, a.target, !!a.enhanced, ev, a.target2, a.element, a.view);
     case 'dash':
     case 'disengage':
     case 'dodge':
@@ -859,7 +861,7 @@ export function jutsuCost(u: Unit, spec: JutsuSpec, enh: boolean): number {
   return jutsuCostParts(u, spec, enh).cost;
 }
 
-function doJutsu(s: BattleState, u: Unit, id: string, atIn: Pt, targetId: string | undefined, enh: boolean, ev: BattleEvent[], target2Id?: string, element?: ImbueElement): string | null {
+function doJutsu(s: BattleState, u: Unit, id: string, atIn: Pt, targetId: string | undefined, enh: boolean, ev: BattleEvent[], target2Id?: string, element?: ImbueElement, viewIn?: ViewRect): string | null {
   const base = JUTSU[id];
   if (!base || !u.jutsus.includes(id)) return 'unknownJutsu';
   if (base.cast === 'reaction') return 'reactionOnly';
@@ -983,10 +985,16 @@ function doJutsu(s: BattleState, u: Unit, id: string, atIn: Pt, targetId: string
     else dashTo(s, u, target, id, ev);
   }
   if (at.x !== u.pos.x) u.facing = at.x > u.pos.x ? 1 : -1;
-  const area = areaOf(spec, u.pos, at);
+  const map = getMap(s.mapId);
+  // The Gale Dragon Ray lives in the camera's farthest view: the player's, sent with the cast (no
+  // bigger than that view can be), or one centred on the caster. It harms only what that view shows,
+  // and it stops where it leaves it (the owner: "que el rayo se detenga donde el jugador ya no puede
+  // ver con la vista mas alejada").
+  const view = spec.toEdge ? (viewIn ? fitView(map, viewIn) : viewAround(map, u.pos)) : undefined;
+  const area = view ? lineToView(areaOf(spec, u.pos, at, map)!, view) : areaOf(spec, u.pos, at);
   // A fire jutsu through a gale on the ground burns harder (the Gale Curtain).
   const fan = fannedBy(spec, u.pos, at, s.zones ?? []);
-  ev.push({ t: 'jutsu', unit: u.id, jutsu: id, at, shape: area, enhanced: enh, ...(fan ? { fanned: fan } : {}) });
+  ev.push({ t: 'jutsu', unit: u.id, jutsu: id, at, shape: area, enhanced: enh, ...(fan ? { fanned: fan } : {}), ...(view ? { view } : {}) });
   // The log says how many dice: one, two for a rank S (fanDice).
   if (fan) ev.push({ t: 'note', key: fanDice(spec) > 1 ? 'fanned2' : 'fanned', params: { name: u.name } });
   const hits: Hit[] = [];
@@ -1043,7 +1051,7 @@ function doJutsu(s: BattleState, u: Unit, id: string, atIn: Pt, targetId: string
       raiseGale(s, u, spec, at, ev);
       break;
     default:
-      hits.push(...jutsuHits(s, u, fan ? fanned(spec) : spec, target, at, ev));
+      hits.push(...jutsuHits(s, u, fan ? fanned(spec) : spec, target, at, ev, view));
   }
   if (spec.loud && s.phase === 'combat') scareAnimalsNear(s, at, 6, ev);
   applyHits(s, hits, spec.loud ? loud(s, u) : silentAttack(s, u, spec, target, ev), ev);
@@ -1105,10 +1113,15 @@ function silentAttack(s: BattleState, u: Unit, spec: JutsuSpec, target: Unit | u
 }
 
 /** Saves (or attack rolls) for everyone the jutsu reaches, plus what it does to the ground. */
-function jutsuHits(s: BattleState, u: Unit, spec: JutsuSpec, target: Unit | undefined, at: Pt, ev: BattleEvent[]): Hit[] {
-  const area = areaOf(spec, u.pos, at);
+function jutsuHits(s: BattleState, u: Unit, spec: JutsuSpec, target: Unit | undefined, at: Pt, ev: BattleEvent[], view?: ViewRect): Hit[] {
+  const full = areaOf(spec, u.pos, at, getMap(s.mapId));
+  // The Gale Dragon Ray does its harm, to units and to the ground, only in the view: on the stretch
+  // of it the view holds (none, if the view misses it).
+  const area = full && view ? lineInView(full, view) : full;
   const fromCaster = spec.shape === 'selfCircle' || spec.shape === 'cone' || spec.shape === 'line';
-  const victims = area ? unitsInArea(s, area, fromCaster ? [u.id] : [], fromCaster ? u.pos : at) : target ? [target] : [];
+  // Nothing shelters from it either: no metal wall (the owner: "no puede ser bloqueado").
+  const victims = full && view ? (area ? onMapUnits(s).filter((o) => o.id !== u.id && inArea(full, o.pos, padOf(o)) && inView(view, o.pos)) : []) : area ? unitsInArea(s, area, fromCaster ? [u.id] : [], fromCaster ? u.pos : at) : target ? [target] : [];
+  if (full && view && !area) return [];
   const type = spec.dmgType ?? 'Force';
   const amount = spec.dice ? rollDiceExpr(s, spec.dice) : 0;
   // Areas dent the Kōton structures they reach (an illusion doesn't).
@@ -1117,7 +1130,7 @@ function jutsuHits(s: BattleState, u: Unit, spec: JutsuSpec, target: Unit | unde
   const edge = !spec.save && victims.length > 0 && !!u.cond.warpEdge;
   const hits: Hit[] = [];
   for (const v of victims) {
-    const extra: Partial<Hit> = { aimed: !area, effect: spec.effect, tension: spec.tension, ...(edge ? { unblockable: true } : {}) };
+    const extra: Partial<Hit> = { aimed: !full, effect: spec.effect, tension: spec.tension, ...(edge || spec.toEdge ? { unblockable: true } : {}) };
     // A wave sweeps away from its caster, a tornado drags toward its middle; either knocks down.
     if (spec.push) extra.push = { from: spec.push.toward ? { ...at } : { ...u.pos }, m: spec.push.m, toward: spec.push.toward };
     if (spec.prone) extra.prone = true;

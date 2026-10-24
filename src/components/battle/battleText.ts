@@ -200,6 +200,7 @@ const TABLE = strings({
   aimHits: { en: 'Hits {n}', es: 'Alcanza a {n}' },
   aimAllies: { en: '{n} allies in the area!', es: '¡{n} aliados en el área!' },
   aimGale: { en: 'Fire through it burns harder', es: 'El fuego que pase por aquí se aviva' },
+  aimFarView: { en: 'Only inside the farthest view (framed): zoom out or pan first to choose it', es: 'Solo dentro de la vista más lejana (el marco): aleja o mueve la cámara antes para elegirla' },
   aimFanned: { en: 'Fanned by the gale: +1 die', es: 'El vendaval lo aviva: +1 dado' },
   aimFanned2: { en: 'Fanned by the gale: +2 dice', es: 'El vendaval lo aviva: +2 dados' },
   aimStructures: { en: '{n}/2 standing', es: '{n}/2 en pie' },

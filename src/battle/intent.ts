@@ -6,9 +6,10 @@
 import { averageDice, parseDice } from '../rules/dice';
 import { abilityMod, successChance } from '../rules/checks';
 import { effectMods, hasEffect } from '../rules/effects';
-import type { BattleEvent, BattleState, Cell, Intent, Pt, Unit } from './types';
+import type { BattleEvent, BattleState, Cell, Intent, Pt, Unit, ViewRect } from './types';
 import { homeTeam } from './types';
-import { cellCenter, cellOf, clearRun, coverBetween, dist, fullCoverBetween, gridFor, levelAtPt, lineOfSight, sameCell, steamAt, steamHides } from './map';
+import { cellCenter, cellOf, clearRun, coverBetween, dist, fullCoverBetween, getMap, gridFor, levelAtPt, lineOfSight, sameCell, steamAt, steamHides } from './map';
+import { inView, viewAround } from './farView';
 import { lightningSeeds, unitsOnPatch, wetPatch } from './ground';
 import { canStop, occupancy, reachable } from './nav';
 import { JUTSU, MIN_AIM, areaOf, inArea } from './jutsu';
@@ -69,18 +70,29 @@ function focus(u: Unit, f: Unit): number {
 
 /** Foes and friends an area would hit (1 for a jutsu with no area). */
 export function areaValue(s: BattleState, u: Unit, j: JutsuSpec, at: Unit): number {
-  const area = areaOf(j, u.pos, at.pos);
+  const map = getMap(s.mapId);
+  const area = areaOf(j, u.pos, at.pos, map);
   if (!area) return 1 + conductValue(s, u, j, at, null);
+  // The Gale Dragon Ray runs and harms only in the farthest view: the AI has no camera, so its view
+  // is centred on the foe it aims at (aiView).
+  const view = j.toEdge ? aiView(s, at.pos) : undefined;
   let v = 0;
+  let foes = 0;
   for (const o of Object.values(s.units)) {
     if (!standingUnit(o) || o.kind === 'hydra_body') continue;
     if (o.id === u.id && (j.shape === 'selfCircle' || j.shape === 'cone' || j.shape === 'line')) continue;
-    if (!inArea(area, o.pos)) continue;
+    if (!inArea(area, o.pos) || (view && !inView(view, o.pos))) continue;
     // Friends caught in the blast weigh more than foes: the AI only risks it for a crowd.
     v += o.team === u.team ? -2.5 : 1;
+    if (o.team !== u.team) foes++;
   }
+  // The Gale Dragon Ray is spent only on two foes or more in its line.
+  if (j.toEdge && foes < 2) return 0;
   return v + conductValue(s, u, j, at, area);
 }
+
+/** The AI's farthest view for the Gale Dragon Ray: the size a Full HD screen shows, centred on its target, kept on the map. */
+export const aiView = (s: BattleState, center: Pt): ViewRect => viewAround(getMap(s.mapId), center);
 
 /**
  * Lightning on wet ground (ground.ts): what the wet patch it touches adds, half a foe for each one
@@ -461,7 +473,8 @@ export function goalOf(s: BattleState, u: Unit, i: Intent): Goal | null {
       if (i.what === SWAP) return { at: u.pos, good: () => false, ready: swapValue(s, u, t) > 0 };
       const reach = j.range + (t.bulk ?? 0) + (j.shape === 'single' && t.kind === 'hydra_head' ? 2.5 : 0);
       // A charge needs a clear straight run to its target.
-      return goal((p) => dist(p, t.pos) <= reach && (j.melee ? !fullCoverBetween(s, p, t.pos) && (!j.charge || clearRun(s, p, t.pos)) : lineOfSight(s, p, t.pos)), t);
+      // The Gale Dragon Ray needs no sight of its target: nothing stops it.
+      return goal((p) => dist(p, t.pos) <= reach && (j.melee ? !fullCoverBetween(s, p, t.pos) && (!j.charge || clearRun(s, p, t.pos)) : j.toEdge || lineOfSight(s, p, t.pos)), t);
     }
     case 'heal':
       return goal((p) => dist(p, t.pos) <= 1.6, undefined);

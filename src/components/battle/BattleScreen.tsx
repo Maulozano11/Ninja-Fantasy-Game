@@ -4,7 +4,8 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Volume2, VolumeX, Sun, Moon, CloudRain, ScrollText } from 'lucide-react';
-import type { Action, AiOrder, BattleEvent, BattleState, Cell, Intent, Pt, RollInfo, Unit } from '../../battle/types';
+import type { Action, AiOrder, BattleEvent, BattleState, Cell, Intent, Pt, RollInfo, Unit, ViewRect } from '../../battle/types';
+import { FAR_ZOOM, fitView, inView, lineInView } from '../../battle/farView';
 import { homeTeam } from '../../battle/types';
 import { applyAction } from '../../battle/engine';
 import { chargeLanding, handsBlocker, jutsuCost, needsSeals } from '../../battle/engine';
@@ -70,8 +71,11 @@ export interface BattleScreenProps {
 const TIP_KEYS = ['tip_move', 'tip_attack', 'tip_jutsu', 'tip_cover', 'tip_stealth', 'tip_hands', 'tip_hydra', 'tip_mirai', 'tip_koton', 'tip_ryusei', 'tip_northstar', 'tip_foeAura'] as const;
 type TipKey = (typeof TIP_KEYS)[number];
 
-/** The camera's zoom steps, closest first: Close 2×, Tactical 1×, then up to three times farther out. */
-export const ZOOMS = [2, 1, 2 / 3, 1 / 2, 1 / 3] as const;
+/**
+ * The camera's zoom steps, closest first: Close 2×, Tactical 1×, then up to three times farther out
+ * (FAR_ZOOM, the farthest view the Gale Dragon Ray harms in: battle/farView.ts).
+ */
+export const ZOOMS = [2, 1, 2 / 3, 1 / 2, FAR_ZOOM] as const;
 
 /** Canvas pixels per map pixel: whole steps from 1 up (crisp pixel art), the plain fraction below. */
 /** How long after the dice (ms) Space and Enter only skip them and never end the turn. */
@@ -238,6 +242,23 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
     },
     [clampCam, map],
   );
+
+  /**
+   * What the camera would show at its farthest zoom around the middle of the view now, in map meters
+   * (kept on the map like the camera keeps itself): where the Gale Dragon Ray runs and does its harm.
+   * The player can pan or zoom out before casting to choose it.
+   */
+  const farView = useCallback((): ViewRect => {
+    const vw = size.current.w / cam.current.zoom;
+    const vh = size.current.h / cam.current.zoom;
+    const cx = cam.current.tx + vw / 2;
+    const cy = cam.current.ty + vh / 2;
+    const fw = size.current.w / FAR_ZOOM;
+    const fh = size.current.h / FAR_ZOOM;
+    const X0 = cx - fw / 2;
+    const Y0 = cy - fh / 2;
+    return fitView(map, { x0: X0 / map.px.perM, z0: (Y0 - map.px.backY) / map.px.perMDepth, x1: (X0 + fw) / map.px.perM, z1: (Y0 + fh - map.px.backY) / map.px.perMDepth });
+  }, [map]);
 
   const focusUnit = useCallback(
     (id: string) => {
@@ -540,7 +561,21 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
       const at = self ? actor.pos : hu ? hu.pos : hover?.pt;
       if (at) {
         const area = areaOf(spec, actor.pos, at);
-        if (area && spec.special === 'galeZone') {
+        if (area && spec.toEdge) {
+          // The Gale Dragon Ray runs and harms only inside the camera's farthest view (framed), and
+          // nothing shelters from it.
+          const full = areaOf(spec, actor.pos, at, map)!;
+          const view = farView();
+          o.farView = view;
+          const inside = lineInView(full, view);
+          if (inside) o.area = { shape: inside, tone: 'enemy' };
+          const hit = Object.values(s.units).filter((u) => !u.down && u.id !== actor.id && inAreaLoose(full, u) && inView(view, u.pos));
+          o.targets = hit.filter((u) => u.team !== actor.team).map((u) => u.id);
+          o.warn = hit.filter((u) => u.team === actor.team).map((u) => u.id);
+          label = T('aimHits', { n: hit.length });
+          sub = T('aimFarView');
+          if (o.warn.length) sub = `${sub} · ${T('aimAllies', { n: o.warn.length })}`;
+        } else if (area && spec.special === 'galeZone') {
           // The Gale Curtain hurts nobody: where the gale will turn, and what it does.
           o.area = { shape: area, tone: 'heal' };
           label = jutsuName(spec.id, lang);
@@ -611,7 +646,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
       if (hover?.pt) o.point = { at: hover.pt, ok: true };
     }
     return { o, label, sub };
-  }, [actor, hover, mode, reach, spec, state, lang, foreseenNow]);
+  }, [actor, hover, mode, reach, spec, state, lang, foreseenNow, farView, map]);
 
   // --- render loop ------------------------------------------------------------------------
 
@@ -916,7 +951,8 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
         const node = sp.shape === 'node' ? (u && ownNodeAt(s, actor, u.pos)) || (pt && ownNodeAt(s, actor, pt)) || undefined : undefined;
         const at = self ? actor.pos : node ? node.pos : u ? u.pos : pt;
         if (!at) return;
-        act({ type: 'jutsu', unit: actor.id, jutsu: mode.id, at, target, enhanced: mode.enhanced });
+        // The Gale Dragon Ray carries the camera's farthest view, where it runs and does its harm.
+        act({ type: 'jutsu', unit: actor.id, jutsu: mode.id, at, target, enhanced: mode.enhanced, ...(sp.toEdge ? { view: farView() } : {}) });
         return;
       }
       case 'item':
@@ -1617,6 +1653,7 @@ const SHORT: Record<string, [string, string]> = {
   taijutsu_rush: ['Rush', 'Embestida'],
   water_devouring_tide: ['Tsunami', 'Tsunami'],
   water_tide_s: ['Dragon Tsunami', 'Dragón Tsunami'],
+  wind_dragon_ray_s: ['Gale Dragon', 'Dragón Vendaval'],
   wind_whirlwind_tower: ['Whirlwind tower', 'Torre'],
   wind_gale_curtain: ['Gale curtain', 'Cortina'],
   lightning_thunder_beam: ['Thunder beam', 'Haz de trueno'],

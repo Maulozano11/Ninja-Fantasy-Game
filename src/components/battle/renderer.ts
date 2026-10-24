@@ -2,7 +2,7 @@
 // overlays (reach, path, areas, vision cones, intents), jutsu effects, numbers and the night.
 // One world pixel is drawn as `k` device pixels (an integer), so the pixel art stays crisp.
 
-import type { AreaShape, BattleState, Cell, Intent, PropDef, Pt, Trap, Unit, Wall, WeaponNode } from '../../battle/types';
+import type { AreaShape, BattleState, Cell, Intent, PropDef, Pt, Trap, Unit, ViewRect, Wall, WeaponNode } from '../../battle/types';
 import { homeTeam } from '../../battle/types';
 import type { MapDef } from '../../battle/map';
 import { BLOCK_HALF, CELL, cellCenter, dist, segmentsCross } from '../../battle/map';
@@ -43,6 +43,8 @@ export interface Overlay {
   reach?: { cells: Cell[]; tone: 'move' | 'dash' };
   path?: { pts: Pt[]; ok: boolean };
   area?: { shape: AreaShape; tone: 'enemy' | 'ally' | 'heal' };
+  /** The camera's farthest view, framed: where the Gale Dragon Ray runs and harms (`area` is its stretch inside). */
+  farView?: ViewRect;
   /** A circle on the ground: jutsu or weapon range from the caster. */
   range?: { at: Pt; radius: number };
   targets?: string[];
@@ -384,6 +386,21 @@ function drawGroundOverlays(ctx: CanvasRenderingContext2D, sc: Scene): void {
   const focus = sc.hover && sc.foreseen[sc.hover] ? sc.hover : undefined;
   for (const [id, it] of Object.entries(sc.foreseen)) if (id !== focus) drawForesight(ctx, sc, id, it, focus ? 'dim' : 'plain');
   if (focus) drawForesight(ctx, sc, focus, sc.foreseen[focus], 'lit');
+  if (o.farView) {
+    const v = o.farView;
+    ctx.beginPath();
+    [{ x: v.x0, z: v.z0 }, { x: v.x1, z: v.z0 }, { x: v.x1, z: v.z1 }, { x: v.x0, z: v.z1 }].forEach((p, i) => {
+      const q = project(map, p, 0);
+      if (i) ctx.lineTo(q.X, q.Y);
+      else ctx.moveTo(q.X, q.Y);
+    });
+    ctx.closePath();
+    ctx.lineWidth = 3;
+    ctx.setLineDash([14, 10]);
+    ctx.strokeStyle = 'rgba(134, 239, 172, 0.8)';
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
   if (o.area) {
     ctx.beginPath();
     areaPath(ctx, map, o.area.shape);

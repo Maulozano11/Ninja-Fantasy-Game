@@ -1113,6 +1113,15 @@ folder (`WORLD_OUT`) until then. Approved so far: the river bridge.
 
 ## Open questions
 
+- The Gale Dragon Ray (Wind's second rank S, "The Gale Dragon Ray" below): its
+  name, its numbers (12 chakra +4; 8d8 slashing, DEX half, enhanced 10d8; a 3 m
+  sweep), and the farthest view counted for a Full HD screen. And how Aurelia
+  gets it: she is a Light-chakra medic at level 5, and an S-rank is offered only
+  to its element's ninjas from level 10. Options: (a) she becomes Wind (or gets
+  Wind as her element), and the ray waits for her level 10; (b) the ray is her
+  own signature, in her S-rank slot whatever her nature and level (an exception
+  to the gate, like Hana's Dragon Tsunami was given to her preset); (c) she
+  keeps it only in practice battles until she grows.
   It was drawn because Earth had none; Kenji is Earth (his answer 1), but the
   art itself waits for his yes.
 - Lightning's second burst (*Estática de batalla* / Battle Static, his request
@@ -1817,6 +1826,96 @@ So:
   whatever its level, so it can be tried; missions are untouched. Hana has it in
   her S-rank slot since the owner removed her Yasaka no Magatama (2026-10-22;
   "Removed jutsu" below).
+
+## The Gale Dragon Ray, Wind's second rank S (the owner's request of 2026-10-24; built on `jutsu/wind-s-line`, numbers waiting for his word)
+
+He asked for it for Aurelia (verbatim, 2026-10-24):
+
+> *"a aurelia le daremos un jutsu de viento rango S que aun no tengo de una
+> linea de 2 metros de ancho por todo lo que mida el mapa observable"*
+
+> *"como un rayo de la muerte de viento con vfx super epicos y una cabeza de
+> dragon y un kanji de viento puedes pasarme una muestra y yo dibujar sobre
+> ella"*
+
+and then, on how it reaches and what stops it:
+
+> *"el jutsu ignora alturas no puede ser bloqueado"*
+
+> *"llega hasta el borde del mapa pero si no se puede ver en la forma mas
+> alejada de la vista no hace efectos ni daño si le da alguien en el extremo o
+> en medio del mapa"*
+
+> *"la cuento desde donde el jugador pueda hacer la camara lo mas lejos tiene
+> que ver con la camara no con aurelia"*
+
+> *"mejor para optimizar mas el juego que el rayo se detenga donde el jugador
+> ya no puede ver con la vista mas alejada"*
+
+So:
+
+- **The name** (ours, original; waiting for his word): *Técnica de Viento: Rayo
+  del Dragón Vendaval* / *Wind Technique: Gale Dragon Ray* (short label *Dragón
+  Vendaval* / *Gale Dragon*; Japanese name 風龍閃, *Fūryūsen*), id
+  `wind_dragon_ray_s`. Wind's second S-rank, beside the Hurricane Star; the
+  nature filter offers it to a Wind ninja's S-rank slot (level 10), like every
+  S-rank.
+- **Its shape: a straight line 2 m wide** from the caster, aimed in any
+  direction.
+- **How far: as far as the camera's farthest view goes.** The farthest view is
+  what the camera shows at its last zoom step (*Lejos 3×*, `FAR_ZOOM` in
+  `src/battle/farView.ts`, which `ZOOMS` in `BattleScreen.tsx` ends with), around
+  **wherever the player has the camera**, not around the caster: the player can
+  pan or zoom out before casting to choose it. The screen sends that piece of
+  the map, in meters, with the cast (`view` on the action). The ray **stops
+  where it leaves that view** (drawn only that far; his *"que el rayo se detenga
+  donde el jugador ya no puede ver"*), and only what stands **inside the view and
+  on the line** is harmed: anyone on the line outside it, in the middle of the
+  map or at its far end, takes no damage and no effect. The ground (foliage it
+  cuts, steam it blows away, structures it dents) is reached only inside the
+  view too.
+- **The view's size**: the camera's farthest view of a **Full HD screen** (1920 ×
+  1080 CSS pixels at 1/3 zoom: about 101 m across and 85 m in depth on the river
+  forest; that map is smaller, so there it covers the whole map). The engine
+  takes the view the screen sends but never bigger than that (a bigger one
+  shrinks around its middle, so a bad action can't widen it), kept on the map as
+  the camera keeps itself. *Our reading, for him to confirm:* a window bigger than
+  Full HD still sees more, but the ray's reach stops at the Full HD view (the
+  same for every player); on a smaller window it is what that window shows.
+- **The AI** has no camera: it uses a view of that same size **centred on the
+  foe it aims at**, kept on the map, and casts the ray only when **two foes or
+  more** stand in its line inside that view (a friend in it counts against it).
+  With no view given (an old action), the view is centred on the caster.
+- **Nothing stops it and nothing blocks it** (his *"ignora alturas no puede ser
+  bloqueado"*): no height (a foe up on a hill is struck like one on the
+  ground), no cover, no wall (not even a Kōton metal wall, which shelters from
+  every other area), and no reaction: a clone, Kawarimi or Premonitory Evasion
+  can't take it (`unblockable`). It needs no sight of where it is aimed.
+- **Our proposed numbers** (waiting for his word, like the Dragon Tsunami's):
+  - action, **12 chakra**, **+4** to enhance (as the Dragon Tsunami);
+  - **8d8 slashing**, **DEX save for half**; enhanced **10d8** (an S-rank's two
+    more dice). The enhanced ray keeps his **2 m** width and runs as far as the
+    view anyway, so enhancing only adds the dice;
+  - on a failed save the gale **sweeps the target 3 m on**, away from the caster
+    (a ninja; big creatures stand firm);
+  - it **cuts the foliage** it crosses (like the Hurricane Star) and blows steam
+    away, as every wind jutsu;
+  - no use limit (this doc's rule: *Ultimate (rank S) jutsu have no use limit:
+    only their chakra cost*).
+- **Its look**: our sample (Aurelia casting, the beam, a dragon head at its
+  front, the kanji 風) went to him to paint over; he painted it
+  (`docs/reference/aurelia-wind-s-owner-reference.jpg`: *"a ver copia esta ignora
+  a aurelia o a el rayo que sale despues de la boca del dragon"*), and asked for a
+  living inside (*"agregale una buena animacion adentro del rayo de muerte de
+  viento como hiciste en el centro de la bola de fuego"*). His beam, rings,
+  dragon, kanji, dust and debris are being copied from his picture (staged, not
+  in the game until his yes); until then the ray plays the wind stream. The
+  dragon's head sits at the ray's front end, where the view stops it.
+- **The aiming preview** frames the farthest view on the ground (dashed green)
+  and shows the line only inside it, with who it reaches.
+- **Aurelia**: open question for him. She is a Light-chakra medic at level 5,
+  and the rules give an S-rank only to its element's ninjas from level 10 (see
+  "Open questions").
 
 ## Jutsu effects, round 1 (proposed 2026-10-21; the owner's answer the same day)
 

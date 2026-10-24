@@ -27,7 +27,7 @@ export const ELECTRIFY_RADIUS = 4.5;
 export const onMapUnits = (s: BattleState): Unit[] => Object.values(s.units).filter((u) => u.down !== 'dead' && u.down !== 'fled' && u.down !== 'ko');
 
 /** Where a unit is hit by areas: hydra bodies are big. */
-const padOf = (u: Unit): number => (u.bulk ? u.bulk * 0.7 : 0.25);
+export const padOf = (u: Unit): number => (u.bulk ? u.bulk * 0.7 : 0.25);
 
 /**
  * Units inside an area (a severed head's stump counts too: fire, lightning and blasts seal it).

@@ -190,6 +190,14 @@ export interface JutsuSpec {
   clan?: ClanType;
   /** The target's save is rolled with this (Pursuing Flame: disadvantage). */
   saveAdv?: Advantage;
+  /**
+   * A line that runs from the caster as far as the camera's farthest view goes (the Gale Dragon Ray):
+   * it stops where it leaves that view and harms only what stands in it (battle/farView.ts; with no
+   * view given, areaOf runs it to the map's edge). Nothing stops it and nothing blocks it: no wall,
+   * no cover, no height, no reaction (the owner, 2026-10-24: "el jutsu ignora alturas no puede ser
+   * bloqueado"). Its width stays its own when enhanced.
+   */
+  toEdge?: boolean;
 }
 
 const TILE = 1.5;
@@ -286,6 +294,11 @@ const OVERRIDE: Record<string, Partial<JutsuSpec>> = {
   lightning_thunder_beam: { vfx: 'stream', width: 1.2, seq: { hitEach: { stagger: 80 } } },
   // Dust and stones along the cone: whoever fails ends up on the ground.
   earth_rubble_gust: { vfx: 'breath', prone: true, seq: { castAura: 560, breathMs: 1400, hitEach: { stagger: 80 } } },
+  // Wind's second rank S, Aurelia's (the owner, 2026-10-24: "a aurelia le daremos un jutsu de viento
+  // rango S ... de una linea de 2 metros de ancho por todo lo que mida el mapa observable"): a wind
+  // death ray 2 m wide to the edge of the camera's farthest view that sweeps the ones who fail 3 m
+  // on. Its look waits for his yes on our copy of his paint-over; until then the wind stream.
+  wind_dragon_ray_s: { vfx: 'stream', width: 2, toEdge: true, push: { m: 3 }, seq: { castAura: 560, hitEach: { stagger: 60 }, shake: 6 } },
 };
 
 function specOf(j: JutsuDefinition): JutsuSpec {
@@ -587,6 +600,8 @@ export const clanAbilities = (clan: ClanType): string[] => CLAN_SPECS.filter((j)
 export function enhanced(spec: JutsuSpec): JutsuSpec {
   const more = spec.rank === 'S' ? 2 : 1;
   const dice = spec.dice?.replace(/^(\d+)d/, (_, n) => `${Number(n) + more}d`);
+  // The Gale Dragon Ray already runs as far as the view goes, and its width is the owner's 2 m.
+  if (spec.toEdge) return { ...spec, dice };
   // More damage and a bigger reach: circles grow by half, cones and lines reach a quarter further,
   // cones open a third wider and lines run half as wide again.
   return {
@@ -604,9 +619,24 @@ const deg = (r: number) => (r * 180) / Math.PI;
 /** A cone or a line needs a direction: it is aimed at least this far (m) from its caster. */
 export const MIN_AIM = 0.3;
 
-/** The area a jutsu covers when aimed at `at` from `from`. Null for single-target jutsu. */
-export function areaOf(spec: JutsuSpec, from: Pt, at: Pt): AreaShape | null {
+/** How far (m) a straight run from `from` along `dir` (degrees) goes before it leaves a map `w` by `d` meters. */
+export function edgeLength(from: Pt, dir: number, w: number, d: number): number {
+  const a = (dir * Math.PI) / 180;
+  const cx = Math.cos(a);
+  const cz = Math.sin(a);
+  const tx = cx > 1e-9 ? (w - from.x) / cx : cx < -1e-9 ? -from.x / cx : Infinity;
+  const tz = cz > 1e-9 ? (d - from.z) / cz : cz < -1e-9 ? -from.z / cz : Infinity;
+  return Math.max(0, Math.min(tx, tz));
+}
+
+/**
+ * The area a jutsu covers when aimed at `at` from `from`. Null for single-target jutsu. The Gale
+ * Dragon Ray runs to the map's edge given the map's size (`map`, in meters; the engine then stops it
+ * at the edge of the camera's farthest view, farView.ts lineToView); without it, its listed length.
+ */
+export function areaOf(spec: JutsuSpec, from: Pt, at: Pt, map?: { widthM: number; depthM: number }): AreaShape | null {
   const dir = Math.atan2(at.z - from.z, at.x - from.x);
+  if (spec.shape === 'line' && spec.toEdge && map) return { kind: 'line', origin: from, dir: deg(dir), length: edgeLength(from, deg(dir), map.widthM, map.depthM), width: spec.width ?? 2 };
   switch (spec.shape) {
     case 'circle':
       return { kind: 'circle', center: at, radius: spec.radius ?? 1.5 };

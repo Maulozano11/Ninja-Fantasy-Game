@@ -1081,6 +1081,34 @@ export const JUTSUS_DATA: JutsuDefinition[] = [
     descriptionEs: 'Agujas de chakra de viento en un vórtice: un shuriken que estalla en millones de cuchillas microscópicas.',
   },
   {
+    // Wind's second rank S, made for Aurelia (the owner, 2026-10-24: "a aurelia le daremos un jutsu de
+    // viento rango S que aun no tengo de una linea de 2 metros de ancho por todo lo que mida el mapa
+    // observable", "como un rayo de la muerte de viento ... una cabeza de dragon y un kanji de
+    // viento"). It runs to the edge of the camera's farthest view, harms only what that view shows, and
+    // nothing stops or blocks it (docs/GAMEPLAY_DESIGN.md, "The Gale Dragon Ray"). Its numbers are
+    // our proposal, waiting for his word.
+    id: 'wind_dragon_ray_s',
+    name: 'Wind Technique: Gale Dragon Ray',
+    nameEs: 'Técnica de Viento: Rayo del Dragón Vendaval',
+    japaneseName: '風龍閃 (Fūryūsen)',
+    rank: 'S',
+    category: 'Ultimate',
+    nature: 'Wind',
+    chakraCost: 12,
+    castTime: 'Action',
+    range: 40,
+    areaOfEffect: 'Line',
+    damageDice: '8d8',
+    damageType: 'Slashing',
+    savingThrow: 'DEX',
+    saveEffect: 'Half Damage',
+    environmentalEffect: 'Clears Foliage',
+    enhancementChakraCost: 4,
+    enhancementEffect: 'Deals 10d8 slashing damage.',
+    description: 'A ray of wind 2 m wide, led by a wind dragon\'s head under the kanji for wind, runs from the ninja\'s hand to the edge of the battlefield. No wall, cover or height stops it and it cannot be blocked; it strikes everyone it crosses within sight of the farthest view and sweeps those who fail 3 m on.',
+    descriptionEs: 'Un rayo de viento de 2 m de ancho, con la cabeza de un dragón de viento al frente bajo el kanji del viento, corre de la mano del ninja hasta el borde del campo de batalla. Ningún muro, cobertura ni altura lo detiene y no se puede bloquear; golpea a todos los que cruza dentro de la vista más lejana y arrastra 3 m a quienes fallan.',
+  },
+  {
     id: 'great_fire_annihilation',
     name: 'Fire Technique: Great Annihilation',
     nameEs: 'Técnica de Fuego: Gran aniquilación',

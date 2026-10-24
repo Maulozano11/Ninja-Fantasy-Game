@@ -12,6 +12,17 @@ export interface Pt {
   z: number;
 }
 
+/**
+ * A piece of the map in meters (x across, z in depth): what the camera shows at its farthest zoom,
+ * where the Gale Dragon Ray runs and does its harm (battle/farView.ts).
+ */
+export interface ViewRect {
+  x0: number;
+  z0: number;
+  x1: number;
+  z1: number;
+}
+
 /** A cell of the hidden navigation grid (0.5 m). */
 export interface Cell {
   c: number;
@@ -479,7 +490,7 @@ export interface BattleState {
 export type Action =
   | { type: 'move'; unit: string; to: Cell; sneak?: boolean }
   | { type: 'attack'; unit: string; target: string; ranged?: boolean; knockout?: boolean }
-  | { type: 'jutsu'; unit: string; jutsu: string; at: Pt; target?: string; enhanced?: boolean; target2?: string; element?: 'Fire' | 'Lightning' | 'Wind' | 'Water' | 'Earth' }
+  | { type: 'jutsu'; unit: string; jutsu: string; at: Pt; target?: string; enhanced?: boolean; target2?: string; element?: 'Fire' | 'Lightning' | 'Wind' | 'Water' | 'Earth'; view?: ViewRect }
   | { type: 'dash' | 'disengage' | 'dodge' | 'hide' | 'focus' | 'crouch' | 'jump' | 'draw'; unit: string }
   | { type: 'shove'; unit: string; target: string; mode: 'prone' | 'push' }
   /** `tag` throws an explosive tag at a point; `tagTrap` hides one on the ground there. */
@@ -534,7 +545,7 @@ export type BattleEvent =
    * `fanned`: a fire jutsu that went through a gale on the ground (the Gale Curtain) and burns
    * harder: the gale's id, and where the fire meets the wind (for the screen's swirl).
    */
-  | { t: 'jutsu'; unit: string; jutsu: string; at: Pt; shape: AreaShape | null; enhanced: boolean; fanned?: { zone: string; at: Pt }; released?: boolean }
+  | { t: 'jutsu'; unit: string; jutsu: string; at: Pt; shape: AreaShape | null; enhanced: boolean; fanned?: { zone: string; at: Pt }; released?: boolean; view?: ViewRect }
   | { t: 'down'; unit: string; state: Down }
   | { t: 'condition'; unit: string; cond: keyof Conditions | 'stood'; on: boolean }
   | { t: 'effect'; unit: string; effect: string; on: boolean }

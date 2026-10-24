@@ -74,3 +74,25 @@ export const coatLeft = (u: Unit): number => u.coat?.hits ?? 0;
 
 /** A blow carries the coat: any thrown weapon, or a blade in hand (fists and palm techniques take none). */
 export const carriesCoat = (u: Unit, w: Weapon, ranged: boolean): boolean => coatLeft(u) > 0 && (ranged || w.held);
+
+// --- the medic's kit (the owner, 2026-10-24: "1 si 2 no 3 si gasta antidoto 4 si pero ... 5 me encanta
+// como Feat"; docs/GAMEPLAY_DESIGN.md, "The medic's kit") ------------------------------------------
+
+/** Quick First Aid: a Medical Specialist's bonus action, once a battle, a fallen ally within this (m) back up at 1 HP. */
+export const FIRST_AID_REACH = 1.5;
+/** The antidote senbon is thrown as far as the healing senbon. */
+export const ANTIDOTE_SENBON_RANGE = HEAL_SENBON_RANGE;
+/** Mano firme / Steady Hand (a feat): every heal its ninja gives rolls one more die. */
+export const STEADY_HAND = 'steady_hand';
+
+/** The ninja has Steady Hand. */
+export const steadyHand = (u: Unit): boolean => !!u.character?.selectedFeats?.includes(STEADY_HAND);
+
+/** A heal's dice as `u` gives them: one more die with Steady Hand ('2d4+2' → '3d4+2'). */
+export function healDice(u: Unit, dice: string): string {
+  if (!steadyHand(u)) return dice;
+  return dice.replace(/^(\d+)d/, (_, n: string) => `${Number(n) + 1}d`);
+}
+
+/** Antidotes in the party's backpack a unit can dip a senbon in. */
+export const antidotesLeft = (s: BattleState, u: Unit): number => (backpack(u) ? s.supplies.antidotes : 0);

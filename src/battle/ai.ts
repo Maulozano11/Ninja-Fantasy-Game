@@ -13,7 +13,7 @@ import { current } from './turns';
 import { areaValue, bestCell, goalOf, headOptions, ninjaOptions, offensive, planIntent, reachTo, standingUnit, stepToward, swapValue, visibleFoes, WALL, wallCover } from './intent';
 import type { Goal } from './intent';
 import { breakable, MAX_STRUCTURES, ownStructures, structureAt, structureAttack, structureBlocker, structureDist } from './structures';
-import { coatLeft, MEDIC_CLASS, MEDIC_NEAR, poisonLeft, potionsLeft, senbonLeft } from './senbon';
+import { antidotesLeft, coatLeft, FIRST_AID_REACH, MEDIC_CLASS, MEDIC_NEAR, poisonLeft, potionsLeft, senbonLeft } from './senbon';
 import { IMBUE_COST, imbueBlocker, type ImbueElement, unitImbueElements, WATER_REACH, WEAPON_ELEMENT } from './imbue';
 import { COMMAND, commandRefused, edgeFoe, ownNodes, submissionRefused, SWAP, WARP, warpBlocker, warpLanding } from './clans';
 
@@ -48,6 +48,7 @@ function stillValid(s: BattleState, u: Unit, i: Intent | undefined): i is Intent
   if (i.kind === 'command' && (i.what === COMMAND ? commandRefused : submissionRefused)(s, u, t)) return false;
   if (i.kind === 'heal' && i.what === 'bandage' && s.supplies.bandages < 1) return false;
   if (i.kind === 'heal' && i.what === 'healSenbon' && (potionsLeft(s, u) < 1 || senbonLeft(u) < 1 || t?.id === u.id)) return false;
+  if (i.kind === 'heal' && i.what === 'antidoteSenbon' && (antidotesLeft(s, u) < 1 || senbonLeft(u) < 1 || t?.id === u.id || !t || !hasEffect(t.effects, 'poisoned'))) return false;
   return true;
 }
 
@@ -149,6 +150,7 @@ function carryOut(s: BattleState, u: Unit, i: Intent): Action | null {
         if (i.what === 'mystical_palm') return { type: 'jutsu', unit: u.id, jutsu: 'mystical_palm', at: { ...t.pos }, target: t.id };
         if (i.what === 'bandage') return { type: 'item', unit: u.id, item: 'bandage', target: t.id };
         if (i.what === 'healSenbon') return { type: 'item', unit: u.id, item: 'healSenbon', target: t.id };
+        if (i.what === 'antidoteSenbon') return { type: 'item', unit: u.id, item: 'antidoteSenbon', target: t.id };
         return { type: 'stabilize', unit: u.id, target: t.id };
       }
       return moveToward(s, u, g, i.to);
@@ -209,7 +211,14 @@ function fallback(s: BattleState, u: Unit): Action | null {
  */
 function bonusBefore(s: BattleState, u: Unit, i: Intent): Action | null {
   if (!u.turn.bonus) return null;
-  return drinkFirst(s, u) ?? ryuseiWarp(s, u, i) ?? imbueFirst(s, u, i) ?? coatFirst(s, u, i);
+  return firstAid(s, u) ?? drinkFirst(s, u) ?? ryuseiWarp(s, u, i) ?? imbueFirst(s, u, i) ?? coatFirst(s, u, i);
+}
+
+/** Quick First Aid: a medic with it still unused gets a fallen ally beside it back up (the bonus action). */
+function firstAid(s: BattleState, u: Unit): Action | null {
+  if (u.character?.shinobiClass !== MEDIC_CLASS || u.firstAidUsed) return null;
+  const t = Object.values(s.units).find((o) => o.id !== u.id && o.team === u.team && (o.down === 'downed' || o.down === 'stable') && dist(o.pos, u.pos) <= FIRST_AID_REACH + 0.1);
+  return t ? { type: 'firstAid', unit: u.id, target: t.id } : null;
 }
 
 /**

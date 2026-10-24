@@ -97,6 +97,8 @@ export const ACTION_ICON: Record<string, React.FC<{ size?: number; className?: s
   poison: Skull,
   healSenbon: HeartPulse,
   potion: Droplets,
+  firstAid: HeartPulse,
+  antidoteSenbon: FlaskConical,
   tag: Bomb,
   tagTrap: LandPlot,
   stabilize: HeartPulse,

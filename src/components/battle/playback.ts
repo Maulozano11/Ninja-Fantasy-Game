@@ -2038,6 +2038,19 @@ export class Playback {
         if (label) this.float(label, '#a3e635', this.posOf(ev.unit, now), now, { rise: 112 });
         return 450;
       }
+      case 'firstAid': {
+        // The medic kneels to the fallen ally (the cast pose's hands), the heals' green wells up.
+        const a = this.view(ev.unit);
+        const to = this.posOf(ev.target, now);
+        if (a) {
+          const from = this.posOf(ev.unit, now);
+          if (Math.abs(to.x - from.x) > 0.05) a.facing = to.x > from.x ? 1 : -1;
+          this.setPose(a, 'cast', now, 600);
+        }
+        this.fx.push({ kind: 'heal', element: 'chakra', from: to, to, t0: now + 200 / this.speed, dur: 1100, unit: ev.target });
+        h.sound('heal');
+        return 500;
+      }
       case 'healSenbon': {
         // The needle dipped in a potion flies to the ally, lit; the green of the heals wells up where it lands.
         const a = this.view(ev.unit);
@@ -2048,8 +2061,9 @@ export class Playback {
           this.throwSenbon(a, now);
         }
         const t1 = now + SENBON_RELEASE / this.speed;
-        this.fx.push({ kind: 'kunai', element: 'chakra', from, to, t0: t1, dur: 340, lift: [74, 60], needle: 'heal' });
-        this.fx.push({ kind: 'heal', element: 'chakra', from: to, to, t0: t1 + 300 / this.speed, dur: 1100, unit: ev.target });
+        // The antidote's needle is the plain steel one; the healing one glows.
+        this.fx.push({ kind: 'kunai', element: 'chakra', from, to, t0: t1, dur: 340, lift: [74, 60], needle: ev.antidote ? 'steel' : 'heal' });
+        if (!ev.antidote) this.fx.push({ kind: 'heal', element: 'chakra', from: to, to, t0: t1 + 300 / this.speed, dur: 1100, unit: ev.target });
         h.sound('swing');
         return SENBON_RELEASE + 340;
       }
@@ -2062,6 +2076,8 @@ export class Playback {
           this.setPose(v, 'idle', now);
         }
         this.float(`+${ev.amount}`, '#4ade80', this.posOf(ev.unit, now), now);
+        // A potion drunk: the heals' green wells up round the one who drank it.
+        if (ev.source === 'potion') this.fx.push({ kind: 'heal', element: 'chakra', from: this.posOf(ev.unit, now), to: this.posOf(ev.unit, now), t0: now, dur: 1100, unit: ev.unit });
         h.sound('heal');
         return 200;
       }

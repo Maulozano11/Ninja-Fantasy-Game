@@ -18,7 +18,7 @@ import { KUNAI, KUNAI_LONG, wielded } from './units';
 import { COMMAND, FORESIGHT_RANGE, SUBMISSION, SWAP, WARP, commandRefused, ownNodes, submissionRefused, swapBlocker, warpBlocker, warpLanding } from './clans';
 import { ownStructures, structureAt, structureBlocker } from './structures';
 import { chargedReach } from './charged';
-import { coatLeft, HEAL_SENBON_DICE, HEAL_SENBON_RANGE, healSenbonBonus, MEDIC_CLASS, POISON_DC, POISON_DICE, poisonLeft, potionsLeft, senbonLeft } from './senbon';
+import { antidotesLeft, coatLeft, HEAL_SENBON_DICE, HEAL_SENBON_RANGE, healSenbonBonus, MEDIC_CLASS, POISON_DC, POISON_DICE, poisonLeft, potionsLeft, senbonLeft } from './senbon';
 import { activeImbue, IMBUE_DICE, imbueReach } from './imbue';
 
 const avg = (dice?: string): number => {
@@ -312,6 +312,11 @@ export function ninjaOptions(s: BattleState, u: Unit, next = false): Option[] {
   // Helping: healing a hurt friend, getting a fallen one back up.
   const support = u.aiOrder === 'support' ? 1.6 : u.aiOrder === 'defensive' ? 1.1 : 0.8;
   for (const f of friends) {
+    // A poisoned friend: an antidote senbon from up to 6 m (battle/senbon.ts). Poisoned is disadvantage
+    // on every attack it makes: worth about half of what it would deal, more on the Support order.
+    if (f.id !== u.id && !f.down && hasEffect(f.effects, 'poisoned') && antidotesLeft(s, u) > 0 && senbonLeft(u) > 0 && dist(u.pos, f.pos) <= HEAL_SENBON_RANGE + (next ? u.speed : walkLeft(u))) {
+      out.push({ intent: { kind: 'heal', what: 'antidoteSenbon', target: f.id }, value: (2 + threat(f) * 0.5) * support });
+    }
     const hurt = f.down === 'downed' || f.down === 'stable' || f.hp < f.maxHp * 0.5;
     if (!hurt) continue;
     if (!sealed && u.jutsus.includes('mystical_palm') && u.chakra >= JUTSU.mystical_palm.cost && dist(u.pos, f.pos) <= u.speed + 1.6) {
@@ -475,7 +480,7 @@ export function goalOf(s: BattleState, u: Unit, i: Intent): Goal | null {
     }
     case 'heal':
       // A healing senbon is thrown from up to 6 m, in sight; the rest is done at the ally's side.
-      if (i.what === 'healSenbon') return goal((p) => dist(p, t.pos) <= HEAL_SENBON_RANGE && lineOfSight(s, p, t.pos), undefined);
+      if (i.what === 'healSenbon' || i.what === 'antidoteSenbon') return goal((p) => dist(p, t.pos) <= HEAL_SENBON_RANGE && lineOfSight(s, p, t.pos), undefined);
       return goal((p) => dist(p, t.pos) <= 1.6, undefined);
     case 'command':
       return goal((p) => dist(p, t.pos) <= JUTSU[i.what].range && lineOfSight(s, p, t.pos), t);

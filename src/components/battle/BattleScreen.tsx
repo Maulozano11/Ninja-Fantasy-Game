@@ -19,7 +19,7 @@ import { foreseen } from '../../battle/intent';
 import { MAX_STRUCTURES, STRUCTURE_AC, breakable, jutsuWallAt, ownStructures, structureAt, structureAttack, structureBlocker, structureDist } from '../../battle/structures';
 import { auraEntered, commandBlocker, edgeFoe, nodeInSight, nodeUnder, ownNodeAt, ownNodes, submissionBlocker, submissionRefused, swapBlocker, warpBlocker, warpLanding } from '../../battle/clans';
 import { KUNAI, KUNAI_LONG, wielded } from '../../battle/units';
-import { coatLeft, HEAL_SENBON_DICE, HEAL_SENBON_RANGE, healSenbonBonus, poisonLeft, potionsLeft, SENBON, senbonLeft } from '../../battle/senbon';
+import { antidotesLeft, MEDIC_CLASS, coatLeft, HEAL_SENBON_DICE, HEAL_SENBON_RANGE, healSenbonBonus, poisonLeft, potionsLeft, SENBON, senbonLeft } from '../../battle/senbon';
 import { EARTH_CRIT, IMBUE_COST, IMBUE_DICE, IMBUE_ROUNDS, imbueBlocker, type ImbueElement, unitImbueElements, WATER_REACH, WEAPON_ELEMENT, WIND_PUSH } from '../../battle/imbue';
 import { ELEMENT_ES } from '../../game/ruleText';
 import { STONE_RANGE } from '../../battle/stealth';
@@ -57,7 +57,8 @@ type Mode =
   | { k: 'attack'; ranged: boolean; senbon?: boolean }
   /** `picked`: Command from level 9, the first of its two targets. */
   | { k: 'jutsu'; id: string; enhanced: boolean; picked?: string }
-  | { k: 'item'; item: 'bandage' | 'antidote' | 'tag' | 'tagTrap' | 'healSenbon' }
+  | { k: 'item'; item: 'bandage' | 'antidote' | 'tag' | 'tagTrap' | 'healSenbon' | 'antidoteSenbon' }
+  | { k: 'firstAid' }
   | { k: 'shove'; mode: 'push' | 'prone' }
   | { k: 'stone' }
   | { k: 'stabilize' }
@@ -604,6 +605,12 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
         o.area = { shape: { kind: 'circle', center: hover.pt, radius: TAG.radius }, tone: 'enemy' };
         label = ok ? (lineOfSight(s, actor.pos, hover.pt, { into: true }) ? T('aimTagTrap') : reasonLine(sightWhy(s, actor.pos, hover.pt, true))) : T('aimNoReach');
       }
+    } else if (mode.k === 'item' && mode.item === 'antidoteSenbon') {
+      o.range = { at: actor.pos, radius: HEAL_SENBON_RANGE };
+      if (hu && hu.team === actor.team && hu.id !== actor.id) o.targets = [hu.id];
+    } else if (mode.k === 'firstAid') {
+      o.range = { at: actor.pos, radius: 1.5 };
+      if (hu) o.targets = [hu.id];
     } else if (mode.k === 'item' && mode.item === 'healSenbon') {
       // A healing senbon: the allies it reaches light up; the one under the cursor shows the heal.
       o.range = { at: actor.pos, radius: HEAL_SENBON_RANGE };
@@ -946,6 +953,9 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
       case 'stabilize':
         if (u) act({ type: 'stabilize', unit: actor.id, target: u.id });
         return;
+      case 'firstAid':
+        if (u) act({ type: 'firstAid', unit: actor.id, target: u.id });
+        return;
       case 'drag':
         if (pt) act({ type: 'drag', unit: actor.id, body: mode.body, to: cellOf(pt) });
         return;
@@ -1069,6 +1079,9 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
       // His icon is still to come: a drawn placeholder meanwhile.
       add({ id: 'potion', label: t('act_potion'), icon: ACTION_ICON.potion, badge: potionsLeft(s, u), disabled: !can.bonus || potionsLeft(s, u) < 1 || u.hp >= u.maxHp, why: !can.bonus ? t('r_noBonus') : potionsLeft(s, u) < 1 ? t('r_noneLeft') : t('r_fullHp'), help: t('help_potion') });
       add({ id: 'healSenbon', label: t('act_healSenbon'), icon: ACTION_ICON.healSenbon, badge: potionsLeft(s, u), disabled: !can.action || potionsLeft(s, u) < 1 || senbonLeft(u) < 1, why: noAction ?? (senbonLeft(u) < 1 ? t('r_noSenbon') : t('r_noneLeft')), active: mode.k === 'item' && mode.item === 'healSenbon', help: t('help_healSenbon') });
+      // The medic's kit: Quick First Aid (a medic's, once a battle) and the antidote senbon (anyone with an antidote). Placeholder icons until his.
+      if (u.character?.shinobiClass === MEDIC_CLASS) add({ id: 'firstAid', label: t('act_firstAid'), icon: ACTION_ICON.firstAid, disabled: !can.bonus || !!u.firstAidUsed || !downedAlly, why: !can.bonus ? t('r_noBonus') : u.firstAidUsed ? t('r_firstAidUsed') : t('r_notDown'), active: mode.k === 'firstAid', help: t('help_firstAid') });
+      add({ id: 'antidoteSenbon', label: t('act_antidoteSenbon'), icon: ACTION_ICON.antidoteSenbon, badge: antidotesLeft(s, u), disabled: !can.action || antidotesLeft(s, u) < 1 || senbonLeft(u) < 1, why: noAction ?? (senbonLeft(u) < 1 ? t('r_noSenbon') : t('r_noneLeft')), active: mode.k === 'item' && mode.item === 'antidoteSenbon', help: t('help_antidoteSenbon') });
       if (downedAlly) add({ id: 'stabilize', label: t('act_stabilize'), icon: ACTION_ICON.stabilize, disabled: !can.action, active: mode.k === 'stabilize', help: t('help_stabilize') });
       if (stealth) add({ id: 'stone', label: t('act_stone'), icon: ACTION_ICON.stone, disabled: !can.action, active: mode.k === 'stone', help: t('help_stone') });
       // Its id carries the body; its painted icon is the owner's drag (sheet 19).
@@ -1129,7 +1142,11 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
           act({ type: 'item', unit: u.id, item: 'potion' });
           return;
         case 'healSenbon':
-          setMode((m) => (m.k === 'item' && m.item === 'healSenbon' ? { k: 'move' } : { k: 'item', item: 'healSenbon' }));
+        case 'antidoteSenbon':
+          setMode((m) => (m.k === 'item' && m.item === id ? { k: 'move' } : { k: 'item', item: id }));
+          return;
+        case 'firstAid':
+          setMode((m) => (m.k === 'firstAid' ? { k: 'move' } : { k: 'firstAid' }));
           return;
         case 'dash':
         case 'disengage':

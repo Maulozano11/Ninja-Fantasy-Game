@@ -218,6 +218,8 @@ export interface Unit {
   senbon?: number;
   /** Its weapons coated with poison: the coated hits left (battle/senbon.ts). Kept out of `cond`, which a fall wipes. */
   coat?: { hits: number };
+  /** Quick First Aid already given this battle (battle/senbon.ts). */
+  firstAidUsed?: boolean;
   /** An enemy's own pouch (the party uses its backpack): vials of weapon poison. */
   kit?: { poison?: number };
 }
@@ -488,7 +490,7 @@ export interface BattleState {
 }
 
 /** The items used in battle. */
-export type ItemId = 'pill' | 'bandage' | 'antidote' | 'tag' | 'tagTrap' | 'poison' | 'healSenbon' | 'potion';
+export type ItemId = 'pill' | 'bandage' | 'antidote' | 'tag' | 'tagTrap' | 'poison' | 'healSenbon' | 'potion' | 'antidoteSenbon';
 
 /** What a player or the AI wants to do. */
 export type Action =
@@ -505,6 +507,8 @@ export type Action =
    */
   | { type: 'item'; unit: string; item: ItemId; target?: string; at?: Pt }
   | { type: 'stabilize'; unit: string; target: string }
+  /** Quick First Aid (a Medical Specialist, bonus action, once a battle): a fallen ally beside it back up at 1 HP. */
+  | { type: 'firstAid'; unit: string; target: string }
   | { type: 'flee'; unit: string }
   | { type: 'endTurn'; unit: string }
   | { type: 'react'; unit: string; take: boolean }
@@ -601,7 +605,9 @@ export type BattleEvent =
   /** A ninja's weapons are coated with poison (`hits` left), or the coat is spent. */
   | { t: 'coat'; unit: string; on: boolean; hits?: number }
   /** A senbon dipped in a healing potion thrown at an ally (the heal follows). */
-  | { t: 'healSenbon'; unit: string; target: string }
+  | { t: 'healSenbon'; unit: string; target: string; antidote?: boolean }
+  /** Quick First Aid: a medic gets a fallen ally beside it back up. */
+  | { t: 'firstAid'; unit: string; target: string }
   | { t: 'sever'; unit: string }
   /** `source`: whose fire or lightning sealed it (its flare takes that ninja's chakra colour on the screen). */
   | { t: 'seal'; unit: string; how: 'fire' | 'lightning' | 'explosion'; source?: string }

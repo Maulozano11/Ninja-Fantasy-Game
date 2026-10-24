@@ -176,7 +176,9 @@ export function logLine(ev: BattleEvent, s: BattleState, lang: Lang, wallOf = (i
     case 'coat':
       return { text: t(ev.on ? 'l_coat' : 'l_coatSpent', { t: nameOf(s, ev.unit, lang), n: ev.hits ?? 0 }), tone: 'text-lime-300' };
     case 'healSenbon':
-      return { text: t('l_healSenbon', { a: nameOf(s, ev.unit, lang), t: nameOf(s, ev.target, lang) }), tone: 'text-emerald-300' };
+      return { text: t(ev.antidote ? 'l_antidoteSenbon' : 'l_healSenbon', { a: nameOf(s, ev.unit, lang), t: nameOf(s, ev.target, lang) }), tone: 'text-emerald-300' };
+    case 'firstAid':
+      return { text: t('l_firstAid', { a: nameOf(s, ev.unit, lang), t: nameOf(s, ev.target, lang) }), tone: 'text-emerald-300' };
     case 'pushed':
       // Swept away by a jutsu (the Devouring Tide), dragged in by one (the Whirlwind Tower), or shoved.
       if (ev.what && JUTSU[ev.what]) return { text: t(JUTSU[ev.what].push?.toward ? 'l_dragged' : 'l_swept', { t: nameOf(s, ev.unit, lang), o: genderO(s.units[ev.unit]), j: jutsuName(ev.what, lang) }) };

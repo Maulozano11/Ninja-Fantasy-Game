@@ -258,6 +258,14 @@ export const SHINOBI_FEATS: ShinobiFeat[] = [
       'Ganas un tercer elemento: sus jutsus se abren en tus ranuras de Elemento como los de tu segundo elemento (rango D y C; rango A desde el nivel 7). Una vez por descanso largo, un jutsu de uno de tus elementos cuesta 1 de chakra menos si el jutsu anterior que lanzaste en esa batalla era de otro de tus elementos.',
     requires: { level: 9, secondElement: true },
   },
+  // The owner's medic feat ("5 me encanta como Feat", 2026-10-24): battle/senbon.ts healDice.
+  {
+    id: 'steady_hand',
+    name: 'Steady Hand',
+    description: 'Every heal you give rolls one more die: the healing senbon, a healing potion, a bandage and healing jutsu (2d4+2 becomes 3d4+2). Quick First Aid is not a roll and does not change.',
+    nameEs: 'Mano firme',
+    descriptionEs: 'Cada curación que das tira un dado más: el senbon curativo, una poción curativa, una venda y los jutsus de curación (2d4+2 pasa a 3d4+2). Los primeros auxilios rápidos no son una tirada y no cambian.',
+  },
 ];
 
 export const JUTSUS_DATA: JutsuDefinition[] = [

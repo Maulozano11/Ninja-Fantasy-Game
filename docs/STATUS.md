@@ -424,6 +424,8 @@ Merge checks (`git merge-tree` on the origin tips, nothing changed):
 
 ## 4. Backlog
 
+- Healing at camp for the medic (the owner, 2026-10-24: idea 6, *"ok implementaremos algo"*): later.
+
 ### 4a. Replace Naruto-derived names and designs (before any public release)
 
 Counted on the integration branch as lines in `src` (without `src/assets`) that match the term,

@@ -2094,3 +2094,26 @@ demas esta bien por ahora"*).
    weapon: **no**. 6. More for the medic: *"dame ideas"*; his choices are in "The medic's kit" below.
 - The **mission bag** (decided): `weaponPoison` and `healingPotions` join the saved backpack; a run
   saved before them loads with 0 of each.
+
+### The medic's kit (the owner, 2026-10-24; built on `items/senbon`)
+
+We offered him six ideas for the healer; his answer: *"1 si 2 no 3 si gasta antidoto 4 si pero suena
+como una habilidad de alguna clase ... 5 me encanta como Feat 6 ok implementaremos algo"*. Decided:
+1 (Quick First Aid) yes, 2 (*Ojo clínico*, a medic seeing HP and effects) **no**, 3 (the antidote
+senbon) yes and it spends an antidote, 4 (pressure points) yes as a class-like ability (its own
+section below), 5 (Steady Hand) as a **feat**, 6 (healing at camp) later. The numbers are our proposal
+(`src/battle/senbon.ts`).
+
+- **Primeros auxilios rápidos** / Quick First Aid (Medical Specialist only): **bonus action**, **once
+  a battle**: a fallen ally within **1.5 m** gets back up with **1 HP**. No potion, no roll. The AI
+  medic uses it on a fallen ally beside it.
+- **Senbon antídoto** / Antidote senbon (anyone with an antidote in the backpack): **action**, a
+  senbon dipped in an antidote thrown at a **poisoned ally within 6 m**, in sight, no attack roll. It
+  cures exactly what the antidote cures: **Poisoned** (the antidote does not cure burning, so neither
+  does this). It spends **1 antidote and 1 senbon**. Never at a foe or oneself (the antidote item is
+  for that). The AI throws one at a poisoned friend, worth half that friend's harm (more on Support).
+- **Mano firme** / Steady Hand (a **feat**, no prerequisite, like 8 of the 10 feats): every heal its
+  ninja gives rolls **one more die**: the healing senbon (2d4+2 → 3d4+2), a potion drunk, a bandage
+  (1d8 → 2d8, + WIS) and healing jutsu (the Mystical Palm, the Healing Dew). Quick First Aid is not a
+  roll and stays 1 HP.
+- Icons: the two new buttons use drawn placeholders until he paints them.

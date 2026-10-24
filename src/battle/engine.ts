@@ -64,7 +64,7 @@ import {
 } from './clans';
 import { reachTo, replanAgainst } from './intent';
 import { chargedFoe, chargeHolds, crackUnder, endCharge } from './charged';
-import { carriesCoat, coatLeft, POTION_DICE, HEAL_SENBON_DICE, HEAL_SENBON_RANGE, healSenbonBonus, POISON_DC, POISON_DICE, POISON_HITS, poisonLeft, potionsLeft, SENBON, senbonLeft, spendPoison, WEAPON_POISON } from './senbon';
+import { antidotesLeft, ANTIDOTE_SENBON_RANGE, FIRST_AID_REACH, healDice, MEDIC_CLASS, carriesCoat, coatLeft, POTION_DICE, HEAL_SENBON_DICE, HEAL_SENBON_RANGE, healSenbonBonus, POISON_DC, POISON_DICE, POISON_HITS, poisonLeft, potionsLeft, SENBON, senbonLeft, spendPoison, WEAPON_POISON } from './senbon';
 import { activeImbue, EARTH_CRIT, IMBUE_DAMAGE, IMBUE_DICE, imbueBlocker, imbueHolds, startImbue, unitImbueElement, WIND_PUSH, type ImbueElement } from './imbue';
 
 // --- setup ---------------------------------------------------------------------------------
@@ -281,6 +281,8 @@ function dispatch(s: BattleState, a: Action, ev: BattleEvent[]): string | null {
       return doItem(s, u, a.item, a.target, a.at, ev);
     case 'stabilize':
       return doStabilize(s, u, a.target, ev);
+    case 'firstAid':
+      return doFirstAid(s, u, a.target, ev);
     case 'flee':
       return doFlee(s, u, ev);
     case 'stone':
@@ -1025,7 +1027,7 @@ function doJutsu(s: BattleState, u: Unit, id: string, atIn: Pt, targetId: string
   const hits: Hit[] = [];
   switch (spec.special) {
     case 'heal':
-      heal(target!, rollDiceExpr(s, spec.dice ?? '2d8+3'), id, ev);
+      heal(target!, rollDiceExpr(s, healDice(u, spec.dice ?? '2d8+3')), id, ev);
       break;
     case 'flicker': {
       const from = { ...u.pos };
@@ -1511,6 +1513,7 @@ function doItem(s: BattleState, u: Unit, item: ItemId, targetId: string | undefi
   }
   if (item === 'healSenbon') return healSenbon(s, u, targetId, ev);
   if (item === 'potion') return drinkPotion(s, u, targetId, ev);
+  if (item === 'antidoteSenbon') return antidoteSenbon(s, u, targetId, ev);
   const t = targetId ? s.units[targetId] : u;
   if (!t || t.team !== u.team || !targetable(t)) return 'badTarget';
   if (!near(u, t)) return 'outOfRange';
@@ -1524,7 +1527,7 @@ function doItem(s: BattleState, u: Unit, item: ItemId, targetId: string | undefi
       t.effects = removeEffect(t.effects, 'bleeding');
       ev.push({ t: 'effect', unit: t.id, effect: 'bleeding', on: false });
     }
-    heal(t, Math.max(1, rollDiceExpr(s, '1d8') + abilityMod(u.stats.wis)), 'bandage', ev);
+    heal(t, Math.max(1, rollDiceExpr(s, healDice(u, '1d8')) + abilityMod(u.stats.wis)), 'bandage', ev);
     return null;
   }
   if (s.supplies.antidotes < 1) return 'noneLeft';
@@ -1569,18 +1572,15 @@ function healSenbon(s: BattleState, u: Unit, targetId: string | undefined, ev: B
   if (potionsLeft(s, u) < 1) return 'noneLeft';
   if (dist(u.pos, t.pos) > HEAL_SENBON_RANGE + 0.1) return 'outOfRange';
   if (!lineOfSight(s, u.pos, t.pos)) return 'noSight';
-  // A needle is thrown with a free hand, as a kunai is (a two-handed weapon is let go of for free).
-  if (u.armed && u.weapon.twoHanded) {
-    if (u.turn.interacted) return 'handsBusy';
-    setArmed(u, false, 'free', ev);
-  }
+  const busy = senbonHand(u, ev);
+  if (busy) return busy;
   u.turn.action = false;
   u.senbon = senbonLeft(u) - 1;
   s.supplies.healingPotions = potionsLeft(s, u) - 1;
   if (t.pos.x !== u.pos.x) u.facing = t.pos.x > u.pos.x ? 1 : -1;
   ev.push({ t: 'act', unit: u.id, act: 'item' });
   ev.push({ t: 'healSenbon', unit: u.id, target: t.id });
-  heal(t, Math.max(1, rollDiceExpr(s, HEAL_SENBON_DICE) + healSenbonBonus(u)), 'healSenbon', ev);
+  heal(t, Math.max(1, rollDiceExpr(s, healDice(u, HEAL_SENBON_DICE)) + healSenbonBonus(u)), 'healSenbon', ev);
   return null;
 }
 
@@ -1596,7 +1596,64 @@ function drinkPotion(s: BattleState, u: Unit, targetId: string | undefined, ev: 
   u.turn.bonus = false;
   s.supplies.healingPotions = potionsLeft(s, u) - 1;
   ev.push({ t: 'act', unit: u.id, act: 'item' });
-  heal(u, Math.max(1, rollDiceExpr(s, POTION_DICE)), 'potion', ev);
+  heal(u, Math.max(1, rollDiceExpr(s, healDice(u, POTION_DICE))), 'potion', ev);
+  return null;
+}
+
+/** A senbon is thrown with a free hand, as a kunai is: a two-handed weapon is let go of for free. */
+function senbonHand(u: Unit, ev: BattleEvent[]): string | null {
+  if (!(u.armed && u.weapon.twoHanded)) return null;
+  if (u.turn.interacted) return 'handsBusy';
+  setArmed(u, false, 'free', ev);
+  return null;
+}
+
+/**
+ * An antidote senbon (action; the owner, 2026-10-24: "si gasta antidoto"): a senbon dipped in an
+ * antidote, thrown at a poisoned ally within 6 m and in sight, no attack roll. It cures what the
+ * antidote cures (Poisoned) and spends an antidote and a senbon. Never at a foe or the thrower (the
+ * antidote itself is for that).
+ */
+function antidoteSenbon(s: BattleState, u: Unit, targetId: string | undefined, ev: BattleEvent[]): string | null {
+  const t = targetId ? s.units[targetId] : undefined;
+  if (!t || !targetable(t)) return 'badTarget';
+  if (t.id === u.id) return 'self';
+  if (t.team !== u.team) return 'notAlly';
+  if (senbonLeft(u) < 1) return 'noSenbon';
+  if (antidotesLeft(s, u) < 1) return 'noneLeft';
+  if (!hasEffect(t.effects, 'poisoned')) return 'notPoisoned';
+  if (dist(u.pos, t.pos) > ANTIDOTE_SENBON_RANGE + 0.1) return 'outOfRange';
+  if (!lineOfSight(s, u.pos, t.pos)) return 'noSight';
+  const busy = senbonHand(u, ev);
+  if (busy) return busy;
+  u.turn.action = false;
+  u.senbon = senbonLeft(u) - 1;
+  s.supplies.antidotes -= 1;
+  if (t.pos.x !== u.pos.x) u.facing = t.pos.x > u.pos.x ? 1 : -1;
+  ev.push({ t: 'act', unit: u.id, act: 'item' });
+  ev.push({ t: 'healSenbon', unit: u.id, target: t.id, antidote: true });
+  t.effects = removeEffect(t.effects, 'poisoned');
+  ev.push({ t: 'effect', unit: t.id, effect: 'poisoned', on: false });
+  return null;
+}
+
+/**
+ * Quick First Aid (Primeros auxilios rápidos; the owner, 2026-10-24: "1 si"): a Medical Specialist's
+ * bonus action, once a battle: a fallen ally within 1.5 m gets back up at 1 HP. No potion, no roll;
+ * Steady Hand adds nothing to it.
+ */
+function doFirstAid(s: BattleState, u: Unit, targetId: string, ev: BattleEvent[]): string | null {
+  if (u.character?.shinobiClass !== MEDIC_CLASS) return 'notMedic';
+  if (!u.turn.bonus) return 'noBonus';
+  if (u.firstAidUsed) return 'firstAidUsed';
+  const t = s.units[targetId];
+  if (!t || t.team !== u.team || t.id === u.id) return 'badTarget';
+  if (t.down !== 'downed' && t.down !== 'stable') return 'notDown';
+  if (dist(u.pos, t.pos) > FIRST_AID_REACH + 0.1) return 'outOfRange';
+  u.turn.bonus = false;
+  u.firstAidUsed = true;
+  ev.push({ t: 'firstAid', unit: u.id, target: t.id });
+  heal(t, 1, 'firstAid', ev);
   return null;
 }
 

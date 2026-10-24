@@ -8,7 +8,7 @@ import type { PaintedPiece } from '../painted';
 
 /** His colours the colour slots recolour from (at these, every pixel is his). */
 export const HOPLITE_HAIR_BASE = '#202737';
-export const HOPLITE_HAIR_BAND = '#764830';
+export const HOPLITE_HAIR_BAND = '#56342a';
 
 /** Where each piece lands in our male idle frame 0 (his joints), unturned: the fine pixel of its first row's first cell. */
 export const HOPLITE_HAIR_REST: Record<string, [number, number]> = {
@@ -98,22 +98,22 @@ export const HOPLITE_BRAID: PaintedPiece = {
   rows: [
     '.........aaaaaa.',
     '........aa.abbba',
-    '........a.acbdba',
-    '.........aeffhha',
-    '.......aabibaaaa',
-    '......abebba....',
-    '......ajbia.....',
-    '.....addka......',
-    '...aafjja.......',
-    '....akjda.......',
-    '...akkdda.......',
-    '...abbaa........',
-    '...ala..........',
-    'aaama...........',
-    'ahbba...........',
-    'anjfa...........',
-    'ahhba...........',
-    'abba............',
+    '........a.acddda',
+    '.........accccca',
+    '.......aadebaaaa',
+    '......abcdba....',
+    '......afbda.....',
+    '.....ahhda......',
+    '...aaifda.......',
+    '....adbha.......',
+    '...adcbha.......',
+    '...addaa........',
+    '...aja..........',
+    'aaaja...........',
+    'adbda...........',
+    'akfca...........',
+    'adcda...........',
+    'adda............',
     '.aa.............',
     '.aa.............',
     '..aa............',
@@ -121,17 +121,14 @@ export const HOPLITE_BRAID: PaintedPiece = {
   colors: {
     a: '#010216',
     b: '#202737',
-    c: '#465262',
-    d: '#172236',
-    e: '#2c3845',
-    f: '#3a4657',
-    h: '#38404d',
-    i: '#202028',
-    j: '#141c2e',
-    k: '#263041',
-    l: '#764830',
-    m: '#6a3e2c',
-    n: '#080e20',
+    c: '#2c3845',
+    d: '#263041',
+    e: '#202028',
+    f: '#141c2e',
+    h: '#172236',
+    i: '#38404d',
+    j: '#56342a',
+    k: '#080e20',
   },
 };
 
@@ -146,8 +143,5 @@ export const HOPLITE_BRAID_KIND: Record<string, 'dark' | 'hair' | 'line' | 'navy
   '#263041': 'navy',
   '#2c3845': 'navy',
   '#38404d': 'navy',
-  '#3a4657': 'navy',
-  '#465262': 'navy',
-  '#6a3e2c': 'warm',
-  '#764830': 'warm',
+  '#56342a': 'warm',
 };

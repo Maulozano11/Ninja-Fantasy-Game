@@ -465,7 +465,10 @@ FLAT = 34
 # How much of a pixel his dark half must cover to win it (pick_colour); MODE 'mode' takes the commonest
 # colour under it whatever its lightness.
 DARK_WINS = 'balance'
-MODE = 'split'
+# MODE 'surface': after that, each pixel left on his light half takes the shade of its material (his ramp)
+# nearest the lightness of his surface round it, so his bronze reads as smooth plates in his shades rather
+# than his brush's grain; the pixels on his dark half (SURFACE_DARK: all of them) keep his dark.
+MODE = 'surface'
 BIG_PATCH = 200
 # The dark share a piece's pixel needs to be dark, where it is not DARK_WINS (his face: his red eyes and
 # lash are dark against his skin, and must stay).
@@ -484,7 +487,7 @@ FEATURE = (2, 30)
 FEATURE_CONTRAST = 45
 NO_FEATURES = ('face',)
 KEEP_SPLIT = ('face', 'hair', 'diadem')
-SURFACE_DARK = 0.7
+SURFACE_DARK = 0.0
 
 
 def footprint(M, i, j):
@@ -1674,43 +1677,26 @@ def clean(a, lab, name, m, col, isl, M):
                     col[q] = line_c if ch == 'L' else plate_c
                     keep[q] = True
         elif what == 'lion':
-            # his gold face, the edge of his mane round it, and his darkest marks inside (eyes, nose, mouth)
+            # his medallion: a rim of his darkest bronze round it, and inside each pixel the shade of his (of
+            # LION_TONES shades of his medallion, by lightness) nearest the mean lightness of his cells under it,
+            # so his lion's head reads by its light and dark masses (mane, face, eye) as his does from afar
+            ls_ = sorted(disk, key=lambda q: (Lg[q], q))
+            tones = [commonest(ls_[int(len(ls_) * t / LION_TONES):int(len(ls_) * (t + 1) / LION_TONES)], a) for t in range(LION_TONES)]
+            rim = commonest(ls_[:max(1, len(ls_) // 8)], a)
             for j in range(int(fy - rf) - 1, int(fy + rf) + 2):
                 for i in range(int(fx - rf) - 1, int(fx + rf) + 2):
                     d = np.hypot(i + 0.5 - fx, j + 0.5 - fy)
                     if d > rf or not m[j, i] or isl[j, i]:
                         continue
-                    col[j, i] = mid_ if d > rf - 1 else lite
                     keep[j, i] = True
-            inner = [(y, x) for y, x in disk if (x + 0.5 - cx) ** 2 + (y + 0.5 - cy) ** 2 <= (0.75 * R) ** 2]
-            darks = np.zeros((H, W), bool)
-            for y, x in inner:
-                darks[y, x] = Lg[y, x] < Lg[ls[len(ls) // 4]]
-            comps = []
-            seen2 = np.zeros((H, W), bool)
-            for y, x in zip(*np.nonzero(darks)):
-                if seen2[y, x]:
-                    continue
-                g2, st = [], [(y, x)]
-                seen2[y, x] = True
-                while st:
-                    q, p = st.pop()
-                    g2.append((q, p))
-                    for dq, dp in ((1, 0), (-1, 0), (0, 1), (0, -1)):
-                        yy, xx = q + dq, p + dp
-                        if darks[yy, xx] and not seen2[yy, xx]:
-                            seen2[yy, xx] = True
-                            st.append((yy, xx))
-                comps.append(g2)
-            for g2 in sorted(comps, key=lambda g: (-len(g), g[0]))[:LION_MARKS]:
-                if len(g2) < 2:
-                    continue
-                gy = np.mean([q for q, _ in g2]) + 0.5
-                gx = np.mean([p for _, p in g2]) + 0.5
-                ffx, ffy = M.fine((gx, gy))
-                q = (int(np.floor(ffy)), int(np.floor(ffx)))
-                if m[q] and not isl[q]:
-                    col[q] = dark
+                    if d > rf - 1:
+                        col[j, i] = rim
+                        continue
+                    cells = [(y, x, w) for y, x, w in footprint(M, i, j) if 0 <= y < H and 0 <= x < W and mine[y, x]]
+                    if not cells:
+                        continue
+                    mean = sum(float(Lg[y, x]) * w for y, x, w in cells) / sum(w for _, _, w in cells)
+                    col[j, i] = min(tones, key=lambda c: (abs(0.299 * c[0] + 0.587 * c[1] + 0.114 * c[2] - mean), c))
     # 4. the meander along the skirt's hem
     if name == 'skirt':
         gold = mine & (K == 'gold')
@@ -1738,7 +1724,7 @@ def clean(a, lab, name, m, col, isl, M):
                     col[j, i] = navy
 
 
-LION_MARKS = 5
+LION_TONES = 4
 
 
 def laces(a, name, m, col, isl, keep, M, pts, R, K, mine):

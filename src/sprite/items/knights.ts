@@ -15,14 +15,13 @@
 
 import { retintHex } from '../color';
 import { armDepth, armJoints, type Depth, DrawCtx, ItemDef, legDepth, legJoints, type PartsPreview, type PartSlot, Side } from '../ctx';
-import { type PaintedPiece, segAngle, stampBent, stampPiece } from '../painted';
+import { type PaintedPiece, segAngle, stampBent, stampLeaning, stampPiece } from '../painted';
 import { add, F_NO_OUTLINE, F_NO_TEXTURE, GRID, partIndex, PartId, RES, sub, v, Vec } from '../raster';
 import { drawRig, GROUND, type Rig } from '../rig';
 import { KNIGHT_BODIES, type KnightSet, knightLegsStill, knightRestRig, KNIGHT_SETS } from '../knightRig';
 import type { BodyType } from '../types';
 import { faceAnchor } from '../body';
 import { closeAnkle, footTurn } from './ankle';
-import { stampLeaning } from './armor';
 import { capeWind, paintedBack } from './capes';
 import * as ARMOR from './knightArmorArt';
 import * as ARMS from './knightArmsArt';

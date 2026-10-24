@@ -7,11 +7,13 @@ import { FLAME_LONGSWORD } from './items/flameSwordArt';
 import { dawnStaffInFarHand } from './items/aureliaStaff';
 import { ICE_SWORD } from './items/iceSwordArt';
 import { KNIGHT_HILT_DARK, KNIGHT_HILT_DRAGON, KNIGHT_HILT_PALADIN } from './items/knightSwordArt';
-import { add, norm, RES, scale, sub, Vec } from './raster';
+import { KATANA_V2 } from './items/katanaV2Art';
+import { NIGHT_GLOVE_N } from './items/nightBootsGlovesArt';
+import { add, norm, RES, scale, sub, v, Vec } from './raster';
 import { LYRA_RAPIER } from './items/lyraSwordArt';
 import { drawRig, THROW_RELEASE_FRAME } from './rig';
 import type { Rig } from './rig';
-import type { BodyType, SpriteAppearance } from './types';
+import { isFemaleBody, type BodyType, type SpriteAppearance } from './types';
 
 /**
  * Weapon angles through 'throw' (rig.ts THROW): coiled with the weapon drawn back low behind the
@@ -33,6 +35,11 @@ const PIERCE_POLE = [-26, -4, -1, -1, -20];
 
 /** Screen angle of a hand-held blade per pose/frame (degrees, 0 = facing right, + = clockwise/down). */
 export function swordAngle(g: DrawCtx): number {
+  return paintedGrip(g)?.sword ?? poseSwordAngle(g);
+}
+
+/** The pose's own blade angle (swordAngle without the owner's fist round his Katana v2). */
+function poseSwordAngle(g: DrawCtx): number {
   if (g.rig.aim !== undefined) return g.rig.aim;
   const f = g.rig.frame;
   switch (g.rig.pose) {
@@ -70,16 +77,62 @@ export function swordAngle(g: DrawCtx): number {
       // Lyra's rapier hangs at the angle the owner drew it, so at rest it is his pixels.
       if (g.has('held', 'held_gilded_rapier')) return LYRA_RAPIER.angle;
       // Matches the reference: blade hangs across the legs at about 50 degrees. The owner's flame
-      // longsword and ice crystal sword hang at the angle he painted them (35), so at rest they are every
-      // pixel his.
+      // longsword, ice crystal sword and Katana v2 hang at the angles he painted them (35, 35, 37), so at
+      // rest they are every pixel his.
       // The owner's knights' sword hangs at the angle he drew its guard (its blade lies along the guard).
       if (g.has('held', 'held_knight_sword')) return KNIGHT_GUARD_ANGLE[g.look.slots.held?.parts?.guard ?? 'paladin'] ?? KNIGHT_HILT_PALADIN.angle;
-      return g.has('held', 'held_flame_sword') ? FLAME_LONGSWORD.angle : g.has('held', 'held_ice_crystal') ? ICE_SWORD.angle : 52;
+      return g.has('held', 'held_flame_sword') ? FLAME_LONGSWORD.angle : g.has('held', 'held_ice_crystal') ? ICE_SWORD.angle : g.has('held', 'held_katana_v2') ? KATANA_V2.angle : 52;
   }
 }
 
 /** The angle his knights' sword hangs at, by its guard (items/knights.ts knightSword). */
 const KNIGHT_GUARD_ANGLE: Record<string, number> = { paladin: KNIGHT_HILT_PALADIN.angle, dark: KNIGHT_HILT_DARK.angle, dragon: KNIGHT_HILT_DRAGON.angle };
+
+/**
+ * The owner's fist round his Katana v2 (his Fingerless Gloves on his Ren, items/clothes.ts): how it
+ * sits on the wrist and where the sword goes through it. He drew the grip crossing his fist at a fixed
+ * angle to the forearm (KATANA_V2.angle - NIGHT_GLOVE_N.angle), so the sword goes through it that way
+ * in every pose: the fist turns with the forearm (or, where the blade is carried back, its mirror
+ * image, the grip crossing the other way), and the wrist bends it toward the pose's blade angle (his
+ * cuff stays on the forearm). In a strike (and when the battle aims the blade) the wrist bends as far
+ * as the blade needs; otherwise at most CARRY_BEND, and the blade goes where his fist points it.
+ */
+export interface PaintedGrip {
+  /** His fist drawn mirrored (the grip crossing the forearm the other way). */
+  mirror: boolean;
+  /** Where the fist points, wrist to knuckles (degrees, as swordAngle). */
+  fist: number;
+  /** The blade's angle. */
+  sword: number;
+  /** The point of the grip at the hand joint, where the sword is held (design units). */
+  at: Vec;
+}
+
+/** How far the wrist bends his fist off the forearm's line while the blade is carried (degrees). */
+export const CARRY_BEND = 40;
+/** The poses whose blade angle is the strike itself: there the fist follows the blade. */
+const STRIKES = new Set(['attack', 'throw', 'pierce', 'train']);
+const wrap = (a: number): number => ((((a + 180) % 360) + 360) % 360) - 180;
+
+export function paintedGrip(g: DrawCtx): PaintedGrip | null {
+  if (!g.has('held', 'held_katana_v2') || !g.has('hands', 'hands_fingerless') || isFemaleBody(g.rig.body)) return null;
+  if (throwsKunai(g) || handsBusy(g) || handsLimp(g) || handsReleased(g)) return null;
+  const r = g.rig;
+  const fo = (Math.atan2(r.handN.y - r.wristN.y, r.handN.x - r.wristN.x) * 180) / Math.PI;
+  const rel = KATANA_V2.angle - NIGHT_GLOVE_N.angle;
+  const want = poseSwordAngle(g);
+  const bendOf = (m: boolean) => wrap(want - (fo + (m ? -rel : rel)));
+  const mirror = Math.abs(bendOf(true)) < Math.abs(bendOf(false));
+  const full = bendOf(mirror);
+  const bend = STRIKES.has(r.pose) || r.aim !== undefined ? full : Math.max(-CARRY_BEND, Math.min(CARRY_BEND, full));
+  const fist = fo + bend;
+  // The hand joint turned about the wrist as far as the wrist bends (where he holds it, unbent).
+  const c = Math.cos((bend * Math.PI) / 180);
+  const s = Math.sin((bend * Math.PI) / 180);
+  const d = sub(r.handN, r.wristN);
+  const at = Math.abs(bend) < 0.5 ? r.handN : add(r.wristN, v(d.x * c - d.y * s, d.x * s + d.y * c));
+  return { mirror, fist, sword: Math.abs(full) < 0.5 || bend === full ? want : fist + (mirror ? -rel : rel), at };
+}
 
 /** Polearm angle: upright at rest, thrust forward in attacks. */
 export function poleAngle(g: DrawCtx): number {
@@ -137,11 +190,14 @@ export const handsBusy = (g: DrawCtx): boolean => BUSY.has(g.rig.pose) || !!g.lo
 export const handsReleased = (g: DrawCtx): boolean => g.rig.released && !handsBusy(g);
 
 /** The held items that are weapons, with a handle the fist holds; the others are empty hands or a technique held in the palm. */
-const WEAPONS = new Set(['held_katana', 'held_crystal', 'held_ice_crystal', 'held_flame_sword', 'held_knight_sword', 'held_gilded_rapier', 'held_kunai', 'held_naginata']);
+const WEAPONS = new Set(['held_katana', 'held_katana_v2', 'held_crystal', 'held_ice_crystal', 'held_flame_sword', 'held_knight_sword', 'held_gilded_rapier', 'held_kunai', 'held_naginata']);
 
-/** The owner's longswords, held by their own grip at the hand joint (the others at the fist's middle, gripPoint). */
-export const HAND_JOINT_SWORDS = new Set(['held_flame_sword', 'held_ice_crystal', 'held_knight_sword']);
+/** The owner's painted swords, held by their own grip at the hand joint (the others at the fist's middle, gripPoint). */
+export const HAND_JOINT_SWORDS = new Set(['held_flame_sword', 'held_ice_crystal', 'held_katana_v2', 'held_knight_sword']);
 export const isWeapon = (held: string | undefined): boolean => !!held && WEAPONS.has(held);
+
+/** The owner's painted swords are held by their own grip at the hand joint (items/accessories.ts), the others at the fist's middle. */
+export const heldAtHandJoint = (held: string | undefined): boolean => HAND_JOINT_SWORDS.has(held ?? '');
 
 /**
  * A kunai from the pouch in the near fist, like the Kunai item: in the wind-up of 'throw' with no
@@ -167,7 +223,7 @@ export function gripAngle(g: DrawCtx): number | null {
   if (g.has('held', 'held_naginata')) return poleAngle(g);
   // Aurelia's staff is in her far fist at rest (her near hand is empty), in the near one like a pole otherwise.
   if (g.has('held', 'held_dawn_staff')) return dawnStaffInFarHand(g) ? null : poleAngle(g);
-  if (g.has('held', 'held_katana') || g.has('held', 'held_crystal') || g.has('held', 'held_ice_crystal') || g.has('held', 'held_flame_sword') || g.has('held', 'held_knight_sword') || g.has('held', 'held_kunai')) return swordAngle(g);
+  if (g.has('held', 'held_katana') || g.has('held', 'held_katana_v2') || g.has('held', 'held_crystal') || g.has('held', 'held_ice_crystal') || g.has('held', 'held_flame_sword') || g.has('held', 'held_knight_sword') || g.has('held', 'held_kunai')) return swordAngle(g);
   return null;
 }
 
@@ -211,8 +267,8 @@ export function throwRelease(body: BodyType, held?: string): ThrowRelease {
   const fist = (r: typeof at): Vec => add(r.handN, scale(norm(sub(r.handN, r.wristN)), 0.9));
   const d = norm(sub(at.handN, at.wristN));
   const pole = held === 'held_naginata' || held === 'held_dawn_staff';
-  // The flame longsword is held by its own grip at the hand joint (items/accessories.ts), the others at the fist's middle.
-  const grip = HAND_JOINT_SWORDS.has(held ?? '') ? before.handN : fist(before);
+  // The owner's painted swords are held by their own grip at the hand joint (items/accessories.ts), the others at the fist's middle.
+  const grip = heldAtHandJoint(held) ? before.handN : fist(before);
   return {
     frame: THROW_RELEASE_FRAME,
     hand: scale(fist(at), RES),
@@ -234,5 +290,5 @@ export function heldAt(body: BodyType, pose: 'throw' | 'pierce', frame: number, 
   const pole = held === 'held_naginata';
   const table = pose === 'throw' ? (pole ? THROW_POLE : THROW_BLADE) : pole ? PIERCE_POLE : PIERCE_BLADE;
   const fist = add(r.handN, scale(norm(sub(r.handN, r.wristN)), 0.9));
-  return { at: scale(HAND_JOINT_SWORDS.has(held ?? '') ? r.handN : fist, RES), angle: table[((frame % table.length) + table.length) % table.length] };
+  return { at: scale(heldAtHandJoint(held) ? r.handN : fist, RES), angle: table[((frame % table.length) + table.length) % table.length] };
 }

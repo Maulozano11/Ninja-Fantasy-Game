@@ -240,9 +240,19 @@ interface PoseFrame {
    * length, the neck turned this many degrees forward from his at rest; headDx/headDy are not used
    * there. The throw pitches the body far forward and his heroines keep the head up on the neck, looking
    * at the target (docs/reference/poses/lyra-throw-owner-reference.jpg): a head moved by a fixed offset
-   * stretched his neck to twice its length.
+   * stretched his neck to twice its length. The male and bulky bodies (not fitted) read maleNeckPitch.
    */
   neckPitch?: number;
+  /**
+   * On the male and bulky bodies (not fitted) the head stays on the neck at its length at rest, the
+   * neck turned this many degrees forward from rest (headDx/headDy are not used). The throw pitches the
+   * body far forward and the owner keeps the head up on the neck, looking at the target (his repaint of
+   * the release and follow-through, docs/reference/poses/lyra-throw-owner-reference.jpg): a head moved
+   * by a fixed offset hung it ahead of the chest with no neck to it ("hay que arreglarle el cuello y la
+   * cabeza a las ultimas 2 poses de arrojar"). Its own field: the fitted bodies turn his neck less
+   * (neckPitch), and in more poses.
+   */
+  maleNeckPitch?: number;
   handN: HandTarget;
   handF: HandTarget;
   /** Ankle positions relative to each hip, in leg-length units. */
@@ -423,7 +433,7 @@ export function rigPoseFor(pose: SpritePose, style: CastStyle = 'runes', held?: 
 function trainingFor(held: string | undefined): RigPose {
   if (held === 'held_gilded_rapier') return 'train';
   if (held === 'held_naginata' || held === 'held_dawn_staff') return 'trainPole';
-  if (held === 'held_katana' || held === 'held_crystal' || held === 'held_ice_crystal' || held === 'held_flame_sword' || held === 'held_knight_sword' || held === 'held_kunai') return 'train';
+  if (held === 'held_katana' || held === 'held_katana_v2' || held === 'held_crystal' || held === 'held_ice_crystal' || held === 'held_flame_sword' || held === 'held_knight_sword' || held === 'held_kunai') return 'train';
   return 'trainFist';
 }
 
@@ -850,16 +860,18 @@ const TRAIN_FIST: PoseFrame[] = [
  * RELEASE, where the phase starts, and a follow-through into the leap. The release is the owner's
  * reference (docs/reference/poses/warp-throw-owner-reference.jpg, a figure of blue light leaping
  * as it throws), its angles measured on his picture: the body pitched forward 32 degrees (pelvis to
- * neck), the head hung ahead of the chest and below the shoulders (31 degrees below level from the
- * neck; his 33); the throwing arm flung up and back behind the head, the hand open (upper arm 50
- * degrees above level, forearm 30); the front knee driven forward (thigh 31 degrees below level)
+ * neck); the head up on the neck at its rest length, the neck turned forward (maleNeckPitch: the head
+ * hung ahead of the chest, as his figure of light shows it, read as a broken neck on our figures, and
+ * he had it put back: "hay que arreglarle el cuello y la cabeza a las ultimas 2 poses de arrojar");
+ * the throwing arm flung up and back behind the head, the hand open (upper arm 50 degrees above
+ * level, forearm 30); the front knee driven forward (thigh 31 degrees below level)
  * with its shin folded back under the body; the back leg stretched out behind, pushing off. His
  * free arm is swept back on the far side of his back, which our three-quarter front view puts
  * behind the torso: it is swept back and down out of sight there (a hand showing behind the back
  * would sit under the throwing elbow, like a second hand on that arm). From the release on the
  * weapon is out of the hand (PoseFrame.released): the battle draws it in flight from where the
  * throw flung it (throwRelease() in grip.ts). Bare hands throw a kunai from the pouch (grip.ts
- * throwsKunai). The female bodies keep the head up on the neck instead, as the owner repainted the
+ * throwsKunai). The female bodies keep the head up on the neck too, as the owner repainted the
  * release and follow-through on his heroine Lyra (docs/reference/poses/lyra-throw-owner-reference.jpg):
  * the neck turned only a little forward of his at rest (neckPitch), the head above the shoulders.
  */
@@ -872,9 +884,9 @@ const THROW: PoseFrame[] = [
   // pitching after it halfway to the release, the free arm swinging back.
   { lean: 21, pelvisDx: 1.5, headDx: 3, headDy: 4.5, neckPitch: 4, footN: v(-0.52, 0.87), footF: v(0.25, 0.8), handN: arm(0.78, 0.68), handF: arm(-0.55, 0.5), shapeN: 'grip', shapeF: 'fist' },
   // RELEASE: the owner's reference; the phase starts here.
-  { lean: 32, pelvisDx: 2, headDx: 6, headDy: 8, neckPitch: 6, footN: v(-0.56, 0.83), footF: v(0.087, 0.637), handN: arm(-0.73, -0.62), handF: arm(-0.62, 0.55), shapeN: 'open', shapeF: 'open', released: true, streamBack: true },
+  { lean: 32, pelvisDx: 2, headDx: 6, headDy: 8, neckPitch: 6, maleNeckPitch: 26, footN: v(-0.56, 0.83), footF: v(0.087, 0.637), handN: arm(-0.73, -0.62), handF: arm(-0.62, 0.55), shapeN: 'open', shapeF: 'open', released: true, streamBack: true },
   // Follow-through: carried on into the leap, both feet leaving the ground.
-  { lean: 34, pelvisDx: 2.5, headDx: 6, headDy: 8, neckPitch: 8, lift: 1.5, footN: v(-0.6, 0.78), footF: v(0.1, 0.6), handN: arm(-0.77, -0.6), handF: arm(-0.66, 0.5), shapeN: 'open', shapeF: 'open', released: true, streamBack: true },
+  { lean: 34, pelvisDx: 2.5, headDx: 6, headDy: 8, neckPitch: 8, maleNeckPitch: 28, lift: 1.5, footN: v(-0.6, 0.78), footF: v(0.1, 0.6), handN: arm(-0.77, -0.6), handF: arm(-0.66, 0.5), shapeN: 'open', shapeF: 'open', released: true, streamBack: true },
 ];
 
 /**
@@ -1173,6 +1185,8 @@ export interface Rig {
   up: Vec;
   right: Vec;
   head: Vec; // head center: whole design units (half units on snapped poses)
+  /** See PoseFrame.maleNeckPitch: the head turned forward on the neck (the throw's release), on the bodies not fitted. */
+  neckPitch?: number;
   shoulderN: Vec;
   shoulderF: Vec;
   elbowN: Vec;
@@ -1395,6 +1409,9 @@ export function turnRig(r: Rig, deg: number): Rig {
   };
 }
 
+/** Where the head sits from the neck's foot at rest, in design units (the neck's length and lean). */
+export const NECK_REST = (bp: BodyParams): Vec => v(-0.4, -5.9 * bp.headScale);
+
 /**
  * A leg toward an ankle target (PoseAt): a foot the leg cannot reach slides back along the ground toward
  * the hip until the leg reaches it.
@@ -1521,10 +1538,18 @@ function solveRig(body: BodyType, bp: BodyParams, pose: RigPose, frame: number, 
   const aN = solveArm(shoulderN, f.handN, f.bendN ?? 1, bp.forearm, outN);
   const aF = solveArm(shoulderF, f.handF, 1, bp.forearm + (bp.farLonger ?? 0), -outF);
 
-  const headY = neck.y - 5.9 * bp.headScale + (f.headDy || 0);
-  const headX = neck.x - 0.4 + (f.headDx || 0);
-  // Whole design units, or half units (whole fine pixels) on snapped poses.
-  const head = f.snap ? v(Math.round(headX * RES) / RES, Math.round(headY * RES) / RES) : v(Math.round(headX), Math.round(headY));
+  let head: Vec;
+  if (f.maleNeckPitch !== undefined) {
+    // The head at the neck's rest length, the neck turned forward (PoseFrame.maleNeckPitch), on whole
+    // fine pixels so the length stays.
+    const at = turnPoint(add(neck, NECK_REST(bp)), neck, f.maleNeckPitch);
+    head = v(Math.round(at.x * RES) / RES, Math.round(at.y * RES) / RES);
+  } else {
+    const headY = neck.y + NECK_REST(bp).y + (f.headDy || 0);
+    const headX = neck.x + NECK_REST(bp).x + (f.headDx || 0);
+    // Whole design units, or half units (whole fine pixels) on snapped poses.
+    head = f.snap ? v(Math.round(headX * RES) / RES, Math.round(headY * RES) / RES) : v(Math.round(headX), Math.round(headY));
+  }
 
   return {
     body,
@@ -1537,6 +1562,7 @@ function solveRig(body: BodyType, bp: BodyParams, pose: RigPose, frame: number, 
     up,
     right,
     head,
+    neckPitch: f.maleNeckPitch,
     shoulderN,
     shoulderF,
     elbowN: aN.elbow,

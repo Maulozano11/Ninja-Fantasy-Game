@@ -380,7 +380,17 @@ genjutsu, solo elemental )"*.
   recorre el arma de Aki: +1.5 m de alcance", "Obsidiana filosa cubre el arma de Aki",
   and a line when it leaves the weapon. The class panel in the creator names it.
 
-**How it looks (new art, waiting for his approval; `src/sprite/imbue.ts`):** drawn on the
+**The activation (new art, waiting for his approval; on `vfx/weapon-imbue-activation`).** His words
+(2026-10-23): *"hazle una animacion para activar la mejora de elemento con la pose de victoria"*. When the
+element goes onto the weapon the ninja holds the victory pose (the weapon raised) for 1 s (`ACTIVATE_MS`,
+10 frames) while it plays: the element gathers into the hand (motes of its light drawn in from round it),
+surges up the blade from the hand to the tip (the loop's own pixels up to a bright front), flares off the
+point (a flash over the whole effect, rays and sparks off the tip, a halo round it) and settles into the
+loop; then back to rest. Each element in its own tones, the energy in the ninja's chakra colour, obsidian in
+its own (`renderImbueActivation` in `src/sprite/imbue.ts`; `playback.ts`, `renderer.ts`, `unitArt.ts`). It
+replaces the cast pose and the aura burst of the first build. The log is as before.
+
+**How it looks (approved: lightning, wind, fire and earth, then the redone water; `src/sprite/imbue.ts`):** drawn on the
 weapon's own pixels in every frame that holds it (idle, walk, run, attack, thrust,
 charge, cast, victory, the camp kata), so it follows the weapon's angle (`grip.ts`).
 None where the weapon is not in the hand (hand seals, the unarmed combo, the tackle,

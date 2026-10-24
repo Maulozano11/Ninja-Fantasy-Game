@@ -43,6 +43,10 @@
 // WORLD_OUT, so it never writes into src/assets; every file is written whole (temp, then rename);
 // the output is deterministic (no Math.random). The beast is out of scope (another artist): its
 // beast.png and manifest entry are copied through from vfx_chakra unchanged.
+// The three barriers carry the characters' black line round their gold frame (solid-outline.ts, the
+// owner's decision of 2026-10-22, "3 si"), never round the barrier's pane, its crest, foam and
+// sparkles, or the light and shadow round it; the rest of the set is energy and gets none.
+// SOLID_OUTLINE=0 leaves it off.
 
 import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -50,6 +54,7 @@ import { Canvas, Color, PX_PER_M, WorldSprite, hash, noise, writeGroup } from '.
 import { HGT, LEN, Orient, march, orientations, proj } from './vfx-b-wall3d';
 import { L, pal, pnoise, rnd } from './vfx-b-lib';
 import { CK_PAL, CK_REF, CkKind } from './vfx-chakra-v3-refdata';
+import { outlineSprite, solidOutlineOn, type SolidOutlineOptions } from './solid-outline';
 
 const GROUP = 'vfx_chakra_v3';
 const TAU = Math.PI * 2;
@@ -1771,6 +1776,26 @@ export function light(f: Canvas): number {
 /** The sprites in the order of the vfx_chakra manifest (beast copied through), then aura_back. */
 const ORDER = ['bolt', 'beast', 'stream', 'stream_head', 'breath', 'sphere', 'slash', 'multi', 'hit', 'blast', 'wall', 'aura', 'wall_diag', 'wall_depth', 'aura_back'];
 
+const rgbaKey = (r: number, g: number, b: number, a: number): number => ((r << 24) | (g << 16) | (b << 8) | a) >>> 0;
+/** His gold frame: the gold, its dark gold line and the cream of its studs (palette kinds from chakra-from-ref.py). */
+const GOLD_FRAME = new Set(PAL.filter((_, i) => KIND[i] === 'gold' || KIND[i] === 'goldline' || KIND[i] === 'cream').map((c) => rgbaKey(c[0], c[1], c[2], c[3])));
+
+/**
+ * The characters' line round a barrier's gold frame; every other sprite unchanged. The end-on
+ * barrier is ours (vfx-b-chakra.ts colours): its frame is the warm gold, its pane and sparkles blue and white.
+ */
+export function chakraLine(s: WorldSprite): WorldSprite {
+  const opts = chakraLineOptions(s.name);
+  return opts ? outlineSprite(s, opts) : s;
+}
+
+/** The line's options for a sprite of the set (null: energy, no line). */
+export function chakraLineOptions(name: string): SolidOutlineOptions | null {
+  if (name === 'wall' || name === 'wall_diag') return { particleColour: (r, g, b, a) => !GOLD_FRAME.has(rgbaKey(r, g, b, a)) };
+  if (name === 'wall_depth') return { particleColour: (r, _g, b) => r <= b + 40 };
+  return null;
+}
+
 export function chakraV3Sprites(): WorldSprite[] {
   return [
     bolt(),
@@ -1795,9 +1820,11 @@ function main(): void {
   const beastSrc = join(worldOut, 'vfx_chakra', 'beast.png');
   const oldManifest = join(worldOut, 'vfx_chakra', 'manifest.json');
   if (!existsSync(beastSrc) || !existsSync(oldManifest)) throw new Error(`vfx-chakra-v3: the chakra beast is copied from ${beastSrc}; it is missing`);
-  const sprites = chakraV3Sprites();
-  const bad = sprites.flatMap(borderCheck);
+  // The border check is on his art; the line may then take the clear pixel round it.
+  const art = chakraV3Sprites();
+  const bad = art.flatMap(borderCheck);
   if (bad.length) throw new Error('vfx-chakra-v3: art on the frame border:\n  ' + bad.join('\n  '));
+  const sprites = solidOutlineOn() ? art.map(chakraLine) : art;
   for (const s of sprites) {
     const fw = Math.max(...Object.values(s.anims).flatMap((a) => a.frames.map((f) => f.w)));
     const cols = Math.max(...Object.values(s.anims).map((a) => a.frames.length));

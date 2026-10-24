@@ -48,7 +48,8 @@ describe('jutsu effects, round 1', () => {
     assert.equal(JUTSU.leaf_hurricane_senpuu.weapon, 'stow');
     assert.equal(JUTSU.crescent_moon_dance.weapon, 'draw');
     assert.deepEqual(s('wood_dragon_jutsu'), ['single', 9, '5d8', 'Bludgeoning', 'str', false, undefined, undefined]);
-    assert.deepEqual(s('chidori_lightning_blade').slice(0, 6), ['single', 4.5, '5d8', 'Lightning', 'con', true]);
+    // Activated since the owner's 2026-10-21 rule (chargedHand.test.ts): a charge in the hand, its blow an attack roll within reach.
+    assert.deepEqual(s('chidori_lightning_blade').slice(0, 6), ['self', 1.5, '5d8', 'Lightning', undefined, true]);
     assert.equal(JUTSU.chidori_lightning_blade.weapon, 'stow');
   });
 
@@ -87,7 +88,7 @@ describe('jutsu effects, round 1', () => {
     assert.equal(no.reason, 'handsBusy');
   });
 
-  it('puts the weapon away for the Chidori, then runs in and thrusts the bare hand; it waits with the free interaction spent', () => {
+  it('puts the weapon away to charge the Chidori in the bare hand; it waits with the free interaction spent', () => {
     const b = createBattle({
       seed: 5,
       mapId: 'river_forest',
@@ -106,18 +107,17 @@ describe('jutsu effects, round 1', () => {
     u.jutsus = [...u.jutsus, 'chidori_lightning_blade'];
     u.chakra = 20;
     u.armed = true;
-    const foe = Object.values(s.units).find((x) => x.team !== u.team)!;
-    const out = applyAction(s, { type: 'jutsu', unit: 'a', jutsu: 'chidori_lightning_blade', target: foe.id, at: { ...foe.pos } });
+    const out = applyAction(s, { type: 'jutsu', unit: 'a', jutsu: 'chidori_lightning_blade', at: { ...u.pos } });
     assert.ok(out.ok, out.reason);
     const kinds = out.events.map((e) => e.t);
     const w = kinds.indexOf('weapon');
-    const m = out.events.findIndex((e) => e.t === 'move' && e.jutsu === 'chidori_lightning_blade');
-    const j = kinds.indexOf('jutsu');
-    assert.ok(w >= 0 && w < m && m < j, `stowed, ran in, struck: ${kinds.join(' ')}`);
+    const c = kinds.indexOf('charged');
+    assert.ok(w >= 0 && w < c, `stowed, then charged: ${kinds.join(' ')}`);
     assert.equal(out.state.units.a.armed, false);
+    assert.equal(out.state.units.a.charged?.jutsu, 'chidori_lightning_blade');
     const busy = structuredClone(s);
     busy.units.a.turn.interacted = true;
-    const no = applyAction(busy, { type: 'jutsu', unit: 'a', jutsu: 'chidori_lightning_blade', target: foe.id, at: { ...foe.pos } });
+    const no = applyAction(busy, { type: 'jutsu', unit: 'a', jutsu: 'chidori_lightning_blade', at: { ...u.pos } });
     assert.equal(no.ok, false);
     assert.equal(no.reason, 'handsBusy');
   });

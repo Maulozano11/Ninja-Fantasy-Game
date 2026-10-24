@@ -14,7 +14,7 @@ import { GRID } from './raster';
 import { FEET, frameCount, rigPoseFor } from './rig';
 import { CAMP_POSES, CAST_STYLES, MOVE_POSES, SPRITE_POSES, type BodyType, type CastStyle, type ChakraColorId, type SpriteAppearance, type SpritePose } from './types';
 
-const BODIES: BodyType[] = ['male', 'female', 'bulky', 'slender'];
+const BODIES: BodyType[] = ['male', 'female', 'bulky'];
 const MODES: ChakraMode[] = ['aura', 'charge', 'cast', 'victory'];
 const POSES: SpritePose[] = [...SPRITE_POSES, ...MOVE_POSES, ...CAMP_POSES];
 /** Its natural colours, all five found in the owner's lightning set (src/assets/world/vfx_lightning): navy edge, deep blue, his mid blue, pale cyan, white-hot core. */
@@ -123,7 +123,7 @@ describe('Battle Static, the second Lightning burst', () => {
     assert.ok(same === 0, `${same} of ${both} the same`);
   });
 
-  it('renders in every mode, on the four bodies and in every pose', () => {
+  it('renders in every mode, on the three bodies and in every pose', () => {
     for (const body of BODIES) {
       const l = look(body);
       for (const p of POSES) {

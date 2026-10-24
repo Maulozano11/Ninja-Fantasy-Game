@@ -287,6 +287,117 @@ D21 and D24 there):
 - **Shooting-Star Thrust** (*Estocada Fugaz*, once Warp Strike) to a Node someone stands on lands 1 to 1.5 m from them,
   never on top of them.
 
+## Class abilities in battle
+
+### Weapon Element Enhancement (the owner, 2026-10-23; in the game since 2026-10-23, every element)
+
+**His answer on the effects (2026-10-23), verbatim:** *"me gusta las armas con mejora elemental metelas en el
+juego menos la de agua se ve mal y no de calidad mejorala para que se ve mas epica y proporcional y los iconos
+que hiciste para la hotbar no me gustaron los mejorare"*.
+- Lightning, wind, fire and earth on the weapon are **approved** and in the game.
+- Water: the first one was **not approved**; redone on `vfx/weapon-water-v2` as a torrent drawn as his water
+  stream is (his water sheet: his blues, a light strand running along it, white foam caps breaking on the
+  crests of waves that run along its upper edge, a rounded head of foam, his spray dots, drops falling), his
+  dark water line round it. Then his *"al de agua hazlo mas largo para que se entienda la extension de alcance
+  hazlo unos 1.35 mas largo"*: the whole water 1.35 times as long, past the tip about the blade again (46 to
+  48 px on Solen's and Ren's blades), short of the frame's edge where the blade points near it (the lunge, a
+  cut, hurt), one length over a pose where the blade barely turns (at rest, walking, running). **Approved**
+  (2026-10-23, *"me gusta agua aprovado"*) and in the game: water is offered again (`IMBUE_PENDING` in
+  `src/battle/imbue.ts` is empty), as a main or a second element.
+- The hotbar icons: he did not like ours (the element icons the button shows); **he will paint them himself**.
+  Ours stay on the button only until his arrive.
+
+**His answers to the four open questions (2026-10-23), verbatim:** *"1 si me gusta dime que haria cada elemento
+(ejemplo: fuego efecto Burn o quemado ) 2 aprovado 3 tambien segundo elemento al momento de desbloquear , 4 no"*.
+1. The numbers are **decided** as proposed below: a bonus action, 2 chakra, 3 turns, +1d4 a blow, and each
+   element's rider in the table (fire's crit burns, lightning's crit numbs 2 rounds, wind's crit blows the foe
+   back 1.5 m, water +1.5 m reach and puts out flames, earth's obsidian crits on a natural 19).
+2. The Spanish name *Potenciación elemental del arma*, button *Arma elemental*: **approved**.
+3. **The second element too, once it is unlocked** (the level-5 choice of a second element,
+   `rules/natureGrowth.ts`): a Bukijutsu Master with a second element can put either of its elements on the
+   weapon, one at a time. Then his *"si el triple naturaleza tambien cuenta"* (2026-10-23): the third
+   element that Triple Nature opens (the feat, level 9 and a second element) counts too, a third button,
+   the same rules. The hotbar shows a button for each ("Arma
+   elemental · Fuego", "Arma elemental · Rayo"), in its element's colour; with one element, one button as
+   before. A ninja whose type has no element (Light, Void) but whose second element is one has it for that
+   one. The AI picks among them: water when only its longer reach brings the foe within a blow this turn;
+   not fire at a foe already burning or standing in the wet, nor water at a burning foe; otherwise the first
+   left of its chakra type's, its second, its third (`imbueChoice` in
+   `src/battle/ai.ts`; `unitImbueElements`, `imbueNaturesOf` in `src/battle/imbue.ts`).
+4. Thrown weapons: **no** (as built).
+
+The owner, verbatim: *"ok ahora para la clase de maestro de armas , agregale weapon
+element enhacement como habilidad y le pondra un efecto de animacion a las armas (si
+es rayo , electricidad alredor del arma , si es viento , vfx de viento alrededor del
+arma , si es fuego el arma prende en llamas , si es agua se extiende el alcance del
+arma con agua vfx , si es tierra se ponen obsdiana filosa en tu arma , no aplica para
+genjutsu, solo elemental )"*.
+
+**Decided by him:**
+- The weapon class (the Maestro de Bukijutsu, `Bukijutsu Master`) has the ability
+  *Weapon Element Enhancement*; it puts the ninja's element on its weapon, with an
+  animated effect on the weapon.
+- Lightning: electricity round the weapon. Wind: wind effects round the weapon. Fire:
+  the weapon bursts into flames. Water: the weapon's **reach grows**, with water
+  effects. Earth: sharp obsidian forms on the weapon.
+- Only the five elements; never genjutsu.
+
+**The rules (proposed by the builder, decided by him on 2026-10-23 as above; constants in `src/battle/imbue.ts`):**
+- Spanish name *Potenciación elemental del arma* (his own English name, translated);
+  the button reads *Arma elemental* (approved). Id `weapon_element`.
+- Who: a Bukijutsu Master whose chakra type is Fire, Water, Wind, Lightning or Earth
+  (its main element, the one its chakra type says; Light and Void, and the pending
+  Shadow and Spirit, have none to give), or whose unlocked second element is one (his
+  answer 3 above). From level 1, as
+  the class's own ability, after the clan's on the hotbar. The rogues (Fire Bukijutsu
+  Masters) have it too.
+- How: a **bonus action, 2 chakra**, no hand seals (chakra worked into the weapon in
+  hand, like a clan ability: the weapon stays in hand, sealed chakra stops it). A
+  weapon put away is drawn for it (free, once a turn, as a sword art draws it). Fists
+  and palm techniques have nothing to hold it: not available. Once at a time.
+- How long: **3 of the ninja's own turns**, the one it is cast in counted (as the
+  activated Chidori). It ends early if the ninja falls or its chakra is sealed. Put
+  away, the weapon keeps it (it shows again when drawn), but the fists strike without it.
+- Every melee weapon blow that hits adds **1d4** of the element (a critical hit makes
+  it the maximum of two dice, 8, the owner's crit rule), landed right after the blow's
+  damage (a clone, Kawarimi or Evasion that stops the blow stops it too). Water, wind
+  and earth deal what their jutsu deal, as the game has no such damage types:
+  | Element | Damage | And (decided) |
+  |---|---|---|
+  | Fire | fire | a critical hit sets the foe **burning** (not on wet ground); a fire blade seals a hydra stump it has just cut |
+  | Lightning | lightning | a critical hit leaves the foe **Numb** (2 rounds); a lightning blade seals a hydra stump too; Downpour makes it hit harder, as all lightning |
+  | Wind | slashing | a critical hit **blows the foe back 1.5 m** (a ninja; big creatures stand firm) |
+  | Water | bludgeoning | **+1.5 m melee reach** (his rule; the 1.5 m is ours): a sword reaches 3 m, a naginata 4.5 m, for attacks, opportunity attacks and the AI; and it puts out the flames of the foe it strikes ("el agua apaga el fuego") |
+  | Earth | piercing (obsidian) | the obsidian edge makes a **natural 19** a critical hit too |
+- Thrown weapons: **no**. The element is on the weapon in hand; a kunai thrown from the
+  pouch is another weapon. Kenjutsu jutsu (the Crescent Moon Dance, the Bleeding Cut)
+  are jutsu with their own damage, and don't add it either.
+- The AI: a Bukijutsu Master whose plan is a blow of its weapon at a foe it can reach
+  this turn (water's longer reach counted) puts its element on first. It doesn't plan
+  differently because it could (the plans are as before).
+- The log: "El arma de Aki se prende en llamas", "La electricidad chisporrotea
+  alrededor del arma de Aki", "El viento gira alrededor del arma de Aki", "El agua
+  recorre el arma de Aki: +1.5 m de alcance", "Obsidiana filosa cubre el arma de Aki",
+  and a line when it leaves the weapon. The class panel in the creator names it.
+
+**How it looks (new art, waiting for his approval; `src/sprite/imbue.ts`):** drawn on the
+weapon's own pixels in every frame that holds it (idle, walk, run, attack, thrust,
+charge, cast, victory, the camp kata), so it follows the weapon's angle (`grip.ts`).
+None where the weapon is not in the hand (hand seals, the unarmed combo, the tackle,
+stowed, knocked out). Each element loops over 8 ticks at 10 a second. The colours are
+his: each ramp is taken from his effect sheets (fire, lightning, wind, water). Fire:
+tongues of flame rise off the blade's upper edge and sway, the steel glows under them,
+embers fly up. Lightning: two bolts fork along the blade and crackle off it, new forks
+every tick, his deep-blue ring and glow. Wind: two strands turn round the blade like a
+helix (the far half behind the figure), dashes running to the tip, small crescents
+flicked off it. Water (approved after its redo, above): a torrent along the blade and a longer blade of water
+past the tip (the longer reach, not to scale), with his water line. Earth: teeth
+of black obsidian along both edges and a point past the tip, glass catching the light
+on their edges, a glint running along them. Energy carries his element's darkest tone
+at its edge, no black line; the obsidian is solid and carries the characters' black
+line. The energy takes the ninja's chakra colour like his jutsu; the obsidian keeps
+its own.
+
 ## Party, missions and defeat
 
 - A party of up to 4. Each ally is played by a person or by the AI, depending
@@ -375,8 +486,8 @@ de tipo deidad angel y dios y el de vacio sombra y espiritu va ser demoniaco
 1. **The legends keep their new types** ("si"), each in the colour it always
    had: Kaien and Ren Lightning (violet, blue), Hiro Wind (orange), Raiga Fire
    (violet); of the companions, Hana Water (green) and Kenji Earth (violet).
-   Kaien, Raiga and Kenji lose the ghost-warrior burst. Solen, Akira, Aiden and
-   Shiori already matched.
+   Kaien, Raiga and Kenji lose the ghost-warrior burst. Solen, Akira and Aiden
+   already matched.
 2. **Saved copies are updated** ("actualiza"). A copy of a legend or companion
    (the hero, the roster, the party and the fallen of a mission under way, an
    import; matched by its id) that still has the burst it had before (Kaien,
@@ -584,7 +695,7 @@ slots belong to a class: only a ninja of that class learns them. Built:
   |---|---|---|
   | Taijutsu | Maestro de Taijutsu (`Taijutsu Master`) | Huracán de la hoja (D), Night Guy (S) |
   | Kenjutsu | Maestro de Bukijutsu (`Bukijutsu Master`: the weapon class, whose own text names "kenjutsu katana forms") | Danza de la luna creciente (B) |
-  | Genjutsu | Adepto del Genjutsu (`Genjutsu Adept`) | Templo del Nirvana (A), Yasaka no Magatama (S) |
+  | Genjutsu | Adepto del Genjutsu (`Genjutsu Adept`) | Mente retorcida (C), Templo del Nirvana (A); no rank S since the owner removed Yasaka no Magatama (2026-10-22: "quitala del juego"; he will make something else) |
   | none | Especialista en Ninjutsu, Especialista médico | they learn their element's jutsu, the utility jutsu and their clan's |
 
 - **Open to all, as before:** the **Utility** jutsu (Shunshin, Sustitución and
@@ -608,9 +719,11 @@ slots belong to a class: only a ninja of that class learns them. Built:
 - **The random ninja** picks its jutsu for its class too.
 - **The sheets keep what they have:** no legend breaks the rule today (each
   one's taijutsu, kenjutsu or genjutsu jutsu is its own class's). A sheet that
-  does (the companion Hana, a medic, has Yasaka no Magatama; an older or
-  imported sheet) keeps it, marked "no es de tu clase" in the Jutsu step. Saves
-  are not changed. Enemies and battles are not touched.
+  does (an older or imported sheet) keeps it, marked "no es de tu clase" in the
+  Jutsu step. Saves are not changed. Enemies and battles are not touched. (The
+  companion Hana, a medic, had Yasaka no Magatama, a genjutsu, until the owner
+  removed it on 2026-10-22; she has the Dragon Tsunami now, "Removed jutsu"
+  below.)
 - **An empty slot** (as built): a slot with nothing for the nature and class
   shows "Nada que aprender aún · nada para tu naturaleza y clase" with a lock;
   the S-rank slot of a new ninja whose nature and class do have S-rank jutsu
@@ -726,7 +839,8 @@ approval):
   nature and class gates already allow (rules/jutsuNature.ts, rules/jutsuClass.ts),
   now at every rank its level opens. So at level 7 a Lightning ninja learns
   Chidori, a Genjutsu Adept Templo del Nirvana; at level 10 a Fire ninja Gran
-  aniquilación, a Genjutsu Adept also Yasaka no Magatama. A second (and third)
+  aniquilación (a Genjutsu Adept had Yasaka no Magatama too, until the owner
+  removed it on 2026-10-22). A second (and third)
   element's rank A and S open too ("de sus elementos"). The level opens no rank
   B: those stay the level-5 higher rank's (the main element's). No count limit:
   "un rango A" is read as "the rank A", not "one rank A jutsu".
@@ -866,8 +980,12 @@ para las bestias elementales"*.
 - The flare when fire or lightning seals a hydra stump and the lightning that
   runs through water take the caster's colour too.
 - White is a cool silver on water, wind, lightning and earth, a faint gold on
-  fire. Outlines that are not black in his sheets (the raiju's brown, the
-  crane's teal, the lightning's blue ring) stay his.
+  fire. Outlines that are not black in his sheets (the lightning's blue ring)
+  stay his. The raiju's brown and the crane's teal were his too until the
+  owner changed them to the characters' black line (2026-10-22, *"2 cambia"*:
+  solid jutsu get the characters' black line, energy none; see
+  `docs/SPRITE_STYLE_GUIDE.md`, "Outline"). Like his other dark lines, the
+  black line is never tinted.
 - In the code: `src/sprite/vfxTint.ts` recolours (pure); the battle recolours
   each sheet once per colour, frame by frame, in workers while the battle opens
   and for any ninja who joins later (`src/components/battle/vfxTintCache.ts`,
@@ -1028,8 +1146,9 @@ folder (`WORLD_OUT`) until then. Approved so far: the river bridge.
   shown locked in its place ("Se desbloquea al nivel 10") rather than removed.
   Confirm. (When it opens is decided: level 10, rank A at 7: "The ladder".)
 - **The ladder as built** ("The ladder" above): rank A and S open for the
-  ninja's elements **and its class's kind** (Templo del Nirvana at 7 and Yasaka
-  no Magatama at 10 for a Genjutsu Adept, Night Guy for a Taijutsu Master), and
+  ninja's elements **and its class's kind** (Templo del Nirvana at 7 for a
+  Genjutsu Adept, Night Guy at 10 for a Taijutsu Master; no genjutsu of rank S
+  since Yasaka no Magatama was removed, 2026-10-22), and
   for its second and third elements too; **no count limit** ("un rango A" read
   as the rank, not one jutsu of it). Rank B still opens only with the level-5
   higher rank, so a ninja that took a second element never learns its main
@@ -1077,6 +1196,11 @@ folder (`WORLD_OUT`) until then. Approved so far: the river bridge.
   **Answered 2026-10-21** ("Jutsu for the gaps" below): the Devouring Tide is
   Water's rank S; Wind gets the Gale Curtain (C) and the Whirlwind Tower (A).
   Still open there: two per gap or two in all, the 水 kanji, the gaps left.
+  **His second round the same day** ("The gaps' jutsu, second round" below):
+  the Devouring Tide is **rank A**, so **Water has no rank S again** (open).
+  **Answered 2026-10-22**: Water's rank S is the **Dragón Tsunami**, and the
+  Devouring Tide is renamed **Tsunami** ("The Tsunami and the Dragon Tsunami"
+  below).
 - **The elemental beasts as summons** (his rule, 2026-10-21: *"todos los
   elementales seran invocaciones que te ayudaran en el combate no ataques"*):
   how a summon works is to design (what it does on the field, how long it
@@ -1101,8 +1225,10 @@ folder (`WORLD_OUT`) until then. Approved so far: the river bridge.
   of those two classes has nothing at all for its Element and S-rank slots
   until Light and Void get their jutsu; a ninja with one fitting jutsu for two
   Element slots gets the second slot empty (not the same jutsu twice). The
-  companion **Hana** (medic) keeps Yasaka no Magatama (genjutsu), marked: give
-  her another S-rank jutsu? (Water has none yet.)
+  companion **Hana** (medic) kept Yasaka no Magatama (genjutsu), marked; since
+  the owner removed it (2026-10-22) she has the Dragon Tsunami, Water's rank S
+  (the builder's pick: the only rank S her nature and class allow; his to
+  confirm).
 
 ## Three new jutsu (agreed 2026-10-20)
 
@@ -1151,7 +1277,7 @@ adds one die and grows the area (the general rule above).
 | **Corona de púas** / Spike Crown (`earth_spike_crown`) | Earth, C, Element | action, 2 chakra, everyone within 3 m of you | DEX save, half on a success: 2d8 piercing to all within 3 m, friends too, not the caster; a stomp: no seals, the weapon stays in hand | +2: 3d8 within 4.5 m |
 | **Rocío sanador** / Healing Dew (`water_healing_dew`) | Water, D, Utility | action, 2 chakra, a friend within 6 m or yourself | heals 1d8, and a fallen friend gets back up; no Medic bonus (as the Mystical Palm); silent; the AI doesn't use it (its healing is the Palm) | +1: 2d8 |
 | **Géiser** / Geyser (`water_geyser`) | Water, C, Element | action, 2 chakra, 1.5 m circle at 9 m | STR save, half on a success: 3d6 bludgeoning to everyone in the circle, friends too | +2: 4d6, 2.25 m |
-| **Espejismo** / Mirage (`genjutsu_mirage`) | Genjutsu, C, Element | action, 2 chakra, one target at 9 m | WIS save, nothing on a success; on a failure 2d6 psychic and **Confused** for 2 rounds (one turn in four lost); **silent** | +2: 3d6 |
+| **Mente retorcida** / Mind Twist (`genjutsu_mirage`; *Espejismo* / Mirage until the owner renamed it, 2026-10-22) | Genjutsu, C, Element | action, 2 chakra, one target at 9 m | WIS save, nothing on a success; on a failure 2d6 psychic and **Confused** for 2 rounds (one turn in four lost); **silent** | +2: 3d6 |
 | **Tajo sangrante** / Bleeding Cut (`kenjutsu_bleeding_cut`) | Kenjutsu, D, Element | action, 1 chakra, melee, leaps in from up to 3 m | the blade is drawn for free; jutsu attack roll struck as a blow: 1d8 slashing and **Bleeding** on a hit (1d4 a turn until bandaged; 1d4 a road leg); **silent** | +1: 2d8 |
 | **Embestida** / Rush (`taijutsu_rush`) | Taijutsu, C, Element | action, 2 chakra, melee, charges up to 6 m | **the weapon is stowed** (free, like for seals) and the ninja **tackles**: a straight run to the target (nothing may stand in the way: a wall, a tree, a structure, deep water or a cliff edge), no opportunity attacks, no movement spent, then a jutsu attack roll struck as a blow: 2d8 bludgeoning. You end up beside the foe | +2: 3d8 |
 
@@ -1168,7 +1294,7 @@ Rules that came with them (2026-10-21):
 - **The Rush stows the weapon** (free, once a turn; with that spent and the
   weapon in hand, it waits, like a jutsu with seals).
 - **A silent jutsu that wounds counts as an attack** (the proposal's piece
-  P6; the owner made the Mirage and the Bleeding Cut silent): it doesn't start
+  P6; the owner made the Mind Twist and the Bleeding Cut silent): it doesn't start
   the fight in the stealth phase by itself. Like a blade, the caster gives
   itself away once it has struck (a hidden caster still rolls from hiding), and
   in the stealth phase the target that survives (or saves, or is missed) shouts
@@ -1226,7 +1352,7 @@ How they look (the owner's answers; the screen reads them from each jutsu's
   the earth aura for 0.4 s, then a rock burst on each one reached; Healing Dew
   flies the water orb to the friend and wraps it in the water aura for 0.8 s;
   Geyser rises from the ground with no projectile (a 0.3 s warning splash, a
-  light shake); Mirage flies the eye-sphere half again as slow; Whirl as it was.
+  light shake); Mind Twist flies the eye-sphere half again as slow; Whirl as it was.
 - **Mystical Palm** (the owner's answer 6): the Healing Dew's water aura wraps
   the friend for 0.8 s as it heals, with no orb (a touch), instead of the old
   green glow.
@@ -1252,11 +1378,11 @@ built:
    built (above).
 7. Pebble Shot looking more like "earth bullets" than *Balas de tierra*: kept
    (his answer: yes).
-8. Mirage and Bleeding Cut: **his answer: silent** (piece P6): built (the
+8. Mind Twist (then the Mirage) and Bleeding Cut: **his answer: silent** (piece P6): built (the
    rule above).
 9. Who learns the Genjutsu, Kenjutsu and Taijutsu ones: his answer, *"9 los que
    elijan de clase genjutsu kenjutsu o taijutsu"*: the class gates them (built
-   on the integration branch; the Mirage, the Bleeding Cut and the Rush are
+   on the integration branch; the Mind Twist, the Bleeding Cut and the Rush are
    gated like the others).
 Also not built (optional in the proposal): a style of cast per jutsu (P1), and
 the Geyser putting out burning units in its circle.
@@ -1296,7 +1422,7 @@ franchise names.
 
 | jutsu (id) | nature, rank, slot | use | effect | enhanced |
 |---|---|---|---|---|
-| **Ola devoradora** / Devouring Tide (`water_devouring_tide`) | Water, **S**, S-rank slot | action, 8 chakra, **12 m cone** (past the 9 m cap of other cones, like the Great Fire Annihilation) | STR save, half on a success: 7d12 bludgeoning to everyone in the cone, friends too; on a failure the wave **sweeps the target 3 m away from the caster** and **knocks it down**; it **puts out the flames** of everyone it reaches, saved or not | +4: 9d12, the cone reaches 15 m and opens wider |
+| **Ola devoradora** / Devouring Tide (`water_devouring_tide`; named **Tsunami** since 2026-10-22, below) | Water, **A**, Element (rank S and the S-rank slot until his second round: see below) | action, 5 chakra, **9 m cone** | STR save, half on a success: 5d8 bludgeoning to everyone in the cone, friends too; on a failure the wave **sweeps the target 3 m away from the caster** and **knocks it down**; it **puts out the flames** of everyone it reaches, saved or not, and **soaks the ground** it runs over | +3: 6d8, the cone reaches 11.25 m and opens wider |
 | **Torre del torbellino** / Whirlwind Tower (`wind_whirlwind_tower`) | Wind, **A**, Element | action, 5 chakra, a 3 m circle up to 9 m away | STR save, half on a success: 5d8 bludgeoning to everyone in the circle, friends too; on a failure the tornado **drags the target 1.5 m toward its middle** (never past it) and **knocks it down**; it cuts the grass and bushes | +3: 6d8, 4.5 m |
 | **Cortina de vendaval** / Gale Curtain (`wind_gale_curtain`) | Wind, **C**, Element | action, 2 chakra, a gale **2.25 m round** up to 6 m away | no save, no damage, silent: a **gale on the ground** (see below) that **fans the fire jutsu passing through it** | +2: 3.4 m round |
 | **Haz de trueno** / Thunder Beam (`lightning_thunder_beam`) | Lightning, **C**, Element | action, 2 chakra, **9 m line** | DEX save, half on a success: 2d8 lightning to everyone in the line, friends too; lightning in water runs through it | +2: 3d8, the line reaches 11.25 m and runs wider |
@@ -1400,7 +1526,9 @@ Each plays in its caster's chakra colour, like every elemental jutsu.
    (Not answered.)
 2. The Devouring Tide is a rank S without a giant 水 kanji (the S-rank art bar
    asks for one; there is no painted 水): approve it without, or will he paint
-   a Water signature sheet? (Not answered.)
+   a Water signature sheet? (Answered by the second round and 2026-10-22: the
+   Tide is rank A, now the Tsunami; he painted the 水 and a water dragon for
+   Water's rank S, the Dragon Tsunami.)
 3. The gaps still open: Earth rank A (the Wood Dragon is the clan's), Water
    rank D, a third Fire D/C for a new ninja. Another short list (free pieces:
    the rock sphere, the water crescents, the fire wall)? (Not answered.)
@@ -1426,6 +1554,269 @@ Each plays in its caster's chakra colour, like every elemental jutsu.
     potenciado!" for every enhanced jutsu (a shared line, pinned by tests on
     the integration branch): change it to "potenciada" (agreeing with
     "Técnica") for all of them?
+
+## The gaps' jutsu, second round (the owner's answer of 2026-10-21; built on `jutsu/gap-set-2`)
+
+He saw the Tide, the Tower and the Gale Curtain in the game and answered
+(verbatim):
+
+> *"ola devoradora es rango a hay que agregarle mas animacion como en el muro
+> horizontal para que se vea mas ancho y bonita la animacion el sprite de el
+> muro horizantal se ve muy bien entonces piensa como puedes combinar los dos
+> muros para hacer algo mas contundente , y ahora va ver una dinamica como asi
+> el viento potencia el fuego con el muro y el agua apaga el fuego , el agua
+> tambien pone el suelo donde pasa mojado por 2 turnos que conduce electricidad
+> y si se usa un jutsu de fuego se genera vapor que es como una cortina de humo
+> que nubla la vision y hace daño por turno si estas en el area , Torre de
+> torbellino me gusta pero tambien hay que hacerlo mas contundente pon el
+> torbellino central mas ancho mediante se va mas arriba mas ancho esta el
+> torbellino y pon alguna animacion que se separe un poco los vientos que
+> pusiste alrededor para que corran alrededor en forma ondulada como el
+> viento"*
+
+So: the Devouring Tide is **rank A** with a wider, prettier wave that combines
+his two water walls; a **new dynamic of the elements on the ground** (below);
+and a more forceful Whirlwind Tower. Built on `jutsu/gap-set-2`, **waiting for
+his approval of the in-game captures**.
+
+### The Devouring Tide is rank A (his decision)
+
+- Rank **A**, an **Element** slot's jutsu of Water (no longer the S-rank slot):
+  like the other rank A (the Whirlwind Tower, the Dragon Flame Annihilation),
+  a **9 m cone**, **5d8** bludgeoning, STR save for half; enhanced 6d8, an
+  11.25 m cone that opens a third wider. The sweep (3 m), the fall and putting the
+  flames out stay. It costs **8 chakra (+4 enhanced)**, more than the other rank A
+  (his answer: *"mas chakra como 8 minimo"*; the enhanced cost as every 8-chakra
+  jutsu's).
+- Water has **no rank S jutsu, for now** (his answer: *"vacio por ahora"*;
+  **replaced on 2026-10-22**: Water's rank S is the Dragón Tsunami, below). A new
+  ninja picks rank D and C, so the Tide opens at level 7 like every rank A; the
+  nature filter offers it to a Water ninja's Element slots.
+- **A sheet saved with the Tide in its S-rank slot** (it was rank S before) gets it
+  in an Element slot when it loads (his answer: *"si"*; `ultimateToElement` in
+  `rules/jutsuNature.ts`, run by `migrateCharacter`): an empty Element slot if
+  there is one; with both full, it takes the place of the **lower-ranked** of the
+  two (the second slot's on a tie), and that jutsu is dropped. The S-rank slot is
+  left empty for the player to fill.
+
+### The elements on the ground (his dynamic; the numbers are our proposal)
+
+His words: *"el viento potencia el fuego con el muro y el agua apaga el fuego,
+el agua también pone el suelo donde pasa mojado por 2 turnos que conduce
+electricidad y si se usa un jutsu de fuego se genera vapor que es como una
+cortina de humo que nubla la visión y hace daño por turno si estás en el
+área"*. In the engine: `src/battle/ground.ts` (pure and seeded); the state keeps
+`wet` and `steam` by navigation cell (0.5 m).
+
+- **Wind fans fire**: the gale on the ground (the Gale Curtain, above), kept as
+  built.
+- **Water puts out fire**: **every water jutsu that strikes** (the Tide, the
+  Geyser, the Water Dragon Bullet) takes *Burning* off everyone it reaches,
+  saved or not; and **wet ground puts flames out like a river**: a ninja who
+  starts a turn on it stops burning, a fire jutsu's *Burning* doesn't catch on
+  someone standing on it, bushes on it don't burn (the fire turns their water to
+  steam instead). (There is no burning ground
+  in the game: fire burns bushes and trees away at once.) A heal or a wall is no
+  strike: the Healing Dew and the Water Wall soak nothing.
+- **Water soaks the ground it passes over** "por 2 turnos": the cells of the
+  water jutsu's area (a single target's 1 m round), not a river or a pond (water
+  already) nor a tree's or a wall's cell. **Wet for the rest of the round and two
+  more** (it dries as the third new round begins, like the gale; his answer: *"el
+  resto de la ronda y dos mas"*), so everyone has at least two turns with it.
+  Soaked again, it starts over.
+- **Wet ground conducts electricity**: a lightning jutsu that **touches wet
+  ground** (its area reaches a wet cell, or it is aimed at someone standing on
+  one: hit or miss it lands there, as fire that misses still burns and steams
+  where its target stands) runs across **the whole
+  wet patch it touched** (the wet cells joined to it, diagonals included; a
+  separate patch, or dry ground between, stops it). **Everyone else standing on
+  that patch** makes a DEX save against **half the lightning's damage, halved
+  again on a success** (the same numbers as lightning in a river), friends too,
+  **and the caster himself if he stands on it** (as in a river; kept: *"si"*).
+  Lightning in a river still reaches 4.5 m through the water, as before.
+- **Fire on wet ground makes steam**: a fire jutsu (or an explosion) whose area
+  reaches wet cells turns them to steam (the water is used up there; the rest of
+  the patch stays wet). Explosions (tags, barrels) do it too (kept: *"si"*). The
+  steam:
+  - it hangs **the rest of the round and one more** (it thins away as the second
+    new round begins; his answer: *"dura resto de la ronda y 1 mas"*);
+  - **seeing into it** (as built): nobody outside sees a ninja in it (unless right
+    beside it, 1.6 m), nor through it, so nobody throws a kunai or aims a
+    single-target jutsu at a ninja in it, nor through it; a blast (a circle) can
+    still be aimed at a point in the cloud (its surface is seen), not past it.
+    **A blow into it from outside has disadvantage** (the target can't be seen;
+    from inside out, or both inside, it evens out). A ninja in the steam is out
+    of every watcher's sight, so it can Hide there;
+  - **seeing out of it** (his answer: *"mas bien que los enemigos desaparezcan de
+    la vision de ese personaje"*): for a ninja standing in the steam, **the foes
+    outside it vanish from its sight**, as a hidden foe does (`steamHides` in
+    `battle/map.ts`), except one right beside it (1.6 m). It can't aim anything
+    that needs to see its target at them: no kunai, no single-target jutsu, no
+    blast at a point outside. A cone or a line needs no target and can still be
+    sent out blind; it hits whoever is on it. A ninja on the AI in it knows only
+    the plan it had made (an enemy's committed plan goes on); with no plan it
+    walks out first. On the screen, while the acting ninja stands in steam, the
+    foes outside are drawn as a hidden foe is (faint, no health bar, not on the
+    minimap), and aiming at one says "Sin línea de visión: el vapor tapa la
+    vista". A Mirai standing in it foresees nothing out of it either (the Eye of
+    Tomorrow needs sight);
+  - **it burns: 1d6 fire, no save, to whoever starts a turn in it** (its burns
+    are the fire's caster's);
+  - **wind blows it away** (his answer: *"puede ser eliminada con ataques
+    elementales de aire"*): **every wind attack** clears the steam its area
+    reaches: a cone's or a line's area and the caster's own cell (so a ninja can
+    blow the steam off from inside it), a circle's area (the Whirlwind Tower, the
+    Hurricane Star), a gale starting to turn (the Gale Curtain); a single-target
+    one along its path to its target. A wind jutsu that is no attack (the Breeze
+    Mantle) doesn't. On the screen the steam it touched is carried off away from
+    where the wind came from (the caster, or a circle's middle), stretching out,
+    with streaks of wind through it, and thins out in about a second; the log
+    says "El viento se lleva el vapor" ("The wind blows the steam away").
+- **The AI knows**: a ninja on the AI never stops in steam (it may walk
+  through); standing in it, it walks out before acting, or, when it can do its
+  plan from right there (a blow at a foe beside it), acts first and walks out
+  after; with its action spent in it (a charge that landed there) it walks out
+  with the movement it has left before ending its turn. It doesn't see a foe lost
+  in the steam, nor, standing in it, a foe outside it (unless right beside it),
+  and weighs lightning on a wet group
+  (each foe on the patch it would reach counts half, a friend there against it).
+- **How it looks** (wet ground and steam are never in a chakra colour):
+  - wet ground: a dark sheen over the soaked cells, its edge softened, with a
+    few glints of light; under the Tide it darkens as the crest goes over;
+  - the lightning across it: jagged arcs run out over the patch from where it
+    struck, in the caster's chakra colour, his lightning spark (`hit`) bursting
+    along it, the water lit up;
+  - steam, a curtain: the camp's smoke (`campsite/smoke_tall`, `camp/smoke`: no
+    element sheet has grey smoke) on every steaming cell, at different frames,
+    some turned round, spread wider than tall so the columns run together into
+    a bank; a white veil of overlapping billows over each row of it, in front of
+    whoever stands in that row; it rises in as it forms;
+  - a ninja on fire (*Burning*): his fire aura burns round the ninja, faint,
+    while it lasts; when water or wet ground puts it out, the flames go and a
+    puff of steam (the camp's small smoke) rises off the ninja, so "el agua
+    apaga el fuego" shows on the map, not only in the log;
+  - a bush that burns stands until the fire reaches it (it used to vanish as
+    the jutsu was cast);
+  - aiming at someone the steam hides says so: "Sin línea de visión: el vapor
+    tapa la vista";
+  - the log: "El suelo queda mojado", "¡El rayo corre por el suelo mojado!",
+    "Fuego sobre suelo mojado: sube vapor y ciega a quien esté dentro", "El
+    vapor quema a …", "El viento se lleva el vapor", "El vapor se disipa", "El
+    suelo mojado se seca"; a blow into the steam says "dentro del vapor".
+
+### How they look now (his pieces moved, scaled, layered and timed; nothing redrawn)
+
+- **Devouring Tide** ("combinar los dos muros"): his horizontal water wall
+  (`wall`, the one he likes) laid along the run in lanes across the whole
+  width of the cone, a wide body of water with its front at the crest, rising
+  as it sets off; his water columns (`wall_depth`) stand along the near half of
+  the crest as its face, his spray (`breath`) before it; what it leaves behind
+  settles low and fades; at the end of the cone the water sinks back (his rise
+  played backwards) and his spouts (`blast`) burst along the crest as it breaks.
+  Pointed into the depth, the two swap: his wall stands along the crest as the
+  face (two rows) and his columns trail behind it as the body. The wet ground
+  darkens under it as the crest goes over.
+- **Whirlwind Tower** ("más ancho mediante se va más arriba"): his tornado
+  column (wind `wall_depth`) rises as a **funnel**: his frame cut into 2 px
+  strips, each stretched across by how high it is, from as wide as his column at
+  the foot to 2.6 times as wide at the top (wider for the enhanced tower), with a
+  second turn of it behind, mirrored and fainter; **six** of his small
+  whirlwinds (`multi`) come off it, spread out and **run round it on wavy paths**
+  ("en forma ondulada"): each speeds up and slows, swings in and out and rides up
+  and down, at three heights, in front of and behind whoever stands there.
+
+### His answers on the second round (2026-10-21)
+
+To the eleven questions we asked (the Tide's numbers, the ground's numbers, the
+steam), verbatim:
+
+> *"1 vacio por ahora 2 mas chakra como 8 minimo 3 el resto de la ronda y dos
+> mas , 4 dura resto de la ronda y 1 mas puede ser eliminada con ataques
+> elementales de aire 5 si me gusta , 6 si 7 me vale 8 si 9 lo dejamos 10 mas
+> bien que los enemigos desaparezcan de la vision de ese personaje 11 las
+> dejamos"*
+
+So (built on `jutsu/gap-set-2`, the rules above say each one in full):
+
+1. **Water's rank S stays empty for now.** (Replaced on 2026-10-22: it is the
+   Dragón Tsunami, below.)
+2. **The Tide costs 8 chakra (+4 enhanced)**, up from 5 (+3); the rest of its
+   rank A numbers (9 m cone, 5d8, enhanced 6d8 and 11.25 m) as built.
+3. **Wet ground: the rest of the round and two more**, as built.
+4. **Steam: the rest of the round and one more** (was two more), 1d6 fire with
+   no save at the start of a turn as built, and **every wind attack blows it
+   away** (its area, the caster's own cell for a cone or a line, a single
+   target's path, a gale), seen drifting off on the screen, with a log line.
+5. **Lightning across wet ground** (half the damage, DEX save for a quarter,
+   friends on the patch too): kept.
+6. **Explosions make steam on wet ground**: kept.
+7. **Steam drawn with the camp's grey smoke**: kept.
+8. **A sheet with the Tide in its S-rank slot gets it in an Element slot** when it
+   loads (an empty one, else in place of the lower-ranked of the two).
+9. **The caster on his own wet patch is shocked too**: kept.
+10. **From inside the steam, the foes outside vanish from that ninja's sight**
+    (unless right beside it), instead of the old rule (no circle aimed out, cones
+    and lines allowed): nothing that needs to see its target can be aimed at
+    them, the AI knows only the plan it had, and the screen draws them as hidden
+    foes for that ninja. Seeing into the steam stays as it was. A cone or a line
+    can still be sent out blind.
+11. **The saves' dice windows over the Tower**: kept.
+
+## The Tsunami and the Dragon Tsunami (the owner's decisions of 2026-10-22)
+
+He painted a kanji and a water dragon over our widest wave frame for an S-rank
+version of the Tide (`docs/reference/tide-s-owner-reference.jpg`: *"a la ola
+pasame el sprite donde se ven mas olas para agregarle un kanji y una bestia
+animada que sera el jutsu en version mejorada clase s"*). Seeing it animated in
+the game he answered (verbatim, 2026-10-22):
+
+> *"rango S ola si me gusta la animacion la ola normal se llama tsunami y la
+> rango s es dragon tsunami"*
+
+and then, on the numbers we proposed:
+
+> *"aprovado los numeros de la ola por ahora"*
+
+So:
+
+- **The rank-A Tide is the Tsunami**: *Técnica de Agua: Tsunami* / *Water
+  Technique: Tsunami* (D24's "Técnica de <Elemento>: <name>"; the hotbar's short
+  label *Tsunami*). Same id (`water_devouring_tide`), same rules (above), so
+  saves are untouched.
+- **Water's rank S is the Dragon Tsunami**: *Técnica de Agua: Dragón Tsunami* /
+  *Water Technique: Dragon Tsunami* (short label *Dragón Tsunami* / *Dragon
+  Tsunami*), id `water_tide_s`. This replaces his earlier *"vacio por ahora"*:
+  Water's S-rank slot is no longer empty. It is a jutsu of its own in the
+  S-rank slot (category Ultimate, like the Great Fire Annihilation and the
+  Kirin), learnt through the usual rules: the nature filter offers it to a Water
+  ninja's S-rank slot (first, before the genjutsu and taijutsu S-rank), and the
+  slot opens at level 10. A sheet that held the Tide in its S-rank slot still
+  gets the Tide moved to an Element slot (`ultimateToElement`), with its S-rank
+  slot left empty for the player to fill (now possibly with the Dragon Tsunami).
+- **Its numbers, approved by the owner for now (2026-10-22): «aprovado los
+  numeros de la ola por ahora»**:
+  - action, **12 chakra** (the Tsunami's 8 plus its enhancement's 4), **+4** to
+    enhance;
+  - an **11.25 m cone, 80 degrees wide** (the enhanced Tsunami's);
+  - **6d8 bludgeoning**, STR save for half; enhanced **8d8** (an S-rank's two more
+    dice) and the cone reaches farther (14 m) and opens wider (about 107
+    degrees);
+  - on a failed save the wave **sweeps the target 3 m away** and **knocks it
+    down** (a ninja; big creatures stand firm); it **puts out the flames** of
+    everyone it reaches;
+  - it **soaks the ground** it runs over, which stays wet **one round longer than
+    the Tsunami's**: the rest of the round and three more (`wetRounds` in
+    `src/battle/jutsu.ts`; soaked again by a shorter water jutsu, a cell keeps
+    the longer count).
+- **Its look** (his art, approved: *"si me gusta la animacion"*): the Tsunami's
+  wave with his curl, his water dragon (surges out of the curl, roars, dives at
+  the break) and his kanji 水 with its glow riding the crest
+  (`tools/refs/tide-s-from-ref.py` → `vfx_tide_s`), run a little slower (2.2 s
+  and the 0.9 s break).
+- **Practice**: every water ninja in the practice battles (`#combat`) can cast it
+  whatever its level, so it can be tried; missions are untouched. Hana has it in
+  her S-rank slot since the owner removed her Yasaka no Magatama (2026-10-22;
+  "Removed jutsu" below).
 
 ## Jutsu effects, round 1 (proposed 2026-10-21; the owner's answer the same day)
 
@@ -1490,3 +1881,116 @@ of a unit by depth (P6). The battle engine is not touched, only each jutsu's
 data for the screen (`JutsuSeq.stage`) and the Leaf Hurricane stowing the
 weapon, which is a rule: with the free interaction spent and a weapon in hand it
 waits, like a jutsu with seals.
+
+### The Chidori becomes an activated state (decided 2026-10-21; built on `jutsu/chidori-active`, waiting for his yes)
+
+The owner, after sending his silver-haired paint-over (a tactical vest shown with
+and without the long coat, and lightning crackling in the near hand): *"quiero que
+copies el sprite de la mano de rayo para ponersela al efecto de chidori porque
+chidori sera una habilidad que actives y que mientras esta activada tiene tu
+personaje el chido y efectos vfx (aura , algunos sprites alredor de rayos
+alrededor y cuando camina el personaje se va rompiendo el piso )"*.
+
+- The Chidori (`chidori_lightning_blade`) is no longer a one-shot thrust: the
+  ninja activates it, and while it is active the lightning is held in the hand.
+- The lightning in the hand is his sprite from that paint-over, copied 1:1 (his
+  pixels, in the caster's chakra colour like the other lightning).
+- While active: an aura, small lightning sprites crackling around the ninja, and
+  the ground cracks under his steps as he walks.
+- How it plays, his answers the same day to our proposal (*"1si 2B pero al
+  momento de acercarte al primer enemigo en rango ataca automaticamente lo mismo
+  para el rasengan 3 si 4 terreno dificil 1 turno para aplicar ese efecto"*):
+  1. Activating it is a bonus action and costs its chakra (5, as before).
+  2. It stays charged for up to 3 rounds. The moment the ninja moves within
+     reach of the first enemy, the blow goes off by itself: one melee jutsu
+     attack, 5d8 lightning as before, and then the Chidori ends. The Rasengan
+     will work the same way when it is built (it is not a battle jutsu yet).
+  3. While charged: his lightning hand, an aura, small lightning sprites around
+     the ninja, and the ground cracking under each step.
+  4. The cracked ground is difficult terrain for 1 turn.
+
+How it is built (`jutsu/chidori-active`, waiting for his approval; `src/battle/charged.ts`, generic
+for any jutsu with `handCharge`, so the Rasengan can use it as it is):
+
+- **Activating** (`chidori_lightning_blade`, now a *Bonus Action*): pays its chakra (5; enhanced, as
+  Raikiri, 8 and one more damage die on the blow), puts the weapon away for free (the hand holds the
+  lightning), and charges the hand. One charge at a time. It is loud (it starts the fight in the
+  stealth phase). Already within reach of a foe, the blow goes off at once.
+- **The blow**: one melee jutsu attack, an attack roll (jutsu attack bonus against AC; it used to be
+  a CON save for half), 5d8 lightning, lightning through the water as before. It goes off the moment
+  one of the ninja's own moves (a walk, a dash, a flash-in, a Shooting-Star Thrust or a swap landing
+  it there; the AI's moves too) brings it within reach (1.5 m; a hydra's head 2.5 m more) of a foe it
+  knows about (not hidden from it, no metal wall between): the nearest, ties to the first id. The
+  walk stops there (on a cell it can stand on), the movement not walked is kept, and the action stays
+  free (a weapon blow can follow). A foe walking up to the charged ninja does not set it off, nor
+  does being pushed.
+- **How long**: the activation turn is the first of its 3 rounds; at the start of the ninja's third
+  turn after it, the charge fades unused.
+- **What ends it early** (the builders' choice): the ninja falls (any 0 HP state); its chakra is
+  sealed; it lets the hand go, by weaving hand seals for another jutsu (Kawarimi too) or by drawing
+  the weapon. Each end is told in the log.
+- **Cracked ground**: every 0.5 m cell the charged ninja steps on in the fight cracks (not water).
+  It is difficult terrain (a step into it costs double), for everyone, the ninja too, until the
+  start of the ninja's next turn, so every other unit has one turn with it (a round later in any
+  case, should the ninja take no more turns). Kept as `cracks` on the battle state, by cell "c,r".
+  The elements on the ground being built on `jutsu/gap-set-2` (wet ground, steam) are kept the same
+  way (`wet`, `steam`): merged, the two can share map.ts's `cellKey` and its 'ground' event.
+- **The AI**: charges the hand when a foe is within this turn's walk plus reach, then walks into
+  reach (dashing when the walk runs out); while charged it neither throws kunai nor weaves seals
+  (both are worth little then), and a long weapon's reach doesn't stop it short of the hand's.
+- **On the screen**: his lightning in the near hand, copied from both paint-overs
+  (`tools/refs/chidori-hand-from-ref.py` → `vfx_charged/chidori_hand`, flickering between the vest's
+  ring and bolts and the coat's burst, mirrored when the ninja faces left), the lightning aura round
+  the ninja, Battle Static's small bolts crackling on and round the body (in the charge's colour,
+  whatever the ninja's own burst), and a crack under each step (`vfx_charged/ground_crack`, new art,
+  four variants). The owner on the first cracks (2026-10-22): *"las grietas en el piso deben ser mas
+  contundentes profundas se ven muy debiles ahora"*. So each is a heavy fracture about a metre
+  across: deep black fissures 2–4 px wide forking out of the pit, a shadowed upper lip and a lit
+  lower one (cut into the ground), torn soil and lifted slabs of ground; it splits open in 3 frames
+  with a dust puff and thrown chips (`vfx_charged/ground_crack_dust`) and lightning flickering out
+  in its depths, holds, and fades when it mends. All in the caster's chakra colour but the cracks;
+  his colours at the default.
+  The blow is his thrust of round 1 (answer 11) with the charged hand.
+- **Open for him**: the attack roll in place of the old save; whether the cracks slow the ninja who
+  made them; whether a foe walking into the charged ninja's reach should set it off too; the HUD's
+  button charges it plain (enhanced through the engine only, for now).
+
+The vest and coat in the same picture are not a new character: *"el chaleco no es
+de jonin parece mas como tactico militar solo cambiale los colores y no lo hagas
+personaje es parte de los sets"*. They become clothing pieces in the sets, with
+new colours.
+
+## Jutsu names, and a removed jutsu (the owner's decisions of 2026-10-22)
+
+Renamed (the ids stay, so saves need nothing):
+- `rasenshuriken_wind` (Wind, S): **Técnica de Viento: Estrella Huracán** /
+  Wind Technique: Hurricane Star, 旋風星 (Senpūsei). Was the Rasenshuriken.
+- `genjutsu_mirage` (Genjutsu, C): **Técnica de Genjutsu: Mente retorcida** /
+  Genjutsu Technique: Mind Twist, 心捩じりの術 (Kokoro Nejiri no Jutsu). Was
+  *Espejismo* / Mirage. He named it "Mind Twist"; "Mente retorcida" is the
+  builder's Spanish (if he wants "Mind Twist" in Spanish too, it is one line).
+- Earlier the same day: `body_flicker` **Desvanecer** / Vanish and
+  `leaf_hurricane_senpuu` **Patada huracán** / Hurricane Kick.
+- Night Guy keeps its name: he will rename it himself.
+
+### Removed jutsu
+
+Yasaka no Magatama (`yasaka_magatama`, Genjutsu, S): *"quitala del juego"*. He
+will make something else later. So the Genjutsu Adept has no rank S of its own
+for now; its S-rank slot offers its element's (and nothing for Light or Void).
+- **Hana** (Water, medic), the only sheet that had it, has the **Dragon
+  Tsunami** (`water_tide_s`) in her S-rank slot: the only rank S her nature and
+  class allow (builder's pick, his to confirm).
+- **Saved sheets** (the hero, the roster, a mission under way, an imported
+  sheet) that still name it load with a replacement (`refitRemoved`,
+  `src/rules/progression.ts`, called by `migrateCharacter`): the slot gets the
+  best jutsu the ninja may learn there (what its nature and growth's elements,
+  clan and class allow), of the removed jutsu's rank or lower, not one another
+  slot holds; a genjutsu first, then its own elements', then the rest, the
+  highest rank first. A saved sheet is a made ninja and keeps its ranks (as on
+  a type change), so a lost rank S becomes a rank S: a Fire genjutsu adept gets
+  the Great Annihilation, a Light taijutsu master Night Guy. With nothing to
+  offer (a Light or Void genjutsu adept) the slot is left empty, as a type
+  change leaves it. Its projectile sheet (`vfx_chakra/multi`) stays in the
+  repo: it is one sheet of the generated chakra set (every element's set has a
+  `multi`), no other jutsu flies it today, and deleting art is his call.

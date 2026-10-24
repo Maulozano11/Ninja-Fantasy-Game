@@ -22,7 +22,7 @@ describe('jutsu effects in the caster\'s chakra colour', () => {
     const elemental = Object.values(JUTSU).filter((j) => j.elemental).map((j) => j.id).sort();
     for (const id of ['fireball_goukakyu', 'dragon_fire_stream', 'dragon_fire_bomb', 'great_fire_annihilation', 'katon_pursuing_flame', 'water_dragon_suiryuudan', 'water_shield_suijinheki', 'earth_wall_doryuheki', 'earth_spear_doryuudan', 'wood_dragon_jutsu', 'wood_golem_titan', 'wind_blade_daitoppa', 'rasenshuriken_wind', 'chidori_lightning_blade', 'lightning_hound_raidon', 'kirin_thunder', 'mystical_palm'])
       assert.ok(elemental.includes(id), `${id} is elemental`);
-    for (const id of ['crescent_moon_dance', 'adamantine_sealing_chains', 'temple_of_nirvana', 'yasaka_magatama', 'night_guy_dragon', 'shadow_clone', 'body_flicker', 'hydra_spit', 'hydra_roar', 'mirai_evasion', 'koton_block', 'koton_wall', 'ryusei_warp', 'northstar_command'])
+    for (const id of ['crescent_moon_dance', 'adamantine_sealing_chains', 'temple_of_nirvana', 'night_guy_dragon', 'shadow_clone', 'body_flicker', 'hydra_spit', 'hydra_roar', 'mirai_evasion', 'koton_block', 'koton_wall', 'ryusei_warp', 'northstar_command'])
       assert.ok(!elemental.includes(id), `${id} is not elemental`);
     for (const id of elemental) assert.ok(['fire', 'water', 'wind', 'lightning', 'earth'].includes(JUTSU[id].element), id);
   });
@@ -70,7 +70,7 @@ describe('jutsu effects in the caster\'s chakra colour', () => {
     assert.deepEqual(names('wood_dragon_jutsu'), ['vfx_wood/wood_root', 'vfx_wood/wood_leaves', 'vfx_wood/wood_dragon', 'vfx_earth/multi_hit', 'vfx_earth/hit']);
     assert.ok(!tintSheetsOf(JUTSU.wood_dragon_jutsu).some((r) => r.beast), 'no beast flies');
     assert.deepEqual(names('earth_wall_doryuheki'), ['vfx_earth/wall', 'vfx_earth/wall_diag', 'vfx_earth/wall_depth']);
-    assert.deepEqual(names('chidori_lightning_blade'), ['vfx_hand/lightning_hand', 'vfx_lightning/hit']);
+    assert.deepEqual(names('chidori_lightning_blade'), ['vfx_charged/chidori_hand', 'vfx_lightning/aura', 'vfx_lightning/hit']);
     assert.ok(names('kirin_thunder').slice(0, 2).join() === 'vfx_lightning/kirin,vfx_lightning/kirin_enh');
     assert.deepEqual(names('katon_pursuing_flame'), ['vfx_fire/bolt', 'vfx_fire/hit']);
     // The rank D and C set: the volleys' projectiles cut apart and the joined fan (vfx_dc) take the colour too.
@@ -79,7 +79,7 @@ describe('jutsu effects in the caster\'s chakra colour', () => {
     assert.deepEqual(names('lightning_spark_fan'), ['vfx_dc/lightning_fan', 'vfx_lightning/hit']);
     assert.deepEqual(names('kenjutsu_bleeding_cut'), [], 'the white cut has no element');
     // The gaps' jutsu (the owner's answers of 2026-10-21): the wave, the tower, the gale, the beam's sparks, the dust.
-    assert.deepEqual(names('water_devouring_tide'), ['vfx_water/aura', 'vfx_water/aura_back', 'vfx_water/wall_depth', 'vfx_water/wall', 'vfx_water/breath', 'vfx_water/hit']);
+    assert.deepEqual(names('water_devouring_tide'), ['vfx_water/aura', 'vfx_water/aura_back', 'vfx_water/wall_depth', 'vfx_water/wall', 'vfx_water/breath', 'vfx_water/hit', 'vfx_water/blast']);
     assert.deepEqual(names('wind_whirlwind_tower'), ['vfx_wind/hit', 'vfx_wind/wall_depth', 'vfx_wind/multi']);
     assert.deepEqual(names('wind_gale_curtain'), ['vfx_wind/aura', 'vfx_wind/aura_back', 'vfx_wind/wall', 'vfx_wind/bolt']);
     assert.deepEqual(names('lightning_thunder_beam'), ['vfx_lightning/stream', 'vfx_lightning/stream_head', 'vfx_lightning/hit']);

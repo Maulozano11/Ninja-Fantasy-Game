@@ -29,7 +29,7 @@ import type {
   Unit,
 } from './types';
 import { homeTeam } from './types';
-import { cellBlocked, cellCenter, cellOf, clearRun, coverBetween, dist, fullCoverBetween, getMap, gridFor, hideSpotAt, idx, inGrid, levelAtPt, lineOfSight, propRules, sameCell, segmentsCross, waterAtPt } from './map';
+import { cellBlocked, cellCenter, cellOf, clearRun, coverBetween, dampAt, dist, fullCoverBetween, getMap, gridFor, hideSpotAt, idx, inGrid, levelAtPt, lineOfSight, propRules, sameCell, segmentsCross, waterAtPt } from './map';
 import { canStop, freeSpot, occupancy, pathTo, pathTouchesDeep, reachable, stepCost } from './nav';
 import type { AttackPreview } from './combat';
 import { attackPreview, check, damage, heal, hostileAura, passivePerception, PERFECT_HIDE, reveal, revealOutOfHiding, rollDiceExpr, skillMod } from './combat';
@@ -40,7 +40,8 @@ import type { EnemyKind } from './units';
 import { hydraUnits } from './hydra';
 import { checkEnd, current, endTurn, startCombat } from './turns';
 import { afterStealthAttack, alarm, canTakedown, dragBody, guardsTurn, openFight, scareAnimalsNear, stealthMove, STONE_RANGE, throwStone } from './stealth';
-import { electrify, groundEffects, plantTag, saveHit, springTrap, TAG, throwTag, trapAt, unitsInArea } from './hazards';
+import { conduct, electrify, groundEffects, plantTag, saveHit, springTrap, TAG, throwTag, trapAt, unitsInArea } from './hazards';
+import { blowSteam, pathArea, soak } from './ground';
 import { breakable, damageStructure, faceToward, hitStructuresIn, jutsuWallAt, raiseStructure, STRUCTURE_AC, structureAt, structureAttack, structureBlocker } from './structures';
 import {
   addNode,
@@ -61,6 +62,8 @@ import {
   warpStrike,
 } from './clans';
 import { reachTo, replanAgainst } from './intent';
+import { chargedFoe, chargeHolds, crackUnder, endCharge } from './charged';
+import { activeImbue, EARTH_CRIT, IMBUE_DAMAGE, IMBUE_DICE, imbueBlocker, imbueHolds, startImbue, unitImbueElement, WIND_PUSH, type ImbueElement } from './imbue';
 
 // --- setup ---------------------------------------------------------------------------------
 
@@ -256,7 +259,7 @@ function dispatch(s: BattleState, a: Action, ev: BattleEvent[]): string | null {
     case 'attack':
       return doAttack(s, u, a.target, !!a.ranged, !!a.knockout, ev);
     case 'jutsu':
-      return doJutsu(s, u, a.jutsu, a.at, a.target, !!a.enhanced, ev, a.target2);
+      return doJutsu(s, u, a.jutsu, a.at, a.target, !!a.enhanced, ev, a.target2, a.element);
     case 'dash':
     case 'disengage':
     case 'dodge':
@@ -376,8 +379,16 @@ function provoker(s: BattleState, u: Unit, hop: Pt[], skip: string[]): Unit | un
 function walk(s: BattleState, u: Unit, path: Cell[], from: number, ev: BattleEvent[], skip: string[]): void {
   let at = cellOf(u.pos);
   const pts: Pt[] = [];
+  // Ground a charged hand cracked on the way, told right after the steps that cracked it.
+  const cracked: string[] = [];
+  // Its cracks from its last turn mended as this one began: none yet means these are its first.
+  let first = !Object.values(s.cracks ?? {}).some((k) => k.by === u.id);
   const flush = () => {
     if (pts.length) ev.push({ t: 'move', unit: u.id, path: pts.splice(0), run: !!u.turn.dashed || u.turn.moved > u.speed * 0.75 });
+    if (cracked.length) {
+      ev.push({ t: 'cracks', unit: u.id, cells: cracked.splice(0), on: true, ...(first ? { first: true } : {}) });
+      first = false;
+    }
   };
   const rules = { waterWalk: !!u.cond.waterWalk, ninjaJump: !!u.cond.ninjaJump };
   const g = gridFor(s.mapId);
@@ -415,6 +426,8 @@ function walk(s: BattleState, u: Unit, path: Cell[], from: number, ev: BattleEve
     u.pos = next;
     pts.push(next);
     at = c;
+    const k = crackUnder(s, u, c);
+    if (k) cracked.push(k);
     if (u.turn.dashed && auraEntered(s, u, was)) {
       flush();
       enteredAura(s, u, was, ev);
@@ -422,6 +435,13 @@ function walk(s: BattleState, u: Unit, path: Cell[], from: number, ev: BattleEve
     if (trapAt(s, u, next)) {
       flush();
       stepHazards(s, u, next, ev);
+      break;
+    }
+    // A charged hand within reach of a foe: the blow goes off, and the walk stops there (on a cell
+    // the ninja can stand on: never mid-hop).
+    if (u.charged && !taken(c) && chargedFoe(s, u)) {
+      flush();
+      strikeCharged(s, u, ev);
       break;
     }
   }
@@ -489,6 +509,12 @@ function weaponAttack(
   const w = ranged ? KUNAI : wielded(a);
   const adv = o.takedown ? combineAdvantage(pv.adv, 'advantage') : pv.adv;
   const roll = check(s, 'attack', pv.mod, pv.ac, adv, true);
+  // Sharp obsidian on the edge (Weapon Element Enhancement, earth): a natural 19 is a critical hit too.
+  const imbue = ranged ? null : activeImbue(a);
+  if (imbue === 'Earth' && roll.d20 >= EARTH_CRIT && !roll.crit && !roll.fumble) {
+    roll.crit = true;
+    roll.success = true;
+  }
   if (t.pos.x !== a.pos.x) a.facing = t.pos.x > a.pos.x ? 1 : -1;
   const reasons = o.takedown && !pv.reasons.includes('hidden') ? [...pv.reasons, 'unaware'] : pv.reasons;
   ev.push({ t: 'attack', unit: a.id, target: t.id, what: w.name, roll, ranged, ...(reasons.length ? { reasons } : {}) });
@@ -505,10 +531,26 @@ function weaponAttack(
     let amount = rollDiceExpr(s, w.dice, roll.crit) + mod + (ranged ? 0 : effectMods(a.effects).meleeDamage);
     if (surprise) amount += rollDiceExpr(s, '1d6', roll.crit);
     if (!ranged && hasEffect(a.effects, 'gates_open')) amount += rollDiceExpr(s, '1d8', roll.crit);
-    hits.push({ unit: t.id, amount: Math.max(1, amount), type: w.type, source: a.id, what: w.name, crit: roll.crit, knockout: o.knockout && !ranged, melee: !ranged, aimed: true, unseen: surprise, unblockable: edge });
+    const hit: Hit = { unit: t.id, amount: Math.max(1, amount), type: w.type, source: a.id, what: w.name, crit: roll.crit, knockout: o.knockout && !ranged, melee: !ranged, aimed: true, unseen: surprise, unblockable: edge };
+    if (imbue) imbuedHit(s, a, hit, imbue);
+    hits.push(hit);
   }
   applyHits(s, hits, after, ev);
   return !!s.pending;
+}
+
+/**
+ * The element on the weapon adds to a melee blow that hits (Weapon Element Enhancement; the numbers
+ * are the builder's proposal, battle/imbue.ts): its die of the element's damage, and on a critical
+ * hit fire sets the target burning and lightning leaves it numb; wind's critical blows it back;
+ * water puts its flames out (water always does); obsidian's edge crits on 19 (weaponAttack).
+ */
+function imbuedHit(s: BattleState, a: Unit, h: Hit, element: NonNullable<ReturnType<typeof activeImbue>>): void {
+  h.bonus = { amount: rollDiceExpr(s, IMBUE_DICE, h.crit), type: IMBUE_DAMAGE[element] };
+  if (element === 'Fire' && h.crit) h.effect = 'burning';
+  if (element === 'Lightning' && h.crit) h.effect = 'jolted';
+  if (element === 'Wind' && h.crit) h.push = { from: { ...a.pos }, m: WIND_PUSH };
+  if (element === 'Water') h.douse = true;
 }
 
 function opportunityAttack(s: BattleState, r: Unit, m: Unit, ev: BattleEvent[], resume: NonNullable<AfterHits['resumeWalk']>): boolean {
@@ -590,7 +632,10 @@ function canKawarimi(s: BattleState, t: Unit): boolean {
 }
 
 /** An AI ninja dodges a blow (Evasion or Kawarimi) when it would drop it or take a third of its HP. */
-const aiAvoids = (t: Unit, h: Hit): boolean => h.amount >= t.hp + t.tempHp || h.amount >= t.maxHp * 0.3;
+const aiAvoids = (t: Unit, h: Hit): boolean => {
+  const n = h.amount + (h.bonus?.amount ?? 0);
+  return n >= t.hp + t.tempHp || n >= t.maxHp * 0.3;
+};
 
 /**
  * Lands queued hits in order. A clone takes an aimed blow instead of its ninja; a Mirai who saw it
@@ -641,10 +686,19 @@ function landHit(s: BattleState, t: Unit, h: Hit, ev: BattleEvent[]): void {
   if (h.amount > 0 || t.head?.severed) {
     damage(s, t, h.amount, h.type, { crit: h.crit, source: h.source, knockout: h.knockout, melee: h.melee, explosion: h.explosion }, ev);
   }
+  // The element on the weapon, after the blow: not on a ninja the blow dropped, but a fire or
+  // lightning blade seals the hydra's stump it has just cut.
+  if (h.bonus && h.bonus.amount > 0 && (!t.down || t.head?.severed)) damage(s, t, h.bonus.amount, h.bonus.type, { crit: h.crit, source: h.source, knockout: h.knockout, melee: h.melee }, ev);
+  // A charged hand, or an element on the weapon, doesn't outlast its ninja's fall.
+  chargeHolds(t, false, ev);
+  imbueHolds(t, false, ev);
   if (t.down || t.head?.severed || t.kind === 'hydra_body') return;
-  if (h.effect && !(h.effect === 'burning' && waterAtPt(s, t.pos) > 0)) {
+  if (h.effect && !(h.effect === 'burning' && dampAt(s, t.pos))) {
     t.effects = addEffect(t.effects, h.effect, { source: JUTSU[h.what]?.name ?? h.what }).effects;
     ev.push({ t: 'effect', unit: t.id, effect: h.effect, on: true });
+    // Sealed chakra lets a charged hand go, and leaves the weapon.
+    chargeHolds(t, effectMods(t.effects).noJutsu, ev);
+    imbueHolds(t, effectMods(t.effects).noJutsu, ev);
   }
   if (h.tension && t.team === 'party') {
     t.stats2.tension += 1;
@@ -711,7 +765,7 @@ function sweep(s: BattleState, t: Unit, h: Hit, ev: BattleEvent[]): void {
     t.cond.prone = true;
     landHit(s, t, { unit: t.id, amount: rollDiceExpr(s, `${Math.round(drop)}d6`), type: 'Bludgeoning', source: h.source, what: 'fall' }, ev);
   }
-  if (waterAtPt(s, t.pos) > 0 && hasEffect(t.effects, 'burning')) {
+  if (dampAt(s, t.pos) && hasEffect(t.effects, 'burning')) {
     t.effects = removeEffect(t.effects, 'burning');
     ev.push({ t: 'effect', unit: t.id, effect: 'burning', on: false });
   }
@@ -720,6 +774,8 @@ function sweep(s: BattleState, t: Unit, h: Hit, ev: BattleEvent[]): void {
 /** Kawarimi: the blow strikes a log and the ninja reappears a few meters away, away from danger. */
 function kawarimi(s: BattleState, t: Unit, h: Hit, ev: BattleEvent[]): void {
   const spec = JUTSU[KAWARIMI];
+  // Its hand seals let a charged hand go.
+  endCharge(t, 'released', ev);
   t.chakra -= spec.cost;
   t.turn.reaction = false;
   // A jutsu cast too: the one before the next (Triple Nature reads it).
@@ -803,7 +859,7 @@ export function jutsuCost(u: Unit, spec: JutsuSpec, enh: boolean): number {
   return jutsuCostParts(u, spec, enh).cost;
 }
 
-function doJutsu(s: BattleState, u: Unit, id: string, atIn: Pt, targetId: string | undefined, enh: boolean, ev: BattleEvent[], target2Id?: string): string | null {
+function doJutsu(s: BattleState, u: Unit, id: string, atIn: Pt, targetId: string | undefined, enh: boolean, ev: BattleEvent[], target2Id?: string, element?: ImbueElement): string | null {
   const base = JUTSU[id];
   if (!base || !u.jutsus.includes(id)) return 'unknownJutsu';
   if (base.cast === 'reaction') return 'reactionOnly';
@@ -813,6 +869,13 @@ function doJutsu(s: BattleState, u: Unit, id: string, atIn: Pt, targetId: string
   const { cost, woven } = jutsuCostParts(u, base, enh);
   if (u.chakra < cost) return 'noChakra';
   if (base.cast === 'bonus' ? !u.turn.bonus : !u.turn.action) return base.cast === 'bonus' ? 'noBonus' : 'noAction';
+  // One charged hand at a time.
+  if (base.handCharge && u.charged) return 'alreadyCharged';
+  // Weapon Element Enhancement: one of the five elements, a weapon to hold, not on it already.
+  if (base.special === 'imbue') {
+    const why = imbueBlocker(u, element);
+    if (why) return why;
+  }
   // Hand seals need both hands, and a tackle is thrown with empty ones: the weapon is stowed for
   // free (once a turn), or the jutsu waits. A sword art needs a blade, drawn for free.
   const stow = mustStow(u, base);
@@ -854,7 +917,8 @@ function doJutsu(s: BattleState, u: Unit, id: string, atIn: Pt, targetId: string
     case 'point':
     case 'wall':
       if (d > spec.range + 0.1) return 'outOfRange';
-      if (!lineOfSight(s, u.pos, at)) return 'noSight';
+      // A point in steam can be aimed at (the cloud is seen), not one past it.
+      if (!lineOfSight(s, u.pos, at, { into: true })) return 'noSight';
       break;
     case 'cone':
     case 'line':
@@ -888,6 +952,8 @@ function doJutsu(s: BattleState, u: Unit, id: string, atIn: Pt, targetId: string
   if (stow) setArmed(u, false, 'free', ev);
   // A sword art draws the blade for free (handsBlocker made sure the free draw is left).
   else if (base.weapon === 'draw' && u.weapon.held && !u.armed) setArmed(u, true, 'free', ev);
+  // Hand seals for another jutsu let a charged hand go.
+  if (u.charged && needsSeals(u, base)) endCharge(u, 'released', ev);
   // Pay, and spend the action.
   u.chakra -= cost;
   if (cost) ev.push({ t: 'chakra', unit: u.id, delta: -cost, chakra: u.chakra, reason: id });
@@ -902,6 +968,16 @@ function doJutsu(s: BattleState, u: Unit, id: string, atIn: Pt, targetId: string
   if (base.cast === 'bonus') u.turn.bonus = false;
   else u.turn.action = false;
   if (spec.loud) reveal(u, ev);
+  if (base.handCharge) {
+    chargeHand(s, u, base, enh, ev);
+    return null;
+  }
+  // The element goes onto the weapon (drawn above, for free, if it was put away).
+  if (base.special === 'imbue') {
+    // Its chakra type's element, or the other one it chose (its second element).
+    startImbue(u, element ?? unitImbueElement(u)!, ev);
+    return null;
+  }
   if (spec.melee && spec.shape === 'single' && target) {
     if (land) chargeTo(s, u, land, id, ev);
     else dashTo(s, u, target, id, ev);
@@ -971,12 +1047,49 @@ function doJutsu(s: BattleState, u: Unit, id: string, atIn: Pt, targetId: string
   }
   if (spec.loud && s.phase === 'combat') scareAnimalsNear(s, at, 6, ev);
   applyHits(s, hits, spec.loud ? loud(s, u) : silentAttack(s, u, spec, target, ev), ev);
+  // A flash-in, a warp or a swap that lands a charged hand within reach of a foe sets it off.
+  strikeCharged(s, u, ev);
   return null;
+}
+
+// --- a charged hand (the activated Chidori; battle/charged.ts) ------------------------------
+
+/**
+ * Charges the hand with a jutsu (its chakra and the bonus action are paid): it waits up to its rounds
+ * for a foe within reach. Already beside one, the blow goes off at once.
+ */
+function chargeHand(s: BattleState, u: Unit, spec: JutsuSpec, enh: boolean, ev: BattleEvent[]): void {
+  u.charged = { jutsu: spec.id, enhanced: enh, rounds: spec.handCharge!.rounds };
+  ev.push({ t: 'charged', unit: u.id, jutsu: spec.id, on: true, enhanced: enh });
+  if (spec.loud && s.phase === 'combat') scareAnimalsNear(s, u.pos, 6, ev);
+  // A loud charge in the stealth phase starts the fight.
+  applyHits(s, [], spec.loud ? loud(s, u) : {}, ev);
+  strikeCharged(s, u, ev);
+}
+
+/**
+ * The charged hand's blow goes off by itself, if a foe is within its reach (chargedFoe): one melee
+ * jutsu attack at it (its attack roll, its dice, enhanced if it was charged so; lightning runs
+ * through the water as usual), and the charge is spent. Nothing happens while a reaction is pending.
+ */
+function strikeCharged(s: BattleState, u: Unit, ev: BattleEvent[]): void {
+  if (!u.charged || u.down || s.pending || s.phase === 'ended') return;
+  const t = chargedFoe(s, u);
+  if (!t) return;
+  const c = u.charged;
+  const base = JUTSU[c.jutsu];
+  const spec: JutsuSpec = { ...(c.enhanced ? enhanced(base) : base), shape: 'single' };
+  if (t.pos.x !== u.pos.x) u.facing = t.pos.x > u.pos.x ? 1 : -1;
+  ev.push({ t: 'jutsu', unit: u.id, jutsu: c.jutsu, at: { ...t.pos }, shape: null, enhanced: c.enhanced, released: true });
+  const hits = jutsuHits(s, u, spec, t, { ...t.pos }, ev);
+  endCharge(u, 'struck', ev);
+  if (spec.loud && s.phase === 'combat') scareAnimalsNear(s, t.pos, 6, ev);
+  applyHits(s, hits, spec.loud ? loud(s, u) : silentAttack(s, u, spec, t, ev), ev);
 }
 
 /**
  * A silent jutsu that wounds a foe counts as an attack (the proposal's piece P6, the owner's answer
- * for the Mirage and the Bleeding Cut): the caster gives itself away once it has struck, as with a
+ * for the Mind Twist and the Bleeding Cut): the caster gives itself away once it has struck, as with a
  * blade, and in the stealth phase the target that survives shouts while one that falls unseen
  * leaves a body. A silent jutsu that reaches several foes is loud there.
  */
@@ -1009,6 +1122,8 @@ function jutsuHits(s: BattleState, u: Unit, spec: JutsuSpec, target: Unit | unde
     if (spec.push) extra.push = { from: spec.push.toward ? { ...at } : { ...u.pos }, m: spec.push.m, toward: spec.push.toward };
     if (spec.prone) extra.prone = true;
     if (spec.douse) extra.douse = true;
+    // Fire that lands on wet ground turns the water to steam: the flames don't catch there.
+    if (extra.effect === 'burning' && dampAt(s, v.pos)) extra.effect = undefined;
     if (spec.save) {
       hits.push(saveHit(s, v, spec.save, u.saveDC, amount, type, spec.saveHalf, u.id, spec.id, extra, ev, spec.saveAdv, spec.dice ? maxCritDamage(spec.dice) : undefined));
       continue;
@@ -1022,12 +1137,25 @@ function jutsuHits(s: BattleState, u: Unit, spec: JutsuSpec, target: Unit | unde
   if (edge) u.cond.warpEdge = false;
   // The ground: fire burns, wind cuts the foliage, blasts set off barrels and tags.
   const ground = area ?? { kind: 'circle' as const, center: at, radius: 1 };
-  if (spec.dmgType) hits.push(...groundEffects(s, ground, spec.env === 'clearFoliage' ? 'Wind' : type, ev, new Set(), spec.env === 'clearFoliage'));
-  // Lightning in the water runs through it.
+  if (spec.dmgType) hits.push(...groundEffects(s, ground, spec.env === 'clearFoliage' ? 'Wind' : type, ev, new Set(), spec.env === 'clearFoliage', u.id));
+  // Water soaks the ground it passes over, wind blows steam away (the owner, 2026-10-21; ground.ts).
+  if (spec.elemental && spec.element === 'water' && spec.dmgType) soak(s, ground, u.id, ev, spec.wetRounds);
+  // Every wind attack does (his "puede ser eliminada con ataques elementales de aire"): over its area,
+  // and from the caster's own cell for a cone or a line; a single-target one along its path, hit or miss.
+  if (spec.elemental && spec.element === 'wind' && spec.dmgType) {
+    if (!area) blowSteam(s, pathArea(u.pos, at), u.id, ev, u.pos, [u.pos, at]);
+    else blowSteam(s, area, u.id, ev, area.kind === 'circle' ? area.center : u.pos, area.kind === 'circle' ? [] : [u.pos]);
+  }
+  // Lightning in the water runs through it, and across the wet ground it touches.
   if (type === 'Lightning') {
     const points = victims.map((v) => v.pos);
     if (area?.kind === 'circle') points.push(area.center);
-    hits.push(...electrify(s, points, amount, u.saveDC, u.id, victims.map((v) => v.id), ev, spec.dice));
+    const struck = victims.map((v) => v.id);
+    const watered = electrify(s, points, amount, u.saveDC, u.id, struck, ev, spec.dice);
+    hits.push(...watered);
+    // Hit or miss, it lands on the ground where its target stands (as fire that misses still burns
+    // and steams there, and lightning that misses still runs through the river).
+    hits.push(...conduct(s, area, points, amount, u.saveDC, u.id, [...struck, ...watered.map((h) => h.unit)], ev, spec.dice));
   }
   return hits;
 }
@@ -1092,6 +1220,8 @@ function raiseGale(s: BattleState, u: Unit, spec: JutsuSpec, at: Pt, ev: BattleE
   const zone: GaleZone = { id: `gale_${s.tick}_${u.id}_${(s.zones ?? []).length}`, center: { ...at }, radius: spec.radius ?? 2.25, owner: u.id, rounds: 3 };
   s.zones = [...(s.zones ?? []), zone];
   ev.push({ t: 'zone', zone, on: true });
+  // The gale blows away the steam where it turns.
+  blowSteam(s, { kind: 'circle', center: zone.center, radius: zone.radius }, u.id, ev);
 }
 
 /** Ninjutsu and genjutsu are woven with hand seals; taijutsu, sword arts and bloodline abilities are not. */
@@ -1120,6 +1250,8 @@ export function handsBlocker(u: Unit, spec: JutsuSpec): string | null {
 }
 
 function setArmed(u: Unit, armed: boolean, cost: 'free' | 'bonus', ev: BattleEvent[]): void {
+  // The weapon drawn takes the hand a charge was held in: it lets it go.
+  if (armed) endCharge(u, 'released', ev);
   u.armed = armed;
   if (cost === 'free') u.turn.interacted = true;
   else u.turn.bonus = false;
@@ -1278,7 +1410,7 @@ function doShove(s: BattleState, u: Unit, targetId: string, mode: 'prone' | 'pus
         t.cond.prone = true;
         hits.push({ unit: t.id, amount: rollDiceExpr(s, `${Math.round(drop)}d6`), type: 'Bludgeoning', source: u.id, what: 'fall' });
       }
-      if (waterAtPt(s, to) > 0 && hasEffect(t.effects, 'burning')) {
+      if (dampAt(s, to) && hasEffect(t.effects, 'burning')) {
         t.effects = removeEffect(t.effects, 'burning');
         ev.push({ t: 'effect', unit: t.id, effect: 'burning', on: false });
       }
@@ -1321,7 +1453,7 @@ function doItem(s: BattleState, u: Unit, item: 'pill' | 'bandage' | 'antidote' |
     // An explosive tag thrown at a point: it seals a hydra's stump like fire.
     if (s.supplies.explosiveTags < 1) return 'noneLeft';
     if (!at || dist(u.pos, at) > TAG.range + 0.1) return 'outOfRange';
-    if (!lineOfSight(s, u.pos, at)) return 'noSight';
+    if (!lineOfSight(s, u.pos, at, { into: true })) return 'noSight';
     u.turn.action = false;
     s.supplies.explosiveTags -= 1;
     ev.push({ t: 'act', unit: u.id, act: 'item' });
@@ -1333,7 +1465,7 @@ function doItem(s: BattleState, u: Unit, item: 'pill' | 'bandage' | 'antidote' |
     // doesn't give the ninja away in the stealth phase.
     if (s.supplies.explosiveTags < 1) return 'noneLeft';
     if (!at || dist(u.pos, at) > TAG.plant + 0.1) return 'outOfRange';
-    if (!lineOfSight(s, u.pos, at)) return 'noSight';
+    if (!lineOfSight(s, u.pos, at, { into: true })) return 'noSight';
     if (cellBlocked(s, cellOf(at))) return 'blocked';
     u.turn.action = false;
     s.supplies.explosiveTags -= 1;

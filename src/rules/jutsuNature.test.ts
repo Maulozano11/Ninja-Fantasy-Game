@@ -45,19 +45,23 @@ describe('which jutsu the nature gates', () => {
     // Each element's rank D and C jutsu come first (docs/GAMEPLAY_DESIGN.md, "Rank D and C jutsu").
     const free = ['leaf_hurricane_senpuu', 'taijutsu_rush', 'kenjutsu_bleeding_cut', 'crescent_moon_dance', 'genjutsu_mirage', 'temple_of_nirvana'];
     assert.deepEqual(offer('Fire', 'slot2Elemental'), ['fire_three_embers', 'fireball_goukakyu', 'dragon_fire_stream', ...free]);
-    assert.deepEqual(offer('Water', 'slot2Elemental'), ['water_geyser', 'water_dragon_suiryuudan', 'water_shield_suijinheki', ...free]);
     // The gaps' jutsu (the owner's answers of 2026-10-21): the Rubble Gust, the Gale Curtain, the
-    // Whirlwind Tower, the Thunder Beam and Water's S-rank, the Devouring Tide.
+    // Whirlwind Tower, the Thunder Beam and the Devouring Tide (Water's rank A, his second round).
+    // The Tide is the Tsunami since 2026-10-22 (the owner renamed it; the id stays).
+    assert.deepEqual(offer('Water', 'slot2Elemental'), ['water_geyser', 'water_dragon_suiryuudan', 'water_shield_suijinheki', 'water_devouring_tide', ...free]);
     assert.deepEqual(offer('Earth', 'slot2Elemental'), ['earth_pebble_shot', 'earth_spike_crown', 'earth_rubble_gust', 'earth_wall_doryuheki', 'earth_spear_doryuudan', ...free]);
     assert.deepEqual(offer('Wind', 'slot2Elemental'), ['wind_whirl', 'wind_blade_daitoppa', 'wind_gale_curtain', 'wind_whirlwind_tower', ...free]);
     assert.deepEqual(offer('Lightning', 'slot3Elemental'), ['lightning_jolt', 'lightning_spark_fan', 'lightning_thunder_beam', 'chidori_lightning_blade', 'lightning_hound_raidon', ...free]);
-    assert.deepEqual(offer('Fire', 'slot5Ultimate'), ['great_fire_annihilation', 'yasaka_magatama', 'night_guy_dragon']);
-    assert.deepEqual(offer('Lightning', 'slot5Ultimate'), ['kirin_thunder', 'yasaka_magatama', 'night_guy_dragon']);
-    assert.deepEqual(offer('Water', 'slot5Ultimate'), ['water_devouring_tide', 'yasaka_magatama', 'night_guy_dragon']);
+    // Yasaka no Magatama, the genjutsu rank S, is out of the game (the owner, 2026-10-22: "quitala del juego").
+    assert.deepEqual(offer('Fire', 'slot5Ultimate'), ['great_fire_annihilation', 'night_guy_dragon']);
+    assert.deepEqual(offer('Lightning', 'slot5Ultimate'), ['kirin_thunder', 'night_guy_dragon']);
+    // Water's own S-rank, the Dragon Tsunami (the owner, 2026-10-22: "rango S ola si me gusta la
+    // animacion ... la rango s es dragon tsunami"; until then "vacio por ahora").
+    assert.deepEqual(offer('Water', 'slot5Ultimate'), ['water_tide_s', 'night_guy_dragon']);
     // Light and Void (their own jutsu come later) learn no elemental jutsu.
     for (const n of ['Light', 'Void', 'Shadow', 'Spirit'] as ChakraNature[]) {
       assert.deepEqual(offer(n, 'slot2Elemental'), free, n);
-      assert.deepEqual(offer(n, 'slot5Ultimate'), ['yasaka_magatama', 'night_guy_dragon'], n);
+      assert.deepEqual(offer(n, 'slot5Ultimate'), ['night_guy_dragon'], n);
     }
     // Utility and the clan secret are the same for everyone.
     for (const n of ALL_NATURES) {
@@ -110,7 +114,7 @@ describe('changing the chakra type in the creator', () => {
       assert.deepEqual(offNatureJutsus(r, n), [], n);
       assert.equal(r.slot2Elemental, 'leaf_hurricane_senpuu', n);
       assert.equal(r.slot3Elemental, 'crescent_moon_dance', n);
-      assert.equal(r.slot5Ultimate, 'yasaka_magatama', n);
+      assert.equal(r.slot5Ultimate, 'night_guy_dragon', n);
     }
   });
 

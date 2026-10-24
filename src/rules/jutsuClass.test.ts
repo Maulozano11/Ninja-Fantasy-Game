@@ -41,7 +41,6 @@ describe('the taijutsu, kenjutsu and genjutsu jutsu belong to their class', () =
       'night_guy_dragon',
       'taijutsu_rush',
       'temple_of_nirvana',
-      'yasaka_magatama',
     ]);
     for (const j of JUTSUS_DATA) {
       const want = (j.category === 'Elemental' || j.category === 'Ultimate') && ['Taijutsu', 'Kenjutsu', 'Genjutsu'].includes(j.nature);
@@ -80,10 +79,11 @@ describe('the taijutsu, kenjutsu and genjutsu jutsu belong to their class', () =
     assert.deepEqual(fire('Genjutsu Adept'), ['fire_three_embers', 'fireball_goukakyu', 'dragon_fire_stream', 'genjutsu_mirage', 'temple_of_nirvana']);
     assert.deepEqual(fire('Ninjutsu Specialist'), ['fire_three_embers', 'fireball_goukakyu', 'dragon_fire_stream']);
     assert.deepEqual(fire('Medical Specialist'), ['fire_three_embers', 'fireball_goukakyu', 'dragon_fire_stream']);
-    assert.deepEqual(ids(learnable('slot5Ultimate', 'Fire', 'Mirai', 'Genjutsu Adept')), ['great_fire_annihilation', 'yasaka_magatama']);
+    // Yasaka no Magatama, the genjutsu rank S, is out of the game (the owner, 2026-10-22): a Fire adept's S-rank is Fire's.
+    assert.deepEqual(ids(learnable('slot5Ultimate', 'Fire', 'Mirai', 'Genjutsu Adept')), ['great_fire_annihilation']);
     assert.deepEqual(ids(learnable('slot5Ultimate', 'Fire', 'Mirai', 'Taijutsu Master')), ['great_fire_annihilation', 'night_guy_dragon']);
-    // A new ninja, D and C: a Fire genjutsu adept has Three Embers, Fireball and the Mirage; a
-    // taijutsu master the Leaf Hurricane and the Rush instead of the Mirage.
+    // A new ninja, D and C: a Fire genjutsu adept has Three Embers, Fireball and the Mind Twist; a
+    // taijutsu master the Leaf Hurricane and the Rush instead of the Mind Twist.
     assert.deepEqual(ids(creatorChoices('slot2Elemental', 'Fire', 'Mirai', 'Genjutsu Adept')), ['fire_three_embers', 'fireball_goukakyu', 'genjutsu_mirage']);
     assert.deepEqual(ids(creatorChoices('slot2Elemental', 'Fire', 'Mirai', 'Taijutsu Master')), ['fire_three_embers', 'fireball_goukakyu', 'leaf_hurricane_senpuu', 'taijutsu_rush']);
   });
@@ -102,10 +102,12 @@ describe('the sheets keep their jutsu, marked when another class\'s', () => {
     for (const { character: c } of LEGENDARY_PRESETS) assert.deepEqual(offClassJutsus(c.selectedJutsus, c.shinobiClass), [], c.id);
   });
 
-  it('a companion\'s sheet stays as it is, marked: Hana (a medic) keeps Yasaka no Magatama (genjutsu)', () => {
-    assert.deepEqual(offClassJutsus(HANA.selectedJutsus, HANA.shinobiClass), ['yasaka_magatama']);
+  it('no companion breaks it either: Hana (a medic) has the Dragon Tsunami since Yasaka no Magatama left the game', () => {
+    // She kept Yasaka no Magatama (a genjutsu), marked, until the owner took it out (2026-10-22).
+    assert.equal(HANA.selectedJutsus.slot5Ultimate, 'water_tide_s');
+    assert.deepEqual(offClassJutsus(HANA.selectedJutsus, HANA.shinobiClass), []);
     assert.deepEqual(offClassJutsus(KENJI.selectedJutsus, KENJI.shinobiClass), []);
-    assert.equal(migrateCharacter(HANA).selectedJutsus.slot5Ultimate, 'yasaka_magatama', 'loading keeps it');
+    assert.equal(migrateCharacter(HANA).selectedJutsus.slot5Ultimate, 'water_tide_s', 'loading keeps it');
   });
 });
 
@@ -145,16 +147,19 @@ describe('changing class in the creator swaps the jutsu of another class, as a t
   });
 
   it('a legend picked as a starting point and a made ninja keep their ranks: the swap may be of any rank', () => {
-    const shiori = legend('preset_gentle'); // Water, Taijutsu Master: Leaf Hurricane (D), Night Guy (S)
-    const r = fitToClass(shiori, natureOf(shiori), 'Genjutsu Adept');
+    // Hiro (Wind, Taijutsu Master) with a taijutsu S-rank: Leaf Hurricane (D), Night Guy (S). (This was
+    // Shiori's sheet until the owner discarded her on 2026-10-22: "shiori desechala".)
+    const hiro = legend('preset_sunburst');
+    const taijutsuS = { ...hiro, selectedJutsus: { ...hiro.selectedJutsus, slot5Ultimate: 'night_guy_dragon' } };
+    const r = fitToClass(taijutsuS, natureOf(taijutsuS), 'Genjutsu Adept');
     assert.deepEqual(r.swaps, [
-      { slot: 'slot3Elemental', from: 'leaf_hurricane_senpuu', to: 'water_geyser' },
-      // Water's own S-rank first (the Devouring Tide, the owner's answer of 2026-10-21).
-      { slot: 'slot5Ultimate', from: 'night_guy_dragon', to: 'water_devouring_tide' },
+      { slot: 'slot3Elemental', from: 'leaf_hurricane_senpuu', to: 'wind_whirl' },
+      { slot: 'slot5Ultimate', from: 'night_guy_dragon', to: 'rasenshuriken_wind' },
     ]);
-    const made = asMade({ ...shiori, id: 'ninja_made' });
+    const made = asMade({ ...taijutsuS, id: 'ninja_made' });
     assert.deepEqual(fitToClass(made, natureOf(made), 'Genjutsu Adept'), r, 'a made ninja: the same');
-    // Ninjutsu: no genjutsu or taijutsu for this class, but Water has its S-rank now.
-    assert.equal(fitToClass(shiori, natureOf(shiori), 'Ninjutsu Specialist').loadout.slot5Ultimate, 'water_devouring_tide');
+    // A new ninja's copy may not learn the S-rank: the slot empties.
+    const nu = { ...taijutsuS, id: 'ninja_new' };
+    assert.equal(fitToClass(nu, natureOf(nu), 'Genjutsu Adept').loadout.slot5Ultimate, '');
   });
 });

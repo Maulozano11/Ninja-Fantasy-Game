@@ -13,12 +13,14 @@ import { current } from '../../battle/turns';
 import { AURA_RADIUS, attackPreview, sovereign } from '../../battle/combat';
 import { JUTSU, areaOf, enhanced as enhancedSpec, fanDice, fannedBy } from '../../battle/jutsu';
 import type { JutsuSpec } from '../../battle/jutsu';
-import { cellCenter, cellOf, dist, fullCoverBetween, getMap, gridFor, idx, lineOfSight, sameCell } from '../../battle/map';
+import { cellCenter, cellOf, dist, fullCoverBetween, getMap, gridFor, idx, lineOfSight, sameCell, steamAt, steamBetween, steamHides } from '../../battle/map';
 import { canStop, occupancy, pathCost, pathTo, reachable } from '../../battle/nav';
 import { foreseen } from '../../battle/intent';
 import { MAX_STRUCTURES, STRUCTURE_AC, breakable, jutsuWallAt, ownStructures, structureAt, structureAttack, structureBlocker, structureDist } from '../../battle/structures';
 import { auraEntered, commandBlocker, edgeFoe, nodeInSight, nodeUnder, ownNodeAt, ownNodes, submissionBlocker, submissionRefused, swapBlocker, warpBlocker, warpLanding } from '../../battle/clans';
 import { KUNAI, KUNAI_LONG, wielded } from '../../battle/units';
+import { EARTH_CRIT, IMBUE_COST, IMBUE_DICE, IMBUE_ROUNDS, imbueBlocker, type ImbueElement, unitImbueElements, WATER_REACH, WEAPON_ELEMENT, WIND_PUSH } from '../../battle/imbue';
+import { ELEMENT_ES } from '../../game/ruleText';
 import { STONE_RANGE } from '../../battle/stealth';
 import { TAG } from '../../battle/hazards';
 import { battleResult } from '../../battle/result';
@@ -452,7 +454,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
         const pv = attackPreview(s, striker, hu, 'melee');
         if (pv.inRange) {
           o.targets = [hu.id];
-          label = pv.blocked ? reasonLine(pv.blocked) : T('aimChance', { p: Math.round(pv.chance * 100), dice: wielded(striker).dice });
+          label = pv.blocked ? reasonLine(pv.blocked === 'noSight' ? sightWhy(s, striker.pos, hu.pos) : pv.blocked) : T('aimChance', { p: Math.round(pv.chance * 100), dice: wielded(striker).dice });
           sub = pv.blocked ? null : reasonsText(pv, lang);
         } else label = planLine;
         if (pv.inRange && planLine) sub = sub ? `${sub} · ${planLine}` : planLine;
@@ -480,7 +482,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
         o.targets = [hu.id];
         // The engine's refusals first: out of reach, out of sight or walled off, hands busy.
         const busyHands = mode.ranged && actor.armed && actor.weapon.twoHanded && actor.turn.interacted;
-        label = !pv.inRange ? T('aimNoReach') : pv.blocked ? reasonLine(pv.blocked) : busyHands ? reasonLine('handsBusy') : T('aimChance', { p: Math.round(pv.chance * 100), dice: mode.ranged ? KUNAI.dice : wielded(striker).dice });
+        label = !pv.inRange ? T('aimNoReach') : pv.blocked ? reasonLine(pv.blocked === 'noSight' ? sightWhy(s, striker.pos, hu.pos) : pv.blocked) : busyHands ? reasonLine('handsBusy') : T('aimChance', { p: Math.round(pv.chance * 100), dice: mode.ranged ? KUNAI.dice : wielded(striker).dice });
         sub = pv.inRange && !pv.blocked && !busyHands ? reasonsText(pv, lang) : null;
         if (planLine) sub = sub ? `${sub} · ${planLine}` : planLine;
       } else if (hw) {
@@ -570,15 +572,15 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
         if (!self && dist(actor.pos, at) > spec.range + 0.1 + (hu?.bulk ?? 0) + (hu?.kind === 'hydra_head' ? 2.5 : 0)) label = T('aimNoReach');
         // Then sight, as the engine refuses it: a jutsu at one target needs to see it (a strike, no
         // metal wall between); an area or a point needs to see where it goes.
-        else if (spec.shape === 'single' && hu && (spec.melee ? fullCoverBetween(s, actor.pos, hu.pos) || (!!spec.charge && !chargeLanding(s, actor, hu)) : !lineOfSight(s, actor.pos, hu.pos))) label = reasonLine(spec.melee ? 'blocked' : 'noSight');
-        else if ((spec.shape === 'circle' || spec.shape === 'point' || spec.shape === 'wall') && !lineOfSight(s, actor.pos, at)) label = reasonLine('noSight');
+        else if (spec.shape === 'single' && hu && (spec.melee ? fullCoverBetween(s, actor.pos, hu.pos) || (!!spec.charge && !chargeLanding(s, actor, hu)) : !lineOfSight(s, actor.pos, hu.pos))) label = reasonLine(spec.melee ? 'blocked' : sightWhy(s, actor.pos, hu.pos));
+        else if ((spec.shape === 'circle' || spec.shape === 'point' || spec.shape === 'wall') && !lineOfSight(s, actor.pos, at, { into: true })) label = reasonLine(sightWhy(s, actor.pos, at, true));
         if (spec.shape === 'point' || spec.shape === 'wall') o.point = { at, ok: dist(actor.pos, at) <= spec.range + 0.1 };
         if (spec.special === 'metalBlock' || spec.special === 'metalWall' || spec.special === 'earthWall' || spec.special === 'waterWall') {
           // A wall or a Kōton structure: where it would stand and why it can't (never over anyone);
           // for a Kōton, how many already stand.
           const koton = spec.special === 'metalBlock' || spec.special === 'metalWall';
           const w = koton ? structureAt(spec, actor.pos, at, actor.id, 'preview') : jutsuWallAt(spec, actor.pos, at, 'preview');
-          const why = dist(actor.pos, at) > spec.range + 0.1 ? 'outOfRange' : !lineOfSight(s, actor.pos, at) ? 'noSight' : structureBlocker(s, w);
+          const why = dist(actor.pos, at) > spec.range + 0.1 ? 'outOfRange' : !lineOfSight(s, actor.pos, at, { into: true }) ? sightWhy(s, actor.pos, at, true) : structureBlocker(s, w);
           const n = ownStructures(s, actor.id).length;
           o.point = undefined;
           o.footprint = { wall: w, ok: !why };
@@ -597,7 +599,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
         const ok = dist(actor.pos, hover.pt) <= TAG.plant + 0.1;
         o.point = { at: hover.pt, ok };
         o.area = { shape: { kind: 'circle', center: hover.pt, radius: TAG.radius }, tone: 'enemy' };
-        label = ok ? (lineOfSight(s, actor.pos, hover.pt) ? T('aimTagTrap') : reasonLine('noSight')) : T('aimNoReach');
+        label = ok ? (lineOfSight(s, actor.pos, hover.pt, { into: true }) ? T('aimTagTrap') : reasonLine(sightWhy(s, actor.pos, hover.pt, true))) : T('aimNoReach');
       }
     } else if (mode.k === 'stone') {
       o.range = { at: actor.pos, radius: STONE_RANGE };
@@ -621,6 +623,14 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
   selectedRef.current = selected;
   const foreseenRef = useRef(foreseenNow);
   foreseenRef.current = foreseenNow;
+  // The acting ninja stands in steam: the foes outside it vanish from its sight (the owner:
+  // "que los enemigos desaparezcan de la visión de ese personaje"), drawn as a hidden foe is.
+  const unseen = useMemo(() => {
+    if (!actor || !steamAt(state, actor.pos)) return undefined;
+    return new Set(Object.values(state.units).filter((u) => u.team !== actor.team && steamHides(state, actor.pos, u.pos)).map((u) => u.id));
+  }, [actor, state]);
+  const unseenRef = useRef(unseen);
+  unseenRef.current = unseen;
 
   useEffect(() => {
     let raf = 0;
@@ -683,6 +693,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
         team: 'party',
         lang: langRef.current,
         avoid: panelRects(canvas, dpr),
+        unseen: unseenRef.current,
       });
       // The dice over the fight: the quick d20s, the big window, a critical's impact.
       drawDiceLayer(ctx, {
@@ -749,7 +760,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
       if (gr.complete && gr.naturalWidth) g.drawImage(gr, 0, 0);
       for (const u of Object.values(s.units)) {
         if (u.down === 'dead' || u.down === 'fled' || u.kind === 'hydra_head') continue;
-        if (u.team === 'enemy' && u.cond.hidden !== undefined) continue;
+        if (u.team === 'enemy' && (u.cond.hidden !== undefined || unseenRef.current?.has(u.id))) continue;
         const p = project(map, pbRef.current!.posOf(u.id, now));
         g.fillStyle = homeTeam(u) === 'party' ? '#38bdf8' : '#f87171';
         g.beginPath();
@@ -967,43 +978,54 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
             passive: true,
             disabled: !ready,
             why: !u.turn.reaction ? t('why_reaction') : t('r_noChakra'),
-            help: `${name} · ${T(helpKey, undefined, lang)}`,
+            help: `${name} · ${T(helpKey, helpParams(id), lang)}`,
             tip: jutsuTip(sp, sp.cost, lang),
           });
           continue;
         }
         const cost = jutsuCost(u, sp, false);
         const busyHands = handsBlocker(u, sp);
-        // Clan abilities with nothing to work on: Command, Submission and Swap before the fighting,
-        // Warp and Swap with no Node down, Submission with no beast or summon on the field.
-        const idle =
-          stealth && (sp.special === 'command' || sp.special === 'submission' || sp.special === 'swap')
-            ? t('r_combatOnly')
-            : (sp.special === 'warp' || sp.special === 'swap') && !ownNodes(state, u).length
-              ? t('why_noNodes')
-              : sp.special === 'submission' && Object.values(state.units).every((x) => submissionRefused(state, u, x))
-                ? t('why_noBeast')
-                : null;
-        const spent = sp.cast === 'bonus' ? (can.bonus ? null : t('r_noBonus')) : noAction;
-        const why = idle ?? spent ?? (u.chakra < cost ? t('r_noChakra') : busyHands ? t(`r_${busyHands}` as TKey) : null);
-        add({
-          id: `jutsu:${id}`,
-          label: jutsuShort(id, lang),
-          icon: ABILITY_ICON[id] ?? ELEMENT_ICON[sp.element] ?? ACTION_ICON.focus,
-          badge: cost,
-          tone: 'jutsu',
-          element: sp.element,
-          disabled: !!why,
-          why,
-          active: mode.k === 'jutsu' && mode.id === id,
-          tip: jutsuTip(sp, cost, lang),
-          // Aimed enhanced, the Fireball is the Great Fireball, with its own icon.
-          iconId: mode.k === 'jutsu' && mode.id === id && mode.enhanced && id === 'fireball_goukakyu' ? 'great_fireball' : undefined,
-          // A clan ability explains itself; a jutsu shows its rank, reach, dice and save.
-          help: T.has(helpKey)
-            ? `${name} · ${T(helpKey, undefined, lang)}`
-            : `${name} · ${sp.rank} · ${sp.range} m${sp.dice ? ` · ${sp.dice}` : ''}${sp.save ? ` · ${(lang === 'es' ? SAVE_ES : SAVE_EN)[sp.save]}` : ''}`,
-        });
+        // Weapon Element Enhancement: a button for each element the ninja can put on its weapon (its chakra
+        // type's, and its second element once unlocked), in that element's colour.
+        const choices: (ImbueElement | undefined)[] = id === WEAPON_ELEMENT ? unitImbueElements(u) : [undefined];
+        for (const choice of choices.length ? choices : [undefined]) {
+          const el = choice ? (choice.toLowerCase() as JutsuSpec['element']) : sp.element;
+          // Clan abilities with nothing to work on: Command, Submission and Swap before the fighting,
+          // Warp and Swap with no Node down, Submission with no beast or summon on the field.
+          // Weapon Element Enhancement: already on the weapon, or no weapon to put it on.
+          const imbueWhy = sp.special === 'imbue' ? imbueBlocker(u, choice) : null;
+          const idle = imbueWhy
+            ? t(`r_${imbueWhy}` as TKey)
+            : stealth && (sp.special === 'command' || sp.special === 'submission' || sp.special === 'swap')
+              ? t('r_combatOnly')
+              : (sp.special === 'warp' || sp.special === 'swap') && !ownNodes(state, u).length
+                ? t('why_noNodes')
+                : sp.special === 'submission' && Object.values(state.units).every((x) => submissionRefused(state, u, x))
+                  ? t('why_noBeast')
+                  : null;
+          const spent = sp.cast === 'bonus' ? (can.bonus ? null : t('r_noBonus')) : noAction;
+          const why = idle ?? spent ?? (u.chakra < cost ? t('r_noChakra') : busyHands ? t(`r_${busyHands}` as TKey) : null);
+          // With two elements each button names its own.
+          const two = choices.length > 1 && choice;
+          add({
+            id: two ? `jutsu:${id}@${choice}` : `jutsu:${id}`,
+            label: two ? `${jutsuShort(id, lang)} · ${lang === 'es' ? ELEMENT_ES[choice] : choice}` : jutsuShort(id, lang),
+            icon: ABILITY_ICON[id] ?? ELEMENT_ICON[el] ?? ACTION_ICON.focus,
+            badge: cost,
+            tone: 'jutsu',
+            element: el,
+            disabled: !!why,
+            why,
+            active: mode.k === 'jutsu' && mode.id === id,
+            tip: jutsuTip(sp, cost, lang),
+            // Aimed enhanced, the Fireball is the Great Fireball, with its own icon.
+            iconId: mode.k === 'jutsu' && mode.id === id && mode.enhanced && id === 'fireball_goukakyu' ? 'great_fireball' : undefined,
+            // A clan ability explains itself; a jutsu shows its rank, reach, dice and save.
+            help: T.has(helpKey)
+              ? `${name} · ${T(helpKey, helpParams(id), lang)}`
+              : `${name} · ${sp.rank} · ${sp.range} m${sp.dice ? ` · ${sp.dice}` : ''}${sp.save ? ` · ${(lang === 'es' ? SAVE_ES : SAVE_EN)[sp.save]}` : ''}`,
+          });
+        }
       }
       add({ id: 'dash', label: t('act_dash'), icon: ACTION_ICON.dash, disabled: !can.action, why: noAction, help: t('help_dash') });
       add({ id: 'dodge', label: t('act_dodge'), icon: ACTION_ICON.dodge, disabled: !can.action || stealth, why: noAction ?? t('r_combatOnly'), help: t('help_dodge') });
@@ -1030,7 +1052,8 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
       add({ id: 'tagTrap', label: t('act_tagTrap'), icon: ACTION_ICON.tagTrap, badge: s.supplies.explosiveTags, disabled: !can.action || s.supplies.explosiveTags < 1, active: mode.k === 'item' && mode.item === 'tagTrap', help: t('help_tagTrap') });
       if (downedAlly) add({ id: 'stabilize', label: t('act_stabilize'), icon: ACTION_ICON.stabilize, disabled: !can.action, active: mode.k === 'stabilize', help: t('help_stabilize') });
       if (stealth) add({ id: 'stone', label: t('act_stone'), icon: ACTION_ICON.stone, disabled: !can.action, active: mode.k === 'stone', help: t('help_stone') });
-      if (stealth && body) add({ id: `drag:${body.unit}`, label: t('act_drag'), icon: ACTION_ICON.shove, active: mode.k === 'drag' });
+      // Its id carries the body; its painted icon is the owner's drag (sheet 19).
+      if (stealth && body) add({ id: `drag:${body.unit}`, label: t('act_drag'), iconId: 'drag', icon: ACTION_ICON.shove, active: mode.k === 'drag' });
       if (edge) add({ id: 'flee', label: t('act_flee'), icon: ACTION_ICON.flee, disabled: s.phase === 'combat' && !can.action, help: t('help_flee') });
       add({ id: 'more', label: '←', icon: ACTION_ICON.items, active: true });
     }
@@ -1054,12 +1077,13 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
       }
       if (id.startsWith('passive:')) return;
       if (id.startsWith('jutsu:')) {
-        const jid = id.slice(6);
+        // (Weapon Element Enhancement with two elements: `jutsu:weapon_element@Fire`, the element chosen)
+        const [jid, element] = id.slice(6).split('@') as [string, ImbueElement | undefined];
         const sp = JUTSU[jid];
         if (!sp) return;
         if (!tipSeen('tip_jutsu')) setTip('tip_jutsu');
         if (sp.shape === 'self') {
-          act({ type: 'jutsu', unit: u.id, jutsu: jid, at: u.pos });
+          act({ type: 'jutsu', unit: u.id, jutsu: jid, at: u.pos, ...(element ? { element } : {}) });
           return;
         }
         setMode((m) => (m.k === 'jutsu' && m.id === jid ? { k: 'move' } : { k: 'jutsu', id: jid, enhanced: false }));
@@ -1546,7 +1570,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
 
 const SHORT: Record<string, [string, string]> = {
   shadow_clone: ['Clone', 'Clon'],
-  body_flicker: ['Flicker', 'Shunshin'],
+  body_flicker: ['Vanish', 'Desvanecer'],
   mystical_palm: ['Heal palm', 'Palma'],
   substitution_kawarimi: ['Kawarimi', 'Kawarimi'],
   fireball_goukakyu: ['Fireball', 'Bola de fuego'],
@@ -1566,10 +1590,9 @@ const SHORT: Record<string, [string, string]> = {
   adamantine_sealing_chains: ['Chains', 'Cadenas'],
   taki_sixtyfour_palms: ['64 palms', '64 palmas'],
   kirin_thunder: ['Kirin', 'Kirin'],
-  rasenshuriken_wind: ['Rasenshuriken', 'Rasenshuriken'],
+  rasenshuriken_wind: ['Hurricane star', 'Estrella Huracán'],
   great_fire_annihilation: ['Annihilation', 'Aniquilación'],
   wood_golem_titan: ['Golem', 'Gólem'],
-  yasaka_magatama: ['Magatama', 'Magatama'],
   night_guy_dragon: ['Night dragon', 'Dragón noche'],
   katon_pursuing_flame: ['Pursuing', 'Persigue'],
   koton_block: ['Block', 'Bloque'],
@@ -1579,6 +1602,7 @@ const SHORT: Record<string, [string, string]> = {
   northstar_command: ['Command', 'Comando'],
   northstar_submission: ['Submit', 'Sumisión'],
   mirai_evasion: ['Evasion', 'Evasión'],
+  weapon_element: ['Element blade', 'Arma elemental'],
   fire_three_embers: ['Embers', 'Brasas'],
   wind_whirl: ['Whirl', 'Remolino'],
   wind_breeze_mantle: ['Mantle', 'Manto'],
@@ -1588,10 +1612,11 @@ const SHORT: Record<string, [string, string]> = {
   earth_spike_crown: ['Spike crown', 'Corona'],
   water_healing_dew: ['Dew', 'Rocío'],
   water_geyser: ['Geyser', 'Géiser'],
-  genjutsu_mirage: ['Mirage', 'Espejismo'],
+  genjutsu_mirage: ['Mind twist', 'Mente retorcida'],
   kenjutsu_bleeding_cut: ['Bleeding cut', 'Tajo'],
   taijutsu_rush: ['Rush', 'Embestida'],
-  water_devouring_tide: ['Devouring tide', 'Ola devoradora'],
+  water_devouring_tide: ['Tsunami', 'Tsunami'],
+  water_tide_s: ['Dragon Tsunami', 'Dragón Tsunami'],
   wind_whirlwind_tower: ['Whirlwind tower', 'Torre'],
   wind_gale_curtain: ['Gale curtain', 'Cortina'],
   lightning_thunder_beam: ['Thunder beam', 'Haz de trueno'],
@@ -1621,6 +1646,12 @@ function jutsuEffect(sp: JutsuSpec, lang: ReturnType<typeof useLang>): string {
 }
 
 /** The pop-up of a jutsu's slot: its full name, rank, how it is cast, what it does, its description, and enhanced. */
+/** The numbers a help line names (Weapon Element Enhancement's come from battle/imbue.ts). */
+function helpParams(id: string): Record<string, string | number> | undefined {
+  if (id !== WEAPON_ELEMENT) return undefined;
+  return { c: IMBUE_COST, r: IMBUE_ROUNDS, d: IMBUE_DICE, p: WIND_PUSH, m: WATER_REACH, k: EARTH_CRIT };
+}
+
 function jutsuTip(sp: JutsuSpec, cost: number, lang: ReturnType<typeof useLang>): ButtonTip {
   const es = lang === 'es';
   const cast = T(sp.cast === 'bonus' ? 'bonus' : sp.cast === 'reaction' ? 'reaction' : 'action', undefined, lang);
@@ -1628,7 +1659,7 @@ function jutsuTip(sp: JutsuSpec, cost: number, lang: ReturnType<typeof useLang>)
   const meta = [sp.rank ? (es ? `Rango ${sp.rank}` : `Rank ${sp.rank}`) : '', cast, `${cost} chakra`, reach].filter(Boolean).join(' · ');
   const data = JUTSUS_DATA.find((j) => j.id === sp.id);
   const helpKey = `help_${sp.id}`;
-  const text = T.has(helpKey) ? T(helpKey as TKey, undefined, lang) : es ? data?.descriptionEs ?? data?.description : data?.description;
+  const text = T.has(helpKey) ? T(helpKey as TKey, helpParams(sp.id), lang) : es ? data?.descriptionEs ?? data?.description : data?.description;
   let enh: string | undefined;
   if (sp.enhCost) {
     const e = enhancedSpec(sp);
@@ -1642,6 +1673,11 @@ function jutsuTip(sp: JutsuSpec, cost: number, lang: ReturnType<typeof useLang>)
 function jutsuShort(id: string, lang: ReturnType<typeof useLang>): string {
   const s = SHORT[id];
   return s ? s[lang === 'es' ? 1 : 0] : jutsuName(id, lang).split(/[\s:(]/)[0];
+}
+
+/** Why there is no line of sight: the steam named when it is what hides the target (it "nubla la visión"). */
+function sightWhy(s: BattleState, a: Pt, b: Pt, into = false): string {
+  return steamBetween(s, a, b, into) ? 'noSightSteam' : 'noSight';
 }
 
 /** What an engine reason key says (the generic line for a key without text). */

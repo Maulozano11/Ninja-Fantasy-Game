@@ -2,9 +2,9 @@
 // Support). It only ever sends ordinary actions through the engine, one at a time, so an AI turn
 // replays and travels over the network like a player's.
 
-import { effectMods } from '../rules/effects';
+import { effectMods, hasEffect } from '../rules/effects';
 import type { Action, BattleEvent, BattleState, Cell, Intent, Pt, Unit } from './types';
-import { cellCenter, cellOf, coverBetween, dist, fullCoverBetween, gridFor, idx, lineOfSight, sameCell, segmentsCross } from './map';
+import { cellCenter, cellOf, coverBetween, dampAt, dist, fullCoverBetween, gridFor, idx, lineOfSight, sameCell, segmentsCross, steamAt } from './map';
 import { canStop, reachable } from './nav';
 import { JUTSU, MIN_AIM } from './jutsu';
 import { KUNAI_LONG } from './units';
@@ -13,6 +13,7 @@ import { current } from './turns';
 import { areaValue, bestCell, goalOf, headOptions, ninjaOptions, offensive, planIntent, reachTo, standingUnit, stepToward, swapValue, visibleFoes, WALL, wallCover } from './intent';
 import type { Goal } from './intent';
 import { breakable, MAX_STRUCTURES, ownStructures, structureAt, structureAttack, structureBlocker, structureDist } from './structures';
+import { IMBUE_COST, imbueBlocker, type ImbueElement, unitImbueElements, WATER_REACH, WEAPON_ELEMENT } from './imbue';
 import { COMMAND, commandRefused, edgeFoe, ownNodes, submissionRefused, SWAP, WARP, warpBlocker, warpLanding } from './clans';
 
 /** Whether the battle is waiting on the AI (an AI unit's turn in the fighting). */
@@ -59,12 +60,18 @@ export function aiAction(s: BattleState): Action | null {
     // After a dash, keep closing in with the extra movement.
     const plan = u.team === 'enemy' ? u.intent : planIntent(s, u);
     const t = plan?.target ? s.units[plan.target] : undefined;
-    if (u.turn.dashed && t && standingUnit(t)) return moveToward(s, u, goalOf(s, u, { kind: 'melee', what: u.weapon.name, target: t.id })!) ?? end;
-    return bonusAfter(s, u) ?? afterAction(s, u) ?? end;
+    if (u.turn.dashed && t && standingUnit(t)) return moveToward(s, u, goalOf(s, u, { kind: 'melee', what: u.weapon.name, target: t.id })!) ?? leaveSteam(s, u, plan) ?? end;
+    // Its action spent (a charge that landed in steam, a blow struck from inside it): it walks out
+    // with the movement it has left, so it doesn't start its next turn burning there.
+    return leaveSteam(s, u, plan) ?? bonusAfter(s, u) ?? afterAction(s, u) ?? end;
   }
   // Enemies follow the plan they committed to (what a Mirai saw); allies plan each turn.
   let intent = u.team === 'enemy' && stillValid(s, u, u.intent) ? u.intent : planIntent(s, u);
   if (!stillValid(s, u, intent)) intent = planIntent(s, u);
+  // In the steam, it gets out first (it burns and blinds), unless its plan can be done from right
+  // here: then it acts first and walks out after.
+  const out = leaveSteam(s, u, intent);
+  if (out) return out;
   if (!intent) return end;
   return bonusBefore(s, u, intent) ?? edgeStrike(s, u, intent) ?? carryOut(s, u, intent) ?? fallback(s, u) ?? end;
 }
@@ -86,6 +93,20 @@ function headAction(s: BattleState, u: Unit): Action | null {
   if (i.kind === 'bite') return { type: 'attack', unit: u.id, target: t.id };
   // Spit and roar are aimed at a point (a splash, a cone).
   return { type: 'jutsu', unit: u.id, jutsu: i.what, at: { ...t.pos } };
+}
+
+/**
+ * A unit standing in steam walks out of it, to the nearest clear cell: one it can carry its plan out
+ * from first, then the one toward its target. With its action still to come and the plan doable
+ * from where it stands, it stays to act (it walks out afterwards, aiAction).
+ */
+function leaveSteam(s: BattleState, u: Unit, i: Intent | undefined): Action | null {
+  if (!steamAt(s, u.pos) || walkBudget(u) < 0.5 || u.speed <= 0) return null;
+  const g = i ? goalOf(s, u, i) : null;
+  if (u.turn.action && g?.ready) return null;
+  const t = i?.target ? s.units[i.target] : undefined;
+  const cell = bestCell(s, u, (p) => !steamAt(s, p), (p) => (u.turn.action && g?.good(p) ? -4 : 0) + (t ? dist(p, t.pos) * 0.5 : 0), walkBudget(u));
+  return cell ? { type: 'move', unit: u.id, to: cell } : null;
 }
 
 /** One step toward the plan: act if in reach, otherwise move into reach (where it planned to go). */
@@ -110,6 +131,9 @@ function carryOut(s: BattleState, u: Unit, i: Intent): Action | null {
       }
       if (i.what === SWAP) return g.ready ? { type: 'jutsu', unit: u.id, jutsu: SWAP, at: { ...t.pos }, target: t.id } : null;
       if (handsBlocker(u, j)) return null;
+      // A hand to charge (the activated Chidori): charged where it stands, then it walks in (the
+      // plan is spent with the bonus action, and the walk is planned again with the hand charged).
+      if (j.handCharge) return u.charged || !u.turn.bonus ? null : { type: 'jutsu', unit: u.id, jutsu: j.id, at: { ...u.pos } };
       // A charge with no clear run to its target from here: strike or close in another way.
       if (g.ready && j.charge && !chargeLanding(s, u, t)) return null;
       if (g.ready) return { type: 'jutsu', unit: u.id, jutsu: j.id, at: { ...t.pos }, target: j.shape === 'single' ? t.id : undefined };
@@ -140,6 +164,8 @@ function carryOut(s: BattleState, u: Unit, i: Intent): Action | null {
 
 /** Out of reach after moving: throw a kunai if it can, otherwise dash to close in. */
 function kunaiOr(s: BattleState, u: Unit, t: Unit): Action | null {
+  // A charged hand closes in rather than throw: out of movement, it dashes.
+  if (u.charged) return u.turn.move < 0.5 && u.turn.action ? { type: 'dash', unit: u.id } : null;
   if (dist(u.pos, t.pos) <= KUNAI_LONG && lineOfSight(s, u.pos, t.pos)) return { type: 'attack', unit: u.id, target: t.id, ranged: true };
   if (u.turn.move < 0.5) return { type: 'dash', unit: u.id };
   return null;
@@ -173,10 +199,46 @@ function fallback(s: BattleState, u: Unit): Action | null {
   return null;
 }
 
-/** The bonus action, before the plan: a Ryusei warps to a Node beside a foe its feet can't reach this turn. */
+/**
+ * The bonus action, before the plan: a Ryusei warps to a Node beside a foe its feet can't reach this
+ * turn; a Bukijutsu Master about to strike puts its element on its weapon.
+ */
 function bonusBefore(s: BattleState, u: Unit, i: Intent): Action | null {
   if (!u.turn.bonus) return null;
-  return ryuseiWarp(s, u, i);
+  return ryuseiWarp(s, u, i) ?? imbueFirst(s, u, i);
+}
+
+/**
+ * Weapon Element Enhancement before a blow (battle/imbue.ts): a Bukijutsu Master whose plan is a
+ * blow of its weapon at a foe it can reach this turn (water's longer reach counted) puts its element
+ * on the weapon first, if it has the chakra and the element isn't on it already. With two elements (its
+ * second unlocked) it picks one (imbueChoice).
+ */
+function imbueFirst(s: BattleState, u: Unit, i: Intent): Action | null {
+  if (i.kind !== 'melee' || !u.jutsus.includes(WEAPON_ELEMENT) || imbueBlocker(u) || effectMods(u.effects).noJutsu) return null;
+  const spec = JUTSU[WEAPON_ELEMENT];
+  if (u.chakra < Math.max(IMBUE_COST, jutsuCost(u, spec, false)) || handsBlocker(u, spec)) return null;
+  const t = i.target ? s.units[i.target] : undefined;
+  if (!t || t.team === u.team || !standingUnit(t)) return null;
+  const element = imbueChoice(s, u, t);
+  const reach = reachTo(u, t) + (element === 'Water' ? WATER_REACH : 0);
+  if (dist(u.pos, t.pos) > reach + walkBudget(u) + 0.1) return null;
+  return { type: 'jutsu', unit: u.id, jutsu: WEAPON_ELEMENT, at: { ...u.pos }, element };
+}
+
+/**
+ * Which of its elements a Bukijutsu Master puts on its weapon for a blow at `t`: water when only its
+ * longer reach brings the foe within a blow this turn; not fire at a foe already burning or standing in
+ * the wet (its burn would not take), nor water at a burning foe (it would put the flames out); otherwise
+ * its chakra type's.
+ */
+export function imbueChoice(s: BattleState, u: Unit, t: Unit): ImbueElement {
+  const els = unitImbueElements(u);
+  const far = dist(u.pos, t.pos) > reachTo(u, t) + walkBudget(u) + 0.1;
+  if (far && els.includes('Water')) return 'Water';
+  const burning = hasEffect(t.effects, 'burning');
+  const fine = els.filter((e) => !((e === 'Fire' && (burning || dampAt(s, t.pos))) || (e === 'Water' && burning)));
+  return fine[0] ?? els[0];
 }
 
 /** A blow from `p` reaches the target (and no metal wall stands between). */
@@ -294,7 +356,8 @@ function afterAction(s: BattleState, u: Unit): Action | null {
   if (u.aiOrder === 'aggressive' || walkBudget(u) < 1 || u.turn.moved > 0) return null;
   const foes = Object.values(s.units).filter((o) => o.team !== u.team && standingUnit(o) && o.kind !== 'hydra_body');
   if (!foes.length) return null;
-  const safe = (p: Pt) => foes.every((f) => coverBetween(s, f.pos, p, [f.id, u.id]) >= 2 || !lineOfSight(s, f.pos, p));
+  // Steam hides it from every foe, but burns: never a place to take cover in.
+  const safe = (p: Pt) => !steamAt(s, p) && foes.every((f) => coverBetween(s, f.pos, p, [f.id, u.id]) >= 2 || !lineOfSight(s, f.pos, p));
   if (safe(u.pos)) return null;
   const cell = bestCell(s, u, (p) => safe(p), (p) => dist(p, u.pos), walkBudget(u));
   return cell ? { type: 'move', unit: u.id, to: cell } : null;
@@ -304,15 +367,18 @@ function afterAction(s: BattleState, u: Unit): Action | null {
 const walkBudget = (u: Unit): number => u.turn.move - (u.cond.prone ? u.speed / 2 : 0);
 
 /**
- * A move toward a plan's goal (stepToward). An enemy keeps to the destination it planned, the one a
+ * A move toward a plan's goal (stepToward), never onto steam. An enemy keeps to the destination it planned, the one a
  * Mirai saw on the ground, while it can still get there and it serves the plan as well as a fresh
  * pick would. Null if it can't get closer.
  */
 function moveToward(s: BattleState, u: Unit, g: Goal, planned?: Pt): Action | null {
   const budget = walkBudget(u);
   if (budget < 0.5 || u.speed <= 0) return null;
-  const fresh = stepToward(s, u, g, budget);
-  const kept = planned ? keptCell(s, u, g, planned, budget) : null;
+  // It never stops in steam (it may walk through): stepping in beside its target only to walk out
+  // again on the next step would spend its movement going in and out.
+  const clear = (p: Pt) => !steamAt(s, p);
+  const fresh = stepToward(s, u, g, budget, clear);
+  const kept = planned && clear(planned) ? keptCell(s, u, g, planned, budget) : null;
   const cell = kept && (g.good(cellCenter(kept)) || !fresh || !g.good(cellCenter(fresh))) ? kept : fresh;
   return cell ? { type: 'move', unit: u.id, to: cell } : null;
 }

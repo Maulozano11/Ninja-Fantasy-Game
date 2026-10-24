@@ -113,7 +113,7 @@ describe('the Cazador 1', () => {
   });
 
   it('draws every pose on every body', () => {
-    for (const body of ['male', 'bulky', 'slender', 'female'] as BodyType[]) {
+    for (const body of ['male', 'bulky', 'female'] as BodyType[]) {
       for (const pose of POSES) {
         const f = renderSprite(cazador(body), pose, 0);
         let n = 0;

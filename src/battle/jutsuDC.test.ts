@@ -136,7 +136,7 @@ describe('rank D and C jutsu: the data', () => {
       earth_spike_crown: ['Técnica de Tierra: Corona de púas', 'Earth Technique: Spike Crown', 'C', 'Earth', 'Elemental', 2, 2, 'action', 1.5],
       water_healing_dew: ['Técnica de Agua: Rocío sanador', 'Water Technique: Healing Dew', 'D', 'Water', 'Utility', 2, 1, 'action', 6],
       water_geyser: ['Técnica de Agua: Géiser', 'Water Technique: Geyser', 'C', 'Water', 'Elemental', 2, 2, 'action', 9],
-      genjutsu_mirage: ['Técnica de Genjutsu: Espejismo', 'Genjutsu Technique: Mirage', 'C', 'Genjutsu', 'Elemental', 2, 2, 'action', 9],
+      genjutsu_mirage: ['Técnica de Genjutsu: Mente retorcida', 'Genjutsu Technique: Mind Twist', 'C', 'Genjutsu', 'Elemental', 2, 2, 'action', 9],
       kenjutsu_bleeding_cut: ['Técnica de Kenjutsu: Tajo sangrante', 'Kenjutsu Technique: Bleeding Cut', 'D', 'Kenjutsu', 'Elemental', 1, 1, 'action', 3],
       taijutsu_rush: ['Técnica de Taijutsu: Embestida', 'Taijutsu Technique: Rush', 'C', 'Taijutsu', 'Elemental', 2, 2, 'action', 6],
     };
@@ -325,7 +325,7 @@ describe('rank D and C jutsu in battle', () => {
     assert.ok(after.events.some((e) => e.t === 'attack' && e.what === 'Fists'));
     // Strike first, then cast: the blade is stowed for free and the stones still fly.
     const blow = ok(applyAction(s, { type: 'attack', unit: 'a', target: 'rogue_0' }));
-    assert.ok(blow.events.some((e) => e.t === 'attack' && e.what === 'Crystal blade'));
+    assert.ok(blow.events.some((e) => e.t === 'attack' && e.what === 'Ice crystal sword'));
     const then = ok(cast(blow.state, 'earth_pebble_shot'));
     assert.ok(then.events.some((e) => e.t === 'weapon' && !e.armed && e.cost === 'free'));
     assert.equal(cast(then.state, 'earth_pebble_shot').reason, 'noBonus');
@@ -422,7 +422,7 @@ describe('rank D and C jutsu in battle', () => {
     assert.equal(effectMods([{ id: 'numb', sinceCamp: 0 }, { id: 'jolted', remaining: 2 }]).dexRolls, -2);
   });
 
-  it('Mirage: a WIS save; failed, 2d6 psychic and Confused for 2 rounds; passed, nothing', () => {
+  it('Mind Twist: a WIS save; failed, 2d6 psychic and Confused for 2 rounds; passed, nothing', () => {
     const s = duel('genjutsu_mirage');
     s.units.a.saveDC = 40;
     const fail = ok(cast(s, 'genjutsu_mirage'));
@@ -511,7 +511,7 @@ describe('rank D and C jutsu in battle', () => {
     assert.equal(damageTo(out.events, 'rogue_0').length, 1);
   });
 
-  it('Mirage and Bleeding Cut are silent (the proposal\'s piece P6): in the stealth phase they count as an attack', () => {
+  it('Mind Twist and Bleeding Cut are silent (the proposal\'s piece P6): in the stealth phase they count as an attack', () => {
     const sneak = (id: string, at: Pt) => {
       // A second guard far off, looking away, so one falling doesn't end the battle.
       const s = createBattle(setup({ stealth: true, enemies: [{ kind: 'rogue', pos: { x: 20, z: 10 }, look: 180, route: [{ x: 20, z: 10 }] }, { kind: 'rogue', pos: { x: 3, z: 18 }, look: 180, route: [{ x: 3, z: 18 }] }] })).state;

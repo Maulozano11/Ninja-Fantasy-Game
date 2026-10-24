@@ -3,7 +3,7 @@
 //
 //   npx tsx scripts/ai-battles.ts [battles per encounter = 100] [--party=3] [--only=cedar_rogues,night_raid]
 //
-// The party is Solen, Hana, Kenji and Shiori (--party=3: without Shiori, a mission's party), all on
+// The party is Solen, Hana, Kenji and Hiro (--party=3: without Hiro, a mission's party), all on
 // the AI and without their S-rank ultimates (which end most fights in the first round). Seeds run
 // from 1; the stealth patrol is fought in the open (the AI doesn't play the stealth phase). Each
 // line: in how many battles the move was used / how many times, for the enemies and for the party.
@@ -28,7 +28,8 @@ const party = [
   { character: noUlt(preset('preset_founder')), controller: 'ai' as const, aiOrder: 'aggressive' as const },
   { character: noUlt(HANA), controller: 'ai' as const, aiOrder: 'support' as const },
   { character: noUlt(KENJI), controller: 'ai' as const, aiOrder: 'aggressive' as const },
-  { character: noUlt(preset('preset_gentle')), controller: 'ai' as const, aiOrder: 'aggressive' as const },
+  // Hiro since the owner discarded Shiori (2026-10-22): the party's fourth no longer plays the Northstar moves.
+  { character: noUlt(preset('preset_sunburst')), controller: 'ai' as const, aiOrder: 'aggressive' as const },
 ].slice(0, flag('party') === '3' ? 3 : 4);
 
 const CLAN_JUTSU: Record<string, string> = {
@@ -40,7 +41,7 @@ const CLAN_JUTSU: Record<string, string> = {
   northstar_command: 'Command',
   northstar_submission: 'Natural Submission',
 };
-const ROWS = ['Pursuing Flame', 'other Mirai jutsu', 'Premonitory Evasion', 'Ryusei kunai', 'Node left', 'Shooting-Star Thrust', 'blow from behind', 'Spatial Swap', 'Kōton Block', 'Kōton Wall', 'Command', 'Command taken', 'aura slowed a foe', 'attack in a foe\'s aura'];
+const ROWS = ['Pursuing Flame', 'other Mirai jutsu', 'Premonitory Evasion', 'Ryusei kunai', 'Node left', 'Shooting-Star Thrust', 'blow from behind', 'Spatial Swap', 'Kōton Block', 'Kōton Wall', 'Command', 'Command taken', 'aura slowed a foe', 'attack in a foe\'s aura', 'Weapon Element', 'element blow'];
 type Side = 'enemy' | 'party';
 
 let refusedAll = 0;
@@ -92,7 +93,10 @@ for (const id of only ?? (Object.keys(ENCOUNTERS) as EncounterId[])) {
           else if (clan(e.unit) === 'Mirai' && e.jutsu !== 'body_flicker') add(side(e.unit), 'other Mirai jutsu');
         }
         if (e.t === 'evade') add(side(e.unit), 'Premonitory Evasion');
+        // The Bukijutsu Master's class ability: put on the weapon, and the blows that landed its element.
+        if (e.t === 'imbue' && e.on) add(side(e.unit), 'Weapon Element');
         if (e.t === 'attack' && e.ranged && e.what === 'Kunai' && clan(e.unit) === 'Ryusei') add(side(e.unit), 'Ryusei kunai');
+        if (e.t === 'attack' && !e.ranged && e.roll.success && (s.units[e.unit]?.imbued ?? out.state.units[e.unit]?.imbued) && s.units[e.unit]?.armed !== false) add(side(e.unit), 'element blow');
         if (e.t === 'node' && e.on) add(side(e.node.owner), 'Node left');
         if (e.t === 'attack' && e.reasons?.includes('behind')) add(side(e.unit), 'blow from behind');
         if (e.t === 'command' && e.on) add(side(e.by), 'Command taken');

@@ -31,6 +31,21 @@ const GATED_SLOTS: JutsuSlot[] = ['slot2Elemental', 'slot3Elemental', 'slot5Ulti
 const RANK_ORDER = ['D', 'C', 'B', 'A', 'S'];
 
 /**
+ * Jutsu taken out of the game, with the rank and nature of what a slot that held one lost (the owner,
+ * 2026-10-22, of Yasaka no Magatama: "quitala del juego"). A saved or imported sheet that still names
+ * one gets a replacement when it loads (rules/progression.ts, refitRemoved).
+ */
+export const REMOVED_JUTSUS: Readonly<Record<string, Pick<JutsuDefinition, 'rank' | 'nature'>>> = {
+  yasaka_magatama: { rank: 'S', nature: 'Genjutsu' },
+};
+
+/** Whether a rank is the same as `top` or lower. */
+export const rankAtMost = (rank: string, top: string): boolean => RANK_ORDER.indexOf(rank) <= RANK_ORDER.indexOf(top);
+
+/** Rank order, highest first. */
+export const byRankDown = (a: JutsuDefinition, b: JutsuDefinition): number => RANK_ORDER.indexOf(b.rank) - RANK_ORDER.indexOf(a.rank);
+
+/**
  * Whether the nature decides if a ninja may learn this jutsu: an elemental jutsu in the Element or
  * S-rank slots. Utility jutsu (the medical palm, a Water jutsu open to every nature) and clan secrets
  * are not gated.
@@ -124,16 +139,34 @@ export function offNatureJutsus(loadout: Loadout, nature: ChakraNature, extra: r
 }
 
 /**
+ * A jutsu in the S-rank slot that is an Element slot's now (the Devouring Tide, rank S until the
+ * owner made it rank A, 2026-10-21; asked whether to move it, "si") goes to an Element slot: an empty
+ * one, else the one with the lower rank (the second on a tie), whose jutsu it takes the place of.
+ * The S-rank slot is left empty for the player to fill. Null when there is nothing to move.
+ */
+export function ultimateToElement(loadout: Loadout): { loadout: Loadout; swap: JutsuSwap } | null {
+  const j = JUTSUS_DATA.find((x) => x.id === loadout.slot5Ultimate);
+  if (!j || j.category !== 'Elemental') return null;
+  const rank = (slot: JutsuSlot) => {
+    const id = loadout[slot];
+    return !id || id === j.id ? -1 : RANK_ORDER.indexOf(JUTSUS_DATA.find((x) => x.id === id)?.rank ?? 'D');
+  };
+  const slot: JutsuSlot = rank('slot2Elemental') < rank('slot3Elemental') ? 'slot2Elemental' : 'slot3Elemental';
+  return { loadout: { ...loadout, [slot]: j.id, slot5Ultimate: '' }, swap: { slot, from: loadout[slot], to: j.id } };
+}
+
+/**
  * An imported sheet's jutsu slots: each must name a jutsu that exists (an old id is read through
  * `renamed`), or be empty (a new ninja's S-rank slot), or else it gets `defaults`' jutsu for that
- * slot. The old explosive tag jutsu goes through: migrateCharacter turns it into the item.
+ * slot. The old explosive tag jutsu and the removed jutsu go through: migrateCharacter turns the tag
+ * into the item and gives the removed ones a replacement the ninja may learn.
  */
 export function importedSlots(slots: Record<string, unknown>, defaults: Loadout, renamed: Record<string, string> = {}): Loadout {
   const out = { ...defaults };
   for (const k of Object.keys(defaults) as JutsuSlot[]) {
     const raw = slots[k];
     const id = typeof raw === 'string' ? (renamed[raw] ?? raw) : undefined;
-    if (id !== undefined && (id === '' || id === TAG_JUTSU || JUTSUS_DATA.some((j) => j.id === id))) out[k] = id;
+    if (id !== undefined && (id === '' || id === TAG_JUTSU || Object.hasOwn(REMOVED_JUTSUS, id) || JUTSUS_DATA.some((j) => j.id === id))) out[k] = id;
   }
   return out;
 }

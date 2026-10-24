@@ -8,6 +8,7 @@ import type { ClanType, JutsuDefinition } from '../types/shinobi';
 import type { Ability, Advantage } from '../rules/checks';
 import type { EffectId } from '../types/mission';
 import type { AreaShape, DamageType, Pt } from './types';
+import { IMBUE_COST, WEAPON_ELEMENT } from './imbue';
 
 export type VfxElement = 'fire' | 'water' | 'wind' | 'lightning' | 'earth' | 'genjutsu' | 'chakra' | 'poison';
 export type VfxRole = 'bolt' | 'beast' | 'stream' | 'breath' | 'sphere' | 'slash' | 'multi' | 'blast' | 'wall' | 'aura' | 'hit';
@@ -61,7 +62,15 @@ export interface JutsuSeq {
    * (wall_depth; its wall seen from the side when the cone points into the depth) with `rows` rows
    * fading behind its crest and the element's breath as foam before it, in `ms`.
    */
-  wave?: { rows: number; ms: number };
+  wave?: {
+    rows: number;
+    ms: number;
+    /**
+     * The Dragon Tsunami, Water's rank S (the owner's paint-over of the wave, approved 2026-10-22):
+     * his curl, his water dragon and his kanji 水 ride the crest (vfx_tide_s).
+     */
+    dragon?: boolean;
+  };
   /**
    * The Whirlwind Tower: a warning impact at the point, then the element's column (wall_depth)
    * rises there, turns with `minis` small whirlwinds (multi) circling it, and fades.
@@ -74,6 +83,8 @@ export interface JutsuSeq {
    * cut travels, and a cut that leaves Bleeding splashes drops onto the screen. Never in a chakra colour.
    */
   blood?: boolean;
+  /** What a charged hand holds while its charge lasts (`handCharge`): a sheet's animation, drawn at the near hand. */
+  held?: { group: string; name: string; anim: string };
 }
 
 export type StageKind = 'dragonHead' | 'dragonStream' | 'waterDragon' | 'rockVolleys' | 'sealChain' | 'crescents' | 'crowDive' | 'hurricane' | 'woodDragon' | 'handLightning';
@@ -105,7 +116,7 @@ export interface JutsuSpec {
   save?: Ability;
   /** On a successful save: half damage, or nothing. */
   saveHalf: boolean;
-  special?: 'heal' | 'flicker' | 'clone' | 'kawarimi' | 'earthWall' | 'waterWall' | 'seal' | 'confuse' | 'evasion' | 'metalBlock' | 'metalWall' | 'warp' | 'swap' | 'command' | 'submission' | 'mantle' | 'galeZone';
+  special?: 'heal' | 'flicker' | 'clone' | 'kawarimi' | 'earthWall' | 'waterWall' | 'seal' | 'confuse' | 'evasion' | 'metalBlock' | 'metalWall' | 'warp' | 'swap' | 'command' | 'submission' | 'mantle' | 'galeZone' | 'imbue';
   /** The projectile or effect the screen plays. */
   vfx: VfxRole;
   /** A signature effect of its own (vfx_<element>/<sig>, and <sig>_great or <sig>_enh enhanced). */
@@ -155,8 +166,17 @@ export interface JutsuSpec {
    * circle's middle (a tornado). A ninja; big creatures don't move.
    */
   push?: { m: number; toward?: boolean };
-  /** Water that puts out the flames on everyone it reaches. */
+  /** Water that puts out the flames on everyone it reaches (every water jutsu that strikes). */
   douse?: boolean;
+  /** How long the ground it soaks stays wet, in rounds (a water jutsu; WET_ROUNDS when unset). */
+  wetRounds?: number;
+  /**
+   * Activated, not thrown (the owner, 2026-10-21: the Chidori, and the Rasengan when it is built): the
+   * cast charges the near hand with it for up to `rounds` of the caster's turns (shape 'self'), and
+   * its blow, one melee jutsu attack, goes off by itself the moment the caster moves within reach of
+   * a foe (battle/charged.ts). Its range is that reach.
+   */
+  handCharge?: { rounds: number };
   /** What it does to the ground around it. */
   env?: 'ignite' | 'electrify' | 'clearFoliage';
   /** A failed save adds Tension (the hydra's roar). */
@@ -205,8 +225,11 @@ const OVERRIDE: Record<string, Partial<JutsuSpec>> = {
   earth_wall_doryuheki: { shape: 'wall', special: 'earthWall', vfx: 'wall', length: 4.5 },
   earth_spear_doryuudan: { shape: 'line', width: 1.2, vfx: 'multi', seq: { stage: 'rockVolleys' } },
   wind_blade_daitoppa: { vfx: 'slash' },
-  // A thrust of the bare hand with the lightning gathered in it (the owner's answer 11): the weapon is put away.
-  chidori_lightning_blade: { vfx: 'hit', melee: true, weapon: 'stow', seq: { stage: 'handLightning' } },
+  // Activated (the owner, 2026-10-21: "chidori sera una habilidad que actives"): a bonus action charges
+  // the bare hand for up to 3 rounds, and its blow (a melee jutsu attack roll, 5d8) goes off by itself
+  // within reach of the first foe the ninja comes to. The weapon is put away; the thrust is still his
+  // lightning in the hand (the owner's answer 11).
+  chidori_lightning_blade: { shape: 'self', vfx: 'hit', melee: true, weapon: 'stow', handCharge: { rounds: 3 }, seq: { stage: 'handLightning', held: { group: 'vfx_charged', name: 'chidori_hand', anim: 'charged' } } },
   lightning_hound_raidon: { vfx: 'beast' },
   // Not a weapon attack (the owner): the weapon is put away for an unarmed combo.
   leaf_hurricane_senpuu: { shape: 'selfCircle', vfx: 'slash', melee: true, weapon: 'stow', seq: { stage: 'hurricane' } },
@@ -221,7 +244,6 @@ const OVERRIDE: Record<string, Partial<JutsuSpec>> = {
   rasenshuriken_wind: { vfx: 'sphere' },
   great_fire_annihilation: { vfx: 'breath', length: 12, effect: 'burning', sig: 'annihilation' },
   wood_golem_titan: { element: 'earth', vfx: 'blast' },
-  yasaka_magatama: { element: 'chakra', vfx: 'multi', width: 1.5 },
   night_guy_dragon: { element: 'chakra', vfx: 'beast', melee: true },
   // The rank D and C jutsu (the owner's answers of 2026-10-21; docs/GAMEPLAY_DESIGN.md, "Rank D and C
   // jutsu"). The projectiles fly apart, on three paths, to reach the target from different angles.
@@ -244,11 +266,19 @@ const OVERRIDE: Record<string, Partial<JutsuSpec>> = {
   // A shoulder tackle with the weapon put away (the owner): a straight run in, then the blow.
   taijutsu_rush: { vfx: 'hit', melee: true, charge: true, weapon: 'stow', pose: 'tackle', seq: { launchFlash: true, fastRun: 2 } },
   // The gaps in the elements (the owner's answers of 2026-10-21; docs/GAMEPLAY_DESIGN.md, "Jutsu for
-  // the gaps"). Water's rank S: a 12 m cone (past the 9 m cap of other cones, like the Great Fire
-  // Annihilation) that sweeps the ones who fail 3 m away, knocks them down and puts their fire out.
-  water_devouring_tide: { vfx: 'breath', length: 12, push: { m: 3 }, prone: true, douse: true, seq: { castAura: 560, wave: { rows: 3, ms: 1800 }, hitEach: { stagger: 90 }, shake: 6 } },
+  // the gaps"). Water's rank A (the owner's second round: "ola devoradora es rango a"): a 9 m cone
+  // that sweeps the ones who fail 3 m away, knocks them down and puts their fire out.
+  water_devouring_tide: { vfx: 'breath', push: { m: 3 }, prone: true, douse: true, seq: { castAura: 560, wave: { rows: 3, ms: 1900 }, hitEach: { stagger: 90 }, shake: 6 } },
+  // Water's rank S, the Dragon Tsunami (the owner's paint-over of our wave, 2026-10-22; "rango S ola
+  // si me gusta la animacion ... la rango s es dragon tsunami"): the Tsunami plus his curl, his water
+  // dragon and his kanji, run a little slower so the dragon can rise and roar (2200 ms and the 900 ms
+  // break). Its numbers approved by the owner for now (2026-10-22): «aprovado los numeros de la ola
+  // por ahora»: the enhanced Tsunami's reach (11.25 m, 80 degrees), and the ground it soaks stays
+  // wet a round longer than the Tsunami's (ground.ts WET_ROUNDS, 3, and one more; not imported,
+  // ground.ts imports this module).
+  water_tide_s: { vfx: 'breath', length: 11.25, angle: 80, push: { m: 3 }, prone: true, douse: true, wetRounds: 4, seq: { castAura: 560, wave: { rows: 3, ms: 2200, dragon: true }, hitEach: { stagger: 90 }, shake: 7 } },
   // Wind's rank A: a tornado that drags the ones who fail 1.5 m toward its middle and knocks them down.
-  wind_whirlwind_tower: { vfx: 'blast', push: { m: 1.5, toward: true }, prone: true, seq: { tower: { warn: 300, minis: 4 }, shake: 2 } },
+  wind_whirlwind_tower: { vfx: 'blast', push: { m: 1.5, toward: true }, prone: true, seq: { tower: { warn: 300, minis: 6 }, shake: 3 } },
   // The Gale Curtain, made an area by the owner: a gale on the ground that fans the fire jutsu
   // crossing it (fannedBy below). It hurts nobody and is silent.
   wind_gale_curtain: { special: 'galeZone', vfx: 'wall', loud: false },
@@ -298,6 +328,9 @@ function specOf(j: JutsuDefinition): JutsuSpec {
   // Elemental by nature, and still drawn as that element (the Adamantine Chains are Water but chakra;
   // an override can say no, for the ones drawn as something else).
   if (spec.elemental === undefined && ELEMENTAL_NATURES.includes(j.nature) && spec.element === ELEMENT[j.nature]) spec.elemental = true;
+  // Water puts out the flames of whoever it reaches (the owner, 2026-10-21: "el agua apaga el fuego"):
+  // every water jutsu that strikes, not only the Tide.
+  if (spec.elemental && spec.element === 'water' && spec.dmgType) spec.douse = true;
   return spec;
 }
 
@@ -517,7 +550,35 @@ const CLAN_SPECS: JutsuSpec[] = [
   },
 ];
 
-export const JUTSU: Record<string, JutsuSpec> = Object.fromEntries([...JUTSUS_DATA.map((j) => [j.id, specOf(j)]), ...HYDRA_SPECS.map((j) => [j.id, j]), ...CLAN_SPECS.map((j) => [j.id, j])]);
+/**
+ * The classes' own abilities, which come with the class (and, for this one, the nature), not a slot
+ * (battle/imbue.ts). Weapon Element Enhancement: chakra worked into the weapon in hand, no hand
+ * seals; its element is the ninja's own, so the screen reads it from the unit, not from here.
+ */
+const CLASS_SPECS: JutsuSpec[] = [
+  {
+    id: WEAPON_ELEMENT,
+    name: 'Weapon Element Enhancement',
+    nameEs: 'Potenciación elemental del arma',
+    ability: true,
+    rank: '',
+    element: 'chakra',
+    cost: IMBUE_COST,
+    enhCost: 0,
+    cast: 'bonus',
+    range: 0,
+    shape: 'self',
+    saveHalf: false,
+    special: 'imbue',
+    vfx: 'aura',
+    melee: false,
+    // A sword art's rule: the weapon is drawn for it (free, once a turn).
+    weapon: 'draw',
+    loud: false,
+  },
+];
+
+export const JUTSU: Record<string, JutsuSpec> = Object.fromEntries([...JUTSUS_DATA.map((j) => [j.id, specOf(j)]), ...HYDRA_SPECS.map((j) => [j.id, j]), ...CLAN_SPECS.map((j) => [j.id, j]), ...CLASS_SPECS.map((j) => [j.id, j])]);
 
 /** The abilities a clan's members have, in order. */
 export const clanAbilities = (clan: ClanType): string[] => CLAN_SPECS.filter((j) => j.clan === clan).map((j) => j.id);

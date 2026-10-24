@@ -14,7 +14,7 @@ import { worldSprite } from '../world/WorldSpriteView';
 import type { MapArt } from './mapArt';
 import type { Fx, Playback, UnitView } from './playback';
 import type { WarpTimes } from './playback';
-import { FALL_MS, PHASE_DASH, PHASE_IN, PHASE_OUT, phaseDash, RISE_MS, WARP_FRAME, WARP_THRUST, warpDash, warpTimes } from './playback';
+import { CRACK_FADE, FALL_MS, PHASE_DASH, PHASE_IN, PHASE_OUT, phaseDash, RISE_MS, WARP_FRAME, WARP_THRUST, warpDash, warpTimes } from './playback';
 import type { Lang } from '../../i18n';
 import { unitName } from './battleLog';
 import { bodyCenterDx, catchLookOf, FEET, fpsOf, framesOf, hasPhaseFrame, hasReleaseClear, hasThrownFrame, hasUnitFrame, lookOf, phaseFrameOf, releaseClearOf, STRIDE, thrownFrame, unitFrame } from './unitArt';
@@ -25,8 +25,11 @@ import type { SpriteAppearance, SpritePose } from '../../sprite/types';
 import { PHASE_ADD, PHASE_RAMP, phaseHue } from '../../sprite/phase';
 import { edgeFoe, leavesNodes, nodeUnder, WARP, warpLanding } from '../../battle/clans';
 import { GRID, RES } from '../../sprite/raster';
-import { depthFx, drawAuraBack, drawHeld, drawLinger, drawScreenBlood, drawVfxSprite, drawWallSprite, wallTint } from './vfxSprites';
+import { depthFx, drawAuraBack, drawCracks, drawDouses, drawWetGround, drawHeld, drawLinger, drawScreenBlood, drawVfxSprite, drawWallSprite, wallTint } from './vfxSprites';
 import { isTintElement, vfxTintColors } from '../../sprite/vfxTint';
+import { jutsuTint, unitTint } from './vfxTintPlan';
+import { IMBUE_FPS, IMBUE_LOOP } from '../../sprite/imbue';
+import type { ImbueFx } from '../../sprite/imbue';
 
 export interface Camera {
   /** World pixel at the screen's top-left. */
@@ -72,7 +75,15 @@ export interface Scene {
   lang?: Lang;
   /** The HTML panels over the canvas (device pixels): floating words keep clear of them. */
   avoid?: Rect[];
+  /**
+   * Foes the acting ninja can't see from inside steam (battle/map.ts, steamHides; the owner: "que los
+   * enemigos desaparezcan de la visión de ese personaje"): drawn as a hidden foe is, faint, no bar.
+   */
+  unseen?: ReadonlySet<string>;
 }
+
+/** A unit of the other side the screen shows as hidden: hiding, or out of the acting ninja's sight in the steam. */
+export const foeHidden = (sc: Pick<Scene, 'team' | 'unseen'>, u: Unit, v: { hidden: boolean }): boolean => u.team !== sc.team && (v.hidden || !!sc.unseen?.has(u.id));
 
 export interface Rect {
   x: number;
@@ -172,15 +183,21 @@ export function drawBattle(ctx: CanvasRenderingContext2D, sc: Scene): void {
   const ground = image(art.ground);
   if (ready(ground)) ctx.drawImage(ground, 0, 0);
 
+  // Wet ground lies on the ground itself, under the aiming overlays.
+  drawWetGround(ctx, sc);
   drawGroundOverlays(ctx, sc);
+  // The ground cracked by a charged hand's steps lies under everything that stands.
+  drawCracks(ctx, sc, CRACK_FADE);
   warmPhases(sc);
 
   // Everything that stands, sorted by depth.
   const items: { z: number; draw: () => void }[] = [];
   const all: PropDef[] = [...map.props, ...art.extras];
+  // A prop whose burning (or cutting, or blast) is still to play stands until then.
+  const going = sc.pb.propsQueued();
   all.forEach((p, i) => {
     const st = i < map.props.length ? state.props[i] : undefined;
-    if (st?.destroyed) return;
+    if (st?.destroyed && !going.has(i)) return;
     items.push({ z: p.sortZ ?? p.z, draw: () => drawProp(ctx, sc, p, i < map.props.length ? i : -1) });
   });
   // Walls broken by events still playing stand until their moment comes; Kōton structures that
@@ -205,6 +222,8 @@ export function drawBattle(ctx: CanvasRenderingContext2D, sc: Scene): void {
   for (const fx of sc.pb.fx) if (fx.kind === 'aura') items.push({ z: fxPos(sc, fx).z + 0.005, draw: () => drawAuraBack(ctx, sc, fx) });
   // A lingering aura (the Breeze Mantle's wind until the ninja's next turn) wraps round the body too.
   for (const [id, l] of sc.pb.lingers) items.push({ z: sc.pb.posOf(id, sc.now).z + 0.005, draw: () => drawLinger(ctx, sc, id, l, 'back') });
+  // A ninja on fire burns in his fire aura until the flames go out.
+  for (const [id, l] of sc.pb.burns) items.push({ z: sc.pb.posOf(id, sc.now).z + 0.005, draw: () => drawLinger(ctx, sc, id, l, 'back') });
   // Lightning running along the water lies on the ground: what stands in front of it (a metal wall,
   // a unit) is drawn over it.
   for (const fx of sc.pb.fx) if (onGround(fx)) items.push({ z: fx.from.z + 0.005, draw: () => drawFx(ctx, sc, fx) });
@@ -220,6 +239,8 @@ export function drawBattle(ctx: CanvasRenderingContext2D, sc: Scene): void {
   drawWarpFlights(ctx, sc);
 
   for (const [id, l] of sc.pb.lingers) drawLinger(ctx, sc, id, l, 'front');
+  for (const [id, l] of sc.pb.burns) drawLinger(ctx, sc, id, l, 'front');
+  drawDouses(ctx, sc);
   for (const fx of sc.pb.fx) if (!onGround(fx) && fx.depth === undefined && !drawVfxSprite(ctx, sc, fx)) drawFx(ctx, sc, fx);
 
   if (state.time === 'night') drawNight(ctx, sc, all);
@@ -337,7 +358,7 @@ function drawGroundOverlays(ctx: CanvasRenderingContext2D, sc: Scene): void {
   if (state.phase === 'combat') {
     for (const u of Object.values(state.units)) {
       const v = sc.pb.views.get(u.id);
-      if (!v || !sovereign({ ...u, down: v.down }) || (u.team !== sc.team && v.hidden)) continue;
+      if (!v || !sovereign({ ...u, down: v.down }) || foeHidden(sc, u, v)) continue;
       ctx.beginPath();
       groundEllipse(ctx, map, sc.pb.posOf(u.id, now), AURA_RADIUS);
       ctx.fillStyle = 'rgba(167, 139, 250, 0.12)';
@@ -798,7 +819,7 @@ function drawProp(ctx: CanvasRenderingContext2D, sc: Scene, p: PropDef, index: n
 function unitAlpha(sc: Scene, u: Unit, v: UnitView): number {
   let alpha = 1;
   if (v.fade) alpha = Math.max(0, 1 - (sc.now - v.fade.t0) / v.fade.dur);
-  if (v.hidden) alpha *= u.team === sc.team ? 0.55 : 0.35;
+  if (v.hidden || foeHidden(sc, u, v)) alpha *= u.team === sc.team ? 0.55 : 0.35;
   if (v.down === 'dead' && u.team === 'enemy') alpha *= 0.75;
   return alpha;
 }
@@ -863,8 +884,19 @@ function drawUnit(ctx: CanvasRenderingContext2D, sc: Scene, u: Unit, pos: Pt): v
     if (oneShot) frame = Math.min(frame, n - 1);
     if (v.holdFrame !== undefined) frame = v.holdFrame;
   }
-  const aura = v.pose === 'cast' ? { mode: 'cast' as const, tick: Math.floor(now / 83), empowered: !!v.castEnhanced } : undefined;
-  const fr = unitFrame(u, look, v.pose, frame, aura);
+  // A charged hand (the activated Chidori): small bolts crackle on and round the body, Battle Static's
+  // (sprite/chakra.ts) in the charge's chakra colour, whatever the ninja's own burst.
+  const charge = u.charged && !u.down && v.held?.charged ? JUTSU[u.charged.jutsu] : undefined;
+  const aura =
+    v.pose === 'cast'
+      ? { mode: 'cast' as const, tick: Math.floor(now / 83), empowered: !!v.castEnhanced }
+      : charge
+        ? { mode: 'aura' as const, tick: Math.floor(now / 83), empowered: true, burst: { color: 'cyan' as const, tint: jutsuTint(charge, u) } }
+        : undefined;
+  // The element on the weapon in hand (Weapon Element Enhancement; sprite/imbue.ts draws it on the
+  // weapon in the frame), its energy in the ninja's chakra colour, obsidian in its own.
+  const imbue = v.imbue && v.armed && !u.down ? { fx: v.imbue.toLowerCase() as ImbueFx, tick: Math.floor((now * IMBUE_FPS) / 1000) % IMBUE_LOOP, tint: v.imbue === 'Earth' ? undefined : unitTint(u) } : undefined;
+  const fr = unitFrame(u, look, v.pose, frame, aura, imbue);
   let lx = 0;
   let ly = 0;
   if (v.lunge) {
@@ -898,7 +930,7 @@ function drawUnit(ctx: CanvasRenderingContext2D, sc: Scene, u: Unit, pos: Pt): v
   // The combo's spin shows the ninja turned away from its target for a moment.
   else solid(1, v.pose === 'combo' && COMBO_TURNED.includes(frame) ? (-v.facing as 1 | -1) : v.facing);
   // What crackles in the near hand (the Chidori's lightning) goes where the rig puts the hand.
-  if (v.held && now >= v.held.t0 && fr.rig && !phase && !v.warp) drawHeld(ctx, sc, v.held, x0 + v.facing * (fr.rig.handN.x * RES - FEET.x), y0 + fr.rig.handN.y * RES);
+  if (v.held && now >= v.held.t0 && fr.rig && !phase && !v.warp) drawHeld(ctx, sc, v.held, x0 + v.facing * (fr.rig.handN.x * RES - FEET.x), y0 + fr.rig.handN.y * RES, v.facing);
   const leaping = phase?.stage === 'dash' || (v.warp && lit >= 1);
   if (water !== 'none' && v.pose !== 'downed' && !leaping) {
     // Ripples where the body meets the water.
@@ -1998,7 +2030,7 @@ function drawMarks(ctx: CanvasRenderingContext2D, sc: Scene): void {
   for (const u of Object.values(state.units)) {
     const v = sc.pb.views.get(u.id);
     if (!v || v.fade || u.down === 'dead' || u.down === 'fled') continue;
-    if (u.team !== sc.team && v.hidden) continue;
+    if (foeHidden(sc, u, v)) continue;
     const pos = sc.pb.posOf(u.id, now);
     let top: { X: number; Y: number };
     if (u.kind === 'hydra_head') {

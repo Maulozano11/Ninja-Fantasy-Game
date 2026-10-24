@@ -5,6 +5,7 @@ import type { BattleEvent, BattleState, RollInfo, Unit, Wall } from '../../battl
 import { homeTeam } from '../../battle/types';
 import { JUTSU } from '../../battle/jutsu';
 import { breakable } from '../../battle/structures';
+import { WATER_REACH } from '../../battle/imbue';
 import { EFFECTS } from '../../rules/effects';
 import { pick } from '../../i18n';
 import { isFemaleBody } from '../../sprite/types';
@@ -105,6 +106,8 @@ export function logLine(ev: BattleEvent, s: BattleState, lang: Lang, wallOf = (i
       return { text: t(k, { t: nameOf(s, ev.unit, lang), roll: rollText(ev.roll, lang), dc: ev.roll.dc }), tone: ev.roll.crit || ev.roll.fumble ? 'text-yellow-300' : 'text-indigo-300' };
     }
     case 'jutsu':
+      // A charged hand's blow going off by itself (the activated Chidori).
+      if (ev.released) return { text: t('l_released', { a: nameOf(s, ev.unit, lang), j: jutsuName(ev.jutsu, lang, ev.enhanced) }), tone: 'text-orange-300' };
       // An enhanced cast with a name of its own says it by name ("lanza Gran bola de fuego").
       return { text: t(ev.enhanced && !JUTSU[ev.jutsu]?.nameEnh ? 'l_jutsuEnh' : 'l_jutsu', { a: nameOf(s, ev.unit, lang), j: jutsuName(ev.jutsu, lang, ev.enhanced) }), tone: 'text-orange-300' };
     case 'down': {
@@ -176,6 +179,28 @@ export function logLine(ev: BattleEvent, s: BattleState, lang: Lang, wallOf = (i
       return { text: t('l_pushed', { t: nameOf(s, ev.unit, lang), o: genderO(s.units[ev.unit]) }) };
     case 'zone':
       return { text: t(ev.on ? 'l_zone' : 'l_zoneEnd'), tone: 'text-emerald-300' };
+    case 'charged': {
+      // A hand charged (the activated Chidori), and why the charge ended (its blow says itself).
+      const p = { a: nameOf(s, ev.unit, lang), j: jutsuName(ev.jutsu, lang) };
+      if (ev.on) return { text: t(ev.enhanced ? 'l_chargedEnh' : 'l_charged', p), tone: 'text-orange-300' };
+      const k: TKey | null = ev.end === 'expired' ? 'l_chargeExpired' : ev.end === 'down' ? 'l_chargeDown' : ev.end === 'sealed' ? 'l_chargeSealed' : ev.end === 'released' ? 'l_chargeReleased' : null;
+      return k ? { text: t(k, p), tone: 'text-slate-400' } : null;
+    }
+    case 'imbue': {
+      // The element goes onto the weapon (Weapon Element Enhancement), or leaves it.
+      const p = { a: nameOf(s, ev.unit, lang), m: WATER_REACH };
+      if (ev.on) return { text: t(`l_imbue_${ev.element}` as TKey, p), tone: 'text-orange-300' };
+      return { text: t(ev.end === 'sealed' ? 'l_imbueSealed' : (`l_imbueEnd_${ev.element}` as TKey), p), tone: 'text-slate-400' };
+    }
+    case 'cracks':
+      // Said once, as the ground first cracks under a charged ninja this turn (its mending is seen).
+      return ev.on && ev.first ? { text: t('l_cracks', { a: nameOf(s, ev.unit, lang) }), tone: 'text-stone-300' } : null;
+    case 'ground':
+      // Steam rising has its own note (n_steamRises); the wet that turned to steam says nothing.
+      if (ev.kind === 'wet') return ev.on ? { text: t('l_wet'), tone: 'text-sky-300' } : ev.by ? null : { text: t('l_dry'), tone: 'text-slate-400' };
+      return ev.on || ev.by !== undefined ? null : { text: t('l_steamEnd'), tone: 'text-slate-400' };
+    case 'conduct':
+      return { text: t('l_conduct'), tone: 'text-sky-300' };
     case 'end':
       return { text: t(`l_end_${ev.outcome}` as TKey), tone: ev.outcome === 'victory' ? 'text-emerald-300 font-bold' : 'text-rose-300 font-bold' };
     case 'prop':
@@ -250,6 +275,10 @@ export function floatLabel(ev: BattleEvent, s: BattleState, lang: Lang): string 
       return ev.outcome === 'victory' ? t('victory') : ev.outcome === 'fled' ? t('retreat') : t('defeat');
     case 'jutsu':
       return jutsuName(ev.jutsu, lang, ev.enhanced);
+    case 'charged':
+      return ev.on ? t('f_charged') : null;
+    case 'imbue':
+      return ev.on ? t(`f_imbue_${ev.element}` as TKey) : null;
     case 'wall':
       return !ev.on && breakable(ev.wall) ? t(ev.wall.hp > 0 ? 'crumbled' : 'broken') : null;
     case 'note': {

@@ -1442,7 +1442,7 @@ describe('Ryusei: Weapon Nodes, Shooting-Star Thrust, Spatial Swap', () => {
 });
 
 describe('Northstar: Aura of Sovereignty, Command, Natural Submission', () => {
-  const northstar = (over: Partial<ShinobiCharacter> = {}) => hero({ id: 'n', name: 'Shiori', clan: 'Northstar', ...over });
+  const northstar = (over: Partial<ShinobiCharacter> = {}) => hero({ id: 'n', name: 'Yua', clan: 'Northstar', ...over });
   /** A Northstar at (8.25, 10.25) on its turn, the enemies 6 m away or as given. */
   const northstarTurn = (over: Partial<BattleSetup> = {}): BattleState => turnOf(createBattle(setup({ party: [{ character: northstar(), pos: { x: 8, z: 10 } }], ...over })).state, 'n');
   const cast = (s: BattleState, target: string, o: { jutsu?: string; target2?: string } = {}) =>
@@ -1925,7 +1925,7 @@ describe('enemy clans are mixed (docs/CLANS_DESIGN.md, D6)', () => {
     assert.ok(pv.reasons.includes('aura'));
     assert.equal(applyAction(s, { type: 'jutsu', unit: 'rogue_1', jutsu: 'northstar_command', at: { ...s.units.a.pos }, target: 'a' }).reason, 'cantCommand');
     // A party Northstar can take the lookout and the raider, but not the Mirai rogue.
-    const n = battleOf('cedar_rogues', 7, [{ character: hero({ id: 'n', name: 'Shiori', clan: 'Northstar' }) }]);
+    const n = battleOf('cedar_rogues', 7, [{ character: hero({ id: 'n', name: 'Yua', clan: 'Northstar' }) }]);
     assert.deepEqual(['rogue_0', 'rogue_1', 'raider_0'].map((id) => commandRefused(n, n.units.n, n.units[id])), ['mindImmune', null, null]);
   });
 
@@ -1936,7 +1936,7 @@ describe('enemy clans are mixed (docs/CLANS_DESIGN.md, D6)', () => {
       { character: noUlt(hero({ id: 'a', name: 'Aki' })), controller: 'ai' as const },
       { character: noUlt(HANA), controller: 'ai' as const, aiOrder: 'support' as const },
       { character: noUlt(KENJI), controller: 'ai' as const },
-      { character: noUlt(hero({ id: 'n', name: 'Shiori', clan: 'Northstar' })), controller: 'ai' as const },
+      { character: noUlt(hero({ id: 'n', name: 'Yua', clan: 'Northstar' })), controller: 'ai' as const },
     ];
     for (const id of Object.keys(ENCOUNTERS) as EncounterId[]) {
       for (const seed of [1, 2]) {
@@ -1965,7 +1965,7 @@ describe('enemy clans are mixed (docs/CLANS_DESIGN.md, D6)', () => {
       { character: noUlt(hero({ id: 'a', name: 'Aki' })), controller: 'ai' as const },
       { character: noUlt(HANA), controller: 'ai' as const, aiOrder: 'support' as const },
       { character: noUlt(KENJI), controller: 'ai' as const },
-      { character: noUlt(hero({ id: 'n', name: 'Shiori', clan: 'Northstar' })), controller: 'ai' as const },
+      { character: noUlt(hero({ id: 'n', name: 'Yua', clan: 'Northstar' })), controller: 'ai' as const },
     ];
     const runs: [EncounterId, number, typeof four][] = [];
     for (const id of ['river_patrol', 'cedar_rogues', 'night_raid'] as EncounterId[]) for (const seed of [1, 2, 3, 4]) runs.push([id, seed, four]);
@@ -2303,6 +2303,14 @@ describe('battle text in Spanish', () => {
     assert.equal(line({ t: 'jutsu', unit: 'rogue_0', jutsu: 'fireball_goukakyu', at: { x: 8, z: 10 }, shape: null, enhanced: true }), 'El Renegado 1 lanza Técnica de Fuego: Gran bola de fuego');
     assert.equal(line({ t: 'jutsu', unit: 'jonin_0', jutsu: 'chidori_lightning_blade', at: { x: 8, z: 10 }, shape: null, enhanced: true }), '¡Kagero lanza Técnica de Rayo: Chidori potenciado!');
     assert.equal(line({ t: 'jutsu', unit: 'raider_0', jutsu: 'leaf_hurricane_senpuu', at: { x: 8, z: 10 }, shape: null, enhanced: true })?.startsWith('¡El Asaltante lanza'), true);
+    // The activated Chidori (battle/charged.ts): charged, its blow going off by itself, the ground cracking, the charge ending.
+    assert.equal(line({ t: 'charged', unit: 'jonin_0', jutsu: 'chidori_lightning_blade', on: true }), 'Kagero carga Técnica de Rayo: Chidori en la mano');
+    assert.equal(line({ t: 'jutsu', unit: 'raider_0', jutsu: 'chidori_lightning_blade', at: { x: 8, z: 10 }, shape: null, enhanced: false, released: true }), '¡Técnica de Rayo: Chidori: la mano cargada del Asaltante golpea sola!');
+    assert.equal(line({ t: 'cracks', unit: 'raider_1', cells: ['1,1'], on: true, first: true }), 'El suelo se agrieta bajo la Sombra: terreno difícil');
+    assert.equal(line({ t: 'cracks', unit: 'raider_1', cells: ['1,2'], on: true }), undefined, 'said once a turn');
+    assert.equal(line({ t: 'charged', unit: 'jonin_0', jutsu: 'chidori_lightning_blade', on: false, end: 'expired' }), 'Técnica de Rayo: Chidori se apaga en la mano de Kagero sin usarse');
+    assert.equal(line({ t: 'charged', unit: 'jonin_0', jutsu: 'chidori_lightning_blade', on: false, end: 'struck' }), undefined);
+    assert.equal(logLine({ t: 'charged', unit: 'jonin_0', jutsu: 'chidori_lightning_blade', on: true, enhanced: true }, s, 'en')?.text, 'Kagero charges Lightning Technique: Chidori in the hand, enhanced!');
     // The prompts read the same way.
     assert.equal(T('evadeAsk', { name: unitRef(s.units.a, 'es'), dmg: 5, by: unitRef(s.units.raider_0, 'es') }, 'es').startsWith('Akira vio venir el golpe del Asaltante'), true);
     assert.equal(T('oaAsk', { mover: unitRef(s.units.raider_1, 'es'), reactor: unitRef(s.units.a, 'es'), p: 60 }, 'es').startsWith('La Sombra sale del alcance de Akira'), true);

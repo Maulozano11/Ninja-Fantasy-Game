@@ -2,12 +2,13 @@
 // Everything is placed from the rig (hand + forearm direction, torso-local
 // T(), head-local hd()) so it works on every body type and pose.
 
-import { armJoints, DrawCtx, ItemDef, legPoint, Side } from '../ctx';
+import { armJoints, Depth, DEPTHS, DrawCtx, ItemDef, legPoint, Side, torsoNeck } from '../ctx';
 import { add, capsule, ellipse, F_NO_OUTLINE, fine, GRID, Layer, len, lerp, line, norm, partIndex, Pen, perp, poly, px, RES, scale, seam, sub, UNITS, v, Vec } from '../raster';
-import { retintHex, type RampKind } from '../color';
+import { hexToRgb, retintHex, type RampKind } from '../color';
 import { hd } from './hairkit';
-import { CRYSTAL_SWORD, drawPaintedWeapon, drawWeapon, ICE_CRYSTAL_SWORD } from './weapons';
+import { CRYSTAL_SWORD, drawPaintedWeapon, drawWeapon, ICE_CRYSTAL_SWORD, KUNAI } from './weapons';
 import { FLAME_LONGSWORD, FLAME_SWORD_FLAME, FLAME_SWORD_GOLD } from './flameSwordArt';
+import { ICE_SWORD, ICE_SWORD_BLADE, ICE_SWORD_KIND } from './iceSwordArt';
 import { faceAnchor } from '../body';
 import type { PaintedPart } from './capeArt';
 import { paintedHair } from './hair';
@@ -16,8 +17,15 @@ import { ONI_EYES, ONI_HORNS, ONI_MASK, ONI_MASK_KIND, ONI_PAINT, ONI_PORCELAIN 
 import { KUNAI_ART, KUNAI_KIND, KUNAI_STEEL, KUNAI_WRAP } from './kunaiArt';
 import { LYNX_EARS, LYNX_MASK, LYNX_MASK_KIND, LYNX_PAINT, LYNX_PORCELAIN } from './lynxMaskArt';
 import { KATANA_PARTS, katanaHipColors, katanaTemplate } from './katana';
+import { stampLeaning } from './armor';
+import { FOUNDER_COWL, FOUNDER_COWL_GOLD, FOUNDER_COWL_KIND, FOUNDER_COWL_NEAR, FOUNDER_COWL_NECK, FOUNDER_COWL_SEAM_F, FOUNDER_COWL_SEAM_N, FOUNDER_COWL_STUD, FOUNDER_COWL_STUD_F } from './founderCowlArt';
 import { chakraHex } from '../chakraInfo';
+import { LYRA_SWORD_BLADE, LYRA_SWORD_GUARD } from './lyraSwordArt';
+import { drawLyraRapier } from './lyraSword';
+import { drawOwner, ownerFrame, slotTint } from '../ownerFrames';
 import { gripPoint, handsBusy, handsLimp, handsReleased, poleAngle, swordAngle, throwsKunai } from '../grip';
+import type { Rig } from '../rig';
+import { addSeam, clothSeam } from '../seams';
 
 const col = (key: string, label: string, def: string, kind: RampKind = 'cloth') => ({ key, label, default: def, kind });
 
@@ -32,7 +40,8 @@ const fromAngle = (deg: number): Vec => rot(v(1, 0), deg);
 /** Breathing-aware torso point (follows the shoulders). */
 function topPt(g: DrawCtx) {
   const T = g.rig.T;
-  const dy = g.rig.neck.y - T(0.6, g.bp.torsoLen).y;
+  const n = torsoNeck(g);
+  const dy = g.rig.neck.y - T(n.x, n.y).y;
   return (x: number, y: number) => add(T(x, y), v(0, dy));
 }
 
@@ -204,21 +213,123 @@ function stowKatanaAtHip(g: DrawCtx, hilt: string, guard: string): void {
   sheathedSword(g, g.L('waist'), g.rig.T(b.waistHalf * 0.6 + 3.2, 5.6), dirBack, { sheath: '#2a1e1e', hilt, guard }, { hilt: 3.8, sheath: 14, part: 'pelvis' });
 }
 
+/** The angle Lyra's rapier rides at on the back (see held_gilded_rapier). */
+const LYRA_STOW_DEG = 70;
+
 /** Big blades and polearms ride diagonally across the back, the hilt or blade over the near shoulder. */
 function backGrip(g: DrawCtx, deg: number): Vec {
   const b = g.bp;
-  return stowAt(g, -b.shoulderHalf - 2.4, b.torsoLen + 2.8 - (deg < 0 ? 9 : 0));
+  // Narrow (female) shoulders keep the blade as far back as the old female body's did, so a long
+  // blade still clears the neck when the body pitches forward.
+  // A fitted body's neck sits further back in its torso (his, rig.ts neckLocal): the blade goes back with it.
+  return stowAt(g, -Math.max(b.shoulderHalf, 5.9) - 2.4 + (torsoNeck(g).x - 0.6), b.torsoLen + 2.8 - (deg < 0 ? 9 : 0));
 }
 
-const TACKLE_BACK = 30;
+/**
+ * The angle a weapon stowed on the back is drawn at (`deg`: the one it rides at standing). It is
+ * strapped to the back, so it turns with the torso's lean in every pose (the throw's release, the
+ * lunge, the tackle's shoulder, the combo's punches and kicks, leaning back at camp): it lies across
+ * the back as it does standing, instead of sticking out under the chin or past the chest. What would
+ * still show in front of the body is cut away by clipStowed.
+ */
+const backAngle = (g: DrawCtx, deg: number): number => deg + g.rig.lean;
+
+/** A piece of a stowed weapon at most this big (in pixels), seen apart from the rest of it, is cut away. */
+const STOW_SLIVER = 6;
 
 /**
- * The angle a weapon stowed on the back is drawn at (`deg`: the one it rides at standing). The
- * weapon techniques pitch the body far forward (the release of 'throw', the lunge of 'pierce', the
- * shoulder of 'tackle'): the weapon turns with the back there, so its blade stays behind the body
- * instead of sticking out under the chin. Every other pose keeps it at `deg`.
+ * Whether a fine pixel lies in front of the line of the back, below the shoulders (torsoPoly's back
+ * edge, in the torso's frame, so it leans with the body): where a weapon stowed on the back never shows.
  */
-const backAngle = (g: DrawCtx, deg: number): number => (g.rig.pose === 'throw' || g.rig.pose === 'pierce' ? deg + g.rig.lean : g.rig.pose === 'tackle' ? deg + Math.min(g.rig.lean, TACKLE_BACK) : deg);
+export function frontOfBack(r: Rig): (i: number) => boolean {
+  const b = r.bp;
+  const shoulder = b.torsoLen - 1.2;
+  const nO = -(b.hipHalf * 0.5 + b.legR[0] * 0.96);
+  // The back's edge, top down: [height above the pelvis, x].
+  const edge: [number, number][] = [[shoulder, -b.shoulderHalf * 0.86], [b.torsoLen - 5, -b.chestHalf * 0.86], [5.4, -b.waistHalf * 0.86], [1.6, nO], [-0.8, nO - 0.1]];
+  const backAt = (y: number): number => {
+    for (let k = 1; k < edge.length; k++) {
+      const [y0, x0] = edge[k - 1];
+      const [y1, x1] = edge[k];
+      if (y >= y1) return x1 + ((x0 - x1) * (y - y1)) / (y0 - y1);
+    }
+    return edge[edge.length - 1][1];
+  };
+  return (i) => {
+    const d = sub(v(((i % GRID) + 0.5) / RES, (((i / GRID) | 0) + 0.5) / RES), r.pelvis);
+    const ly = d.x * r.up.x + d.y * r.up.y;
+    return ly < shoulder && d.x * r.right.x + d.y * r.right.y > backAt(ly);
+  };
+}
+
+/**
+ * A weapon stowed on the back (the held weapon drawn on 'backGear') stays behind the body. Below the
+ * shoulders, whatever of it would show in front of the line of the back (the tip past the hip, through
+ * the gap between the legs, under an arm, past the chest) is cut away, then any piece of it left in
+ * sight apart from the rest, a few pixels big, goes too. A painted weapon (his flame or ice sword) is
+ * closed along the cut with its own black line; one we draw gets its outline there as usual. Runs once
+ * every layer that can hide it is drawn (compose.ts).
+ */
+export function clipStowed(g: DrawCtx, layers: ReadonlyMap<Depth, Layer>): void {
+  const L = layers.get('backGear');
+  if (!L?.used) return;
+  const N = GRID * GRID;
+  const held = partIndex('held');
+  const mine = (i: number) => L.mat[i] >= 0 && L.part[i] === held;
+  // What the layers in front of it cover.
+  const covered = new Uint8Array(N);
+  for (const d of DEPTHS.slice(DEPTHS.indexOf('backGear') + 1)) {
+    const F = layers.get(d);
+    if (F?.used) for (let i = 0; i < N; i++) if (F.mat[i] >= 0) covered[i] = 1;
+  }
+  const front = frontOfBack(g.rig);
+  const cut = new Uint8Array(N);
+  const drop = (i: number) => {
+    L.mat[i] = -1;
+    L.flags[i] = 0;
+    cut[i] = 1;
+  };
+  for (let i = 0; i < N; i++) if (mine(i) && !covered[i] && front(i)) drop(i);
+  // Pieces left in sight apart from the rest (8-connected).
+  const seen = new Uint8Array(N);
+  for (let i = 0; i < N; i++) {
+    if (seen[i] || !mine(i) || covered[i]) continue;
+    const piece: number[] = [];
+    const stack = [i];
+    seen[i] = 1;
+    while (stack.length) {
+      const j = stack.pop()!;
+      piece.push(j);
+      const x = j % GRID;
+      for (let dy = -GRID; dy <= GRID; dy += GRID)
+        for (let dx = -1; dx <= 1; dx++) {
+          const k = j + dy + dx;
+          if (k < 0 || k >= N || x + dx < 0 || x + dx >= GRID || seen[k] || !mine(k) || covered[k]) continue;
+          seen[k] = 1;
+          stack.push(k);
+        }
+    }
+    if (piece.length <= STOW_SLIVER) piece.forEach(drop);
+  }
+  // A painted weapon has no outline of its own: its darkest colour closes the cut.
+  let ink = -1;
+  let dark = Infinity;
+  for (let i = 0; i < N; i++) {
+    if (!mine(i) || !(L.flags[i] & F_NO_OUTLINE)) continue;
+    const [cr, cg, cb] = hexToRgb(g.mats.ramps[L.mat[i]][3]);
+    const lum = cr * 0.3 + cg * 0.59 + cb * 0.11;
+    if (lum < dark) [dark, ink] = [lum, L.mat[i]];
+  }
+  if (ink < 0) return;
+  for (let i = 0; i < N; i++) {
+    if (!mine(i) || !(L.flags[i] & F_NO_OUTLINE)) continue;
+    const x = i % GRID;
+    if ((x > 0 && cut[i - 1]) || (x < GRID - 1 && cut[i + 1]) || (i >= GRID && cut[i - GRID]) || (i < N - GRID && cut[i + GRID])) {
+      L.mat[i] = ink;
+      L.shade[i] = 3;
+    }
+  }
+}
 
 /**
  * Knocked out, a weapon lies dropped on the ground in front of the body. The
@@ -301,13 +412,21 @@ export const HELD_ITEMS: ItemDef[] = [
     id: 'held_ice_crystal',
     slot: 'held',
     name: 'Ice Crystal Sword',
-    desc: 'A faceted blade of ice-blue crystal under a curved crystal guard, painted by the owner.',
-    colors: [col('blade', 'Crystal', '#74aac4', 'metal'), col('hilt', 'Grip', '#3e5f7f', 'leather')],
-    draw: (g, [blade, grip]) => {
-      const tint = { base: '#74aac4', blade, grip, gripBase: '#3e5f7f' };
-      if (handsBusy(g)) drawPaintedWeapon(g, 'backGear', ICE_CRYSTAL_SWORD, backGrip(g, 48), backAngle(g, 48), tint);
-      else if (handsLimp(g)) drawPaintedWeapon(g, 'nearArm.held', ICE_CRYSTAL_SWORD, droppedGrip(g, 0.7), -86, tint);
-      else if (!handsReleased(g)) drawPaintedWeapon(g, 'nearArm.held', ICE_CRYSTAL_SWORD, gripPoint(g), swordAngle(g), tint);
+    desc: 'A long ice-blue crystal blade with a near-white edge under a steel cross-guard, its grip wrapped in dark blue: painted by the owner, as his Solen holds it.',
+    colors: [col('blade', 'Crystal', ICE_SWORD_BLADE, 'metal')],
+    draw: (g, [c]) => {
+      // The owner's sword on his Solen, his pixels (the new standard, 2026-10-21; tools/refs/
+      // solen-sword-from-ref.py): his repaint of this sword, held as the flame longsword is, by its grip
+      // at the hand joint at his angle, so at rest every pixel is his. His black line stays; every other
+      // colour moves the way his crystal blue does. The crystal blue it had before his repaint, which
+      // saved characters carry, now means his.
+      const blade = c.toLowerCase() === '#74aac4' ? ICE_SWORD_BLADE : c;
+      const tint = (_ch: string, hex: string) => (ICE_SWORD_KIND[hex] === 'line' ? hex : retintHex(hex, ICE_SWORD_BLADE, blade));
+      // His black line kept whole as the sword turns (rotateLined).
+      const iceLine = (hex: string) => ICE_SWORD_KIND[hex] === 'line';
+      if (handsBusy(g)) drawPaintedWeapon(g, 'backGear', ICE_SWORD, backGrip(g, 48), backAngle(g, 48), tint, iceLine);
+      else if (handsLimp(g)) drawPaintedWeapon(g, 'nearArm.held', ICE_SWORD, droppedGrip(g, 0.7), -86, tint, iceLine);
+      else if (!handsReleased(g)) drawPaintedWeapon(g, 'nearArm.held', ICE_SWORD, g.rig.handN, swordAngle(g), tint, iceLine);
     },
   },
   {
@@ -385,6 +504,27 @@ export const HELD_ITEMS: ItemDef[] = [
     desc: 'A calm pale-cyan glow gathered in the palm.',
     colors: [col('glow', 'Glow', '#8ff0ea', 'glow')],
     draw: (g, [glow]) => !handsBusy(g) && !handsLimp(g) && !handsReleased(g) && !throwsKunai(g) && drawPalmGlow(g, { glow }),
+  },
+  {
+    id: 'held_gilded_rapier',
+    slot: 'held',
+    name: 'Gilded Rapier',
+    desc: 'A long slender blade glowing cyan under a steel swept hilt with gold tips, a cyan gem in the cross, sparkles round it: the owner drew it for Lyra.',
+    colors: [col('blade', 'Blade glow', LYRA_SWORD_BLADE, 'glow'), col('guard', 'Guard', LYRA_SWORD_GUARD, 'metal')],
+    draw: (g, [blade, guard]) => {
+      // In the owner's own frames of Lyra (ownerFrames.ts) the sword is his there: lying behind her on
+      // the seat as she reads, thrust out at the throw's release (put away, she throws without it).
+      if (ownerFrame(g)) {
+        if (!(g.look.stowed && g.rig.pose === 'throw')) drawOwner(g, 'held', slotTint({ blade: [LYRA_SWORD_BLADE, blade], guard: [LYRA_SWORD_GUARD, guard] }));
+        return;
+      }
+      // Stowed on the back steeper than other long blades (70 degrees, not 48): her long blade then
+      // stays behind the narrow female body down to the tip, instead of showing in flecks past her far
+      // side (seated, reading, the female hips settle into the seat and carry the blade lower).
+      if (handsBusy(g)) drawLyraRapier(g, 'backGear', backGrip(g, LYRA_STOW_DEG), backAngle(g, LYRA_STOW_DEG), blade, guard, false);
+      else if (handsLimp(g)) drawLyraRapier(g, 'nearArm.held', droppedGrip(g, 0.7), -86, blade, guard, false);
+      else if (!handsReleased(g)) drawLyraRapier(g, 'nearArm.held', gripPoint(g), swordAngle(g), blade, guard, true);
+    },
   },
 ];
 
@@ -786,6 +926,11 @@ function scrollShape(g: DrawCtx, L: Layer, a: Vec, b: Vec, r: number, c: { paper
   capsule(L, add(b, scale(d, -0.6)), add(b, scale(d, 0.8)), r + 0.35, r + 0.35, caps, lit);
 }
 
+/** How far (px) his cowl's greys go on past its edge to fill an open seam (sprite/seams.ts). */
+const COWL_SEAM = 3;
+/** How far (px) from his studs a seam is filled with his greys. */
+const COWL_SEAM_ROUND = 5;
+
 /** Clears pixels of a front layer that cover the head, so wraps sit under the chin. */
 function tuckUnderChin(g: DrawCtx, L: Layer): void {
   const H = g.L('head.body');
@@ -1107,6 +1252,57 @@ export const ACCESSORY_ITEMS: ItemDef[] = [
         }
       }
       for (const i of edge) L.shade[i] = 0;
+    },
+  },
+  {
+    id: 'acc_founder_cowl',
+    slot: 'accessory',
+    name: "Founder's Cowl",
+    desc: 'Dark grey cloth wound round the neck and over both shoulders, pinned with gold studs, a white stud on the far shoulder: painted by the owner for Solen.',
+    colors: [col('main', 'Cowl', FOUNDER_COWL), col('studs', 'Studs', FOUNDER_COWL_GOLD, 'metal'), col('stud', 'Shoulder stud', FOUNDER_COWL_STUD, 'metal')],
+    draw: (g, [c, gold, stud]) => {
+      // The owner's cowl on his Solen, his pixels (the new standard, 2026-10-21; tools/refs/
+      // solen-cowl-from-ref.py): round the neck in front of the torso and under the chin, over the near
+      // shoulder in front of the sleeve, and the white stud on the far shoulder; each leans with the torso
+      // about its joint. His line stays; his greys follow Cowl, his gold Studs, his white Shoulder stud.
+      const r = g.rig;
+      const torso = (Math.atan2(r.neck.y - r.pelvis.y, r.neck.x - r.pelvis.x) * 180) / Math.PI;
+      const tint = (_ch: string, hex: string): string => {
+        const k = FOUNDER_COWL_KIND[hex];
+        if (k === 'line') return hex;
+        if (k === 'gold') return retintHex(hex, FOUNDER_COWL_GOLD, gold);
+        if (k === 'white' || k === 'stud' || k === 'steel') return retintHex(hex, FOUNDER_COWL_STUD, stud);
+        return retintHex(hex, FOUNDER_COWL, c);
+      };
+      const cowlLine = (hex: string) => FOUNDER_COWL_KIND[hex] === 'line';
+      stampLeaning(g, 'capeFront', FOUNDER_COWL_NECK, r.neck, torso, 'torso', tint, cowlLine);
+      stampLeaning(g, 'capeFront', FOUNDER_COWL_STUD_F, r.shoulderF, torso, 'upperArmF', tint, cowlLine);
+      stampLeaning(g, 'nearArm.over', FOUNDER_COWL_NEAR, r.shoulderN, torso, 'upperArmN', tint, cowlLine);
+      // The near end and the stud ride the shoulders, the cowl round the neck the torso: as a shoulder moves
+      // from the neck (a wider body, a swung arm) the seam beside the gold stud opens and the background
+      // shows through (the owner, 2026-10-22: "aqui tiene unos aun en la hebilla o medallon de la capa"). What
+      // he drew beside each of them (his cowl, and under the stud the cuirass's top), riding with it, fills the
+      // seam from behind once the figure is drawn (fillSeams, sprite/seams.ts). His greys follow Cowl; the rest
+      // stays his. At rest too (the owner, 2026-10-22: "solen rellenar"): on the male body the pieces meet as he
+      // drew them and nothing goes in; on the bulky body the near end stands off the neck already at rest.
+      const seamTint = (_ch: string, hex: string): string => (FOUNDER_COWL_KIND[hex] === 'grey' ? retintHex(hex, FOUNDER_COWL, c) : hex);
+      const seam = new Layer(false);
+      const sg: DrawCtx = { ...g, L: () => seam };
+      stampLeaning(sg, 'capeFront', FOUNDER_COWL_SEAM_N, r.shoulderN, torso, 'torso', seamTint, cowlLine);
+      stampLeaning(sg, 'capeFront', FOUNDER_COWL_SEAM_F, r.shoulderF, torso, 'torso', seamTint, cowlLine);
+      addSeam(g, seam, { at: 'always' });
+      // At rest the bulky body's near end stands off the neck, past what he drew beside it: there his greys of
+      // the cowl go on from its edge, round his studs only. Only at rest: in the poses that move, what the seam
+      // leaves is closed by the pinhole pass (sprite/holes.ts), which does not run at rest.
+      const greys = new Set<number>();
+      const studs = new Set<number>();
+      for (const p of [FOUNDER_COWL_NECK, FOUNDER_COWL_NEAR, FOUNDER_COWL_STUD_F])
+        for (const [ch, hex] of Object.entries(p.colors)) {
+          const k = FOUNDER_COWL_KIND[hex];
+          if (k === 'grey') greys.add(g.m(tint(ch, hex), 'flat'));
+          else if (k === 'gold' || k === 'white' || k === 'stud' || k === 'steel') studs.add(g.m(tint(ch, hex), 'flat'));
+        }
+      addSeam(g, clothSeam(g, { depths: ['capeFront', 'nearArm.over'], cloth: greys, studs, reach: COWL_SEAM, round: COWL_SEAM_ROUND }), { walls: 3, at: 'idle', again: true });
     },
   },
   {

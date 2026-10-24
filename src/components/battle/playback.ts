@@ -10,10 +10,11 @@ import type { SpritePose } from '../../sprite/types';
 import { JUTSU, areaEnd, nearSegment } from '../../battle/jutsu';
 import type { JutsuSpec, StageKind, VfxElement, VfxRole } from '../../battle/jutsu';
 import { COMBO_KICKS, COMBO_TURNED, POSE_FPS, TACKLE_IMPACT_FRAME } from '../../sprite/rig';
-import { FAN_MS, FAN_ROLL, TOWER_MS, TOWER_RISE, WAVE_CREST, WAVE_HOLD, blastMs, impactMs, signatureMs, skySignature } from './vfxSprites';
+import { BLOW_MS, CONDUCT_MS, DOUSE_MS, FAN_MS, FAN_ROLL, GROUND_FADE, TOWER_MS, TOWER_RISE, WAVE_CREST, WAVE_HOLD, blastMs, impactMs, keyCenter, signatureMs, skySignature } from './vfxSprites';
 import { jutsuTint, unitTint } from './vfxTintPlan';
 import { DRIP_MS, SCREEN_MS, SPRAY_DELAY, SPRAY_LANDED, SPRAY_MS, bleedingStarts, isBleedTick } from './bloodPlan';
-import { dist } from '../../battle/map';
+import { cellOf, dist } from '../../battle/map';
+import { crackKey } from '../../battle/nav';
 import { closestPoint } from '../../battle/structures';
 import { midpoint } from '../../battle/combat';
 import type { Bend } from './paths';
@@ -68,6 +69,8 @@ export interface UnitView {
   warp?: { from: Pt; to: Pt; t0: number; face: 1 | -1; land: 1 | -1; foe?: string; fly: number };
   /** The cast pose is an enhanced jutsu's: its chakra burst plays empowered. */
   castEnhanced?: boolean;
+  /** The element on its weapon (Weapon Element Enhancement): renderer.ts draws it on the weapon in hand. */
+  imbue?: 'Fire' | 'Lightning' | 'Wind' | 'Water' | 'Earth';
 }
 
 /**
@@ -82,6 +85,26 @@ export interface Held {
   t0: number;
   end: number;
   rows: { anim: string; ms: number }[];
+  /** Drawn the way the ninja faces (mirrored facing left): his lightning round the near forearm is not round. */
+  faced?: boolean;
+  /** A charged hand's (the activated Chidori): it stays until the charge ends. */
+  charged?: boolean;
+}
+
+/** How solid the element's aura is round a ninja with a charged hand (the activated Chidori). */
+export const CHARGE_AURA = 0.5;
+/** How long a mended crack takes to fade (ms at speed 1). */
+export const CRACK_FADE = 400;
+
+/**
+ * What a charged hand holds (the jutsu's `seq.held`: the activated Chidori's lightning, his two
+ * paint-overs flickering), in its chakra colour, until the charge ends.
+ */
+function chargedHeld(u: Unit | undefined, now: number, jutsu = u?.charged?.jutsu): Held | undefined {
+  const spec = jutsu ? JUTSU[jutsu] : undefined;
+  const h = spec?.seq?.held;
+  if (!spec || !h) return undefined;
+  return { group: h.group, name: h.name, element: spec.element, tint: u ? jutsuTint(spec, u) : undefined, t0: now, end: Infinity, rows: [{ anim: h.anim, ms: 1 }], faced: true, charged: true };
 }
 
 export interface Floater {
@@ -95,7 +118,7 @@ export interface Floater {
   big?: boolean;
 }
 
-export type FxKind = 'projectile' | 'kunai' | 'area' | 'cone' | 'line' | 'burst' | 'explosion' | 'electric' | 'smoke' | 'heal' | 'aura' | 'noise' | 'slash' | 'wall' | 'seal' | 'fire' | 'sprite' | 'wave' | 'tower' | 'swirl';
+export type FxKind = 'projectile' | 'kunai' | 'area' | 'cone' | 'line' | 'burst' | 'explosion' | 'electric' | 'smoke' | 'heal' | 'aura' | 'noise' | 'slash' | 'wall' | 'seal' | 'fire' | 'sprite' | 'wave' | 'tower' | 'swirl' | 'conduct';
 
 export interface Fx {
   kind: FxKind;
@@ -176,7 +199,11 @@ export interface Fx {
   spread?: boolean;
   /** A wave's rows of columns (the Devouring Tide); a tower's small whirlwinds (the Whirlwind Tower). */
   rows?: number;
+  /** The Dragon Tsunami's wave (Water's rank S): his curl, dragon and kanji ride its crest (vfx_tide_s). */
+  tideS?: boolean;
   minis?: number;
+  /** Lightning running across a wet patch: its cells ("c,r"), from `from` outward. */
+  cells?: string[];
 }
 
 /**
@@ -355,6 +382,9 @@ export const warpFlight = (ms: number, t: WarpTimes): number => {
 /** When (ms into the Shooting-Star Thrust) the thrown weapon was `w` (0..1) along its flight: warpFlight turned round. */
 export const warpFlightMs = (w: number, t: WarpTimes): number => t.rel + (1 - (1 - Math.min(1, Math.max(0, w))) ** (1 / FLIGHT_EASE)) * (t.caught - t.rel);
 
+/** How solid the fire on a burning ninja is drawn (his fire aura, faint so the ninja shows). */
+const BURN_ALPHA = 0.6;
+
 export class Playback {
   views = new Map<string, UnitView>();
   floaters: Floater[] = [];
@@ -372,6 +402,12 @@ export class Playback {
   /** When each gale on the ground started turning, and the ones dying down (from when their event played). */
   zoneBorn = new Map<string, number>();
   zoneGone: { zone: GaleZone; t0: number }[] = [];
+  /**
+   * When each wet cell and each steam cell ("c,r") showed up on the screen (the wave's cells as its
+   * crest goes over them), and the ones drying or thinning away (from when their event played).
+   */
+  groundBorn = { wet: new Map<string, number>(), steam: new Map<string, number>() };
+  groundGone: { kind: 'wet' | 'steam'; cells: string[]; t0: number; blown?: Pt }[] = [];
   /** Kōton structures that crumbled or broke, sinking out of sight (from when their event played). */
   fallen: { wall: Wall; t0: number }[] = [];
   /** Whose turn the screen shows (it trails the engine while events play). */
@@ -393,7 +429,19 @@ export class Playback {
    * Units wrapped in a lingering aura while a condition lasts (the Breeze Mantle: its wind stays
    * on the ninja, faint, until its next turn): unit → the aura's element, opacity and start.
    */
-  lingers = new Map<string, { element: VfxElement; alpha: number; t0: number; tint?: string }>();
+  lingers = new Map<string, { element: VfxElement; alpha: number; t0: number; tint?: string; charged?: boolean }>();
+  /**
+   * Ground cracked under a charged ninja's steps (battle/charged.ts), by cell ("c,r"): when it
+   * cracks on the screen (as the walker passes it) and when it mends (it fades).
+   */
+  cracks = new Map<string, { t0: number; gone?: number }>();
+  /**
+   * Units on fire (Burning): his fire aura burns round them, faint, while it lasts, so water putting
+   * it out shows on the map ("el agua apaga el fuego"): unit → when it caught.
+   */
+  burns = new Map<string, { element: VfxElement; alpha: number; t0: number }>();
+  /** Flames put out (Burning ended): a puff of steam rises off the ninja (unit, when). */
+  douses: { unit: string; t0: number }[] = [];
   /** What a staged jutsu does later in its own time (piece P5: the next blow of a combo). */
   private timers: { at: number; run: (now: number) => void }[] = [];
   /** Casts played so far: part of the seed of their varied paths, so two casts never fly alike. */
@@ -454,16 +502,34 @@ export class Playback {
         severed: !!u.head?.severed,
         creature: v?.creature,
         fade: u.down === 'fled' ? v?.fade ?? { t0: now - 1000, dur: 1 } : undefined,
+        // A charged hand keeps its lightning (the activated Chidori).
+        held: u.charged && !u.down ? (v?.held?.charged ? v.held : chargedHeld(u, now)) : undefined,
+        imbue: u.imbued && !u.down ? u.imbued.element : undefined,
       };
       this.views.set(u.id, next);
       const mantle = JUTSU.wind_breeze_mantle;
-      if (u.cond.mantle && !u.down && mantle?.seq?.lingerAura) {
+      const charged = u.charged && !u.down ? JUTSU[u.charged.jutsu] : undefined;
+      if (charged) {
+        if (!this.lingers.get(u.id)?.charged) this.lingers.set(u.id, { element: charged.element, alpha: CHARGE_AURA, t0: now - 2000, tint: jutsuTint(charged, u), charged: true });
+      } else if (u.cond.mantle && !u.down && mantle?.seq?.lingerAura) {
         if (!this.lingers.has(u.id)) this.lingers.set(u.id, { element: mantle.element, alpha: mantle.seq.lingerAura, t0: now - 2000, tint: jutsuTint(mantle, u) });
       } else this.lingers.delete(u.id);
+      if (u.effects.some((e) => e.id === 'burning') && !u.down) {
+        if (!this.burns.has(u.id)) this.burns.set(u.id, { element: 'fire', alpha: BURN_ALPHA, t0: now - 1000 });
+      } else this.burns.delete(u.id);
     }
+    // The cracked ground as the state has it: new cells show at once, mended ones fade.
+    const cracked = state.cracks ?? {};
+    for (const k of Object.keys(cracked)) if (!this.cracks.has(k) || this.cracks.get(k)!.gone !== undefined) this.cracks.set(k, { t0: now - 1000 });
+    for (const [k, c] of this.cracks) if (!(k in cracked) && c.gone === undefined) c.gone = now;
     if (state.phase === 'combat') {
       this.turnUnit = state.order[state.turn];
       this.round = state.round;
+    }
+    // Ground that is gone from the state needs no start time any more.
+    for (const kind of ['wet', 'steam'] as const) {
+      const have = state[kind] ?? {};
+      for (const k of this.groundBorn[kind].keys()) if (!(k in have)) this.groundBorn[kind].delete(k);
     }
   }
 
@@ -636,10 +702,13 @@ export class Playback {
     this.impacts = this.impacts.filter((c) => now < c.t0 + (IMPACT.number + IMPACT.numberLife) / this.speed);
     this.floaters = this.floaters.filter((f) => now < f.t0 + f.dur);
     this.zoneGone = this.zoneGone.filter((z) => now < z.t0 + 1000 / this.speed);
+    for (const [k, c] of this.cracks) if (c.gone !== undefined && now > c.gone + CRACK_FADE / this.speed) this.cracks.delete(k);
+    this.groundGone = this.groundGone.filter((g) => now < g.t0 + (g.blown ? BLOW_MS : GROUND_FADE) / this.speed);
     this.fx = this.fx.filter((f) => now < f.t0 + f.dur);
     this.banners = this.banners.filter((b) => now < b.t0 + b.dur);
     this.fallen = this.fallen.filter((f) => now < f.t0 + FALL_MS / this.speed);
     this.screenBlood = this.screenBlood.filter((b) => now < b.t0 + (SCREEN_MS + 300) / this.speed);
+    this.douses = this.douses.filter((d) => now < d.t0 + DOUSE_MS / this.speed);
     // The last jutsu's effects play out whole first (the movement overlay and the next order wait for them).
     if (!this.settling || this.queue.length || this.timers.length || now < this.busyUntil || now < this.lingerUntil) return false;
     for (const v of this.views.values()) if (v.walk || v.phase || v.warp || (v.poseUntil && now < v.poseUntil)) return false;
@@ -683,6 +752,26 @@ export class Playback {
   goneWalls(): Wall[] {
     const out: Wall[] = [];
     for (const e of this.queue) if (e.t === 'wall' && !e.on) out.push(e.wall);
+    return out;
+  }
+
+  /**
+   * Ground cells whose event is still to play: the ones coming (`on`, not shown yet unless the
+   * wave already timed them) and the ones going (still shown).
+   */
+  groundQueued(kind: 'wet' | 'steam', on: boolean): Set<string> {
+    const out = new Set<string>();
+    for (const e of this.queue) if (e.t === 'ground' && e.kind === kind && e.on === on) for (const k of e.cells) out.add(k);
+    return out;
+  }
+
+  /**
+   * Props burnt, cut or blown up by events still to play: they still stand until their moment comes
+   * (a bush burns as the fireball lands, not as it is cast).
+   */
+  propsQueued(): Set<number> {
+    const out = new Set<number>();
+    for (const e of this.queue) if (e.t === 'prop') out.add(e.prop);
     return out;
   }
 
@@ -942,7 +1031,10 @@ export class Playback {
       const cone = ev.shape;
       const run = seq.wave.ms;
       // The water stays a moment at the end of its run (WAVE_HOLD), while the last ones are swept.
-      this.fx.push({ ...base, kind: 'wave', from: cone.origin, to: ev.at, area: cone, t0: at(gather), dur: run + WAVE_HOLD, rows: seq.wave.rows });
+      this.fx.push({ ...base, kind: 'wave', from: cone.origin, to: ev.at, area: cone, t0: at(gather), dur: run + WAVE_HOLD, rows: seq.wave.rows, ...(seq.wave.dragon ? { tideS: true } : {}) });
+      // The ground it soaks darkens as the crest goes over each cell (its event plays later).
+      const soaked = this.queue.find((e) => e.t === 'ground' && e.kind === 'wet' && e.on && e.by === ev.unit);
+      if (soaked && soaked.t === 'ground') for (const k of soaked.cells) this.groundBorn.wet.set(k, at(gather + run * WAVE_CREST(dist(cone.origin, keyCenter(k)), cone.length)));
       const hitMs = impactMs(el, 'hit', 900);
       // Nearest first: each one's save, damage, sweep and fall play as the crest goes over them.
       const crest = (id: string) => gather + run * WAVE_CREST(dist(cone.origin, this.posOf(id, now)), cone.length);
@@ -1525,7 +1617,7 @@ export class Playback {
     // Jutsu play at a pace the player can follow: a beat for the cast, a flight you can watch
     // (beasts slower still), and the impact plays out whole before the next turn starts.
     const castDelay = head ? 150 : 560;
-    // A dream's drift flies slower (the Mirage).
+    // A dream's drift flies slower (the Mind Twist).
     const fly = (spec?.vfx === 'beast' ? Math.max(900, dist(from, ev.at) * 150) : Math.max(500, dist(from, ev.at) * 115)) * (spec?.seq?.slowFlight ?? 1);
     const linger = (ms: number) => (this.lingerUntil = Math.max(this.lingerUntil, t1 + ms / this.speed));
     h.sound('jutsu', el);
@@ -1727,6 +1819,19 @@ export class Playback {
         } else {
           v.pose = pose;
           v.poseT0 = now;
+        }
+        // The ground cracking under a charged hand's steps: each crack as the walker gets there.
+        const cr = this.queue[0];
+        if (cr?.t === 'cracks' && cr.unit === ev.unit && cr.on) {
+          let along = 0;
+          let prevP = start;
+          const when = new Map<string, number>();
+          for (const p of ev.path) {
+            along += dist(prevP, p);
+            prevP = p;
+            when.set(crackKey(cellOf(p)), v.walk.t0 + ((along / speed) * 1000) / this.speed);
+          }
+          for (const k of cr.cells) this.cracks.set(k, { t0: when.get(k) ?? now });
         }
         h.sound('step');
         if (ev.unit === this.turnUnit || state.phase === 'stealth') h.focus(ev.unit);
@@ -1962,6 +2067,11 @@ export class Playback {
       case 'effect': {
         // The cut has left Bleeding: drops splash onto the screen, on the side the cut went.
         if (bleedingStarts(ev)) this.screenBlood.push({ t0: now, side: this.cutSide, seed: [...ev.unit].reduce((n, c) => n + c.charCodeAt(0), this.round) });
+        // Flames catch, or go out with a puff of steam.
+        if (ev.effect === 'burning') {
+          if (ev.on) this.burns.set(ev.unit, { element: 'fire', alpha: BURN_ALPHA, t0: now });
+          else if (this.burns.delete(ev.unit)) this.douses.push({ unit: ev.unit, t0: now });
+        }
         if (label) this.float(label, ev.on ? '#e879f9' : '#a1a1aa', this.posOf(ev.unit, now), now, { rise: 124 });
         return 0;
       }
@@ -2029,11 +2139,82 @@ export class Playback {
         h.shake(3);
         return 300;
       }
+      case 'charged': {
+        // A hand charged (the activated Chidori): his lightning in the hand, the element's aura round
+        // the ninja and its sparks crackling; or the charge ends (a blow that struck lets its own
+        // thrust end the lightning).
+        const v = this.view(ev.unit);
+        const u = state.units[ev.unit];
+        const spec = JUTSU[ev.jutsu];
+        if (!v || !spec) return 0;
+        if (ev.on) {
+          const tint = u ? jutsuTint(spec, u) : undefined;
+          this.setPose(v, 'cast', now, 520);
+          v.castEnhanced = !!ev.enhanced;
+          v.held = chargedHeld(u, now, ev.jutsu);
+          this.lingers.set(ev.unit, { element: spec.element, alpha: CHARGE_AURA, t0: now, tint, charged: true });
+          this.fx.push({ kind: 'aura', element: spec.element, from: v.pos, to: v.pos, t0: now, dur: 700, unit: ev.unit, tint, enhanced: ev.enhanced });
+          h.sound('jutsu', spec.element);
+          if (label) this.float(label, '#fde68a', v.pos, now, { rise: 128, dur: 1200 });
+          return 560;
+        }
+        if (this.lingers.get(ev.unit)?.charged) this.lingers.delete(ev.unit);
+        if (ev.end === 'struck') return 0;
+        if (v.held?.charged) v.held = undefined;
+        this.fx.push({ kind: 'smoke', element: 'chakra', from: v.pos, to: v.pos, t0: now, dur: 420 });
+        return 200;
+      }
+      case 'imbue': {
+        // The element goes onto the weapon (Weapon Element Enhancement): raised in the cast pose, the
+        // element's aura round the ninja a moment; or it leaves the weapon in a puff.
+        const v = this.view(ev.unit);
+        const u = state.units[ev.unit];
+        if (!v) return 0;
+        const el = ev.element.toLowerCase() as VfxElement;
+        if (ev.on) {
+          v.imbue = ev.element;
+          this.setPose(v, 'cast', now, 520);
+          v.castEnhanced = false;
+          const tint = ev.element === 'Earth' || !u ? undefined : unitTint(u);
+          this.fx.push({ kind: 'aura', element: el, from: v.pos, to: v.pos, t0: now, dur: 650, unit: ev.unit, tint });
+          h.sound('jutsu', el);
+          if (label) this.float(label, '#fde68a', v.pos, now, { rise: 128, dur: 1100 });
+          return 520;
+        }
+        v.imbue = undefined;
+        this.fx.push({ kind: 'smoke', element: 'chakra', from: v.pos, to: v.pos, t0: now, dur: 380 });
+        return 150;
+      }
+      case 'cracks':
+        // Cracks not timed with a walk show now; mended ones fade.
+        for (const k of ev.cells) {
+          const c = this.cracks.get(k);
+          if (ev.on && !c) this.cracks.set(k, { t0: now });
+          else if (!ev.on && c) c.gone = now;
+        }
+        return 0;
       case 'zone':
         // A gale starts turning (it rises out of the ground), or dies down (it fades).
         if (ev.on) this.zoneBorn.set(ev.zone.id, now);
         else this.zoneGone.push({ zone: ev.zone, t0: now });
         return 0;
+      case 'ground': {
+        // Wet ground darkens in (where a wave's crest timed it, as it goes over), steam rises; or they
+        // dry and thin away; steam the wind carries off drifts away from it as it goes (a beat to see it).
+        const born = this.groundBorn[ev.kind];
+        if (ev.on) {
+          for (const k of ev.cells) if (!born.has(k)) born.set(k, now);
+          return ev.kind === 'steam' ? 450 : 0;
+        }
+        for (const k of ev.cells) born.delete(k);
+        this.groundGone.push({ kind: ev.kind, cells: ev.cells, t0: now, ...(ev.blown ? { blown: ev.blown } : {}) });
+        return ev.blown ? 420 : 0;
+      }
+      case 'conduct':
+        // The lightning runs out across the wet patch from where it struck, in its caster's colour.
+        this.fx.push({ kind: 'conduct', element: 'lightning', from: ev.at, to: ev.at, cells: ev.cells, t0: now, dur: CONDUCT_MS, tint: unitTint(ev.source ? state.units[ev.source] : undefined) });
+        h.sound('hit');
+        return 420;
       case 'wallHit':
         this.float(`-${ev.amount}`, '#cbd5e1', ev.at, now, { rise: 70 });
         this.fx.push({ kind: 'burst', element: 'earth', from: ev.at, to: ev.at, t0: now, dur: 400, lift: [40, 40] });

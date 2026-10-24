@@ -104,7 +104,7 @@ describe('the Cazador 2', () => {
   });
 
   it('draws every pose on every body', () => {
-    for (const body of ['male', 'bulky', 'slender', 'female'] as BodyType[]) {
+    for (const body of ['male', 'bulky', 'female'] as BodyType[]) {
       for (const pose of POSES) {
         const f = renderSprite(cazador2(body), pose, 0);
         let n = 0;
@@ -160,7 +160,7 @@ describe('the Cazador 2', () => {
 
   it('keeps the forehead between her strands on any face', () => {
     // (The slender body's face anchor at rest is the female one's.)
-    for (const body of ['female', 'slender'] as BodyType[]) {
+    for (const body of ['female'] as BodyType[]) {
       const l = cazador2(body);
       l.faceShape = 'tapered';
       l.eyeShape = 'sharp';

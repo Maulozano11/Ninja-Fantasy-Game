@@ -422,7 +422,10 @@ export function renderSprite(
   const hisFrame = wearsHisFigure(look) && !!paintedFrame(rig.pose, rig.frame);
   // (a pocket he marked to stay open on his standard characters stays: keptFills.ts LEFT_OPEN)
   const who = pose === 'idle' || hisFrame ? null : standardOf(look);
-  if (pose !== 'idle' && !hisFrame) closePinholes(rgba, part, top, (i) => top[i] === FX, lineOf, (px) => !!who && leftOpen(`${who}@${look.body}`, pose, frame, px));
+  // (on Saya the pockets he saw filled and left are left to the mend below, which fills them as on the sheets he
+  // approved: "aprovados 1 y 2", Ataque 3 "despues")
+  const keepHole = (px: number[]) => !!who && (leftOpen(`${who}@${look.body}`, pose, frame, px) || (who === 'saya' && keptFill(`${who}@${look.body}`, pose, frame, px)));
+  if (pose !== 'idle' && !hisFrame) closePinholes(rgba, part, top, (i) => top[i] === FX, lineOf, keepHole);
   // The owner's standard characters (2026-10-23: "quiero que arregles solo los de la calidad standard"): off
   // his pictures, the cracks and light edge pixels their moved pieces open are closed; a pocket only where he saw
   // it filled and left it (glitches.ts, keptFills.ts).

@@ -8,6 +8,7 @@ import { CAPE_ITEMS } from './items/capes';
 import { BOTTOM_ITEMS, HAND_ITEMS, TOP_ITEMS, WAIST_ITEMS } from './items/clothes';
 import { FEET_ITEMS } from './items/feet';
 import { HAIR_ITEMS } from './items/hair';
+import { HOPLITE_ITEMS } from './items/hoplite';
 import type { BodyType, SlotId } from './types';
 
 export const ALL_ITEMS: ItemDef[] = [
@@ -23,6 +24,8 @@ export const ALL_ITEMS: ItemDef[] = [
   ...CAPE_ITEMS,
   ...HELD_ITEMS,
   ...ACCESSORY_ITEMS,
+  // the owner's bronze warrior, part by part (hair, diadem, cuirass, pauldrons, cape, skirt, bracers, greaves)
+  ...HOPLITE_ITEMS,
 ];
 
 const byId = new Map(ALL_ITEMS.map((d) => [d.id, d]));

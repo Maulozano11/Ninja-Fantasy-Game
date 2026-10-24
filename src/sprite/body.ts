@@ -21,6 +21,7 @@ import { type PaintedPiece, segAngle, stampPiece } from './painted';
 import { rotateTemplate, stampTemplate, type TemplatePalette } from './rotsprite';
 import { ROMAN_EYE_COLORS, ROMAN_EYES, ROMAN_IRIS } from './romanEyeArt';
 import { ROMAN_HEAD, ROMAN_SKIN } from './romanHeadArt';
+import { HOPLITE_EYE_AT, HOPLITE_EYE_COLORS, HOPLITE_EYES, HOPLITE_HEAD, HOPLITE_HEAD_KIND, HOPLITE_IRIS, HOPLITE_SKIN } from './hopliteHeadArt';
 import { drawRomanNeck } from './romanNeck';
 import { ballShade, capsule, ellipse, F_NO_OUTLINE, F_NO_TEXTURE, GRID, Layer, PartId, Pen, poly, RES, seam, v, Vec } from './raster';
 import { type EyeShape, isFemaleBody, type FaceShape } from './types';
@@ -514,6 +515,9 @@ const PAINTED_HEADS: Partial<Record<FaceShape, PaintedHead>> = {
   valiant: { head: VALIANT_HEAD, skin: VALIANT_SKIN, ex: 1, fx: 8, mouth: true, tint: (hex, from, to) => skinTone(hex, to, from) },
   // His Roman face (src/sprite/romanHeadArt.ts): its eyes where his Aiden head has them, his own mouth.
   roman: { head: ROMAN_HEAD, skin: ROMAN_SKIN, ex: 1, fx: 8, mouth: false, tint: retintSkinLifted },
+  // His bronze warrior's face (src/sprite/hopliteHeadArt.ts), brought down to our scale: his eyes and mouth
+  // in it; his skin follows the character's as his skin on the male limbs does, his line and near-blacks kept.
+  hoplite: { head: HOPLITE_HEAD, skin: HOPLITE_SKIN, ex: HOPLITE_EYE_AT.ex, fx: HOPLITE_EYE_AT.fx, mouth: false, tint: (hex, from, to) => (HOPLITE_HEAD_KIND[hex] === 'skin' ? retintSkinLifted(hex, from, to) : hex) },
 };
 const paintedHead = (g: DrawCtx): PaintedHead | undefined => (g.look.faceShape ? PAINTED_HEADS[g.look.faceShape] : undefined);
 
@@ -529,6 +533,7 @@ interface PaintedEyes {
 const PAINTED_EYES: Partial<Record<EyeShape, PaintedEyes>> = {
   valiant: { eyes: VALIANT_EYES, colors: VALIANT_EYE_COLORS, iris: VALIANT_IRIS, brow: VALIANT_BROW_HAIR },
   roman: { eyes: ROMAN_EYES, colors: ROMAN_EYE_COLORS, iris: ROMAN_IRIS },
+  hoplite: { eyes: HOPLITE_EYES, colors: HOPLITE_EYE_COLORS, iris: HOPLITE_IRIS },
 };
 
 function drawHead(g: DrawCtx): void {
@@ -648,7 +653,7 @@ function skinTone(hex: string, skin: string, base = VALIANT_SKIN): string {
  * square: the reference's original strong jaw, with a flat jaw line.
  * (valiant, roman and founder, the owner's heads, are his pixels whole: see drawPaintedHead, drawFounderHead.)
  */
-const FACE_LEFT: Record<Exclude<FaceShape, 'valiant' | 'founder' | 'fine' | 'roman'>, string[]> = {
+const FACE_LEFT: Record<Exclude<FaceShape, 'valiant' | 'founder' | 'fine' | 'roman' | 'hoplite'>, string[]> = {
   tapered: ['osbbbbb', 'ossbbbb', '.osbbbb', '..osbbb', '...osbb', '....osb', '.....os', '......o', '.......', '.......'],
   soft: ['osbbbbb', 'ossbbbb', 'ossbbbb', '.osbbbb', '..osbbb', '...osbb', '....osb', '.....oo', '.......', '.......'],
   square: ['osbbbbb', 'ossbbbb', 'osDsbbb', 'ossbbbb', '.osbbbs', '..osbbs', '...osbs', '....ooo', '.......', '.......'],
@@ -657,7 +662,7 @@ const FACE_LEFT: Record<Exclude<FaceShape, 'valiant' | 'founder' | 'fine' | 'rom
 const faceLeft = (g: DrawCtx): string[] => {
   const s = g.look.faceShape;
   // (Lyra's face, 'fine', has the default near cheek under her hair)
-  return (s && s !== 'valiant' && s !== 'founder' && s !== 'fine' && s !== 'roman' && FACE_LEFT[s]) || FACE_LEFT.tapered;
+  return (s && s !== 'valiant' && s !== 'founder' && s !== 'fine' && s !== 'roman' && s !== 'hoplite' && FACE_LEFT[s]) || FACE_LEFT.tapered;
 };
 
 const FACE_MAIN: Record<string, string[]> = {

@@ -1,0 +1,57 @@
+// The owner's bronze diadem (acc_hoplite_diadem).
+// Lifted from the owner's bronze warrior (docs/reference/bronze-warrior-owner-reference.jpg) and
+// brought down to our scale by tools/refs/bronze-diadem-from-ref.py (tools/refs/bronze_ref.py).
+// Generated: rerun the script to change it:
+//   python3 -I tools/refs/bronze-diadem-from-ref.py src/sprite/items/hopliteDiademArt.ts
+
+import type { PaintedPiece } from '../painted';
+
+/** His colours the colour slots recolour from (at these, every pixel is his). */
+export const HOPLITE_DIADEM_BRONZE = '#4e2e25';
+
+/** Where each piece lands in our male idle frame 0 (his joints), unturned: the fine pixel of its first row's first cell. */
+export const HOPLITE_DIADEM_REST: Record<string, [number, number]> = {
+  HOPLITE_DIADEM: [117, 132],
+};
+
+/** His diadem: stamped on the face anchor, over the hair. */
+export const HOPLITE_DIADEM: PaintedPiece = {
+  pivot: [6, 7],
+  angle: -90.00,
+  rows: [
+    '...aaa......aa...aaa.',
+    'aaabba.......a...aaa.',
+    '.aabba.....a.cdef...a',
+    '...aa......aahijkbaaa',
+    '...........aaaaa.aaaa',
+    '................la...',
+  ],
+  colors: {
+    a: '#010216',
+    b: '#442824',
+    c: '#ac7c48',
+    d: '#4e2e25',
+    e: '#2e1a1c',
+    f: '#8e5a36',
+    h: '#9c6842',
+    i: '#bc884e',
+    j: '#362222',
+    k: '#85583a',
+    l: '#a66e41',
+  },
+};
+
+/** What each colour of HOPLITE_DIADEM is (tools/refs/bronze_ref.py material): his line and near-blacks are never tinted. */
+export const HOPLITE_DIADEM_KIND: Record<string, 'line' | 'warm'> = {
+  '#010216': 'line',
+  '#2e1a1c': 'warm',
+  '#362222': 'warm',
+  '#442824': 'warm',
+  '#4e2e25': 'warm',
+  '#85583a': 'warm',
+  '#8e5a36': 'warm',
+  '#9c6842': 'warm',
+  '#a66e41': 'warm',
+  '#ac7c48': 'warm',
+  '#bc884e': 'warm',
+};

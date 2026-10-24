@@ -113,6 +113,21 @@ folders.
 
   (`vfx-fire-extract.py`, when present, is an older copy of it.)
 
+- `fire-hit-from-ref.py`: the fire hit (`vfx_fire/hit`) from his repaint of our 12-frame sheet of the
+  practice rogue hit by fire (`docs/reference/fire-hit-owner-reference.jpg`, 2026-10-24). His picture is our
+  4x sheet scaled by 2000/3072 (about 2.6 picture pixels a game pixel); each game pixel is read at its
+  block's centre, told from the rogue under it (our rogue from `tools/refs/data/fire-hit-base.png`, our
+  sheet scaled down as he scaled it, and his own retouched rogue where he left it), snapped to his palette
+  (40 of his colours, the means of his effect's pixels where nothing is under it), his smoke see-through
+  where it shows the rogue through. It checks the lift by putting it back over our rogue, and writes
+  `tools/world-sprites/vfx-fire-hit-refdata.ts`, which `vfx-a-fire-v3.ts` `hit()` turns into the sheet; the
+  frame is the box round his effect, the anchor where the old hit's was on the target. `--check DIR` writes
+  his picture, ours over the rogue and the effect alone at 4x. `fire-hit-base.ts` writes the base strip (the
+  cells he painted over, without the old hit); rerun it only if the rogue's art changes.
+
+      npx tsx tools/refs/fire-hit-base.ts tools/refs/data/fire-hit-base.png
+      python3 -I tools/refs/fire-hit-from-ref.py [--check DIR]
+
 - `water-from-ref.py`: the whole water set (`vfx_water_v3`) from his water sheet. It writes
   `tools/world-sprites/vfx-water-v3-refdata.ts`, which `vfx-water-v3.ts` animates. The third
   argument is our character at 1x (kit `characterRef()` saved as a PNG; it splits the aura into

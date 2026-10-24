@@ -27,9 +27,9 @@ import * as OPEN from './navyCoatOpenArt';
 import * as BUTTONED from './navyCoatButtonedArt';
 import * as DARK from './navyCoatDarkArt';
 import { EPAULET_CLOTH, EPAULET_F, EPAULET_GOLD, EPAULET_KIND, EPAULET_N } from './navyEpauletsArt';
-import { NAVY_GLOVE_F, NAVY_GLOVE_KIND, NAVY_GLOVE_LEATHER, NAVY_GLOVE_N } from './navyGlovesArt';
+import { NAVY_GLOVE_KIND, NAVY_GLOVE_LEATHER, NAVY_GLOVE_N } from './navyGlovesArt';
 import { NAVY_SASH, NAVY_SASH_CLOTH, NAVY_SASH_GOLD, NAVY_SASH_KIND } from './navySashArt';
-import { NAVY_SCABBARD, NAVY_SCABBARD_CLOTH, NAVY_SCABBARD_GOLD, NAVY_SCABBARD_KIND, NAVY_SCABBARD_STONE } from './navyScabbardArt';
+import { NAVY_SCABBARD, NAVY_SCABBARD_CLOTH, NAVY_SCABBARD_GOLD, NAVY_SCABBARD_KIND, NAVY_SCABBARD_REST, NAVY_SCABBARD_STONE } from './navyScabbardArt';
 import * as TROUSERS from './navyTrousersArt';
 import * as VEST_BROCADE from './navyVestBrocadeArt';
 import * as VEST_GREEN from './navyVestGreenArt';
@@ -124,24 +124,15 @@ function hisJoint(g: DrawCtx, w: number, H: Record<string, [number, number]>, s:
 }
 
 /**
- * His arm's joints (design units). At rest his own (HIGH.COAT_HIGH_JOINTS, where his picture has them, the same
- * in all five pictures); as our arm moves away from its rest, ours. Each of his joints keeps where he drew it
- * from ours at rest, turned with the torso, as much as the arm stands still.
+ * His arm's joints (design units): ours, the arm standing in our pose (the owner on his five outfits, 2026-10-24:
+ * "no dibujes la espada ni la mano en la espada ponlo en nuestra pose"); only his shoulder keeps where he drew it
+ * from ours (HIGH.COAT_HIGH_JOINTS), turned with the torso, so his sleeve and shoulder piece sit on his coat's
+ * shoulder in every pose.
  */
-export function navyArm(g: DrawCtx, s: Side): { shoulder: Vec; elbow: Vec; wrist: Vec; hand: Vec; still: number } {
+export function navyArm(g: DrawCtx, s: Side): { shoulder: Vec; elbow: Vec; wrist: Vec; hand: Vec } {
   const j = armJoints(g.rig, s);
-  const w = stillness(g, s, 'arm');
   const male = armJoints(idleRig('male'), s);
-  const H = HIGH.COAT_HIGH_JOINTS;
-  if (!w) return { ...j, still: 0 };
-  const blend = hisJoint(g, w, H, s);
-  return {
-    shoulder: blend(j.shoulder, 'shoulder', male.shoulder),
-    elbow: blend(j.elbow, 'elbow', male.elbow),
-    wrist: blend(j.wrist, 'wrist', male.wrist),
-    hand: blend(j.hand, 'hand', male.hand),
-    still: w,
-  };
+  return { ...j, shoulder: hisJoint(g, 1, HIGH.COAT_HIGH_JOINTS, s)(j.shoulder, 'shoulder', male.shoulder) };
 }
 
 /**
@@ -219,7 +210,9 @@ function drawCoat(g: DrawCtx, c: Coat, colors: string[]): void {
     armOff(g, s);
     const j = navyArm(g, s);
     const L = armDepth(s, 'cloth');
-    const [upper, lower] = c.sleeves[s];
+    // (his far arm was bent toward us, the fist on the hilt: hanging or moving in our pose it is his near arm,
+    // his straight sleeve and its cuff, turned about our far joints)
+    const [upper, lower] = c.sleeves.N;
     stampPiece(g, L, lower, j.elbow, segAngle(j.elbow, j.wrist), `forearm${s}` as PartId, tint);
     stampPiece(g, L, upper, j.shoulder, segAngle(j.shoulder, j.elbow), `upperArm${s}` as PartId, tint);
   }
@@ -285,10 +278,10 @@ function trousersOf(paint: string) {
   };
 }
 
-/** Whether the scabbard is in his near fist as he drew it: the near arm still and its fist closed, not busy. */
-export function scabbardInHand(g: DrawCtx): boolean {
-  return navyArm(g, 'N').still === 1 && !handsBusy(g) && !handsLimp(g) && ['fist', 'grip'].includes(handPose(g, 'N').kind);
-}
+/** The scabbard's throat in our male idle frame 0 (fine pixels): where he drew it, at the front of the near hip. */
+const NAVY_SCABBARD_THROAT: [number, number] = [NAVY_SCABBARD_REST.NAVY_SCABBARD[0] + NAVY_SCABBARD.pivot[0] + 0.5, NAVY_SCABBARD_REST.NAVY_SCABBARD[1] + NAVY_SCABBARD.pivot[1] + 0.5];
+/** How much more upright than he drew it the scabbard hangs (degrees): clear of the near fist at rest. */
+const HANG = -12;
 
 export const NAVY_ITEMS: ItemDef[] = [
   coatItem('top_navy_coat_high', "Officer's Coat (High Collar)", 'A long navy officer\'s coat: a high gold-trimmed collar lined in burgundy, gold frogging down the chest, gold-embroidered cuffs and long split tails with gold trim and burgundy lining. Wear it with the shoulder pieces as he drew it.', COATS.high),
@@ -377,17 +370,16 @@ export const NAVY_ITEMS: ItemDef[] = [
     colors: [col('main', 'Gloves', NAVY_GLOVE_LEATHER, 'leather')],
     bodies: [...MEN],
     draw: (g, [glove]) => {
-      // Closed, each hand is his fist (the far one on the sabre's hilt at rest, in front of it); open, pointing
-      // or signing, our hand in the glove's colour.
+      // Closed, each hand is his fist; open, pointing or signing, our hand in the glove's colour.
       const tint = navyColor(g, NAVY_GLOVE_KIND, { leather: [NAVY_GLOVE_LEATHER, glove] });
       for (const s of SIDES) {
         const j = navyArm(g, s);
         const kind = handPose(g, s).kind;
         if (kind === 'fist' || kind === 'grip') {
           partsOff(g, [armDepth(s, 'body')], [`hand${s}`] as PartId[]);
-          const p = arm(s, NAVY_GLOVE_N, NAVY_GLOVE_F);
-          const depth: Depth = s === 'F' && j.still === 1 ? 'farHand.front' : armDepth(s, 'cloth');
-          stampPiece(g, depth, p, j.wrist, segAngle(j.wrist, j.hand), `hand${s}` as PartId, tint);
+          // (his far fist held the hilt toward us: closed in our pose it is his near fist)
+          const p = NAVY_GLOVE_N;
+          stampPiece(g, armDepth(s, 'cloth'), p, j.wrist, segAngle(j.wrist, j.hand), `hand${s}` as PartId, tint);
         } else {
           handDraw(g, g.L(armDepth(s, 'cloth')), s, { mat: g.m(glove, 'leather'), part: `hand${s}` as PartId });
         }
@@ -412,19 +404,17 @@ export const NAVY_ITEMS: ItemDef[] = [
     id: 'acc_navy_scabbard',
     slot: 'accessory',
     name: 'Sabre Scabbard',
-    desc: 'A navy scabbard with gold fittings and a red stone at its throat, held in the near fist at rest, hung at the hip otherwise.',
+    desc: 'A navy scabbard with gold fittings and a red stone at its throat, hung at the near hip.',
     colors: [col('main', 'Scabbard', NAVY_SCABBARD_CLOTH, 'leather'), col('gold', 'Fittings', NAVY_SCABBARD_GOLD, 'metal'), col('stone', 'Stone', NAVY_SCABBARD_STONE, 'metal')],
     draw: (g, [main, gold, stone]) => {
       const tint = navyColor(g, NAVY_SCABBARD_KIND, { cloth: [NAVY_SCABBARD_CLOTH, main], gold: [NAVY_SCABBARD_GOLD, gold], stone: [NAVY_SCABBARD_STONE, stone] });
-      if (scabbardInHand(g)) {
-        // in his near fist as he drew it, behind the fist
-        stampPiece(g, 'nearArm.held', NAVY_SCABBARD, navyArm(g, 'N').hand, NAVY_SCABBARD.angle, 'held', tint);
-        return;
-      }
-      // hung at the near hip, its throat at the belt, pointing down and back
+      // Hung at the near hip, its throat at the belt where he drew it, pointing down and back at his angle there
+      // turned with the torso; behind the near arm (he drew it in his near fist; the owner, 2026-10-24: "no
+      // dibujes la espada ni la mano en la espada ponlo en nuestra pose").
       const r = g.rig;
-      const hip = add(r.pelvis, v(-1.2, 0.6));
-      stampPiece(g, 'skirt', NAVY_SCABBARD, hip, segAngle(r.pelvis, r.neck) + 90 + 48, 'pelvis', tint);
+      const t = segAngle(r.pelvis, r.neck) - segAngle(idleRig('male').pelvis, idleRig('male').neck);
+      const throat = add(r.pelvis, turn(sub(fine(NAVY_SCABBARD_THROAT), idleRig('male').pelvis), t));
+      stampPiece(g, 'nearArm.held', NAVY_SCABBARD, throat, NAVY_SCABBARD.angle + t + HANG, 'pelvis', tint);
     },
   },
 ];

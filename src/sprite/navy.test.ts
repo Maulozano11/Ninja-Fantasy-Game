@@ -6,7 +6,8 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { LEGENDARY_PRESETS } from '../data/shinobiData';
 import { getItem } from './catalog';
-import { renderSprite } from './compose';
+import { renderSprite, spriteLayers } from './compose';
+import { DEPTHS } from './ctx';
 import { dojutsuToEye, getAppearance } from './legacy';
 import { NAVY_REF } from './navyRefPixels';
 import { GRID } from './raster';
@@ -32,8 +33,24 @@ function outfit(pic: string): SpriteAppearance {
   return l;
 }
 
-/** The pixels of the frame that differ from his figure in picture `pic` (and any drawn outside it). */
-function differences(rgba: Uint8ClampedArray, pic: string): string[] {
+/** Pieces his arms are: they stand in our pose now, not where he drew them (letters of NAVY_REF.parts). */
+const ARM_PARTS = 'nvgac';
+
+/**
+ * The pixels of the frame that differ from his figure in picture `pic`, outside his arms: his arms stand in our
+ * pose (the owner, 2026-10-24: "no dibujes la espada ni la mano en la espada ponlo en nuestra pose"), so their
+ * pixels, and whatever the arms, the held weapon or the scabbard cover in front, are left out.
+ */
+function differences(look: SpriteAppearance, pic: string): string[] {
+  const f = renderSprite(look, 'idle', 0, dojutsuToEye(OFFICER.dojutsu));
+  const { layers } = spriteLayers(look, 'idle', 0);
+  const top = new Array<string>(GRID * GRID).fill('');
+  for (const d of DEPTHS) {
+    const L = layers.get(d);
+    if (!L?.used) continue;
+    for (let i = 0; i < GRID * GRID; i++) if (L.mat[i] >= 0) top[i] = d;
+  }
+  const arm = (i: number) => /Arm\.|farHand/.test(top[i]);
   const ref = NAVY_REF[pic];
   const out: string[] = [];
   const [ax, ay] = ref.at;
@@ -43,19 +60,19 @@ function differences(rgba: Uint8ClampedArray, pic: string): string[] {
       if (row[i] === '.') continue;
       const p = (ay + j) * GRID + ax + i;
       inRef.add(p);
+      if (ARM_PARTS.includes(ref.parts[j][i]) || arm(p)) continue;
       const want = ref.colors[row[i]];
-      if (!opaque(rgba, p) || hex(rgba, p) !== want) out.push(`${ax + i},${ay + j}: ${opaque(rgba, p) ? hex(rgba, p) : 'empty'} for ${want}`);
+      if (!opaque(f.rgba, p) || hex(f.rgba, p) !== want) out.push(`${ax + i},${ay + j}: ${opaque(f.rgba, p) ? hex(f.rgba, p) : 'empty'} for ${want}`);
     }
   });
-  for (let p = 0; p < GRID * GRID; p++) if (opaque(rgba, p) && !inRef.has(p)) out.push(`${p % GRID},${(p / GRID) | 0}: drawn outside his figure`);
+  for (let p = 0; p < GRID * GRID; p++) if (opaque(f.rgba, p) && !inRef.has(p) && !arm(p)) out.push(`${p % GRID},${(p / GRID) | 0}: drawn outside his figure`);
   return out;
 }
 
 describe("the owner's navy officer", () => {
   for (const pic of ['high', 'folded', 'open', 'buttoned', 'dark']) {
-    it(`at rest in his ${pic} outfit, every pixel of the male idle frame 0 is his (the cleaned reduction of his picture)`, () => {
-      const f = renderSprite(outfit(pic), 'idle', 0, dojutsuToEye(OFFICER.dojutsu));
-      assert.deepEqual(differences(f.rgba, pic).slice(0, 10), []);
+    it(`at rest in his ${pic} outfit, every pixel of the male idle frame 0 but his arms is his (the cleaned reduction of his picture)`, () => {
+      assert.deepEqual(differences(outfit(pic), pic).slice(0, 10), []);
     });
   }
 

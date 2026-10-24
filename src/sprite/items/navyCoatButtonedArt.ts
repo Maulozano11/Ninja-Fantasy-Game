@@ -5,7 +5,7 @@
 import type { PaintedPiece } from '../painted';
 
 /** His colours the colour slots recolour from (at these, every pixel is his). */
-export const COAT_BUTTONED_CLOTH = '#1d1d27';
+export const COAT_BUTTONED_CLOTH = '#161b2f';
 export const COAT_BUTTONED_GOLD = '#bc8e4c';
 
 /** What each of his colours is, as the script sorts them (tools/refs/navy_ref.py kind). */
@@ -69,8 +69,8 @@ export const COAT_BUTTONED_REST: Record<string, [number, number]> = {
   COAT_BUTTONED_BODY: [117, 142],
   COAT_BUTTONED_SLEEVE_N_UPPER: [109, 146],
   COAT_BUTTONED_SLEEVE_N_LOWER: [108, 162],
-  COAT_BUTTONED_SLEEVE_F_UPPER: [137, 157],
-  COAT_BUTTONED_SLEEVE_F_LOWER: [137, 160],
+  COAT_BUTTONED_SLEEVE_F_UPPER: [131, 148],
+  COAT_BUTTONED_SLEEVE_F_LOWER: [132, 157],
   COAT_BUTTONED_TAILS: [111, 167],
   COAT_BUTTONED_TAILS_BACK: [121, 195],
 };
@@ -181,7 +181,10 @@ export const COAT_BUTTONED_SLEEVE_N_UPPER: PaintedPiece = {
     'acddddca.',
     'acdddcca.',
     'acddcfa..',
-    '....dca..',
+    'hcd.dca..',
+    'hcdddh...',
+    'hcdddh...',
+    '....dh...',
   ],
   colors: {
     a: '#000116',
@@ -190,6 +193,7 @@ export const COAT_BUTTONED_SLEEVE_N_UPPER: PaintedPiece = {
     d: '#1e263b',
     e: '#161b2f',
     f: '#0f1427',
+    h: '#000316',
   },
 };
 
@@ -230,42 +234,59 @@ export const COAT_BUTTONED_SLEEVE_N_LOWER: PaintedPiece = {
 
 /** The far sleeve from the shoulder to the elbow, pivoted on his far shoulder at his angle. */
 export const COAT_BUTTONED_SLEEVE_F_UPPER: PaintedPiece = {
-  pivot: [-3, -6],
+  pivot: [3, 3],
   angle: 73.30,
   rows: [
-    '.a.',
-    '.ba',
-    'caa',
-    '.c.',
+    '...a.....',
+    '.aabaa...',
+    '.acbba...',
+    'acccbca..',
+    '.accbca..',
+    '.accbba..',
+    '.acccbca.',
+    '..accbca.',
+    '..accbca.',
+    '..accbbd.',
+    '..acccbcd',
+    '...abcbdd',
+    '...abcbb.',
+    '...acc.a.',
+    '....acca.',
+    '....acca.',
+    '....acc..',
   ],
   colors: {
-    a: '#000116',
-    b: '#090f1f',
-    c: '#1e263b',
+    a: '#000316',
+    b: '#1e263b',
+    c: '#090f1f',
+    d: '#000116',
   },
 };
 
 /** The far forearm and its cuff, pivoted on his far elbow at his angle. */
 export const COAT_BUTTONED_SLEEVE_F_LOWER: PaintedPiece = {
-  pivot: [0, 1],
+  pivot: [5, 4],
   angle: 38.66,
   rows: [
-    '..abb...',
-    'caaabbb.',
-    'cacbda..',
-    'ccbecdf.',
-    'bcbheedf',
-    '.bbihhef',
-    '..bbiihf',
-    '......f.',
+    '..aa.........',
+    '.bcaa........',
+    '.bbbca.......',
+    'abbbbc.cdd...',
+    '.aabbbcccddd.',
+    '..aabbcbdec..',
+    '...aabbdfbea.',
+    '.....dbdhffea',
+    '......ddihhfa',
+    '.......ddiiha',
+    '...........a.',
   ],
   colors: {
-    a: '#1e263b',
-    b: '#000116',
-    c: '#090f1f',
-    d: '#eac06e',
-    e: '#ab7a41',
-    f: '#000316',
+    a: '#000316',
+    b: '#090f1f',
+    c: '#1e263b',
+    d: '#000116',
+    e: '#eac06e',
+    f: '#ab7a41',
     h: '#9c6b3d',
     i: '#8c633e',
   },

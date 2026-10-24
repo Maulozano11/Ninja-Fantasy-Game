@@ -48,9 +48,9 @@ export const NAVY_SCABBARD_REST: Record<string, [number, number]> = {
   NAVY_SCABBARD: [97, 168],
 };
 
-/** The scabbard, its throat, gold fittings and chape. Its pivot is the cell in his near fist, at the scabbard's angle (from the throat to the chape). */
+/** The scabbard, its throat, gold fittings and chape. Its pivot is the cell at its throat, at the scabbard's angle (from the throat to the chape). */
 export const NAVY_SCABBARD: PaintedPiece = {
-  pivot: [15, 9],
+  pivot: [22, 1],
   angle: 126.94,
   rows: [
     '.......................a.',

@@ -1437,7 +1437,12 @@ def _pieces(pic):
             under = ~m & (ppm == n) & np.isin(pm, ('epaulet_n', 'epaulet_f'))
             c[under] = pg[under]
             m = m | under
-        el, wr = joint('elbow' + s), joint('wrist' + s)
+        sh, el, wr = joint('shoulder' + s), joint('elbow' + s), joint('wrist' + s)
+        # (the whole upper arm too: his far upper arm is mostly behind his chest, and shows when the arm moves)
+        upper = band(sh, el, SLEEVE_HALF[s] + 0.4) & ~m & front_of(pm, n)
+        cu = continue_along(c, m & ~isline, upper, (el[0] - sh[0], el[1] - sh[1]), 1, edge4(band(sh, el, SLEEVE_HALF[s] + 0.4) | m) & upper, line)
+        c[upper] = cu[upper]
+        m = m | upper
         arm = band(el, wr, SLEEVE_HALF[s])
         hid = arm & ~m & np.isin(pm, ('glove_n', 'glove_f', 'hilt', 'scabbard'))
         edge = edge4(arm | m) & hid
@@ -1779,6 +1784,47 @@ def limb_pieces(prefix, pcs, name, s, docs):
     return [(prefix + '_UPPER', up, c, docs[0], A, angle_of(A, J)), (prefix + '_LOWER', lo, c, docs[1], J, angle_of(J, B))]
 
 
+def _run_on(m, c, start, u, extra, line):
+    """The piece (m, c) run on past `start` along `u` by `extra` cells: his cloth continued along the limb across
+    the piece's width there, his line on its sides."""
+    if extra <= 0.5:
+        return m, c
+    H, W = m.shape
+    ys, xs = np.mgrid[0:H, 0:W]
+    px, py = xs + 0.5, ys + 0.5
+    # the piece's half width where it is cut: its cells within a cell of the cut, across the limb
+    along = (px - start[0]) * u[0] + (py - start[1]) * u[1]
+    across = (px - start[0]) * -u[1] + (py - start[1]) * u[0]
+    near = m & (np.abs(along) <= 1.2)
+    if not near.any():
+        return m, c
+    lo, hi = across[near].min(), across[near].max()
+    run = (along > 0) & (along <= extra + 0.5) & (across >= lo - 0.01) & (across <= hi + 0.01) & ~m
+    edge = run & ((across <= lo + 0.99) | (across >= hi - 0.99))
+    plain = m & np.isin(np.array([[kind(c[y, x]) for x in range(W)] for y in range(H)]), ('dark', 'grey', 'brown', 'wine', 'green'))
+    c = continue_along(c, plain, run, (u[0], u[1]), 1, edge, line)
+    return m | run, c
+
+
+def sleeve_pieces(prefix, pcs, name, s, docs):
+    """A sleeve cut at his elbow (as limb_pieces), each half run on to OUR arm's length: his sleeves rest on our
+    arms (the owner on the five outfits, 2026-10-24: "ponlo en nuestra pose"). The upper arm, pivoted on his
+    shoulder, runs on past his elbow to as far as our elbow is from it; the forearm, pivoted on his elbow, runs
+    on back up past it as far as our forearm is longer than his (his far arm was bent toward us, foreshortened),
+    his cuff kept at the wrist. His cloth is continued along the arm there, his line on its sides."""
+    m, c = pcs[name]
+    A, J, B = joint('shoulder' + s), joint('elbow' + s), joint('wrist' + s)
+    up, lo = split(m, A, J, B)
+    line = his_line()
+    u = np.array([J[0] - A[0], J[1] - A[1]]); Lh = float(np.hypot(*u)); u = u / Lh
+    ours = float(np.hypot(JOINTS['elbow' + s][0] - A[0], JOINTS['elbow' + s][1] - A[1]))
+    um, uc = _run_on(up, c, J, u, ours - Lh, line)
+    v = np.array([B[0] - J[0], B[1] - J[1]]); Lv = float(np.hypot(*v)); v = v / Lv
+    ours2 = float(np.hypot(JOINTS['wrist' + s][0] - JOINTS['elbow' + s][0], JOINTS['wrist' + s][1] - JOINTS['elbow' + s][1]))
+    lm, lc = _run_on(lo, c, J, -v, ours2 - Lv, line)
+    return [(prefix + '_UPPER', um, uc, docs[0], A, angle_of(A, J)), (prefix + '_LOWER', lm, lc, docs[1], J, angle_of(J, B))]
+
+
 COAT_KINDS = {'gold': 'gold', 'white': 'gold', 'wine': 'lining', 'red': 'accent', 'cream': 'gold'}
 
 
@@ -1799,7 +1845,7 @@ def coat_module(script, pic, out_ts, prefix, what, study_dir=None):
     consts = [torso_piece(prefix + '_BODY', pcs, 'coat', "The coat's body: the collar, the chest and its gold, down under the belt. Its pivot is the cell on the neck joint, at the torso's angle.")]
     for s in ('N', 'F'):
         side = 'near' if s == 'N' else 'far'
-        consts += limb_pieces(f'{prefix}_SLEEVE_{s}', pcs, 'sleeve_' + s.lower(), s,
+        consts += sleeve_pieces(f'{prefix}_SLEEVE_{s}', pcs, 'sleeve_' + s.lower(), s,
                               (f'The {side} sleeve from the shoulder to the elbow, pivoted on his {side} shoulder at his angle.',
                                f'The {side} forearm and its cuff, pivoted on his {side} elbow at his angle.'))
     consts.append(torso_piece(prefix + '_TAILS', pcs, 'tails', "The coat's tails below the belt, in front of the legs. Its pivot is the cell on the pelvis joint, at the torso's angle.", 'pelvis'))

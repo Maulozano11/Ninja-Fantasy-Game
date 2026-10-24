@@ -5,6 +5,7 @@
 import type { DrawCtx } from './ctx';
 import { FLAME_LONGSWORD } from './items/flameSwordArt';
 import { dawnStaffInFarHand } from './items/aureliaStaff';
+import { NAVY_SABRE } from './items/navySabreArt';
 import { ICE_SWORD } from './items/iceSwordArt';
 import { KATANA_V2 } from './items/katanaV2Art';
 import { NIGHT_GLOVE_N } from './items/nightBootsGlovesArt';
@@ -78,7 +79,7 @@ function poseSwordAngle(g: DrawCtx): number {
       // Matches the reference: blade hangs across the legs at about 50 degrees. The owner's flame
       // longsword, ice crystal sword and Katana v2 hang at the angles he painted them (35, 35, 37), so at
       // rest they are every pixel his.
-      return g.has('held', 'held_flame_sword') ? FLAME_LONGSWORD.angle : g.has('held', 'held_ice_crystal') ? ICE_SWORD.angle : g.has('held', 'held_katana_v2') ? KATANA_V2.angle : 52;
+      return g.has('held', 'held_flame_sword') ? FLAME_LONGSWORD.angle : g.has('held', 'held_ice_crystal') ? ICE_SWORD.angle : g.has('held', 'held_katana_v2') ? KATANA_V2.angle : g.has('held', 'held_navy_sabre') ? NAVY_SABRE.angle : 52;
   }
 }
 

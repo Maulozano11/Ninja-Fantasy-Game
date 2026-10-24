@@ -4,11 +4,13 @@
 
 import type { DrawCtx } from './ctx';
 import { FLAME_LONGSWORD } from './items/flameSwordArt';
+import { dawnStaffInFarHand } from './items/aureliaStaff';
 import { ICE_SWORD } from './items/iceSwordArt';
 import { add, norm, RES, scale, sub, Vec } from './raster';
 import { LYRA_RAPIER } from './items/lyraSwordArt';
 import { drawRig, THROW_RELEASE_FRAME } from './rig';
-import type { BodyType } from './types';
+import type { Rig } from './rig';
+import type { BodyType, SpriteAppearance } from './types';
 
 /**
  * Weapon angles through 'throw' (rig.ts THROW): coiled with the weapon drawn back low behind the
@@ -144,12 +146,21 @@ export const isWeapon = (held: string | undefined): boolean => !!held && WEAPONS
 export const throwsKunai = (g: DrawCtx): boolean =>
   !g.rig.released && !handsLimp(g) && (g.rig.pose === 'throw' ? !!g.look.stowed || !isWeapon(g.look.slots.held?.id) : !!g.look.pouchKunai && !BUSY.has(g.rig.pose));
 
+/**
+ * The look's weapon is in the hand in this frame of the rig (drawn there, not stowed, not dropped,
+ * not thrown): where a weapon's element is drawn on it (sprite/imbue.ts).
+ */
+export const weaponInHand = (look: SpriteAppearance, rig: Rig): boolean =>
+  isWeapon(look.slots.held?.id) && !look.stowed && !BUSY.has(rig.pose) && rig.pose !== 'downed' && !rig.released;
+
 /** Angle of the handle the near hand wraps, or null when it holds nothing with a handle. */
 export function gripAngle(g: DrawCtx): number | null {
   if (throwsKunai(g)) return swordAngle(g);
   if (handsBusy(g) || handsLimp(g) || handsReleased(g)) return null;
   if (g.has('held', 'held_gilded_rapier')) return swordAngle(g);
   if (g.has('held', 'held_naginata')) return poleAngle(g);
+  // Aurelia's staff is in her far fist at rest (her near hand is empty), in the near one like a pole otherwise.
+  if (g.has('held', 'held_dawn_staff')) return dawnStaffInFarHand(g) ? null : poleAngle(g);
   if (g.has('held', 'held_katana') || g.has('held', 'held_crystal') || g.has('held', 'held_ice_crystal') || g.has('held', 'held_flame_sword') || g.has('held', 'held_kunai')) return swordAngle(g);
   return null;
 }
@@ -193,7 +204,7 @@ export function throwRelease(body: BodyType, held?: string): ThrowRelease {
   const before = drawRig(body, 'throw', THROW_RELEASE_FRAME - 1);
   const fist = (r: typeof at): Vec => add(r.handN, scale(norm(sub(r.handN, r.wristN)), 0.9));
   const d = norm(sub(at.handN, at.wristN));
-  const pole = held === 'held_naginata';
+  const pole = held === 'held_naginata' || held === 'held_dawn_staff';
   // The flame longsword is held by its own grip at the hand joint (items/accessories.ts), the others at the fist's middle.
   const grip = HAND_JOINT_SWORDS.has(held ?? '') ? before.handN : fist(before);
   return {

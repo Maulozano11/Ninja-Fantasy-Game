@@ -156,6 +156,8 @@ export function makeClone(s: BattleState, owner: Unit, n: number, enhanced: bool
   c.clone = { of: owner.id, turns: CLONE.turns, enhanced, mode };
   c.clonePoints = undefined;
   c.disguise = undefined;
+  // The element on the summoner's weapon stays on his (a copy's blow is the owner's plain 1d6).
+  c.imbued = undefined;
   c.hp = 1;
   c.maxHp = 1;
   c.tempHp = 0;

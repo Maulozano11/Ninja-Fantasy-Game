@@ -2,9 +2,9 @@
 // Support). It only ever sends ordinary actions through the engine, one at a time, so an AI turn
 // replays and travels over the network like a player's.
 
-import { effectMods } from '../rules/effects';
+import { effectMods, hasEffect } from '../rules/effects';
 import type { Action, BattleEvent, BattleState, Cell, Intent, Pt, Unit } from './types';
-import { cellCenter, cellOf, coverBetween, dist, fullCoverBetween, gridFor, idx, lineOfSight, sameCell, segmentsCross, steamAt } from './map';
+import { cellCenter, cellOf, coverBetween, dampAt, dist, fullCoverBetween, gridFor, idx, lineOfSight, sameCell, segmentsCross, steamAt } from './map';
 import { canStop, reachable } from './nav';
 import { JUTSU, MIN_AIM } from './jutsu';
 import { KUNAI_LONG } from './units';
@@ -13,6 +13,7 @@ import { current } from './turns';
 import { areaValue, bestCell, goalOf, headOptions, ninjaOptions, offensive, planIntent, reachTo, standingUnit, stepToward, swapValue, visibleFoes, WALL, wallCover } from './intent';
 import type { Goal } from './intent';
 import { breakable, MAX_STRUCTURES, ownStructures, structureAt, structureAttack, structureBlocker, structureDist } from './structures';
+import { IMBUE_COST, imbueBlocker, type ImbueElement, unitImbueElements, WATER_REACH, WEAPON_ELEMENT } from './imbue';
 import { COMMAND, commandRefused, edgeFoe, ownNodes, submissionRefused, SWAP, WARP, warpBlocker, warpLanding } from './clans';
 import { CLONE, cloneJutsuBlocker, clonesOf, disguisedNow, figuresOf, summonSpots } from './clones';
 import { seesThrough } from './combat';
@@ -206,11 +207,12 @@ function fallback(s: BattleState, u: Unit): Action | null {
 
 /**
  * The bonus action, before the plan: a ninja who knows the clone jutsu summons its clones for a fight
- * in melee; a Ryusei warps to a Node beside a foe its feet can't reach this turn.
+ * in melee (or shuffles with them when threatened); a Ryusei warps to a Node beside a foe its feet
+ * can't reach this turn; a Bukijutsu Master about to strike puts its element on its weapon.
  */
 function bonusBefore(s: BattleState, u: Unit, i: Intent): Action | null {
   if (!u.turn.bonus) return null;
-  return summonFirst(s, u, i) ?? shuffleThreatened(s, u) ?? ryuseiWarp(s, u, i);
+  return summonFirst(s, u, i) ?? shuffleThreatened(s, u) ?? ryuseiWarp(s, u, i) ?? imbueFirst(s, u, i);
 }
 
 /** How near (m) a foe makes a ninja with clones feel threatened enough to shuffle (the builder's). */
@@ -299,6 +301,39 @@ function cloneCasts(s: BattleState, u: Unit): Action | null {
     }
   }
   return best?.a ?? null;
+}
+
+/**
+ * Weapon Element Enhancement before a blow (battle/imbue.ts): a Bukijutsu Master whose plan is a
+ * blow of its weapon at a foe it can reach this turn (water's longer reach counted) puts its element
+ * on the weapon first, if it has the chakra and the element isn't on it already. With two elements (its
+ * second unlocked) it picks one (imbueChoice).
+ */
+function imbueFirst(s: BattleState, u: Unit, i: Intent): Action | null {
+  if (i.kind !== 'melee' || !u.jutsus.includes(WEAPON_ELEMENT) || imbueBlocker(u) || effectMods(u.effects).noJutsu) return null;
+  const spec = JUTSU[WEAPON_ELEMENT];
+  if (u.chakra < Math.max(IMBUE_COST, jutsuCost(u, spec, false)) || handsBlocker(u, spec)) return null;
+  const t = i.target ? s.units[i.target] : undefined;
+  if (!t || t.team === u.team || !standingUnit(t)) return null;
+  const element = imbueChoice(s, u, t);
+  const reach = reachTo(u, t) + (element === 'Water' ? WATER_REACH : 0);
+  if (dist(u.pos, t.pos) > reach + walkBudget(u) + 0.1) return null;
+  return { type: 'jutsu', unit: u.id, jutsu: WEAPON_ELEMENT, at: { ...u.pos }, element };
+}
+
+/**
+ * Which of its elements a Bukijutsu Master puts on its weapon for a blow at `t`: water when only its
+ * longer reach brings the foe within a blow this turn; not fire at a foe already burning or standing in
+ * the wet (its burn would not take), nor water at a burning foe (it would put the flames out); otherwise
+ * its chakra type's.
+ */
+export function imbueChoice(s: BattleState, u: Unit, t: Unit): ImbueElement {
+  const els = unitImbueElements(u);
+  const far = dist(u.pos, t.pos) > reachTo(u, t) + walkBudget(u) + 0.1;
+  if (far && els.includes('Water')) return 'Water';
+  const burning = hasEffect(t.effects, 'burning');
+  const fine = els.filter((e) => !((e === 'Fire' && (burning || dampAt(s, t.pos))) || (e === 'Water' && burning)));
+  return fine[0] ?? els[0];
 }
 
 /** A blow from `p` reaches the target (and no metal wall stands between). */

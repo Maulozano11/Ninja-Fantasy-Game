@@ -29,7 +29,9 @@ import { depthFx, drawAuraBack, drawCracks, drawDouses, drawWetGround, drawHeld,
 import { isTintElement, vfxTintColors } from '../../sprite/vfxTint';
 import { CHAKRA_COLORS } from '../../sprite/chakra';
 import { disguisedNow } from '../../battle/clones';
-import { jutsuTint } from './vfxTintPlan';
+import { jutsuTint, unitTint } from './vfxTintPlan';
+import { IMBUE_FPS, IMBUE_LOOP } from '../../sprite/imbue';
+import type { ImbueFx } from '../../sprite/imbue';
 
 export interface Camera {
   /** World pixel at the screen's top-left. */
@@ -893,7 +895,10 @@ function drawUnit(ctx: CanvasRenderingContext2D, sc: Scene, u: Unit, pos: Pt): v
       : charge
         ? { mode: 'aura' as const, tick: Math.floor(now / 83), empowered: true, burst: { color: 'cyan' as const, tint: jutsuTint(charge, u) } }
         : undefined;
-  const fr0 = unitFrame(u, look, v.pose, frame, aura);
+  // The element on the weapon in hand (Weapon Element Enhancement; sprite/imbue.ts draws it on the
+  // weapon in the frame), its energy in the ninja's chakra colour, obsidian in its own.
+  const imbue = v.imbue && v.armed && !u.down ? { fx: v.imbue.toLowerCase() as ImbueFx, tick: Math.floor((now * IMBUE_FPS) / 1000) % IMBUE_LOOP, tint: v.imbue === 'Earth' ? undefined : unitTint(u) } : undefined;
+  const fr0 = unitFrame(u, look, v.pose, frame, aura, imbue);
   // A clone: the same frame, washed in its ninja's chakra colour with a line of it round the body,
   // and a little see-through, so it is told apart from the real one at a glance. After a Shadow
   // Shuffle it looks exactly like its ninja (the owner's A).

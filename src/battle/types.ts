@@ -224,6 +224,11 @@ export interface Unit {
    * struck from the deceit (its edge, once each).
    */
   disguise?: Disguise;
+  /**
+   * Weapon Element Enhancement (the Bukijutsu Master's class ability, battle/imbue.ts): the element on
+   * its weapon and its own turns left, this one counted. Kept out of `cond`, which a fall wipes.
+   */
+  imbued?: { element: 'Fire' | 'Lightning' | 'Wind' | 'Water' | 'Earth'; rounds: number };
   /** Battle bookkeeping for the mission result. */
   stats2: { critsTaken: number; critsLanded: number; pills: number; fell: boolean; fellToCrit: boolean; tension: number; jutsuCast: number };
   /** Skill proficiencies (Stealth, Perception, Medicine...). */
@@ -449,6 +454,11 @@ export interface Hit {
   push?: { from: Pt; m: number; toward?: boolean };
   /** Water that puts out the flames on whoever it reaches (saved or not). */
   douse?: boolean;
+  /**
+   * The element on the weapon (Weapon Element Enhancement): its own damage, landed right after the
+   * blow's, with the blow (a clone, Kawarimi or Evasion that stops the blow stops it too).
+   */
+  bonus?: { amount: number; type: DamageType };
 }
 
 /** What still has to happen once the queued hits have landed. */
@@ -519,7 +529,7 @@ export type Action =
   | { type: 'move'; unit: string; to: Cell; sneak?: boolean }
   | { type: 'attack'; unit: string; target: string; ranged?: boolean; knockout?: boolean }
   /** `shuffle`: the clone jutsu cast with a Shadow Shuffle at once (battle/clones.ts). */
-  | { type: 'jutsu'; unit: string; jutsu: string; at: Pt; target?: string; enhanced?: boolean; target2?: string; shuffle?: boolean }
+  | { type: 'jutsu'; unit: string; jutsu: string; at: Pt; target?: string; enhanced?: boolean; target2?: string; element?: 'Fire' | 'Lightning' | 'Wind' | 'Water' | 'Earth'; shuffle?: boolean }
   /** The Shadow Shuffle: a ninja and its following clones swap places in secret (a bonus action). */
   | { type: 'shuffle'; unit: string }
   | { type: 'dash' | 'disengage' | 'dodge' | 'hide' | 'focus' | 'crouch' | 'jump' | 'draw'; unit: string }
@@ -597,6 +607,8 @@ export type BattleEvent =
   | { t: 'wall'; wall: Wall; on: boolean }
   /** A hand is charged with a jutsu (the activated Chidori), or the charge ends (`end` says why). */
   | { t: 'charged'; unit: string; jutsu: string; on: boolean; enhanced?: boolean; end?: ChargeEnd }
+  /** The element goes onto the weapon (Weapon Element Enhancement), or leaves it (`end` says why). */
+  | { t: 'imbue'; unit: string; element: 'Fire' | 'Lightning' | 'Wind' | 'Water' | 'Earth'; on: boolean; end?: 'expired' | 'down' | 'sealed' }
   /** The ground cracks under a charged ninja's steps (these cells, "c,r", in the order stepped), or mends. `first`: its first cracks this turn. */
   | { t: 'cracks'; unit: string; cells: string[]; on: boolean; first?: boolean }
   /** A gale on the ground starts turning, or dies down. */

@@ -13,6 +13,7 @@ import { planEnemy, replanAgainst } from './intent';
 import { chargeHolds, mendCracks, tickCharge } from './charged';
 import { CLONE, cloneMode, disguisedNow, learnDisguise, placeInOrder, purgeOrder, refreshClones, standingClone, tickClones } from './clones';
 import { dist } from './map';
+import { imbueHolds, tickImbue } from './imbue';
 
 /**
  * Whether a unit takes turns (heads of the hydra act on their own; fallen ninjas roll death saves). A
@@ -104,6 +105,9 @@ export function beginTurn(s: BattleState, ev: BattleEvent[]): void {
     mendCracks(s, u.id, ev);
     chargeHolds(u, effectMods(u.effects).noJutsu, ev);
     tickCharge(u, ev);
+    // The element on the weapon (Weapon Element Enhancement) loses a round too (battle/imbue.ts).
+    imbueHolds(u, effectMods(u.effects).noJutsu, ev);
+    tickImbue(u, ev);
     if (u.down === 'downed') {
       deathSave(s, u, ev);
       if (u.down) {
@@ -132,6 +136,7 @@ export function beginTurn(s: BattleState, ev: BattleEvent[]): void {
     if (u.effects.some((e) => e.id === 'burning')) damage(s, u, rollDie(nextRng(s), 6), 'Fire', {}, ev);
     steamBurns(s, u, ev);
     chargeHolds(u, false, ev);
+    imbueHolds(u, false, ev);
     if (u.down) {
       advance(s, ev);
       continue;

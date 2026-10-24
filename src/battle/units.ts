@@ -13,6 +13,7 @@ import { naturesOf, thirdElementOpen } from '../rules/natureGrowth';
 import { natureOf } from '../rules/ninja';
 import type { AiOrder, Pt, Rank, Team, Unit, Weapon } from './types';
 import { JUTSU, clanAbilities } from './jutsu';
+import { classAbilities, imbueNaturesOf, imbueReach } from './imbue';
 
 const W = (name: string, dice: string, type: Weapon['type'], reach = 1.5, finesse = true, held = false, twoHanded = false): Weapon =>
   twoHanded ? { name, dice, type, reach, finesse, held, twoHanded } : { name, dice, type, reach, finesse, held };
@@ -34,6 +35,8 @@ export function weaponOf(c: ShinobiCharacter): Weapon {
       return W('Flame longsword', '1d8', 'Slashing', 1.5, false, true);
     case 'held_naginata':
       return W('Naginata', '1d10', 'Slashing', 3, false, true, true);
+    case 'held_dawn_staff':
+      return W('Quarterstaff', '1d6', 'Bludgeoning', 1.5, false, true);
     case 'held_kunai':
       return W('Kunai', '1d6', 'Piercing', 1.5, true, true);
     case 'held_gilded_rapier':
@@ -66,7 +69,12 @@ export const fistsOf = (c?: ShinobiCharacter): Weapon =>
   c?.shinobiClass === 'Taijutsu Master' ? W('Fists', '1d8', 'Bludgeoning', 1.5, false) : W('Fists', '1d4', 'Bludgeoning', 1.5, false);
 
 /** What a unit strikes with right now: its weapon if in hand (or not a held one), else its fists. */
-export const wielded = (u: Unit): Weapon => (u.armed || !u.weapon.held ? u.weapon : fistsOf(u.character));
+export const wielded = (u: Unit): Weapon => {
+  if (!u.armed && u.weapon.held) return fistsOf(u.character);
+  // Water on the weapon in hand lengthens its reach (Weapon Element Enhancement, battle/imbue.ts).
+  const more = imbueReach(u);
+  return more ? { ...u.weapon, reach: u.weapon.reach + more } : u.weapon;
+};
 
 /** Hand seals need free hands: no weapon in hand, or One-Handed Seals with a one-handed weapon. */
 export const handsFree = (u: Unit): boolean =>
@@ -129,8 +137,9 @@ export function unitFrom(c: ShinobiCharacter, o: UnitOptions): Unit {
     castMod: abilityMod(scores[cls?.castingStat ?? 'int']),
     weapon: weaponOf(c),
     armed: weaponOf(c).held,
-    // The clan's own abilities first (they get the first hotkeys), then the jutsu it learned.
-    jutsus: [...clanAbilities(c.clan), ...Object.values(c.selectedJutsus).filter((id) => JUTSU[id])],
+    // The clan's own abilities first (they get the first hotkeys), then the class's (Weapon Element
+    // Enhancement, for a Bukijutsu Master of one of the five elements), then the jutsu it learned.
+    jutsus: [...clanAbilities(c.clan), ...classAbilities(c.shinobiClass, imbueNaturesOf(c)), ...Object.values(c.selectedJutsus).filter((id) => JUTSU[id])],
     effects: [...(c.effects ?? [])],
     cond: {},
     down: hp <= 0 ? 'downed' : undefined,

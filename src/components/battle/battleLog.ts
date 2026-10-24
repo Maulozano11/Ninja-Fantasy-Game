@@ -5,6 +5,7 @@ import type { BattleEvent, BattleState, RollInfo, Unit, Wall } from '../../battl
 import { homeTeam } from '../../battle/types';
 import { JUTSU } from '../../battle/jutsu';
 import { breakable } from '../../battle/structures';
+import { WATER_REACH } from '../../battle/imbue';
 import { EFFECTS } from '../../rules/effects';
 import { pick } from '../../i18n';
 import { isFemaleBody } from '../../sprite/types';
@@ -189,6 +190,12 @@ export function logLine(ev: BattleEvent, s: BattleState, lang: Lang, wallOf = (i
       const k: TKey | null = ev.end === 'expired' ? 'l_chargeExpired' : ev.end === 'down' ? 'l_chargeDown' : ev.end === 'sealed' ? 'l_chargeSealed' : ev.end === 'released' ? 'l_chargeReleased' : null;
       return k ? { text: t(k, p), tone: 'text-slate-400' } : null;
     }
+    case 'imbue': {
+      // The element goes onto the weapon (Weapon Element Enhancement), or leaves it.
+      const p = { a: nameOf(s, ev.unit, lang), m: WATER_REACH };
+      if (ev.on) return { text: t(`l_imbue_${ev.element}` as TKey, p), tone: 'text-orange-300' };
+      return { text: t(ev.end === 'sealed' ? 'l_imbueSealed' : (`l_imbueEnd_${ev.element}` as TKey), p), tone: 'text-slate-400' };
+    }
     case 'cracks':
       // Said once, as the ground first cracks under a charged ninja this turn (its mending is seen).
       return ev.on && ev.first ? { text: t('l_cracks', { a: nameOf(s, ev.unit, lang) }), tone: 'text-stone-300' } : null;
@@ -276,6 +283,8 @@ export function floatLabel(ev: BattleEvent, s: BattleState, lang: Lang): string 
       return jutsuName(ev.jutsu, lang, ev.enhanced);
     case 'charged':
       return ev.on ? t('f_charged') : null;
+    case 'imbue':
+      return ev.on ? t(`f_imbue_${ev.element}` as TKey) : null;
     case 'wall':
       return !ev.on && breakable(ev.wall) ? t(ev.wall.hp > 0 ? 'crumbled' : 'broken') : null;
     case 'note': {

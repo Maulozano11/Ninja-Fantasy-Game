@@ -10,8 +10,8 @@ angle every pixel is his, turned with RotSprite as the limb turns.
   round, the elbows, wrists, knees and ankles the middle of the limb where it bends, the hips the middle
   of the thigh's top under the briefs, the neck the middle of the neck's foot. The female rig is fitted
   to them (rig.ts BodyFit): at idle frame 0 every joint is his, so the body is his picture.
-- The pieces: the chest (neck, shoulders and the sports top), the pelvis (belly and briefs), each upper
-  arm, forearm and hand, each thigh, shin and foot. A pixel belongs to the part it is painted on (REGIONS
+- The pieces: the chest (the neck's foot, shoulders and the sports top), the neck above its foot, the
+  pelvis (belly and briefs), each upper arm, forearm and hand, each thigh, shin and foot. A pixel belongs to the part it is painted on (REGIONS
   below, row by row); a line he draws between two parts goes to both, so each keeps its own line when
   they move apart.
 - What his picture hides is continued from his pixels, every hidden pixel taking the colour of the
@@ -290,7 +290,7 @@ LAYERS = [
     ('farArm', ['upperArmF', 'forearmF', 'handF']),
     ('farLeg', ['thighF', 'shinF', 'footF']),
     ('nearLeg', ['thighN', 'shinN', 'footN']),
-    ('torso', ['pelvis', 'chest']),
+    ('torso', ['pelvis', 'chest', 'neck']),
     ('nearArm', ['upperArmN', 'forearmN', 'handN']),
 ]
 LAYER_OF = {p: l for l, ps in LAYERS for p in ps}
@@ -298,6 +298,9 @@ LAYER_OF = {p: l for l, ps in LAYERS for p in ps}
 # The bone each piece rides: its pivot joint and the joint its angle points at ('up' = the torso's up).
 BONES = {
     'chest': ('neck', 'up'),
+    # The neck rides the bone from its foot to the head: it turns with the head, not the chest, so a head
+    # hung forward (the throw's release and follow-through) carries the neck with it.
+    'neck': ('neck', 'head'),
     'pelvis': ('pelvis', 'up'),
     'upperArmN': ('shoulderN', 'elbowN'),
     'forearmN': ('elbowN', 'wristN'),
@@ -449,7 +452,7 @@ def build():
     head = {(x, y) for y in range(0, 26) for x in range(R.CELLS)}
     pieces = {}
     for p in REGIONS:
-        later = set().union(head, *(owned[o] for o in order[order.index(p) + 1:]))
+        later = set().union(head, *(owned.get(o, set()) for o in order[order.index(p) + 1:]))
         px = {q: IDX[q[1], q[0]] for q in owned[p]}
         kind = {q: 'his' for q in owned[p]}
         if p in CAPS:
@@ -478,6 +481,12 @@ def build():
         for q in list(px):
             if kind[q] == 'hidden':
                 px[q] = deep if (q[0] + 1, q[1]) not in px else shadow
+    # The neck above its foot (the rows the head covers at idle) on its own: it turns toward the head, and
+    # the neck's foot, where it meets his shoulders' line, stays on the chest.
+    px, kind = pieces['chest']
+    up = {q for q in px if q[1] < int(JOINTS['neck'][1])}
+    pieces['neck'] = ({q: px[q] for q in up}, {q: kind[q] for q in up})
+    pieces['chest'] = ({q: i for q, i in px.items() if q not in up}, {q: k for q, k in kind.items() if q not in up})
     # The wrists: a hand's cap on its own, stamped under his heroines' small hands (a weapon's grip,
     # pointing, open, cradling) so they too stay on the forearm.
     for side in 'NF':
@@ -583,7 +592,7 @@ def main():
                 if comp[y, x] >= 0:
                     img[y, x + R.CELLS] = list(R.hex_rgb(COLS[comp[y, x]])) + [255]
         R.save(img, os.path.join(d, 'base-idle-check.png'), 6)
-        tint = {'chest': (255, 80, 80), 'pelvis': (80, 160, 255), 'upperArmN': (80, 220, 80), 'forearmN': (220, 220, 60),
+        tint = {'chest': (255, 80, 80), 'neck': (255, 160, 160), 'pelvis': (80, 160, 255), 'upperArmN': (80, 220, 80), 'forearmN': (220, 220, 60),
                 'handN': (255, 140, 0), 'upperArmF': (160, 80, 255), 'forearmF': (0, 200, 200), 'handF': (255, 80, 200),
                 'thighN': (120, 255, 160), 'shinN': (60, 120, 255), 'footN': (255, 200, 120), 'thighF': (200, 120, 60),
                 'shinF': (120, 60, 200), 'footF': (60, 200, 120)}

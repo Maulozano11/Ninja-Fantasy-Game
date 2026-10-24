@@ -69,6 +69,8 @@ export interface UnitView {
   warp?: { from: Pt; to: Pt; t0: number; face: 1 | -1; land: 1 | -1; foe?: string; fly: number };
   /** The cast pose is an enhanced jutsu's: its chakra burst plays empowered. */
   castEnhanced?: boolean;
+  /** The element on its weapon (Weapon Element Enhancement): renderer.ts draws it on the weapon in hand. */
+  imbue?: 'Fire' | 'Lightning' | 'Wind' | 'Water' | 'Earth';
 }
 
 /**
@@ -506,6 +508,7 @@ export class Playback {
         fade: u.down === 'fled' ? v?.fade ?? { t0: now - 1000, dur: 1 } : undefined,
         // A charged hand keeps its lightning (the activated Chidori).
         held: u.charged && !u.down ? (v?.held?.charged ? v.held : chargedHeld(u, now)) : undefined,
+        imbue: u.imbued && !u.down ? u.imbued.element : undefined,
       };
       this.views.set(u.id, next);
       const mantle = JUTSU.wind_breeze_mantle;
@@ -2189,6 +2192,27 @@ export class Playback {
         if (v.held?.charged) v.held = undefined;
         this.fx.push({ kind: 'smoke', element: 'chakra', from: v.pos, to: v.pos, t0: now, dur: 420 });
         return 200;
+      }
+      case 'imbue': {
+        // The element goes onto the weapon (Weapon Element Enhancement): raised in the cast pose, the
+        // element's aura round the ninja a moment; or it leaves the weapon in a puff.
+        const v = this.view(ev.unit);
+        const u = state.units[ev.unit];
+        if (!v) return 0;
+        const el = ev.element.toLowerCase() as VfxElement;
+        if (ev.on) {
+          v.imbue = ev.element;
+          this.setPose(v, 'cast', now, 520);
+          v.castEnhanced = false;
+          const tint = ev.element === 'Earth' || !u ? undefined : unitTint(u);
+          this.fx.push({ kind: 'aura', element: el, from: v.pos, to: v.pos, t0: now, dur: 650, unit: ev.unit, tint });
+          h.sound('jutsu', el);
+          if (label) this.float(label, '#fde68a', v.pos, now, { rise: 128, dur: 1100 });
+          return 520;
+        }
+        v.imbue = undefined;
+        this.fx.push({ kind: 'smoke', element: 'chakra', from: v.pos, to: v.pos, t0: now, dur: 380 });
+        return 150;
       }
       case 'cracks':
         // Cracks not timed with a walk show now; mended ones fade.

@@ -99,7 +99,10 @@ describe('the taijutsu, kenjutsu and genjutsu jutsu belong to their class', () =
 
 describe('the sheets keep their jutsu, marked when another class\'s', () => {
   it('no legend breaks the rule: each one\'s taijutsu, kenjutsu or genjutsu jutsu is its class\'s', () => {
-    for (const { character: c } of LEGENDARY_PRESETS) assert.deepEqual(offClassJutsus(c.selectedJutsus, c.shinobiClass), [], c.id);
+    // Aurelia's sheet is provisional (a Light medic, made before the class rule): it waits for the owner's
+    // jutsu for her (docs/STATUS.md). Until then her two off-class jutsu stay, marked, as on any old sheet.
+    for (const { character: c } of LEGENDARY_PRESETS)
+      assert.deepEqual(offClassJutsus(c.selectedJutsus, c.shinobiClass), c.id === 'preset_aurelia' ? ['temple_of_nirvana', 'leaf_hurricane_senpuu'] : [], c.id);
   });
 
   it('no companion breaks it either: Hana (a medic) has the Dragon Tsunami since Yasaka no Magatama left the game', () => {

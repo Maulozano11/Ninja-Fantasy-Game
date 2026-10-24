@@ -12,6 +12,7 @@ import { add, along, ellipse, F_NO_EDGE, F_NO_OUTLINE, F_NO_TEXTURE, GRID, norm,
 import { rotateTemplate } from '../rotsprite';
 import { takesMaleSkin } from '../maleSkin';
 import { MALE_SKIN_BASE } from '../maleSkinArt';
+import { FEET_DAWN_BOOTS } from './aureliaBoots';
 import { across, crease, fpx, limb, limbR, stitch, stud, tube, wrapStripes } from './clothes';
 import { closeAnkle, footTurn, shinCarried } from './ankle';
 import { founderLegLen, founderLegOut, founderLegsStill } from './founderOut';
@@ -248,6 +249,9 @@ export function boot(g: DrawCtx, hex: string, from: number, art: FootArt, opts: 
   const grow = opts.grow ?? 0.6;
   for (const s of SIDES) {
     const L = g.L(legDepth(s, 'feet'));
+    // A closed boot is the whole foot: our bare foot under it (the owner's feet, longer at the toe and
+    // higher at the instep than the boot's own foot) would poke out past its toe and over its instep.
+    bareFootOff(g, s);
     limb(g, L, 'leg', s, from, 2, grow, bootPen(g, hex, s, 'shin', opts.kind), { round1: true });
     footDraw(g, L, s, art, {
       main: g.m(hex, opts.kind ?? 'leather'),
@@ -719,6 +723,7 @@ export const FEET_ITEMS: ItemDef[] = [
       }
     },
   },
+  FEET_DAWN_BOOTS,
   {
     id: 'feet_gladiator_sandals',
     slot: 'feet',

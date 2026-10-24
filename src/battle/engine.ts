@@ -65,6 +65,7 @@ import {
 import { reachTo, replanAgainst } from './intent';
 import { chargedFoe, chargeHolds, crackUnder, endCharge } from './charged';
 import { carriesCoat, coatLeft, HEAL_SENBON_DICE, HEAL_SENBON_RANGE, healSenbonBonus, POISON_DC, POISON_DICE, POISON_HITS, poisonLeft, potionsLeft, SENBON, senbonLeft, spendPoison, WEAPON_POISON } from './senbon';
+import { activeImbue, EARTH_CRIT, IMBUE_DAMAGE, IMBUE_DICE, imbueBlocker, imbueHolds, startImbue, unitImbueElement, WIND_PUSH, type ImbueElement } from './imbue';
 
 // --- setup ---------------------------------------------------------------------------------
 
@@ -260,7 +261,7 @@ function dispatch(s: BattleState, a: Action, ev: BattleEvent[]): string | null {
     case 'attack':
       return doAttack(s, u, a.target, !!a.ranged || !!a.senbon, !!a.knockout, ev, !!a.senbon);
     case 'jutsu':
-      return doJutsu(s, u, a.jutsu, a.at, a.target, !!a.enhanced, ev, a.target2);
+      return doJutsu(s, u, a.jutsu, a.at, a.target, !!a.enhanced, ev, a.target2, a.element);
     case 'dash':
     case 'disengage':
     case 'dodge':
@@ -515,6 +516,12 @@ function weaponAttack(
   const w = o.senbon ? SENBON : ranged ? KUNAI : wielded(a);
   const adv = o.takedown ? combineAdvantage(pv.adv, 'advantage') : pv.adv;
   const roll = check(s, 'attack', pv.mod, pv.ac, adv, true);
+  // Sharp obsidian on the edge (Weapon Element Enhancement, earth): a natural 19 is a critical hit too.
+  const imbue = ranged ? null : activeImbue(a);
+  if (imbue === 'Earth' && roll.d20 >= EARTH_CRIT && !roll.crit && !roll.fumble) {
+    roll.crit = true;
+    roll.success = true;
+  }
   if (t.pos.x !== a.pos.x) a.facing = t.pos.x > a.pos.x ? 1 : -1;
   const reasons = o.takedown && !pv.reasons.includes('hidden') ? [...pv.reasons, 'unaware'] : pv.reasons;
   const coated = carriesCoat(a, w, ranged);
@@ -533,7 +540,9 @@ function weaponAttack(
     if (surprise) amount += rollDiceExpr(s, '1d6', roll.crit);
     if (!ranged && hasEffect(a.effects, 'gates_open')) amount += rollDiceExpr(s, '1d8', roll.crit);
     const poison = coated ? spendCoat(a, ev) : undefined;
-    hits.push({ unit: t.id, amount: Math.max(1, amount), type: w.type, source: a.id, what: w.name, crit: roll.crit, knockout: o.knockout && !ranged, melee: !ranged, aimed: true, unseen: surprise, unblockable: edge, ...(poison ? { poison } : {}) });
+    const hit: Hit = { unit: t.id, amount: Math.max(1, amount), type: w.type, source: a.id, what: w.name, crit: roll.crit, knockout: o.knockout && !ranged, melee: !ranged, aimed: true, unseen: surprise, unblockable: edge, ...(poison ? { poison } : {}) };
+    if (imbue) imbuedHit(s, a, hit, imbue);
+    hits.push(hit);
   }
   applyHits(s, hits, after, ev);
   return !!s.pending;
@@ -559,6 +568,20 @@ function poisonIn(s: BattleState, t: Unit, h: Hit, ev: BattleEvent[]): void {
   if (!h.poison || t.kind !== 'ninja' || t.down) return;
   const amount = rollDiceExpr(s, POISON_DICE);
   landHit(s, t, saveHit(s, t, 'con', h.poison.dc, amount, 'Poison', false, h.source, WEAPON_POISON, { effect: 'poisoned' }, ev, 'none', maxCritDamage(POISON_DICE)), ev);
+}
+
+/**
+ * The element on the weapon adds to a melee blow that hits (Weapon Element Enhancement; the numbers
+ * are the builder's proposal, battle/imbue.ts): its die of the element's damage, and on a critical
+ * hit fire sets the target burning and lightning leaves it numb; wind's critical blows it back;
+ * water puts its flames out (water always does); obsidian's edge crits on 19 (weaponAttack).
+ */
+function imbuedHit(s: BattleState, a: Unit, h: Hit, element: NonNullable<ReturnType<typeof activeImbue>>): void {
+  h.bonus = { amount: rollDiceExpr(s, IMBUE_DICE, h.crit), type: IMBUE_DAMAGE[element] };
+  if (element === 'Fire' && h.crit) h.effect = 'burning';
+  if (element === 'Lightning' && h.crit) h.effect = 'jolted';
+  if (element === 'Wind' && h.crit) h.push = { from: { ...a.pos }, m: WIND_PUSH };
+  if (element === 'Water') h.douse = true;
 }
 
 function opportunityAttack(s: BattleState, r: Unit, m: Unit, ev: BattleEvent[], resume: NonNullable<AfterHits['resumeWalk']>): boolean {
@@ -640,7 +663,10 @@ function canKawarimi(s: BattleState, t: Unit): boolean {
 }
 
 /** An AI ninja dodges a blow (Evasion or Kawarimi) when it would drop it or take a third of its HP. */
-const aiAvoids = (t: Unit, h: Hit): boolean => h.amount >= t.hp + t.tempHp || h.amount >= t.maxHp * 0.3;
+const aiAvoids = (t: Unit, h: Hit): boolean => {
+  const n = h.amount + (h.bonus?.amount ?? 0);
+  return n >= t.hp + t.tempHp || n >= t.maxHp * 0.3;
+};
 
 /**
  * Lands queued hits in order. A clone takes an aimed blow instead of its ninja; a Mirai who saw it
@@ -691,16 +717,21 @@ function landHit(s: BattleState, t: Unit, h: Hit, ev: BattleEvent[]): void {
   if (h.amount > 0 || t.head?.severed) {
     damage(s, t, h.amount, h.type, { crit: h.crit, source: h.source, knockout: h.knockout, melee: h.melee, explosion: h.explosion }, ev);
   }
-  // A charged hand doesn't outlast its ninja's fall.
+  // The element on the weapon, after the blow: not on a ninja the blow dropped, but a fire or
+  // lightning blade seals the hydra's stump it has just cut.
+  if (h.bonus && h.bonus.amount > 0 && (!t.down || t.head?.severed)) damage(s, t, h.bonus.amount, h.bonus.type, { crit: h.crit, source: h.source, knockout: h.knockout, melee: h.melee }, ev);
+  // A charged hand, or an element on the weapon, doesn't outlast its ninja's fall.
   chargeHolds(t, false, ev);
+  imbueHolds(t, false, ev);
   if (t.down || t.head?.severed || t.kind === 'hydra_body') return;
   poisonIn(s, t, h, ev);
   if (t.down) return;
   if (h.effect && !(h.effect === 'burning' && dampAt(s, t.pos))) {
     t.effects = addEffect(t.effects, h.effect, { source: JUTSU[h.what]?.name ?? h.what }).effects;
     ev.push({ t: 'effect', unit: t.id, effect: h.effect, on: true });
-    // Sealed chakra lets a charged hand go.
+    // Sealed chakra lets a charged hand go, and leaves the weapon.
     chargeHolds(t, effectMods(t.effects).noJutsu, ev);
+    imbueHolds(t, effectMods(t.effects).noJutsu, ev);
   }
   if (h.tension && t.team === 'party') {
     t.stats2.tension += 1;
@@ -861,7 +892,7 @@ export function jutsuCost(u: Unit, spec: JutsuSpec, enh: boolean): number {
   return jutsuCostParts(u, spec, enh).cost;
 }
 
-function doJutsu(s: BattleState, u: Unit, id: string, atIn: Pt, targetId: string | undefined, enh: boolean, ev: BattleEvent[], target2Id?: string): string | null {
+function doJutsu(s: BattleState, u: Unit, id: string, atIn: Pt, targetId: string | undefined, enh: boolean, ev: BattleEvent[], target2Id?: string, element?: ImbueElement): string | null {
   const base = JUTSU[id];
   if (!base || !u.jutsus.includes(id)) return 'unknownJutsu';
   if (base.cast === 'reaction') return 'reactionOnly';
@@ -873,6 +904,11 @@ function doJutsu(s: BattleState, u: Unit, id: string, atIn: Pt, targetId: string
   if (base.cast === 'bonus' ? !u.turn.bonus : !u.turn.action) return base.cast === 'bonus' ? 'noBonus' : 'noAction';
   // One charged hand at a time.
   if (base.handCharge && u.charged) return 'alreadyCharged';
+  // Weapon Element Enhancement: one of the five elements, a weapon to hold, not on it already.
+  if (base.special === 'imbue') {
+    const why = imbueBlocker(u, element);
+    if (why) return why;
+  }
   // Hand seals need both hands, and a tackle is thrown with empty ones: the weapon is stowed for
   // free (once a turn), or the jutsu waits. A sword art needs a blade, drawn for free.
   const stow = mustStow(u, base);
@@ -967,6 +1003,12 @@ function doJutsu(s: BattleState, u: Unit, id: string, atIn: Pt, targetId: string
   if (spec.loud) reveal(u, ev);
   if (base.handCharge) {
     chargeHand(s, u, base, enh, ev);
+    return null;
+  }
+  // The element goes onto the weapon (drawn above, for free, if it was put away).
+  if (base.special === 'imbue') {
+    // Its chakra type's element, or the other one it chose (its second element).
+    startImbue(u, element ?? unitImbueElement(u)!, ev);
     return null;
   }
   if (spec.melee && spec.shape === 'single' && target) {

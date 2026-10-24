@@ -7,8 +7,8 @@ toward its point, so the blade is a part too.
 
 His picture shrunk and cleaned to our scale (tools/refs/knights_ref.py game(), which redraws the blade as
 clean bands of his colours: clean_blade()). Each hilt (pommel, grip and guard) is cut from its figure; where
-his fist hides the grip, the grip is carried on along the blade's line from what shows of it (his grip's
-colours between his line). Every piece pivots on the cell on our near hand joint, where his fist holds it, at
+his fist hides the grip, the grip is carried on from what shows of it on one side to the other (his grip's
+colour between his line); each blade is carried back under its own guard, so another guard meets it. Every piece pivots on the cell on our near hand joint, where his fist holds it, at
 the blade's angle: held at rest, every pixel is his.
 
   python3 -I tools/refs/knight-sword-from-ref.py src/sprite/items/knightSwordArt.ts
@@ -34,29 +34,61 @@ def blade_angle(fig):
 
 
 def hilt(fig):
-    """The hilt of a figure, its grip carried on under his fist along the blade's line."""
+    """The hilt of a figure (pommel, grip and guard), its grip carried on under his fist: between what shows of
+    it on either side of his fist (the pommel's end and the guard's), his grip's commonest colour two pixels
+    wide with his line on its sides, only where his fist hides it."""
     P = K.pieces(fig)
     m, c = P['hilt']
     rgb, label = K.game(fig)
     line = K.line_rgb()
-    ang, centre, d = blade_angle('paladin' if fig == 'dark' else fig)
-    ox, oy = K.offset(fig)
-    # the blade's line in game(fig) pixels
-    cx = centre[0] / K.BODY_SCALE + K.PAD
-    cy = centre[1] / K.BODY_SCALE + K.PAD
+    ang, *_ = blade_angle('paladin' if fig == 'dark' else fig)
+    hidden = np.isin(label, ('hand_n', 'fore_n'))
+    parts = sorted(K.components(m, True), key=len)[::-1]
+    if len(parts) >= 2:
+        A, B = parts[0], parts[1]
+        p, q = min(((a, b) for a in A for b in B), key=lambda ab: ((ab[0][0] - ab[1][0]) ** 2 + (ab[0][1] - ab[1][1]) ** 2, ab))
+        grip = [tuple(c[y, x]) for y, x in A + B if K.kind(c[y, x]) in ('dark', 'red', 'brown', 'steel', 'warm')]
+        gc = np.array(max(sorted(set(grip)), key=grip.count))
+        (y0, x0), (y1, x1) = p, q
+        d = np.array([x1 - x0, y1 - y0], float)
+        L = float(np.hypot(*d)) or 1.0
+        H, W = m.shape
+        for y in range(min(y0, y1) - 3, max(y0, y1) + 4):
+            for x in range(min(x0, x1) - 3, max(x0, x1) + 4):
+                if not (0 <= y < H and 0 <= x < W) or m[y, x] or not hidden[y, x]:
+                    continue
+                v = np.array([x - x0, y - y0], float)
+                t = float(v @ d) / L
+                if t < -0.5 or t > L + 0.5:
+                    continue
+                dist = abs(v[0] * d[1] - v[1] * d[0]) / L
+                if dist <= 0.75:
+                    c[y, x] = gc
+                    m[y, x] = True
+                elif dist <= 1.6:
+                    c[y, x] = line
+                    m[y, x] = True
+    return m, c, ang
+
+
+def blade(fig, name):
+    """A blade, carried back under its own guard along its line (his first rows across repeated), only where
+    the guard or the fist hides it at rest: with another guard, no gap opens between guard and blade."""
+    P = K.pieces(fig)
+    m, c = P['blade']
+    rgb, label = K.game(fig)
+    ang, *_ = blade_angle(fig)
+    hidden = np.isin(label, ('hilt', 'guard', 'hand_n'))
+    t = np.radians(ang)
+    step = np.array([np.cos(t), np.sin(t)])
     H, W = m.shape
-    hand = label == 'hand_n'
-    grip = [tuple(c[y, x]) for y, x in zip(*np.nonzero(m)) if K.kind(c[y, x]) in ('dark', 'red', 'brown', 'steel', 'warm')]
-    gc = np.array(max(sorted(set(grip)), key=grip.count))
-    for y, x in zip(*np.nonzero(hand & ~m)):
-        p = np.array([x + 0.5 - cx, y + 0.5 - cy])
-        q = abs(p[0] * -d[1] + p[1] * d[0])
-        if q <= 0.75:
-            c[y, x] = gc
-            m[y, x] = True
-        elif q <= 1.6:
-            c[y, x] = line
-            m[y, x] = True
+    base_m, base_c = m.copy(), c.copy()
+    for k in range(1, 7):
+        for y, x in zip(*np.nonzero(base_m)):
+            Y, X = int(round(y - step[1] * k)), int(round(x - step[0] * k))
+            if 0 <= Y < H and 0 <= X < W and not m[Y, X] and hidden[Y, X]:
+                m[Y, X] = True
+                c[Y, X] = base_c[y, x]
     return m, c, ang
 
 
@@ -65,8 +97,7 @@ def build():
     bases = {}
     for name, fig in BLADES.items():
         P = K.pieces(fig)
-        ang, *_ = blade_angle(fig)
-        m, c = P['blade']
+        m, c, ang = blade(fig, name)
         consts.append((f'KNIGHT_BLADE_{name.upper()}', fig, m, c, f'The {name} blade ({fig}): his flame in clean bands, his line round it. It pivots on the near hand joint at its angle.', K.his_joint('handN'), ang))
         bases[f'KNIGHT_BLADE_{name.upper()}_FLAME'] = K.base(fig, ['blade'], ('flame',), 0.5, P=P)
     for fig in K.FIGURES:

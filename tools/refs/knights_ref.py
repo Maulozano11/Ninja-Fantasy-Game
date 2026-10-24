@@ -300,14 +300,19 @@ REGIONS = {
 # Per figure: regions replaced ((polygon in that figure's own coordinates, not shifted; takes)) or dropped (None).
 REGIONS_FIG = {
     'paladin': {},
-    'dark': {'fur': None, 'fur_f': None},
+    'dark': {
+        'fur': None, 'fur_f': None,
+        # his dark iron cross-guard: a bar across the blade's line, under his fist
+        'guard': ([(101, 85), (109, 71), (112, 73), (104, 88)], HILT),
+    },
     # The dragon knight's scales are his reds and oranges, the cape's colours: his regions are drawn round
     # each piece (his picture's coordinates) and take every kind; the cape takes what they leave.
     'dragon': {
         'fur': None, 'fur_f': None,
-        'blade': ([(193, 82), (198, 82), (237, 113), (237, 119), (230, 122), (190, 91)], 'strip'),
+        'blade': ([(189, 78), (195, 78), (237, 113), (237, 119), (230, 122), (187, 88)], 'strip'),
         'hilt': ([(160, 61), (168, 60), (176, 67), (177, 72), (173, 73), (160, 68)], None),
-        'guard': ([(183, 72), (192, 72), (194, 78), (191, 84), (187, 88), (182, 92), (178, 91), (178, 85), (181, 79)], None),
+        # his dragon guard: horns across the blade's line round his red gem
+        'guard': ([(177, 86), (188, 69), (194, 72), (190, 81), (183, 90)], None),
         'hand_n': ([(172, 70), (186, 70), (186, 80), (172, 80)], None),
         'fore_n': ([(171, 57), (186, 57), (186, 70), (171, 70)], None),
         'upper_n': ([(167, 48), (186, 48), (186, 57), (167, 57)], None),
@@ -373,10 +378,15 @@ GROUPS = {
     'fur': (('fur', 'fur_f'), 'keep'),
     'pauldron_n': (('pauldron_n',), 'keep'),
     'arm_n': (('upper_n', 'fore_n', 'hand_n'), 'keep'),
-    'sword': (('hilt', 'guard', 'blade'), 'keep'),
+    'sword': (('hilt', 'blade'), 'keep'),
+    # (the dark knight's and the dragon's guards on their own, each fine pixel read from his under it: a thin
+    # bar across the blade's line keeps its run where whole rows and columns would break it; the paladin's
+    # broad gold guard is shrunk with the hilt, GROUPS_FIG)
+    'guard': (('guard',), 'read'),
 }
+GROUPS_FIG = {'paladin': {'sword': (('hilt', 'guard', 'blade'), 'keep'), 'guard': ((), 'read')}}
 # Back to front: each group over what is behind it.
-GROUP_ORDER = ('cape', 'pauldron_f', 'arm_f', 'leg_f', 'leg_n', 'skirt', 'chest', 'belt', 'fur', 'pauldron_n', 'arm_n', 'sword')
+GROUP_ORDER = ('cape', 'pauldron_f', 'arm_f', 'leg_f', 'leg_n', 'skirt', 'chest', 'belt', 'fur', 'pauldron_n', 'arm_n', 'sword', 'guard')
 
 
 def regions_of(fig):
@@ -561,7 +571,7 @@ def frame_size(a):
     return (int(np.ceil(H / BODY_SCALE)) + 2 * PAD, int(np.ceil(W / BODY_SCALE)) + 2 * PAD)
 
 
-def reduce(fig):
+def reduce(fig, blade=True):
     """The figure at our scale before cleaning: (rgb, which region each pixel came from, '' for none), in a
     frame whose (0, 0) is fine pixel (-PAD, -PAD) of the body's shrink about his picture's corner. Every fine
     pixel is one of his pixels (GROUPS says how each group chooses them); the head is the paladin's head,
@@ -604,12 +614,12 @@ def reduce(fig):
                     label[y, x] = src_lab[r, c]
 
     for g in GROUP_ORDER:
-        names, how = GROUPS[g]
+        names, how = GROUPS_FIG.get(fig, {}).get(g, GROUPS[g])
         m = np.isin(lab, names)
         if m.any():
             put(names, m, BODY_SCALE, (0.0, 0.0), (0, 0), how, lab)
     # the blade redrawn clean (the dark knight's is laid on after, game())
-    if fig != 'dark':
+    if fig != 'dark' and blade:
         clean_blade(rgb, label, lab, a, line)
     # the head: the paladin's
     plab = labels('paladin', a) if fig != 'paladin' else lab
@@ -745,9 +755,11 @@ def components(mask, conn8):
 HOLE = 3
 # The cloth and fur read pixel by pixel: their specks are taken off by clean().
 CLOTH = ('cape', 'cape_f')
-# The fur: his whites and greys in FUR_TONES tones (fur_tufts()).
+# The fur: his whites and greys in FUR_TONES bands of lightness (fur_tufts()).
 FUR = ('fur', 'fur_f')
-FUR_TONES = 4
+FUR_TONES = 5
+# Only his light fur is banded; his dark tips and shadows stay as he drew them.
+FUR_LIGHT = 110
 
 
 def mode_of(cols):
@@ -932,22 +944,22 @@ def lay_gems(rgb, label, fig):
 
 
 def fur_tufts(rgb, label):
-    """His fur as clumpy tufts of his whites and greys, not noise (the owner's rule for the fur): each fur
-    pixel of his (not his line) takes the commonest of his fur colours in its band of lightness (FUR_TONES
-    bands, each as many of his pixels), and a tone standing alone (none of its four neighbours shares it)
-    takes the tone most of its eight neighbours have."""
+    """His fur as clumpy tufts of his whites and greys, not noise (the owner's rule for the fur): each fur pixel
+    of his lighter than FUR_LIGHT takes his commonest colour in its band of lightness (FUR_TONES even bands
+    up to his lightest: his whites, creams and light greys all stay; his dark tips stay his), and a tone standing alone
+    (none of its four neighbours shares it) takes the tone most of its eight neighbours have."""
     H, W = label.shape
-    m = np.isin(label, FUR) & (luma(rgb) >= 14)
+    m = np.isin(label, FUR) & (luma(rgb) >= FUR_LIGHT)
     if not m.any():
         return
     ys, xs = np.nonzero(m)
     Ls = np.array([float(luma(rgb[y, x])) for y, x in zip(ys, xs)])
-    edges = [np.percentile(Ls, 100 * k / FUR_TONES) for k in range(FUR_TONES + 1)]
-    band = np.clip(np.searchsorted(edges[1:-1], Ls, side='right'), 0, FUR_TONES - 1)
-    tones = []
-    for b in range(FUR_TONES):
+    lo, hi = float(Ls.min()), float(Ls.max()) + 1e-6
+    band = np.minimum(FUR_TONES - 1, ((Ls - lo) / (hi - lo) * FUR_TONES).astype(int))
+    tones = {}
+    for b in sorted(set(band.tolist())):
         cols = [tuple(rgb[ys[i], xs[i]]) for i in range(len(ys)) if band[i] == b]
-        tones.append(np.array(mode_of(cols)))
+        tones[b] = np.array(mode_of(cols))
     T = np.full((H, W), -1)
     for i in range(len(ys)):
         T[ys[i], xs[i]] = band[i]
@@ -1127,6 +1139,35 @@ def continue_rows(col, mask, rows, x_to, direction, line, period=1, close=True, 
     return m, c, filled
 
 
+def continue_plain(col, mask, rows, x_to, direction, line, allowed):
+    """A plate continued along its rows where something in front hides it (the chest under the near arm): on
+    each row, from the piece's edge toward `direction` to column `x_to`, the commonest colour of his
+    plate (not his line nor his gold, so no trim runs on as stripes), the same on every row, closed on his
+    line. Only `allowed` cells (hidden at rest) are filled. Returns (mask, colours)."""
+    m = mask.copy()
+    c = col.copy()
+    body = [tuple(col[y, x]) for y, x in zip(*np.nonzero(mask)) if kind(col[y, x]) in ('steel', 'warm', 'brown', 'red', 'dark')]
+    fill = np.array(mode_of(body))
+    for y in rows:
+        xs = np.nonzero(mask[y])[0]
+        if not len(xs):
+            continue
+        x = xs.min() if direction < 0 else xs.max()
+        last = None
+        while (x - x_to) * direction < 0:
+            x += direction
+            if not (0 <= x < m.shape[1]) or m[y, x]:
+                continue
+            if not allowed[y, x]:
+                break
+            c[y, x] = fill
+            m[y, x] = True
+            last = x
+        if last is not None:
+            c[y, last] = line
+    return m, c
+
+
 def hull(points, H, W):
     """The cells inside the convex hull of these (y, x) points (their middles), as a mask."""
     pts = sorted(set((x + 0.5, y + 0.5) for y, x in points))
@@ -1149,7 +1190,7 @@ def hull(points, H, W):
     return m
 
 
-def fill_hull(col, mask, extra, allowed, line, along=None):
+def fill_hull(col, mask, extra, allowed, line, along=None, src_kinds=None, fill_with=None):
     """A limb piece filled out to its whole shape where pieces in front hide it at rest: the convex hull of
     its pixels and `extra` (cells it reaches under: a knee guard, up to the hip), and in it every cell
     `allowed` (hidden at rest) the piece does not have takes its nearest pixel of his that is not his line;
@@ -1160,7 +1201,7 @@ def fill_hull(col, mask, extra, allowed, line, along=None):
     pts = list(zip(*np.nonzero(mask | extra)))
     hm = hull(pts, H, W)
     add = hm & allowed & ~mask
-    src = [(y, x) for y, x in zip(*np.nonzero(mask)) if kind(col[y, x]) != 'line']
+    src = [(y, x) for y, x in zip(*np.nonzero(mask)) if kind(col[y, x]) != 'line' and (src_kinds is None or kind(col[y, x]) in src_kinds)]
     if not src:
         return mask.copy(), col.copy()
     c = col.copy()
@@ -1173,6 +1214,9 @@ def fill_hull(col, mask, extra, allowed, line, along=None):
                     q = (yy, xx)
                     break
                 yy, xx = yy + along[0], xx + along[1]
+        if fill_with is not None:
+            c[y, x] = fill_with
+            continue
         if q is None:
             q = min(src, key=lambda p: ((p[0] - y) ** 2 + (p[1] - x) ** 2, p))
         c[y, x] = col[q]
@@ -1369,7 +1413,7 @@ def _pieces(fig):
     m, c = cut(rgb, label, ['chest'])
     sx, sy = his_game('shoulderN', fig)
     ys, xs = np.nonzero(m)
-    m, c, _ = continue_rows(c, m, range(ys.min() + 1, ys.max()), int(np.floor(sx)), -1, line, allowed=under('pauldron_n', 'upper_n', 'fur', 'head'))
+    m, c = continue_plain(c, m, range(ys.min() + 1, ys.max()), int(np.floor(sx)), -1, line, allowed=under('pauldron_n', 'upper_n', 'fur', 'head'))
     ys, xs = np.nonzero(m)
     m, c, _ = continue_cols(c, m, range(xs.min() + 1, xs.max()), ys.max() + 4, 1, line, inset=1, allowed=under('belt', 'tasset_n', 'tasset_c', 'tasset_f', 'hand_n', 'hand_f'))
     out['chest'] = (m, c)
@@ -1404,8 +1448,24 @@ def _pieces(fig):
                 m[Y, X] = True
                 c[Y, X] = oc[y, x]
         out['thigh_' + s] = (m, c)
-    # what the sword hides of the legs and the tassets, along each row
-    for n in ('knee_n', 'knee_f', 'shin_n', 'shin_f', 'tasset_n', 'tasset_c', 'tasset_f'):
+    # what the sword hides of each leg: the knee guard and the greave filled out together to their whole
+    # shape, a cell above the knee joint's row the knee guard's, below it the greave's
+    for sd in ('n', 'f'):
+        km, kc = cut(rgb, label, ['knee_' + sd])
+        sm, sc = cut(rgb, label, ['shin_' + sd])
+        um = km | sm
+        uc = np.where(km[..., None], kc, sc)
+        if um.any():
+            fm, fc = fill_hull(uc, um, np.zeros_like(um), under(*sword), line)
+            ky = his_game('knee' + sd.upper(), fig)[1] + 2
+            rows_ = np.arange(H)[:, None]
+            add = fm & ~um
+            km2 = km | (add & (rows_ < ky))
+            sm2 = sm | (add & (rows_ >= ky))
+            out['knee_' + sd] = (km2, np.where(km2[..., None], fc, kc))
+            out['shin_' + sd] = (sm2, np.where(sm2[..., None], fc, sc))
+    # what the sword hides of the tassets, along each row
+    for n in ('tasset_n', 'tasset_c', 'tasset_f'):
         m, c = cut(rgb, label, [n])
         if m.any():
             m, c = fill_spans(c, m, line, allowed=under(*sword))
@@ -1414,6 +1474,15 @@ def _pieces(fig):
     m, c = cut(rgb, label, ['cape', 'cape_f'])
     body = (label != '') & ~under('cape', 'cape_f')
     m, c = fill_spans(c, m, line, allowed=body)
+    # and up behind the body to the shoulders (it hangs from them): the inside of his cape, in the darkest of
+    # his four commonest cape reds (its shadow behind him)
+    reach = np.zeros_like(m)
+    for j in ('shoulderN', 'shoulderF'):
+        jx, jy = his_game(j, fig)
+        reach[int(np.floor(jy)), int(np.floor(jx))] = True
+    reds = [tuple(c[y, x]) for y, x in zip(*np.nonzero(m)) if kind(c[y, x]) == 'red']
+    shade = min(sorted(set(reds), key=lambda q: (-reds.count(q), q))[:4], key=lambda q: float(luma(np.array(q))))
+    m, c = fill_hull(c, m, reach, body, line, fill_with=np.array(shade))
     out['cape'] = (m, c)
     # the head: face and hair
     head = label == 'head'
@@ -1424,7 +1493,18 @@ def _pieces(fig):
     face = head & box & ~np.isin(K, ('red', 'brown', 'line', 'dark'))
     face |= head & box & np.isin(K, ('line', 'red', 'dark', 'brown')) & near4(face) & (np.arange(H)[:, None] >= FACE_ANCHOR[1] - oy)
     out['face'] = (face, rgb.copy())
-    out['hair'] = (head & ~face, rgb.copy())
+    hair = head & ~face
+    # bits of his head apart from his hair (a speck by the cheek, his chin's line under the jaw) are the face's,
+    # so the hair is one piece and the face keeps its outline under any hairstyle
+    comps = sorted(components(hair, True), key=len)
+    by_face = near8(face)
+    for comp in comps[:-1]:
+        if (len(comp) < 6 or all(kind(rgb[q]) == 'line' for q in comp)) and any(by_face[q] for q in comp):
+            for q in comp:
+                hair[q] = False
+                face[q] = True
+    out['face'] = (face, rgb.copy())
+    out['hair'] = (hair, rgb.copy())
     return out
 
 

@@ -1513,7 +1513,7 @@ function drawShadowOps(g: DrawCtx, art: ShadowArt, pc: string, sc: string): void
   const rest = art.guardN.angle - art.vest.angle;
   const guard = torso + rest + 0.45 * (((upperN - torso - rest + 540) % 360) - 180);
   stampPiece(g, 'nearArm.armor', art.guardN, guardAt(r, 'N', torso), guard, 'upperArmN', tint);
-  armUnderOff(g, art);
+  armUnderOff(g, art, art.upperN === SHADOW_UPPER_N);
   torsoUnderOff(g, g.m(suit, 'flat'));
   vestGapFill(g, g.m(suit, 'flat'));
 }
@@ -1594,7 +1594,8 @@ const WAIST_UP = 2.2;
  * His forearms (and the far upper arm) are his pixels from elbow to wrist: our bare arm under them
  * gives way where his pieces are not, so no edge of ours shows beside his (but the wrist past his guard).
  */
-function armUnderOff(g: DrawCtx, art: ShadowArt): void {
+function armUnderOff(g: DrawCtx, art: ShadowArt, elbows: boolean): void {
+  const skinElbow = elbows && SKIN_ELBOW_POSES.has(g.rig.pose);
   for (const [s, parts] of [
     ['N', ['upperArmN', 'forearmN']],
     ['F', ['upperArmF', 'forearmF']],
@@ -1611,13 +1612,24 @@ function armUnderOff(g: DrawCtx, art: ShadowArt): void {
     const bone = sub(j.wrist, j.elbow);
     const len = Math.hypot(bone.x, bone.y) * RES;
     const along = (i: number) => (((i % GRID) + 0.5 - j.elbow.x * RES) * bone.x + (Math.floor(i / GRID) + 0.5 - j.elbow.y * RES) * bone.y) / (len / RES);
+    // On his Cazador 1, in the poses he marked green, our arm round the elbow is kept too: where his upper arm and
+    // his arm guard part as the arm bends, the joint is skin, not a gap (the owner, 2026-10-23: "les falta rellenar
+    // con pixeles los codos o uniones con pixeles color piel porque se supone que ahi va un codo"). The other
+    // poses stay as he saw them.
+    const atElbow = (i: number) => skinElbow && Math.hypot((i % GRID) + 0.5 - j.elbow.x * RES, Math.floor(i / GRID) + 0.5 - j.elbow.y * RES) <= ELBOW_KEEP * RES;
     for (let i = 0; i < GRID * GRID; i++) {
       if (body.mat[i] < 0 || !idx.includes(body.part[i]) || his.mat[i] >= 0) continue;
       if (body.part[i] === fore && len > reach && along(i) >= reach - 1) continue;
+      if (atElbow(i)) continue;
       body.mat[i] = -1;
     }
   }
 }
+
+/** The poses whose elbows he marked green on his Cazador 1 (Carga, Sigilo, Victoria), where the elbow is skin (armUnderOff). */
+const SKIN_ELBOW_POSES = new Set<string>(['charge', 'sneak', 'victory']);
+/** How far round the elbow joint (design units) our arm is kept under his Cazador 1's arm pieces there. */
+const ELBOW_KEEP = 2.5;
 
 /** How far a piece reaches along its angle from its pivot (fine px): his arm guard's length from the elbow. */
 function pieceReach(p: PaintedPiece): number {

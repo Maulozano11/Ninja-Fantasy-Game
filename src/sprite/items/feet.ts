@@ -359,7 +359,7 @@ export const FEET_ITEMS: ItemDef[] = [
         return k === 'line' ? hex : k === 'skin' ? retintHex(hex, female ? BOOT_F_SKIN : BOOT_SKIN, g.look.skin) : retintHex(hex, base, cloth);
       };
       const soled = (_ch: string, hex: string) => (BOOT_KIND[hex] === 'line' ? hex : retintHex(hex, BOOT_SOLE, sole));
-      // (his Cazador 1 and 2, the shadow-ops vest with his hunter's trousers: compose.ts standardLook)
+      // (his Cazador 1 and 2, the shadow-ops vest with his hunter's trousers: compose.ts standardOf)
       const hunter = g.has('armor', 'armor_shadowops') && g.has('bottom', 'bottom_hunter_leggings');
       for (const s of SIDES) {
         const { knee, ankle } = legJoints(g.rig, s);

@@ -18,8 +18,8 @@ import { drawBaseCloth } from '../body';
 import { hexToRgb, retintHex } from '../color';
 import { armDepth, armJoints, armPoint, armSpan, type Depth, DrawCtx, fillTorso, handDraw, handPose, ItemDef, legDepth, legJoints, legPoint, Side, torsoNeck, torsoPoly } from '../ctx';
 import { FEMALE_BASE_CLOTH } from '../femaleBaseArt';
-import { continuedTo, limbOnly, PaintedPiece, PieceJoint, segAngle, stampBent, stampPiece } from '../painted';
-import { add, along, ellipse, F_NO_EDGE, F_NO_OUTLINE, F_NO_TEXTURE, GRID, Layer, lerp, norm, PAD, PartId, partIndex, PARTS, Pen, perp, poly, RES, scale, seam, ShadeFn, sub, v, Vec } from '../raster';
+import { continuedTo, limbOnly, PaintedPiece, PieceJoint, segAngle, stampBent, stampPiece, stretchPiece } from '../painted';
+import { add, along, ellipse, F_NO_EDGE, F_NO_OUTLINE, F_NO_TEXTURE, GRID, Layer, len, lerp, norm, PAD, PartId, partIndex, PARTS, Pen, perp, poly, RES, scale, seam, ShadeFn, sub, v, Vec } from '../raster';
 import { stampTemplate, TemplatePalette } from '../rotsprite';
 import { sealCloth } from '../seal';
 import { crimsonKind, GAUNTLET_F, GAUNTLET_N, GLOVE_LEATHER, GLOVE_STEEL, GLOVE_TONES, GLOVE_TRIM } from './sabatonsGauntletsArt';
@@ -2345,7 +2345,11 @@ function paintedTrousers(
     // Over his boots each leg reaches on under its hem into the shaft, so no gap opens between them (as
     // broad as his boots, which the bulky body does not broaden).
     if (HIS_BOOTS.some((id) => g.has('feet', id))) stampPiece(g, legDepth(s, 'cloth'), into, ankle, segAngle(knee, ankle), prt('shin', s), tint);
-    stampTrouserLeg(g, legDepth(s, 'cloth'), fit(thigh, 2, 2), fit(shin, 1, 1), { hip, knee, ankle }, [prt('thigh', s), prt('shin', s)], tint);
+    // (a thigh longer than the body's, seated or reading, rig.ts kneeLeg: his thigh is lengthened with it, so it
+    // still reaches the knee and his shin, painted.ts stretchPiece)
+    const bone = r.bp.thigh * RES;
+    const upper = r.bp.fit ? fit(thigh, 2, 2) : stretchPiece(fit(thigh, 2, 2), len(sub(knee, hip)) * RES - bone, bone);
+    stampTrouserLeg(g, legDepth(s, 'cloth'), upper, fit(shin, 1, 1), { hip, knee, ankle }, [prt('thigh', s), prt('shin', s)], tint);
     still &&= Math.abs(turnOf(segAngle(hip, knee) - thigh.angle)) < 0.5 && Math.abs(turnOf(segAngle(knee, ankle) - shin.angle)) < 0.5;
   }
   // What he drew between the legs is no leg's (behind them): it shows only while the legs stand as he

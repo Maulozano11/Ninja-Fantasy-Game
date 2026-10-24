@@ -432,3 +432,34 @@ describe('elemental jutsu in a chakra colour', () => {
     assert.ok(s1 < 0.3 && l1 > 0.6);
   });
 });
+
+describe("the owner's fire hit (his repaint, 2026-10-24)", () => {
+  const m = JSON.parse(readFileSync(new URL('../assets/world/vfx_fire/manifest.json', import.meta.url), 'utf8')).sprites.hit;
+  const s = sheet('fire', 'hit');
+  it('plays his 12 frames at 12 fps once, in a frame grown round his smoke and flames', () => {
+    assert.deepEqual(m.anims, { hit: { row: 0, frames: 12, fps: 12, loop: false } });
+    assert.equal(s.w, m.frameW * 12);
+    assert.equal(s.h, m.frameH);
+    // Taller than the old 96x80 starburst: his smoke rises well over it.
+    assert.ok(m.frameW > 96 && m.frameH > 80);
+    // Nothing of his touches the frame's edge, so nothing is cut off.
+    for (let f = 0; f < 12; f++)
+      for (let y = 0; y < m.frameH; y++)
+        for (let x = 0; x < m.frameW; x++)
+          if (x === 0 || y === 0 || x === m.frameW - 1 || y === m.frameH - 1) assert.equal(s.rgba[(y * s.w + f * m.frameW + x) * 4 + 3], 0, `frame ${f} at ${x},${y}`);
+  });
+  it('his smoke is see-through where he painted it so, and stays his brown in any chakra colour', () => {
+    let see = 0;
+    for (let i = 3; i < s.rgba.length; i += 4) if (s.rgba[i] > 0 && s.rgba[i] < 255) see++;
+    assert.ok(see > 1000, `${see} see-through pixels`);
+    const blue = tintVfx(Uint8Array.from(s.rgba), 'fire', 'blue', { width: s.w, height: s.h, frameW: m.frameW, frameH: m.frameH, sprite: 'hit' });
+    let smoke = 0;
+    for (let i = 0; i < s.rgba.length; i += 4) {
+      assert.equal(blue[i + 3], s.rgba[i + 3], 'every pixel keeps its alpha');
+      if (!s.rgba[i + 3] || rgbToHsl(s.rgba[i], s.rgba[i + 1], s.rgba[i + 2])[1] >= 0.15) continue;
+      smoke++;
+      assert.ok(same(blue, s.rgba, i), 'his smoke is not recoloured');
+    }
+    assert.ok(smoke > 1000, `${smoke} smoke pixels`);
+  });
+});

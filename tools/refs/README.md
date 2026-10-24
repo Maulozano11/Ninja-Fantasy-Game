@@ -413,3 +413,38 @@ folders.
   `owner_paintover.py` (copied byte for byte from `heroine/lyra-v2`), with a pitch per axis.
 
       python3 -I tools/refs/roman-read-from-ref.py [src/sprite/maleReadArt.ts] [study.png]
+- `outfits_ref.py`: the owner's three new male outfits (`docs/reference/three-outfits-owner-reference.jpg`, 2000/240
+  picture px per pixel of his, three figures about 128 of his pixels tall, the right one mirrored to face right).
+  His rule for pictures bigger than ours ("Reducir y limpiar yo"): each body shrunk evenly (its chin to its near sole
+  on our male's, about 1.33 of his pixels per fine pixel), the body read pixel by pixel (his line where it covers
+  half a fine pixel, his gold, white, blue and skin where they cover a quarter, else the colour nearest the
+  footprint's mean), the head (the armoured figure's, shared by the three) and the sword by whole rows and columns
+  of his; then cleaned with his palette only: his 1 px outline, his mail and mesh a checker of his two colours there,
+  stray specks taken off. `game(name)` is a figure in our male idle frame 0; `PARTS` cuts it (his pixel corners),
+  `HIS` holds his joints there (`src/sprite/outfitRig.ts` stands our rig on them at rest), `ITEMS` describes each
+  item's module. One script per item, each the same three lines (`ITEMS[key]`), and the shared head:
+
+      python3 -I tools/refs/warden-plate-from-ref.py src/sprite/items/wardenPlateArt.ts
+      python3 -I tools/refs/warden-mail-from-ref.py src/sprite/items/wardenMailArt.ts
+      python3 -I tools/refs/warden-gauntlets-from-ref.py src/sprite/items/wardenGauntletsArt.ts
+      python3 -I tools/refs/warden-belt-from-ref.py src/sprite/items/wardenBeltArt.ts
+      python3 -I tools/refs/warden-tassets-from-ref.py src/sprite/items/wardenTassetsArt.ts
+      python3 -I tools/refs/warden-cuisses-from-ref.py src/sprite/items/wardenCuissesArt.ts
+      python3 -I tools/refs/warden-greaves-from-ref.py src/sprite/items/wardenGreavesArt.ts
+      python3 -I tools/refs/warden-sword-from-ref.py src/sprite/items/wardenSwordArt.ts
+      python3 -I tools/refs/drifter-jacket-from-ref.py src/sprite/items/drifterJacketArt.ts
+      python3 -I tools/refs/drifter-gloves-from-ref.py src/sprite/items/drifterGlovesArt.ts
+      python3 -I tools/refs/drifter-belt-from-ref.py src/sprite/items/drifterBeltArt.ts
+      python3 -I tools/refs/drifter-trousers-from-ref.py src/sprite/items/drifterTrousersArt.ts
+      python3 -I tools/refs/drifter-boots-from-ref.py src/sprite/items/drifterBootsArt.ts
+      python3 -I tools/refs/vanguard-vest-from-ref.py src/sprite/items/vanguardVestArt.ts
+      python3 -I tools/refs/vanguard-sleeves-from-ref.py src/sprite/items/vanguardSleevesArt.ts
+      python3 -I tools/refs/vanguard-wraps-from-ref.py src/sprite/items/vanguardWrapsArt.ts
+      python3 -I tools/refs/vanguard-belt-from-ref.py src/sprite/items/vanguardBeltArt.ts
+      python3 -I tools/refs/vanguard-cargo-from-ref.py src/sprite/items/vanguardCargoArt.ts
+      python3 -I tools/refs/vanguard-boots-from-ref.py src/sprite/items/vanguardBootsArt.ts
+      python3 -I tools/refs/outfits-head-from-ref.py src/sprite/outfitHeadArt.ts
+      python3 -I tools/refs/outfits-eyes-from-ref.py src/sprite/outfitEyeArt.ts
+      python3 -I tools/refs/outfits-hair-from-ref.py src/sprite/items/outfitHairArt.ts
+      python3 -I tools/refs/outfits-joints-from-ref.py src/sprite/outfitJointsArt.ts
+      python3 -I tools/refs/outfits-test-pixels-from-ref.py src/sprite/outfitRefPixels.ts

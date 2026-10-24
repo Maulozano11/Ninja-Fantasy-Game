@@ -5,8 +5,10 @@
 //   WORLD_OUT=<staging dir> npx tsx tools/world-sprites/puddle-sample.ts
 //
 // writes <WORLD_OUT>/charco_muestra/: every frame at 1x in our 256 x 256 sprite frame (feet at
-// FEET, transparent background, so he can paint on it) and manifest.json (the sequences, their
-// Spanish labels and pace). Staging only: it refuses to run without WORLD_OUT. The sheets, GIFs and
+// FEET, transparent background, so he can paint on it), manifest.json (the sequences, their
+// Spanish labels and pace) and fig/<frame>: the ninja frame each frame was made from (as it stood or
+// squashed), which tools/refs/water-puddle-from-ref.py matches his paint-over against. Staging only:
+// it refuses to run without WORLD_OUT. The sheets, GIFs and
 // map shots for him are made from that folder by tools/world-sprites/puddle-sample-sheets.py.
 //
 // Game scale: 1 m = 57 px, the ninja about 94 px tall; the puddle is about 1.1 m across, flattened
@@ -285,8 +287,12 @@ function shade(L: Liquid): Img {
     out.set([c[0], c[1], c[2], 255], o);
   }
   for (const [x, y, s] of L.drops ?? []) drop(out, mat, Math.round(x), Math.round(y), s);
+  if (L.fig) FIG_OF.set(out, L.fig.img);
   return out;
 }
+
+/** The ninja frame each sample frame was made from (as it stood, or squashed): the owner's paint-over keeps our pixels where he kept them. */
+const FIG_OF = new Map<Img, Img>();
 
 /** A loose droplet or bead, 1 to 3 px across, with its rim. */
 function drop(img: Img, mat: Mat, x: number, y: number, s: number): void {
@@ -511,6 +517,8 @@ function main(): void {
     const files = s.frames.map((f, i) => {
       const name = `${s.id}-${i + 1}.png`;
       writePng(join(dir, name), N, N, new Uint8Array(f.buffer));
+      const fig = FIG_OF.get(f);
+      if (fig) writePng(join(dir, 'fig', name), N, N, new Uint8Array(fig.buffer));
       return name;
     });
     return { id: s.id, label: s.label, files, fps: s.fps, loop: s.loop, wide: !!s.wide };

@@ -1,14 +1,20 @@
-"""Sheets, GIFs and paint-over frames for the owner, from the puddle sample (puddle-sample.ts).
+"""Sheets, GIFs and paint-over frames for the owner, from the puddle frames.
 
-    WORLD_OUT=<stg> npx tsx tools/world-sprites/puddle-sample.ts
-    python3 -I tools/world-sprites/puddle-sample-sheets.py <stg>/charco_muestra <out dir> \
+    python3 -I tools/world-sprites/puddle-sample-sheets.py <frames dir>[,<frames dir>...] <out dir> \
         src/assets/maps/river_forest/ground.webp [battle.png battle.json]
+
+<frames dir> is any folder with a manifest.json of sequences: <stg>/charco_muestra (our first
+sample, puddle-sample.ts), <stg>/charco_agua (his water repaint, tools/refs/water-puddle-from-ref.py),
+<stg>/charco_mercurio (the mercury in his style, puddle-mercury.py). A later folder's sequence
+replaces an earlier one's of the same id.
 
 writes into <out dir>:
   muestra-agua.png, muestra-mercurio.png   every sequence, frame by frame at 4x, labelled in Spanish
   gif/<sequence>.gif                       each sequence at 2x over the river forest ground
-  para-repintar/<sequence>-<n>.png         each frame at 1x on a transparent background (256 x 256,
-                                           the game's sprite frame, feet at the manifest's `feet`)
+  para-repintar[-agua|-mercurio]/          each frame at 1x on a transparent background (256 x 256,
+                                           the game's sprite frame, feet at the manifest's `feet`):
+                                           para-repintar/ for the first sample, -agua and -mercurio
+                                           for the frames from his repaint
   mapa-agua.png, mapa-mercurio.png         with a battle screenshot and its JSON (the screen point of
                                            a ninja's feet and px per metre there, from the game):
                                            a puddle frame beside that ninja, at the game's scale
@@ -21,12 +27,16 @@ import sys
 
 from PIL import Image, ImageDraw, ImageFont
 
-SRC, OUT, GROUND = sys.argv[1], sys.argv[2], sys.argv[3]
+SRCS, OUT, GROUND = sys.argv[1].split(','), sys.argv[2], sys.argv[3]
 SHOT = sys.argv[4] if len(sys.argv) > 5 else None
 SHOT_JSON = sys.argv[5] if len(sys.argv) > 5 else None
 
-MAN = json.load(open(os.path.join(SRC, 'manifest.json')))
-SEQ = {s['id']: s for s in MAN['sequences']}
+SEQ, DIR_OF = {}, {}
+for src in SRCS:
+    MAN = json.load(open(os.path.join(src, 'manifest.json')))
+    for sq in MAN['sequences']:
+        SEQ[sq['id']] = sq
+        DIR_OF[sq['id']] = src
 FEET = MAN['feet']
 PANEL = (32, 33, 43)   # his sheets' panel fill
 PAGE = (21, 21, 29)    # his sheets' page colour
@@ -49,7 +59,7 @@ CROP_WIDE = (FEET[0] - 104, FEET[1] - 136, FEET[0] + 120, FEET[1] + 20)
 
 
 def frames(seq):
-    return [Image.open(os.path.join(SRC, f)).convert('RGBA') for f in seq['files']]
+    return [Image.open(os.path.join(DIR_OF[seq['id']], f)).convert('RGBA') for f in seq['files']]
 
 
 def crop_of(seq):
@@ -128,7 +138,7 @@ def map_shot(path, seq_id, frame_i, title):
     info = json.load(open(SHOT_JSON))
     z = info['pxPerM'] / MAN['pxPerM']                # screen px per sprite px
     fx, fy = info['puddle']                           # the puddle's feet point on the screen
-    fr = Image.open(os.path.join(SRC, SEQ[seq_id]['files'][frame_i])).convert('RGBA')
+    fr = Image.open(os.path.join(DIR_OF[seq_id], SEQ[seq_id]['files'][frame_i])).convert('RGBA')
     fr = fr.resize((round(fr.width * z), round(fr.height * z)), Image.NEAREST)
     shot.alpha_composite(fr, (round(fx - FEET[0] * z), round(fy - FEET[1] * z)))
     ux, uy = info['unit']
@@ -148,34 +158,46 @@ def map_shot(path, seq_id, frame_i, title):
 
 def main():
     os.makedirs(OUT, exist_ok=True)
-    note = 'Muestra para repintar (no es arte final). Escala del juego, ampliada x4. Agua con tu paleta de agua v3.'
-    sheet(os.path.join(OUT, 'muestra-agua.png'), 'Jutsu de agua: Forma de charco', [
+    from_his = any(os.path.basename(d.rstrip('/')) != 'charco_muestra' for d in SRCS)
+    if from_his:
+        note = 'Copia de tu dibujo, píxel a píxel, a la escala del juego (ampliada x4).'
+        title = 'Técnica de Agua: Cuerpo Líquido'
+        note_m = 'Mercurio en tu estilo: tu movimiento y tus formas del agua, hechos de metal líquido (cromo). Escala del juego, x4.'
+        title_m = 'Kōton: Forma de Plata Líquida (mercurio)'
+    else:
+        note = 'Muestra para repintar (no es arte final). Escala del juego, ampliada x4. Agua con tu paleta de agua v3.'
+        title = 'Jutsu de agua: Forma de charco'
+        note_m = 'Muestra para repintar (no es arte final). Escala del juego, ampliada x4. Mercurio: cromo, metal líquido.'
+        title_m = 'Habilidad futura: Forma de mercurio'
+    sheet(os.path.join(OUT, 'muestra-agua.png'), title, [
         ('Transformarse (ninja por defecto)', 'agua-transformarse-hombre', 6),
         ('Charco quieto (bucle)', 'agua-charco-quieto', 6),
         ('Salir (ninja por defecto)', 'agua-salir-hombre', 6),
         ('Transformarse (Lyra)', 'agua-transformarse-lyra', 6),
         ('Salir (Lyra)', 'agua-salir-lyra', 6),
     ], note)
-    note_m = 'Muestra para repintar (no es arte final). Escala del juego, ampliada x4. Mercurio: cromo, metal líquido.'
-    sheet(os.path.join(OUT, 'muestra-mercurio.png'), 'Habilidad futura: Forma de mercurio', [
-        ('Transformarse (Lyra)', 'mercurio-transformarse-lyra', 6),
-        ('Charco quieto (bucle)', 'mercurio-charco-quieto', 6),
-        ('Salir (Lyra)', 'mercurio-salir-lyra', 6),
+    sheet(os.path.join(OUT, 'muestra-mercurio.png'), title_m, [
         ('Transformarse (ninja por defecto)', 'mercurio-transformarse-hombre', 6),
+        ('Charco quieto (bucle)', 'mercurio-charco-quieto', 6),
         ('Salir (ninja por defecto)', 'mercurio-salir-hombre', 6),
+        ('Transformarse (Lyra)', 'mercurio-transformarse-lyra', 6),
+        ('Salir (Lyra)', 'mercurio-salir-lyra', 6),
         ('Moverse y meterse por la rendija bajo un muro', 'mercurio-moverse-rendija', 3),
     ], note_m)
     gd = os.path.join(OUT, 'gif')
     os.makedirs(gd, exist_ok=True)
-    for s in MAN['sequences']:
+    for s in SEQ.values():
         gif(os.path.join(gd, s['id'] + '.gif'), s)
-    rp = os.path.join(OUT, 'para-repintar')
-    if os.path.isdir(rp):
-        shutil.rmtree(rp)
-    os.makedirs(rp)
-    for s in MAN['sequences']:
-        for f in s['files']:
-            shutil.copyfile(os.path.join(SRC, f), os.path.join(rp, f))
+    for src in SRCS:
+        base = os.path.basename(src.rstrip('/'))
+        rp = os.path.join(OUT, {'charco_muestra': 'para-repintar', 'charco_agua': 'para-repintar-agua', 'charco_mercurio': 'para-repintar-mercurio'}.get(base, 'para-repintar-' + base))
+        if os.path.isdir(rp):
+            shutil.rmtree(rp)
+        os.makedirs(rp)
+        for sid, d in DIR_OF.items():
+            if d == src:
+                for f in SEQ[sid]['files']:
+                    shutil.copyfile(os.path.join(src, f), os.path.join(rp, f))
     if SHOT:
         map_shot(os.path.join(OUT, 'mapa-agua.png'), 'agua-charco-quieto', 0, 'Charco de agua junto a un ninja, en el mapa')
         map_shot(os.path.join(OUT, 'mapa-mercurio.png'), 'mercurio-charco-quieto', 0, 'Charco de mercurio junto a un ninja, en el mapa')

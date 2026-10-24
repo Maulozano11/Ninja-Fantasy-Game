@@ -12,6 +12,8 @@ import { AURELIA_STAFF_GOLD, AURELIA_STAFF_ORB, DAWN_STAFF } from './aureliaStaf
 import { dawnStaffInFarHand, dawnStaffRest, drawDawnFarFist, drawDawnStaff } from './aureliaStaff';
 import { ICE_SWORD, ICE_SWORD_BLADE, ICE_SWORD_KIND } from './iceSwordArt';
 import { KATANA_PARTS, katanaHipColors, katanaTemplate } from './katana';
+import { KNIGHT_SWORD_ID, KNIGHT_SWORD_PARTS, knightSword, knightSwordPreview, knightSwordTint } from './knights';
+import { KNIGHT_BLADE_FLAME_FLAME, KNIGHT_HILT_PALADIN_GUARD, KNIGHT_SWORD_KIND } from './knightSwordArt';
 import { stampLeaning } from './armor';
 import { FOUNDER_COWL, FOUNDER_COWL_GOLD, FOUNDER_COWL_KIND, FOUNDER_COWL_NEAR, FOUNDER_COWL_NECK, FOUNDER_COWL_SEAM_F, FOUNDER_COWL_SEAM_N, FOUNDER_COWL_STUD, FOUNDER_COWL_STUD_F } from './founderCowlArt';
 import { chakraHex } from '../chakraInfo';
@@ -493,6 +495,26 @@ export const HELD_ITEMS: ItemDef[] = [
       // His grip crosses his fist at the hand joint (higher in the fist than our other blades' grip
       // point): held there, at rest every pixel is his and his gauntlet's place is our fist's.
       else if (!handsReleased(g)) drawPaintedWeapon(g, 'nearArm.held', FLAME_LONGSWORD, g.rig.handN, swordAngle(g), tint);
+    },
+  },
+  {
+    id: KNIGHT_SWORD_ID,
+    slot: 'held',
+    name: "Knight's Flame Sword",
+    desc: "A long sword burning red and orange, its guard and blade chosen as parts: the owner drew it for his three knights.",
+    colors: [col('flame', 'Flame', KNIGHT_BLADE_FLAME_FLAME, 'glow'), col('guard', 'Guard', KNIGHT_HILT_PALADIN_GUARD, 'metal')],
+    // his three hilts and two blades as parts (the owner, 2026-10-24: "la espada ponlos como para escoger la guarda como la katana")
+    parts: KNIGHT_SWORD_PARTS,
+    partsPreview: (_look, parts) => knightSwordPreview(parts),
+    draw: (g, [flame, guard], parts) => {
+      const s = knightSword(parts);
+      // (the slots' defaults mean each guard's and blade's own colours)
+      const tint = knightSwordTint(parts, flame, guard);
+      const line = (hex: string) => KNIGHT_SWORD_KIND[hex] === 'line';
+      if (handsBusy(g)) drawPaintedWeapon(g, 'backGear', s, backGrip(g, 48), backAngle(g, 48), tint, line);
+      else if (handsLimp(g)) drawPaintedWeapon(g, 'nearArm.held', s, droppedGrip(g, 0.7), -86, tint, line);
+      // held by his grip at the hand joint, as the flame longsword: at rest every pixel is his
+      else if (!handsReleased(g)) drawPaintedWeapon(g, 'nearArm.held', s, g.rig.handN, swordAngle(g), tint, line);
     },
   },
   {

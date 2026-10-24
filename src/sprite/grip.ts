@@ -6,6 +6,7 @@ import type { DrawCtx } from './ctx';
 import { FLAME_LONGSWORD } from './items/flameSwordArt';
 import { dawnStaffInFarHand } from './items/aureliaStaff';
 import { ICE_SWORD } from './items/iceSwordArt';
+import { KNIGHT_HILT_DARK, KNIGHT_HILT_DRAGON, KNIGHT_HILT_PALADIN } from './items/knightSwordArt';
 import { add, norm, RES, scale, sub, Vec } from './raster';
 import { LYRA_RAPIER } from './items/lyraSwordArt';
 import { drawRig, THROW_RELEASE_FRAME } from './rig';
@@ -71,9 +72,14 @@ export function swordAngle(g: DrawCtx): number {
       // Matches the reference: blade hangs across the legs at about 50 degrees. The owner's flame
       // longsword and ice crystal sword hang at the angle he painted them (35), so at rest they are every
       // pixel his.
+      // The owner's knights' sword hangs at the angle he drew its guard (its blade lies along the guard).
+      if (g.has('held', 'held_knight_sword')) return KNIGHT_GUARD_ANGLE[g.look.slots.held?.parts?.guard ?? 'paladin'] ?? KNIGHT_HILT_PALADIN.angle;
       return g.has('held', 'held_flame_sword') ? FLAME_LONGSWORD.angle : g.has('held', 'held_ice_crystal') ? ICE_SWORD.angle : 52;
   }
 }
+
+/** The angle his knights' sword hangs at, by its guard (items/knights.ts knightSword). */
+const KNIGHT_GUARD_ANGLE: Record<string, number> = { paladin: KNIGHT_HILT_PALADIN.angle, dark: KNIGHT_HILT_DARK.angle, dragon: KNIGHT_HILT_DRAGON.angle };
 
 /** Polearm angle: upright at rest, thrust forward in attacks. */
 export function poleAngle(g: DrawCtx): number {
@@ -131,10 +137,10 @@ export const handsBusy = (g: DrawCtx): boolean => BUSY.has(g.rig.pose) || !!g.lo
 export const handsReleased = (g: DrawCtx): boolean => g.rig.released && !handsBusy(g);
 
 /** The held items that are weapons, with a handle the fist holds; the others are empty hands or a technique held in the palm. */
-const WEAPONS = new Set(['held_katana', 'held_crystal', 'held_ice_crystal', 'held_flame_sword', 'held_gilded_rapier', 'held_kunai', 'held_naginata']);
+const WEAPONS = new Set(['held_katana', 'held_crystal', 'held_ice_crystal', 'held_flame_sword', 'held_knight_sword', 'held_gilded_rapier', 'held_kunai', 'held_naginata']);
 
 /** The owner's longswords, held by their own grip at the hand joint (the others at the fist's middle, gripPoint). */
-export const HAND_JOINT_SWORDS = new Set(['held_flame_sword', 'held_ice_crystal']);
+export const HAND_JOINT_SWORDS = new Set(['held_flame_sword', 'held_ice_crystal', 'held_knight_sword']);
 export const isWeapon = (held: string | undefined): boolean => !!held && WEAPONS.has(held);
 
 /**
@@ -161,7 +167,7 @@ export function gripAngle(g: DrawCtx): number | null {
   if (g.has('held', 'held_naginata')) return poleAngle(g);
   // Aurelia's staff is in her far fist at rest (her near hand is empty), in the near one like a pole otherwise.
   if (g.has('held', 'held_dawn_staff')) return dawnStaffInFarHand(g) ? null : poleAngle(g);
-  if (g.has('held', 'held_katana') || g.has('held', 'held_crystal') || g.has('held', 'held_ice_crystal') || g.has('held', 'held_flame_sword') || g.has('held', 'held_kunai')) return swordAngle(g);
+  if (g.has('held', 'held_katana') || g.has('held', 'held_crystal') || g.has('held', 'held_ice_crystal') || g.has('held', 'held_flame_sword') || g.has('held', 'held_knight_sword') || g.has('held', 'held_kunai')) return swordAngle(g);
   return null;
 }
 

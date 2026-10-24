@@ -145,6 +145,9 @@ describe('the legends', () => {
       preset_night: ['Lightning', '#36a0f0'], // was the blue Rising Tide
       preset_aurelia: ['Light', '#fac856'], // a heroine: Light, no element, in her staff's gold
       preset_lyra: ['Wind', '#40cccb'], // a heroine: wind in the cyan of her blade
+      preset_knight_paladin: ['Fire', '#e8321e'], // the owner's knights (2026-10-24): fire, as their flame swords
+      preset_knight_dark: ['Fire', '#e8321e'],
+      preset_knight_dragon: ['Fire', '#e8321e'],
     };
     assert.deepEqual(LEGENDARY_PRESETS.map((p) => p.character.id).sort(), Object.keys(want).sort());
     for (const { character: c } of LEGENDARY_PRESETS) {

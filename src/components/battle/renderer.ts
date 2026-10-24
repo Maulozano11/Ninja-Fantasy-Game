@@ -5,7 +5,7 @@
 import type { AreaShape, BattleState, Cell, Intent, PropDef, Pt, Trap, Unit, Wall, WeaponNode } from '../../battle/types';
 import { homeTeam } from '../../battle/types';
 import type { MapDef } from '../../battle/map';
-import { BLOCK_HALF, CELL, cellCenter, dist, segmentsCross } from '../../battle/map';
+import { BLOCK_HALF, CELL, DIAGONAL_RULE, cellCenter, dist, segmentsCross } from '../../battle/map';
 import { JUTSU, areaIn } from '../../battle/jutsu';
 import { breakable } from '../../battle/structures';
 import { AURA_RADIUS, sovereign } from '../../battle/combat';
@@ -43,8 +43,11 @@ export interface Overlay {
   reach?: { cells: Cell[]; tone: 'move' | 'dash' };
   path?: { pts: Pt[]; ok: boolean };
   area?: { shape: AreaShape; tone: 'enemy' | 'ally' | 'heal' };
-  /** A circle on the ground: jutsu or weapon range from the caster. */
-  range?: { at: Pt; radius: number };
+  /**
+   * Jutsu or weapon range from the caster: a square under 5-5-5 diagonals (ranges count squares), a
+   * circle at true length or when `round` (a cone's or a line's length is its shape, not a range).
+   */
+  range?: { at: Pt; radius: number; round?: boolean };
   targets?: string[];
   warn?: string[];
   point?: { at: Pt; ok: boolean };
@@ -270,6 +273,14 @@ function groundEllipse(ctx: CanvasRenderingContext2D, map: MapDef, c: Pt, r: num
   ctx.ellipse(p.X, p.Y, r * map.px.perM, r * map.px.perMDepth, 0, 0, Math.PI * 2);
 }
 
+/** A range on the ground: under 5-5-5 diagonals ranges count squares, so it is a square; else a circle. */
+function rangeOutline(ctx: CanvasRenderingContext2D, map: MapDef, c: Pt, r: number, round = false): void {
+  if (round || DIAGONAL_RULE !== '5-5-5') return groundEllipse(ctx, map, c, r);
+  const a = project(map, { x: c.x - r, z: c.z - r });
+  const b = project(map, { x: c.x + r, z: c.z + r });
+  ctx.rect(a.X, a.Y, b.X - a.X, b.Y - a.Y);
+}
+
 /** Ground points of an area's outline, projected. */
 function areaPath(ctx: CanvasRenderingContext2D, map: MapDef, a: AreaShape): void {
   if (a.kind === 'circle') {
@@ -315,7 +326,7 @@ function drawGroundOverlays(ctx: CanvasRenderingContext2D, sc: Scene): void {
   }
   if (o.range) {
     ctx.beginPath();
-    groundEllipse(ctx, map, o.range.at, o.range.radius);
+    rangeOutline(ctx, map, o.range.at, o.range.radius, o.range.round);
     ctx.setLineDash([6, 5]);
     ctx.lineWidth = 1.5;
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)';

@@ -4,8 +4,8 @@
 // draws a guard to look; silent takedowns leave bodies that raise the alarm if seen.
 
 import type { BattleEvent, BattleState, Cell, Pt, Unit } from './types';
-import { cellCenter, cellOf, dist, gridFor, hideSpotAt, lineOfSight, getMap, propRules, levelAtPt } from './map';
-import { countStep, reachable, canStop, pathTo, unitStepCost, walkCost } from './nav';
+import { cellCenter, cellOf, dist, gridFor, rangeDist, hideSpotAt, lineOfSight, getMap, propRules, levelAtPt } from './map';
+import { reachable, canStop, pathTo, unitStepCost, walkCost } from './nav';
 import { passivePerception } from './combat';
 import { startCombat } from './turns';
 
@@ -138,7 +138,6 @@ export function stealthMove(s: BattleState, u: Unit, path: Cell[], ev: BattleEve
   let stopped = false;
   for (const c of path) {
     cost += unitStepCost(s, u, at, c, rules);
-    countStep(u, at, c);
     at = c;
     const p = cellCenter(c);
     if (p.x !== u.pos.x) u.facing = p.x > u.pos.x ? 1 : -1;
@@ -227,15 +226,13 @@ export function afterStealthAttack(s: BattleState, attacker: Unit, target: Unit,
 export function dragBody(s: BattleState, u: Unit, bodyId: string, to: Cell, ev: BattleEvent[]): string | null {
   const body = s.bodies.find((b) => b.unit === bodyId);
   if (!body) return 'noBody';
-  if (dist(body.pos, u.pos) > 1.6) return 'tooFar';
+  if (rangeDist(body.pos, u.pos) > 1.6) return 'tooFar';
   const reach = reachable(s, u, u.turn.move, { dragging: true });
   if (!canStop(s, u, to)) return 'blocked';
   const path = pathTo(s, reach, to);
   if (!path || !path.length) return 'tooFar';
-  const { total: cost, odd } = walkCost(s, u, path, { dragging: true });
+  const { total: cost } = walkCost(s, u, path, { dragging: true });
   if (cost > u.turn.move + 1e-6) return 'tooFar';
-  if (odd) u.turn.diag = 1;
-  else delete u.turn.diag;
   const pts = path.map(cellCenter);
   u.pos = pts[pts.length - 1];
   u.turn.move -= cost;

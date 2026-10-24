@@ -6,7 +6,7 @@
 import { abilityMod, combineAdvantage } from '../rules/checks';
 import type { Advantage } from '../rules/checks';
 import type { AreaShape, BattleEvent, BattleState, Pt, Unit, Wall } from './types';
-import { BLOCK_HALF, CELL, cellCenter, cellOf, dist, gridFor, heightReach, idx, inGrid, lineOfSight, segDist, segmentsCross, wallCovers } from './map';
+import { BLOCK_HALF, CELL, cellCenter, cellOf, dist, gridFor, rangeDist, heightReach, idx, inGrid, lineOfSight, segDist, segmentsCross, wallCovers } from './map';
 import { occupancy } from './nav';
 import { inArea } from './jutsu';
 import type { JutsuSpec } from './jutsu';
@@ -72,7 +72,7 @@ export interface StructureAttack {
  */
 export function structureAttack(s: BattleState, u: Unit, w: Wall, ranged: boolean): StructureAttack {
   const at = closestPoint(w, u.pos);
-  const d = dist(u.pos, at);
+  const d = rangeDist(u.pos, at);
   const mod = u.prof + abilityMod(ranged ? u.stats.dex : u.stats.str);
   const reasons: string[] = [];
   const advs: Advantage[] = [];
@@ -88,7 +88,8 @@ export function structureAttack(s: BattleState, u: Unit, w: Wall, ranged: boolea
   const adv = combineAdvantage(...advs);
   const inRange = ranged ? d <= KUNAI_LONG + up + 0.1 : d <= wielded(u).reach + thickness(w) + 0.1;
   // Aimed a hair short of the wall's face, so the wall itself doesn't hide it.
-  const k = d > 0.1 ? 0.05 / d : 0;
+  const e = dist(u.pos, at);
+  const k = e > 0.1 ? 0.05 / e : 0;
   const sight = ranged
     ? lineOfSight(s, u.pos, { x: at.x + (u.pos.x - at.x) * k, z: at.z + (u.pos.z - at.z) * k })
     : !s.walls.some((x) => x.id !== w.id && x.kind === 'metal' && segmentsCross(u.pos, at, x.a, x.b));

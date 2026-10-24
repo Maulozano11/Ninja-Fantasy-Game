@@ -439,10 +439,12 @@ describe('Mirai: Eye of Tomorrow, Premonitory Evasion, Pursuing Flame', () => {
     assert.deepEqual(ok(applyAction(s, a)).state.units.rogue_0.pos, plan.to);
     // Close enough to act from where it stands, it plans no walk.
     assert.equal(createBattle(setup({ party: [{ character: mirai(), pos: { x: 8, z: 10 } }] })).state.units.rogue_0.intent?.to, undefined);
-    // Two enemies never plan to stop on the same spot (the raider's best one is the rogue's).
-    const pair = createBattle(setup({ party: [{ character: mirai(), pos: { x: 7, z: 10 } }], enemies: [{ kind: 'rogue', pos: { x: 19, z: 9.5 } }, { kind: 'raider', pos: { x: 22, z: 10.5 } }] })).state;
-    const [p0, p1] = [pair.units.rogue_0.intent?.to, pair.units.raider_0.intent?.to];
+    // Two enemies never plan to stop on the same spot (alone, the second raider's best one is the first's).
+    const raiders = (...at: Pt[]) => createBattle(setup({ party: [{ character: mirai(), pos: { x: 7, z: 10 } }], enemies: at.map((pos) => ({ kind: 'raider' as const, pos })) })).state;
+    const pair = raiders({ x: 19, z: 9.5 }, { x: 20, z: 10.5 });
+    const [p0, p1] = [pair.units.raider_0.intent?.to, pair.units.raider_1.intent?.to];
     assert.ok(p0 && p1);
+    assert.deepEqual(raiders({ x: 20, z: 10.5 }).units.raider_0.intent?.to, p0);
     assert.notDeepEqual(cellOf(p0), cellOf(p1));
   });
 

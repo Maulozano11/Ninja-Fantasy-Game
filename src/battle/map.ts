@@ -118,6 +118,30 @@ export const cellCenter = (c: Cell): Pt => ({ x: (c.c + 0.5) * CELL, z: (c.r + 0
 export const cellOf = (p: Pt): Cell => ({ c: Math.floor(p.x / CELL), r: Math.floor(p.z / CELL) });
 export const sameCell = (a: Cell, b: Cell): boolean => a.c === b.c && a.r === b.r;
 export const dist = (a: Pt, b: Pt): number => Math.hypot(a.x - b.x, a.z - b.z);
+
+/**
+ * How a diagonal step is paid, and so how far things are on the grid (docs/GAMEPLAY_DESIGN.md,
+ * "Diagonals: 5-5-5"):
+ * - '5-5-5': 5e's own rule, the owner's decision (2026-10-24, "pon 5-5-5 para hacer mas facil de
+ *   entender el juego"). A diagonal step costs the same as a straight one, one cell (0.5 m): so many
+ *   metres of movement reach so many metres across, down, or both at once. Ranges and reach are
+ *   counted the same way (rangeDist): the longer of the two sides.
+ * - 'true': a diagonal step costs its true length, sqrt 2 cells (0.71 m), and ranges are as the crow
+ *   flies, as before the height test.
+ * (5-10-5, tried on battle/height-test from 2026-10-22, is retired: it needed the diagonals counted
+ * over the whole turn, and he chose the simpler rule.)
+ */
+export type DiagonalRule = '5-5-5' | 'true';
+export const DIAGONAL_RULE: DiagonalRule = '5-5-5';
+
+/**
+ * How far a target or a point is for a range or a reach (a blow, a kunai, a jutsu's range, an
+ * opportunity attack, a touch): under 5-5-5 the squares between, the longer of the two sides; at
+ * true length as the crow flies. Shapes on the ground (circles, cones, lines, auras, sight and
+ * noise) stay measured with dist.
+ */
+export const rangeDist = (a: Pt, b: Pt, rule: DiagonalRule = DIAGONAL_RULE): number =>
+  rule === '5-5-5' ? Math.max(Math.abs(a.x - b.x), Math.abs(a.z - b.z)) : dist(a, b);
 /** A navigation cell as a key ("c,r"): wet ground and steam are kept by it (plain data, saved with the battle). */
 export const cellKey = (c: Cell): string => `${c.c},${c.r}`;
 export const keyCell = (k: string): Cell => {

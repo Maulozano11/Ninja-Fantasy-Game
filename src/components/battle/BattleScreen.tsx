@@ -13,8 +13,8 @@ import { current } from '../../battle/turns';
 import { AURA_RADIUS, attackPreview, sovereign } from '../../battle/combat';
 import { JUTSU, areaIn, areaOf, enhanced as enhancedSpec, fanDice, fannedBy, jutsuRange } from '../../battle/jutsu';
 import type { JutsuSpec } from '../../battle/jutsu';
-import { LEVEL_M, cellCenter, cellOf, dist, fullCoverBetween, getMap, gridFor, heightReach, idx, levelAtPt, lineOfSight, sameCell, steamAt, steamBetween, steamHides } from '../../battle/map';
-import { DIAGONAL_RULE, canStop, occupancy, pathTo, reachable, walkCost } from '../../battle/nav';
+import { LEVEL_M, cellCenter, cellOf, dist, fullCoverBetween, rangeDist, getMap, gridFor, heightReach, idx, levelAtPt, lineOfSight, sameCell, steamAt, steamBetween, steamHides } from '../../battle/map';
+import { canStop, occupancy, pathTo, reachable, walkCost } from '../../battle/nav';
 import { foreseen } from '../../battle/intent';
 import { MAX_STRUCTURES, STRUCTURE_AC, breakable, jutsuWallAt, ownStructures, structureAt, structureAttack, structureBlocker, structureDist } from '../../battle/structures';
 import { auraEntered, commandBlocker, edgeFoe, nodeInSight, nodeUnder, ownNodeAt, ownNodes, submissionBlocker, submissionRefused, swapBlocker, warpBlocker, warpLanding } from '../../battle/clans';
@@ -471,12 +471,10 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
         if (path && path.length) {
           const { total: cost, climb } = walkCost(s, actor, path);
           o.path = { pts: [actor.pos, ...path.map(cellCenter)], ok: canStop(s, actor, c) };
-          // The height gained or lost, and what of the cost is climbing; with 5-10-5 diagonals, the
-          // same path at true length beside it (the owner compares the two).
+          // The height gained or lost, and what of the cost is climbing.
           const rise = (levelAtPt(s, cellCenter(c)) - levelAtPt(s, actor.pos)) * LEVEL_M;
           label = [T('aimMove', { m: cost.toFixed(1) }), Math.abs(rise) >= 0.75 ? T(rise > 0 ? 'aimClimbUp' : 'aimClimbDown', { h: Math.abs(rise).toFixed(1) }) : ''].filter(Boolean).join(' · ');
-          const trueLength = walkCost(s, actor, path, { diagonals: 'true' }).total;
-          sub = [climb > 0.05 ? T('aimClimbPart', { m: climb.toFixed(1) }) : '', DIAGONAL_RULE === '5-10-5' && Math.abs(trueLength - cost) > 0.05 ? T('aimDiag', { m: trueLength.toFixed(1) }) : ''].filter(Boolean).join(' · ') || null;
+          sub = climb > 0.05 ? T('aimClimbPart', { m: climb.toFixed(1) }) : null;
           // A dash into a Northstar's aura is cut short there (D17).
           if (actor.turn.dashed) {
             const pts = [actor.pos, ...path.map(cellCenter)];
@@ -516,7 +514,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
         const foe = land ? edgeFoe(s, actor, land) : undefined;
         o.nodes.hover = n.id;
         o.point = { at: land ?? n.pos, ok: !!land };
-        label = why ? reasonLine(why) : foe ? T('aimWarpEdge', { name: unitRef(foe, lang) }) : T('aimMove', { m: dist(actor.pos, land!).toFixed(1) });
+        label = why ? reasonLine(why) : foe ? T('aimWarpEdge', { name: unitRef(foe, lang) }) : T('aimMove', { m: rangeDist(actor.pos, land!).toFixed(1) });
         if (land) {
           // Into a Northstar's aura: half the movement left goes, and a foe's aura cancels the edge (D17).
           const slowed = actor.turn.move > 0 && !!auraEntered(s, { ...actor, pos: land }, actor.pos);
@@ -527,7 +525,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
     } else if (mode.k === 'jutsu' && spec && spec.shape === 'onNode') {
       // Spatial Swap: whoever stands on a Node it can reach; an enemy gets a STR save.
       o.range = { at: actor.pos, radius: spec.range };
-      o.nodes = { valid: ownNodes(s, actor).filter((n) => dist(actor.pos, n.pos) <= jutsuRange(s, spec, actor.pos, n.pos) + 0.1 && nodeInSight(s, actor, n)).map((n) => n.id) };
+      o.nodes = { valid: ownNodes(s, actor).filter((n) => rangeDist(actor.pos, n.pos) <= jutsuRange(s, spec, actor.pos, n.pos) + 0.1 && nodeInSight(s, actor, n)).map((n) => n.id) };
       o.targets = Object.values(s.units).filter((x) => !swapBlocker(s, actor, x)).map((x) => x.id);
       if (hu) {
         const why = swapBlocker(s, actor, hu);
@@ -548,7 +546,9 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
       } else if (mode.picked) label = T('aimSecond');
     } else if (mode.k === 'jutsu' && spec) {
       const self = spec.shape === 'self' || spec.shape === 'selfCircle';
-      if (!self) o.range = { at: actor.pos, radius: spec.range };
+      // A cone's or a line's length is its shape (round); every other range counts squares (5-5-5).
+      const swept = spec.shape === 'cone' || spec.shape === 'line';
+      if (!self) o.range = { at: actor.pos, radius: spec.range, round: swept };
       const at = self ? actor.pos : hu ? hu.pos : hover?.pt;
       if (at) {
         const area = areaIn(s, spec, actor.pos, at);
@@ -584,18 +584,19 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
         // From high ground a jutsu reaches further (as the engine allows it); a line runs longer.
         const slack = 0.1 + (hu?.bulk ?? 0) + (hu?.kind === 'hydra_head' ? 2.5 : 0);
         const upReach = jutsuRange(s, spec, actor.pos, at) - spec.range;
-        if (!self && dist(actor.pos, at) > spec.range + upReach + slack) label = T('aimNoReach');
+        const far = swept ? dist(actor.pos, at) : rangeDist(actor.pos, at);
+        if (!self && far > spec.range + upReach + slack) label = T('aimNoReach');
         // Then sight, as the engine refuses it: a jutsu at one target needs to see it (a strike, no
         // metal wall between); an area or a point needs to see where it goes.
         else if (spec.shape === 'single' && hu && (spec.melee ? fullCoverBetween(s, actor.pos, hu.pos) || (!!spec.charge && !chargeLanding(s, actor, hu)) : !lineOfSight(s, actor.pos, hu.pos))) label = reasonLine(spec.melee ? 'blocked' : sightWhy(s, actor.pos, hu.pos));
         else if ((spec.shape === 'circle' || spec.shape === 'point' || spec.shape === 'wall') && !lineOfSight(s, actor.pos, at, { into: true })) label = reasonLine(sightWhy(s, actor.pos, at, true));
-        if (spec.shape === 'point' || spec.shape === 'wall') o.point = { at, ok: dist(actor.pos, at) <= jutsuRange(s, spec, actor.pos, at) + 0.1 };
+        if (spec.shape === 'point' || spec.shape === 'wall') o.point = { at, ok: rangeDist(actor.pos, at) <= jutsuRange(s, spec, actor.pos, at) + 0.1 };
         if (spec.special === 'metalBlock' || spec.special === 'metalWall' || spec.special === 'earthWall' || spec.special === 'waterWall') {
           // A wall or a Kōton structure: where it would stand and why it can't (never over anyone);
           // for a Kōton, how many already stand.
           const koton = spec.special === 'metalBlock' || spec.special === 'metalWall';
           const w = koton ? structureAt(spec, actor.pos, at, actor.id, 'preview') : jutsuWallAt(spec, actor.pos, at, 'preview');
-          const why = dist(actor.pos, at) > jutsuRange(s, spec, actor.pos, at) + 0.1 ? 'outOfRange' : !lineOfSight(s, actor.pos, at, { into: true }) ? sightWhy(s, actor.pos, at, true) : structureBlocker(s, w);
+          const why = rangeDist(actor.pos, at) > jutsuRange(s, spec, actor.pos, at) + 0.1 ? 'outOfRange' : !lineOfSight(s, actor.pos, at, { into: true }) ? sightWhy(s, actor.pos, at, true) : structureBlocker(s, w);
           const n = ownStructures(s, actor.id).length;
           o.point = undefined;
           o.footprint = { wall: w, ok: !why };
@@ -604,7 +605,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
           if (koton && n >= MAX_STRUCTURES && !why) sub = T('aimOldest');
         }
         // Said when the height is what makes it reach (a line: whenever it runs longer).
-        if (upReach > 0 && label !== T('aimNoReach') && (spec.shape === 'line' || dist(actor.pos, at) > spec.range + slack)) {
+        if (upReach > 0 && label !== T('aimNoReach') && (spec.shape === 'line' || far > spec.range + slack)) {
           const more = T('aimHeightReach', { m: upReach.toFixed(1) });
           sub = sub ? `${sub} · ${more}` : more;
         }
@@ -616,14 +617,14 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
       // Hidden on the ground nearby: where it goes and the blast it waits with.
       o.range = { at: actor.pos, radius: TAG.plant };
       if (hover?.pt) {
-        const ok = dist(actor.pos, hover.pt) <= TAG.plant + 0.1;
+        const ok = rangeDist(actor.pos, hover.pt) <= TAG.plant + 0.1;
         o.point = { at: hover.pt, ok };
         o.area = { shape: { kind: 'circle', center: hover.pt, radius: TAG.radius }, tone: 'enemy' };
         label = ok ? (lineOfSight(s, actor.pos, hover.pt, { into: true }) ? T('aimTagTrap') : reasonLine(sightWhy(s, actor.pos, hover.pt, true))) : T('aimNoReach');
       }
     } else if (mode.k === 'stone') {
       o.range = { at: actor.pos, radius: STONE_RANGE };
-      if (hover?.pt) o.point = { at: hover.pt, ok: dist(actor.pos, hover.pt) <= STONE_RANGE + heightReach(s, actor.pos, hover.pt) };
+      if (hover?.pt) o.point = { at: hover.pt, ok: rangeDist(actor.pos, hover.pt) <= STONE_RANGE + heightReach(s, actor.pos, hover.pt) };
     } else if (mode.k === 'shove' || mode.k === 'stabilize' || (mode.k === 'item' && mode.item !== 'tag' && mode.item !== 'tagTrap')) {
       o.range = { at: actor.pos, radius: 1.5 };
       if (hu) o.targets = [hu.id];
@@ -1055,8 +1056,8 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
       add({ id: 'end', label: stealth ? t('done') : t('act_end'), icon: ACTION_ICON.end, tone: 'end', help: t('help_end') });
     } else {
       const s = state;
-      const downedAlly = Object.values(s.units).find((o) => o.team === 'party' && o.down === 'downed' && dist(o.pos, u.pos) <= 1.6);
-      const body = s.bodies.find((bd) => dist(bd.pos, u.pos) <= 1.6);
+      const downedAlly = Object.values(s.units).find((o) => o.team === 'party' && o.down === 'downed' && rangeDist(o.pos, u.pos) <= 1.6);
+      const body = s.bodies.find((bd) => rangeDist(bd.pos, u.pos) <= 1.6);
       const edge = (map.exits.left && u.pos.x <= 1.5) || (map.exits.right && u.pos.x >= map.widthM - 1.5);
       add({ id: 'disengage', label: t('act_disengage'), icon: ACTION_ICON.disengage, disabled: !can.action || stealth, help: t('help_disengage') });
       add({ id: 'crouch', label: t(u.cond.crouched ? 'act_stand' : 'act_crouch'), icon: ACTION_ICON.crouch, disabled: !u.cond.crouched && !can.bonus, help: t('help_crouch') });

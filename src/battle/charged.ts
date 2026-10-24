@@ -16,7 +16,7 @@
 // shared `cellKey` of map.ts, and the 'cracks' event can join their 'ground' event as one more kind.
 
 import type { BattleEvent, BattleState, Cell, ChargeEnd, Unit } from './types';
-import { dist, fullCoverBetween, gridFor, idx, inGrid, tooHigh } from './map';
+import { fullCoverBetween, rangeDist, gridFor, idx, inGrid, tooHigh } from './map';
 import { passivePerception } from './combat';
 import { JUTSU } from './jutsu';
 import { crackKey } from './nav';
@@ -37,7 +37,7 @@ export function chargedFoe(s: BattleState, u: Unit): Unit | undefined {
   for (const f of Object.values(s.units)) {
     if (f.team === u.team || f.down || f.head?.severed || f.kind === 'hydra_body') continue;
     if (f.cond.hidden !== undefined && passivePerception(u) < f.cond.hidden) continue;
-    const d = dist(u.pos, f.pos);
+    const d = rangeDist(u.pos, f.pos);
     if (d > chargedReach(u, f) + 0.1 || fullCoverBetween(s, u.pos, f.pos) || tooHigh(s, u.pos, f.pos)) continue;
     if (!best || d < best.d - 1e-9 || (Math.abs(d - best.d) <= 1e-9 && f.id < best.f.id)) best = { f, d };
   }

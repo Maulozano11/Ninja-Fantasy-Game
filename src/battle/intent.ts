@@ -8,9 +8,9 @@ import { abilityMod, successChance } from '../rules/checks';
 import { effectMods, hasEffect } from '../rules/effects';
 import type { BattleEvent, BattleState, Cell, Intent, Pt, Unit } from './types';
 import { homeTeam } from './types';
-import { cellCenter, cellOf, clearRun, coverBetween, dist, fullCoverBetween, gridFor, heightReach, levelAtPt, lineOfSight, sameCell, steamAt, steamHides, tooHigh } from './map';
+import { cellCenter, cellOf, clearRun, coverBetween, dist, rangeDist, fullCoverBetween, gridFor, heightReach, levelAtPt, lineOfSight, sameCell, steamAt, steamHides, tooHigh } from './map';
 import { lightningSeeds, unitsOnPatch, wetPatch } from './ground';
-import { canStop, occupancy, reachable } from './nav';
+import { canStop, occupancy, reachable, walkDist } from './nav';
 import { JUTSU, MIN_AIM, areaIn, areaOf, inArea, jutsuRange } from './jutsu';
 import type { JutsuSpec } from './jutsu';
 import { passivePerception, saveMod } from './combat';
@@ -175,7 +175,7 @@ export function standScore(s: BattleState, u: Unit, foe: Unit | undefined, p: Pt
   if (afar) {
     v -= 1.5 * Math.min(2, Math.max(0, Math.floor(up + 0.1)));
     v -= 0.1 * Math.min(dist(p, foe.pos), KUNAI.reach);
-  } else if (up >= 0.9 && dist(p, foe.pos) <= reachTo(u, foe) + 0.1) v -= 1;
+  } else if (up >= 0.9 && rangeDist(p, foe.pos) <= reachTo(u, foe) + 0.1) v -= 1;
   return v;
 }
 
@@ -193,12 +193,12 @@ export const canWarp = (u: Unit, next = false): boolean =>
  */
 export function warpStrikeAt(s: BattleState, u: Unit, t: Unit): Pt | null {
   const reach = reachTo(u, t) + 0.1;
-  if (dist(u.pos, t.pos) <= reach && !fullCoverBetween(s, u.pos, t.pos)) return null;
+  if (rangeDist(u.pos, t.pos) <= reach && !fullCoverBetween(s, u.pos, t.pos)) return null;
   let best: { at: Pt; d: number } | undefined;
   for (const n of ownNodes(s, u)) {
     if (warpBlocker(s, u, n)) continue;
     const land = warpLanding(s, u, n)!;
-    const d = dist(land, t.pos);
+    const d = rangeDist(land, t.pos);
     if (d > reach || fullCoverBetween(s, land, t.pos)) continue;
     if (!best || d < best.d) best = { at: land, d };
   }
@@ -218,7 +218,7 @@ const foesOf = (s: BattleState, u: Unit): Unit[] => Object.values(s.units).filte
 export function swapValue(s: BattleState, u: Unit, t: Unit | undefined): number {
   if (!t || !standingUnit(t) || !u.jutsus.includes(SWAP) || noJutsu(u) || u.chakra < JUTSU[SWAP].cost || swapBlocker(s, u, t)) return 0;
   const foes = foesOf(s, u);
-  const struck = (p: Pt) => foes.some((f) => f.id !== t.id && dist(f.pos, p) <= wielded(f).reach + 0.6);
+  const struck = (p: Pt) => foes.some((f) => f.id !== t.id && rangeDist(f.pos, p) <= wielded(f).reach + 0.6);
   if (t.team === u.team) {
     if (t.hp > t.maxHp * 0.5 || u.hp < u.maxHp * 0.5 || !struck(t.pos) || struck(u.pos)) return 0;
     return 6 + 10 * (1 - t.hp / t.maxHp);
@@ -258,12 +258,12 @@ export function wallCover(s: BattleState, u: Unit, p: Unit, advancing = false): 
   if (ownStructures(s, u.id).some((w) => w.kind === 'metal')) return null;
   const foes = foesOf(s, u);
   // A foe that can strike it where it stands (or step around a wall to do it) is no shooter to hide from.
-  if (foes.some((f) => dist(f.pos, p.pos) <= Math.max(3, wielded(f).reach + 0.5))) return null;
-  const shooters = foes.filter((f) => dist(f.pos, p.pos) <= KUNAI_LONG && lineOfSight(s, f.pos, p.pos));
+  if (foes.some((f) => rangeDist(f.pos, p.pos) <= Math.max(3, wielded(f).reach + 0.5))) return null;
+  const shooters = foes.filter((f) => rangeDist(f.pos, p.pos) <= KUNAI_LONG && lineOfSight(s, f.pos, p.pos));
   if (!shooters.length) return null;
   // Each of them shoots at one of the friends it sees: the share that would have gone at this one.
   const side = Object.values(s.units).filter((o) => o.team === u.team && standingUnit(o) && o.kind !== 'hydra_body');
-  const seen = (f: Unit): number => Math.max(1, side.filter((o) => dist(f.pos, o.pos) <= KUNAI_LONG && lineOfSight(s, f.pos, o.pos)).length);
+  const seen = (f: Unit): number => Math.max(1, side.filter((o) => rangeDist(f.pos, o.pos) <= KUNAI_LONG && lineOfSight(s, f.pos, o.pos)).length);
   // Toward each of them, and toward all of them at once, a little way out from the friend.
   const dirs = shooters.map((f) => ({ x: f.pos.x - p.pos.x, z: f.pos.z - p.pos.z }));
   dirs.push(dirs.reduce((a, b) => ({ x: a.x + b.x / Math.hypot(b.x, b.z), z: a.z + b.z / Math.hypot(b.x, b.z) }), { x: 0, z: 0 }));
@@ -273,7 +273,7 @@ export function wallCover(s: BattleState, u: Unit, p: Unit, advancing = false): 
     if (l < 1e-6) continue;
     for (const r of [1.25, 2, 2.75]) {
       const at = { x: p.pos.x + (dv.x / l) * r, z: p.pos.z + (dv.z / l) * r };
-      if (dist(u.pos, at) > jutsuRange(s, spec, u.pos, at) || dist(u.pos, at) < 0.5 || !lineOfSight(s, u.pos, at)) continue;
+      if (rangeDist(u.pos, at) > jutsuRange(s, spec, u.pos, at) || dist(u.pos, at) < 0.5 || !lineOfSight(s, u.pos, at)) continue;
       const w = structureAt(spec, u.pos, at, u.id, '');
       if (structureBlocker(s, w)) continue;
       const after = { ...s, walls: [...s.walls, w] };
@@ -306,7 +306,10 @@ export function ninjaOptions(s: BattleState, u: Unit, next = false): Option[] {
   // could still put on doesn't count: the plan is made as before, and the AI imbues before a blow.)
   const imbued = !!activeImbue(u);
   for (const f of foes) {
-    const d = dist(u.pos, f.pos);
+    const d = rangeDist(u.pos, f.pos);
+    // How far it has to walk to the foe on open ground (5-5-5: the longer side): what its movement
+    // can cover this turn; the reach beyond is measured as the crow flies.
+    const w = walkDist(u.pos, f.pos);
     const fx = focus(u, f);
     const blow = (avg(u.weapon.dice) + wMod + (imbued ? avg(IMBUE_DICE) : 0)) * 0.65 * fx;
     // A Ryusei with a Node beside the foe warps in and strikes from behind, however far it is.
@@ -314,13 +317,13 @@ export function ninjaOptions(s: BattleState, u: Unit, next = false): Option[] {
     // One that fights from afar, above the foe, would give up the high ground to walk to it: less worth it.
     const keepsHeight = afar && d > reachTo(u, f) + 0.1 && levelAtPt(s, u.pos) - levelAtPt(s, f.pos) >= 0.9 ? 0.6 : 1;
     if (warpIn) out.push({ intent: { kind: 'melee', what: u.weapon.name, target: f.id }, value: blow * EDGE, way: 'warp' });
-    else if (d <= u.speed + reachTo(u, f) + 0.1) out.push({ intent: { kind: 'melee', what: u.weapon.name, target: f.id }, value: blow * keepsHeight });
+    else if (w <= u.speed + reachTo(u, f) + 0.1) out.push({ intent: { kind: 'melee', what: u.weapon.name, target: f.id }, value: blow * keepsHeight });
     // From high ground a kunai carries further.
     const up = heightReach(s, u.pos, f.pos);
-    if (d <= KUNAI_LONG + up + u.speed) {
+    if (w <= KUNAI_LONG + up + u.speed) {
       // With no Node near the foe yet (and the foe out of reach), the kunai leaves one: half a blow from behind more.
       const plant = plants && !warpIn && d > reachTo(u, f) + 0.1;
-      const v = (avg(KUNAI.dice) + dexMod) * 0.55 * fx * (d > KUNAI.reach + up + u.speed ? 0.5 : 1) + (plant ? blow * EDGE * 0.5 : 0);
+      const v = (avg(KUNAI.dice) + dexMod) * 0.55 * fx * (w > KUNAI.reach + up + u.speed ? 0.5 : 1) + (plant ? blow * EDGE * 0.5 : 0);
       out.push({ intent: { kind: 'ranged', what: KUNAI.name, target: f.id }, value: v, ...(plant ? { way: 'plant' as const } : {}) });
     }
     if (sealed) continue;
@@ -336,11 +339,11 @@ export function ninjaOptions(s: BattleState, u: Unit, next = false): Option[] {
         // where the blow goes off by itself. Worth more than an attack roll's 0.65: the action stays
         // free for a blow of the weapon after it (and Kagero still opens with it, D21).
         const reach = j.range + (f.bulk ?? 0) + (f.kind === 'hydra_head' ? 2.5 : 0);
-        if (u.charged || d > reach + (next ? u.speed : walkLeft(u))) continue;
+        if (u.charged || w > reach + (next ? u.speed : walkLeft(u))) continue;
         out.push({ intent: { kind: 'jutsu', what: id, target: f.id, at: { ...f.pos } }, value: avg(j.dice) * 0.8 * fx * (u.chakra >= j.cost * 2 ? 1 : 0.85), single: true });
         continue;
       }
-      if (d > jutsuRange(s, j, u.pos, f.pos) + u.speed + (f.bulk ?? 0)) continue;
+      if (w > jutsuRange(s, j, u.pos, f.pos) + u.speed + (f.bulk ?? 0)) continue;
       const hits = areaValue(s, u, j, f);
       if (hits <= 0) continue;
       const thrift = u.chakra >= j.cost * 2 ? 1 : 0.85;
@@ -352,7 +355,7 @@ export function ninjaOptions(s: BattleState, u: Unit, next = false): Option[] {
     // fails, the foe neither strikes the Northstar's side nor holds back from its own: twice its harm.
     for (const [id, refused] of [[COMMAND, commandRefused], [SUBMISSION, submissionRefused]] as const) {
       const j = JUTSU[id];
-      if (!u.jutsus.includes(id) || noJutsu(u) || u.chakra < j.cost || d > jutsuRange(s, j, u.pos, f.pos) + u.speed || refused(s, u, f)) continue;
+      if (!u.jutsus.includes(id) || noJutsu(u) || u.chakra < j.cost || w > jutsuRange(s, j, u.pos, f.pos) + u.speed || refused(s, u, f)) continue;
       const fails = 1 - successChance(saveMod(f, 'wis'), u.saveDC, 'none', true);
       out.push({ intent: { kind: 'command', what: id, target: f.id }, value: fails * 2 * threat(f) * fx });
     }
@@ -362,10 +365,10 @@ export function ninjaOptions(s: BattleState, u: Unit, next = false): Option[] {
   for (const f of friends) {
     const hurt = f.down === 'downed' || f.down === 'stable' || f.hp < f.maxHp * 0.5;
     if (!hurt) continue;
-    if (!sealed && u.jutsus.includes('mystical_palm') && u.chakra >= JUTSU.mystical_palm.cost && dist(u.pos, f.pos) <= u.speed + 1.6) {
+    if (!sealed && u.jutsus.includes('mystical_palm') && u.chakra >= JUTSU.mystical_palm.cost && walkDist(u.pos, f.pos) <= u.speed + 1.6) {
       out.push({ intent: { kind: 'heal', what: 'mystical_palm', target: f.id }, value: avg(JUTSU.mystical_palm.dice) * support * (f.down ? 2 : 1) });
     }
-    if (homeTeam(u) === 'party' && !u.joined && f.down === 'downed' && dist(u.pos, f.pos) <= u.speed + 1.6) {
+    if (homeTeam(u) === 'party' && !u.joined && f.down === 'downed' && walkDist(u.pos, f.pos) <= u.speed + 1.6) {
       const bandage = s.supplies.bandages > 0;
       out.push({ intent: { kind: 'heal', what: bandage ? 'bandage' : 'stabilize', target: f.id }, value: (bandage ? 9 : 6) * support });
     }
@@ -381,7 +384,7 @@ export function ninjaOptions(s: BattleState, u: Unit, next = false): Option[] {
     }
   }
   // Hurt and in reach of a foe: dodge.
-  const threatened = foes.some((f) => dist(u.pos, f.pos) <= wielded(f).reach + 0.5);
+  const threatened = foes.some((f) => rangeDist(u.pos, f.pos) <= wielded(f).reach + 0.5);
   if (threatened && u.hp < u.maxHp * 0.3) out.push({ intent: { kind: 'defend', what: 'dodge' }, value: u.aiOrder === 'defensive' ? 9 : 4 });
   // The enemies show their clan's way (the owner, D21); allies on the AI just play the best move.
   if (u.team === 'enemy') clanWays(s, u, out);
@@ -401,7 +404,7 @@ function heldCharge(s: BattleState, u: Unit, out: Option[]): void {
   for (const o of out) {
     const t = o.intent.target ? s.units[o.intent.target] : undefined;
     const oj = o.intent.kind === 'jutsu' ? JUTSU[o.intent.what] : undefined;
-    if (o.intent.kind === 'melee' && t && dist(u.pos, t.pos) <= chargedReach(u, t) + walkLeft(u) + 0.1) o.value += blow;
+    if (o.intent.kind === 'melee' && t && walkDist(u.pos, t.pos) <= chargedReach(u, t) + walkLeft(u) + 0.1) o.value += blow;
     else if (o.intent.kind === 'ranged' || (oj && u.kind === 'ninja' && !oj.melee && !oj.ability)) o.value *= 0.25;
   }
 }
@@ -448,7 +451,7 @@ export function headOptions(s: BattleState, u: Unit): Option[] {
   const foes = visibleFoes(s, u);
   const otherRoar = Object.values(s.units).some((h) => h.id !== u.id && h.head && h.intent?.kind === 'roar');
   for (const f of foes) {
-    const d = dist(u.pos, f.pos);
+    const d = rangeDist(u.pos, f.pos);
     const fx = focus(u, f);
     if (d <= u.weapon.reach + 0.1 && !fullCoverBetween(s, u.pos, f.pos)) out.push({ intent: { kind: 'bite', what: 'Bite', target: f.id }, value: (avg(u.weapon.dice) + abilityMod(u.stats.str)) * 0.65 * fx });
     const spit = JUTSU.hydra_spit;
@@ -502,11 +505,11 @@ export function goalOf(s: BattleState, u: Unit, i: Intent): Goal | null {
       // walks into its own reach, where its blow goes off (a long weapon would stop short of it).
       // Nor two levels up or down: it has to climb (or come down) to it.
       const reach = u.charged ? Math.min(reachTo(u, t), chargedReach(u, t)) : reachTo(u, t);
-      const good = (p: Pt) => dist(p, t.pos) <= reach && !tooHigh(s, p, t.pos) && !fullCoverBetween(s, p, t.pos);
-      return { ...goal(good, t), ready: dist(u.pos, t.pos) <= reach + 0.1 && !tooHigh(s, u.pos, t.pos) && !fullCoverBetween(s, u.pos, t.pos) };
+      const good = (p: Pt) => rangeDist(p, t.pos) <= reach && !tooHigh(s, p, t.pos) && !fullCoverBetween(s, p, t.pos);
+      return { ...goal(good, t), ready: rangeDist(u.pos, t.pos) <= reach + 0.1 && !tooHigh(s, u.pos, t.pos) && !fullCoverBetween(s, u.pos, t.pos) };
     }
     case 'ranged':
-      return goal((p) => dist(p, t.pos) <= KUNAI.reach + heightReach(s, p, t.pos) && lineOfSight(s, p, t.pos), t);
+      return goal((p) => rangeDist(p, t.pos) <= KUNAI.reach + heightReach(s, p, t.pos) && lineOfSight(s, p, t.pos), t);
     case 'jutsu': {
       const j = JUTSU[i.what];
       if (!j) return null;
@@ -515,12 +518,12 @@ export function goalOf(s: BattleState, u: Unit, i: Intent): Goal | null {
       if (i.what === SWAP) return { at: u.pos, good: () => false, ready: swapValue(s, u, t) > 0 };
       const reach = (p: Pt) => jutsuRange(s, j, p, t.pos) + (t.bulk ?? 0) + (j.shape === 'single' && t.kind === 'hydra_head' ? 2.5 : 0);
       // A charge needs a clear straight run to its target.
-      return goal((p) => dist(p, t.pos) <= reach(p) && (j.melee ? !tooHigh(s, p, t.pos) && !fullCoverBetween(s, p, t.pos) && (!j.charge || clearRun(s, p, t.pos)) : lineOfSight(s, p, t.pos)), t);
+      return goal((p) => rangeDist(p, t.pos) <= reach(p) && (j.melee ? !tooHigh(s, p, t.pos) && !fullCoverBetween(s, p, t.pos) && (!j.charge || clearRun(s, p, t.pos)) : lineOfSight(s, p, t.pos)), t);
     }
     case 'heal':
-      return goal((p) => dist(p, t.pos) <= 1.6, undefined);
+      return goal((p) => rangeDist(p, t.pos) <= 1.6, undefined);
     case 'command':
-      return goal((p) => dist(p, t.pos) <= jutsuRange(s, JUTSU[i.what], p, t.pos) && lineOfSight(s, p, t.pos), t);
+      return goal((p) => rangeDist(p, t.pos) <= jutsuRange(s, JUTSU[i.what], p, t.pos) && lineOfSight(s, p, t.pos), t);
     case 'move':
       return goal(() => false, t);
     default:
@@ -621,7 +624,7 @@ export function foreseen(s: BattleState): Record<string, Intent> {
   if (!seers.length) return out;
   for (const e of Object.values(s.units)) {
     if (e.team !== 'enemy' || !e.intent || e.down || planSpent(s, e)) continue;
-    if (seers.some((m) => dist(m.pos, e.pos) <= FORESIGHT_RANGE && lineOfSight(s, m.pos, e.pos))) out[e.id] = e.intent;
+    if (seers.some((m) => rangeDist(m.pos, e.pos) <= FORESIGHT_RANGE && lineOfSight(s, m.pos, e.pos))) out[e.id] = e.intent;
   }
   return out;
 }

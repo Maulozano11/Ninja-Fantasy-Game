@@ -193,7 +193,6 @@ const TABLE = strings({
   aimClimbPart: { en: '{m} m of it climbing (half speed)', es: '{m} m de ellos trepando (media velocidad)' },
   aimClimbUp: { en: 'up {h} m', es: 'sube {h} m' },
   aimClimbDown: { en: 'down {h} m', es: 'baja {h} m' },
-  aimDiag: { en: 'diagonals 5-10-5 · true length {m} m', es: 'diagonales 5-10-5 · longitud real {m} m' },
   aimWater: { en: 'water ×2', es: 'agua ×2' },
   aimClimb: { en: 'climb', es: 'trepar' },
   aimNoReach: { en: 'Out of reach', es: 'Fuera de alcance' },

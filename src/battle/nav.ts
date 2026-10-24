@@ -3,19 +3,12 @@
 // (Kawarimi, a flash-in). Movement is shown in meters.
 
 import type { BattleState, Cell, Pt, Unit } from './types';
-import { CELL, LEVEL_M, cellBlocked, cellCenter, cellOf, dist, gridFor, idx, inGrid } from './map';
+import { CELL, DIAGONAL_RULE, LEVEL_M, cellBlocked, cellCenter, cellOf, dist, gridFor, idx, inGrid } from './map';
+import type { DiagonalRule } from './map';
 
-/**
- * How a diagonal step is paid (docs/GAMEPLAY_DESIGN.md, "Diagonals: 5-10-5"):
- * - '5-10-5': the 5e variant the owner is trying (2026-10-22, "vamos a probar 5-10-5"). Diagonal
- *   steps alternate between one cell (0.5 m) and two (1 m): the 1st, 3rd, 5th... cost 0.5 m, the
- *   2nd, 4th... 1 m, counted over the whole turn. On the 5e grid a 5 ft square is 1.5 m (3 of our
- *   cells) and its diagonals cost 5, 10, 5 ft: the same 1.5 times a straight step on average.
- * - 'true': a diagonal step costs its true length, sqrt 2 cells (0.71 m), as before.
- * The one switch: change it here to compare the two.
- */
-export type DiagonalRule = '5-10-5' | 'true';
-export const DIAGONAL_RULE: DiagonalRule = '5-10-5';
+// The diagonal rule lives in map.ts (ranges count by it too); kept importable from here.
+export { DIAGONAL_RULE } from './map';
+export type { DiagonalRule } from './map';
 
 const DIRS: [number, number][] = [
   [1, 0],
@@ -28,13 +21,19 @@ const DIRS: [number, number][] = [
   [-1, -1],
 ];
 
-/** A diagonal step's base cost in meters: `odd` when an odd number of diagonals came before it this turn. */
-export function diagonalCost(odd: boolean, rule: DiagonalRule = DIAGONAL_RULE): number {
-  return rule === 'true' ? CELL * Math.SQRT2 : odd ? 2 * CELL : CELL;
-}
+/** A diagonal step's base cost in meters. */
+export const diagonalCost = (rule: DiagonalRule = DIAGONAL_RULE): number => (rule === 'true' ? CELL * Math.SQRT2 : CELL);
 
-/** The diagonal count's parity after a step: under 5-10-5 a diagonal flips it. */
-const afterStep = (odd: boolean, diag: boolean, rule: DiagonalRule = DIAGONAL_RULE): boolean => (diag && rule === '5-10-5' ? !odd : odd);
+/**
+ * The fewest metres of walking from a to b on open ground under the diagonal rule: under 5-5-5 the
+ * longer of the two sides (a diagonal step covers both at once), at true length the octile
+ * distance. The AI uses it to tell what a unit can walk to this turn; reachable gives the real paths.
+ */
+export function walkDist(a: Pt, b: Pt, rule: DiagonalRule = DIAGONAL_RULE): number {
+  const dx = Math.abs(a.x - b.x);
+  const dz = Math.abs(a.z - b.z);
+  return rule === 'true' ? Math.max(dx, dz) + (Math.SQRT2 - 1) * Math.min(dx, dz) : Math.max(dx, dz);
+}
 
 /** A cliff edge: neighbors more than half a level apart with no ramp between them. */
 const CLIFF = 0.6;
@@ -83,7 +82,7 @@ export interface StepRules {
   ninjaJump: boolean;
   /** Dragging a body doubles every step. */
   dragging?: boolean;
-  /** How diagonals are paid (default DIAGONAL_RULE; the move preview also shows the other). */
+  /** How diagonals are paid (default DIAGONAL_RULE; tests compare with the other). */
   diagonals?: DiagonalRule;
 }
 
@@ -104,17 +103,14 @@ export function climbCost(s: BattleState, from: Cell, to: Cell, rules: Pick<Step
   return levels * (dl > 0 ? up : down);
 }
 
-/**
- * What one step costs in meters (Infinity if it can't be taken). `odd`: an odd number of diagonal
- * steps came before it this turn (5-10-5).
- */
-export function stepCost(s: BattleState, from: Cell, to: Cell, diag: boolean, rules: StepRules, odd = false): number {
+/** What one step costs in meters (Infinity if it can't be taken). */
+export function stepCost(s: BattleState, from: Cell, to: Cell, diag: boolean, rules: StepRules): number {
   const g = gridFor(s.mapId);
   if (!inGrid(g, to) || cellBlocked(s, to)) return Infinity;
   // No cutting corners past a blocked cell.
   if (diag && (cellBlocked(s, { c: to.c, r: from.r }) || cellBlocked(s, { c: from.c, r: to.r }))) return Infinity;
   const i1 = idx(g, to);
-  let cost = diag ? diagonalCost(odd, rules.diagonals) : CELL;
+  let cost = diag ? diagonalCost(rules.diagonals) : CELL;
   const water = g.water[i1];
   if (water === 1) cost *= 2;
   else if (water === 2 && !rules.waterWalk) cost *= 2;
@@ -129,18 +125,13 @@ export interface Reach {
   start: Cell;
   /** The cheapest cost to reach each cell index. */
   cost: Map<number, number>;
-  /**
-   * Where each search node came from. A node is a cell with the diagonal parity it was reached at
-   * (index * 2, + 1 when odd): under 5-10-5 the cheapest way to a cell may not be the best way on.
-   */
+  /** The cell (index) each reached cell was stepped onto from. */
   prev: Map<number, number>;
-  /** The node at which each cell's cheapest cost was reached. */
-  best: Map<number, number>;
 }
 
 /**
- * Every cell a unit can reach with `budget` meters (Dijkstra over the cells and the diagonal
- * parity). Allies can be walked through but not stood on; enemies block.
+ * Every cell a unit can reach with `budget` meters (Dijkstra over the cells). Allies can be walked
+ * through but not stood on; enemies block.
  */
 export function reachable(s: BattleState, unit: Unit, budget: number, rules?: Partial<StepRules>): Reach {
   const g = gridFor(s.mapId);
@@ -151,17 +142,16 @@ export function reachable(s: BattleState, unit: Unit, budget: number, rules?: Pa
     ninjaJump: !!unit.cond.ninjaJump,
     ...rules,
   };
-  const nodeCost = new Map<number, number>();
   const prev = new Map<number, number>();
   const cost = new Map<number, number>();
-  const best = new Map<number, number>();
+  // Each cell's path at true length: of two paths that cost the same (5-5-5 has many), the
+  // straighter one is kept, so the path shown doesn't zigzag.
+  const len = new Map<number, number>();
   const s0 = idx(g, start);
-  const n0 = s0 * 2 + (unit.turn?.diag ? 1 : 0);
-  nodeCost.set(n0, 0);
   cost.set(s0, 0);
-  best.set(s0, n0);
-  // A small binary heap of [cost, node].
-  const heap: [number, number][] = [[0, n0]];
+  len.set(s0, 0);
+  // A small binary heap of [cost, index].
+  const heap: [number, number][] = [[0, s0]];
   const push = (e: [number, number]) => {
     heap.push(e);
     let i = heap.length - 1;
@@ -192,10 +182,8 @@ export function reachable(s: BattleState, unit: Unit, budget: number, rules?: Pa
     return top;
   };
   while (heap.length) {
-    const [c0, n] = pop();
-    if (c0 > (nodeCost.get(n) ?? Infinity)) continue;
-    const i0 = n >> 1;
-    const odd = (n & 1) === 1;
+    const [c0, i0] = pop();
+    if (c0 > (cost.get(i0) ?? Infinity) + 1e-9) continue;
     const cc = { c: i0 % g.cols, r: Math.floor(i0 / g.cols) };
     for (const [dc, dr] of DIRS) {
       const nc = { c: cc.c + dc, r: cc.r + dr };
@@ -204,21 +192,20 @@ export function reachable(s: BattleState, unit: Unit, budget: number, rules?: Pa
       const who = occ.get(ni);
       if (who && who.id !== unit.id && who.team !== unit.team && !who.down) continue;
       const diag = dc !== 0 && dr !== 0;
-      const step = stepCost(s, cc, nc, diag, r, odd);
+      const step = stepCost(s, cc, nc, diag, r);
       if (!isFinite(step)) continue;
       const nc0 = c0 + step;
-      const nn = ni * 2 + (afterStep(odd, diag, r.diagonals) ? 1 : 0);
-      if (nc0 > budget + 1e-6 || nc0 >= (nodeCost.get(nn) ?? Infinity)) continue;
-      nodeCost.set(nn, nc0);
-      prev.set(nn, n);
-      if (nc0 < (cost.get(ni) ?? Infinity)) {
-        cost.set(ni, nc0);
-        best.set(ni, nn);
-      }
-      push([nc0, nn]);
+      if (nc0 > budget + 1e-6) continue;
+      const was = cost.get(ni) ?? Infinity;
+      const nl = len.get(i0)! + (diag ? CELL * Math.SQRT2 : CELL);
+      if (nc0 > was + 1e-9 || (nc0 > was - 1e-9 && nl >= (len.get(ni) ?? Infinity) - 1e-9)) continue;
+      cost.set(ni, Math.min(nc0, was));
+      len.set(ni, nl);
+      prev.set(ni, i0);
+      push([nc0, ni]);
     }
   }
-  return { start, cost, prev, best };
+  return { start, cost, prev };
 }
 
 /** Cells a unit may end its move on (reachable, not on a ladder and not taken by another unit). */
@@ -259,39 +246,34 @@ export function freeSpot(s: BattleState, u: Unit, around: Pt, min: number, max: 
 /** The path to a reached cell, from the first step to the target. */
 export function pathTo(s: BattleState, reach: Reach, target: Cell): Cell[] | null {
   const g = gridFor(s.mapId);
-  let n = reach.best.get(idx(g, target));
-  if (n === undefined) return null;
+  let i = idx(g, target);
+  if (!reach.cost.has(i)) return null;
   const out: Cell[] = [];
-  for (let p = reach.prev.get(n); p !== undefined; p = reach.prev.get(n)) {
-    const i = n >> 1;
+  for (let p = reach.prev.get(i); p !== undefined; p = reach.prev.get(i)) {
     out.push({ c: i % g.cols, r: Math.floor(i / g.cols) });
-    n = p;
+    i = p;
   }
   return out.reverse();
 }
 
-/** What walking a path costs: the meters, the part of them spent climbing, and the diagonal parity after it. */
+/** What walking a path costs: the meters, and the part of them spent climbing. */
 export interface WalkCost {
   total: number;
   climb: number;
-  odd: boolean;
 }
 
-/** What a path costs a unit (the same rules as reachable), from the diagonal parity of its turn. */
+/** What a path costs a unit (the same rules as reachable). */
 export function walkCost(s: BattleState, unit: Unit, path: Cell[], rules?: Partial<StepRules>): WalkCost {
   const r: StepRules = { waterWalk: unit.cond.waterWalk || unit.chakra >= 2, ninjaJump: !!unit.cond.ninjaJump, ...rules };
   let at = cellOf(unit.pos);
-  let odd = !!unit.turn?.diag;
   let total = 0;
   let climb = 0;
   for (const c of path) {
-    const diag = at.c !== c.c && at.r !== c.r;
-    total += stepCost(s, at, c, diag, r, odd);
+    total += stepCost(s, at, c, at.c !== c.c && at.r !== c.r, r);
     climb += climbCost(s, at, c, r) * (r.dragging ? 2 : 1);
-    odd = afterStep(odd, diag, r.diagonals);
     at = c;
   }
-  return { total, climb, odd };
+  return { total, climb };
 }
 
 /** Meters a path costs for a unit (the same rules as reachable). */
@@ -299,15 +281,8 @@ export function pathCost(s: BattleState, unit: Unit, path: Cell[], rules?: Parti
   return walkCost(s, unit, path, rules).total;
 }
 
-/** What a unit's next step costs, at the diagonal parity of its turn so far. */
-export const unitStepCost = (s: BattleState, u: Unit, from: Cell, to: Cell, rules: StepRules): number =>
-  stepCost(s, from, to, from.c !== to.c && from.r !== to.r, rules, !!u.turn.diag);
-
-/** A unit took a step: its turn's diagonal parity moves on (5-10-5). */
-export function countStep(u: Unit, from: Cell, to: Cell, rules?: Partial<StepRules>): void {
-  if (afterStep(!!u.turn.diag, from.c !== to.c && from.r !== to.r, rules?.diagonals)) u.turn.diag = 1;
-  else delete u.turn.diag;
-}
+/** What a unit's next step costs. */
+export const unitStepCost = (s: BattleState, _u: Unit, from: Cell, to: Cell, rules: StepRules): number => stepCost(s, from, to, from.c !== to.c && from.r !== to.r, rules);
 
 /** The path passes over deep water (the unit pays 2 chakra to walk on it, or swims). */
 export function pathTouchesDeep(s: BattleState, path: Cell[]): boolean {

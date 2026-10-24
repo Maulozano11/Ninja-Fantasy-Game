@@ -3,7 +3,7 @@
 
 import { effectMods } from '../rules/effects';
 import type { BattleEvent, BattleState, Hit, Pt, Unit, WeaponNode } from './types';
-import { cellBlocked, cellCenter, cellOf, coverBetween, dist, fullCoverBetween, gridFor, lineOfSight, sameCell, waterAtPt } from './map';
+import { cellBlocked, cellCenter, cellOf, coverBetween, dist, fullCoverBetween, rangeDist, gridFor, lineOfSight, sameCell, waterAtPt } from './map';
 import { canStop, freeSpot, isOnMap, occupancy, reachable } from './nav';
 import { AURA_RADIUS, passivePerception, revealOutOfHiding, savingThrow, sovereign } from './combat';
 import { JUTSU, jutsuRange } from './jutsu';
@@ -29,7 +29,7 @@ const STEP_WALK = 2.2;
 export function sawComing(s: BattleState, m: Unit, attacker: Unit | undefined): boolean {
   if (!attacker || attacker.team === m.team) return false;
   if (attacker.cond.hidden !== undefined && passivePerception(m) < attacker.cond.hidden) return false;
-  return dist(m.pos, attacker.pos) <= FORESIGHT_RANGE && lineOfSight(s, m.pos, attacker.pos);
+  return rangeDist(m.pos, attacker.pos) <= FORESIGHT_RANGE && lineOfSight(s, m.pos, attacker.pos);
 }
 
 /**
@@ -157,7 +157,7 @@ export function warpLanding(s: BattleState, u: Unit, n: WeaponNode): Pt | null {
 /** Why a Shooting-Star Thrust to this Node can't be made (none picked, too far, out of sight, nowhere to land), or null. */
 export function warpBlocker(s: BattleState, u: Unit, n: WeaponNode | undefined): string | null {
   if (!n) return 'noNode';
-  if (dist(u.pos, n.pos) > jutsuRange(s, JUTSU[WARP], u.pos, n.pos) + 0.1) return 'outOfRange';
+  if (rangeDist(u.pos, n.pos) > jutsuRange(s, JUTSU[WARP], u.pos, n.pos) + 0.1) return 'outOfRange';
   if (!nodeInSight(s, u, n)) return 'noSight';
   return warpLanding(s, u, n) ? null : 'blocked';
 }
@@ -171,7 +171,7 @@ export function edgeFoe(s: BattleState, u: Unit, at: Pt = u.pos): Unit | undefin
       !f.down &&
       !f.head?.severed &&
       (f.cond.hidden === undefined || passivePerception(u) >= f.cond.hidden) &&
-      dist(at, f.pos) <= reach + (f.kind === 'hydra_head' ? 2.5 : 0) + (f.bulk ?? 0) &&
+      rangeDist(at, f.pos) <= reach + (f.kind === 'hydra_head' ? 2.5 : 0) + (f.bulk ?? 0) &&
       !fullCoverBetween(s, at, f.pos),
   );
 }
@@ -205,7 +205,7 @@ export function swapBlocker(s: BattleState, u: Unit, t: Unit | undefined): strin
   if (t.kind !== 'ninja') return 'tooBig';
   const n = nodeUnder(s, u, t);
   if (!n) return 'notOnNode';
-  if (dist(u.pos, n.pos) > jutsuRange(s, JUTSU[SWAP], u.pos, n.pos) + 0.1) return 'outOfRange';
+  if (rangeDist(u.pos, n.pos) > jutsuRange(s, JUTSU[SWAP], u.pos, n.pos) + 0.1) return 'outOfRange';
   return nodeInSight(s, u, n) ? null : 'noSight';
 }
 
@@ -291,7 +291,7 @@ export function submissionRefused(s: BattleState, u: Unit, t: Unit | undefined):
 
 /** Command and Natural Submission reach 9 m (1.5 m more a level above the target), in sight. */
 function mindReach(s: BattleState, u: Unit, t: Unit, id: string): string | null {
-  if (dist(u.pos, t.pos) > jutsuRange(s, JUTSU[id], u.pos, t.pos) + 0.1) return 'outOfRange';
+  if (rangeDist(u.pos, t.pos) > jutsuRange(s, JUTSU[id], u.pos, t.pos) + 0.1) return 'outOfRange';
   return lineOfSight(s, u.pos, t.pos) ? null : 'noSight';
 }
 

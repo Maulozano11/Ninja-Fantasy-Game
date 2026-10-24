@@ -29,8 +29,8 @@ import type {
   Unit,
 } from './types';
 import { homeTeam } from './types';
-import { cellBlocked, cellCenter, cellOf, clearRun, coverBetween, dampAt, dist, fallDice, fullCoverBetween, getMap, gridFor, heightReach, hideSpotAt, idx, inGrid, levelAtPt, lineOfSight, propRules, sameCell, segmentsCross, tooHigh, waterAtPt } from './map';
-import { canStop, countStep, freeSpot, occupancy, pathTo, pathTouchesDeep, reachable, unitStepCost } from './nav';
+import { cellBlocked, cellCenter, cellOf, clearRun, coverBetween, dampAt, dist, fallDice, rangeDist, fullCoverBetween, getMap, gridFor, heightReach, hideSpotAt, idx, inGrid, levelAtPt, lineOfSight, propRules, sameCell, segmentsCross, tooHigh, waterAtPt } from './map';
+import { canStop, freeSpot, occupancy, pathTo, pathTouchesDeep, reachable, unitStepCost } from './nav';
 import type { AttackPreview } from './combat';
 import { attackPreview, check, damage, heal, hostileAura, passivePerception, PERFECT_HIDE, reveal, revealOutOfHiding, rollDiceExpr, skillMod } from './combat';
 import { JUTSU, MIN_AIM, areaIn, enhanced, fanDice, fanned, fannedBy, jutsuRange } from './jutsu';
@@ -284,7 +284,7 @@ function dispatch(s: BattleState, a: Action, ev: BattleEvent[]): string | null {
     case 'stone':
       if (s.phase !== 'stealth') return 'notStealth';
       if (!u.turn.action) return 'noAction';
-      if (dist(u.pos, a.at) > STONE_RANGE + heightReach(s, u.pos, a.at)) return 'outOfRange';
+      if (rangeDist(u.pos, a.at) > STONE_RANGE + heightReach(s, u.pos, a.at)) return 'outOfRange';
       ev.push({ t: 'act', unit: u.id, act: 'stone' });
       throwStone(s, u, a.at, ev);
       return null;
@@ -362,7 +362,7 @@ function provoker(s: BattleState, u: Unit, hop: Pt[], skip: string[]): Unit | un
     // A hidden mover it can't see slips past.
     if (u.cond.hidden !== undefined && passivePerception(r) < u.cond.hidden) continue;
     const reach = wielded(r).reach + 0.1;
-    if (dist(r.pos, u.pos) <= reach && !tooHigh(s, r.pos, u.pos) && hop.some((p) => dist(r.pos, p) > reach)) return r;
+    if (rangeDist(r.pos, u.pos) <= reach && !tooHigh(s, r.pos, u.pos) && hop.some((p) => rangeDist(r.pos, p) > reach)) return r;
   }
   return undefined;
 }
@@ -422,7 +422,6 @@ function walk(s: BattleState, u: Unit, path: Cell[], from: number, ev: BattleEve
     }
     u.turn.move = Math.max(0, u.turn.move - cost);
     u.turn.moved += cost;
-    countStep(u, at, c);
     if (next.x !== u.pos.x) u.facing = next.x > u.pos.x ? 1 : -1;
     const was = u.pos;
     u.pos = next;
@@ -566,7 +565,7 @@ function attackProp(s: BattleState, u: Unit, i: number, ranged: boolean, ev: Bat
   const p = map.props[i];
   const st = s.props[i];
   if (!p || !st || st.destroyed || st.hp === undefined) return 'badTarget';
-  const d = dist(u.pos, p);
+  const d = rangeDist(u.pos, p);
   const rules = propRules(p);
   // A kunai thrown from high ground carries further.
   const up = ranged ? heightReach(s, u.pos, p) : 0;
@@ -889,6 +888,8 @@ function doJutsu(s: BattleState, u: Unit, id: string, atIn: Pt, targetId: string
   let at: Pt = target ? { ...target.pos } : { ...atIn };
   if (spec.shape === 'self' || spec.shape === 'selfCircle') at = { ...u.pos };
   const d = dist(u.pos, at);
+  // How far the target or the point is for the jutsu's range (5-5-5: squares counted).
+  const range = rangeDist(u.pos, at);
   // Command and Natural Submission take only some minds, refused in their own order (range and
   // sight last); from level 9, Command takes a second one.
   const minds: Unit[] = [];
@@ -908,7 +909,7 @@ function doJutsu(s: BattleState, u: Unit, id: string, atIn: Pt, targetId: string
   switch (spec.shape) {
     case 'single':
       if (!target || !targetable(target)) return 'needTarget';
-      if (d > jutsuRange(s, spec, u.pos, target.pos) + 0.1 + (target.bulk ?? 0) + (target.kind === 'hydra_head' ? 2.5 : 0)) return 'outOfRange';
+      if (range > jutsuRange(s, spec, u.pos, target.pos) + 0.1 + (target.bulk ?? 0) + (target.kind === 'hydra_head' ? 2.5 : 0)) return 'outOfRange';
       if (spec.melee && tooHigh(s, u.pos, target.pos)) return 'outOfRange';
       if (!spec.melee && !lineOfSight(s, u.pos, target.pos)) return 'noSight';
       if (spec.melee && fullCoverBetween(s, u.pos, target.pos)) return 'blocked';
@@ -916,12 +917,12 @@ function doJutsu(s: BattleState, u: Unit, id: string, atIn: Pt, targetId: string
       break;
     case 'ally':
       if (!target || target.team !== u.team || !targetable(target)) return 'needAlly';
-      if (d > jutsuRange(s, spec, u.pos, target.pos) + 0.1) return 'outOfRange';
+      if (range > jutsuRange(s, spec, u.pos, target.pos) + 0.1) return 'outOfRange';
       break;
     case 'circle':
     case 'point':
     case 'wall':
-      if (d > jutsuRange(s, spec, u.pos, at) + 0.1) return 'outOfRange';
+      if (range > jutsuRange(s, spec, u.pos, at) + 0.1) return 'outOfRange';
       // A point in steam can be aimed at (the cloud is seen), not one past it.
       if (!lineOfSight(s, u.pos, at, { into: true })) return 'noSight';
       break;
@@ -1168,7 +1169,7 @@ function jutsuHits(s: BattleState, u: Unit, spec: JutsuSpec, target: Unit | unde
 /** Taijutsu and kenjutsu strikes: the caster flashes in next to the target. */
 function dashTo(s: BattleState, u: Unit, t: Unit, jutsu: string, ev: BattleEvent[]): void {
   const reach = reachTo(u, t);
-  if (dist(u.pos, t.pos) <= reach + 0.1) return;
+  if (rangeDist(u.pos, t.pos) <= reach + 0.1) return;
   const from = { ...u.pos };
   const to = freeSpot(s, u, t.pos, 0.4, reach, (p) => -dist(p, from));
   if (to === t.pos) return;
@@ -1188,7 +1189,7 @@ const chargeReach = (t: Unit): number => 1.5 + (t.kind === 'hydra_head' ? 2.5 : 
  */
 export function chargeLanding(s: BattleState, u: Unit, t: Unit): Pt | null {
   const reach = chargeReach(t);
-  if (dist(u.pos, t.pos) <= reach + 0.1) return { ...u.pos };
+  if (rangeDist(u.pos, t.pos) <= reach + 0.1) return { ...u.pos };
   const from = { ...u.pos };
   const to = freeSpot(s, u, t.pos, 0.4, reach, (p) => (clearRun(s, from, p) ? -dist(p, from) : -Infinity));
   return to === t.pos ? null : to;
@@ -1368,7 +1369,7 @@ function doShove(s: BattleState, u: Unit, targetId: string, mode: 'prone' | 'pus
   const t = s.units[targetId];
   if (!t || t.down || t.team === u.team) return 'badTarget';
   if (t.kind !== 'ninja') return 'tooBig';
-  if (dist(u.pos, t.pos) > 1.6 || tooHigh(s, u.pos, t.pos)) return 'outOfRange';
+  if (rangeDist(u.pos, t.pos) > 1.6 || tooHigh(s, u.pos, t.pos)) return 'outOfRange';
   if (fullCoverBetween(s, u.pos, t.pos)) return 'blocked';
   u.turn.action = false;
   const def = check(s, 'check', Math.max(skillMod(t, 'athletics'), skillMod(t, 'acrobatics')), 0);
@@ -1434,7 +1435,7 @@ function pushClear(s: BattleState, from: Pt, to: Pt): boolean {
   return true;
 }
 
-const near = (u: Unit, t: Unit): boolean => u.id === t.id || dist(u.pos, t.pos) <= 1.6;
+const near = (u: Unit, t: Unit): boolean => u.id === t.id || rangeDist(u.pos, t.pos) <= 1.6;
 
 function doItem(s: BattleState, u: Unit, item: 'pill' | 'bandage' | 'antidote' | 'tag' | 'tagTrap', targetId: string | undefined, at: Pt | undefined, ev: BattleEvent[]): string | null {
   // The backpack is the party's: a commanded enemy or a beast that joined doesn't get into it.
@@ -1457,7 +1458,7 @@ function doItem(s: BattleState, u: Unit, item: 'pill' | 'bandage' | 'antidote' |
   if (item === 'tag') {
     // An explosive tag thrown at a point: it seals a hydra's stump like fire.
     if (s.supplies.explosiveTags < 1) return 'noneLeft';
-    if (!at || dist(u.pos, at) > TAG.range + heightReach(s, u.pos, at) + 0.1) return 'outOfRange';
+    if (!at || rangeDist(u.pos, at) > TAG.range + heightReach(s, u.pos, at) + 0.1) return 'outOfRange';
     if (!lineOfSight(s, u.pos, at, { into: true })) return 'noSight';
     u.turn.action = false;
     s.supplies.explosiveTags -= 1;
@@ -1469,7 +1470,7 @@ function doItem(s: BattleState, u: Unit, item: 'pill' | 'bandage' | 'antidote' |
     // An explosive tag hidden on the ground nearby: it goes off when an enemy steps on it. Quiet: it
     // doesn't give the ninja away in the stealth phase.
     if (s.supplies.explosiveTags < 1) return 'noneLeft';
-    if (!at || dist(u.pos, at) > TAG.plant + 0.1) return 'outOfRange';
+    if (!at || rangeDist(u.pos, at) > TAG.plant + 0.1) return 'outOfRange';
     if (!lineOfSight(s, u.pos, at, { into: true })) return 'noSight';
     if (cellBlocked(s, cellOf(at))) return 'blocked';
     u.turn.action = false;

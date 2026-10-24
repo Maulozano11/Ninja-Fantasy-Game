@@ -278,19 +278,31 @@ ladder or the ninja jump; and looking down works like looking up, the other way 
   above the foe only where its blade reaches. Out of chakra, a jutsu caster may turn into one that
   closes in. (`fightsFromAfar`, `standScore` in `src/battle/intent.ts`.)
 
-### Diagonals: 5-10-5 (being tried, 2026-10-22; his decision waits)
+### Diagonals: 5-5-5 (decided 2026-10-24)
 
-His answer: *"vamos a probar 5-10-5"*. The 5e variant: diagonal steps alternate between costing
-one square and two. Our hidden grid is 0.5 m, a third of a 5 ft square (1.5 m), so the rule is
-counted in our cells: diagonal steps cost **0.5 m, 1 m, 0.5 m, 1 m...** (one cell, then two),
-straight steps 0.5 m. On average a diagonal costs 1.5 times a straight step, as in 5e (6 diagonal
-cells, two 5e squares, cost 4.5 m = 5 + 10 ft). The count runs over the **whole turn** (splitting a
-move saves nothing; a dash carries it on) and starts again each turn. Paths, the reach shown, the
-metres in the move preview, dashing and the AI all use it. The move preview also shows the same
-path at true length, to compare ("diagonales 5-10-5 · longitud real 5.7 m"). One switch in the
-engine, `DIAGONAL_RULE` in `src/battle/nav.ts`: `'5-10-5'` (now) or `'true'` (before: a diagonal
-cell costs its true length, 0.71 m). His answer 7 (2026-10-23): *"aun no la pruebo espera con esa
-decision"*: it stays on until he has tried it.
+His decision: *"pon 5-5-5 para hacer mas facil de entender el juego"*. 5e's own rule: a diagonal
+step costs the same as a straight one. On our hidden 0.5 m grid every step, straight or diagonal,
+costs **0.5 m** (one cell), so so many metres of movement reach so many metres across, into the
+depth, or both at once: on open ground the reach shown is a square, not a circle (9 m of movement
+reach a point 9 m across and 9 m back). Water, climbing, cracked ground and dragging a body still
+double or add to a step as before. Paths, the reach shown, the metres in the move preview, dashing
+and the AI's guess of what it can walk to this turn (`walkDist`: the longer of the two sides) all
+use it; of two paths that cost the same, the straighter one is taken, so the path shown doesn't
+zigzag. **Ranges and reach count squares the same way**, as 5e measures range on its grid
+(`rangeDist` in `src/battle/map.ts`: the longer of the two sides): a blade's 1.5 m reaches a foe one
+5e square away on the diagonal, and leaving that reach provokes an opportunity attack; a kunai's
+9 m (18 m long), a jutsu's range, a heal or a touch (1.5 m), the explosive tag, the stone, the
+Ryusei's warp and swap, Command and Submission, the Chidori's hand and the AI's guesses all count
+so. The range shown on the ground is a square. **Shapes stay round** (our reading, his to correct):
+the circles of areas, cones and lines (their length is the shape, so their ring stays a circle),
+the Northstar's aura, sight and noise are measured in a straight line, as drawn. One switch in the
+engine, `DIAGONAL_RULE` in `src/battle/map.ts` (also exported from `nav.ts`): `'5-5-5'` (now) or
+`'true'` (the rule before the height test: a diagonal cell costs its true length, 0.71 m, and
+ranges are as the crow flies).
+
+Before: from 2026-10-22 he tried 5e's variant 5-10-5 (*"vamos a probar 5-10-5"*: diagonals
+alternating 0.5 m and 1 m, counted over the whole turn, the preview also showing the true length).
+It is retired: the code and its turn-long diagonal count are gone, not kept as a switch.
 
 ## Cover
 
@@ -1260,9 +1272,8 @@ folder (`WORLD_OUT`) until then. Approved so far: the river bridge.
   above), tall things hiding, walls of 2 levels, falling and the AI. Still a proposal: from 2
   levels up low cover counts less. Our reading to confirm: the boulder (1.3 m) counts as a tall rock
   and hides.
-- **5-10-5 (2026-10-22):** after trying it, keep it or go back to true-length diagonals
-  (`DIAGONAL_RULE`, `src/battle/nav.ts`)? He hasn't tried it yet (2026-10-23: "espera con esa
-  decision").
+- **Diagonals (decided 2026-10-24: 5-5-5):** walking, ranges and reach count squares; our
+  reading to confirm: the shapes of areas (circles, cones, lines, the aura) stay round.
 - Lightning's second burst (*Estática de batalla* / Battle Static, his request
   and his name, 2026-10-21): approve or redo the art, now with bolts at every
   frame and more while empowered.

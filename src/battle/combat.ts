@@ -10,7 +10,7 @@ import { Rng, rngFor, rollDie } from '../rules/rng';
 import { SHINOBI_CLASSES } from '../data/shinobiData';
 import type { BattleEvent, BattleState, DamageType, Pt, RollInfo, Unit } from './types';
 import { homeTeam } from './types';
-import { coverBetween, dist, fullCoverBetween, heightReach, hideSpotAt, levelAtPt, lineOfSight, steamAt, tooHigh } from './map';
+import { coverBetween, dist, fullCoverBetween, rangeDist, heightReach, hideSpotAt, levelAtPt, lineOfSight, steamAt, tooHigh } from './map';
 import { KUNAI, KUNAI_LONG, wielded } from './units';
 
 /** The next dice stream of the battle. */
@@ -126,7 +126,7 @@ export interface AttackPreview {
 function flanked(s: BattleState, attacker: Unit, target: Unit): boolean {
   for (const ally of Object.values(s.units)) {
     if (ally.id === attacker.id || ally.team !== attacker.team || !standing(ally)) continue;
-    if (dist(ally.pos, target.pos) > wielded(ally).reach + 0.1 || tooHigh(s, ally.pos, target.pos)) continue;
+    if (rangeDist(ally.pos, target.pos) > wielded(ally).reach + 0.1 || tooHigh(s, ally.pos, target.pos)) continue;
     // An ally behind a metal wall can't strike the target.
     if (fullCoverBetween(s, ally.pos, target.pos)) continue;
     const a1 = Math.atan2(attacker.pos.z - target.pos.z, attacker.pos.x - target.pos.x);
@@ -150,7 +150,7 @@ export function hostileAura(s: BattleState, a: Unit): Unit | undefined {
 }
 
 function hostileWithin(s: BattleState, u: Unit, r: number): boolean {
-  return Object.values(s.units).some((o) => o.team !== u.team && standing(o) && o.kind !== 'hydra_body' && dist(o.pos, u.pos) <= r + 0.05);
+  return Object.values(s.units).some((o) => o.team !== u.team && standing(o) && o.kind !== 'hydra_body' && rangeDist(o.pos, u.pos) <= r + 0.05);
 }
 
 /**
@@ -162,7 +162,7 @@ export function attackPreview(s: BattleState, a: Unit, t: Unit, kind: AttackKind
   const close = kind === 'melee' || !!opts.melee;
   const am = effectMods(a.effects);
   const tm = effectMods(t.effects);
-  const d = dist(a.pos, t.pos);
+  const d = rangeDist(a.pos, t.pos);
   const reasons: string[] = [];
   const advs: Advantage[] = [];
   let mod: number;

@@ -1,6 +1,7 @@
 // Height and diagonals (the owner, 2026-10-22): "si me gustaria darle alguna clase de altura ...
-// terreno elevado ... trepando una colina bajando un colina ... alguien subio a una torre", and
-// "vamos a probar 5-10-5". These tests pin the 5-10-5 diagonals, climbing (ramps, ledges, walls,
+// terreno elevado ... trepando una colina bajando un colina ... alguien subio a una torre"; on
+// diagonals, after trying 5-10-5, "pon 5-5-5 para hacer mas facil de entender el juego"
+// (2026-10-24). These tests pin the 5-5-5 diagonals, climbing (ramps, ledges, walls,
 // the ladder), the reach and cover rules of height, and the height test battle. His answers of
 // 2026-10-23 on the height rules: the range from high ground for everything thrown or sent, sight
 // over an edge "como en xcom 2", falls that hurt only when not on purpose (3d6 at most), and an AI
@@ -18,8 +19,8 @@ import type { ShinobiCharacter } from '../types/shinobi';
 import type { BattleState, Pt } from './types';
 import { applyAction, createBattle } from './engine';
 import type { BattleSetup } from './engine';
-import { CELL, cellCenter, cellOf, coverBetween, fallDice, gridFor, idx, levelAtPt, lineOfSight, terrainBlocks } from './map';
-import { canStop, climbCost, CLIMB_DOWN, CLIMB_UP, DIAGONAL_RULE, diagonalCost, pathCost, pathTo, reachable, walkCost } from './nav';
+import { CELL, cellCenter, cellOf, coverBetween, fallDice, gridFor, idx, levelAtPt, lineOfSight, rangeDist, terrainBlocks } from './map';
+import { canStop, climbCost, CLIMB_DOWN, CLIMB_UP, DIAGONAL_RULE, diagonalCost, pathCost, pathTo, reachable, walkCost, walkDist } from './nav';
 import { attackPreview } from './combat';
 import { KUNAI } from './units';
 import { JUTSU, areaIn, areaOf, jutsuRange, reachesFromAbove } from './jutsu';
@@ -77,30 +78,40 @@ function costTo(s: BattleState, id: string, p: Pt, budget = 40): number {
   return reachable(s, s.units[id], budget).cost.get(idx(g, cellOf(p))) ?? Infinity;
 }
 
-describe('5-10-5 diagonals (being tried, 2026-10-22)', () => {
-  it('is the rule in use: diagonal steps alternate one cell (0.5 m) and two (1 m)', () => {
-    assert.equal(DIAGONAL_RULE, '5-10-5');
-    assert.equal(diagonalCost(false), CELL);
-    assert.equal(diagonalCost(true), 2 * CELL);
-    assert.equal(diagonalCost(false, 'true'), CELL * Math.SQRT2);
+describe('5-5-5 diagonals (the owner, 2026-10-24: "pon 5-5-5 para hacer mas facil de entender el juego")', () => {
+  it('is the rule in use: a diagonal step costs one cell (0.5 m), as a straight one', () => {
+    assert.equal(DIAGONAL_RULE, '5-5-5');
+    assert.equal(diagonalCost(), CELL);
+    assert.equal(diagonalCost('true'), CELL * Math.SQRT2);
     const s = turnOf(createBattle(setup()).state, 'a');
     const from = s.units.a.pos;
-    // 1, 2, 3, 4, 6 diagonal cells up and right: 0.5, 1.5, 2, 3, 4.5 m.
-    const want = [0, 0.5, 1.5, 2, 3, 4, 4.5];
-    for (const n of [1, 2, 3, 4, 6]) near(costTo(s, 'a', at(from.x + n * CELL, from.z - n * CELL)), want[n]);
-    // A 5 ft square of 5e is 1.5 m, 3 of our cells: two diagonal squares cost 5 + 10 ft = 4.5 m.
-    near(costTo(s, 'a', at(from.x + 6 * CELL, from.z + 6 * CELL)), 4.5);
+    // 1, 2, 3, 4, 6 diagonal cells up and right: 0.5 m each.
+    for (const n of [1, 2, 3, 4, 6]) near(costTo(s, 'a', at(from.x + n * CELL, from.z - n * CELL)), n * CELL);
+    // A 5 ft square of 5e is 1.5 m, 3 of our cells: two diagonal squares cost 5 + 5 ft = 3 m.
+    near(costTo(s, 'a', at(from.x + 6 * CELL, from.z + 6 * CELL)), 3);
   });
 
-  it('a straight step still costs one cell, and a knight\'s move mixes the two', () => {
+  it('a straight step costs one cell, and a knight\'s move costs its longer side', () => {
     const s = turnOf(createBattle(setup()).state, 'a');
     const from = s.units.a.pos;
     near(costTo(s, 'a', at(from.x + 3, from.z)), 3);
-    // 4 across and 2 into the depth: 2 diagonals (0.5 + 1) and 2 straight (1).
-    near(costTo(s, 'a', at(from.x + 4 * CELL, from.z - 2 * CELL)), 2.5);
+    // 4 across and 2 into the depth: 2 diagonals and 2 straight, 2 m.
+    near(costTo(s, 'a', at(from.x + 4 * CELL, from.z - 2 * CELL)), 2);
+    near(walkDist(from, at(from.x + 4 * CELL, from.z - 2 * CELL)), 2);
+    near(walkDist(from, at(from.x + 2, from.z + 2), 'true'), 2 * Math.SQRT2);
   });
 
-  it('the path the preview shows costs what the reach says, and the move takes exactly that', () => {
+  it('the reach is a square on open ground: 9 m of movement reach 9 m across and 9 m into the depth at once', () => {
+    const s = turnOf(createBattle(setup()).state, 'a');
+    const g = gridFor(s.mapId);
+    const r = reachable(s, s.units.a, 3);
+    const from = cellOf(s.units.a.pos);
+    // The corner 3 m across and 3 m back is in reach, one more cell beyond either side is not.
+    assert.ok(r.cost.has(idx(g, { c: from.c + 6, r: from.r - 6 })));
+    assert.ok(!r.cost.has(idx(g, { c: from.c + 7, r: from.r - 6 })));
+  });
+
+  it('the path the preview shows costs what the reach says, and the move takes exactly that; it doesn\'t zigzag', () => {
     const s = turnOf(createBattle(setup()).state, 'a');
     const to = cellOf(at(15.25, 8.25));
     const r = reachable(s, s.units.a, 20);
@@ -109,12 +120,16 @@ describe('5-10-5 diagonals (being tried, 2026-10-22)', () => {
     near(cost, r.cost.get(idx(gridFor(s.mapId), to))!);
     const out = ok(applyAction(s, { type: 'move', unit: 'a', to }));
     near(out.state.units.a.turn.move, s.units.a.turn.move - cost);
-    // The same path at true length is cheaper: 6 diagonals of 0.71 m.
+    near(cost, 3);
+    // 6 diagonals, the straightest of the paths that cost the same.
+    assert.equal(path.length, 6);
     near(walkCost(s, s.units.a, path, { diagonals: 'true' }).total, 6 * CELL * Math.SQRT2);
-    near(cost, 4.5);
+    // Straight across: no step up or down on the way.
+    const across = pathTo(s, r, cellOf(at(s.units.a.pos.x + 3, s.units.a.pos.z)))!;
+    assert.ok(across.every((c) => c.r === cellOf(s.units.a.pos).r), JSON.stringify(across));
   });
 
-  it('the count runs over the whole turn: splitting a diagonal move saves nothing', () => {
+  it('splitting a move or dashing changes nothing: every diagonal costs the same', () => {
     let s = turnOf(createBattle(setup()).state, 'a');
     const m0 = s.units.a.turn.move;
     const step = (dx: number, dz: number) => {
@@ -122,29 +137,32 @@ describe('5-10-5 diagonals (being tried, 2026-10-22)', () => {
       s = ok(applyAction(s, { type: 'move', unit: 'a', to: cellOf(at(u.pos.x + dx, u.pos.z + dz)) })).state;
     };
     step(CELL, -CELL);
-    near(s.units.a.turn.move, m0 - 0.5);
     step(CELL, -CELL);
-    near(s.units.a.turn.move, m0 - 1.5);
-    // A straight step in between doesn't reset it.
     step(CELL, 0);
     step(CELL, -CELL);
-    near(s.units.a.turn.move, m0 - 2.5);
-    step(-CELL, -CELL);
-    near(s.units.a.turn.move, m0 - 3.5);
-    // A new turn starts the count again.
-    s = turnOf(s, 'a');
-    assert.equal(s.units.a.turn.diag, undefined);
-    step(CELL, CELL);
-    near(s.units.a.turn.move, s.units.a.speed - 0.5);
-  });
-
-  it('a dash carries the count on', () => {
-    let s = turnOf(createBattle(setup()).state, 'a');
-    s = ok(applyAction(s, { type: 'move', unit: 'a', to: cellOf(at(12.75, 10.75)) })).state;
+    near(s.units.a.turn.move, m0 - 2);
     s = ok(applyAction(s, { type: 'dash', unit: 'a' })).state;
     const m = s.units.a.turn.move;
-    s = ok(applyAction(s, { type: 'move', unit: 'a', to: cellOf(at(13.25, 10.25)) })).state;
-    near(s.units.a.turn.move, m - 1);
+    step(CELL, CELL);
+    near(s.units.a.turn.move, m - 0.5);
+  });
+
+  it('ranges and reach count squares too: a foe a 5e square away on the diagonal is in reach, and leaving it provokes', () => {
+    // The rogue 1.5 m across and 1.5 m back: 2.1 m as the crow flies, one square (1.5 m) by 5-5-5.
+    const s = createBattle(setup({ enemies: [{ kind: 'rogue', pos: at(13.75, 9.75) }] })).state;
+    near(rangeDist(s.units.a.pos, s.units.rogue_0.pos), 1.5);
+    near(rangeDist(s.units.a.pos, s.units.rogue_0.pos, 'true'), 1.5 * Math.SQRT2);
+    assert.ok(attackPreview(s, s.units.a, s.units.rogue_0, 'melee').inRange);
+    const hit = ok(applyAction(turnOf(s, 'a'), { type: 'attack', unit: 'a', target: 'rogue_0' }));
+    assert.ok(hit.events.some((e) => e.t === 'attack' && e.unit === 'a'));
+    // Stepping on out of that diagonal reach is an opportunity for Aki's blade.
+    const out = ok(applyAction(turnOf(s, 'rogue_0'), { type: 'move', unit: 'rogue_0', to: cellOf(at(15.25, 8.25)) }));
+    assert.equal(out.state.pending?.kind, 'opportunity');
+    // The kunai's 9 m count the same way: 9 m across and 9 m back is no long throw.
+    const pv = attackPreview(s, { ...s.units.a, pos: at(4.25, 18.75) }, { ...s.units.rogue_0, pos: at(13.25, 9.75) }, 'ranged');
+    assert.ok(pv.inRange && !pv.reasons.includes('longRange'), JSON.stringify(pv.reasons));
+    // A jutsu's range too (a point 9 m off on the diagonal, the explosive tag's throw).
+    near(rangeDist(at(0, 0), at(9, -9)), 9);
   });
 });
 

@@ -80,15 +80,15 @@ describe('the Y axis: moving up and down the screen', () => {
     }
   });
 
-  it('diagonal steps into the depth cost 5-10-5 (being tried, 2026-10-22); at true length they cost sqrt 2 of a straight one', () => {
+  it('diagonal steps into the depth cost the same as straight ones (5-5-5, the owner, 2026-10-24); at true length they cost sqrt 2 of one', () => {
     const s = turnOf(createBattle(setup()).state, 'a');
     const g = gridFor(s.mapId);
     const r = reachable(s, s.units.a, 9);
     const from = cellOf(s.units.a.pos);
-    // 4 cells across and 4 into the depth: 2 m each way; 0.5 + 1 + 0.5 + 1 = 3 m walked under 5-10-5.
+    // 4 cells across and 4 into the depth: 2 m each way, 2 m walked under 5-5-5.
     const to = { c: from.c + 4, r: from.r - 4 };
     const cost = r.cost.get(idx(g, to))!;
-    assert.ok(Math.abs(cost - 3) < 1e-9, String(cost));
+    assert.ok(Math.abs(cost - 2) < 1e-9, String(cost));
     // The same 4 diagonals at true length: 2.83 m (the rule before, nav.ts DIAGONAL_RULE 'true').
     const t = reachable(s, s.units.a, 9, { diagonals: 'true' }).cost.get(idx(g, to))!;
     assert.ok(Math.abs(t - 4 * CELL * Math.SQRT2) < 1e-9, String(t));

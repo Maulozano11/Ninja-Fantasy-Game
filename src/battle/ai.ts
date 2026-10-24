@@ -4,8 +4,8 @@
 
 import { effectMods, hasEffect } from '../rules/effects';
 import type { Action, BattleEvent, BattleState, Cell, Intent, Pt, Unit } from './types';
-import { cellCenter, cellOf, coverBetween, dampAt, dist, fullCoverBetween, gridFor, heightReach, idx, lineOfSight, sameCell, segmentsCross, steamAt } from './map';
-import { canStop, reachable } from './nav';
+import { cellCenter, cellOf, coverBetween, dampAt, dist, fullCoverBetween, rangeDist, gridFor, heightReach, idx, lineOfSight, sameCell, segmentsCross, steamAt } from './map';
+import { canStop, reachable, walkDist } from './nav';
 import { JUTSU, MIN_AIM, jutsuRange } from './jutsu';
 import { KUNAI_LONG } from './units';
 import { applyAction, chargeLanding, handsBlocker, jutsuCost } from './engine';
@@ -80,10 +80,10 @@ function headAction(s: BattleState, u: Unit): Action | null {
   if (!u.turn.action) return null;
   let i = stillValid(s, u, u.intent) ? u.intent : undefined;
   // The planned bite is out of reach now (they moved away, or a metal wall rose between): pick again.
-  if (i?.kind === 'bite' && (dist(u.pos, s.units[i.target!].pos) > u.weapon.reach + 0.1 || fullCoverBetween(s, u.pos, s.units[i.target!].pos))) i = undefined;
+  if (i?.kind === 'bite' && (rangeDist(u.pos, s.units[i.target!].pos) > u.weapon.reach + 0.1 || fullCoverBetween(s, u.pos, s.units[i.target!].pos))) i = undefined;
   if (i && (i.kind === 'spit' || i.kind === 'roar')) {
     const t = s.units[i.target!];
-    if (dist(u.pos, t.pos) > jutsuRange(s, JUTSU[i.what], u.pos, t.pos) + 0.1 || !lineOfSight(s, u.pos, t.pos)) i = undefined;
+    if (rangeDist(u.pos, t.pos) > jutsuRange(s, JUTSU[i.what], u.pos, t.pos) + 0.1 || !lineOfSight(s, u.pos, t.pos)) i = undefined;
     // A foe that walked right under the head leaves the roar no direction: pick again.
     else if (i.kind === 'roar' && dist(u.pos, t.pos) < MIN_AIM) i = undefined;
   }
@@ -166,7 +166,7 @@ function carryOut(s: BattleState, u: Unit, i: Intent): Action | null {
 function kunaiOr(s: BattleState, u: Unit, t: Unit): Action | null {
   // A charged hand closes in rather than throw: out of movement, it dashes.
   if (u.charged) return u.turn.move < 0.5 && u.turn.action ? { type: 'dash', unit: u.id } : null;
-  if (dist(u.pos, t.pos) <= KUNAI_LONG + heightReach(s, u.pos, t.pos) && lineOfSight(s, u.pos, t.pos)) return { type: 'attack', unit: u.id, target: t.id, ranged: true };
+  if (rangeDist(u.pos, t.pos) <= KUNAI_LONG + heightReach(s, u.pos, t.pos) && lineOfSight(s, u.pos, t.pos)) return { type: 'attack', unit: u.id, target: t.id, ranged: true };
   if (u.turn.move < 0.5) return { type: 'dash', unit: u.id };
   return null;
 }
@@ -193,8 +193,8 @@ function breakThrough(s: BattleState, u: Unit, t: Unit): Action | null {
 function fallback(s: BattleState, u: Unit): Action | null {
   for (const o of ninjaOptions(s, u)) {
     const t = o.intent.target ? s.units[o.intent.target] : undefined;
-    if (o.intent.kind === 'melee' && t && dist(u.pos, t.pos) <= reachTo(u, t) + 0.1 && !fullCoverBetween(s, u.pos, t.pos)) return { type: 'attack', unit: u.id, target: t.id };
-    if (o.intent.kind === 'ranged' && t && dist(u.pos, t.pos) <= KUNAI_LONG + heightReach(s, u.pos, t.pos) && lineOfSight(s, u.pos, t.pos)) return { type: 'attack', unit: u.id, target: t.id, ranged: true };
+    if (o.intent.kind === 'melee' && t && rangeDist(u.pos, t.pos) <= reachTo(u, t) + 0.1 && !fullCoverBetween(s, u.pos, t.pos)) return { type: 'attack', unit: u.id, target: t.id };
+    if (o.intent.kind === 'ranged' && t && rangeDist(u.pos, t.pos) <= KUNAI_LONG + heightReach(s, u.pos, t.pos) && lineOfSight(s, u.pos, t.pos)) return { type: 'attack', unit: u.id, target: t.id, ranged: true };
   }
   return null;
 }
@@ -222,7 +222,7 @@ function imbueFirst(s: BattleState, u: Unit, i: Intent): Action | null {
   if (!t || t.team === u.team || !standingUnit(t)) return null;
   const element = imbueChoice(s, u, t);
   const reach = reachTo(u, t) + (element === 'Water' ? WATER_REACH : 0);
-  if (dist(u.pos, t.pos) > reach + walkBudget(u) + 0.1) return null;
+  if (walkDist(u.pos, t.pos) > reach + walkBudget(u) + 0.1) return null;
   return { type: 'jutsu', unit: u.id, jutsu: WEAPON_ELEMENT, at: { ...u.pos }, element };
 }
 
@@ -234,7 +234,7 @@ function imbueFirst(s: BattleState, u: Unit, i: Intent): Action | null {
  */
 export function imbueChoice(s: BattleState, u: Unit, t: Unit): ImbueElement {
   const els = unitImbueElements(u);
-  const far = dist(u.pos, t.pos) > reachTo(u, t) + walkBudget(u) + 0.1;
+  const far = walkDist(u.pos, t.pos) > reachTo(u, t) + walkBudget(u) + 0.1;
   if (far && els.includes('Water')) return 'Water';
   const burning = hasEffect(t.effects, 'burning');
   const fine = els.filter((e) => !((e === 'Fire' && (burning || dampAt(s, t.pos))) || (e === 'Water' && burning)));
@@ -242,7 +242,7 @@ export function imbueChoice(s: BattleState, u: Unit, t: Unit): ImbueElement {
 }
 
 /** A blow from `p` reaches the target (and no metal wall stands between). */
-const strikesFrom = (s: BattleState, u: Unit, p: Pt, t: Unit): boolean => dist(p, t.pos) <= reachTo(u, t) + 0.1 && !fullCoverBetween(s, p, t.pos);
+const strikesFrom = (s: BattleState, u: Unit, p: Pt, t: Unit): boolean => rangeDist(p, t.pos) <= reachTo(u, t) + 0.1 && !fullCoverBetween(s, p, t.pos);
 
 /**
  * A Ryusei out of reach of its target warps to one of its own Nodes: best, one that lands it right
@@ -259,15 +259,15 @@ function ryuseiWarp(s: BattleState, u: Unit, i: Intent): Action | null {
   if (!t || t.team === u.team || !(walkIn || i.kind === 'ranged' || i.kind === 'move')) return null;
   if (j && u.chakra < jutsuCost(u, spec, false) + jutsuCost(u, j, false)) return null;
   const reach = j?.melee ? j.range + (t.bulk ?? 0) : reachTo(u, t);
-  if (dist(u.pos, t.pos) <= reach + 0.1) return null;
-  const walkable = dist(u.pos, t.pos) <= reach + walkBudget(u);
+  if (rangeDist(u.pos, t.pos) <= reach + 0.1) return null;
+  const walkable = walkDist(u.pos, t.pos) <= reach + walkBudget(u);
   let best: { at: Pt; edge: boolean; d: number } | undefined;
   for (const n of ownNodes(s, u)) {
     if (warpBlocker(s, u, n)) continue;
     const land = warpLanding(s, u, n)!;
     const d = dist(land, t.pos);
     const edge = strikesFrom(s, u, land, t);
-    if (!edge && (!walkIn || walkable || d > reach + walkBudget(u))) continue;
+    if (!edge && (!walkIn || walkable || walkDist(land, t.pos) > reach + walkBudget(u))) continue;
     if (!best || (edge && !best.edge) || (edge === best.edge && d < best.d)) best = { at: n.pos, edge, d };
   }
   return best ? { type: 'jutsu', unit: u.id, jutsu: WARP, at: { ...best.at } } : null;
@@ -303,7 +303,7 @@ function bonusStrike(s: BattleState, u: Unit): Action | null {
     if (handsBlocker(u, j)) continue;
     for (const f of visibleFoes(s, u)) {
       const reach = jutsuRange(s, j, u.pos, f.pos) + (f.bulk ?? 0) + (j.shape === 'single' && f.kind === 'hydra_head' ? 2.5 : 0);
-      if (dist(u.pos, f.pos) > reach + 0.1 || !lineOfSight(s, u.pos, f.pos) || areaValue(s, u, j, f) <= 0) continue;
+      if (rangeDist(u.pos, f.pos) > reach + 0.1 || !lineOfSight(s, u.pos, f.pos) || areaValue(s, u, j, f) <= 0) continue;
       const v = 1 - f.hp / Math.max(1, f.maxHp);
       if (!best || v > best.v) best = { a: { type: 'jutsu', unit: u.id, jutsu: id, at: { ...f.pos }, target: j.shape === 'single' ? f.id : undefined }, v };
     }

@@ -10,7 +10,7 @@
 // normal": on the male body each piece is fitted to its narrower limbs and torso by leaving out whole
 // columns and rows of his, or repeating them, never redrawn (fit.ts).
 
-import { retintHex } from '../color';
+import { hexToRgb, retintHex } from '../color';
 import { capPlace, ownerSkin } from '../bulkyBody';
 import { armDepth, armJoints, Depth, DrawCtx, handDraw, handPose, ItemDef, legDepth, legJoints, Side } from '../ctx';
 import { limbRefit, refit } from '../fit';
@@ -24,6 +24,7 @@ import { BULKY_BASE_BRIEFS } from '../bulkyBaseArt';
 import { BELT_KIND, BELT_KNIFE, BELT_LEATHER, BELT_METAL, BELT_POUCH, BELT_STRAPS, BELT_TAN } from './brawlerBeltArt';
 import { BOOT_F, BOOT_KIND, BOOT_LEATHER, BOOT_N } from './brawlerBootsArt';
 import { BRACER_BAND, BRACER_KIND, BRACER_SKIN, BRACER_STEEL, BRACER_WRAP, STEEL_BRACER_N, STEEL_FIST_N, WRAP_BRACER_F, WRAP_FIST_F } from './brawlerBracersArt';
+import { BROAD_SIT_PALM, BROAD_SIT_PALM_KIND, BROAD_SIT_PALM_SKIN } from './broadSitPalmArt';
 import { JEANS_DENIM, JEANS_HIPS, JEANS_KIND, JEANS_SHIN_F, JEANS_SHIN_N, JEANS_THIGH_F, JEANS_THIGH_N } from './jeansArt';
 import { SHIRT_CAP_F, SHIRT_CAP_N, SHIRT_CLOTH, SHIRT_KIND, SHIRT_SEAM, SHIRT_SLEEVE_F, SHIRT_SLEEVE_N, SHIRT_TORSO } from './seamShirtArt';
 import { SHIRT_MALE_CHEST, SHIRT_MALE_KIND, SHIRT_MALE_LINE, SHIRT_MALE_SLEEVE_F, SHIRT_MALE_SLEEVE_N } from './seamShirtMaleArt';
@@ -292,6 +293,15 @@ function roundShoulder(g: DrawCtx, L: Layer, s: Side, tint: Tint): void {
 }
 /** How round the reading shoulder is: from 0 (the straight cut) to 1 (a quarter ellipse). */
 const SHOULDER_BOW = 1;
+
+/**
+ * His broad man's skin at the tone of his Roman palm (the skin of his bracers' art nearest it): his palm's
+ * skin lands there, in the character's skin, so the hand is the arm's skin as he painted it.
+ */
+const PALM_TO: string = (() => {
+  const d = (h: string) => hexToRgb(h).reduce((t, v, k) => t + (v - hexToRgb(BROAD_SIT_PALM_SKIN)[k]) ** 2, 0);
+  return Object.keys(BRACER_KIND).filter((h) => BRACER_KIND[h] === 'skin').sort((x, y) => d(x) - d(y) || (x < y ? -1 : 1))[0];
+})();
 
 /** His colours by what they are: his black line stays, each other kind follows its slot from his default. */
 const byKind = (kinds: Record<string, string>, slots: Record<string, [string, string]>, skin?: string): Tint => (_ch, hex) => {
@@ -616,9 +626,24 @@ export const BRAWLER_HANDS: ItemDef[] = [
         // The forearm is his bracer's: our bare forearm under it goes (it would show past his edge), but
         // not the round of the elbow, which closes the upper arm; his own skin at the elbow stays.
         forearmOff(g, s);
-        const bracer = limbFit(g, style === 'steel' ? STEEL_BRACER_N : WRAP_BRACER_F, `${style}_BRACER`, MALE_FIT.bracer, (b) => b.forearm);
+        // (seated, the far arm reaches out straight, his wrappings seen whole from the side: as wide as he drew them)
+        const fit = g.rig.pose === 'sit' && s === 'F' && style === 'wrap' ? { across: 1 } : MALE_FIT.bracer;
+        const bracer = limbFit(g, style === 'steel' ? STEEL_BRACER_N : WRAP_BRACER_F, `${style}_BRACER`, fit, (b) => b.forearm);
         onLimb(g, L, bracer, j.elbow, segAngle(j.elbow, j.wrist), prt('forearm', s), tint);
         const { kind } = handPose(g, s);
+        if (g.rig.pose === 'sit' && s === 'F' && style !== 'steel') {
+          // Seated, his far hand reaches forward open, palm up: the owner's open hand of his Roman sit, a
+          // bracer on the forearm and the hand bare as here (tools/refs/broad-sit-palm-from-ref.py), every
+          // pixel his, on the wrist and turned with the forearm as his was: his line kept, his skin the
+          // character's. The owner on the broad man seated on the male body: "se ve muy buggeado su mano
+          // extendida necesitamos pulirla creo que en mi referencia estaba pulida checala".
+          partsOff(g, [armDepth(s, 'body')], [prt('hand', s)]);
+          const palm = BROAD_SIT_PALM[g.rig.frame % BROAD_SIT_PALM.length];
+          const to = ownerSkin(PALM_TO, BRACER_SKIN, g.look.skin);
+          const skin: Tint = (_ch, hex) => (BROAD_SIT_PALM_KIND[hex] === 'skin' ? ownerSkin(hex, BROAD_SIT_PALM_SKIN, to) : hex);
+          onLimb(g, L, palm, j.wrist, segAngle(j.elbow, j.wrist), prt('hand', s), skin);
+          continue;
+        }
         // His fist closed (his near hand rests closed on the hip as he drew it); open, pointing or
         // cradling hands are our hand pictures.
         if (kind === 'grip' || kind === 'fist' || kind === 'relaxed') {

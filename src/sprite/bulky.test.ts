@@ -10,9 +10,11 @@ import { BULKY_BASE, BULKY_BASE_KIND, BULKY_BASE_REST, BULKY_BASE_SKIN } from '.
 import { getItem } from './catalog';
 import { renderSprite } from './compose';
 import { limbRefit, refit } from './fit';
+import { findGlitches } from './glitches';
 import * as belt from './items/brawlerBeltArt';
 import * as boots from './items/brawlerBootsArt';
 import * as bracers from './items/brawlerBracersArt';
+import * as palm from './items/broadSitPalmArt';
 import * as jeans from './items/jeansArt';
 import * as hair from './items/lockHairArt';
 import * as shirt from './items/seamShirtArt';
@@ -692,6 +694,29 @@ describe('the read on the bulky body', () => {
       }
       // and no hole in it: every pixel of the shoulder from its back to the neck's column is drawn
       for (const [y, x] of back) if (y >= top[0] && y <= top[0] + r) for (let u = x; u <= top[1]; u++) assert.ok(f.rgba[(y * GRID + u) * 4 + 3] > 0, `read ${fr}: a hole at ${u},${y}`);
+    }
+  });
+});
+
+describe('the far hand seated', () => {
+  // The owner on the broad man seated on the male body: "se ve muy buggeado su mano extendida necesitamos
+  // pulirla creo que en mi referencia estaba pulida checala". His open hand of the Roman sit (broadSitPalmArt.ts).
+  it('is his open palm in his line and the skin, on the male and bulky bodies, in the four frames, whole', () => {
+    const lines = new Set(Object.entries(palm.BROAD_SIT_PALM_KIND).filter(([, k]) => k === 'line').map(([h]) => h));
+    for (const body of ['male', 'bulky'] as BodyType[]) {
+      for (let f = 0; f < 4; f++) {
+        const fr = renderSprite(his(body), 'sit', f);
+        let line = 0;
+        let hand = 0;
+        for (let i = 0; i < GRID * GRID; i++) {
+          if (!fr.rgba[i * 4 + 3] || PARTS[fr.part[i]] !== 'handF') continue;
+          hand++;
+          if (lines.has('#' + [0, 1, 2].map((c) => fr.rgba[i * 4 + c].toString(16).padStart(2, '0')).join(''))) line++;
+        }
+        const cells = palm.BROAD_SIT_PALM[f].rows.join('').replace(/\./g, '').length;
+        assert.ok(hand >= cells * 0.8 && line >= 10, `${body} sit ${f}: ${hand} pixels of the hand (his ${cells}), ${line} of his line`);
+        assert.deepEqual(findGlitches(fr).filter((g) => g.kind !== 'pocket' && (g.parts as string[]).some((p) => /F$/.test(p) && /hand|forearm/.test(p))), [], `${body} sit ${f}`);
+      }
     }
   });
 });

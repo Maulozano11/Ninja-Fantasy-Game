@@ -41,7 +41,7 @@ const CLAN_JUTSU: Record<string, string> = {
   northstar_command: 'Command',
   northstar_submission: 'Natural Submission',
 };
-const ROWS = ['Pursuing Flame', 'other Mirai jutsu', 'Premonitory Evasion', 'Ryusei kunai', 'Node left', 'Shooting-Star Thrust', 'blow from behind', 'Spatial Swap', 'Kōton Block', 'Kōton Wall', 'Command', 'Command taken', 'aura slowed a foe', 'attack in a foe\'s aura'];
+const ROWS = ['Pursuing Flame', 'other Mirai jutsu', 'Premonitory Evasion', 'Ryusei kunai', 'Node left', 'Shooting-Star Thrust', 'blow from behind', 'Spatial Swap', 'Kōton Block', 'Kōton Wall', 'Command', 'Command taken', 'aura slowed a foe', 'attack in a foe\'s aura', 'Weapon Element', 'element blow'];
 type Side = 'enemy' | 'party';
 
 let refusedAll = 0;
@@ -93,7 +93,10 @@ for (const id of only ?? (Object.keys(ENCOUNTERS) as EncounterId[])) {
           else if (clan(e.unit) === 'Mirai' && e.jutsu !== 'body_flicker') add(side(e.unit), 'other Mirai jutsu');
         }
         if (e.t === 'evade') add(side(e.unit), 'Premonitory Evasion');
+        // The Bukijutsu Master's class ability: put on the weapon, and the blows that landed its element.
+        if (e.t === 'imbue' && e.on) add(side(e.unit), 'Weapon Element');
         if (e.t === 'attack' && e.ranged && e.what === 'Kunai' && clan(e.unit) === 'Ryusei') add(side(e.unit), 'Ryusei kunai');
+        if (e.t === 'attack' && !e.ranged && e.roll.success && (s.units[e.unit]?.imbued ?? out.state.units[e.unit]?.imbued) && s.units[e.unit]?.armed !== false) add(side(e.unit), 'element blow');
         if (e.t === 'node' && e.on) add(side(e.node.owner), 'Node left');
         if (e.t === 'attack' && e.reasons?.includes('behind')) add(side(e.unit), 'blow from behind');
         if (e.t === 'command' && e.on) add(side(e.by), 'Command taken');

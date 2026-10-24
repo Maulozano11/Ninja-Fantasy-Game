@@ -7,7 +7,7 @@ import { makeRamp } from './color';
 import { renderSprite } from './compose';
 import { FEMALE_HANDS } from './femaleBodyArt';
 import { GRID, partIndex, RES } from './raster';
-import { ANKLE_N, BODY_PARAMS, drawRig, frameCount, GROUND } from './rig';
+import { ANKLE_N, BODY_PARAMS, drawRig, frameCount, GROUND, READ_SEAT_TOP } from './rig';
 import { CAMP_POSES, MOVE_POSES, SPRITE_POSES, type BodyType, type SpriteAppearance, type SpritePose } from './types';
 
 const SKIN = '#f6c7a6';
@@ -53,11 +53,10 @@ describe('female bodies at the owner\'s game scale', () => {
     for (const pose of ['sit', 'read'] as SpritePose[]) {
       for (let f = 0; f < frameCount(pose); f++) {
         for (const body of ['female'] as BodyType[]) {
-          // (the fitted bodies sit on his rock as they read, the male body's reading hips on it; the male
-          // and bulky sit keeps the camp's log)
-          const m = drawRig('male', 'read', pose === 'read' ? f : 0).pelvis.y;
-          // the female hips settle up to two pixels further into the seat (rig.ts SEAT_SINK)
-          assert.ok(Math.abs(drawRig(body, pose, f).pelvis.y - m) * RES <= 4, `${body} ${pose} ${f} hips`);
+          // (the fitted bodies sit on his rock as they read and sit, as his Lyra: their hips 4.5 px over its top,
+          // rig.ts seatedHip; the male bodies sit and read as his Roman and his Trunks, seats.test.ts)
+          const m = READ_SEAT_TOP - 4.5;
+          assert.ok(Math.abs(drawRig(body, pose, f).pelvis.y * RES - m) <= 2, `${body} ${pose} ${f} hips`);
           // (sitting and reading, on the owner's rock, the male legs are too short to reach the ground and
           // his feet hang: the female soles are on the ground she stands on)
           const ground = rows(body, 'idle', 0)[1];

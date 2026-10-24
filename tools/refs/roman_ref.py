@@ -10,7 +10,9 @@ male rig's joints at that frame, in his pixels.
 His figure stands wider than ours: his near leg is about 6 px further back and his far foot 6 px lower.
 His chest, near arm and hips are where ours are, so the cuirass, its shoulder guards, the near bracer and
 the skirt hang from our joints exactly where he drew them. He tucked the far arm in (FAR_ARM_IN), so the
-far bracer is moved out onto our far forearm, and the sandals are moved onto our legs and feet.
+far bracer is moved out onto our far forearm, and the sandals are moved onto our legs and feet. On the
+male bodies his legs come whole (knee, laced shin, sandal), and the far one reaches down to where he drew
+it (sandal_reach), so his far knee shows below the skirt as he painted it.
 
 PIECES cuts his figure into the pieces the items stamp (src/sprite/painted.ts): each is a region of his
 picture (a polygon in his pixel corners) less what other pieces or his skin own there, keeping only the
@@ -57,6 +59,9 @@ JOINTS = {
     'ankleN': (44.42, 87.59),
     'ankleF': (61.94, 83.08),
 }
+# The skin of the sprite he painted over (Solen's, the default sheet's): our male in it is what he painted
+# on, so a character in this skin shows his skin pixels exactly; other skins move them as far.
+PAINTED_SKIN = '#f3c39c'
 # His ankles (the middle of each sandal where the shin meets the foot), read off his picture.
 HIS_ANKLES = {'N': (38.5, 91.0), 'F': (59.5, 89.5)}
 # Our feet's soles at idle frame 0 (the last row of each foot), in his pixels: his far foot is drawn 6 px
@@ -65,6 +70,69 @@ OUR_SOLES = {'N': 98, 'F': 90}
 # How far nearer the body than ours he drew the far forearm (his bracer's edges against our forearm's,
 # rows 45 to 52): the far bracer is moved this far out onto ours.
 FAR_ARM_IN = 3
+
+
+def sandal_pivot(masks, s):
+    """The cell of his that lands on our ankle on leg `s` ('N' or 'F'), as his sandals are registered on our
+    legs (masks from pieces()): his ankle across, and as far above his sole as our ankle is above our sole."""
+    sole = int(np.nonzero(masks['foot_' + s.lower()].any(axis=1))[0].max())
+    return (HIS_ANKLES[s][0], sole - (OUR_SOLES[s] - JOINTS['ankle' + s][1]))
+
+
+def sandal_reach(masks, s):
+    """How far below our ankle (fine pixels, at rest) the cell sandal_pivot gives lands on the male bodies,
+    which take his legs whole (knee, laced shin and sandal): his sole where he drew it, so the far leg
+    reaches 6 px further down the shin than ours and his far knee stands below the skirt as he painted it."""
+    sole = int(np.nonzero(masks['foot_' + s.lower()].any(axis=1))[0].max())
+    return (0, sole - OUR_SOLES[s])
+
+
+def leg_shift(masks, s):
+    """The whole pixels his leg `s` is moved by onto our male's at rest (his sandal's pivot on our ankle,
+    sandal_reach below it)."""
+    px, py = sandal_pivot(masks, s)
+    rx, ry = sandal_reach(masks, s)
+    ax, ay = JOINTS['ankle' + s]
+    return (int(np.floor(ax + rx)) - int(np.floor(px)), int(np.floor(ay + ry)) - int(np.floor(py)))
+
+
+# His legs between the skirt and the sandals' strap bands: his knees, and on the near leg the bottom of the
+# thigh. Each is his skin there (with the darker pixels of his muscle lines) and the black line round it,
+# not the skirt's strips and their line along the hem, nor the laced shin below.
+KNEE_REGIONS = {
+    'knee_n': [(35, 66.5), (51, 66.5), (51, 77.5), (35, 77.5)],
+    'knee_f': [(53, 67.5), (66, 67.5), (66, 77.5), (53, 77.5)],
+}
+
+
+def knees(a, masks):
+    """His knees ({name: mask}, KNEE_REGIONS), for the pieces the male bodies' legs take."""
+    H, W, _ = a.shape
+    bg = background(a) | (luma(a) > 225)
+    K = np.array([[kind(a[y, x]) for x in range(W)] for y in range(H)])
+    taken = masks['front'] | masks['shin_n'] | masks['shin_f'] | masks['foot_n'] | masks['foot_f']
+    out = {}
+    for n, pts in KNEE_REGIONS.items():
+        region = inside(pts, H, W) & ~bg & ~taken
+        solid = region & np.isin(K, ('skin', 'leather'))
+        out[n] = solid | (region & (K == 'line') & near8(solid))
+    return out
+
+
+def knee_split(mask, s, shift):
+    """A knee's pixels on the thigh's side of our knee and on the shin's (his leg moved by `shift` onto ours):
+    a pixel is the shin's when it lies past the line through the knee that halves the angle between the
+    thigh and the shin (at rest nearly straight across the leg). The game trims our leg by the same line."""
+    hx, hy = JOINTS['hip' + s]
+    kx, ky = JOINTS['knee' + s]
+    ax, ay = JOINTS['ankle' + s]
+    unit = lambda x, y: np.array([x, y]) / float(np.hypot(x, y))
+    n = unit(kx - hx, ky - hy) + unit(ax - kx, ay - ky)
+    shin = np.zeros_like(mask)
+    for y, x in zip(*np.nonzero(mask)):
+        u = (x + 0.5 + shift[0] - kx, y + 0.5 + shift[1] - ky)
+        shin[y, x] = u[0] * n[0] + u[1] * n[1] > 0
+    return mask & ~shin, shin
 
 
 def native(path=REF):
@@ -171,6 +239,22 @@ DRAPE_FILL_FROM = 66     # the drape is filled behind his legs from this row dow
 METAL = ('leather', 'stud', 'bronze', 'red')
 TAKES = {n: METAL + (('skin',) if n.startswith(('shin', 'foot')) else ()) for n in REGIONS}
 TAKES['drape'] = ('red',)
+# What the regions above leave out of a piece, which shows now that the game gives our far leg the shape
+# of his laced shin (src/sprite/items/feet.ts: our bare calf and the front of our knee no longer stand in
+# front of it): name -> (region, the kinds it takes besides his black line that bounds the piece).
+#   the laced shins  each whole, with his black line round it: the strap band's ends on both legs, the
+#                    near ankle's left side and the one blue-black pixel in its laces (the regions above
+#                    stop short of his drape's red beside them), and the far shin's right line by the ankle (row
+#                    89); never that red
+#   the strips       his black line down their right edge beside the far knee (rows 63 and 64)
+# Added once the drape is cut, which reads the legs as the regions above give them.
+SHIN_TAKES = ('leather', 'skin', 'hair')
+PIECE_MORE = {
+    'shin_n': ([(35.6, 77.5), (46, 77.5), (46, 80), (45, 80), (45, 81), (44, 81), (44, 83), (43, 83), (43, 85),
+                (44, 85), (44, 86), (43, 86), (43, 92), (35, 92), (35, 88), (35.6, 88)], SHIN_TAKES),
+    'shin_f': ([(54, 77.5), (63.4, 77.5), (63.4, 88), (64, 88), (64, 90), (55.6, 90), (55.6, 82), (55, 82), (55, 80), (54, 80)], SHIN_TAKES),
+    'front': ([(66, 63), (67, 63), (67, 65), (66, 65)], ()),
+}
 
 
 def his_line(a):
@@ -228,6 +312,13 @@ def pieces(a):
             c[y, x] = a[below[0], x] if below else a[y, first]
 
     masks['drape'], cols['drape'] = drape_behind_legs(a, K, bg, masks, black)
+
+    for n, (pts, takes) in PIECE_MORE.items():
+        region = inside(pts, H, W)
+        more = region & ~bg & ~owned & np.isin(K, takes)
+        owned |= more
+        masks[n] = masks[n] | more
+        masks[n] = masks[n] | (line & region & near8(masks[n]))
     return masks, cols
 
 

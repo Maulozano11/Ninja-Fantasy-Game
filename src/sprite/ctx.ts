@@ -96,6 +96,11 @@ export interface DrawCtx {
   skin: number;
   /** Which single-choice slots are filled (items use this to adapt, e.g. hair under a helm). */
   has(slot: SlotId, id?: string): boolean;
+  /**
+   * Work that needs the whole figure (every layer, as the items after this one leave it): run once all
+   * is drawn, before the layers are flattened. The Roman skirt closes what the figure leaves open behind it.
+   */
+  after(fn: (layers: ReadonlyMap<Depth, Layer>) => void): void;
 }
 
 export type Side = 'N' | 'F';

@@ -176,8 +176,8 @@ export const SHINOBI_CLASSES: Record<
     hitDie: 10,
     chakraDie: 8,
     savingProficiencies: ['DEX', 'INT'],
-    classFeatures: 'Flowing Blade: Can deflect 1 ranged projectile per round as a reaction, and add DEX to all weapon damage.',
-    classFeaturesEs: 'Hoja fluida: puede desviar 1 proyectil a distancia por ronda como reacción, y suma la DES a todo el daño de arma.',
+    classFeatures: 'Flowing Blade: Can deflect 1 ranged projectile per round as a reaction, and add DEX to all weapon damage. Weapon Element Enhancement: as a bonus action, puts the ninja\'s element (fire, lightning, wind, water or earth; never genjutsu) on the weapon in hand for a few turns: fire sets it alight, lightning crackles round it, wind swirls round it, water lengthens its reach and earth covers it in sharp obsidian.',
+    classFeaturesEs: 'Hoja fluida: puede desviar 1 proyectil a distancia por ronda como reacción, y suma la DES a todo el daño de arma. Potenciación elemental del arma: como acción adicional, pone el elemento del ninja (fuego, rayo, viento, agua o tierra; nunca genjutsu) en el arma que empuña durante unos turnos: el fuego la prende en llamas, el rayo chisporrotea a su alrededor, el viento gira en torno a ella, el agua alarga su alcance y la tierra la cubre de obsidiana filosa.',
   },
 };
 

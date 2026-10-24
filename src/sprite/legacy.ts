@@ -3,6 +3,7 @@
 // keep working.
 
 import { rgbToHsl, hexToRgb } from './color';
+import { ROMAN_IRIS } from './romanEyeArt';
 import type { ChakraColorId, EyeSpecial, ItemChoice, SpriteAppearance } from './types';
 import type { ShinobiCharacter } from '../types/shinobi';
 
@@ -77,31 +78,51 @@ const choice = (id: string, ...colors: (string | undefined)[]): ItemChoice => ({
   colors: colors.filter((c): c is string => !!c),
 });
 
+/**
+ * The default look: the male body with the owner's Roman head as the male standard (2026-10-23, "porque
+ * no tenemos la forma de cabeza y cuello de romano en el juego ? cambialo inmediatamente me gusta mas el
+ * de mi dibujo"): his face, his eyes in his red, and with them his neck (romanNeck.ts). With them his hair
+ * and a bare forehead, in place of our blond spikes and headband (his answer of the same day, "3 si").
+ */
 export function defaultAppearance(): SpriteAppearance {
   return {
     version: 1,
     body: 'male',
     skin: '#f2c7a0',
-    eyeShape: 'standard',
-    eyeColor: '#3b82f6',
+    faceShape: 'roman',
+    eyeShape: 'roman',
+    eyeColor: ROMAN_IRIS,
     slots: {
-      hair: choice('hair_sunburst'),
+      hair: choice('hair_roman'),
       top: choice('top_tee'),
       bottom: choice('bottom_shinobi'),
       feet: choice('feet_shinobi'),
     },
     accessories: [],
-    headband: { position: 'forehead', tails: false, cloth: '#1e3a8a' },
+    headband: { position: 'none', tails: false, cloth: '#1e3a8a' },
     chakra: { color: 'blue', onCharge: true, onCast: true, onVictory: false },
     pixelEdits: [],
   };
 }
 
+/**
+ * A look with the owner's Roman head: his face, his eyes in his red (on a male body his neck comes with
+ * them, romanNeck.ts) and his hair, the rest as it was. A new game's hero is Solen's sheet with this head
+ * (the owner, 2026-10-23: "1 si"); the Solen preset and the other legends keep their own ("2 no").
+ */
+export function withRomanHead(look: SpriteAppearance): SpriteAppearance {
+  return { ...look, faceShape: 'roman', eyeShape: 'roman', eyeColor: ROMAN_IRIS, slots: { ...look.slots, hair: choice('hair_roman') } };
+}
+
 export function appearanceFromLegacy(c: ShinobiCharacter): SpriteAppearance {
   const p = c.palette;
   const look = defaultAppearance();
+  // A character saved before the layered look keeps the head it was always drawn with (our default
+  // face and eyes, blue unless its sheet names a colour), not the newer male standard.
+  delete look.faceShape;
+  look.eyeShape = 'standard';
   look.skin = p.skinTone || look.skin;
-  look.eyeColor = p.eyeColor || look.eyeColor;
+  look.eyeColor = p.eyeColor || '#3b82f6';
   look.slots.hair = choice(HAIR[c.hairstyle] || 'hair_sunburst', p.hairColor);
   look.slots.top = choice('top_highcollar', p.clothColor, p.armorSecondary);
   look.slots.bottom = choice('bottom_shinobi', p.clothColor);

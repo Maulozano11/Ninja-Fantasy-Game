@@ -19,6 +19,8 @@ import { aureliaRig, onAureliaHead } from './aureliaHead';
 import { drawCampFx } from './campfx';
 import { drawCastFx } from './castfx';
 import { sealCloth } from './seal';
+import { maleSkinRamp, paintMaleSkin } from './maleSkin';
+import { romanRig } from './romanNeck';
 import { applyTexture, frayHair } from './texture';
 import { isFemaleBody, type EyeSpecial, type PixelEdit, type SlotId, type SpriteAppearance, type SpritePose } from './types';
 
@@ -273,9 +275,10 @@ export function spriteLayers(look: SpriteAppearance, pose: SpritePose, frame: nu
 function drawLayers(look: SpriteAppearance, pose: SpritePose, frame: number, eyeSpecial: EyeSpecial, heldOnly?: Rig) {
   // heldOnly: just the held item (or the kunai bare hands throw) on that rig, no body (sprite/thrown.ts).
   // (the long neck carries the head higher and further forward: neck.ts; Aurelia's face stands her head
-  // where the owner drew it: aureliaHead.ts)
+  // where the owner drew it: aureliaHead.ts; his Roman face on a male body stands higher on his neck:
+  // romanNeck.ts)
   // (his own figure in his painted frames sits on his joints; any other look holds its hands from its own neck: rig.ts PoseAt.hisNeck)
-  const rig = heldOnly ?? aureliaRig(carryHead(drawRig(look.body, rigPoseFor(pose, look.cast?.style, look.stowed ? undefined : look.slots.held?.id), frame, look.arms, wearsHisFigure(look)), look.neck), look);
+  const rig = heldOnly ?? aureliaRig(romanRig(carryHead(drawRig(look.body, rigPoseFor(pose, look.cast?.style, look.stowed ? undefined : look.slots.held?.id), frame, look.arms, wearsHisFigure(look)), look.neck), look), look);
   const mats = new MaterialTable();
   const layers = new Map<Depth, Layer>();
   const equipped = new Map<SlotId, ItemDef>();
@@ -285,6 +288,7 @@ function drawLayers(look: SpriteAppearance, pose: SpritePose, frame: number, eye
     if (def && def.slot === slot && fitsBody(def, look.body)) equipped.set(slot, def);
   }
   const hideHair = [...equipped.values()].some((d) => d.hidesHair);
+  const late: ((layers: ReadonlyMap<Depth, Layer>) => void)[] = [];
 
   const g: DrawCtx = {
     rig,
@@ -308,6 +312,7 @@ function drawLayers(look: SpriteAppearance, pose: SpritePose, frame: number, eye
       const d = equipped.get(slot);
       return !!d && (id === undefined || d.id === id);
     },
+    after: (fn) => late.push(fn),
   };
 
   if (heldOnly) {
@@ -316,6 +321,7 @@ function drawLayers(look: SpriteAppearance, pose: SpritePose, frame: number, eye
     if (def && choice && !look.stowed) def.draw(g, resolveColors(def, choice.colors), resolveParts(def, choice.parts));
     drawThrowKunai(g);
   } else {
+    maleSkinRamp(g);
     drawBody(g);
     for (const slot of SLOT_ORDER) {
       const def = equipped.get(slot);
@@ -346,7 +352,9 @@ function drawLayers(look: SpriteAppearance, pose: SpritePose, frame: number, eye
     drawCampFx(g);
     if (rig.farHandFront) farHandToFront(layers, g);
     guardFace(g, layers);
+    paintMaleSkin(g, layers);
   }
+  for (const fn of late) fn(layers);
   return { layers, rig, mats };
 }
 

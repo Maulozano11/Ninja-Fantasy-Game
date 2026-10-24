@@ -332,11 +332,13 @@ def head_mask(f, a, fig):
     yy = np.arange(H)[:, None] + np.zeros((1, W), int)
     xx = np.arange(W)[None, :] + np.zeros((H, 1), int)
     x0, x1 = f.chin[0] - FACE_COLS, f.chin[0] + FACE_COLS
-    return head & ~((kinds(a) == 'steel') & ((yy >= int(f.chin[1])) | (xx < x0) | (xx > x1)))
+    return head & ~((kinds(a) == 'steel') & (yy >= int(f.chin[1]) - COLLAR_UP) & ((yy >= int(f.chin[1])) | (xx < x0) | (xx > x1)))
 
 
-# How far either side of his chin (his pixels) his face's glints can lie.
+# How far either side of his chin (his pixels) his face's glints can lie, and how far above his jaw's
+# line the armour beside the head reaches.
 FACE_COLS = 10
+COLLAR_UP = 6
 
 
 def regions(f):
@@ -789,10 +791,20 @@ def part_regions(f):
                 # his colours of these kinds, his line along them and the pale glints at their edge, not
                 # what lies further off
                 got = m & np.isin(K, takes)
-                pale = (luma(a) > 100) & np.isin(K, ('steel', 'white'))
-                m = got | (m & (((K == 'line') & near4(got)) | (pale & near8(got))))
+                pale = m & (luma(a) > 100) & np.isin(K, ('steel', 'white'))
+                # (the glints run on along the edge: every pale pixel reached from them through pale ones)
+                while True:
+                    more = got | (pale & near8(got))
+                    if (more == got).all():
+                        break
+                    got = more
+                m = got | (m & (K == 'line') & near8(got))
             out[n] |= m
             owned |= m
+    left = fig & ~owned
+    if left.any():
+        ys, xs = np.nonzero(left)
+        raise ValueError(f'{f.name}: {len(ys)} pixels of his figure in no part, e.g. {list(zip(xs[:8].tolist(), ys[:8].tolist()))}')
     return out
 
 

@@ -31,17 +31,16 @@ export const WARDEN_PLATE_KIND: Record<string, 'dark' | 'hair' | 'line' | 'steel
 
 /** Where each piece lands in our male idle frame 0, unturned: the fine pixel of its first row's first cell. */
 export const WARDEN_PLATE_REST: Record<string, [number, number]> = {
-  WARDEN_PLATE_TORSO: [115, 147],
+  WARDEN_PLATE_TORSO: [115, 148],
   WARDEN_PLATE_SHOULDER_N: [107, 145],
-  WARDEN_PLATE_SHOULDER_F: [131, 146],
+  WARDEN_PLATE_SHOULDER_F: [131, 147],
 };
 
 /** His cuirass: the gorget, the chest plates and the segmented belly, from his collar to the belt. It rides the torso about the neck. */
 export const WARDEN_PLATE_TORSO: PaintedPiece = {
-  pivot: [12, 0],
+  pivot: [12, -1],
   angle: -89.65,
   rows: [
-    '................a...',
     '....ab..........a...',
     '.....cadde....afaa..',
     '.....ahiidjklajmd...',
@@ -121,26 +120,25 @@ export const WARDEN_PLATE_SHOULDER_N: PaintedPiece = {
 
 /** His far shoulder plate, beside the chest. It rides the far shoulder. */
 export const WARDEN_PLATE_SHOULDER_F: PaintedPiece = {
-  pivot: [5, 7],
+  pivot: [5, 6],
   angle: 71.57,
   rows: [
-    '..a......',
-    'abca.....',
-    'addeaa...',
-    'aafhbca..',
-    '.iahdca..',
-    '.jacdcca.',
-    '.bjbkkkka',
-    '.bjajdkka',
-    '.bjaakkla',
-    '.bjdaalka',
-    '..jdaaaa.',
-    '....a....',
+    '.abc.....',
+    'cddecc...',
+    'ccfhabc..',
+    '.ichdbc..',
+    '.jcbdbbc.',
+    '.ajakkkkc',
+    '.ajcjdkkc',
+    '.ajcckklc',
+    '.ajdcclkc',
+    '..jdcccc.',
+    '....c....',
   ],
   colors: {
-    a: '#000116',
-    b: '#45484f',
-    c: '#575c62',
+    a: '#45484f',
+    b: '#575c62',
+    c: '#000116',
     d: '#2c2b31',
     e: '#737c7f',
     f: '#0e101d',

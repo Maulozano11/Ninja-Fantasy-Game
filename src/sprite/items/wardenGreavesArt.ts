@@ -94,7 +94,7 @@ export const WARDEN_GREAVES_BOOT_F: PaintedPiece = {
   pivot: [9, 8],
   angle: 87.80,
   rows: [
-    'aab........................',
+    '.ab........................',
     'aaa..c.....................',
     '.adef......................',
     '..ahaaa.........aa.........',
@@ -103,7 +103,7 @@ export const WARDEN_GREAVES_BOOT_F: PaintedPiece = {
     '...alanjjpaa.........a.....',
     '...aheajqpja........r......',
     '....alasqpja...........a...',
-    '....alasqtja..a.....u......',
+    '....alasqtja........u......',
     '...aaalnvaaa..............a',
     '.......a.........a........a',
     '...................a....m.a',

@@ -5,8 +5,8 @@
 //
 // Frame counts (the owner asked for slower, fuller animations): fly loops 8 frames at 12 fps with
 // frame 0 his picture (the Great Fireballs' churning core and smoke trail are ours, from his
-// colours, in every frame: see `fireballFly`); hit 12 frames (build 3, his picture held 3,
-// dissipate 6); blast 16 frames (anticipation 4, his picture held 3, settle and fade 9); walls
+// colours, in every frame: see `fireballFly`); hit 12 frames (his repaint, every frame his: see
+// `hit`); blast 16 frames (anticipation 4, his picture held 3, settle and fade 9); walls
 // rise 12 / idle 8 at 10 fps; aura and aura_back idle 12 frames at 10 fps.
 
 import { Canvas, Color, WorldSprite, withAlpha } from './kit';
@@ -14,6 +14,7 @@ import { Billow, FIRE, billows, embers } from './vfx-a-fire-kit';
 import { cool, dim, dropCrumbs, loopDisplace, loopFlicker, placed, refPiece, roughen, scaled, thinOut } from './vfx-a-ref';
 import { fireballOld } from './vfx-a-fire-sig';
 import { REF_FRAMES } from './vfx-a-fire-refdata';
+import { FIRE_HIT_REF } from './vfx-fire-hit-refdata';
 import {
   Pt, TAU, WallKind, clamp, dissolve, flySprite, frames, fract, lerp, pfbm, pnoise, rr, smooth, stack, vfxSprite,
 } from './vfx-a-lib';
@@ -479,48 +480,22 @@ export function stream(): WorldSprite[] {
   return [flySprite('stream', 'Fire stream (fire jet, tileable 64 px)', tiles), flySprite('stream_head', 'Fire stream head', heads, 12, [H.ax, H.ay])];
 }
 /**
- * His starburst, 12 frames at 12 fps:
- * - 0-2, build: it grows out from the point of impact;
- * - 3-5, the peak: frame 3 is his picture, held with a small shimmer;
- * - 6-11, dissipate: it shrinks back, its spikes thin from the tips and break, it cools into
- *   smoke from the tips inward and darkens, and sparks fly off the spikes and die.
+ * His fire hit, every pixel his: his repaint of our hit over the practice rogue (2026-10-24,
+ * docs/reference/fire-hit-owner-reference.jpg), lifted by tools/refs/fire-hit-from-ref.py into
+ * vfx-fire-hit-refdata.ts. 12 frames at 12 fps: a small burst, an explosion growing into big licking
+ * flames, flames wrapping and rising up the body, a thick brown smoke cloud, the smoke thinning with
+ * embers. His smoke is see-through where he painted it so. The anchor sits where the old hit's did on
+ * the target (the frame grew round his smoke and flames).
  */
 export function hit(): WorldSprite {
-  const F = REF_FRAMES.hit, W = F.w, H = F.h, seed = 4300, PEAK = 3;
-  const base = placed('p_hit', W, H);
-  let R = 1;
-  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (base.alpha(x, y)) R = Math.max(R, Math.hypot(x - F.ax, y - F.ay));
-  const shimmer = (c: Canvas, ph: number, amp: number) => loopDisplace(c, ph, (x, y, p) => {
-    const r = Math.hypot(x - F.ax, y - F.ay) || 1, n = pnoise(x * 0.5 + Math.cos(p) * 4, y * 0.5 + Math.sin(p) * 4, 6, 0, 0, seed) - 0.5;
-    return [((x - F.ax) / r) * n * amp * (r / R), ((y - F.ay) / r) * n * amp * (r / R)];
+  const R = FIRE_HIT_REF;
+  const pal = new Map(Object.entries(R.pal).map(([ch, h]) => [ch, [1, 3, 5, 7].map((o) => parseInt(h.slice(o, o + 2), 16)) as Color]));
+  const fr = R.frames.map((rows) => {
+    const c = new Canvas(R.w, R.h);
+    rows.forEach((row, y) => [...row].forEach((ch, x) => ch !== '.' && c.set(x, y, pal.get(ch)!)));
+    return c;
   });
-  const fr = frames(12, (_, i) => {
-    if (i < PEAK) {
-      const k = [0.45, 0.68, 0.86][i];
-      return scaled(base, k, k, F.ax, F.ay);
-    }
-    const ph = ((i - PEAK) / 8) * TAU;
-    if (i <= 5) {
-      const k = 1 + 0.012 * (i - PEAK);
-      return scaled(shimmer(base, ph, 2.4), k, k, F.ax, F.ay);
-    }
-    const k = (i - 5) / 6, sk = 1.024 - 0.26 * k;
-    let c = scaled(shimmer(base, ph, 2.4), sk, sk, F.ax, F.ay);
-    c = thinOut(c, k, 12, seed + 1, null);
-    c = cool(c, (x, y) => k * 1.5 - 0.42 + (Math.hypot(x - F.ax, y - F.ay) / (R * sk)) * 0.6 + (pnoise(x, y, 10, 0, 0, seed + 2) - 0.5) * 0.3, SMOKE_WARM, seed + 3);
-    c = dim(c, 1 - 0.55 * k, SMOKE_WARM[0]);
-    // The smoke rises a little as it goes.
-    const body = new Canvas(W, H);
-    body.draw(c, 0, -Math.round(k * 4));
-    const em: { x: number; y: number; s: number }[] = [];
-    const n = i <= 8 ? 10 : 10 - (i - 8) * 3;
-    for (let j = 0; j < n; j++) {
-      const a = rr(seed + 5, j, 0, TAU), d = R * (0.62 + rr(seed + 6, j, 0, 0.2) + k * 0.45);
-      em.push({ x: F.ax + Math.cos(a) * d, y: F.ay + Math.sin(a) * d * 0.85 - k * 6, s: j % 3 === 0 && i < 9 ? 2 : 1 });
-    }
-    return stack(W, H, body, embers(W, H, em.filter((e) => e.x > 3 && e.x < W - 4 && e.y > 3 && e.y < H - 4), body));
-  });
-  return vfxSprite('hit', 'Fire hit (starburst of flame spikes)', [F.ax, F.ay], { hit: { frames: fr, fps: 12, loop: false } });
+  return vfxSprite('hit', 'Fire hit (the owner\'s: a burst, flames up the body, smoke)', R.anchor, { hit: { frames: fr, fps: R.fps, loop: false } });
 }
 
 // --- the Great Fireballs ----------------------------------------------------------------------

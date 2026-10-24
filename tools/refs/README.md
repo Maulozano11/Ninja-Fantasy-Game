@@ -141,7 +141,9 @@ folders.
   ray out of the dragon's mouth are left out (his words). His solid pixels are kept as they are; his
   glow over the night is read as his glow colour at an alpha over the forest he painted (read off the
   picture away from the effect), in the wind set's alpha steps. What Aurelia and the cut ray hid is
-  continued with his own pixels (the dust behind her, the mouth, the beam under the kanji). Layers:
+  continued with his own pixels (the dust behind her, the mouth, the beam under the kanji, his flare
+  under her hand's golden sparks). His dust is only his earth: his teal and his cold white near her
+  feet are the beam's (his flare leaving her hand). Layers:
   beam, dragon, kanji, dust_l, dust_r and his loose rocks and leaves; one palette of 64 (46 opaque, 18
   glow); `tile`: the stretch of his beam whose ends match best, repeated to any length. It writes
   `tools/world-sprites/vfx-wind-s-line-refdata.ts` (with probes for `src/battle/windRayS.test.ts`),

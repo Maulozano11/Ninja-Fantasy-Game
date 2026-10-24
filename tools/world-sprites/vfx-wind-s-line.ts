@@ -8,8 +8,9 @@
 // farthest view stops it (any length): his start, his repeating stretch as many times as it takes,
 // and his end with the dragon at the front. Anchors are on the ray's middle line:
 //
-//   vfx_wind_s_line/start   his beam from the hand to his repeating stretch ('flow', a loop). Anchor:
-//                           the hand.
+//   vfx_wind_s_line/start   his beam from the hand to his repeating stretch ('flow', a loop): past his
+//                           flare the stretch's flow runs inside his tube (seamless with the tiles),
+//                           his rings, strands and flare pulse, his core shimmers. Anchor: the hand.
 //   vfx_wind_s_line/tile    his repeating stretch ('flow', a loop of FLOW_N frames): inside his
 //                           beam's outline (kept still) his beam flows forward a FLOW_N-th of the
 //                           stretch each frame, so the rings, strands and speed streaks travel and
@@ -22,8 +23,8 @@
 //   vfx_wind_s_line/kanji   his kanji 風 with its green flame ('appear', once: it rises in and
 //                           brightens; 'loop': it floats). Anchor: the hand, where he put it.
 //   vfx_wind_s_line/dust_l  his dust and stones at the caster's feet ('rise', once, from the feet
-//                           out; 'loop'). Anchor: the hand.
-//   vfx_wind_s_line/dust_r  his dust and rocks under the dragon ('rise'; 'loop'). Anchor: the end's.
+//                           out; 'loop': it churns in place while the ray lasts). Anchor: the hand.
+//   vfx_wind_s_line/dust_r  his dust and rocks under the dragon ('rise'; 'loop', churning). Anchor: the end's.
 //   vfx_wind_s_line/debris  his flying rocks and leaves ('loop': they tumble in the wind). Anchor:
 //                           the hand.
 //
@@ -143,9 +144,69 @@ function tileFrame(f: number): Canvas {
   return out;
 }
 
+/** His opaque colours by brightness: the next brighter one of his nearest a colour, for the rings' pulse. */
+const brighter = (c: Color): Color => {
+  let best: Color = c, bd = Infinity;
+  const want = c.slice(0, 3).map((v) => Math.min(255, v * 1.28 + 18));
+  for (let i = 0; i < R.opaque; i++) {
+    const p = pal[i];
+    if (p[0] + p[1] + p[2] <= c[0] + c[1] + c[2]) continue;
+    const d = Math.hypot(p[0] - want[0], p[1] - want[1], p[2] - want[2]);
+    if (d < bd) [best, bd] = [p, d];
+  }
+  return best;
+};
+
+/**
+ * His beam from the hand to the stretch, alive like the rest of it (the owner, 2026-10-24: "la parte
+ * donde se queda estatica enfrete de aurelia arreglala para que tambien este animada"):
+ *   - past his flare (FLARE px from the hand, its end staggered row by row), inside his tube (the
+ *     rows his tube has in the repeating stretch, within his own shape there; its RIM rows and his
+ *     outline still), his repeating stretch flows
+ *     forward as it does in the tiles, a FLOW_N-th each frame: the inside flows right up to the flare,
+ *     and on into the first tile with no joint;
+ *   - his rings and swirl strands round it, and his flare, pulse: a wave of light runs out along them
+ *     from the hand, each lit pixel one of his colours a step brighter;
+ *   - his near-white core shimmers as the tiles' does.
+ */
+/** The start begins right at the hand: what he drew behind it lies behind the caster. */
+const START_X = hand[0] - 2;
+export const START_END = tileX;
+const FLARE = 56;
+/** His tube's rows in the repeating stretch (the widest of its columns'). */
+const TUBE = (() => {
+  let top = Infinity, bot = -Infinity;
+  for (let x = tileX; x < tileX + tileN; x++) {
+    const r = bodyRows(x);
+    if (r) [top, bot] = [Math.min(top, r[0]), Math.max(bot, r[1])];
+  }
+  return [top, bot];
+})();
 function startFrame(f: number): Canvas {
-  const c = cut(beamIdx, beamBox.x, Y0, tileX - beamBox.x, BH);
-  shimmer(c, beamBox.x, f / FLOW_N, tileN / 2);
+  const sw = START_END - START_X;
+  const c = cut(beamIdx, START_X, Y0, sw, BH);
+  const his = c.clone();
+  const flow = tileFrame(f);
+  const t = f / FLOW_N;
+  const hot = new Set(HOT.map((i) => pal[i].join(',')));
+  for (let x = 0; x < sw; x++) {
+    const X = START_X + x;
+    for (let y = 0; y < BH; y++) {
+      const Y = Y0 + y;
+      // Inside his tube, and inside his own shape there: his outline (RIM px of it) stays.
+      const inTube = Y >= TUBE[0] + RIM && Y <= TUBE[1] - RIM && [-RIM, 0, RIM].every((dy) => his.alpha(x, y + dy) === 255);
+      if (inTube && X >= hand[0] + FLARE + Math.round(4 * Math.sin(Y / 2.7))) {
+        const p = flow.get((((X - tileX) % tileN) + tileN) % tileN, y);
+        if (p[3] === 255) c.set(x, y, p);
+        continue;
+      }
+      const p = c.get(x, y);
+      if (p[3] !== 255 || hot.has(p.join(','))) continue;
+      const d = Math.hypot(X - hand[0], (Y - hand[1]) * 0.6);
+      if (Math.sin(2 * Math.PI * (t - d / 44)) > 0.62) c.set(x, y, brighter(p));
+    }
+  }
+  shimmer(c, START_X, t, tileN / 2);
   return c;
 }
 
@@ -194,6 +255,24 @@ const moved = (c: Canvas, dx: number, dy: number, pad: number): Canvas => {
   out.draw(c, dx, dy + pad);
   return out;
 };
+
+/**
+ * His dust churning while the ray lasts: inside his dust's outline (its edge kept his), each pixel
+ * takes his dust a little way off, the offset turning round a small circle over the loop (seamless),
+ * so his billows roll in place.
+ */
+function churn(c: Canvas, f: number, n: number): Canvas {
+  const out = c.clone();
+  const th = (f / n) * Math.PI * 2;
+  const solid = (x: number, y: number) => c.alpha(x, y) === 255;
+  for (let y = 0; y < c.h; y++)
+    for (let x = 0; x < c.w; x++) {
+      if (!solid(x, y) || !solid(x - 1, y) || !solid(x + 1, y) || !solid(x, y - 1) || !solid(x, y + 1)) continue;
+      const sx = x + Math.round(2.2 * Math.cos(th + y / 6)), sy = y + Math.round(1.6 * Math.sin(th + x / 8));
+      if (solid(sx, sy)) out.set(x, y, c.get(sx, sy));
+    }
+  return out;
+}
 
 /** Revealed from a point outward: only what lies within `r` px of it. */
 function revealed(c: Canvas, cx: number, cy: number, r: number): Canvas {
@@ -247,16 +326,16 @@ function main(): void {
 
   const m = (px: number) => Math.round((px / 57) * 100) / 100;
   const sprites: WorldSprite[] = [
-    { name: 'start', label: 'Gale Dragon Ray: his beam from the hand to its repeating stretch (anchor: the hand)', meters: [m(tileX - beamBox.x), m(BH)], anchor: [hand[0] - beamBox.x, hand[1] - Y0], tags: ['vfx'], anims: { flow: flow(startFrame) } },
+    { name: 'start', label: 'Gale Dragon Ray: his beam from the hand to its repeating stretch (anchor: the hand)', meters: [m(START_END - START_X), m(BH)], anchor: [hand[0] - START_X, hand[1] - Y0], tags: ['vfx'], anims: { flow: flow(startFrame) } },
     { name: 'tile', label: 'Gale Dragon Ray: his repeating stretch, flowing (anchor: its left end on the middle line)', meters: [m(tileN), m(BH)], anchor: anchorOnLine(0, Y0), tags: ['vfx'], anims: { flow: flow(tileFrame) } },
     { name: 'end', label: 'Gale Dragon Ray: the end of his beam and his wind dragon (anchor: its left end on the middle line)', meters: [m(EW), m(EH)], anchor: anchorOnLine(0, EY0), tags: ['vfx'], anims: { surge: { frames: surge, fps: FPS, loop: false }, loop: { frames: breathe, fps: FPS } } },
     { name: 'kanji', label: 'Gale Dragon Ray: his kanji 風 and its green flame (anchor: the hand)', meters: [m(kanji.w), m(kanji.h + RISE)], anchor: [hand[0] - kb.x, hand[1] - kb.y + RISE], tags: ['vfx'], anims: { appear: { frames: kanjiAppear, fps: FPS, loop: false }, loop: { frames: kanjiLoop, fps: FPS / 2 } } },
-    { name: 'dust_l', label: 'Gale Dragon Ray: his dust and stones at the caster\'s feet (anchor: the hand)', meters: [m(dl.w), m(dl.h)], anchor: [hand[0] - dlb.x, hand[1] - dlb.y], tags: ['vfx'], anims: { rise: { frames: rise(dl, feet), fps: FPS, loop: false }, loop: { frames: [dl], fps: 0 } } },
-    { name: 'dust_r', label: 'Gale Dragon Ray: his dust and rocks under the dragon (anchor: the end\'s)', meters: [m(dr.w), m(dr.h)], anchor: [endX - drb.x, hand[1] - drb.y], tags: ['vfx'], anims: { rise: { frames: rise(dr, under), fps: FPS, loop: false }, loop: { frames: [dr], fps: 0 } } },
+    { name: 'dust_l', label: 'Gale Dragon Ray: his dust and stones at the caster\'s feet (anchor: the hand)', meters: [m(dl.w), m(dl.h)], anchor: [hand[0] - dlb.x, hand[1] - dlb.y], tags: ['vfx'], anims: { rise: { frames: rise(dl, feet), fps: FPS, loop: false }, loop: { frames: [...Array(FLOW_N).keys()].map((f) => churn(dl, f, FLOW_N)), fps: FPS } } },
+    { name: 'dust_r', label: 'Gale Dragon Ray: his dust and rocks under the dragon (anchor: the end\'s)', meters: [m(dr.w), m(dr.h)], anchor: [endX - drb.x, hand[1] - drb.y], tags: ['vfx'], anims: { rise: { frames: rise(dr, under), fps: FPS, loop: false }, loop: { frames: [...Array(FLOW_N).keys()].map((f) => churn(dr, f, FLOW_N)), fps: FPS } } },
     { name: 'debris', label: 'Gale Dragon Ray: his flying rocks and leaves (anchor: the hand)', meters: [m(dw), m(dh)], anchor: [hand[0] - dx0, hand[1] - dy0], tags: ['vfx'], anims: { loop: { frames: debrisLoop, fps: FPS } } },
   ];
   writeGroup('vfx_wind_s_line', sprites);
-  console.log(`vfx_wind_s_line: start ${tileX - beamBox.x}, tile ${tileN} (${FLOW_N} frames), end ${EW}x${EH}, kanji ${kanji.w}x${kanji.h}, ${R.debris.length} loose pieces`);
+  console.log(`vfx_wind_s_line: start ${START_END - START_X}, tile ${tileN} (${FLOW_N} frames), end ${EW}x${EH}, kanji ${kanji.w}x${kanji.h}, ${R.debris.length} loose pieces`);
 }
 
 main();

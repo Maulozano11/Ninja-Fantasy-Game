@@ -90,7 +90,9 @@ KANJI_SHIFTS = (-56, -112, -168, 56, 112)
 # A loose rock or leaf is a piece of at most this many px.
 LOOSE_MAX = 60
 # Zones on his canvas (his px).
-AURELIA = [(42, 136), (76, 133), (100, 145), (121, 149), (122, 183), (101, 189), (99, 241), (38, 243), (38, 200)]
+AURELIA = [(42, 136), (76, 133), (100, 145), (108, 149), (109, 183), (101, 189), (99, 241), (38, 243), (38, 200)]
+# Her hand's golden sparks over the beam's start: his warm pixels in this box are hers, not the beam's.
+SPARKS = [(100, 140), (128, 140), (128, 192), (100, 192)]
 CONE = [(428, 151), (480, 124), (480, 184), (434, 167)]
 DUST_FILL = [(38, 184), (100, 200), (113, 214), (113, 243), (38, 243)]
 MOUTH_FILL = [(428, 148), (436, 147), (436, 166), (430, 166)]
@@ -267,7 +269,10 @@ def main():
     f = his.astype(float)
     L = luma(f)
     r, g, b = f[..., 0], f[..., 1], f[..., 2]
-    out_of_it = poly(AURELIA) | poly(CONE)
+    # (everything there that is not his teal or his white: their warm light, her line next to them, and
+    # their yellow-green blend into his teal)
+    sparks = poly(SPARKS) & (((g - r <= 40) & ((luma(f) < 200) | (b < g - 12))) | ((r > 100) & (b < g - 45)))
+    out_of_it = poly(AURELIA) | poly(CONE) | sparks
 
     teal = (g - r > 60) & (g >= 120)
     earthy = (r >= 70) & (r - b >= 15) & (np.abs(r - g) < 70) & (L >= 60)
@@ -297,8 +302,17 @@ def main():
     solid |= hid_dust & filled
     hid_dust &= filled
     hid_mouth = poly(MOUTH_FILL) & poly(CONE)
-    img, filled = fill_mode(img, solid & poly(DRAGON), hid_mouth)
+    img, filled = fill_patch(img, solid & poly(DRAGON) & ~poly(CONE), hid_mouth, [(dx, dy) for dx in range(-14, -1) for dy in range(-8, 9)])
     solid |= hid_mouth & filled
+    hid_mouth &= filled
+    # Under her sparks his beam's flare runs on: his flare a little way along it (its streaks run
+    # across), then what lies next to it.
+    under = sparks & grow(solid, 4) & ~poly(AURELIA)
+    img, filled = fill_patch(img, solid & ~poly(AURELIA), under, [(dx, dy) for dx in range(3, 25) for dy in (0, -1, 1)])
+    img, more = fill_mode(img, (solid | filled) & ~poly(AURELIA), under)
+    filled |= more & under
+    solid |= under & filled
+    hid_dust |= under & filled
 
     # His glow over the night: his glow colour at the alpha that gives his pixel over his forest.
     G = np.array(GLOW_TONE, float)
@@ -311,13 +325,17 @@ def main():
     # The layers: zones decide, the beam takes the rest.
     kanji_z, dragon_z, dust_lz, dust_rz, beam_z = poly(KANJI), poly(DRAGON), poly(DUST_L), poly(DUST_R), poly(BEAM)
     tealish = g - r > 40
-    dust_l = solid & dust_lz & ~tealish
-    dust_r = solid & dust_rz & ~tealish
+    # The dust is his earth: his teal and his cold white (the flare leaving her hand, what runs on under
+    # her sparks) are the wind's, as the pixels stand after the fills.
+    fi = img.astype(float)
+    windy = (fi[..., 1] - fi[..., 0] > 40) | ((luma(fi) >= 150) & (fi[..., 2] >= fi[..., 0]))
+    dust_l = solid & dust_lz & ~windy
+    dust_r = solid & dust_rz & ~windy
     dust = dust_l | dust_r
     kanji = solid & kanji_z & ~dust
     # His loose rocks and leaves: earthy pieces anywhere off the dust, and small leafy ones standing
     # clear of his teal (the beam's own darker greens are the beam's).
-    cand, _ = components(solid & (earthy | leafy) & ~tealish & ~dust & ~kanji_z)
+    cand, _ = components(solid & (earthy | leafy) & ~tealish & ~windy & ~dust & ~kanji_z)
     loose = np.zeros_like(solid)
     teal_near = grow(solid & tealish, 1)
     for p in cand:

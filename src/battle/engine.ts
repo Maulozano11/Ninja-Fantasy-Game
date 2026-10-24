@@ -236,8 +236,7 @@ export function applyAction(state: BattleState, action: Action): Outcome {
   const err = dispatch(s, action, ev);
   if (err) return { ok: false, reason: err, state, events: [] };
   // (A Shadow Shuffle moves them all on purpose: nobody runs after anybody.)
-  const shuffled = action.type === 'shuffle' || (action.type === 'jutsu' && !!action.shuffle);
-  if (!s.pending && !shuffled) for (const { u, at } of summoners) if (!u.down && dist(u.pos, at) > 0.05) followClones(s, u, ev);
+  if (!s.pending && action.type !== 'shuffle') for (const { u, at } of summoners) if (!u.down && dist(u.pos, at) > 0.05) followClones(s, u, ev);
   settle(s, ev);
   return { ok: true, state: s, events: ev };
 }
@@ -295,7 +294,7 @@ function dispatch(s: BattleState, a: Action, ev: BattleEvent[]): string | null {
     case 'attack':
       return doAttack(s, u, a.target, !!a.ranged, !!a.knockout, ev);
     case 'jutsu': {
-      const err = doJutsu(s, u, a.jutsu, a.at, a.target, !!a.enhanced, ev, a.target2, a.element, !!a.shuffle);
+      const err = doJutsu(s, u, a.jutsu, a.at, a.target, !!a.enhanced, ev, a.target2, a.element);
       if (!err) revealByJutsu(s, u, a.jutsu, a.target, ev);
       return err;
     }
@@ -409,24 +408,19 @@ function clonesFirst(s: BattleState, owner: Unit, clones: Unit[], ev: BattleEven
 }
 
 /**
- * The Shadow Shuffle (clones.ts), a bonus action for CLONE.shuffleCost chakra: the ninja and its
- * following clones swap places in secret and look alike.
+ * The Shadow Shuffle (clones.ts): the ninja and its following clones swap places in secret and look
+ * alike. It costs the bonus action and nothing else (the owner, 2026-10-24: "la mezcla de sombras
+ * cuesta 1 accion adicional"), so it never comes in the turn the clones were summoned in (the cast
+ * is a bonus action too).
  */
 function doShuffle(s: BattleState, u: Unit, ev: BattleEvent[]): string | null {
   const why = shuffleBlocker(s, u);
   if (why) return why;
   if (effectMods(u.effects).noJutsu) return 'chakraSealed';
   if (!u.turn.bonus) return 'noBonus';
-  if (u.chakra < CLONE.shuffleCost) return 'noChakra';
   u.turn.bonus = false;
-  payShuffle(s, u, ev);
-  return null;
-}
-
-function payShuffle(s: BattleState, u: Unit, ev: BattleEvent[]): void {
-  u.chakra -= CLONE.shuffleCost;
-  ev.push({ t: 'chakra', unit: u.id, delta: -CLONE.shuffleCost, chakra: u.chakra, reason: 'shadowShuffle' });
   shadowShuffle(s, u, ev);
+  return null;
 }
 
 /**
@@ -1046,7 +1040,7 @@ export function jutsuCost(u: Unit, spec: JutsuSpec, enh: boolean): number {
   return jutsuCostParts(u, spec, enh).cost;
 }
 
-function doJutsu(s: BattleState, u: Unit, id: string, atIn: Pt, targetId: string | undefined, enh: boolean, ev: BattleEvent[], target2Id?: string, element?: ImbueElement, shuffle = false): string | null {
+function doJutsu(s: BattleState, u: Unit, id: string, atIn: Pt, targetId: string | undefined, enh: boolean, ev: BattleEvent[], target2Id?: string, element?: ImbueElement): string | null {
   const base = JUTSU[id];
   if (!base || !u.jutsus.includes(id)) return 'unknownJutsu';
   if (base.cast === 'reaction') return 'reactionOnly';
@@ -1063,9 +1057,7 @@ function doJutsu(s: BattleState, u: Unit, id: string, atIn: Pt, targetId: string
   if (enh && !base.enhCost) return 'noEnhanced';
   const spec = enh ? enhanced(base) : base;
   const { cost, woven } = owner ? { cost: base.cost, woven: false } : jutsuCostParts(u, base, enh);
-  // The clone jutsu cast with a Shadow Shuffle at once: its chakra on top (and its clones follow, to mingle).
-  if (shuffle && (base.special !== 'clone' || u.clone)) return 'noShuffle';
-  if (payer.chakra < cost + (shuffle ? CLONE.shuffleCost : 0)) return 'noChakra';
+  if (payer.chakra < cost) return 'noChakra';
   // A clone's own taijutsu strikes with one die of the jutsu (the owner: "si el clon usa una
   // habilidad... se usa el dado"), as its blow in a combo does.
   const struck = owner && base.nature === 'Taijutsu' && spec.dice ? { ...spec, dice: oneDieOf(spec.dice) } : spec;
@@ -1213,8 +1205,7 @@ function doJutsu(s: BattleState, u: Unit, id: string, atIn: Pt, targetId: string
       break;
     }
     case 'clone':
-      summoned = summonClones(s, u, enh, ev, shuffle ? 'follow' : undefined);
-      if (shuffle && summoned.length) payShuffle(s, u, ev);
+      summoned = summonClones(s, u, enh, ev);
       break;
     case 'mantle':
       // The Breeze Mantle: a dodge cast as a bonus action (attacks against the ninja have

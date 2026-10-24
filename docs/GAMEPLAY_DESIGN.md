@@ -2137,9 +2137,9 @@ Elegido (la mas dificil)"*.
    clone stays a shadow at its summoner's side (it only fools them, the n in n + 2).
 5. **Enemies learn it — decided, the builder's reading of two words**: every **captain** knows the clone
    jutsu on every difficulty (Kagero today), and the **minions** ("los enemigos más débiles") only on
-   the hardest difficulty. **Reading**: his "Elegido" is the game's hardest difficulty, which the
-   game calls **Legend / Leyenda** (there is no difficulty named Elegido); sub-bosses and bosses,
-   which he didn't name, don't know it (`enemyKnowsClone` in `src/battle/units.ts`). The enemy AI
+   the hardest difficulty. His "Elegido" is the game's hardest difficulty, **Legend / Leyenda**
+   (confirmed 2026-10-24: *"leyenda es la mas dificil"*); sub-bosses and bosses, which he didn't
+   name, don't know it (`enemyKnowsClone` in `src/battle/units.ts`). The enemy AI
    summons, follows, flanks, combos, casts and shuffles (below) with them.
    Balance seen (AI-vs-AI, the mission's party of three, 20 raids each): night raid on Normal 11
    defeats before, 9 after (4 once the shuffle came); on Legend, with every minion summoning, the
@@ -2170,9 +2170,10 @@ lanzar shurikens o kunai o senbons"*.
 **Decided: A, B and C together, and clones can throw** (so throwing doesn't give the real one away).
 As built (`src/battle/clones.ts`, `seesThrough` in `combat.ts`, the engine, the AI and the screen):
 
-- **A, the shuffle**: a bonus action (the **Mezcla de sombras** button, with following clones beside
-  him), or with the cast itself (**M** while aiming the clone jutsu; its clones then come out
-  following, to mingle). Its chakra: **1** (*proposal*, `CLONE.shuffleCost`). The ninja and his
+- **A, the shuffle**: **its price is the bonus action, and nothing else: no chakra** (decided
+  2026-10-24, below). The **Mezcla de sombras** button, with following clones beside him. Since the
+  clone jutsu is a bonus action too, he can't shuffle in the turn he summons; he does it on a later
+  turn. (The first build also let it come with the cast, for 1 chakra; that is gone.) The ninja and his
   *following* clones trade places in a puff of smoke (who goes where comes from the battle's seed,
   never the battle's dice); a controlled clone walking apart is not one of the look-alikes. The
   clones then look exactly like him: no chakra wash, no see-through, his HP bar over each, no turn
@@ -2201,7 +2202,20 @@ As built (`src/battle/clones.ts`, `seesThrough` in `combat.ts`, the engine, the 
   *Proposal*: **1d4, no modifier** (`CLONE.throwDice`), with the clone's attack roll; nothing is spent
   (nobody counts kunai today).
 - **The AI**: a ninja with following clones beside it shuffles (its bonus action) when a foe that
-  isn't fooled comes within 8 m (*proposal*), and summons with a shuffle when threatened and its
-  chakra covers it. Its foes are confused as above.
-- **Open for him**: the shuffle's price (1 chakra), which clans see through with advantage (the Mirai
-  only?) and how near a keen eye must stand (1.6 m), the clone's throw (1d4, no ammo), the AI's 8 m.
+  isn't fooled comes within 8 m (*proposal*). Its foes are confused as above.
+- **Open for him**: which clans see through with advantage (the Mirai only?) and how near a keen eye
+  must stand (1.6 m), the clone's throw (1d4, no ammo), the AI's 8 m.
+
+### His fifth answer (2026-10-24): Legend, the controlled clone, the shuffle's price
+
+His answer to the round-two questions, verbatim: *"12 leyenda es la mas dificil si me parece bien por
+ahora la mezcla de sombras cuesta 1 accion adicional en leyenda que busque una forma de ganar y
+explicamela"*.
+
+1. **Decided**: "Elegido" is **Legend / Leyenda**, the hardest difficulty (minions learn the clone jutsu
+   there).
+2. **Fine for now** ("si me parece bien por ahora"): what a controlled clone may do, and the controlled
+   clone as a decoy the enemy takes for a ninja (point 2 and 4 above).
+3. **Decided**: the Shadow Shuffle **costs one bonus action** ("cuesta 1 accion adicional"), no chakra.
+4. **Legend stays as hard as it is**; he asked for a way to win it explained to him (a guide for him,
+  outside the repo; its findings are summarised in `docs/STATUS.md`).

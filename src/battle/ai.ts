@@ -225,10 +225,10 @@ function threatened(s: BattleState, u: Unit): boolean {
 
 /**
  * The Shadow Shuffle when threatened (the coordinator's ask: "AI clone users shuffle when threatened"):
- * with following clones beside it, the bonus action and the chakra, and a foe near that isn't fooled.
+ * with following clones beside it, its bonus action free, and a foe near that isn't fooled.
  */
 function shuffleThreatened(s: BattleState, u: Unit): Action | null {
-  if (u.clone || !u.turn.bonus || u.chakra < CLONE.shuffleCost || effectMods(u.effects).noJutsu || figuresOf(s, u).length < 2) return null;
+  if (u.clone || !u.turn.bonus || effectMods(u.effects).noJutsu || figuresOf(s, u).length < 2) return null;
   return threatened(s, u) ? { type: 'shuffle', unit: u.id } : null;
 }
 
@@ -256,9 +256,7 @@ function summonFirst(s: BattleState, u: Unit, i: Intent): Action | null {
   const enhanced = spec.enhCost > 0 && u.chakra >= jutsuCost(u, spec, true) + 2 * plan;
   if (!enhanced && u.chakra < jutsuCost(u, spec, false) + plan) return null;
   if (!summonSpots(s, u, enhanced).length) return null;
-  // Threatened, and the chakra for it on top: it shuffles with them as they come.
-  const shuffle = threatened(s, u) && u.chakra >= jutsuCost(u, spec, enhanced) + plan + CLONE.shuffleCost;
-  return { type: 'jutsu', unit: u.id, jutsu: id, at: { ...u.pos }, enhanced, ...(shuffle ? { shuffle } : {}) };
+  return { type: 'jutsu', unit: u.id, jutsu: id, at: { ...u.pos }, enhanced };
 }
 
 const avgOf = (dice?: string): number => {

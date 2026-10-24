@@ -528,9 +528,8 @@ export interface BattleState {
 export type Action =
   | { type: 'move'; unit: string; to: Cell; sneak?: boolean }
   | { type: 'attack'; unit: string; target: string; ranged?: boolean; knockout?: boolean }
-  /** `shuffle`: the clone jutsu cast with a Shadow Shuffle at once (battle/clones.ts). */
-  | { type: 'jutsu'; unit: string; jutsu: string; at: Pt; target?: string; enhanced?: boolean; target2?: string; element?: 'Fire' | 'Lightning' | 'Wind' | 'Water' | 'Earth'; shuffle?: boolean }
-  /** The Shadow Shuffle: a ninja and its following clones swap places in secret (a bonus action). */
+  | { type: 'jutsu'; unit: string; jutsu: string; at: Pt; target?: string; enhanced?: boolean; target2?: string; element?: 'Fire' | 'Lightning' | 'Wind' | 'Water' | 'Earth' }
+  /** The Shadow Shuffle: a ninja and its following clones swap places in secret (its bonus action, the owner's price). */
   | { type: 'shuffle'; unit: string }
   | { type: 'dash' | 'disengage' | 'dodge' | 'hide' | 'focus' | 'crouch' | 'jump' | 'draw'; unit: string }
   | { type: 'shove'; unit: string; target: string; mode: 'prone' | 'push' }

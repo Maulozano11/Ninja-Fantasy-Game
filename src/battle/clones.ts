@@ -44,8 +44,6 @@ export const CLONE = {
   fooled: 2,
   /** What a jutsu of each rank takes of those points. */
   rankCost: { D: 1, C: 2 } as Record<string, number>,
-  /** The Shadow Shuffle's chakra (proposal: the owner approved the trick, not its price). */
-  shuffleCost: 1,
   /** Clans whose eyes see through the shuffle with advantage (proposal: the Mirai's Eye of Tomorrow). */
   keenClans: ['Mirai'] as string[],
   /** How near (m) a keen-eyed foe must stand to the real one to try to uncover it on its turn (proposal). */
@@ -281,7 +279,7 @@ export const disguisedNow = (s: BattleState, owner: Unit | undefined): owner is 
 /** The ninja a figure may be: itself, or the summoner of a clone. */
 export const ownerOfFigure = (s: BattleState, u: Unit): Unit => (u.clone ? s.units[u.clone.of] ?? u : u);
 
-/** Why a ninja can't shuffle now (its clones), or null. The action and chakra are the engine's. */
+/** Why a ninja can't shuffle now (its clones), or null. The bonus action is the engine's. */
 export function shuffleBlocker(s: BattleState, u: Unit): string | null {
   if (u.clone) return 'cloneCantDo';
   if (figuresOf(s, u).length < 2) return 'noClones';

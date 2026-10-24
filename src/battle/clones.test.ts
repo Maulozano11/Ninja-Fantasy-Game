@@ -756,16 +756,17 @@ describe('the Shadow Shuffle (the owner: "Me encanta A+B+C juntas")', () => {
     return ok(applyAction(s, { type: 'shuffle', unit: 'a' })).state;
   }
 
-  it('A: a bonus action for 1 chakra: Aki and his following clones swap places in secret, and every foe starts unknowing', () => {
+  it('A: a bonus action and no chakra (the owner: "cuesta 1 accion adicional"): Aki and his following clones swap places in secret, and every foe starts unknowing', () => {
     const s0 = battle();
     const s = follow(s0, true).state;
     s.units.a.turn.bonus = true;
-    const before = Object.fromEntries(figuresOf(s, 'a' in s.units ? s.units.a : s.units.a).map((f) => [f.id, { ...f.pos }]));
+    const before = Object.fromEntries(figuresOf(s, s.units.a).map((f) => [f.id, { ...f.pos }]));
     const spots = Object.values(before);
     const out = ok(applyAction(s, { type: 'shuffle', unit: 'a' }));
     const t = out.state;
     assert.ok(disguisedNow(t, t.units.a));
-    assert.equal(t.units.a.chakra, s.units.a.chakra - CLONE.shuffleCost);
+    assert.equal(t.units.a.chakra, s.units.a.chakra, 'no chakra');
+    assert.ok(!of(out.events, 'chakra').length);
     assert.equal(t.units.a.turn.bonus, false);
     assert.deepEqual(t.units.a.disguise, { n: 1, known: [], struck: [] });
     // The same cells, shared out again.
@@ -776,11 +777,9 @@ describe('the Shadow Shuffle (the owner: "Me encanta A+B+C juntas")', () => {
     // No following clone: nothing to shuffle with.
     const none = battle();
     assert.equal(applyAction(none, { type: 'shuffle', unit: 'a' }).reason, 'noClones');
-    // With the cast itself: its clones come out following, mingled.
-    const cast = ok(applyAction(battle(), { type: 'jutsu', unit: 'a', jutsu: CLONE_JUTSU, at: { ...s0.units.a.pos }, enhanced: true, shuffle: true }));
-    assert.ok(disguisedNow(cast.state, cast.state.units.a));
-    assert.equal(current(cast.state)?.id, 'a');
-    assert.equal(cast.state.units.a.chakra, 40 - JUTSU[CLONE_JUTSU].cost - JUTSU[CLONE_JUTSU].enhCost - CLONE.shuffleCost);
+    // Its bonus action spent (the cast itself is one): no shuffle in the turn it summons.
+    const cast = follow(battle(), true).state;
+    assert.equal(applyAction(cast, { type: 'shuffle', unit: 'a' }).reason, 'noBonus');
   });
 
   it('A: a foe that does not see through picks among the look-alikes; one that does goes for the real one', () => {

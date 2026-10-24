@@ -55,7 +55,7 @@ type Mode =
   | { k: 'move' }
   | { k: 'attack'; ranged: boolean }
   /** `picked`: Command from level 9, the first of its two targets. */
-  | { k: 'jutsu'; id: string; enhanced: boolean; picked?: string; shuffle?: boolean }
+  | { k: 'jutsu'; id: string; enhanced: boolean; picked?: string }
   | { k: 'item'; item: 'bandage' | 'antidote' | 'tag' | 'tagTrap' }
   | { k: 'shove'; mode: 'push' | 'prone' }
   | { k: 'stone' }
@@ -548,7 +548,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
       // The clone jutsu: the cells its clones would stand on light up (E for two).
       o.reach = { cells: summonSpots(s, actor, mode.enhanced).map(cellOf), tone: 'dash' };
       label = jutsuName(spec.id, lang, mode.enhanced);
-      sub = `${T(mode.enhanced ? 'aimClones2' : 'aimClones')} · ${T(mode.shuffle ? 'aimShuffleOn' : 'aimShuffle', { c: CLONE.shuffleCost })}`;
+      sub = T(mode.enhanced ? 'aimClones2' : 'aimClones');
     } else if (mode.k === 'jutsu' && spec) {
       const self = spec.shape === 'self' || spec.shape === 'selfCircle';
       if (!self) o.range = { at: actor.pos, radius: spec.range };
@@ -943,7 +943,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
         const node = sp.shape === 'node' ? (u && ownNodeAt(s, actor, u.pos)) || (pt && ownNodeAt(s, actor, pt)) || undefined : undefined;
         const at = self ? actor.pos : node ? node.pos : u ? u.pos : pt;
         if (!at) return;
-        act({ type: 'jutsu', unit: actor.id, jutsu: mode.id, at, target, enhanced: mode.enhanced, ...(mode.shuffle && sp.special === 'clone' ? { shuffle: true } : {}) });
+        act({ type: 'jutsu', unit: actor.id, jutsu: mode.id, at, target, enhanced: mode.enhanced });
         return;
       }
       case 'item':
@@ -1035,8 +1035,8 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
     }
     // The Shadow Shuffle, with following clones beside it (clones.ts).
     if (!more && figuresOf(state, u).length > 1) {
-      const why = !can.bonus ? t('r_noBonus') : u.chakra < CLONE.shuffleCost ? t('r_noChakra') : null;
-      add({ id: 'shuffle', label: t('act_shuffle'), icon: ACTION_ICON.hide, badge: CLONE.shuffleCost, tone: 'jutsu', disabled: !!why, why, help: T('help_shuffle', { c: CLONE.shuffleCost }, lang) });
+      const why = !can.bonus ? t('r_noBonus') : null;
+      add({ id: 'shuffle', label: t('act_shuffle'), icon: ACTION_ICON.hide, tone: 'jutsu', disabled: !!why, why, help: t('help_shuffle') });
     }
     if (!more) {
       add({ id: 'attack', label: t('act_attack'), icon: ACTION_ICON.attack, disabled: !can.action, why: noAction, active: mode.k === 'attack' && !mode.ranged, help: t('help_attack') });
@@ -1190,7 +1190,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
         // The clone jutsu is aimed like the others, so E can make it enhanced (2 clones): a click on
         // the map, or its button again, casts it.
         if (sp.special === 'clone' && sp.enhCost) {
-          if (mode.k === 'jutsu' && mode.id === jid) act({ type: 'jutsu', unit: u.id, jutsu: jid, at: u.pos, enhanced: mode.enhanced, ...(mode.shuffle ? { shuffle: true } : {}) });
+          if (mode.k === 'jutsu' && mode.id === jid) act({ type: 'jutsu', unit: u.id, jutsu: jid, at: u.pos, enhanced: mode.enhanced });
           else setMode({ k: 'jutsu', id: jid, enhanced: false });
           return;
         }
@@ -1296,8 +1296,6 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
       else if (key === '-' || key === '_') zoomStep(-1);
       else if (key === '+' || key === '=') zoomStep(1);
       else if (key === 'e' && mode.k === 'jutsu' && JUTSU[mode.id]?.enhCost) setMode({ ...mode, enhanced: !mode.enhanced });
-      // The clone jutsu with a Shadow Shuffle as its clones come (clones.ts).
-      else if (key === 'm' && mode.k === 'jutsu' && JUTSU[mode.id]?.special === 'clone') setMode({ ...mode, shuffle: !mode.shuffle });
       else if (key === 'Enter' && actor && mode.k === 'jutsu' && mode.picked) {
         // Command from level 9 with one target picked: just that one.
         e.preventDefault();

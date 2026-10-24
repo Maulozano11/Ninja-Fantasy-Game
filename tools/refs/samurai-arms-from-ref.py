@@ -32,6 +32,8 @@ def build():
         'SAMURAI_ARM_IRON': S.middle(kote[1], kote[0], ('steel', 'dark', 'hair')),
         'SAMURAI_ARM_GOLD': S.middle(kote[1], kote[0], ('gold',)),
         'SAMURAI_ARM_CORD': S.middle(kote[1], kote[0], ('red',)),
+        # his glove's black: the colour our open, pointing and gripping hands take in his glove
+        'SAMURAI_GLOVE': S.middle(P['hand_n'][1], P['hand_n'][0], ('dark', 'hair', 'steel')),
     }
     return S.module(S.header('samurai-arms-from-ref.py', "The owner's samurai sleeves, kote and gloves"), consts, bases, 'SAMURAI_ARMS')
 

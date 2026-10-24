@@ -1,7 +1,7 @@
 """The owner's samurai: his hakama (the wide red trousers), from docs/reference/samurai-owner-reference.jpg,
-shrunk and cleaned to our scale (tools/refs/samurai_ref.py game()). Each leg is cut at his crotch
-(samurai_ref.CROTCH_X) and rides its thigh about the hip; under the tassets and his knee guards, where he
-drew none of it, his cloth is continued (samurai_ref.pieces()).
+shrunk and cleaned to our scale (tools/refs/samurai_ref.py game()). Each leg (his regions hakama_n and
+hakama_f, parted at his crotch) rides its thigh about the hip; under the tassets and his knee guards, where
+he drew none of it, his cloth is continued (samurai_ref.pieces()).
 
   python3 -I tools/refs/samurai-hakama-from-ref.py src/sprite/items/samuraiHakamaArt.ts
 """

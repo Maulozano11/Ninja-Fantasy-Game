@@ -71,6 +71,9 @@ function legsStill(r: Rig, idle: Rig): boolean {
   );
 }
 
+/** Whether both legs of a rig moved under his pieces stand as at rest (each thigh and shin within LEG_STILL degrees of this look's rest). */
+export const samuraiLegsStill = (r: Rig, look: SpriteAppearance): boolean => legsStill(r, samuraiRestRig(look));
+
 type Joint = 'shoulderN' | 'shoulderF' | 'elbowN' | 'elbowF' | 'wristN' | 'wristF' | 'handN' | 'handF' | 'hipN' | 'hipF' | 'kneeN' | 'kneeF' | 'ankleN' | 'ankleF';
 
 /** The rig with its joints moved under his pieces (see the top of this file); any other look's rig as it is. */

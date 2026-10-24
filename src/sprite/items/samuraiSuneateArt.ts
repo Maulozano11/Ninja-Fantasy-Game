@@ -139,7 +139,7 @@ export const SAMURAI_SHIN_N: PaintedPiece = {
   angle: 103.49,
   rows: [
     '..a...........',
-    '.ba...........',
+    '.baa..........',
     'aaaa...a.aa.aa',
     '..aacdefhfedd.',
     '...acdihffjaaa',

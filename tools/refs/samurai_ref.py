@@ -67,11 +67,11 @@ HIS_NATIVE = {
     'pelvis': (69.0, 93.0),
     'shoulderN': (44.0, 49.0),
     'elbowN': (42.0, 71.0),
-    'wristN': (42.0, 89.5),
+    'wristN': (42.0, 92.0),
     'handN': (45.0, 97.0),
     'shoulderF': (88.0, 47.0),
     'elbowF': (92.0, 72.0),
-    'wristF': (97.0, 88.0),
+    'wristF': (97.0, 90.0),
     'handF': (99.0, 95.0),
     'hipN': (57.0, 98.0),
     'kneeN': (52.0, 130.0),
@@ -333,13 +333,13 @@ def reading(a, K, D, line, m, scale, origin, j, i, first=False):
 # of his figure goes to the first region that holds it. GROUPS are shrunk together (one choice of his rows
 # and columns for each), so the bands, seams and dots of one part line up with each other.
 REGIONS = {
-    'hand_n': [(35, 89), (51, 89), (51, 95), (52, 95), (52, 105), (42, 105), (42, 100), (35, 100)],
-    'kote_n': [(30, 71), (50, 71), (50, 89), (30, 89)],
+    'hand_n': [(35, 92), (51, 92), (51, 95), (52, 95), (52, 105), (42, 105), (42, 100), (35, 100)],
+    'kote_n': [(30, 71), (50, 71), (50, 92), (30, 92)],
     'sode_n': [(30, 33), (60, 33), (61, 38), (57, 47), (51, 50), (51, 64), (30, 64)],
     'sleeve_n': [(30, 64), (51, 64), (51, 50), (57, 47), (61, 38), (62, 38), (62, 66), (55, 66), (55, 71), (30, 71)],
     'obi': [(49, 76), (87, 76), (87, 88), (78, 88), (78, 98), (70, 98), (70, 88), (49, 88)],
-    'hand_f': [(93, 88), (106, 88), (106, 102), (93, 102)],
-    'kote_f': [(87, 73), (104, 73), (104, 88), (87, 88)],
+    'hand_f': [(93, 90), (106, 90), (106, 102), (93, 102)],
+    'kote_f': [(87, 73), (104, 73), (104, 90), (87, 90)],
     'sleeve_f': [(86, 58), (94, 58), (94, 64), (101, 64), (101, 73), (86, 73)],
     'sode_f': [(86, 33), (101, 33), (101, 64), (94, 64), (94, 58), (86, 58)],
     'do': [(50, 33), (87, 33), (87, 79), (50, 79)],
@@ -351,8 +351,9 @@ REGIONS = {
     'shin_f': [(75, 134), (98, 134), (98, 155), (75, 155)],
     'foot_f': [(73, 154), (107, 154), (107, 169), (73, 169)],
     'cape_f': [(96, 106), (104, 106), (104, 146), (96, 146)],
-    'cape': [(3, 86), (44, 86), (44, 121), (40, 121), (38, 142), (31, 157), (3, 157)],
-    'hakama': [(30, 98), (98, 98), (98, 143), (30, 143)],
+    'cape': [(3, 86), (44, 86), (44, 121), (41, 121), (39, 142), (31, 157), (3, 157)],
+    'hakama_n': [(30, 98), (66, 98), (66, 143), (30, 143)],
+    'hakama_f': [(66, 98), (98, 98), (98, 143), (66, 143)],
 }
 # How each group of regions is shrunk:
 #   'plates'  his lamellar plates (the do, the tassets, the shoulder guards): whole rows and columns of his
@@ -373,7 +374,7 @@ GROUPS = {
     'kz_n': (('kz_n',), 'plates'),
     'kz_c': (('kz_c',), 'plates'),
     'kz_f': (('kz_f',), 'plates'),
-    'hakama': (('hakama',), 'read'),
+    'hakama': (('hakama_n', 'hakama_f'), 'read'),
     'knee_n': (('knee_n',), 'keep'),
     'knee_f': (('knee_f',), 'keep'),
     'leg_n': (('shin_n', 'foot_n'), 'keep'),
@@ -549,7 +550,7 @@ def components(mask, conn8):
 
 
 # The cloth read pixel by pixel (GROUPS 'read'): its specks are taken off by clean().
-CLOTH = ('hakama', 'cape', 'cape_f')
+CLOTH = ('hakama_n', 'hakama_f', 'cape', 'cape_f')
 # His mail (a fine checker of two of his colours) on these regions.
 MAIL = ('sleeve_n', 'sleeve_f')
 
@@ -613,8 +614,11 @@ def clean(rgb, label, line, mail, a):
     label = label.copy()
     H, W = label.shape
     head = label == 'head'
-    for c in components(label != '', True):
-        if len(c) < 3 and not any(head[q] for q in c):
+    # (and a strand's tip of his head standing apart from his head: at rest it touches the collar, moved it floats)
+    loose = [c for c in components(label != '', True) if len(c) < 3]
+    loose += [c for c in components(head, True) if len(c) < 4]
+    for c in loose:
+        if True:
             for y, x in c:
                 label[y, x] = ''
                 rgb[y, x] = 255
@@ -755,6 +759,48 @@ def continue_rows(col, mask, rows, x_to, direction, line, period=1, close=True, 
     return m, c, filled
 
 
+def hull(points, H, W):
+    """The cells inside the convex hull of these (y, x) points (their middles), as a mask."""
+    pts = sorted(set((x + 0.5, y + 0.5) for y, x in points))
+    cross = lambda o, a, b: (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0])
+
+    def half(ps):
+        h = []
+        for p in ps:
+            while len(h) >= 2 and cross(h[-2], h[-1], p) <= 0:
+                h.pop()
+            h.append(p)
+        return h[:-1]
+
+    hl = half(pts) + half(pts[::-1])
+    m = np.zeros((H, W), bool)
+    for y in range(H):
+        for x in range(W):
+            p = (x + 0.5, y + 0.5)
+            m[y, x] = all(cross(hl[k], hl[(k + 1) % len(hl)], p) >= -1e-9 for k in range(len(hl)))
+    return m
+
+
+def fill_hull(col, mask, extra, allowed, line):
+    """A limb piece filled out to its whole shape where pieces in front hide it at rest: the convex hull of
+    its pixels and `extra` (cells it reaches under: a knee guard, up to the hip), and in it every cell
+    `allowed` (hidden at rest) the piece does not have takes its nearest pixel of his that is not his line;
+    a filled cell on the hull's edge is his line."""
+    H, W = mask.shape
+    pts = list(zip(*np.nonzero(mask | extra)))
+    hm = hull(pts, H, W)
+    add = hm & allowed & ~mask
+    src = [(y, x) for y, x in zip(*np.nonzero(mask)) if kind(col[y, x]) != 'line']
+    c = col.copy()
+    for y, x in zip(*np.nonzero(add)):
+        q = min(src, key=lambda p: ((p[0] - y) ** 2 + (p[1] - x) ** 2, p))
+        c[y, x] = col[q]
+    m = mask | add
+    edge = add & ~(np.roll(hm, 1, 0) & np.roll(hm, -1, 0) & np.roll(hm, 1, 1) & np.roll(hm, -1, 1))
+    c[edge] = line
+    return m, c
+
+
 def fill_spans(col, mask, line, allowed=None):
     """What a piece has left open inside it along each row (where a piece in front of it took his pixels: a
     knee guard over the hakama): his nearest colour on the row that is not his line, the one to the left
@@ -889,8 +935,6 @@ def side_by_side(game_rgb, mask, path, box, k=8, title=('Tu dibujo', 'En el jueg
     os.replace(tmp, path)
 
 
-# Which side of the crotch his hakama's legs part: game() columns left of it are the near leg's.
-CROTCH_X = 49
 # The face (game() pixels: x0, y0, x1, y1): his skin, his eyes' glints and the line round and in them
 # here are the face; the rest of his head is his hair.
 FACE_BOX = (45, 21, 61, 34)
@@ -921,8 +965,8 @@ def pieces(rgb=None, label=None):
     pose shows it, it is continued from his pixels (continue_rows, continue_cols), closed on his line:
       sleeve_n, sleeve_f  his mail up under the shoulder guard to the shoulder
       do                  the chest under the near arm, out to the near shoulder
-      thigh_n, thigh_f    the hakama's legs (parted at CROTCH_X) up under the tassets to the hips
-      cape                the cape behind the near leg, across to the far leg
+      thigh_n, thigh_f    the hakama's legs, under the knee guards and up under the tassets to the hips
+      cape                behind the tassets, on to the middle of the back
     The head is cut into the face (FACE_BOX: skin, glints and the line in and round them) and the hair
     (the rest of his head: hair, cords and line)."""
     if rgb is None:
@@ -947,25 +991,30 @@ def pieces(rgb=None, label=None):
     ys, xs = np.nonzero(m)
     m, c, _ = continue_rows(c, m, range(ys.min() + 1, ys.max()), int(np.floor(sx)), -1, line, allowed=under('sode_n', 'sleeve_n', 'kote_n', 'hand_n', 'head'), from_x=int(np.floor(his_game('neck')[0])) - 4)
     out['do'] = (m, c)
-    # the hakama's legs, up under the tassets to the hips
-    hk, hc = cut(rgb, label, ['hakama'])
-    xx = np.arange(rgb.shape[1])[None, :]
-    for s, side in (('n', xx < CROTCH_X), ('f', xx >= CROTCH_X)):
-        m = hk & side
-        hy = his_game('hip' + s.upper())[1]
+    # the hakama's legs: each leg his cloth, under its knee guard his cloth beside it along the row, and up
+    # under the tassets to the hip each column of his carried up (his folds run on up the thigh)
+    for s in ('n', 'f'):
+        m, c = cut(rgb, label, ['hakama_' + s])
+        hx, hy = his_game('hip' + s.upper())
+        # the leg's whole shape: his cloth, his knee guard over it, and up to the hip as wide as his leg
+        reach = under('knee_' + s)
         ys, xs = np.nonzero(m)
+        top = int(np.floor(hy)) - 1
+        for x in (xs.min(), xs.max()):
+            reach[top, x] = True
         front = under('knee_n', 'knee_f', 'kusazuri', 'obi', 'hand_n', 'hand_f', 'shin_n', 'shin_f')
-        m, c = fill_spans(hc, m, line, front)
-        ys, xs = np.nonzero(m)
-        m, c, _ = continue_cols(c, m, range(xs.min() + 1, xs.max()), int(np.floor(hy)) - 1, -1, line, inset=1, allowed=front)
+        m, c = fill_hull(c, m, reach, front, line)
         out['thigh_' + s] = (m, c)
-    # the cape behind the near leg, across to the far leg
-    m, c = cut(rgb, label, ['cape', 'cape_f'])
-    left = m & (xx < 40)
-    far_x = int(np.floor(his_game('hipF')[0]))
-    ys, xs = np.nonzero(left)
-    m2, c2, _ = continue_rows(c, left, range(ys.min() + 2, ys.max() - 1), far_x, 1, line, close=False, allowed=label != '')
-    out['cape'] = (m2 | m, np.where((m & ~left)[..., None], c, c2))
+    # the cape: his cloth as he drew it, and behind his tassets carried on to the middle of his back along
+    # each row (it hangs from behind the waist: moved, it never comes away from the body); behind the legs
+    # it is the legs' to show
+    m, c = cut(rgb, label, ['cape'])
+    ks = np.nonzero(label == 'kusazuri')[0]
+    ys, xs = np.nonzero(m)
+    hidden = under('kusazuri', 'obi', 'hand_n', 'kote_n')
+    m, c, _ = continue_rows(c, m, range(ys.min(), ks.max() + 1), int(np.floor(his_game('pelvis')[0])), 1, line, close=False, allowed=hidden)
+    out['cape'] = (m, c)
+    out['cape_f'] = cut(rgb, label, ['cape_f'])
     # the head: face and hair
     head = label == 'head'
     x0, y0, x1, y1 = FACE_BOX

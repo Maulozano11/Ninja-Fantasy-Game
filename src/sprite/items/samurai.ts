@@ -15,16 +15,16 @@ import { armDepth, armJoints, type Depth, DrawCtx, handPose, ItemDef, legDepth, 
 import { type PaintedPiece, segAngle, stampBent, stampPiece, stretchPiece } from '../painted';
 import { add, F_NO_OUTLINE, F_NO_TEXTURE, GRID, partIndex, PartId, RES, sub, v, Vec } from '../raster';
 import { drawRig, GROUND, type Rig } from '../rig';
-import { SAMURAI_BODIES, samuraiRestRig } from '../samuraiRig';
+import { SAMURAI_BODIES, samuraiLegsStill, samuraiRestRig } from '../samuraiRig';
 import { SAMURAI_SKIN } from '../samuraiHeadArt';
 import { sealCloth } from '../seal';
 import type { BodyType } from '../types';
 import { closeAnkle, footTurn } from './ankle';
 import { stampLeaning } from './armor';
-import { paintedBack } from './capes';
+import { capeWind, paintedBack } from './capes';
 import { clothPen, glove } from './clothes';
-import { SAMURAI_ARM_CORD, SAMURAI_ARM_GOLD, SAMURAI_ARM_IRON, SAMURAI_ARMS_KIND, SAMURAI_HAND_F, SAMURAI_HAND_N, SAMURAI_KOTE_F, SAMURAI_KOTE_N, SAMURAI_SLEEVE_F, SAMURAI_SLEEVE_N } from './samuraiArmsArt';
-import { SAMURAI_CAPE, SAMURAI_CAPE_KIND, SAMURAI_CAPE_RED, SAMURAI_CAPE_REST } from './samuraiCapeArt';
+import { SAMURAI_ARM_CORD, SAMURAI_ARM_GOLD, SAMURAI_ARM_IRON, SAMURAI_ARMS_KIND, SAMURAI_GLOVE, SAMURAI_HAND_F, SAMURAI_HAND_N, SAMURAI_KOTE_F, SAMURAI_KOTE_N, SAMURAI_SLEEVE_F, SAMURAI_SLEEVE_N } from './samuraiArmsArt';
+import { SAMURAI_CAPE, SAMURAI_CAPE_FAR, SAMURAI_CAPE_KIND, SAMURAI_CAPE_RED, SAMURAI_CAPE_REST } from './samuraiCapeArt';
 import { SAMURAI_DO, SAMURAI_DO_KIND, SAMURAI_DO_REST, SAMURAI_GOLD, SAMURAI_LACING, SAMURAI_LACQUER, SAMURAI_SODE_F, SAMURAI_SODE_N } from './samuraiDoArt';
 import { SAMURAI_HAIR, SAMURAI_HAIR_BASE, SAMURAI_HAIR_CORD, SAMURAI_HAIR_KIND } from './samuraiHairArt';
 import { SAMURAI_HAKAMA, SAMURAI_HAKAMA_KIND, SAMURAI_THIGH_F, SAMURAI_THIGH_N } from './samuraiHakamaArt';
@@ -177,16 +177,21 @@ function drawArms(g: DrawCtx, iron: string, gold: string, cord: string): void {
     // his sleeve and kote are the arm: ours goes
     partsOff(g, [armDepth(s, 'body'), armDepth(s, 'cloth')], [up, fore]);
     stampPiece(g, armDepth(s, 'cloth'), pick(s, SAMURAI_SLEEVE_N, SAMURAI_SLEEVE_F), j.shoulder, segAngle(j.shoulder, j.elbow), up, color, line);
-    // the kote about the elbow, its top swept back toward the upper arm where the elbow bends past his
+    // the kote about the elbow, its top swept back toward the upper arm where the elbow bends past his; on a
+    // forearm longer than his (our arm reaching out, the bulky body's) his rows repeated to reach the wrist
     const bend = elbowBend(r, s);
-    stampBent(g, armDepth(s, 'armor'), pick(s, SAMURAI_KOTE_N, SAMURAI_KOTE_F), j.elbow, segAngle(j.elbow, j.wrist), fore, [{ about: j.elbow, r: ELBOW_R, bend }], line, color);
+    const rest = armJoints(samuraiRestRig(g.look), s);
+    const bone = Math.hypot(rest.wrist.x - rest.elbow.x, rest.wrist.y - rest.elbow.y);
+    const extra = (Math.hypot(j.wrist.x - j.elbow.x, j.wrist.y - j.elbow.y) - bone) * RES;
+    const kote = pick(s, SAMURAI_KOTE_N, SAMURAI_KOTE_F);
+    stampBent(g, armDepth(s, 'armor'), extra > 0.5 ? stretchPiece(kote, extra, bone * RES) : kote, j.elbow, segAngle(j.elbow, j.wrist), fore, [{ about: j.elbow, r: ELBOW_R, bend }], line, color);
     const his = hisGlove(g, s);
     if (his) {
       partsOff(g, [armDepth(s, 'body'), armDepth(s, 'cloth'), armDepth(s, 'armor')], [hand]);
       stampPiece(g, armDepth(s, 'armor'), his, j.wrist, segAngle(j.elbow, j.wrist), hand, color, line);
     } else {
-      // our hand, in his glove's iron with the fingers bare
-      glove(g, s, clothPen(g, retintHex(SAMURAI_ARM_IRON, SAMURAI_ARM_IRON, iron), hand, s === 'F' ? -1 : 0, 'leather'), 0.2, true);
+      // our hand, in his glove's black with the fingers bare
+      glove(g, s, clothPen(g, retintHex(SAMURAI_GLOVE, SAMURAI_ARM_IRON, iron), hand, s === 'F' ? -1 : 0), 0.2, true);
     }
   }
 }
@@ -242,11 +247,15 @@ export function tassetStamps(g: DrawCtx): TassetStamp[] {
   const torso = segAngle(r.pelvis, r.neck) - segAngle(home.pelvis, home.neck);
   const out: TassetStamp[] = [];
   const panel = (x0: number, x1: number, on: Side | 'both', turn: number) => {
-    // turned about the hip it hangs from (the front panel about the pelvis): the cell on that joint at rest,
-    // so at rest every pixel is where he drew it
-    const hip0 = on === 'both' ? home.pelvis : legJoints(home, on).hip;
-    const pivot: [number, number] = [Math.floor(hip0.x * RES) - ox, Math.floor(hip0.y * RES) - oy];
-    const at = on === 'both' ? r.pelvis : legJoints(r, on).hip;
+    // hung from the sash: turned about its own top (the middle of its columns on its first row), which is
+    // carried with the pelvis, so it never comes away from the waist; at rest every pixel where he drew it
+    const top = SAMURAI_KUSAZURI.rows.findIndex((row) => [...row].slice(x0, x1 + 1).some((ch) => ch !== '.'));
+    const pivot: [number, number] = [Math.round((x0 + x1) / 2), top];
+    const rest = v((ox + pivot[0] + 0.5) / RES, (oy + pivot[1] + 0.5) / RES);
+    const d = sub(rest, home.pelvis);
+    const t = (torso * Math.PI) / 180;
+    const at = add(r.pelvis, v(d.x * Math.cos(t) - d.y * Math.sin(t), d.x * Math.sin(t) + d.y * Math.cos(t)));
+    void on;
     out.push({ piece: tassetCut(x0, x1, pivot), at, deg: SAMURAI_KUSAZURI.angle + torso + turn });
   };
   const [tN, tF] = [thighTurn('N'), thighTurn('F')];
@@ -334,6 +343,58 @@ function drawSuneate(g: DrawCtx, greave: string, tie: string, boot: string, boot
 /** How far above the ground line his cape's hem hangs at rest (the male figure, idle). */
 const CAPE_HEM_ABOVE_GROUND = GROUND * RES - (SAMURAI_CAPE_REST.SAMURAI_CAPE[1] + SAMURAI_CAPE.rows.length - 1);
 const CAPE_EDGE = Object.keys(SAMURAI_CAPE.colors).find((ch) => SAMURAI_CAPE_KIND[SAMURAI_CAPE.colors[ch]] === 'line')!;
+
+/** Where his cape hangs from, behind the near hip (our frame, at rest): it swings about this cell. */
+const CAPE_TOP: [number, number] = [112, 182];
+/** How far (degrees) his cape swings back for each design unit of the pose's wind (capes.ts capeWind), and the most. */
+const CAPE_SWING = 2.4;
+const CAPE_SWING_MAX = 32;
+let CAPE_HUNG: PaintedPiece | undefined;
+
+/**
+ * His cape hung from behind the waist: it turns with the torso, and the pose's wind (the same as every
+ * cape's: trailing in a run, flying back in a strike, swaying at rest) swings it back about where it hangs,
+ * whole, so his folds stay his folds and it never comes apart; it never goes into the ground (crouched or
+ * kneeling the cloth ends on the ground line on his line). Knocked out it lies along the back as the other
+ * painted capes do (paintedBack). At rest every pixel is where he drew it.
+ */
+function drawCape(g: DrawCtx, c: string): void {
+  const color = tint(g, SAMURAI_CAPE_KIND, {}, [SAMURAI_CAPE_RED, c]);
+  const r = g.rig;
+  if (r.lay) {
+    paintedBack(g, SAMURAI_CAPE, CAPE_HEM_ABOVE_GROUND, CAPE_EDGE, color);
+    return;
+  }
+  const home = samuraiRestRig(g.look);
+  const t = segAngle(r.pelvis, r.neck) - segAngle(home.pelvis, home.neck);
+  const w = capeWind(g);
+  const swing = Math.max(-8, Math.min(CAPE_SWING_MAX, -w.dx * CAPE_SWING + w.wave));
+  const [ox, oy] = SAMURAI_CAPE_REST.SAMURAI_CAPE;
+  if (!CAPE_HUNG) CAPE_HUNG = { ...SAMURAI_CAPE, pivot: [CAPE_TOP[0] - ox, CAPE_TOP[1] - oy] };
+  const rad = (t * Math.PI) / 180;
+  const d = sub(v((CAPE_TOP[0] + 0.5) / RES, (CAPE_TOP[1] + 0.5) / RES), home.pelvis);
+  const at = add(r.pelvis, v(d.x * Math.cos(rad) - d.y * Math.sin(rad), d.x * Math.sin(rad) + d.y * Math.cos(rad)));
+  stampLeaning(g, 'capeBack', CAPE_HUNG, at, SAMURAI_CAPE.angle + t + swing, 'back', color, lineOf(SAMURAI_CAPE_KIND));
+  // the edge he drew beside the far leg, only while the legs stand and the cape hangs as at rest (moved, it
+  // is behind the leg)
+  if (Math.abs(swing) < 3 && samuraiLegsStill(r, g.look)) {
+    const [fx, fy] = SAMURAI_CAPE_REST.SAMURAI_CAPE_FAR;
+    stampLeaning(g, 'capeBack', { ...SAMURAI_CAPE_FAR, pivot: [CAPE_TOP[0] - fx, CAPE_TOP[1] - fy] }, at, SAMURAI_CAPE.angle + t + swing, 'back', color, lineOf(SAMURAI_CAPE_KIND));
+  }
+  // the hem on the ground line
+  const L = g.L('capeBack');
+  const hemY = GROUND * RES - 1;
+  const lineMat = g.m(SAMURAI_CAPE.colors[CAPE_EDGE], 'flat');
+  for (let x = 0; x < GRID; x++) {
+    let cut = false;
+    for (let y = hemY + 1; y < GRID; y++)
+      if (L.mat[y * GRID + x] >= 0) {
+        L.mat[y * GRID + x] = -1;
+        cut = true;
+      }
+    if (cut && L.mat[hemY * GRID + x] >= 0) L.set(x, hemY, lineMat, 3, 'back', F_NO_TEXTURE | F_NO_OUTLINE);
+  }
+}
 
 function drawHair(g: DrawCtx, hair: string, cord: string): void {
   const { nx, ny } = faceAnchor(g);
@@ -426,6 +487,6 @@ export const SAMURAI_ITEMS: ItemDef[] = [
     desc: 'A red cape flowing back from behind the waist in long folds.',
     colors: [col('main', 'Cape', SAMURAI_CAPE_RED)],
     bodies: [...MEN],
-    draw: (g, [c]) => paintedBack(g, SAMURAI_CAPE, CAPE_HEM_ABOVE_GROUND, CAPE_EDGE, tint(g, SAMURAI_CAPE_KIND, {}, [SAMURAI_CAPE_RED, c])),
+    draw: (g, [c]) => drawCape(g, c),
   },
 ];

@@ -9,9 +9,8 @@
 
 import { retintHex } from '../color';
 import { armDepth, armJoints, type Depth, type DrawCtx, type ItemDef, legDepth, legJoints, type Side } from '../ctx';
-import { type PaintedPiece, segAngle, stampPiece } from '../painted';
+import { type PaintedPiece, segAngle, skinTone, stampPiece } from '../painted';
 import { GRID, partIndex, type PartId } from '../raster';
-import { skinTone } from '../body';
 import { type BootArt, closesLegs, drawBoots, fillHoles, legsKeptAsDrawn, sealLegsAfter } from './aureliaBoots';
 import { bareThighs, drawPiece, liningOffTheGround, type SkirtPiece, trimPanelSpurs } from './aureliaLower';
 import { drawVestment, type VestmentArt } from './aureliaVestment';
@@ -148,12 +147,18 @@ function drawHands(g: DrawCtx, art: HandArt, tint: (ch: string, hex: string) => 
   }
   const tones = art.tones.map((h) => g.m(tint('', h), 'flat'));
   const hands = new Set([partIndex('handN'), partIndex('handF')]);
+  const bodyLayers: Depth[] = ['nearArm.body', 'farArm.body', 'farHand.front'];
   g.after((layers) => {
-    for (const L of layers.values()) {
-      if (!L.used) continue;
+    // our hands, whichever hands the look has (his bare woman's or her small ones, in the body's skin): each pixel
+    // the tone of his glove nearest its lightness among her hand's line, shadows and light
+    for (const d of bodyLayers) {
+      const L = layers.get(d);
+      if (!L || !L.used) continue;
       for (let i = 0; i < GRID * GRID; i++) {
-        if (L.mat[i] !== g.skin || !hands.has(L.part[i])) continue;
-        L.mat[i] = tones[Math.max(0, Math.min(3, L.shade[i]))];
+        if (L.mat[i] < 0 || !hands.has(L.part[i])) continue;
+        const hex = g.mats.ramps[L.mat[i]][L.shade[i]];
+        const lum = 0.299 * parseInt(hex.slice(1, 3), 16) + 0.587 * parseInt(hex.slice(3, 5), 16) + 0.114 * parseInt(hex.slice(5, 7), 16);
+        L.mat[i] = tones[lum < 50 ? 0 : lum < 120 ? 1 : lum < 175 ? 2 : 3];
         L.shade[i] = 3;
       }
     }
@@ -266,7 +271,7 @@ function drawSkirt(g: DrawCtx, art: SkirtArt, tint: (role: string, hex: string) 
   if (art.slits) {
     for (const s of ['F', 'N'] as Side[]) {
       const { hip, knee } = legJoints(g.rig, s);
-      stampPiece(g, legDepth(s, 'body'), art.slits[s], knee, segAngle(hip, knee), `thigh${s}`, (_ch, hex) => skinTone(hex, g.look.skin, art.slits!.skin));
+      stampPiece(g, legDepth(s, 'body'), art.slits[s], knee, segAngle(hip, knee), `thigh${s}`, (_ch, hex) => skinTone(hex, art.slits!.skin, g.look.skin));
     }
   }
   drawPiece(g, 'backGear', 'pelvis', art.lining, tint);

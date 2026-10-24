@@ -1032,7 +1032,7 @@ def clean(a, lab, name, m, col, isl, M, K=None):
 UNDER = 6
 FRONT = {
     'sorceress': [
-        ('bodice', 'head'), ('bodice', 'sleeve_n'), ('bodice', 'sleeve_f'), ('bodice', 'sash'),
+        ('bodice', 'sleeve_n'), ('bodice', 'sleeve_f'), ('bodice', 'sash'),
         ('sleeve_n', 'cuff_n'), ('sleeve_n', 'hand_n'), ('sleeve_n', 'head'),
         ('sleeve_f', 'cuff_f'), ('sleeve_f', 'hand_f'), ('sleeve_f', 'bodice'), ('sleeve_f', 'sash'), ('sleeve_f', 'head'),
         ('cuff_n', 'hand_n'), ('cuff_f', 'hand_f'), ('cuff_f', 'staff'), ('hand_f', 'staff'),
@@ -1046,7 +1046,7 @@ FRONT = {
         ('slit_n', 'front'), ('slit_n', 'near'), ('slit_f', 'front'), ('slit_f', 'sash'), ('slit_f', 'far'),
     ],
     'alchemist': [
-        ('bodice', 'head'), ('bodice', 'pauldron'), ('bodice', 'belt'), ('bodice', 'sleeve_n'), ('bodice', 'sleeve_f'), ('bodice', 'bracer_f'),
+        ('bodice', 'pauldron'), ('bodice', 'belt'), ('bodice', 'sleeve_n'), ('bodice', 'sleeve_f'), ('bodice', 'bracer_f'),
         ('sleeve_n', 'pauldron'), ('sleeve_n', 'bracer_n'), ('sleeve_n', 'bodice'),
         ('sleeve_f', 'bracer_f'), ('sleeve_f', 'bodice'), ('sleeve_f', 'belt'),
         ('pauldron', 'head'),
@@ -1203,17 +1203,49 @@ def load(outfit):
 LIGHT_T = 28
 DARK_T = 22
 STROKE_R = 3
-STROKE_MIN = 3
+STROKE_MIN = 4
+# A fold (a dark stroke) is a long one: shorter dark touches are read with the cloth.
+FOLD_MIN = 999
+# The pieces of cloth his folds are kept on, and how long a fold there is.
+FOLDS = {'front': 10, 'near': 10, 'far': 10, 'lining': 10, 'sleeve_n': 10, 'sleeve_f': 10}
 # A fine pixel is his line where his line covers this much of it (his strong inner lines).
 LINE_IN2 = 0.75
 # How a fine pixel's cloth colour is chosen: 'mean', his colour under it nearest the mean of his cells
 # there; 'mode', his commonest colour under it.
-BASE = 'mean'
+BASE = 'pal'
+# A piece's palette: his commonest colours in it, each at least PAL_APART from those taken before (RGB distance),
+# at most PAL_MAX, each covering at least PAL_SHARE of the piece.
+PAL_APART = 16
+PAL_MAX = 10
+PAL_SHARE = 0.01
+
+
+def piece_palette(a, K, mask):
+    """The few colours of his a piece is read in (BASE 'pal')."""
+    m = mask & (K != 'line')
+    cols, counts = np.unique(a[m].reshape(-1, 3), axis=0, return_counts=True)
+    order = sorted(range(len(cols)), key=lambda i: (-counts[i], tuple(cols[i])))
+    out = []
+    for i in order:
+        if counts[i] < PAL_SHARE * m.sum() and out:
+            break
+        c = cols[i].astype(float)
+        if all(np.sqrt(((c - np.array(o, float)) ** 2).sum()) >= PAL_APART for o in out):
+            out.append(tuple(int(v) for v in cols[i]))
+        if len(out) >= PAL_MAX:
+            break
+    return out
 # His line between two of his pieces where it covers this much of the two pixels across the edge.
 EDGE_LINE = 0.3
 # His gem colours (kinds) and how many of his cells make a gem.
-GEM_KINDS = ('violet', 'teal')
+GEM_KINDS = ('violet', 'teal', 'green')
 GEM_MIN = 3
+# A gem or mark is small and lit: at most GEM_MAX of his cells, their mean lightness at least GEM_LIGHT.
+GEM_MAX = 60
+GEM_LIGHT = 70
+# His steel marks (buckles, rings), and the size under which a mark is a single pixel.
+MARK_KINDS = ('steel',)
+MARK_MIN = 8
 
 
 def thin(mask):
@@ -1257,7 +1289,7 @@ def local_middle(L, mask, r):
 STROKE_THICK = 2.3
 
 
-def strokes(a, K, mask):
+def strokes(a, K, mask, light_kinds=None, fold_min=None):
     """His light and dark strokes in a piece: (light, dark, cells) - the light and the dark strokes thinned to
     their middle lines, and all their cells."""
     L = luma(a.astype(float))
@@ -1265,12 +1297,15 @@ def strokes(a, K, mask):
     mid = local_middle(L, solid, STROKE_R)
     out = []
     cells = np.zeros_like(mask)
-    for m in (solid & (L > mid + LIGHT_T), solid & (L < mid - DARK_T)):
+    lit = solid & (L > mid + LIGHT_T)
+    if light_kinds is not None:
+        lit &= np.isin(K, light_kinds)
+    for m, least in ((lit, STROKE_MIN), (solid & (L < mid - DARK_T), fold_min or FOLD_MIN)):
         keep = np.zeros_like(m)
         lab_, n = components_mask(m)
         for c in range(n):
             g = lab_ == c
-            if g.sum() < STROKE_MIN:
+            if g.sum() < least:
                 continue
             t = thin(g)
             if g.sum() <= STROKE_THICK * max(1, t.sum()):
@@ -1302,7 +1337,7 @@ def components_mask(m):
     return lab_, n
 
 
-def reduce2(a, K, mask, M, black, gems=True, outline_inner=True, his_gap=frozenset()):
+def reduce2(a, K, mask, M, black, gems=True, outline_inner=True, his_gap=frozenset(), light_kinds=None, fold_min=None):
     """A piece of his (`mask`: his cells, `a` their colours, K their kinds) at our scale: (m, col, isl) in our
     256 x 256 frame (isl: his line)."""
     H, W = mask.shape
@@ -1310,7 +1345,9 @@ def reduce2(a, K, mask, M, black, gems=True, outline_inner=True, his_gap=frozens
     m = np.zeros((G, G), bool)
     col = np.zeros((G, G, 3), np.int32)
     isl = np.zeros((G, G), bool)
-    light, dark, stroke = strokes(a, K, mask)
+    light, dark, stroke = strokes(a, K, mask, light_kinds, fold_min)
+    pal = piece_palette(a, K, mask)
+    snap = lambda c: min(pal, key=lambda t: (float(((np.array(t, float) - np.array(c, float)) ** 2).sum()), t))  # noqa: E731
     ys, xs = np.nonzero(mask)
     fx0, fy0 = M.fine((xs.min(), ys.min()))
     fx1, fy1 = M.fine((xs.max() + 1, ys.max() + 1))
@@ -1335,33 +1372,55 @@ def reduce2(a, K, mask, M, black, gems=True, outline_inner=True, his_gap=frozens
                     t = tuple(int(v) for v in a[y, x])
                     tally[t] = tally.get(t, 0) + w
                 col[j, i] = max(sorted(tally), key=lambda t: tally[t])
+            elif BASE == 'pal':
+                # the colour of the piece's palette (its commonest colours of his) nearest the mean of his cells
+                # there, his line and strokes counted out: flat areas of his main colours, as he paints
+                pick2 = [(y, x, w) for y, x, w in pick if not stroke[y, x]] or pick
+                mean = sum(w * a[y, x].astype(float) for y, x, w in pick2) / sum(w for _, _, w in pick2)
+                col[j, i] = snap(mean)
             else:
                 # the colour of his under it nearest the mean of his cells there (his line counted in as far
                 # as it covers the pixel: what the eye sees of it from afar)
                 mean = sum(w * a[y, x].astype(float) for y, x, w in mine) / tot
                 cand = sorted(set(tuple(int(v) for v in a[y, x]) for y, x, w in pick))
                 col[j, i] = min(cand, key=lambda t: (float(((np.array(t) - mean) ** 2).sum()), t))
+    # specks of the cloth left by the reading: a pixel unlike its four neighbours, which agree, takes their colour
+    if BASE == 'pal':
+        fixed = col.copy()
+        for j, i in zip(*np.nonzero(m & ~isl)):
+            nb = [(j + dj, i + di) for dj, di in ((1, 0), (-1, 0), (0, 1), (0, -1))]
+            if all(m[q] and not isl[q] for q in nb):
+                c0 = tuple(col[nb[0]])
+                if all(tuple(col[q]) == c0 for q in nb) and tuple(col[j, i]) != c0:
+                    fixed[j, i] = c0
+        col = fixed
     # his strokes: dark folds first, his light strokes over them
     for s in (dark, light):
         for y, x in zip(*np.nonzero(s)):
             fx, fy = M.fine((x + 0.5, y + 0.5))
             q = (int(np.floor(fy)), int(np.floor(fx)))
             if m[q]:
-                col[q] = a[y, x]
+                col[q] = a[y, x] if BASE != 'pal' else snap(a[y, x]) if s is dark else a[y, x]
                 isl[q] = False
     # his gems: 2 x 2, his highlight at the top left, his gem's middle colour and its dark
+    # and his marks (a buckle, a stud ring: GEM_KINDS and steel, small and lit): 2 x 2 the same way, or a single
+    # pixel of his lightest steel for a mark under MARK_MIN cells
     if gems:
-        gm = mask & np.isin(K, GEM_KINDS)
+        gm = mask & np.isin(K, GEM_KINDS + MARK_KINDS)
         lab_, n = components_mask(gm)
+        Lm = luma(a.astype(float))
         for c in range(n):
             cy, cx = np.nonzero(lab_ == c)
-            if len(cy) < GEM_MIN:
+            if len(cy) < GEM_MIN or len(cy) > GEM_MAX or float(Lm[cy, cx].mean()) < GEM_LIGHT:
                 continue
             fx, fy = M.fine((cx.mean() + 0.5, cy.mean() + 0.5))
             i0, j0 = int(np.floor(fx - 0.5)), int(np.floor(fy - 0.5))
             cs = sorted((tuple(int(v) for v in a[y, x]) for y, x in zip(cy, cx)), key=lambda t: (0.299 * t[0] + 0.587 * t[1] + 0.114 * t[2], t))
             hl, mid_, dk = cs[-1], cs[len(cs) // 2], cs[0]
-            for (dj, di), c_ in (((0, 0), hl), ((0, 1), mid_), ((1, 0), mid_), ((1, 1), dk)):
+            cells = (((0, 0), hl), ((0, 1), mid_), ((1, 0), mid_), ((1, 1), dk))
+            if len(cy) < MARK_MIN:
+                cells = (((int(round(fy - 0.5 - j0)), int(round(fx - 0.5 - i0))), hl),)
+            for (dj, di), c_ in cells:
                 q = (j0 + dj, i0 + di)
                 if m[q]:
                     col[q] = c_
@@ -1393,6 +1452,13 @@ def reduce2(a, K, mask, M, black, gems=True, outline_inner=True, his_gap=frozens
 # The pieces at our scale
 # ---------------------------------------------------------------------------------------------------
 _FINE = {}
+# The kinds of his light strokes each piece keeps as lines (his gold trim and thorns, his steel buckles); his other
+# light touches (studs, glints on leather, lit cloth) are read with the cloth round them.
+LIGHT_KINDS_DEFAULT = ('gold',)
+LIGHT_KINDS = {
+    'sorceress': {'front': ('gold', 'purple'), 'near': ('gold', 'purple'), 'far': ('gold', 'purple')},
+    'alchemist': {'sleeve_n': (), 'sleeve_f': ()},
+}
 
 
 def continued(outfit, name):
@@ -1420,7 +1486,8 @@ def fine(outfit, name):
     if key not in _FINE:
         a, K, bg, lab = load(outfit)
         mask, col, KK = continued(outfit, name)
-        _FINE[key] = reduce2(col, KK, mask, body_map(outfit), his_line(a), outline_inner=False)
+        lk = LIGHT_KINDS.get(outfit, {}).get(name, LIGHT_KINDS_DEFAULT)
+        _FINE[key] = reduce2(col, KK, mask, body_map(outfit), his_line(a), outline_inner=False, light_kinds=lk, fold_min=FOLDS.get(name))
     m, c, isl = _FINE[key]
     return m.copy(), c.copy(), isl.copy()
 
@@ -1608,7 +1675,7 @@ def module_head(script, what, pal, prefix, bases, skin=None, imports="import typ
     out += ['};', '/** The letters of each slot\'s colours. */', f'export const {prefix}_CHARS: Record<string, string> = {{']
     out += [f"  {r}: '{pal.chars_of(r)}'," for r in pal.roles if pal.chars_of(r)]
     out += ['};']
-    if skin:
+    if skin is not None:
         out += ['/** His skin\'s letters: drawn in the body\'s skin, at these shades of it. */', f'export const {prefix}_SKIN: Record<string, number> = {{ ' + ', '.join(f'{key(c)}: {v}' for c, v in skin.items()) + ' };']
     out.append('')
     return '\n'.join(out)

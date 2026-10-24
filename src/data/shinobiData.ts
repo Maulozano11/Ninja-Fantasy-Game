@@ -1930,6 +1930,160 @@ export const LEGENDARY_PRESETS: { name: string; tag: string; nameEs?: string; ta
       }),
     },
   },
+  // Aurelia in the owner's dark sorceress outfit (docs/reference/aurelia-outfits-owner-reference.jpg, the middle
+  // figure): her own head, his outfit brought down to our scale (items/aureliaOutfits.ts). Same sheet as hers; the
+  // name is a placeholder for the owner.
+  {
+    name: 'Aurelia, the Night Sorceress',
+    tag: 'Nightshade Corset · Dawn Staff',
+    nameEs: 'Aurelia, la Hechicera Nocturna',
+    tagEs: 'Corsé Belladona · Báculo del alba',
+    character: {
+      id: 'preset_aurelia_sorceress',
+      name: 'Aurelia',
+      title: 'The Night Sorceress',
+      level: 5,
+      clan: 'Koton',
+      shinobiClass: 'Medical Specialist',
+      stats: { str: 10, dex: 14, con: 14, int: 12, wis: 18, cha: 15 },
+      palette: {
+        skinTone: '#f4c6a5',
+        hairColor: '#f6daa2',
+        eyeColor: '#235384',
+        armorPrimary: '#f5eddb',
+        armorSecondary: '#f5bc47',
+        clothColor: '#f5eddb',
+        headbandCloth: '#1e3a8a',
+        headbandPlate: '#cbd5e1',
+        chakraAuraColor: '#fedfa0',
+        accentColor: '#f5bc47',
+      },
+      hairstyle: 'Itachi Low Ribbon',
+      armorStyle: 'Ronin Wanderer Cloak',
+      headbandPosition: 'Neck',
+      weaponStyle: 'Unarmed Brawler',
+      capeStyle: 'None',
+      dojutsu: 'None',
+      selectedFeats: ['chakra_prodigy', 'sharingan_precog'],
+      // Light chakra: no element, so the jutsu with none (the healing palm, the feathers). Her Yasaka no
+      // Magatama was removed from the game (the owner, 2026-10-22: "quitala del juego"); a Light medic has
+      // no other rank S to learn, so the slot is empty, as loading an old sheet leaves it (refitRemoved).
+      selectedJutsus: {
+        slot1Utility: 'mystical_palm',
+        slot2Elemental: 'temple_of_nirvana',
+        slot3Elemental: 'leaf_hurricane_senpuu',
+        slot4Clan: 'adamantine_sealing_chains',
+        slot5Ultimate: '',
+      },
+      sheetVersion: 2,
+      maxHp: 43,
+      currentHp: 43,
+      maxChakra: 42,
+      currentChakra: 42,
+      armorClass: 13,
+      speed: 7,
+      jutsuSaveDC: 15,
+      jutsuAttackBonus: 7,
+      appearance: spriteLook({
+        body: 'female',
+        skin: '#f4c6a5',
+        eyeShape: 'dawn',
+        eyeColor: '#6a3aa0',
+        // her face and head where the owner drew them (2026-10-23: "copia la forma de cara cuello y peinado pixel a pixel")
+        faceShape: 'aurelia',
+        // his Aurelia's own small hands (the owner, 2026-10-22: "las manos mas pequeñas ponlas como opcion")
+        hands: 'small',
+        slots: {
+          hair: it('hair_dawn_bun'),
+          top: it('top_nightshade_sleeves'),
+          armor: it('armor_nightshade_corset'),
+          hands: it('hands_nightshade_gloves'),
+          skirt: it('skirt_nightshade_tatters'),
+          waist: it('waist_nightshade_sash'),
+          feet: it('feet_nightshade_boots'),
+          held: it('held_dawn_staff'),
+        },
+        chakra: { color: 'white', tint: '#fac856', onCharge: true, onCast: true, onVictory: true }, // Light, in her staff's gold
+      }),
+    },
+  },
+  // Aurelia in the owner's adventurer alchemist outfit (the same sheet, the right figure): her own head, his outfit
+  // brought down to our scale. Same sheet as hers; the name is a placeholder for the owner.
+  {
+    name: 'Aurelia, the Wandering Alchemist',
+    tag: "Alchemist's Corset · Dawn Staff",
+    nameEs: 'Aurelia, la Alquimista Errante',
+    tagEs: 'Corsé de alquimista · Báculo del alba',
+    character: {
+      id: 'preset_aurelia_alchemist',
+      name: 'Aurelia',
+      title: 'The Wandering Alchemist',
+      level: 5,
+      clan: 'Koton',
+      shinobiClass: 'Medical Specialist',
+      stats: { str: 10, dex: 14, con: 14, int: 12, wis: 18, cha: 15 },
+      palette: {
+        skinTone: '#f4c6a5',
+        hairColor: '#f6daa2',
+        eyeColor: '#235384',
+        armorPrimary: '#f5eddb',
+        armorSecondary: '#f5bc47',
+        clothColor: '#f5eddb',
+        headbandCloth: '#1e3a8a',
+        headbandPlate: '#cbd5e1',
+        chakraAuraColor: '#fedfa0',
+        accentColor: '#f5bc47',
+      },
+      hairstyle: 'Itachi Low Ribbon',
+      armorStyle: 'Ronin Wanderer Cloak',
+      headbandPosition: 'Neck',
+      weaponStyle: 'Unarmed Brawler',
+      capeStyle: 'None',
+      dojutsu: 'None',
+      selectedFeats: ['chakra_prodigy', 'sharingan_precog'],
+      // Light chakra: no element, so the jutsu with none (the healing palm, the feathers). Her Yasaka no
+      // Magatama was removed from the game (the owner, 2026-10-22: "quitala del juego"); a Light medic has
+      // no other rank S to learn, so the slot is empty, as loading an old sheet leaves it (refitRemoved).
+      selectedJutsus: {
+        slot1Utility: 'mystical_palm',
+        slot2Elemental: 'temple_of_nirvana',
+        slot3Elemental: 'leaf_hurricane_senpuu',
+        slot4Clan: 'adamantine_sealing_chains',
+        slot5Ultimate: '',
+      },
+      sheetVersion: 2,
+      maxHp: 43,
+      currentHp: 43,
+      maxChakra: 42,
+      currentChakra: 42,
+      armorClass: 13,
+      speed: 7,
+      jutsuSaveDC: 15,
+      jutsuAttackBonus: 7,
+      appearance: spriteLook({
+        body: 'female',
+        skin: '#f4c6a5',
+        eyeShape: 'dawn',
+        eyeColor: '#235384',
+        // her face and head where the owner drew them (2026-10-23: "copia la forma de cara cuello y peinado pixel a pixel")
+        faceShape: 'aurelia',
+        // his Aurelia's own small hands (the owner, 2026-10-22: "las manos mas pequeñas ponlas como opcion")
+        hands: 'small',
+        slots: {
+          hair: it('hair_dawn_bun'),
+          top: it('top_alchemist_blouse'),
+          armor: it('armor_alchemist_corset'),
+          hands: it('hands_alchemist_bracers'),
+          skirt: it('skirt_alchemist_tabard'),
+          waist: it('waist_alchemist_belt'),
+          feet: it('feet_alchemist_greaves'),
+          held: it('held_dawn_staff'),
+        },
+        accessories: [it('acc_alchemist_pauldron')],
+        chakra: { color: 'white', tint: '#fac856', onCharge: true, onCast: true, onVictory: true }, // Light, in her staff's gold
+      }),
+    },
+  },
   // ── Heroine: Aurelia (end) ─────────────────────────────────────────────────────────────────────
 ];
 

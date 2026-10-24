@@ -193,6 +193,56 @@ def dots(a, K):
     return out
 
 
+def drop_costs(a, K, m, axis):
+    """What leaving out each of his rows (axis 0) or columns (axis 1) of region `m` would lose: how unlike
+    its nearer neighbour it is inside the region (his line against anything else, a glint, gold or a lacing
+    dot against anything else, and the region's edge, count most)."""
+    if axis == 1:
+        a, K, m = a.transpose(1, 0, 2), K.T, m.T
+    n = a.shape[0]
+
+    def unlike(i, j):
+        if j < 0 or j >= n:
+            return 1e9
+        both = m[i] | m[j]
+        d = np.abs(a[i] - a[j]).max(axis=1)
+        k = np.where(d > 40, 2.0, np.where(d > 20, 1.0, np.where(d > 8, 0.3, 0.0)))
+        k = np.where(K[i] != K[j], 3.0, k)
+        k = np.where((K[i] != K[j]) & ((K[i] == 'line') | (K[j] == 'line') | (K[i] == 'gold') | (K[j] == 'gold')), 6.0, k)
+        k = np.where(m[i] != m[j], 6.0, k)
+        return float((k * both).sum())
+
+    return np.array([min(unlike(i, i - 1), unlike(i, i + 1)) for i in range(n)])
+
+
+def keep(n_src, count, scale, origin, cost):
+    """Which of his rows (or columns) fine rows 0..count-1 show: fine row k about his row
+    origin + (k + 0.5) * scale - 0.5, within a row or two of it, one after another or with rows left out
+    between, those left out costing least (drop_costs())."""
+    ideal = [origin + (k + 0.5) * scale - 0.5 for k in range(count)]
+    near = lambda t: [c for c in range(int(np.floor(t)) - 1, int(np.floor(t)) + 3) if 0 <= c < n_src]
+    best = [{c: (abs(c - ideal[0]) * 1e-2, None) for c in near(ideal[0])}]
+    for k in range(1, count):
+        row = {}
+        for c in near(ideal[k]):
+            got = None
+            for prev in (c - 1, c - 2, c - 3):
+                if prev not in best[-1]:
+                    continue
+                v = best[-1][prev][0] + sum(cost[q] for q in range(prev + 1, c)) + abs(c - ideal[k]) * 1e-2
+                if got is None or v < got[0]:
+                    got = (v, prev)
+            if got is not None:
+                row[c] = got
+        best.append(row)
+    c = min(best[-1], key=lambda q: (best[-1][q][0], q))
+    out = [c]
+    for k in range(count - 1, 0, -1):
+        c = best[k][c][1]
+        out.append(c)
+    return out[::-1]
+
+
 # How much of a fine pixel's footprint (of his pixels' area) his line, gold or a glint must cover for the
 # fine pixel to show it (reading()).
 LINE_COVER = 0.45
@@ -260,6 +310,10 @@ REGIONS = {
     'cape': [(3, 86), (44, 86), (44, 121), (40, 121), (38, 142), (31, 157), (3, 157)],
     'hakama': [(30, 98), (98, 98), (98, 143), (30, 143)],
 }
+# The groups of lamellar plates (bands, rims and lacing rows): shrunk by keeping whole rows and columns of
+# his (keep()), so each plate keeps its lit rim, its lacing row and its seam; the rest is read pixel by pixel
+# under each footprint (reading()).
+PLATES = ('sode_n', 'do', 'kusazuri')
 GROUPS = {
     'arm_n': ('hand_n', 'kote_n', 'sleeve_n'),
     'sode_n': ('sode_n',),
@@ -311,11 +365,26 @@ def reduce(a):
     rgb = np.full(size + (3,), 255, np.int32)
     label = np.full(size, '', dtype='<U10')
 
-    def put(names, scale, origin, at):
+    def put(names, scale, origin, at, plates=False):
         m = np.zeros(R['head'].shape, bool)
         for n in names:
             m |= R[n]
         ys, xs = np.nonzero(m)
+        if plates:
+            # his lamellar plates: whole rows and columns of his kept, those like a neighbour left out
+            j0 = int(np.floor((ys.min() - origin[1]) / scale))
+            j1 = int(np.ceil((ys.max() + 1 - origin[1]) / scale))
+            i0 = int(np.floor((xs.min() - origin[0]) / scale))
+            i1 = int(np.ceil((xs.max() + 1 - origin[0]) / scale))
+            rows = keep(m.shape[0], j1 - j0, scale, origin[1] + j0 * scale, drop_costs(a, K, m, 0))
+            cols = keep(m.shape[1], i1 - i0, scale, origin[0] + i0 * scale, drop_costs(a, K, m, 1))
+            for jj, r in enumerate(rows):
+                for ii, c in enumerate(cols):
+                    if m[r, c]:
+                        y, x = at[1] + j0 + jj + PAD, at[0] + i0 + ii + PAD
+                        rgb[y, x] = a[r, c]
+                        label[y, x] = next(n for n in names if R[n][r, c])
+            return
         for j in range(int(np.floor((ys.min() - origin[1]) / scale)), int(np.ceil((ys.max() + 1 - origin[1]) / scale))):
             for i in range(int(np.floor((xs.min() - origin[0]) / scale)), int(np.ceil((xs.max() + 1 - origin[0]) / scale))):
                 got = reading(a, K, D, line, m, scale, origin, j, i)
@@ -329,7 +398,7 @@ def reduce(a):
 
     # back to front: each group over what is behind it
     for g in ('cape', 'arm_f', 'leg_f', 'leg_n', 'hakama', 'kusazuri', 'do', 'obi', 'sode_n', 'arm_n'):
-        put(GROUPS[g], BODY_SCALE, (0.0, 0.0), (0, 0))
+        put(GROUPS[g], BODY_SCALE, (0.0, 0.0), (0, 0), g in PLATES)
     # the head about his chin, which lands where the body's shrink puts that point
     hx, hy = HEAD_ANCHOR
     put(('head',), HEAD_SCALE, HEAD_ANCHOR, (int(round(hx / BODY_SCALE)), int(round(hy / BODY_SCALE))))
@@ -441,7 +510,7 @@ def cut(rgb, label, names, line_from_others=True):
     return own, rgb.copy()
 
 
-def continue_rows(col, mask, rows, x_to, direction, line, period=1, close=True, inset=0, allowed=None):
+def continue_rows(col, mask, rows, x_to, direction, line, period=1, close=True, inset=0, allowed=None, from_x=None):
     """A piece continued along its rows where something in front hides it: on each row of `rows`, from the
     piece's last pixel toward `direction` (-1 left, 1 right) on to column `x_to`, his pixels of that row
     repeated (the `period` pixels inside its line there, `inset` more pixels in), closed on his line at the
@@ -461,7 +530,8 @@ def continue_rows(col, mask, rows, x_to, direction, line, period=1, close=True, 
         while 0 <= inner < m.shape[1] and mask[y, inner] and kind(col[y, inner]) == 'line':
             inner -= direction
         inner -= direction * inset
-        src = [inner - direction * k for k in range(period)]
+        # (from_x: each row's colour at that column of his, the middle of a plate band, carried out)
+        src = [from_x] if from_x is not None else [inner - direction * k for k in range(period)]
         if not all(0 <= q < m.shape[1] and mask[y, q] and kind(col[y, q]) != 'line' for q in src):
             continue
         x = edge
@@ -671,7 +741,7 @@ def pieces(rgb=None, label=None):
     m, c = cut(rgb, label, ['do'])
     sx, sy = his_game('shoulderN')
     ys, xs = np.nonzero(m)
-    m, c, _ = continue_rows(c, m, range(ys.min() + 1, ys.max()), int(np.floor(sx)), -1, line, inset=3, allowed=under('sode_n', 'sleeve_n', 'kote_n', 'hand_n', 'head'))
+    m, c, _ = continue_rows(c, m, range(ys.min() + 1, ys.max()), int(np.floor(sx)), -1, line, allowed=under('sode_n', 'sleeve_n', 'kote_n', 'hand_n', 'head'), from_x=int(np.floor(his_game('neck')[0])) - 4)
     out['do'] = (m, c)
     # the hakama's legs, up under the tassets to the hips
     hk, hc = cut(rgb, label, ['hakama'])
@@ -723,3 +793,33 @@ def run(argv, build):
     if len(argv) < 2:
         sys.exit(f'usage: python3 -I {argv[0]} <out.ts>')
     write(argv[1], build())
+
+
+def plain(a=None):
+    """His figure shrunk evenly at the same two scales with nothing chosen: each fine pixel his pixel under
+    its middle (for the owner's "sin limpiar / limpio" comparison). (rgb, mask) in game()'s frame."""
+    if a is None:
+        a = palette(native())
+    R = regions(a)
+    H, W, _ = a.shape
+    size = (int(np.ceil(H / BODY_SCALE)) + 2 * PAD, int(np.ceil(W / BODY_SCALE)) + 2 * PAD)
+    rgb = np.full(size + (3,), 255, np.int32)
+    mask = np.zeros(size, bool)
+    body = np.zeros((H, W), bool)
+    for n, m in R.items():
+        if n != 'head':
+            body |= m
+
+    def put(m, scale, origin, at):
+        for y in range(size[0]):
+            for x in range(size[1]):
+                sy = int(np.floor(origin[1] + (y - PAD - at[1] + 0.5) * scale))
+                sx = int(np.floor(origin[0] + (x - PAD - at[0] + 0.5) * scale))
+                if 0 <= sy < H and 0 <= sx < W and m[sy, sx]:
+                    rgb[y, x] = a[sy, sx]
+                    mask[y, x] = True
+
+    put(body, BODY_SCALE, (0.0, 0.0), (0, 0))
+    hx, hy = HEAD_ANCHOR
+    put(R['head'], HEAD_SCALE, HEAD_ANCHOR, (int(round(hx / BODY_SCALE)), int(round(hy / BODY_SCALE))))
+    return rgb, mask

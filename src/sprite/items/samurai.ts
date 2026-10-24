@@ -25,11 +25,11 @@ import { paintedBack } from './capes';
 import { clothPen, glove } from './clothes';
 import { SAMURAI_ARM_CORD, SAMURAI_ARM_GOLD, SAMURAI_ARM_IRON, SAMURAI_ARMS_KIND, SAMURAI_HAND_F, SAMURAI_HAND_N, SAMURAI_KOTE_F, SAMURAI_KOTE_N, SAMURAI_SLEEVE_F, SAMURAI_SLEEVE_N } from './samuraiArmsArt';
 import { SAMURAI_CAPE, SAMURAI_CAPE_KIND, SAMURAI_CAPE_RED, SAMURAI_CAPE_REST } from './samuraiCapeArt';
-import { SAMURAI_DO, SAMURAI_DO_KIND, SAMURAI_GOLD, SAMURAI_LACING, SAMURAI_LACQUER, SAMURAI_SODE_F, SAMURAI_SODE_N } from './samuraiDoArt';
+import { SAMURAI_DO, SAMURAI_DO_KIND, SAMURAI_DO_REST, SAMURAI_GOLD, SAMURAI_LACING, SAMURAI_LACQUER, SAMURAI_SODE_F, SAMURAI_SODE_N } from './samuraiDoArt';
 import { SAMURAI_HAIR, SAMURAI_HAIR_BASE, SAMURAI_HAIR_CORD, SAMURAI_HAIR_KIND } from './samuraiHairArt';
 import { SAMURAI_HAKAMA, SAMURAI_HAKAMA_KIND, SAMURAI_THIGH_F, SAMURAI_THIGH_N } from './samuraiHakamaArt';
 import { SAMURAI_KUSAZURI, SAMURAI_KUSAZURI_KIND, SAMURAI_KUSAZURI_REST, SAMURAI_TASSET_GOLD, SAMURAI_TASSET_LACING, SAMURAI_TASSET_LACQUER } from './samuraiKusazuriArt';
-import { SAMURAI_OBI, SAMURAI_OBI_GOLD, SAMURAI_OBI_KIND } from './samuraiObiArt';
+import { SAMURAI_OBI, SAMURAI_OBI_GOLD, SAMURAI_OBI_KIND, SAMURAI_OBI_REST } from './samuraiObiArt';
 import {
   SAMURAI_BOOT,
   SAMURAI_BOOT_GOLD,
@@ -58,6 +58,19 @@ const idleRig = (body: BodyType): Rig => {
   if (!r) IDLE.set(body, (r = drawRig(body, 'idle', 0)));
   return r;
 };
+
+const PINNED = new Map<string, PaintedPiece>();
+/**
+ * A piece that rides the torso (the do about the neck, the obi about the pelvis) with its pivot moved so that
+ * at rest it lands where he drew it on every body (`rest`: its first cell in our frame; `joint`: the joint it
+ * rides at rest on this body), so his chest, sash and tassets stand together as he drew them.
+ */
+function pinned(piece: PaintedPiece, rest: [number, number], joint: Vec, key: string): PaintedPiece {
+  const k = `${key}|${joint.x}|${joint.y}`;
+  let p = PINNED.get(k);
+  if (!p) PINNED.set(k, (p = { ...piece, pivot: [Math.floor(joint.x * RES) - rest[0], Math.floor(joint.y * RES) - rest[1]] }));
+  return p;
+}
 
 /** What a colour of his is (tools/refs/samurai_ref.py kind). */
 type His = 'line' | 'white' | 'hair' | 'skin' | 'gold' | 'red' | 'steel' | 'dark';
@@ -127,7 +140,7 @@ function drawDo(g: DrawCtx, lacquer: string, lacing: string, gold: string): void
   const line = lineOf(SAMURAI_DO_KIND);
   torsoOff(g);
   stampPiece(g, 'farArm.armor', SAMURAI_SODE_F, r.shoulderF, sodeAngle(r, 'F', SAMURAI_SODE_F), 'upperArmF', color, line);
-  stampLeaning(g, 'torso.armor', SAMURAI_DO, r.neck, segAngle(r.pelvis, r.neck), 'torso', color, line);
+  stampLeaning(g, 'torso.armor', pinned(SAMURAI_DO, SAMURAI_DO_REST.SAMURAI_DO, samuraiRestRig(g.look).neck, 'do'), r.neck, segAngle(r.pelvis, r.neck), 'torso', color, line);
   stampPiece(g, 'nearArm.armor', SAMURAI_SODE_N, r.shoulderN, sodeAngle(r, 'N', SAMURAI_SODE_N), 'upperArmN', color, line);
 }
 
@@ -277,10 +290,12 @@ function drawHakama(g: DrawCtx, red: string): void {
   for (const s of SIDES) {
     if (wearsLegs(g)) partsOff(g, [legDepth(s, 'body'), legDepth(s, 'cloth')], [`thigh${s}`, `shin${s}`, `foot${s}`] as PartId[]);
     const j = legJoints(g.rig, s);
-    // a thigh longer than the body's (seated: rig.ts kneeLeg) takes his leg lengthened with it (stretchPiece)
-    const extra = (Math.hypot(j.knee.x - j.hip.x, j.knee.y - j.hip.y) - g.rig.bp.thigh) * RES;
+    // a thigh longer than at rest (seated: rig.ts kneeLeg) takes his leg lengthened with it (stretchPiece)
+    const rest = legJoints(samuraiRestRig(g.look), s);
+    const bone = Math.hypot(rest.knee.x - rest.hip.x, rest.knee.y - rest.hip.y);
+    const extra = (Math.hypot(j.knee.x - j.hip.x, j.knee.y - j.hip.y) - bone) * RES;
     const thigh = pick(s, SAMURAI_THIGH_N, SAMURAI_THIGH_F);
-    stampPiece(g, legDepth(s, 'cloth'), extra > 1e-6 ? stretchPiece(thigh, extra, g.rig.bp.thigh * RES) : thigh, j.hip, segAngle(j.hip, j.knee), `thigh${s}` as PartId, color, line);
+    stampPiece(g, legDepth(s, 'cloth'), extra > 0.5 ? stretchPiece(thigh, extra, bone * RES) : thigh, j.hip, segAngle(j.hip, j.knee), `thigh${s}` as PartId, color, line);
   }
 }
 
@@ -365,7 +380,7 @@ export const SAMURAI_ITEMS: ItemDef[] = [
     bodies: [...MEN],
     draw: (g, [main]) => {
       const r = g.rig;
-      stampLeaning(g, 'waist', SAMURAI_OBI, r.pelvis, segAngle(r.pelvis, r.neck), 'pelvis', tint(g, SAMURAI_OBI_KIND, {}, [SAMURAI_OBI_GOLD, main]), lineOf(SAMURAI_OBI_KIND));
+      stampLeaning(g, 'waist', pinned(SAMURAI_OBI, SAMURAI_OBI_REST.SAMURAI_OBI, samuraiRestRig(g.look).pelvis, 'obi'), r.pelvis, segAngle(r.pelvis, r.neck), 'pelvis', tint(g, SAMURAI_OBI_KIND, {}, [SAMURAI_OBI_GOLD, main]), lineOf(SAMURAI_OBI_KIND));
     },
   },
   {

@@ -44,7 +44,7 @@ export const SAMURAI_OBI: PaintedPiece = {
   pivot: [11, 11],
   angle: -89.65,
   rows: [
-    '.aa...a..............',
+    'aaa...a..............',
     '.bcaadeadeeeeeeeeeda.',
     '.afhiiiaaaaaaiaiaaaj.',
     '.ffaaafiiiijhhiaiaifa',
@@ -52,11 +52,11 @@ export const SAMURAI_OBI: PaintedPiece = {
     '.afffffffkjkajfifaaia',
     'aammnaaaaaaaifafajbaa',
     'adpqrsmsmeqmiatumaiv.',
-    'a.aaaa...a.wiap..a.a.',
+    '..aaa.....awiap.aaa..',
     '..........ajiaaa.....',
     '..........aiwvx......',
-    '..........ayfvx......',
-    '..........aaazz......',
+    '...........yfvxa.....',
+    '...........aazz......',
   ],
   colors: {
     a: '#000113',

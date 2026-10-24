@@ -76,7 +76,7 @@ export const SAMURAI_KNEE_N: PaintedPiece = {
   pivot: [5, 5],
   angle: 103.49,
   rows: [
-    '..........aa',
+    '.......aaa.a',
     '.bcdcebbbec.',
     '.cdcfhaaccc.',
     'accciijkacb.',
@@ -193,7 +193,7 @@ export const SAMURAI_KNEE_F: PaintedPiece = {
   pivot: [4, 5],
   angle: 96.84,
   rows: [
-    '......a.',
+    '...aa...',
     '.bbcddaa',
     '.ddaefaa',
     '.dahijaa',

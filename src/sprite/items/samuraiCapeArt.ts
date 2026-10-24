@@ -30,7 +30,7 @@ export const SAMURAI_CAPE: PaintedPiece = {
     '................aa..................................',
     '...............abaaa................................',
     '..............abbbcaccccccccccccccccccccc...........',
-    '.............adbbeaa.eeeeeeeeeeeeeeeeeeee...........',
+    '.............adbbeaaeeeeeeeeeeeeeeeeeeeee...........',
     '............aebbdeaaeeeeeeeeeeeeeeeeeeeee...........',
     '...........aeebbeaaaeeeeeeeeeeeeeeeeeeeee...........',
     '..........aeebbeeaaaeeeeeeeeeeeeeeeeeeeee...........',

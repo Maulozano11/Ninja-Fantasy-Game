@@ -102,7 +102,7 @@ describe('the sheets keep their jutsu, marked when another class\'s', () => {
     // Aurelia's sheet is provisional (a Light medic, made before the class rule): it waits for the owner's
     // jutsu for her (docs/STATUS.md). Until then her two off-class jutsu stay, marked, as on any old sheet.
     for (const { character: c } of LEGENDARY_PRESETS)
-      assert.deepEqual(offClassJutsus(c.selectedJutsus, c.shinobiClass), c.id === 'preset_aurelia' ? ['temple_of_nirvana', 'leaf_hurricane_senpuu'] : [], c.id);
+      assert.deepEqual(offClassJutsus(c.selectedJutsus, c.shinobiClass), c.id.startsWith('preset_aurelia') ? ['temple_of_nirvana', 'leaf_hurricane_senpuu'] : [], c.id);
   });
 
   it('no companion breaks it either: Hana (a medic) has the Dragon Tsunami since Yasaka no Magatama left the game', () => {

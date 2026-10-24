@@ -685,6 +685,8 @@ export interface BootArt {
   F: BootSide;
   line: string;
   turnFoot: boolean;
+  /** At rest every pixel of the boot is as laid (his later boots meet his other pieces with no line of their own at the knee): the knee is closed only once it turns. */
+  restAsLaid?: boolean;
 }
 
 const DAWN_BOOT_ART: BootArt = {
@@ -727,9 +729,9 @@ export function drawBoots(g: DrawCtx, art: BootArt, tint: (ch: string, hex: stri
     const L = g.L(d);
     const tp = partIndex(`thigh${s}`);
     for (let i = 0; i < GRID * GRID; i++) if (L.mat[i] >= 0 && L.part[i] === tp) boot[i] = 1;
-    closeKnee(g, s, boot, knee, art.line);
-    torsoOffBoot(g, boot);
     const turned = Math.abs(shinA - shin.angle) >= 0.5 || Math.abs(thighA - thigh.angle) >= 0.5 || footAt.x !== at.x || turn !== 0;
+    if (turned || !art.restAsLaid) closeKnee(g, s, boot, knee, art.line);
+    torsoOffBoot(g, boot);
     if (turned) closeOpen(g, d, boot, art.line);
     if (turned) sealed.push([s, knee, () => roundKnee(g, s, hip, knee, ankle, thigh, shin, thighA, shinA, art.line), kneeWidth(thigh)]);
   }

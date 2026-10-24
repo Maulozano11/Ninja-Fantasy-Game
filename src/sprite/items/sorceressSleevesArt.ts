@@ -14,7 +14,7 @@ export const NIGHT_SLEEVES_BASE: Record<string, string> = {
 /** The letters of each slot's colours. */
 export const NIGHT_SLEEVES_CHARS: Record<string, string> = {
   cloth: 'abcdefhijlmnp',
-  gold: 'ABqrstuvwxyz',
+  gold: 'qrs',
 };
 /** His skin's letters: drawn in the body's skin, at these shades of it. */
 export const NIGHT_SLEEVES_SKIN: Record<string, number> = {  };
@@ -31,23 +31,21 @@ export const NIGHT_SLEEVES_UPPER_N: PaintedPiece = {
     '......klhhlhh.',
     '.....kllhhllh.',
     '.....klhhlllj.',
-    '.....klllrBll.',
-    '....klwjuAllh.',
-    '....kltxvlllh.',
-    '...kzyhlllklk.',
+    '.....klllhhll.',
+    '....klhjjdllh.',
+    '....klssslllh.',
+    '...ksshlllklk.',
     '...klljhlk.kl.',
     '...klhdjlk.kl.',
     '..kldddfk...k.',
     '..kddccjk...k.',
-    '.kjkccdjk.....',
-    'kjkkkkkjk.....',
-    'kkccfcak....k.',
+    '.kjcccdjk.....',
+    'kjccccajk.....',
+    'kcccfcak....k.',
     '.....fa.......',
   ],
   colors: {
     k: '#000008',
-    A: '#957144',
-    B: '#866e4a',
     a: '#7a3a70',
     c: '#562b58',
     d: '#46344e',
@@ -55,14 +53,7 @@ export const NIGHT_SLEEVES_UPPER_N: PaintedPiece = {
     h: '#322f3a',
     j: '#301e3a',
     l: '#201a26',
-    r: '#e0c684',
-    t: '#c09656',
-    u: '#bc9266',
-    v: '#b6915e',
-    w: '#ae8f50',
-    x: '#b68a54',
-    y: '#aa7c3f',
-    z: '#9c6e4c',
+    s: '#cca86a',
   },
 };
 
@@ -112,7 +103,7 @@ export const NIGHT_SLEEVES_UPPER_F: PaintedPiece = {
     '.k.....',
     'llk....',
     'ppk....',
-    'ssk....',
+    'rrk....',
     'eeik...',
     'eeik...',
     'eeik...',
@@ -122,9 +113,9 @@ export const NIGHT_SLEEVES_UPPER_F: PaintedPiece = {
     'pplk...',
     'llljk..',
     'lljjk..',
-    'llkkfk.',
-    'lkkfbfk',
-    'jkkf...',
+    'lljffk.',
+    'lljfbfk',
+    'jjjf...',
     'll.....',
   ],
   colors: {
@@ -137,7 +128,7 @@ export const NIGHT_SLEEVES_UPPER_F: PaintedPiece = {
     l: '#201a26',
     m: '#2c0d2a',
     p: '#0a041a',
-    s: '#d2b284',
+    r: '#d2b284',
   },
 };
 

@@ -8,7 +8,7 @@ import type { PaintedPiece } from '../painted';
 export const ALCH_BLOUSE_LINE = '#000008';
 /** The colours the slots recolour from: at these every pixel stays his. */
 export const ALCH_BLOUSE_BASE: Record<string, string> = {
-  cloth: '#d8b698',
+  cloth: '#caae90',
   trim: '#462a28',
 };
 /** The letters of each slot's colours. */
@@ -27,11 +27,11 @@ export const ALCH_BLOUSE_UPPER_N: PaintedPiece = {
     '...kaaadi.rr.',
     '...kaaadk.krr',
     '..khaaack.kqq',
-    '.khcaaak...kr',
-    '.kkchack...ks',
-    'khkkkkik.....',
-    'kkhdcakk.....',
-    '...cdkhk.....',
+    '.kchaaak...kr',
+    '.kacdack...ks',
+    'khcaaiik.....',
+    'kihdcack.....',
+    '...cddhk.....',
     '......k......',
   ],
   colors: {
@@ -94,9 +94,9 @@ export const ALCH_BLOUSE_UPPER_F: PaintedPiece = {
     'llk..',
     'iik..',
     'dddk.',
-    'mkkk.',
-    'dkkdk',
-    'ddkk.',
+    'mmlk.',
+    'ddddk',
+    'dddd.',
   ],
   colors: {
     k: '#000008',

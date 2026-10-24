@@ -1995,13 +1995,15 @@ export const LEGENDARY_PRESETS: { name: string; tag: string; nameEs?: string; ta
         hands: 'small',
         slots: {
           hair: it('hair_dawn_bun'),
+          face: it('face_smoky_eyes'),
           top: it('top_nightshade_sleeves'),
           armor: it('armor_nightshade_corset'),
           hands: it('hands_nightshade_gloves'),
           skirt: it('skirt_nightshade_tatters'),
           waist: it('waist_nightshade_sash'),
           feet: it('feet_nightshade_boots'),
-          held: it('held_dawn_staff'),
+          // his sorceress's violet orb on her staff
+          held: { ...it('held_dawn_staff'), parts: { orb: 'night' } },
         },
         chakra: { color: 'white', tint: '#fac856', onCharge: true, onCast: true, onVictory: true }, // Light, in her staff's gold
       }),

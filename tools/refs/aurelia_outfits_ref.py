@@ -352,9 +352,9 @@ PARTS = {
         ('slit_f', [rect(262, 158, 274, 175)], ('skin', 'line')),
         ('sleeve_n', [[(178, 58), (234, 58), (234, 64), (232, 108), (214, 108), (212, 140), (200, 160), (178, 160)]], _CLOTH_S),
         ('sleeve_f', [[(260, 58), (300, 58), (300, 150), (268, 150), (268, 112), (262, 112), (262, 70)]], _CLOTH_S),
-        ('front', [rect(238, 120, 264, 236)], _CLOTH_S),
-        ('leg_n', [[(213, 170), (240, 170), (238, 180), (232, 195), (228, 205), (222, 215), (220, 267), (196, 267), (198, 215), (206, 205), (212, 205)]], _LEG_S),
-        ('near', [[(176, 118), (238, 118), (236, 150), (224, 165), (212, 172), (206, 205), (198, 215), (196, 250), (176, 250)]], _CLOTH_S),
+        ('front', [rect(238, 120, 263, 236)], ('dark', 'line', 'purple', 'gold', 'leather', 'steel', 'violet')),
+        ('leg_n', [[(216, 170), (240, 170), (238, 180), (232, 195), (228, 205), (222, 215), (220, 267), (196, 267), (198, 215), (206, 205), (213, 200), (214, 190)]], _LEG_S),
+        ('near', [[(176, 118), (238, 118), (236, 150), (224, 165), (216, 170), (214, 190), (213, 200), (206, 205), (198, 215), (196, 250), (176, 250)]], _CLOTH_S),
         ('leg_f', [[(260, 170), (278, 170), (278, 240), (296, 250), (296, 267), (254, 267), (254, 205), (260, 200)]], _LEG_S),
         ('far', [[(266, 125), (300, 125), (300, 250), (278, 250), (278, 170), (266, 170)]], _CLOTH_S),
         ('lining', [[(214, 165), (288, 165), (288, 248), (196, 248)]], _CLOTH_S),
@@ -1272,6 +1272,37 @@ def thin(mask):
     return m[1:-1, 1:-1].astype(bool)
 
 
+# A bar is a light stroke at least twice as wide as tall and at most BAR_H of his cells tall; a thinned stroke loses
+# its spurs up to SPUR cells long (a thorn's prickles), which at our scale would clot round it.
+BAR_H = 4
+# Strokes thinned again once laid at our scale (THIN_FINE).
+THIN_FINE = True
+SPUR = 2
+
+
+def prune(t, n):
+    """A thinned stroke with its spurs (branches up to n cells long) taken off: its ends taken off n times, then
+    grown back along the stroke from what is left, as far as the main line's ends reached."""
+    if t.sum() <= 3 * n:
+        return t
+    m = t.copy()
+    def ends(q):
+        nb = sum(np.roll(np.roll(q, dy, 0), dx, 1) for dy in (-1, 0, 1) for dx in (-1, 0, 1) if dy or dx)
+        return q & (nb <= 1)
+    for _ in range(n):
+        m &= ~ends(m)
+    # grow the main line's ends back along the original stroke
+    for _ in range(n):
+        e = ends(m)
+        grow = np.zeros_like(m)
+        for dy in (-1, 0, 1):
+            for dx in (-1, 0, 1):
+                if dy or dx:
+                    grow |= np.roll(np.roll(e, dy, 0), dx, 1)
+        m |= grow & t
+    return m
+
+
 def local_middle(L, mask, r):
     """The median lightness of the piece's cells within r of each cell."""
     H, W = mask.shape
@@ -1289,7 +1320,7 @@ def local_middle(L, mask, r):
 STROKE_THICK = 2.3
 
 
-def strokes(a, K, mask, light_kinds=None, fold_min=None):
+def strokes(a, K, mask, light_kinds=None, fold_min=None, stroke_min=None):
     """His light and dark strokes in a piece: (light, dark, cells) - the light and the dark strokes thinned to
     their middle lines, and all their cells."""
     L = luma(a.astype(float))
@@ -1300,19 +1331,33 @@ def strokes(a, K, mask, light_kinds=None, fold_min=None):
     lit = solid & (L > mid + LIGHT_T)
     if light_kinds is not None:
         lit &= np.isin(K, light_kinds)
-    for m, least in ((lit, STROKE_MIN), (solid & (L < mid - DARK_T), fold_min or FOLD_MIN)):
+    tone = a.copy()
+    for m, least in ((lit, stroke_min or STROKE_MIN), (solid & (L < mid - DARK_T), fold_min or FOLD_MIN)):
         keep = np.zeros_like(m)
         lab_, n = components_mask(m)
         for c in range(n):
             g = lab_ == c
             if g.sum() < least:
                 continue
-            t = thin(g)
-            if g.sum() <= STROKE_THICK * max(1, t.sum()):
+            cy, cx = np.nonzero(g)
+            h, w = cy.max() - cy.min() + 1, cx.max() - cx.min() + 1
+            if m is lit and w >= 2 * h and h <= BAR_H:
+                # a bar of his (a buckle's tongue, a lace's bar): one line along its middle row
+                t = np.zeros_like(g)
+                t[int(round(cy.mean())), cx.min():cx.max() + 1] = True
+            else:
+                t = prune(thin(g), SPUR)
+            if g.sum() <= STROKE_THICK * max(1, t.sum()) or (m is lit and w >= 2 * h and h <= BAR_H):
                 keep |= t
                 cells |= g
+                if m is lit:
+                    # the stroke in one colour of his: the commonest of its lighter half
+                    vals = sorted((float(L[y, x]), tuple(int(v) for v in a[y, x])) for y, x in zip(cy, cx))
+                    top = [v for _, v in vals[len(vals) // 2:]]
+                    best = max(sorted(set(top)), key=top.count)
+                    tone[t] = best
         out.append(keep)
-    return out[0], out[1], cells
+    return out[0], out[1], cells, tone
 
 
 def components_mask(m):
@@ -1337,7 +1382,7 @@ def components_mask(m):
     return lab_, n
 
 
-def reduce2(a, K, mask, M, black, gems=True, outline_inner=True, his_gap=frozenset(), light_kinds=None, fold_min=None):
+def reduce2(a, K, mask, M, black, gems=True, outline_inner=True, his_gap=frozenset(), light_kinds=None, fold_min=None, stroke_min=None):
     """A piece of his (`mask`: his cells, `a` their colours, K their kinds) at our scale: (m, col, isl) in our
     256 x 256 frame (isl: his line)."""
     H, W = mask.shape
@@ -1345,7 +1390,7 @@ def reduce2(a, K, mask, M, black, gems=True, outline_inner=True, his_gap=frozens
     m = np.zeros((G, G), bool)
     col = np.zeros((G, G, 3), np.int32)
     isl = np.zeros((G, G), bool)
-    light, dark, stroke = strokes(a, K, mask, light_kinds, fold_min)
+    light, dark, stroke, tone = strokes(a, K, mask, light_kinds, fold_min, stroke_min)
     pal = piece_palette(a, K, mask)
     snap = lambda c: min(pal, key=lambda t: (float(((np.array(t, float) - np.array(c, float)) ** 2).sum()), t))  # noqa: E731
     ys, xs = np.nonzero(mask)
@@ -1372,6 +1417,16 @@ def reduce2(a, K, mask, M, black, gems=True, outline_inner=True, his_gap=frozens
                     t = tuple(int(v) for v in a[y, x])
                     tally[t] = tally.get(t, 0) + w
                 col[j, i] = max(sorted(tally), key=lambda t: tally[t])
+            elif BASE == 'centre':
+                # his cell under the pixel's middle (his structure: his lines and folds where they fall), the
+                # nearest cell of the piece under it where the middle is not the piece's
+                cx, cy = M.his((i + 0.5, j + 0.5))
+                yy, xx = int(np.floor(cy)), int(np.floor(cx))
+                if not (0 <= yy < H and 0 <= xx < W and mask[yy, xx]):
+                    yy, xx, _ = min(mine, key=lambda c: ((c[0] + 0.5 - cy) ** 2 + (c[1] + 0.5 - cx) ** 2, c[0], c[1]))
+                col[j, i] = a[yy, xx]
+                if K[yy, xx] == 'line':
+                    isl[j, i] = True
             elif BASE == 'pal':
                 # the colour of the piece's palette (its commonest colours of his) nearest the mean of his cells
                 # there, his line and strokes counted out: flat areas of his main colours, as he paints
@@ -1385,7 +1440,7 @@ def reduce2(a, K, mask, M, black, gems=True, outline_inner=True, his_gap=frozens
                 cand = sorted(set(tuple(int(v) for v in a[y, x]) for y, x, w in pick))
                 col[j, i] = min(cand, key=lambda t: (float(((np.array(t) - mean) ** 2).sum()), t))
     # specks of the cloth left by the reading: a pixel unlike its four neighbours, which agree, takes their colour
-    if BASE == 'pal':
+    if BASE in ('pal', 'centre'):
         fixed = col.copy()
         for j, i in zip(*np.nonzero(m & ~isl)):
             nb = [(j + dj, i + di) for dj, di in ((1, 0), (-1, 0), (0, 1), (0, -1))]
@@ -1396,12 +1451,20 @@ def reduce2(a, K, mask, M, black, gems=True, outline_inner=True, his_gap=frozens
         col = fixed
     # his strokes: dark folds first, his light strokes over them
     for s in (dark, light):
+        # laid on the pixels their cells' middles land on, then thinned again at our scale, so a slanting stroke
+        # is a 1 px stair and not two pixels wide
+        lay = np.zeros((G, G), bool)
+        pick = {}
         for y, x in zip(*np.nonzero(s)):
             fx, fy = M.fine((x + 0.5, y + 0.5))
             q = (int(np.floor(fy)), int(np.floor(fx)))
             if m[q]:
-                col[q] = a[y, x] if BASE != 'pal' else snap(a[y, x]) if s is dark else a[y, x]
-                isl[q] = False
+                lay[q] = True
+                pick.setdefault(q, (y, x))
+        for q in zip(*np.nonzero(thin(lay) if THIN_FINE else lay)):
+            y, x = pick[q]
+            col[q] = snap(a[y, x]) if s is dark else tone[y, x]
+            isl[q] = False
     # his gems: 2 x 2, his highlight at the top left, his gem's middle colour and its dark
     # and his marks (a buckle, a stud ring: GEM_KINDS and steel, small and lit): 2 x 2 the same way, or a single
     # pixel of his lightest steel for a mark under MARK_MIN cells
@@ -1419,6 +1482,10 @@ def reduce2(a, K, mask, M, black, gems=True, outline_inner=True, his_gap=frozens
             hl, mid_, dk = cs[-1], cs[len(cs) // 2], cs[0]
             cells = (((0, 0), hl), ((0, 1), mid_), ((1, 0), mid_), ((1, 1), dk))
             if len(cy) < MARK_MIN:
+                # (a small mark of steel, a stud, would be a lone light speck at our scale: left to the cloth;
+                # a small gem keeps one pixel of his highlight)
+                if not np.isin(K[cy, cx], GEM_KINDS).any():
+                    continue
                 cells = (((int(round(fy - 0.5 - j0)), int(round(fx - 0.5 - i0))), hl),)
             for (dj, di), c_ in cells:
                 q = (j0 + dj, i0 + di)
@@ -1455,8 +1522,11 @@ _FINE = {}
 # The kinds of his light strokes each piece keeps as lines (his gold trim and thorns, his steel buckles); his other
 # light touches (studs, glints on leather, lit cloth) are read with the cloth round them.
 LIGHT_KINDS_DEFAULT = ('gold',)
+# Where his small light touches are studs (the alchemist's leather): a stroke there is at least this many cells; his
+# studs (2 x 2) are left to the leather round them, where at our scale each would be a lone light speck.
+STROKE_MINS = {'alchemist': {'bodice': 8, 'belt': 8, 'pauldron': 8, 'bracer_n': 8, 'bracer_f': 8, 'hand_n': 8, 'hand_f': 8, 'leg_n': 8, 'leg_f': 8}}
 LIGHT_KINDS = {
-    'sorceress': {'front': ('gold', 'purple'), 'near': ('gold', 'purple'), 'far': ('gold', 'purple')},
+    'sorceress': {'front': ('gold', 'purple'), 'near': ('gold', 'purple'), 'far': ('gold', 'purple'), 'bodice': ('gold', 'skin', 'leather')},
     'alchemist': {'sleeve_n': (), 'sleeve_f': ()},
 }
 
@@ -1473,6 +1543,10 @@ def continued(outfit, name):
             more |= inside(pts, H, W)
         more &= ~bg
     mask, col = continue_under(a, K, lab, name, fronts, REACH.get(name), more)
+    # a skirt's piece never below his own lowest row of it (a hem continued behind the legs ends where he ended it)
+    if name in SKIRT:
+        ys = np.nonzero((lab == name).any(1))[0]
+        mask[ys.max() + 1:, :] = False
     KK = K.copy()
     new = mask & (lab != name)
     for y, x in zip(*np.nonzero(new)):
@@ -1487,7 +1561,7 @@ def fine(outfit, name):
         a, K, bg, lab = load(outfit)
         mask, col, KK = continued(outfit, name)
         lk = LIGHT_KINDS.get(outfit, {}).get(name, LIGHT_KINDS_DEFAULT)
-        _FINE[key] = reduce2(col, KK, mask, body_map(outfit), his_line(a), outline_inner=False, light_kinds=lk, fold_min=FOLDS.get(name))
+        _FINE[key] = reduce2(col, KK, mask, body_map(outfit), his_line(a), outline_inner=False, light_kinds=lk, fold_min=FOLDS.get(name), stroke_min=STROKE_MINS.get(outfit, {}).get(name))
     m, c, isl = _FINE[key]
     return m.copy(), c.copy(), isl.copy()
 
@@ -1710,14 +1784,19 @@ def role_by_kind(table):
     return lambda c: table.get(kind(c), table.get(None))
 
 
+# His skin's lightness from which a letter of his skin is the body's base (3), its shadow (2) or its deep shadow (1).
+SKIN_LIT = (195, 150)
+
+
 def skin_shades(pal):
-    """His skin letters' shades of the body's skin, by lightness: his lightest skin the base (3), then the
-    shadow (2), the deep shadow (1)."""
-    hs = sorted((h for h, r in pal.found.items() if r == 'skin'), key=lambda h: -float(luma(np.array([int(h[i:i + 2], 16) for i in (1, 3, 5)], float))))
+    """His skin letters' shades of the body's skin, by their lightness (SKIN_LIT)."""
     out = {}
-    for k, h in enumerate(hs):
-        out[pal.char[h]] = 3 if k == 0 else 2 if k <= max(1, len(hs) // 2) else 1
-    return out
+    for h, r in pal.found.items():
+        if r != 'skin':
+            continue
+        lum = float(luma(np.array([int(h[i:i + 2], 16) for i in (1, 3, 5)], float)))
+        out[pal.char[h]] = 3 if lum >= SKIN_LIT[0] else 2 if lum >= SKIN_LIT[1] else 1
+    return dict(sorted(out.items()))
 
 
 def lower_edge(m):
@@ -1792,8 +1871,7 @@ def arm_pieces(outfit, name, side):
     m, col, isl = fine(outfit, name)
     sh, el = J['shoulder' + side], J['elbow' + side]
     upper, fore = split_at(m, sh, el, el, UNDER_ELBOW)
-    col = edge_line(fore, col, fore & upper, black)
-    return upper, fore, col
+    return upper, fore, col, edge_line(fore, col, fore & upper, black)
 
 
 def sleeves(outfit, script, prefix, names, roles, what, span_fore=None):
@@ -1805,20 +1883,20 @@ def sleeves(outfit, script, prefix, names, roles, what, span_fore=None):
     parts = {}
     pal = Palette(black, ['cloth', 'trim', 'gold', 'skin'])
     for side, name in zip(('N', 'F'), names):
-        upper, fore, col = arm_pieces(outfit, name, side)
-        parts[side] = (upper, fore, col)
+        upper, fore, col, fcol = arm_pieces(outfit, name, side)
+        parts[side] = (upper, fore, col, fcol)
         pal.add(upper, col, role_by_kind(roles))
-        pal.add(fore, col, role_by_kind(roles))
+        pal.add(fore, fcol, role_by_kind(roles))
     pal.build()
     skin = skin_shades(pal)
-    bases = {r: commonest_of(pal, [(u, c) for u, f, c in parts.values()] + [(f, c) for u, f, c in parts.values()], r) for r in ('cloth', 'trim', 'gold')}
+    bases = {r: commonest_of(pal, [(u, c) for u, f, c, fc in parts.values()] + [(f, fc) for u, f, c, fc in parts.values()], r) for r in ('cloth', 'trim', 'gold')}
     bases = {k: v for k, v in bases.items() if v}
     out = [module_head(script, what, pal, prefix, bases, skin)]
-    for side, (upper, fore, col) in parts.items():
+    for side, (upper, fore, col, fcol) in parts.items():
         sh, el, wr = J['shoulder' + side], J['elbow' + side], J['wrist' + side]
         which = 'near' if side == 'N' else 'far'
         out.append(ts_painted(f'{prefix}_UPPER_{side}', f'The {which} sleeve to the elbow (pivot: the shoulder).', pal, upper, col, sh, seg_angle(sh, el)))
-        out.append(ts_painted(f'{prefix}_FORE_{side}', f'The {which} sleeve from the elbow (pivot: the elbow).', pal, fore, col, el, seg_angle(el, wr)))
+        out.append(ts_painted(f'{prefix}_FORE_{side}', f'The {which} sleeve from the elbow (pivot: the elbow).', pal, fore, fcol, el, seg_angle(el, wr)))
         if span_fore is None:
             ys, xs = np.nonzero(fore)
             t = max(along((x + 0.5, y + 1.0), el, wr) for y, x in zip(ys, xs)) / np.hypot(wr[0] - el[0], wr[1] - el[1])
@@ -2003,4 +2081,84 @@ def piece_module(outfit, script, prefix, name, roles, what, joint, seg):
     bases = {k: v for k, v in bases.items() if v}
     out = [module_head(script, what, pal, prefix, bases)]
     out.append(ts_painted(f'{prefix}_PIECE', what + '.', pal, m, c, J[joint], seg_angle(J[seg[0]], J[seg[1]])))
+    return '\n'.join(out)
+
+
+# ---------------------------------------------------------------------------------------------------
+# His outfit at rest as the game lays it: the reference the idle tests check pixel for pixel
+# ---------------------------------------------------------------------------------------------------
+# Each piece's depth at rest (src/sprite/ctx.ts DEPTHS) and its item's place in the drawing order (compose.ts
+# SLOT_ORDER, then the accessories, then the gloves' fists drawn last): the order the game paints them in.
+DEPTH_ORDER = ['backGear', 'farLeg.body', 'farLeg.feet', 'farLeg.armor', 'nearLeg.body', 'nearLeg.feet', 'torso.top', 'skirt', 'torso.armor', 'waist', 'farHand.front', 'nearArm.armor', 'nearArm.over']
+ITEM_ORDER = ['feet', 'top', 'skirt', 'armor', 'waist', 'hands', 'accessory', 'fist']
+LAYOUT = {
+    'sorceress': [
+        ('lining', 'backGear', 'skirt'), ('far', 'backGear', 'skirt'), ('slit_f', 'farLeg.body', 'skirt'),
+        ('leg_f', 'farLeg.feet', 'feet'), ('sleeve_f', 'farLeg.armor', 'top'), ('near', 'farLeg.armor', 'skirt'),
+        ('slit_n', 'nearLeg.body', 'skirt'), ('leg_n', 'nearLeg.feet', 'feet'), ('bodice:waist', 'torso.top', 'armor'),
+        ('far:front', 'skirt', 'skirt'), ('near:front', 'skirt', 'skirt'), ('front', 'skirt', 'skirt'), ('bodice:top', 'torso.armor', 'armor'),
+        ('sash', 'waist', 'waist'), ('cuff_f', 'farHand.front', 'hands'), ('hand_f', 'farHand.front', 'fist'),
+        ('sleeve_n', 'nearArm.armor', 'top'), ('cuff_n', 'nearArm.over', 'hands'), ('hand_n', 'nearArm.over', 'fist'),
+    ],
+    'alchemist': [
+        ('lining', 'backGear', 'skirt'), ('far', 'backGear', 'skirt'),
+        ('leg_f', 'farLeg.feet', 'feet'), ('sleeve_f', 'farLeg.armor', 'top'), ('near', 'farLeg.armor', 'skirt'),
+        ('leg_n', 'nearLeg.feet', 'feet'), ('bodice:waist', 'torso.top', 'armor'),
+        ('far:front', 'skirt', 'skirt'), ('near:front', 'skirt', 'skirt'), ('front', 'skirt', 'skirt'), ('bodice:top', 'torso.armor', 'armor'),
+        ('belt', 'waist', 'waist'), ('bracer_f', 'farHand.front', 'hands'), ('hand_f', 'farHand.front', 'fist'),
+        ('sleeve_n', 'nearArm.armor', 'top'), ('pauldron', 'nearArm.armor', 'accessory'), ('bracer_n', 'nearArm.over', 'hands'), ('hand_n', 'nearArm.over', 'fist'),
+    ],
+}
+BAND_OF = {'sorceress': 'sash', 'alchemist': 'belt'}
+
+
+def at_rest(outfit):
+    """His outfit at our scale as the game paints its pieces at rest: (rgb, mask) in our 256 x 256 frame."""
+    a, K, bg, lab = load(outfit)
+    black = his_line(a)
+    band, _, _ = fine(outfit, BAND_OF[outfit])
+    rgb = np.zeros((256, 256, 3), np.int32)
+    got = np.zeros((256, 256), bool)
+    order = sorted(LAYOUT[outfit], key=lambda e: (DEPTH_ORDER.index(e[1]), ITEM_ORDER.index(e[2])))
+    for name, _, _ in order:
+        base, _, part = name.partition(':')
+        m, c, _ = fine(outfit, base)
+        if base == 'bodice':
+            waist = below_band(m, band)
+            if part == 'waist':
+                for j, i in zip(*np.nonzero(waist)):
+                    if not all(waist[j + dj, i + di] or (dj < 0 and m[j + dj, i + di]) for dj, di in ((1, 0), (-1, 0), (0, 1), (0, -1))):
+                        c[j, i] = black
+                m = waist
+            else:
+                m = m & ~waist
+        elif part == 'front':
+            ys = np.nonzero(m.any(1))[0]
+            rows = rows_above(m, band) + SKIRT_FRONT
+            m = m & (np.arange(256)[:, None] < ys.min() + rows)
+        rgb[m] = c[m]
+        got |= m
+    return rgb, got
+
+
+def ref_module(script):
+    """The reference pixels of both outfits (src/sprite/aureliaOutfitsRefPixels.ts)."""
+    out = [header(script, "Aurelia's two outfits at rest, every pixel of his pieces as the game lays them"), '']
+    for outfit, prefix in (('sorceress', 'SORCERESS'), ('alchemist', 'ALCHEMIST')):
+        rgb, m = at_rest(outfit)
+        pal = Palette(his_line(load(outfit)[0]), ['x'])
+        pal.add(m, rgb, lambda c: 'x')
+        pal.build()
+        rows, (ox, oy) = pal.rows(m, rgb)
+        used = sorted({c for r in rows for c in r if c != '.'}, key=lambda c: (c != 'k', c))
+        out.append(f'/** His {outfit} at our female\'s idle frame 0: rows of palette letters from the fine pixel AT. */')
+        out.append(f'export const {prefix}_REF_AT: [number, number] = [{ox}, {oy}];')
+        out.append(f'export const {prefix}_REF_ROWS: string[] = [')
+        out += [f"  '{r}'," for r in rows]
+        out.append('];')
+        out.append(f'export const {prefix}_REF_COLORS: Record<string, string> = {{ ' + ', '.join(f"{key(c)}: '{pal.hex[c]}'" for c in used) + ' };')
+        skin = ''.join(c for c in used if c != 'k' and kind([int(pal.hex[c][i:i + 2], 16) for i in (1, 3, 5)]) == 'skin')
+        out.append(f"/** His skin's letters: the game draws them in the body's skin (at his skin, his colours). */")
+        out.append(f"export const {prefix}_REF_SKIN = '{skin}';")
+        out.append('')
     return '\n'.join(out)

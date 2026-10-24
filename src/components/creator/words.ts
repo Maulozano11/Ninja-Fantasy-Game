@@ -354,6 +354,12 @@ const ES: Record<string, string> = {
   Potions: 'Pociones',
   'Under-skirt': 'Enagua',
   Tabard: 'Tabardo',
+  'Smoky Eyes': 'Ojos ahumados',
+  Pearl: 'Perla',
+  'The glowing pearl he drew for her, shedding golden sparkles.': 'La perla luminosa que él dibujó para ella, que suelta destellos dorados.',
+  "His sorceress's orb: a dark navy sphere with a cyan glint in a violet rim, shedding teal sparkles.": 'El orbe de su hechicera: una esfera azul marino oscuro con un brillo cian en un aro violeta, que suelta destellos turquesa.',
+  "Dark violet eye makeup: the lash run out past the eye's outer corner, a mauve shadow under each eye.": 'Maquillaje violeta oscuro: la pestaña se alarga pasada la esquina exterior del ojo y una sombra malva bajo cada ojo.',
+  Liner: 'Delineado',
   // Aurelia's hair, vestment and boots
   'Dawn Bun': 'Moño del Alba',
   'Golden hair gathered into a braided bun at the back of the head with a gold ornament, side-swept bangs and a long lock framing each side of the face.': 'Cabello dorado recogido en un moño trenzado en la nuca con un adorno de oro, flequillo de lado y un mechón largo que enmarca cada lado de la cara.',

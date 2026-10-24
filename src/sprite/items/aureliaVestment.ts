@@ -61,6 +61,8 @@ export interface VestmentArt {
   line: string;
   /** His skin's characters: drawn in the body's skin, at these shades of it. */
   skinShades: Record<string, number>;
+  /** Also take away our pelvis's skin past the bodice (his outfits whose sleeves hang beside it), not only the torso's. */
+  clearPelvis?: boolean;
 }
 
 /** Her Dawn Vestment's pieces. */
@@ -109,15 +111,16 @@ const UNDER_SLEEVE = (s: Side): Depth[] => [armDepth(s, 'body'), armDepth(s, 'cl
  * shoulder stays bare (his own shoulder rides the near sleeve over it): of our undergarment nothing
  * shows there (its strap over the near shoulder goes).
  */
-function clearTorso(g: DrawCtx, bodice: Uint8Array, span: [number, number, number] = AURELIA_TORSO_SPAN): void {
+function clearTorso(g: DrawCtx, bodice: Uint8Array, span: [number, number, number] = AURELIA_TORSO_SPAN, pelvis = false): void {
   const r = g.rig;
   const torso = partIndex('torso');
+  const hips = pelvis ? partIndex('pelvis') : -1;
   const [nearFrom, farFrom, to] = span;
   for (const d of UNDER_BODICE) {
     const L = g.L(d);
     if (!L.used) continue;
     for (let i = 0; i < GRID * GRID; i++) {
-      if (L.mat[i] < 0 || L.part[i] !== torso || bodice[i]) continue;
+      if (L.mat[i] < 0 || (L.part[i] !== torso && L.part[i] !== hips) || bodice[i]) continue;
       // fine pixels below the neck, along the torso
       const dx = ((i % GRID) + 0.5) / RES - r.neck.x;
       const dy = (Math.floor(i / GRID) + 0.5) / RES - r.neck.y;
@@ -312,7 +315,7 @@ export function drawVestment(g: DrawCtx, art: VestmentArt, tint: (ch: string, he
     }
     covers.push(c);
   }
-  if (parts.bodice && art.bodice) clearTorso(g, bodice, art.torsoSpan);
+  if (parts.bodice && art.bodice) clearTorso(g, bodice, art.torsoSpan, art.clearPelvis);
   if (parts.sleeves && art.sleeves) sleeves.forEach(([s, , , span], k) => clearArm(g, s, covers[k], span));
   for (const [d, c] of turned) {
     // only the bodice: the sleeves' turns are his approved walk, pixel for pixel

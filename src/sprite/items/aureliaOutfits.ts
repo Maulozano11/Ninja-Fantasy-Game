@@ -10,10 +10,12 @@
 import { retintHex } from '../color';
 import { armDepth, armJoints, type Depth, type DrawCtx, type ItemDef, legDepth, legJoints, type Side } from '../ctx';
 import { type PaintedPiece, segAngle, skinTone, stampPiece } from '../painted';
-import { GRID, partIndex, type PartId } from '../raster';
+import { F_NO_EDGE, F_NO_OUTLINE, GRID, partIndex, type PartId, RES } from '../raster';
+import { rotateTemplate } from '../rotsprite';
 import { type BootArt, closesLegs, drawBoots, fillHoles, legsKeptAsDrawn, sealLegsAfter } from './aureliaBoots';
 import { bareThighs, drawPiece, liningOffTheGround, type SkirtPiece, trimPanelSpurs } from './aureliaLower';
 import { drawVestment, type VestmentArt } from './aureliaVestment';
+import { eyeCells } from '../body';
 import * as AB from './alchemistBeltArt';
 import * as ABL from './alchemistBlouseArt';
 import * as ABR from './alchemistBracersArt';
@@ -59,6 +61,7 @@ const NIGHT_CORSET_ART: VestmentArt = {
   torsoSpan: NC.NIGHT_CORSET_TORSO_SPAN,
   line: NC.NIGHT_CORSET_LINE,
   skinShades: NC.NIGHT_CORSET_SKIN,
+  clearPelvis: true,
 };
 const ALCH_CORSET_ART: VestmentArt = {
   bodice: AC.ALCH_CORSET_BODICE,
@@ -66,6 +69,7 @@ const ALCH_CORSET_ART: VestmentArt = {
   torsoSpan: AC.ALCH_CORSET_TORSO_SPAN,
   line: AC.ALCH_CORSET_LINE,
   skinShades: AC.ALCH_CORSET_SKIN,
+  clearPelvis: true,
 };
 const NIGHT_SLEEVES_ART: VestmentArt = {
   sleeves: { N: [NL.NIGHT_SLEEVES_UPPER_N, NL.NIGHT_SLEEVES_FORE_N, NL.NIGHT_SLEEVES_SPAN_N], F: [NL.NIGHT_SLEEVES_UPPER_F, NL.NIGHT_SLEEVES_FORE_F, NL.NIGHT_SLEEVES_SPAN_F] },
@@ -271,7 +275,7 @@ function drawSkirt(g: DrawCtx, art: SkirtArt, tint: (role: string, hex: string) 
   if (art.slits) {
     for (const s of ['F', 'N'] as Side[]) {
       const { hip, knee } = legJoints(g.rig, s);
-      stampPiece(g, legDepth(s, 'body'), art.slits[s], knee, segAngle(hip, knee), `thigh${s}`, (_ch, hex) => skinTone(hex, art.slits!.skin, g.look.skin));
+      stampPiece(g, legDepth(s, 'body'), art.slits[s], knee, segAngle(hip, knee), `thigh${s}`, (_ch, hex) => (hex === art.line ? hex : skinTone(hex, art.slits!.skin, g.look.skin)));
     }
   }
   drawPiece(g, 'backGear', 'pelvis', art.lining, tint);
@@ -280,6 +284,7 @@ function drawSkirt(g: DrawCtx, art: SkirtArt, tint: (role: string, hex: string) 
   drawPiece(g, 'farLeg.armor', 'thighN', art.near, tint);
   drawPiece(g, 'skirt', 'thighN', art.near, tint, art.near.front);
   drawPiece(g, 'skirt', 'pelvis', art.front, tint);
+  thighsUnderPanels(g, art);
   const below: Depth[] = ['backGear', 'farLeg.body', 'farLeg.cloth', 'farLeg.feet', 'farLeg.armor', 'nearLeg.body', 'nearLeg.cloth', 'nearLeg.feet', 'skirt'];
   if (g.rig.pose !== 'idle') {
     if (!legsKeptAsDrawn(g)) liningOffTheGround(g, art.line);
@@ -287,6 +292,38 @@ function drawSkirt(g: DrawCtx, art: SkirtArt, tint: (role: string, hex: string) 
     trimPanelSpurs(g, below, art.line);
   }
   sealLegsAfter(g, 'skirt');
+}
+
+/**
+ * Takes our bare thighs away where his panels hang over them (his near panel is drawn behind the near leg, as
+ * her Dawn skirt's is): of a thigh, only what his slit shows of it (his bare thigh's piece) and what no panel of
+ * his lies under stays, so his panel shows where he drew it.
+ */
+function thighsUnderPanels(g: DrawCtx, art: SkirtArt): void {
+  const panels = (['backGear', 'farLeg.armor', 'skirt'] as Depth[]).map((d) => g.L(d)).filter((L) => L.used);
+  for (const s of ['F', 'N'] as Side[]) {
+    const L = g.L(legDepth(s, 'body'));
+    if (!L.used) continue;
+    const thigh = partIndex(`thigh${s}`);
+    const slit = new Uint8Array(GRID * GRID);
+    if (art.slits) {
+      const { hip, knee } = legJoints(g.rig, s);
+      const p = art.slits[s];
+      const deg = segAngle(hip, knee);
+      const ax = Math.floor(knee.x * RES);
+      const ay = Math.floor(knee.y * RES);
+      for (const q of rotateTemplate(p, deg - p.angle)) {
+        const x = ax + q.dx;
+        const y = ay + q.dy;
+        if (x >= 0 && y >= 0 && x < GRID && y < GRID) slit[y * GRID + x] = 1;
+      }
+    }
+    for (let i = 0; i < GRID * GRID; i++) {
+      if (L.mat[i] < 0 || L.part[i] !== thigh || slit[i] || !panels.some((P) => P.mat[i] >= 0)) continue;
+      L.mat[i] = -1;
+      L.flags[i] |= F_NO_EDGE;
+    }
+  }
 }
 
 const NIGHT_SKIRT_ART: SkirtArt = {
@@ -334,12 +371,14 @@ const NIGHT_BOOTS_ART: BootArt = {
   F: { thigh: NB.NIGHT_BOOTS_THIGH_F, shin: NB.NIGHT_BOOTS_SHIN_F, foot: NB.NIGHT_BOOTS_FOOT_F, join: NB.NIGHT_BOOTS_JOIN_F, cut: NB.NIGHT_BOOTS_CUT_F },
   line: NB.NIGHT_BOOTS_LINE,
   turnFoot: true,
+  restAsLaid: true,
 };
 const ALCH_GREAVES_ART: BootArt = {
   N: { thigh: AG.ALCH_GREAVES_THIGH_N, shin: AG.ALCH_GREAVES_SHIN_N, foot: AG.ALCH_GREAVES_FOOT_N, join: AG.ALCH_GREAVES_JOIN_N, cut: AG.ALCH_GREAVES_CUT_N },
   F: { thigh: AG.ALCH_GREAVES_THIGH_F, shin: AG.ALCH_GREAVES_SHIN_F, foot: AG.ALCH_GREAVES_FOOT_F, join: AG.ALCH_GREAVES_JOIN_F, cut: AG.ALCH_GREAVES_CUT_F },
   line: AG.ALCH_GREAVES_LINE,
   turnFoot: true,
+  restAsLaid: true,
 };
 
 export const FEET_NIGHTSHADE_BOOTS: ItemDef = {
@@ -366,6 +405,39 @@ export const FEET_ALCHEMIST_GREAVES: ItemDef = {
 closesLegs('skirt_nightshade_tatters', 'waist_nightshade_sash', 'feet_nightshade_boots', NB.NIGHT_BOOTS_LINE);
 closesLegs('skirt_alchemist_tabard', 'waist_alchemist_belt', 'feet_alchemist_greaves', AG.ALCH_GREAVES_LINE);
 
+// ---------------------------------------------------------------------------------------------------
+// The sorceress's eye makeup (a face item): her own eyes, a violet shadow under them and the lash run out
+// ---------------------------------------------------------------------------------------------------
+
+/** His sorceress's dark violet liner and mauve shadow (sampled from his sheet's middle face). */
+const SMOKY_LINER = '#1a0a30';
+const SMOKY_SHADOW = '#5a3060';
+
+export const FACE_SMOKY_EYES: ItemDef = {
+  id: 'face_smoky_eyes',
+  slot: 'face',
+  name: 'Smoky Eyes',
+  desc: "Dark violet eye makeup: the lash run out past the eye's outer corner, a mauve shadow under each eye.",
+  colors: [col('liner', 'Liner', SMOKY_LINER), col('shadow', 'Shadow', SMOKY_SHADOW)],
+  draw: (g, [liner, shadow]) => {
+    // on the face, under the hair: whichever eyes the look has (eyeCells), each pixel under an eye's lowest
+    // row of white or iris the shadow, and past the near eye's outer lash the liner
+    const L = g.L('head.mask');
+    const cells = eyeCells(g).filter((c) => c.ch !== '.' && c.ch !== ' ');
+    const at = new Set(cells.map((c) => `${c.x},${c.y}`));
+    const put = (x: number, y: number, hex: string) => L.set(x, y, g.m(hex, 'flat'), 3, 'head', F_NO_OUTLINE);
+    for (const c of cells) {
+      if (!/[dhiw]/.test(c.ch)) continue;
+      if (!at.has(`${c.x},${c.y + 1}`)) put(c.x, c.y + 1, shadow);
+    }
+    const lash = cells.filter((c) => c.near && c.ch === 'L');
+    if (lash.length) {
+      const first = lash.reduce((a, b) => (b.x < a.x || (b.x === a.x && b.y < a.y) ? b : a));
+      put(first.x - 1, first.y, liner);
+    }
+  },
+};
+
 /** Every item of the two outfits (catalog.ts). */
 export const AURELIA_OUTFIT_ITEMS: ItemDef[] = [
   ARMOR_NIGHTSHADE_CORSET,
@@ -381,5 +453,6 @@ export const AURELIA_OUTFIT_ITEMS: ItemDef[] = [
   WAIST_ALCHEMIST_BELT,
   SKIRT_ALCHEMIST_TABARD,
   FEET_ALCHEMIST_GREAVES,
+  FACE_SMOKY_EYES,
 ];
 

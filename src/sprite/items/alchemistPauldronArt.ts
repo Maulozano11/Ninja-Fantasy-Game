@@ -8,15 +8,15 @@ import type { PaintedPiece } from '../painted';
 export const ALCH_PAULDRON_LINE = '#000008';
 /** The colours the slots recolour from: at these every pixel stays his. */
 export const ALCH_PAULDRON_BASE: Record<string, string> = {
-  leather: '#643c38',
+  leather: '#59493b',
   metal: '#544e50',
-  gold: '#ffeec9',
+  gold: '#fae8c2',
 };
 /** The letters of each slot's colours. */
 export const ALCH_PAULDRON_CHARS: Record<string, string> = {
   leather: 'abcdefhi',
-  metal: 'jlmnpqrst',
-  gold: 'uvwxy',
+  metal: 'jlmnpqr',
+  gold: 'stu',
 };
 
 /** The alchemist's engraved leather and steel pauldron. */
@@ -24,19 +24,19 @@ export const ALCH_PAULDRON_PIECE: PaintedPiece = {
   pivot: [3, 5],
   angle: 107.10,
   rows: [
-    '....kkkkkyau',
-    '...kebbwxaau',
-    '..kcbjpbbaau',
-    '..kcbpdcek.u',
+    '....kkkkkuas',
+    '...kebbcuaas',
+    '..kcbjnbbaas',
+    '..kcbndcek.s',
     '.kccaccccc.k',
-    'kccrbqsecblc',
-    'keeccsdbfcek',
-    '.kmteccbife.',
-    'kbtdbbaaife.',
-    'kntdbba.hf..',
-    'ktdbeebhff..',
+    'kccbbpqecbbc',
+    'keeccqdbfcek',
+    '.klreccbife.',
+    'kbrdbbaaife.',
+    'kmrdbba.hf..',
+    'krdbeebhff..',
     'kaaaabkhhe..',
-    'kuvvvk.khh..',
+    'kttttk.khh..',
   ],
   colors: {
     k: '#000008',
@@ -49,18 +49,14 @@ export const ALCH_PAULDRON_PIECE: PaintedPiece = {
     h: '#342222',
     i: '#0f1c18',
     j: '#f0e8de',
-    l: '#eee0d3',
-    m: '#dfded6',
-    n: '#cdcfc2',
-    p: '#969692',
-    q: '#767470',
-    r: '#6e6c6c',
-    s: '#5b5257',
-    t: '#544e50',
-    u: '#ffeec9',
-    v: '#fae8c2',
-    w: '#efbd7a',
-    x: '#e5bb7f',
-    y: '#d4aa7a',
+    l: '#dfded6',
+    m: '#cdcfc2',
+    n: '#969692',
+    p: '#767470',
+    q: '#5b5257',
+    r: '#544e50',
+    s: '#ffeec9',
+    t: '#fae8c2',
+    u: '#d4aa7a',
   },
 };

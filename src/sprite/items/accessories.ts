@@ -9,7 +9,7 @@ import { hd } from './hairkit';
 import { CRYSTAL_SWORD, drawPaintedWeapon, drawWeapon, KUNAI } from './weapons';
 import { FLAME_LONGSWORD, FLAME_SWORD_FLAME, FLAME_SWORD_GOLD } from './flameSwordArt';
 import { AURELIA_STAFF_GOLD, AURELIA_STAFF_ORB, DAWN_STAFF } from './aureliaStaffArt';
-import { dawnStaffInFarHand, dawnStaffRest, drawDawnFarFist, drawDawnStaff } from './aureliaStaff';
+import { DAWN_STAFF_PARTS, dawnStaffInFarHand, dawnStaffRest, drawDawnFarFist, drawDawnStaff } from './aureliaStaff';
 import { ICE_SWORD, ICE_SWORD_BLADE, ICE_SWORD_KIND } from './iceSwordArt';
 import { KATANA_PARTS, katanaHipColors, katanaTemplate } from './katana';
 import { KATANA_V2, KATANA_V2_BLADE, KATANA_V2_CHAKRA, KATANA_V2_GOLD, KATANA_V2_WRAP } from './katanaV2Art';
@@ -588,15 +588,17 @@ export const HELD_ITEMS: ItemDef[] = [
     name: 'Dawn Staff',
     desc: 'A short gold staff with winged arms round a glowing pearl orb that sheds golden sparkles: the owner drew it for Aurelia.',
     colors: [col('gold', 'Gold', AURELIA_STAFF_GOLD, 'metal'), col('orb', 'Orb', AURELIA_STAFF_ORB, 'glow')],
-    draw: (g, [gold, orb]) => {
-      if (handsBusy(g)) drawDawnStaff(g, 'backGear', backGrip(g, -62), -62, gold, orb, false);
-      else if (handsLimp(g)) drawDawnStaff(g, 'nearArm.held', droppedGrip(g, 1.3, 4.5), 88, gold, orb, false);
+    parts: DAWN_STAFF_PARTS,
+    draw: (g, [gold, orb], parts) => {
+      const o = parts?.orb ?? 'pearl';
+      if (handsBusy(g)) drawDawnStaff(g, 'backGear', backGrip(g, -62), -62, gold, orb, false, o);
+      else if (handsLimp(g)) drawDawnStaff(g, 'nearArm.held', droppedGrip(g, 1.3, 4.5), 88, gold, orb, false, o);
       // At rest it hangs from her far fist at his angle, every pixel his; otherwise the near fist holds it like a pole.
       else if (dawnStaffInFarHand(g)) {
-        drawDawnStaff(g, 'farArm.held', dawnStaffRest(g), DAWN_STAFF.angle, gold, orb, true);
+        drawDawnStaff(g, 'farArm.held', dawnStaffRest(g), DAWN_STAFF.angle, gold, orb, true, o);
         drawDawnFarFist(g);
       }
-      else if (!handsReleased(g)) drawDawnStaff(g, 'nearArm.held', gripPoint(g), poleAngle(g), gold, orb, true);
+      else if (!handsReleased(g)) drawDawnStaff(g, 'nearArm.held', gripPoint(g), poleAngle(g), gold, orb, true, o);
     },
   },
   {

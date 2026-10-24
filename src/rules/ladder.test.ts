@@ -124,7 +124,7 @@ describe('the ladder: rank A at level 7, rank S at level 10, for every ninja ("a
       const g = growthOf(c, natureOf(c));
       // Aurelia (a Light medic) lost Yasaka no Magatama with nothing of rank S to learn in its place (her
       // provisional sheet waits for the owner's jutsu, docs/STATUS.md): her S-rank slot is empty.
-      if (c.id === 'preset_aurelia' && !c.selectedJutsus.slot5Ultimate) continue;
+      if (c.id.startsWith('preset_aurelia') && !c.selectedJutsus.slot5Ultimate) continue;
       assert.ok(aboveRank(c.selectedJutsus, c.clan, g.rankUp ? natureOf(c) : undefined, c.level).includes(c.selectedJutsus.slot5Ultimate), `${c.id}: its S-rank stays, marked`);
       assert.ok(Object.values(c.selectedJutsus).includes(c.selectedJutsus.slot5Ultimate));
     }

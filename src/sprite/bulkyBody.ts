@@ -4,6 +4,7 @@
 // drew it; in his skin colour every pixel is his; in any other pose each piece turns with its bone, and
 // an edge of his that a pose bares is closed with his line (compose.ts).
 
+import { getItem } from './catalog';
 import { hexToRgb, hslToHex, retintHex, rgbToHsl } from './color';
 import { armDepth, armJoints, type Depth, DrawCtx, handDraw, handPose, legDepth, legJoints, Side } from './ctx';
 import { BULKY_BASE, BULKY_BASE_BRIEFS, BULKY_BASE_KIND, BULKY_BASE_SKIN } from './bulkyBaseArt';
@@ -81,10 +82,19 @@ function onTorso(L: Layer, p: PaintedPiece, at: Vec, deg: number, pal: TemplateP
   });
 }
 
-/** The boxer briefs' colour: the briefs item's slot when it is worn, his own grey otherwise. */
+/**
+ * The boxer briefs' colour: the briefs item's slot when it is worn, his own grey otherwise. Under a skirt with
+ * nothing worn beneath it (the Roman set: strips over a red tunic), the skirt's own cloth, the tunic it hangs
+ * over: his briefs, wider at the hips than the skirt, showed his grey beside its strips (the owner on the Roman
+ * on the bulky body: "se le ve la en la falda lo gris que no se deberia ver").
+ */
 function briefsColour(g: DrawCtx): string {
   const b = g.look.slots.bottom;
-  return b?.id === 'bottom_boxer_briefs' && b.colors?.[0] ? b.colors[0] : BULKY_BASE_BRIEFS;
+  if (b?.id === 'bottom_boxer_briefs' && b.colors?.[0]) return b.colors[0];
+  const skirt = g.look.slots.skirt;
+  const def = skirt && !b ? getItem(skirt.id) : undefined;
+  if (def?.slot === 'skirt' && def.colors?.length) return skirt?.colors?.[0] ?? def.colors[0].default;
+  return BULKY_BASE_BRIEFS;
 }
 
 /**

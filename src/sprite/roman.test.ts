@@ -2,6 +2,7 @@
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
+import { BULKY_BASE, BULKY_BASE_KIND } from './bulkyBaseArt';
 import { renderSprite } from './compose';
 import * as cuirass from './items/bronzeCuirassArt';
 import * as skirt from './items/pterugesArt';
@@ -495,6 +496,22 @@ describe('the Roman set', () => {
     }
   });
 
+  it("shows none of the broad man's grey briefs beside the skirt in any pose or frame: under it, its tunic", () => {
+    // The owner (2026-10-24): "corrige como en combo 1 que se le ve la en la falda lo gris que no se deberia
+    // ver o en sigilo 1". His briefs are wider at the hips than the skirt; with nothing worn beneath it they
+    // take the tunic's red, so none of his greys is drawn.
+    const greys = new Set(Object.values(BULKY_BASE).flatMap((p) => Object.values(p.colors)).filter((c) => BULKY_BASE_KIND[c] === 'cloth').map((c) => c.toLowerCase()));
+    assert.ok(greys.size > 0);
+    const seen: string[] = [];
+    for (const pose of ALL_POSES)
+      for (let f = 0; f < frameCount(rigPoseFor(pose)); f++) {
+        const fr = dressed('bulky', pose, f);
+        let n = 0;
+        for (let i = 0; i < GRID * GRID; i++) if (opaque(fr.rgba, i) && greys.has(hex(fr.rgba, i))) n++;
+        if (n) seen.push(`${pose} ${f}: ${n}`);
+      }
+    assert.deepEqual(seen, []);
+  });
   it('leaves the drapes off when the part says so', () => {
     const count = (drapes: string) => {
       const f = renderSprite(look('male', drapes), 'idle', 0);

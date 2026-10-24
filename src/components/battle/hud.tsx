@@ -41,6 +41,7 @@ import {
   Crown,
   PawPrint,
   Eye,
+  Moon,
 } from 'lucide-react';
 import type { AiOrder, BattleState, Unit } from '../../battle/types';
 import { homeTeam } from '../../battle/types';
@@ -65,7 +66,7 @@ export const ELEMENT_ICON: Record<string, React.FC<{ size?: number; className?: 
   poison: Skull,
 };
 
-/** Clan abilities with an icon of their own (the others show their element's). */
+/** Clan and class abilities with an icon of their own (the others show their element's). */
 export const ABILITY_ICON: Record<string, React.FC<{ size?: number; className?: string }>> = {
   katon_pursuing_flame: Flame,
   koton_block: Box,
@@ -75,6 +76,8 @@ export const ABILITY_ICON: Record<string, React.FC<{ size?: number; className?: 
   northstar_command: Crown,
   northstar_submission: PawPrint,
   mirai_evasion: Eye,
+  // A placeholder until the owner paints its icon: the crescent the element leaves the weapon in.
+  elemental_slash: Moon,
 };
 
 export const ACTION_ICON: Record<string, React.FC<{ size?: number; className?: string }>> = {

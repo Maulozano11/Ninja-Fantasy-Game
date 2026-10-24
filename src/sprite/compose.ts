@@ -10,6 +10,7 @@ import { keptFill } from './keptFills';
 import { closePinholes } from './holes';
 import { fillSeams } from './seams';
 import { paintedFrame, wearsHisFigure } from './ownerFrames';
+import { renSitFrame, stampRenSit } from './renSit';
 import { clipStowed, drawThrowKunai } from './items/accessories';
 import { CAPE_DEPTHS } from './items/capes';
 import { drawHeadband } from './items/headband';
@@ -398,6 +399,14 @@ export function renderSprite(
   // Outline and flatten
   const rgba = new Uint8ClampedArray(GRID * GRID * 4);
   const part = new Uint8Array(GRID * GRID);
+  // Ren seated on the male body is the owner's own frame, pixel for pixel (renSit.ts): nothing of ours drawn.
+  const his = opts.heldOnly || opts.depths ? null : renSitFrame(look, pose, frame, eyeSpecial);
+  if (his) {
+    const hair = new Uint8Array((GRID * GRID) >> 3);
+    stampRenSit(his, rig, look, rgba, part, hair);
+    if (!opts.skipEdits && look.pixelEdits?.length) applyEdits(look.pixelEdits, rig, rgba, part);
+    return { rgba, part, hair, fx: new Uint8Array((GRID * GRID) >> 3), rig };
+  }
   const rgbCache = new Map<string, [number, number, number]>();
   const rgb = (hex: string) => {
     let c = rgbCache.get(hex);
@@ -461,13 +470,13 @@ export function renderSprite(
   // light edge pixels closed (glitches.ts; a pocket is a real separation and stays, the owner: "porfavor no lo
   // repitas mas en ningun personaje"); on the other bodies those of his broad man's pieces (F_OWNER, fitted to
   // them). At rest on the bulky body his broad man is left as he drew him.
-  const his = (i: number) => !!(topFlags[i] & F_OWNER);
+  const owner = (i: number) => !!(topFlags[i] & F_OWNER);
   if (look.body === 'bulky') {
     // a crack or edge it closes can leave a 1-pixel hole beside it: closed as the others
-    if (mendGlitches(rgba, part, top, (i) => top[i] === FX, lineOf, pose === 'idle' ? his : undefined, kept).length && pose !== 'idle') closePinholes(rgba, part, top, (i) => top[i] === FX, lineOf);
+    if (mendGlitches(rgba, part, top, (i) => top[i] === FX, lineOf, pose === 'idle' ? owner : undefined, kept).length && pose !== 'idle') closePinholes(rgba, part, top, (i) => top[i] === FX, lineOf);
   }
   else if (who && !(who === 'aurelia' && pose === 'walk')) mendGlitches(rgba, part, top, (i) => top[i] === FX, lineOf, undefined, kept);
-  else if (topFlags.some((fl) => fl & F_OWNER)) mendGlitches(rgba, part, top, (i) => top[i] === FX, lineOf, (i) => !his(i));
+  else if (topFlags.some((fl) => fl & F_OWNER)) mendGlitches(rgba, part, top, (i) => top[i] === FX, lineOf, (i) => !owner(i));
   const hair = new Uint8Array(N >> 3);
   const fx = new Uint8Array(N >> 3);
   for (let i = 0; i < N; i++) {

@@ -11,6 +11,8 @@ import { BODY_PARAMS, COMBO_KICKS, COMBO_TURNED, drawRig, frameCount, POSE_FPS, 
 import { SPRITE_POSES, type BodyType, type SpriteAppearance } from './types';
 
 const BODIES: BodyType[] = ['male', 'female', 'bulky'];
+/** The bodies solveRig poses (not the fitted female body, BodyParams.fit). */
+const RIGGED = BODIES.filter((b) => !BODY_PARAMS[b].fit);
 const WEAPONS = ['held_katana', 'held_crystal', 'held_ice_crystal', 'held_flame_sword', 'held_gilded_rapier', 'held_kunai', 'held_naginata', 'held_dawn_staff'];
 
 const look = (body: BodyType, held?: string, stowed = false, cape?: string): SpriteAppearance => {
@@ -84,12 +86,14 @@ describe('throw and pierce poses', () => {
     }
   });
 
-  it('keeps the head up on the neck at its length through the throw, release and follow-through, on every body', () => {
+  // (These two check the bodies solveRig poses, PoseFrame.maleNeckPitch; the fitted female bodies turn his neck
+  // less, PoseFrame.neckPitch in solveFit, and femaleBase.test.ts checks them.)
+  it('keeps the head up on the neck at its length through the release and follow-through, on every body', () => {
     // The release once hung the head ahead of the chest by a fixed offset (headDx 6, headDy 8): 13 px from the
     // neck's foot against 9 at rest, below the shoulders, no neck to it (the owner: "hay que arreglarle el
     // cuello y la cabeza a las ultimas 2 poses de arrojar"). As on his heroine's throw (neckPitch), the head
     // stays on the neck at its rest length, the neck 10-30 degrees forward of upright, above the shoulders.
-    for (const body of BODIES) {
+    for (const body of RIGGED) {
       const rest = drawRig(body, 'idle', 0);
       const len = Math.hypot(rest.head.x - rest.neck.x, rest.head.y - rest.neck.y) * RES;
       for (let f = 0; f < frameCount('throw'); f++) {
@@ -97,9 +101,9 @@ describe('throw and pierce poses', () => {
         const d = Math.hypot(r.head.x - r.neck.x, r.head.y - r.neck.y) * RES;
         // no frame stretches the neck past its length (the head on whole fine pixels: 1.5 px)
         assert.ok(d <= len + 1.5, `${body} throw ${f}: the head ${d.toFixed(1)} px from the neck's foot (at rest ${len.toFixed(1)})`);
-        // from the throw itself, the frame before the release, the body pitching after the arm (the owner on
-        // Solen's Arrojar 3: "ahi se quedo igual la cabeza hay que corregirla")
-        if (f < THROW_RELEASE_FRAME - 1) continue;
+        // on the bulky body from the throw itself, the frame before the release, the body pitching after the arm
+        // (the owner on Solen's bulky Arrojar 3: "ahi se quedo igual la cabeza hay que corregirla")
+        if (f < THROW_RELEASE_FRAME - (body === 'bulky' ? 1 : 0)) continue;
         assert.ok(Math.abs(d - len) <= 1.5, `${body} throw ${f}: the head ${d.toFixed(1)} px from the neck's foot (at rest ${len.toFixed(1)})`);
         const deg = (Math.atan2(r.head.x - r.neck.x, r.neck.y - r.head.y) * 180) / Math.PI;
         assert.ok(deg >= 10 && deg <= 30, `${body} throw ${f}: the neck leans ${deg.toFixed(1)} degrees forward`);
@@ -121,7 +125,7 @@ describe('throw and pierce poses', () => {
     delete roman.slots.bottom;
     looks.push(['roman', roman]);
     for (const [name, base] of looks) {
-      for (const body of BODIES) {
+      for (const body of RIGGED) {
         const l = { ...base, body };
         for (let f = 0; f < frameCount('throw'); f++) {
           const r = drawRig(body, rigPoseFor('throw', l.cast?.style, l.slots.held?.id), f);

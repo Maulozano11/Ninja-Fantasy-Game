@@ -9,11 +9,12 @@ import { canStop, reachable } from './nav';
 import { JUTSU, MIN_AIM } from './jutsu';
 import { KUNAI_LONG } from './units';
 import { applyAction, chargeLanding, handsBlocker, jutsuCost } from './engine';
+import { attackPreview } from './combat';
 import { current } from './turns';
 import { areaValue, bestCell, goalOf, headOptions, ninjaOptions, offensive, planIntent, reachTo, standingUnit, stepToward, swapValue, visibleFoes, WALL, wallCover } from './intent';
 import type { Goal } from './intent';
 import { breakable, MAX_STRUCTURES, ownStructures, structureAt, structureAttack, structureBlocker, structureDist } from './structures';
-import { IMBUE_COST, imbueBlocker, type ImbueElement, unitImbueElements, WATER_REACH, WEAPON_ELEMENT } from './imbue';
+import { ELEMENTAL_SLASH, IMBUE_COST, imbueBlocker, type ImbueElement, slashBlocker, slashRange, unitImbueElements, WATER_REACH, WEAPON_ELEMENT } from './imbue';
 import { COMMAND, commandRefused, edgeFoe, ownNodes, submissionRefused, SWAP, WARP, warpBlocker, warpLanding } from './clans';
 
 /** Whether the battle is waiting on the AI (an AI unit's turn in the fighting). */
@@ -201,11 +202,12 @@ function fallback(s: BattleState, u: Unit): Action | null {
 
 /**
  * The bonus action, before the plan: a Ryusei warps to a Node beside a foe its feet can't reach this
- * turn; a Bukijutsu Master about to strike puts its element on its weapon.
+ * turn; a Bukijutsu Master about to strike puts its element on its weapon, and one with the element on
+ * it and no foe its blade can reach this turn throws it at one (slashAway).
  */
 function bonusBefore(s: BattleState, u: Unit, i: Intent): Action | null {
   if (!u.turn.bonus) return null;
-  return ryuseiWarp(s, u, i) ?? imbueFirst(s, u, i);
+  return ryuseiWarp(s, u, i) ?? imbueFirst(s, u, i) ?? slashAway(s, u, false);
 }
 
 /**
@@ -287,7 +289,31 @@ function edgeStrike(s: BattleState, u: Unit, i: Intent): Action | null {
  */
 function bonusAfter(s: BattleState, u: Unit): Action | null {
   if (!u.turn.bonus) return null;
-  return kotonCover(s, u) ?? bonusStrike(s, u);
+  return kotonCover(s, u) ?? slashAway(s, u, true) ?? bonusStrike(s, u);
+}
+
+/**
+ * Elemental Slash (battle/imbue.ts): the element leaves the weapon with it, so a Bukijutsu Master keeps
+ * it on the blade while the blade can reach a foe this turn (walking there counted), and throws it at
+ * one in range and in sight when none can be reached, or, its action spent (`after`), on the element's
+ * last turn, before it fades anyway. The foe it is likeliest to hit, the most wounded on a tie.
+ */
+function slashAway(s: BattleState, u: Unit, after: boolean): Action | null {
+  const spec = JUTSU[ELEMENTAL_SLASH];
+  if (!u.imbued || !u.jutsus.includes(ELEMENTAL_SLASH) || slashBlocker(u) || effectMods(u.effects).noJutsu) return null;
+  if (u.chakra < jutsuCost(u, spec, false) || handsBlocker(u, spec)) return null;
+  const foes = visibleFoes(s, u);
+  const blade = foes.some((f) => dist(u.pos, f.pos) <= reachTo(u, f) + walkBudget(u) + 0.1 && !fullCoverBetween(s, u.pos, f.pos));
+  if (blade && !(after && u.imbued.rounds <= 1)) return null;
+  const range = slashRange(u.imbued.element);
+  let best: { id: string; at: Pt; v: number } | undefined;
+  for (const f of foes) {
+    if (dist(u.pos, f.pos) > range + 0.1 + (f.bulk ?? 0) + (f.kind === 'hydra_head' ? 2.5 : 0) || !lineOfSight(s, u.pos, f.pos)) continue;
+    const pv = attackPreview(s, u, f, 'jutsu', { jutsuRange: range + (f.bulk ?? 0) + (f.kind === 'hydra_head' ? 2.5 : 0), weapon: true });
+    const v = pv.chance + 0.25 * (1 - f.hp / Math.max(1, f.maxHp));
+    if (!best || v > best.v) best = { id: f.id, at: { ...f.pos }, v };
+  }
+  return best ? { type: 'jutsu', unit: u.id, jutsu: ELEMENTAL_SLASH, at: best.at, target: best.id } : null;
 }
 
 /**

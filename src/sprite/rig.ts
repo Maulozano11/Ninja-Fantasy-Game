@@ -1634,7 +1634,8 @@ function solveRig(body: BodyType, bp: BodyParams, pose: RigPose, frame: number, 
   // (the hand as far out as holds this arm as straight as his, SIT_REACH of its length)
   const reachF = (t: HandTarget): HandTarget => {
     const male = BODY_PARAMS.male;
-    if (pose !== 'sit' || t.from !== 'frame' || bp.upperArm + bp.forearm <= male.upperArm + male.forearm) return t;
+    // (the bulky body only: the male and female bodies' sit is approved as it is, long arms too)
+    if (body !== 'bulky' || pose !== 'sit' || t.from !== 'frame' || bp.upperArm + bp.forearm <= male.upperArm + male.forearm) return t;
     const p = resolve(t, shoulderF, armLenF);
     const d = len(sub(p, shoulderF));
     const k = (SIT_REACH * (bp.upperArm + bp.forearm) + bp.handR * 0.8) / d;

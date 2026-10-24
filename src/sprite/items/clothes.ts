@@ -961,7 +961,8 @@ const FOUNDER_ARM_REACH = {
  * body, 2026-10-23: "algunos de sus brazos mal dibujados").
  */
 const onLongerBone = (g: DrawCtx, p: PaintedPiece, bone: 'upperArm' | 'forearm'): PaintedPiece =>
-  g.bp[bone] > BODY_PARAMS.male[bone] ? stretchPiece(p, (g.bp[bone] - BODY_PARAMS.male[bone]) * RES, BODY_PARAMS.male[bone] * RES, continuedFrom(p)) : p;
+  // (the bulky body only: on the female bodies his pieces keep what the approved female standard does with them)
+  g.rig.body === 'bulky' && g.bp[bone] > BODY_PARAMS.male[bone] ? stretchPiece(p, (g.bp[bone] - BODY_PARAMS.male[bone]) * RES, BODY_PARAMS.male[bone] * RES, continuedFrom(p)) : p;
 
 /** His pieces of an arm in this pose: whole at rest, the far arm reaching out his near arm mirrored, else only the limb. */
 const founderArmPieces = (g: DrawCtx, s: Side) => {

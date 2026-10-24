@@ -1468,7 +1468,8 @@ export function drapeStamps(r: Rig): DrapeStamp[] {
   // each knee where it is on this body at rest (the bulky body's thighs are longer than our male's), as a
   // cell of his drape hung from that body's pelvis: the cloth folds at its own knees
   const homeCell = (p: Vec): [number, number] => [Math.floor(p.x * RES) - Math.floor(home.pelvis.x * RES) + P.pivot[0], Math.floor(p.y * RES) - Math.floor(home.pelvis.y * RES) + P.pivot[1]];
-  const knees = { N: homeCell(legJoints(home, 'N').knee), F: homeCell(legJoints(home, 'F').knee) };
+  // (the bulky body only: on the male and female bodies the drape is approved as it folds at his male knees)
+  const knees = r.body === 'bulky' ? { N: homeCell(legJoints(home, 'N').knee), F: homeCell(legJoints(home, 'F').knee) } : { N: cell(legJoints(rest, 'N').knee), F: cell(legJoints(rest, 'F').knee) };
   const thighTurn = (s: Side) => {
     const now = legJoints(r, s);
     const was = legJoints(home, s);
@@ -1732,7 +1733,7 @@ function closeSkirtHoles(L: Layer, drape: Layer, lines: Set<number>, line: numbe
       const x = i % GRID;
       const y = (i / GRID) | 0;
       // never into the ground (a gap between the feet below the ground line is not his cloth's)
-      if (y > GROUND * RES - 1) continue;
+      if (nicks && y > GROUND * RES - 1) continue;
       // a nick in his line closes with his line; elsewhere the nearest of his cloth goes on into the hole
       // (the slit beside an arm takes his cloth below it, as the script continues his drape behind his fist)
       const nick = !slits.has(i) && [[-1, 0], [1, 0], [0, -1], [0, 1]].some(([dx, dy]) => x + dx >= 0 && x + dx < GRID && y + dy >= 0 && y + dy < GRID && lines.has(L.mat[i + dy * GRID + dx]));
@@ -1795,7 +1796,8 @@ function drawDrape(g: DrawCtx, color: (ch: string, hex: string) => string): void
     L.set(x, y, cut ? line : tmp.mat[i], 3, 'pelvis', F_NO_TEXTURE | F_NO_OUTLINE);
   }
   const lines = new Set(blacks.map((ch) => pal[ch][0]));
-  g.after((layers) => closeSkirtHoles(L, tmp, lines, line, layers, r.pose !== 'idle'));
+  // (the nicks and the ground line on the bulky body only: the Roman on the male body is approved as he is)
+  g.after((layers) => closeSkirtHoles(L, tmp, lines, line, layers, r.pose !== 'idle' && r.body === 'bulky'));
 }
 
 /**
@@ -1815,7 +1817,8 @@ function drawPteruges(g: DrawCtx, tc: string, lc: string, sc: string, drapes: bo
   };
   const depth = g.L('torso.over').used ? 'torso.over' : 'skirt';
   // (the waist closed first, then any hole left in the skirt: drawDrape's)
-  if (r.pose !== 'idle') g.after((layers) => closeWaist(g.rig, g.L(depth), layers));
+  // (on the bulky body: the Roman on the male body is approved as he is)
+  if (r.pose !== 'idle' && r.body === 'bulky') g.after((layers) => closeWaist(g.rig, g.L(depth), layers));
   if (drapes) drawDrape(g, color);
   stampLeaning(g, depth, PTERUGES_FRONT, r.pelvis, torso, 'pelvis', color);
 }

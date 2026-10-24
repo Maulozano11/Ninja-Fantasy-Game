@@ -83,7 +83,15 @@ export function characterFromImport(raw: unknown): ShinobiCharacter | null {
   if (typeof raw.sheetVersion === 'number' && Number.isFinite(raw.sheetVersion)) out.sheetVersion = raw.sheetVersion;
   else delete out.sheetVersion;
   if ('appearance' in out) {
-    if (isObj(out.appearance)) out.appearance = mergeKind(defaultAppearance() as unknown as Record<string, unknown>, out.appearance);
+    if (isObj(out.appearance)) {
+      // A sheet without a face shape was drawn with our default face: it keeps it (the default look's
+      // newer Roman face is for new characters only).
+      const { faceShape: _newer, ...base } = defaultAppearance();
+      // nor his hair and bare forehead (2026-10-23): a sheet without them keeps our spikes and headband
+      base.slots = { ...base.slots, hair: { id: 'hair_sunburst', colors: [] } };
+      base.headband = { ...base.headband, position: 'forehead' };
+      out.appearance = mergeKind(base as unknown as Record<string, unknown>, out.appearance);
+    }
     else delete out.appearance;
   }
   // Earlier sheets used other clan names; they load as the clan that replaced each one (without

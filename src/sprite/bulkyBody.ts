@@ -9,7 +9,7 @@ import { armDepth, armJoints, type Depth, DrawCtx, handDraw, handPose, legDepth,
 import { BULKY_BASE, BULKY_BASE_BRIEFS, BULKY_BASE_KIND, BULKY_BASE_SKIN } from './bulkyBaseArt';
 import { segAngle, stretchPiece, type PaintedPiece } from './painted';
 import { add, F_NO_OUTLINE, F_NO_TEXTURE, F_OWNER, F_SEAL, GRID, Layer, len, lerp, partIndex, PartId, RES, sub, Vec } from './raster';
-import { drawRig, turnPoint, type Rig } from './rig';
+import { BODY_PARAMS, drawRig, turnPoint, type Rig } from './rig';
 import type { BodyType } from './types';
 import { stampTemplate, type TemplatePalette } from './rotsprite';
 
@@ -111,7 +111,10 @@ export function drawBulkyBase(g: DrawCtx): void {
     const L = g.L(armDepth(s, 'body'));
     const j = armJoints(r, s);
     const up = s === 'N' ? B.upperArmN : B.upperArmF;
-    const fore = s === 'N' ? B.forearmN : B.forearmF;
+    // A forearm longer than the body's (the 'long' arms, rig.ts LONG_ARMS): his forearm lengthened with it
+    // (stretchPiece, as his seated legs), so the hand still meets it.
+    const base = BODY_PARAMS.bulky.forearm;
+    const fore = stretchPiece(s === 'N' ? B.forearmN : B.forearmF, (len(sub(j.wrist, j.elbow)) - base) * RES, base * RES);
     const hand = s === 'N' ? B.handN : B.handF;
     onBone(L, up, j.shoulder, segAngle(j.shoulder, j.elbow), pal(up), s === 'N' ? 'upperArmN' : 'upperArmF');
     onBone(L, fore, j.elbow, segAngle(j.elbow, j.wrist), pal(fore), s === 'N' ? 'forearmN' : 'forearmF');

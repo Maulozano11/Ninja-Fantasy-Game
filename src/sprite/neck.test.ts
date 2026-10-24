@@ -1,6 +1,6 @@
 // The neck option is gone (the owner, 2026-10-22: "quitar el cuello del creador y dejar a todos con el
-// cuello de hoy"): every look draws today's slim nape, the one his Aiden has. A look saved with the
-// thick 'strong' neck loads and draws as slim, through migrateAppearance (legacy.ts) and
+// cuello de hoy"): every look draws today's slim nape, the one his Aiden has, but his Lyra, who keeps the
+// long neck she has. A look saved with the thick 'strong' neck loads and draws as slim, through migrateAppearance (legacy.ts) and
 // migrateCharacter, on every load path (the hero, the roster, a saved mission).
 
 import assert from 'node:assert/strict';
@@ -74,9 +74,16 @@ describe('the neck option, removed', () => {
     for (const p of [loaded.party, loaded.entry]) assert.ok(!('neck' in p.members[0].appearance!));
   });
 
-  it('nobody has one: no legend, companion or random ninja', () => {
-    for (const p of LEGENDARY_PRESETS) assert.ok(!('neck' in p.character.appearance!), p.character.id);
-    for (const c of COMPANIONS) if (c.appearance) assert.ok(!('neck' in c.appearance), c.id);
+  it("keeps his Lyra's long neck, the neck she has today (her preset's, not a creator option)", () => {
+    const lyra = LEGENDARY_PRESETS.find((p) => p.character.id === 'preset_lyra')!.character.appearance!;
+    assert.equal(lyra.neck, 'long');
+    assert.equal(migrateAppearance(lyra), lyra);
+    assert.equal(migrateCharacter(made(lyra)).appearance!.neck, 'long');
+  });
+
+  it("nobody else has one: no other legend, companion or random ninja", () => {
+    for (const p of LEGENDARY_PRESETS) if (p.character.id !== 'preset_lyra') assert.ok(!('neck' in p.character.appearance!), p.character.id);
+    for (const c of COMPANIONS) if (c.appearance && c.id !== 'preset_lyra') assert.ok(!('neck' in c.appearance), c.id);
     for (let i = 0; i < 200; i++) assert.ok(!('neck' in randomAppearance()));
   });
 });

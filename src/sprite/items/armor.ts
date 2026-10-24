@@ -43,6 +43,8 @@ import { FOUNDER_CHEST, FOUNDER_CUIRASS_KIND, FOUNDER_SASH, FOUNDER_STEEL, FOUND
 import { FOUNDER_SKIRT, FOUNDER_SKIRT_KIND, FOUNDER_SKIRT_LEATHER, FOUNDER_SKIRT_STUD, FOUNDER_SKIRT_TUNIC } from './founderSkirtArt';
 import { sealCloth } from '../seal';
 import { isFemaleBody, type BodyType } from '../types';
+import { LYRA_CORSET_ITEM } from './lyraUpper';
+import { GILDED_TABARD } from './lyraLower';
 
 
 type Kind = 'cloth' | 'leather' | 'metal';
@@ -1230,12 +1232,14 @@ export function romanChestLonger(r: Rig, base: PaintedPiece): PaintedPiece {
 
 /**
  * The torso under the cuirass is taken away below the neck, so our skin never shows past his chest
- * (where the chest turns in a pose).
+ * (where the chest turns in a pose). On the bulky body his chest's collar sits a pixel lower than the neck
+ * (CUIRASS_CHEST_BULKY), so the neck is kept down to it: taken away there, a slit of background opened
+ * under the chin.
  */
 function clearUnderCuirass(g: DrawCtx): void {
   const r = g.rig;
   const torsoPart = partIndex('torso');
-  const neck = (r.neck.x - r.pelvis.x) * r.up.x + (r.neck.y - r.pelvis.y) * r.up.y;
+  const neck = (r.neck.x - r.pelvis.x) * r.up.x + (r.neck.y - r.pelvis.y) * r.up.y - (r.body === 'bulky' ? 0.5 : 0);
   for (const d of ['torso.body', 'torso.under', 'torso.bottom', 'torso.top'] as Depth[]) {
     const L = g.L(d);
     if (!L.used) continue;
@@ -3401,6 +3405,8 @@ export const ARMOR_ITEMS: ItemDef[] = [
     statsArmor: 'Dark Knight Plate',
     draw: (g, [steel, trim]) => drawCrimsonPlate(g, steel, trim),
   },
+  // Lyra's corset, pauldron and bracers, the owner's pixels (items/lyraUpper.ts)
+  LYRA_CORSET_ITEM,
 ];
 
 // ---------------------------------------------------------------------------
@@ -3601,4 +3607,5 @@ export const SKIRT_ITEMS: ItemDef[] = [
       });
     },
   },
+  GILDED_TABARD,
 ];

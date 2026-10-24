@@ -5,6 +5,10 @@
 //
 //   npx tsx tools/refs/bulky-read-base.ts <outDir>
 //
+// Run it on commit efb3ac0 (git worktree add <tmp> efb3ac0): that is the frame he painted over. Later trees
+// sit the read on another rock (seats.ts seat_rock, the integration branch's) with another rig, so their base
+// no longer lines up with his picture and the script's rock check stops it.
+//
 // Writes <outDir>/base.json: { grid, rgba: {plain, skin, hair, eye} as base64, part (base64), seat (base64) }.
 
 import { mkdirSync, writeFileSync } from 'node:fs';
@@ -35,6 +39,6 @@ writeFileSync(
     },
     part: b64(plain.part),
     hairBits: b64(plain.hair ?? new Uint8Array(GRID * GRID / 8)),
-    seat: b64(renderSeat(seatFor('read', undefined, 'bulky')!)),
+    seat: b64(renderSeat(seatFor('read')!)),
   }),
 );

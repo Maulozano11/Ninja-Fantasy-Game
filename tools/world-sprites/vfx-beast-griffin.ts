@@ -27,11 +27,16 @@
 //
 // The anchor is the middle of his griffin's torso. To merge into vfx-beasts.ts: import { chakraGriffin }
 // from './vfx-beast-griffin' and put it in BUILDERS in place of chakraFox (['chakra', chakraGriffin]).
+//
+// The characters' black line goes round the griffin (solid-outline.ts, the owner's decision of
+// 2026-10-22; SOLID_OUTLINE=0 leaves it off), never round his light: the splash and streak at its feet,
+// the wisps and specks are his semi-transparent colours.
 
 import { mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { Canvas, WorldSprite, hex, writeGroup } from './kit';
 import * as REF_CHAKRA from './vfx-beasts-ref-chakra';
+import { lightOf, outlineSprite, solidOutlineOn, type SolidOutlineOptions } from './solid-outline';
 
 interface RefSheet {
   SIZE: [number, number];
@@ -69,8 +74,11 @@ function decode(ref: RefSheet): Record<string, Canvas[]> {
   return out;
 }
 
+/** The line's options for this beast. */
+export const GRIFFIN_LINE: SolidOutlineOptions = { particleColour: lightOf(REF_CHAKRA.PALETTE) };
+
 /** The chakra griffin (vfx_beasts/chakra): 'fly' (loop), cropped to the union of its frames + 1 px. */
-export function chakraGriffin(): WorldSprite {
+export function chakraGriffin({ outline = solidOutlineOn() }: { outline?: boolean } = {}): WorldSprite {
   const f = decode(REF_CHAKRA);
   const anims: [string, Canvas[], number, boolean][] = [['fly', f.fly, GRIFFIN_FPS, true]];
   let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
@@ -96,7 +104,7 @@ export function chakraGriffin(): WorldSprite {
   for (const [key, frames, fps, loop] of anims) out[key] = { frames: frames.map(crop), fps, loop };
   const [ax, ay] = REF_CHAKRA.ANCHOR;
   const w = x1 - x0 + 1, h = y1 - y0 + 1;
-  return {
+  const s: WorldSprite = {
     name: 'chakra',
     label: 'Chakra griffin',
     meters: [Math.round((w / 57) * 10) / 10, Math.round((h / 57) * 10) / 10],
@@ -104,6 +112,7 @@ export function chakraGriffin(): WorldSprite {
     tags: ['vfx'],
     anims: out,
   };
+  return outline ? outlineSprite(s, GRIFFIN_LINE) : s;
 }
 
 /** No opaque pixel may touch a frame's border (the renderer would show a hard edge). */
@@ -123,8 +132,10 @@ function main(): void {
     console.error('vfx-beast-griffin: set WORLD_OUT=<dir> (this sprite is waiting for approval; it is never written into src/assets).');
     process.exit(1);
   }
-  const sprite = chakraGriffin();
-  checkBorders(sprite);
+  // The border check is on his art; the line may then take the clear pixel round it.
+  const art = chakraGriffin({ outline: false });
+  checkBorders(art);
+  const sprite = solidOutlineOn() ? outlineSprite(art, GRIFFIN_LINE) : art;
   for (const [key, a] of Object.entries(sprite.anims)) {
     const rowW = a.frames.length * a.frames[0].w;
     if (rowW >= 8192) throw new Error(`${key}: the sheet row would be ${rowW} px wide (8192 at most)`);

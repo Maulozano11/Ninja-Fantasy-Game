@@ -13,6 +13,7 @@ import type { BuildInput } from './derived';
 import { addEffect, EFFECTS, endMission, hasEffect, removeEffect, sanitizeEffects } from './effects';
 import { offNatureJutsus, ultimateToElement } from './jutsuNature';
 import { GROWTH_LEVEL } from './natureGrowth';
+import { refitRemoved } from './progression';
 import { tagJutsuToItem } from './pouch';
 import { checkRng, Dice, pick } from './rng';
 
@@ -315,6 +316,17 @@ export function tideToElement(c: ShinobiCharacter): ShinobiCharacter {
 }
 
 /**
+ * A sheet saved with a jutsu that has been taken out of the game (Yasaka no Magatama, 2026-10-22)
+ * gets the best jutsu its nature, class and clan allow in that slot, of the same rank or lower, or the
+ * slot empty when there is none (rules/progression.ts, refitRemoved).
+ */
+export function dropRemovedJutsus(c: ShinobiCharacter): ShinobiCharacter {
+  if (!c.selectedJutsus) return c;
+  const r = refitRemoved(c, natureOf(c));
+  return r.swaps.length ? { ...c, selectedJutsus: r.loadout } : c;
+}
+
+/**
  * A sheet from an older save or an import, as today's rules read it:
  * - the explosive tag, a jutsu no more, swapped for the starting sheet's Utility jutsu and two tags
  *   in the ninja's pouch (rules/pouch.ts, tagJutsuToItem);
@@ -322,6 +334,8 @@ export function tideToElement(c: ShinobiCharacter): ShinobiCharacter {
  *   legend's type (updateLegendChakra);
  * - a copy of Kaien or Raiga given the legend's second element (addLegendNatures);
  * - a jutsu in the S-rank slot that is an Element slot's now moved to one (tideToElement);
+ * - a jutsu taken out of the game swapped for the best one the ninja may learn in its slot
+ *   (dropRemovedJutsus);
  * - its clan converted (old names load as the clan that replaced them). When its numbers came from
  *   the creator's formula (its AC and jutsu DC and attack still match it) and its old clan built a
  *   bonus into them, its max HP and chakra are worked out again without it, and what it has left is
@@ -329,12 +343,12 @@ export function tideToElement(c: ShinobiCharacter): ShinobiCharacter {
  * - the clan's ability bonus counted in its numbers, once (countClanBonus);
  * - its headband as plain cloth: the old plate's fields dropped (sprite/legacy.ts, migrateAppearance);
  * - a look on the slender body, which is gone, on the female body (migrateAppearance);
- * - a saved neck choice dropped: every look has today's slim nape (migrateAppearance).
+ * - a saved neck choice dropped: every look has today's slim nape, Lyra's long neck kept (migrateAppearance).
  * Hand-made numbers (the presets) keep their hand-made part; the other jutsu stay as they are, and of
  * the look only that old burst, the headband plate, the slender body and the neck change. A sheet that is already today's comes back as it is.
  */
 export function migrateCharacter(saved: ShinobiCharacter): ShinobiCharacter {
-  const c = tideToElement(addLegendNatures(updateLegendChakra(tagJutsuToItem(withTodaysLook(saved)))));
+  const c = dropRemovedJutsus(tideToElement(addLegendNatures(updateLegendChakra(tagJutsuToItem(withTodaysLook(saved))))));
   const clan = migrateClan(c.clan) ?? DEFAULT_CHARACTER.clan;
   const before = (c.sheetVersion ?? 1) < SHEET_VERSION;
   if (clan === c.clan && !before) return c;

@@ -30,7 +30,11 @@ and writes, in <out>:
   study/his@8.png     his head there, at 8x
 
 and, with a third argument, the game's module (src/sprite/romanHeadArt.ts): the head as a PaintedPiece
-whose pivot is the cell on our face anchor, and the skin he painted it on. The same picture always gives
+whose pivot is the cell on our face anchor, the skin he painted it on, and HEAD_UP. On the owner's word
+of 2026-10-23 ("porque no tenemos la forma de cabeza y cuello de romano en el juego ? cambialo
+inmediatamente me gusta mas el de mi dibujo") the male bodies raise the head HEAD_UP pixels under his
+face (src/sprite/romanNeck.ts), so his head stands on his longer neck where he drew it, his neck between
+(tools/refs/roman-neck-from-ref.py). The same picture always gives
 the same bytes. Run from the repo root with python3 -I:
 
   python3 -I tools/refs/roman-head-from-ref.py docs/reference/roman-owner-reference.jpg <out> src/sprite/romanHeadArt.ts
@@ -147,6 +151,9 @@ def main():
             '',
             "/** The skin he painted the face on: a player's skin moves every colour of it as far. */",
             f"export const ROMAN_SKIN = '{R.PAINTED_SKIN}';",
+            '',
+            '/** How much higher than ours he painted the head, on a longer neck (fine pixels): on the male bodies the game raises the head this far under his face. */',
+            f'export const ROMAN_HEAD_UP = {HEAD_UP};',
             '',
             R.ts_piece('ROMAN_HEAD', doc, rows, origin, palette, ANCHOR, 0),
         ]

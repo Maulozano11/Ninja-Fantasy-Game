@@ -15,6 +15,7 @@ import { GRID, partIndex, type PartId } from './raster';
 import { buildRig } from './rig';
 import { ROMAN_EYE_COLORS, ROMAN_EYES, ROMAN_IRIS } from './romanEyeArt';
 import { ROMAN_HEAD, ROMAN_SKIN } from './romanHeadArt';
+import { romanRig } from './romanNeck';
 import { ROMAN_KIT_LEG_SHIFT } from './items/bracersSandalsArt';
 import { ROMAN_OFFSET, ROMAN_SKIN_PIXELS } from './romanRefPixels';
 import { CAMP_POSES, MOVE_POSES, SPRITE_POSES, type BodyType, type SpriteAppearance, type SpritePose } from './types';
@@ -23,6 +24,20 @@ const POSES = [...new Set([...SPRITE_POSES, ...MOVE_POSES, ...CAMP_POSES])] as S
 /** Our hand shapes his fists are not laid on. */
 const OPEN_HANDS = ['open', 'point', 'sign', 'cradle'];
 const hex = (rgba: Uint8ClampedArray, i: number) => '#' + [0, 1, 2].map((k) => rgba[i * 4 + k].toString(16).padStart(2, '0')).join('');
+
+/**
+ * A look with the default head it had before his Roman head became the default (2026-10-23): our face,
+ * our standard eyes in blue, our blond spikes and the forehead headband. The hashes pinned before that are
+ * of this head.
+ */
+export const oldHead = (l: SpriteAppearance): SpriteAppearance => {
+  delete l.faceShape;
+  l.eyeShape = 'standard';
+  l.eyeColor = '#3b82f6';
+  l.slots = { ...l.slots, hair: { id: 'hair_sunburst', colors: [] } };
+  l.headband = { ...l.headband, position: 'forehead' };
+  return l;
+};
 
 /** A bare body (only the undergarments), in a skin. */
 const bare = (body: BodyType, skinHex = skin.MALE_SKIN_BASE): SpriteAppearance => {
@@ -52,7 +67,7 @@ const romanOutfit = (body: BodyType = 'male'): SpriteAppearance => {
     armor: { id: 'armor_bronze', colors: [] },
     skirt: { id: 'skirt_imperial', colors: [] },
     hands: { id: 'hands_bronze_bracers', colors: [] },
-    // His Roman paint of the sandals (his Solen's repaint is the item's default on the integration branch).
+    // his Roman paint of the sandals (his Solen's repaint is the item's default since 2026-10-21)
     feet: { id: 'feet_gladiator_sandals', colors: [], parts: { paint: 'roman' } },
   };
   return l;
@@ -184,7 +199,7 @@ describe("the owner's skin on the male bodies", () => {
     assert.ok(hit >= 10);
   });
 
-  it("draws the male body's darks (shade 1) in his darker tone, and the female's in ours", () => {
+  it("draws the male body's darks (shade 1) in his darker tone, and none on the female body", () => {
     const has = (rgba: Uint8ClampedArray, c: string) => {
       for (let p = 0; p < GRID * GRID; p++) if (rgba[p * 4 + 3] && hex(rgba, p) === c) return true;
       return false;
@@ -193,7 +208,8 @@ describe("the owner's skin on the male bodies", () => {
     const male = renderSprite(bare('male'), 'idle', 0).rgba;
     const female = renderSprite(bare('female'), 'idle', 0).rgba;
     assert.ok(has(male, skin.MALE_SKIN_DARK) && !has(male, ours));
-    assert.ok(has(female, ours) && !has(female, skin.MALE_SKIN_DARK));
+    // (the female body is the owner's painted bare female body, its own skin tones: none of his male darks)
+    assert.ok(!has(female, skin.MALE_SKIN_DARK));
   });
 
   it('keeps his shading apart from the black line on a dark skin', () => {
@@ -238,22 +254,19 @@ describe("the owner's skin on the male bodies", () => {
   });
 
   it('leaves the female bodies exactly as they were', () => {
-    // The default look on the female body, as the integration branch draws them (fb4881e merged with
-    // body/bulky-v2 on body/brawler-roman: byte for byte the integration branch's but the sit). A later change to the
-    // female art updates these with it. (The sit is the owner's
-    // Roman sit for every body since 2026-10-22, rig.ts SIT, its thighs longer on the seat: a new pose, the same
-    // female art.)
+    // The default look on the female body, as the integration branch draws it (a7a6a10: the owner's fitted
+    // female body, his Lyra's sit), byte for byte. A later change to the female art updates these with it.
     const was: Record<string, string> = {
-      'female idle 0': '71245bf3da80ae7d',
-      'female attack 1': '6515b9d5ddf69866',
-      'female cast 0': 'b57a8d0369a49d5a',
-      'female run 1': '553823b77b205d03',
-      'female downed 0': '19a0068d7ecd94e0',
-      'female sit 0': 'a86058df0da0efaf',
+      'female idle 0': '641b2a19d979cbfc',
+      'female attack 1': '4ae87971d3a8655c',
+      'female cast 0': '3757a84efd329e8a',
+      'female run 1': 'df049168dd1b42eb',
+      'female downed 0': 'e932723e4d169982',
+      'female sit 0': '5c64abb6a5809bff',
     };
     for (const [key, sum] of Object.entries(was)) {
       const [body, pose, frame] = key.split(' ');
-      const l = defaultAppearance();
+      const l = oldHead(defaultAppearance());
       l.body = body as BodyType;
       const f = renderSprite(l, pose as SpritePose, +frame);
       assert.equal(createHash('sha1').update(f.rgba).digest('hex').slice(0, 16), sum, key);
@@ -276,10 +289,10 @@ describe("the owner's Roman face", () => {
     return l;
   };
 
-  it('is his picture: his face skin where he painted it (3 px lower), on a bald male', () => {
+  it('is his picture: his face skin where he painted it, the head raised on his neck, on a bald male', () => {
     const f = renderSprite(roman('male', false), 'idle', 0);
     // Not the shadow his bangs cast on his forehead, which the bald skull leaves out (it read as a scar).
-    const { right, wrong } = againstHim(f, 'face', [0, 3], ROMAN_SKIN, ['head'], ['52,15', '50,16']);
+    const { right, wrong } = againstHim(f, 'face', [0, 0], ROMAN_SKIN, ['head'], ['52,15', '50,16']);
     assert.deepEqual(wrong, []);
     assert.ok(right / ROMAN_SKIN_PIXELS.face.length > 0.9, `${right} of ${ROMAN_SKIN_PIXELS.face.length}`);
   });
@@ -287,7 +300,7 @@ describe("the owner's Roman face", () => {
   it('has a clean bald skull: no shadow of his hair on the forehead, no seam behind the ear', () => {
     const l = roman('male', false);
     const f = renderSprite(l, 'idle', 0);
-    const r = buildRig('male', 'idle', 0);
+    const r = romanRig(buildRig('male', 'idle', 0), l);
     const { nx, ny } = faceAnchor({ rig: r, bp: r.bp, look: l } as unknown as DrawCtx);
     // The forehead above the brow, from the temple to the far brow, is his skull's base skin only (the row
     // over the brow is his own forehead between the bangs).
@@ -319,7 +332,7 @@ describe("the owner's Roman face", () => {
   it('is the module lifted for it, pixel for pixel, on a bald male in the skin he painted over', () => {
     const l = roman('male', false);
     const f = renderSprite(l, 'idle', 0);
-    const r = buildRig('male', 'idle', 0);
+    const r = romanRig(buildRig('male', 'idle', 0), l);
     const { nx, ny, ex, fx } = faceAnchor({ rig: r, bp: r.bp, look: l } as unknown as DrawCtx);
     // His eyes over his head: where an eye has a pixel of his, that; elsewhere his head.
     const want = new Map<number, string>();
@@ -361,22 +374,21 @@ describe("the owner's Roman face", () => {
   });
 
   it('keeps the other faces as they were', () => {
-    // The other face and eye shapes on the female body (where the male skin does not
-    // reach), as the integration branch draws them (byte for byte, merged on body/brawler-roman); his Aiden head in the
-    // skin he painted it in.
+    // The other face and eye shapes on the female body (where the male skin does not reach), as the
+    // integration branch draws them (a7a6a10); his Aiden head in the skin he painted it in.
     const was: Record<string, string> = {
-      'female tapered sharp': '2b00bc176616559e',
-      'female tapered valiant': '074f4370149e1027',
-      'female soft sharp': 'aeeac29f2184f6cb',
-      'female soft valiant': 'ea482afbaeb25bfe',
-      'female square sharp': '17edab76c6105a56',
-      'female square valiant': 'afa3a70d481aa930',
-      'female valiant sharp': 'e42d97da08b2429d',
-      'female valiant valiant': '45c48d7c676cbf27',
+      'female tapered sharp': 'eef587834e77e63c',
+      'female tapered valiant': 'ace7e6b2f67c3e77',
+      'female soft sharp': 'd27bec90d98b0f2c',
+      'female soft valiant': '582856ab4b761dd3',
+      'female square sharp': 'fb6a6f29b4b8f1e6',
+      'female square valiant': '1a3c67266da9e86c',
+      'female valiant sharp': '93791a4df6d080f4',
+      'female valiant valiant': 'e73fc98be2f828fa',
     };
     for (const [key, sum] of Object.entries(was)) {
       const [body, face, eye] = key.split(' ');
-      const l = defaultAppearance();
+      const l = oldHead(defaultAppearance());
       l.body = body as BodyType;
       l.faceShape = face as SpriteAppearance['faceShape'];
       l.eyeShape = eye as SpriteAppearance['eyeShape'];

@@ -6,6 +6,9 @@ import type { PaintedPiece } from './painted';
 /** The skin he painted the face on: a player's skin moves every colour of it as far. */
 export const ROMAN_SKIN = '#f3c39c';
 
+/** How much higher than ours he painted the head, on a longer neck (fine pixels): on the male bodies the game raises the head this far under his face. */
+export const ROMAN_HEAD_UP = 3;
+
 /** The owner's face from his Roman paint-over (the 'roman' face shape), his pixels: his skull, ear, cheeks, jaw, chin, nose and mouth, his skin shading and black line; the eye options draw the eyes on it. Its pivot is the cell on the face anchor. */
 export const ROMAN_HEAD: PaintedPiece = {
   pivot: [7, 12],

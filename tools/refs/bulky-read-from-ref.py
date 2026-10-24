@@ -20,7 +20,7 @@ Every colour is told apart as the character's skin, hair or eyes, or fixed, by o
 another colour (tools/refs/bulky-read-base.ts): in the game his skin, hair and eyes follow the character's.
 Each pixel keeps our body part there, or the nearest of ours where he painted past our figure.
 
-  npx tsx tools/refs/bulky-read-base.ts <tmp>
+  npx tsx tools/refs/bulky-read-base.ts <tmp>      (on commit efb3ac0: the frame he painted over; see that script)
   python3 -I tools/refs/bulky-read-from-ref.py <tmp>/base.json src/sprite/broadReadArt.ts [studyDir]
 
 The same picture and base always give the same bytes.

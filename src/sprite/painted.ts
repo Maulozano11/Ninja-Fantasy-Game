@@ -27,11 +27,15 @@ export const segAngle = (a: Vec, b: Vec): number => (Math.atan2(b.y - a.y, b.x -
  * Stamps a painted piece with its pivot on `at`, its limb now pointing along `deg`: at his angle
  * every pixel is his. `color` recolours a character's colour (for the item's colour slots). With
  * `line` (which of his colours are his black line), turned it keeps his line whole (rotateLined).
+ * `closed`: turned from his angle, a pixel of the piece left on its layer's edge becomes the line (the
+ * female standard: no piece is ever left cut open where turning it lost a pixel of his line); at his
+ * angle every pixel stays his.
  */
-export function stampPiece(g: DrawCtx, depth: Depth, piece: PaintedPiece, at: Vec, deg: number, part: PartId, color?: (ch: string, hex: string) => string, line?: (hex: string) => boolean): void {
+export function stampPiece(g: DrawCtx, depth: Depth, piece: PaintedPiece, at: Vec, deg: number, part: PartId, color?: (ch: string, hex: string) => string, line?: (hex: string) => boolean, closed = false): void {
   const pal: TemplatePalette = {};
-  for (const [ch, hex] of Object.entries(piece.colors)) pal[ch] = [g.m(color ? color(ch, hex) : hex, 'flat'), 3];
-  stampTemplate(g.L(depth), piece, at, deg - piece.angle, pal, part, { flags: F_NO_TEXTURE | F_NO_OUTLINE, line: line && ((ch) => line(piece.colors[ch])) });
+  for (const [ch, hex] of Object.entries(piece.colors)) pal[ch] = [g.m(color ? color(ch, hex) : hex, closed ? 'painted' : 'flat'), 3];
+  const turned = Math.round(deg - piece.angle) % 360 !== 0;
+  stampTemplate(g.L(depth), piece, at, deg - piece.angle, pal, part, { flags: closed && turned ? F_NO_TEXTURE : F_NO_TEXTURE | F_NO_OUTLINE, line: line && ((ch) => line(piece.colors[ch])) });
 }
 
 const LIMB_ONLY = new WeakMap<PaintedPiece, PaintedPiece>();

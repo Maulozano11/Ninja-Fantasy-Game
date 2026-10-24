@@ -53,16 +53,28 @@ export interface CastChoice {
   jutsu?: Record<string, CastStyle>;
 }
 
-/** The eye options; valiant, roman and stern are the owner's own eyes from his Aiden, Roman and broad man pictures, in his pixels. */
-export type EyeShape = 'standard' | 'sharp' | 'round' | 'calm' | 'fierce' | 'bright' | 'piercing' | 'valiant' | 'roman' | 'stern';
+/** The eye options; valiant, roman and stern are the owner's own eyes from his Aiden, Roman and broad man pictures, in his pixels; keen is his Lyra's, in her colours at our scale. */
+export type EyeShape = 'standard' | 'sharp' | 'round' | 'calm' | 'fierce' | 'bright' | 'piercing' | 'valiant' | 'keen' | 'roman' | 'stern';
+
+/**
+ * The owner's heroines' long neck (neck.ts): his Lyra carries the head further forward on a slimmer neck.
+ * Not a creator option: the owner removed the neck picker (2026-10-22, "quitar el cuello del creador y
+ * dejar a todos con el cuello de hoy"), so every look keeps the neck it has today, and only Lyra's
+ * preset has this one. The old 'slim' and 'strong' choices are dropped on load (migrateAppearance).
+ */
+export type NeckType = 'long';
+
+/** Arm length: the body's own (default), or long: his Lyra's longer forearms, her free hand hanging open (rig.ts LONG_ARMS). */
+export type ArmType = 'standard' | 'long';
 
 /**
  * Near-side cheek and jaw: V-line (default), fuller, or a strong flat jaw; or one of the owner's own
  * heads in his pixels: valiant from his Aiden picture (his skull, ear, cheeks, jaw and chin), roman from
- * his Roman paint-over (his whole face with his nose and mouth), founder from his Solen, or his broad
- * man's face (stern: his ear, cheeks, nose, mouth and jaw in his pixels, under our skull).
+ * his Roman paint-over (his whole face with his nose and mouth), founder from his Solen, his Lyra's face
+ * (fine: her narrower face, mouth and chin, under our skull), or his broad man's face (stern: his ear,
+ * cheeks, nose, mouth and jaw, under our skull).
  */
-export type FaceShape = 'tapered' | 'soft' | 'square' | 'valiant' | 'roman' | 'founder' | 'stern';
+export type FaceShape = 'tapered' | 'soft' | 'square' | 'valiant' | 'founder' | 'fine' | 'roman' | 'stern';
 
 /** Single-choice equipment slots, drawn back-to-front by depth (see compose.ts). */
 export type SlotId =
@@ -146,6 +158,10 @@ export interface SpriteAppearance {
   skin: string;
   eyeShape: EyeShape;
   eyeColor: string;
+  /** Only Lyra's preset has one (her long neck, NeckType); missing on every other look. */
+  neck?: NeckType;
+  /** Missing on older saves; treated as 'standard'. */
+  arms?: ArmType;
   /** Missing on older saves; treated as 'tapered'. */
   faceShape?: FaceShape;
   /** How jutsus are cast. Missing on older saves; treated as 'runes'. */

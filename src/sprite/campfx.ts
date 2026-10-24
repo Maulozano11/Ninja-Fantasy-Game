@@ -1,90 +1,16 @@
-// Props the camp poses hold: the open book for 'read', drawn after the body
+// Props the camp poses hold: the book for 'read', drawn after the body
 // and items (compose.ts).
 
 import { retintSkinLifted } from './color';
 import type { DrawCtx } from './ctx';
+import { LYRA_READ } from './items/lyraReadArt';
 import { READ_BOOK, READ_HAND_F, READ_HAND_N, READ_LINE, READ_SKIN_BASE, type ReadPiece } from './maleReadArt';
 import { takesMaleSkin } from './maleSkin';
-import { F_NO_OUTLINE, F_NO_TEXTURE, GRID, Layer, PartId, partIndex, v } from './raster';
-import { READ_KEYS } from './rig';
-import { PixelTemplate, stampTemplate, TemplatePalette } from './rotsprite';
+import { readKey, stampOwnerPiece } from './ownerFrames';
+import { F_NO_OUTLINE, F_NO_TEXTURE, GRID, Layer, PartId, partIndex } from './raster';
+import { READ_MALE_KEYS } from './rig';
 
-/**
- * An open book held over the lap, seen from the front and a little above:
- * two pages with lines of text, the gutter between them, the page edges and
- * the hardcover underneath. The border becomes the layer outline. The pivot
- * is the foot of the spine.
- * p page · P lit page · q text · m gutter · e page edges · c cover ·
- * C lit cover · k cover shadow
- */
-const BOOK: PixelTemplate = {
-  pivot: [10, 9],
-  rows: [
-    '...ppppppp.ppppppp...',
-    '..pPPPPPPPmPPPPPPPp..',
-    '..pPqqqPqPmPqqqqPPp..',
-    '..pPPPPPPPmPPPPPPPp..',
-    '..pPqqPqqPmPqqPqqPp..',
-    '..pPPPPPPPmPPPPPPPp..',
-    '..pPqqqqPPmPqqqPqPp..',
-    '.Cpeeeeeeemeeeeeeepk.',
-    '.CCcccccccmccccccckk.',
-    '..ckkkkkkkkkkkkkkkk..',
-    '.....................',
-  ],
-};
-
-/**
- * A page turning over from right to left, in three steps: curling up off the
- * right page, standing on the gutter, settling onto the left page. Same
- * pivot as BOOK (the extra rows on top reach above it).
- */
-const PAGE_TURN: PixelTemplate[] = [
-  {
-    pivot: [10, 13],
-    rows: [
-      '................PPPP.',
-      '..............PPPPPq.',
-      '.............PPPPPPq.',
-      '............PPqqPPq..',
-      '...........PPPPPPq...',
-      '...........PqqPPq....',
-      '...........PPPPq.....',
-      '..........mPPq.......',
-      '..........mPq........',
-    ],
-  },
-  {
-    pivot: [10, 13],
-    rows: [
-      '.........PP..........',
-      '.........PPq.........',
-      '.........PPq.........',
-      '.........PPq.........',
-      '.........PPq.........',
-      '.........PPq.........',
-      '.........PPq.........',
-      '..........Pq.........',
-      '..........mq.........',
-    ],
-  },
-  {
-    pivot: [10, 13],
-    rows: [
-      '.PPPP................',
-      '.pPPPPP..............',
-      '.pPPPPPP.............',
-      '..pPPqqPP............',
-      '...pPPPPPP...........',
-      '....pPPqqP...........',
-      '.....pPPPP...........',
-      '.......pPPm..........',
-      '........pPm..........',
-    ],
-  },
-];
-
-/** Draws what the camp pose holds, if anything. */
+/** Draws what the camp pose holds, if anything: the male bodies read as his Trunks does, the others as his Lyra. */
 export function drawCampFx(g: DrawCtx): void {
   if (g.rig.pose !== 'read') return;
   if (takesMaleSkin(g.rig.body)) hisBook(g);
@@ -98,7 +24,7 @@ export function drawCampFx(g: DrawCtx): void {
  * as his Roman skin is (retintSkinLifted); his black line is never tinted.
  */
 function hisBook(g: DrawCtx): void {
-  const k = READ_KEYS[((g.rig.frame % READ_KEYS.length) + READ_KEYS.length) % READ_KEYS.length];
+  const k = READ_MALE_KEYS[((g.rig.frame % READ_MALE_KEYS.length) + READ_MALE_KEYS.length) % READ_MALE_KEYS.length];
   const L = g.L('nearArm.over');
   stampRead(g, L, READ_BOOK[k], 'held', (hex) => hex);
   const skin = (hex: string) => (isLine(hex) ? hex : retintSkinLifted(hex, READ_SKIN_BASE, g.look.skin));
@@ -136,32 +62,14 @@ function clearHand(g: DrawCtx, part: 'handN' | 'handF'): void {
 }
 
 /**
- * The book is held from below in both hands ('cradle' hands, fingers up),
- * over the near arm, and both hands are then moved on top of it so the
- * fingers curl over the lower corners of the cover.
+ * The owner's book (docs/reference/lyra-read-owner-reference.jpg, his three read frames: open and held
+ * up before the chest, the far page lifted in the third), his pixels on the near wrist as his Lyra holds
+ * it (items/lyraReadArt.ts; where her hands hid it, it is his book continued). Both hands are then moved
+ * on top of it, so the fingers lie over the cover as he drew hers.
  */
 function book(g: DrawCtx): void {
-  const r = g.rig;
-  const L = g.L('nearArm.over');
-  const paper = g.m('#ece2c6', 'cloth');
-  const ink = g.m('#6b5a4a', 'cloth');
-  const cover = g.m('#7a3f2c', 'leather');
-  const pal: TemplatePalette = {
-    p: [paper, 4],
-    P: [paper, 5],
-    q: [paper, 3],
-    e: [paper, 2],
-    m: [paper, 2],
-    c: [cover, 3],
-    C: [cover, 4],
-    k: [cover, 2],
-  };
-  // The foot of the spine sits between the wrists, a little above them.
-  const at = v((r.wristN.x + r.wristF.x) / 2 + 0.2, Math.min(r.wristN.y, r.wristF.y) - 2.2);
-  stampTemplate(L, BOOK, at, 0, pal, 'held', { flags: F_NO_TEXTURE });
-  const f = ((r.frame % 12) + 12) % 12;
-  if (f >= 9) stampTemplate(L, PAGE_TURN[f - 9], at, 0, pal, 'held', { flags: F_NO_TEXTURE });
-  liftHands(g, L);
+  for (const p of LYRA_READ[readKey(g.rig.frame)]) if (p.owner === 'book') stampOwnerPiece(g, p);
+  liftHands(g, g.L('nearArm.over'));
 }
 
 /** Moves both hands (skin and any glove on them) onto `dest`, over what was drawn there. */

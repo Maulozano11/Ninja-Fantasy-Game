@@ -5,18 +5,19 @@
 
 import { retintHex, retintSkinLifted } from '../color';
 import { DrawCtx, FootArt, footDraw, ItemDef, legDepth, legJoints, legPoint, Side } from '../ctx';
-import { continuedTo, limbOnly, type PaintedPiece, segAngle, stampPiece } from '../painted';
-import { add, along, ellipse, F_NO_EDGE, F_NO_OUTLINE, F_NO_TEXTURE, GRID, norm, partIndex, type PartId, Pen, RES, seam, sub, v, type Vec } from '../raster';
-import { drawRig, type Rig } from '../rig';
-import { rotateTemplate } from '../rotsprite';
 import type { BodyType } from '../types';
+import { continuedTo, limbOnly, type PaintedPiece, segAngle, stampPiece } from '../painted';
+import { ankleLiftOf } from '../rig';
+import { add, along, ellipse, F_NO_EDGE, F_NO_OUTLINE, F_NO_TEXTURE, GRID, norm, partIndex, type PartId, Pen, RES, seam, sub, v, type Vec } from '../raster';
+import { rotateTemplate } from '../rotsprite';
+import { paintsMaleSkin } from '../maleSkin';
+import { MALE_SKIN_BASE } from '../maleSkinArt';
 import { across, crease, fpx, limb, limbR, stitch, stud, tube, wrapStripes } from './clothes';
 import { closeAnkle, footTurn, shinCarried } from './ankle';
 import { founderLegLen, founderLegOut, founderLegsStill } from './founderOut';
 import { FOUNDER_SANDAL_FOOT_F, FOUNDER_SANDAL_FOOT_N, FOUNDER_SANDAL_KIND, FOUNDER_SANDAL_LEATHER, FOUNDER_SANDAL_SHIN_F, FOUNDER_SANDAL_SHIN_N, FOUNDER_SANDAL_SKIN } from './founderSandalsArt';
 import { ROMAN_KIT_KIND, ROMAN_KIT_KNEES, ROMAN_KIT_REACH, ROMAN_KIT_REST, SANDAL_FOOT_F, SANDAL_FOOT_N, SANDAL_LEATHER, SANDAL_SHIN_F, SANDAL_SHIN_N, SANDAL_SKIN } from './bracersSandalsArt';
-import { paintsMaleSkin } from '../maleSkin';
-import { MALE_SKIN_BASE } from '../maleSkinArt';
+import { LYRA_BOOTS } from './lyraBoots';
 import { BOOT_STEEL, BOOT_TRIM, crimsonKind, SABATON_FOOT_F, SABATON_FOOT_N, SABATON_SHIFT, SABATON_SHIN_F, SABATON_SHIN_N } from './sabatonsGauntletsArt';
 
 type Kind = 'cloth' | 'leather' | 'metal';
@@ -247,6 +248,9 @@ export function boot(g: DrawCtx, hex: string, from: number, art: FootArt, opts: 
   const grow = opts.grow ?? 0.6;
   for (const s of SIDES) {
     const L = g.L(legDepth(s, 'feet'));
+    // A closed boot is the whole foot: our bare foot under it (the owner's feet, longer at the toe and
+    // higher at the instep than the boot's own foot) would poke out past its toe and over its instep.
+    bareFootOff(g, s);
     limb(g, L, 'leg', s, from, 2, grow, bootPen(g, hex, s, 'shin', opts.kind), { round1: true });
     footDraw(g, L, s, art, {
       main: g.m(hex, opts.kind ?? 'leather'),
@@ -284,6 +288,36 @@ function bareFootOff(g: DrawCtx, s: Side): void {
     const L = g.L(d);
     for (let i = 0; i < GRID * GRID; i++) if (L.mat[i] >= 0 && L.part[i] === foot) L.mat[i] = -1;
   }
+}
+
+/** The sandals' pieces in a paint: his Solen's (the default) or his Roman ones (feet_gladiator_sandals' Paint part). */
+export function sandalPieces(paint: string | undefined) {
+  const solen = paint !== 'roman';
+  return {
+    N: { shin: solen ? FOUNDER_SANDAL_SHIN_N : SANDAL_SHIN_N, foot: solen ? FOUNDER_SANDAL_FOOT_N : SANDAL_FOOT_N },
+    F: { shin: solen ? FOUNDER_SANDAL_SHIN_F : SANDAL_SHIN_F, foot: solen ? FOUNDER_SANDAL_FOOT_F : SANDAL_FOOT_F },
+    kind: (solen ? FOUNDER_SANDAL_KIND : ROMAN_KIT_KIND) as Record<string, string>,
+    skin: solen ? FOUNDER_SANDAL_SKIN : SANDAL_SKIN,
+    leather: solen ? FOUNDER_SANDAL_LEATHER : SANDAL_LEATHER,
+  };
+}
+
+/** Rows across his laced shin that make one turn of its lacing (continuedTo). */
+const LACE_PERIOD = 2;
+
+const SHIN_MOVING = new Map<string, PaintedPiece>();
+
+/** His Solen's laced shin on a moving leg: only the shin (limbOnly), its lacing continued up to the knee. */
+function sandalShinMoving(body: BodyType, s: Side): PaintedPiece {
+  const key = body + s;
+  let p = SHIN_MOVING.get(key);
+  if (!p) {
+    const shin = s === 'N' ? FOUNDER_SANDAL_SHIN_N : FOUNDER_SANDAL_SHIN_F;
+    const line = (hex: string) => FOUNDER_SANDAL_KIND[hex] === 'line';
+    const kneeRow = shin.pivot[1] - founderLegLen(body, s, 'shin') * Math.sin((shin.angle * Math.PI) / 180);
+    SHIN_MOVING.set(key, (p = continuedTo(limbOnly(shin, line), kneeRow, 3, line, (hex) => !line(hex), LACE_PERIOD)));
+  }
+  return p;
 }
 
 /**
@@ -465,64 +499,46 @@ function reach(s: Side, ankle: Vec, turn: number, foot: PaintedPiece): Vec {
   return v(r.x * k, r.y * k);
 }
 
-const IDLE_RIGS = new Map<BodyType, Rig>();
-const idleRig = (body: BodyType): Rig => {
-  let r = IDLE_RIGS.get(body);
-  if (!r) IDLE_RIGS.set(body, (r = drawRig(body, 'idle', 0)));
-  return r;
-};
-
-/** An angle wrapped into -180..180 degrees. */
-const wrap180 = (a: number) => ((a + 540) % 360) - 180;
-
-/** A shin turned this far from rest (degrees) with its ankle lifted this far (fine pixels): the foot is off the ground. */
-const FOOT_TURN = 45;
-const FOOT_LIFT = 3;
-
 /**
- * Whether a sandal turns with its shin: not while the foot can stand on the ground (it stays flat under the
- * ankle, like our feet), but once the leg swings the foot well off it (a knee raised, a leg kicked back or
- * out: the shin past FOOT_TURN from rest, the ankle lifted past FOOT_LIFT). He drew the sandal under his
- * laced shin as one, so held flat under a shin turned that far it hung apart from it (the owner, on the
- * Roman combo's kick: "el pie en combo con el que patea esta separado y cortado"). The same rule as his
- * Solen's sandal (founderFootTurn on the integration branch).
+ * His Roman paint of the sandals (body/male-skin-face): his legs stand wider than ours, so each is moved onto
+ * our leg (his sole on ours), and our lower leg takes his laced shin's shape (legToLacedShin), so no bare calf
+ * shows beside it. His skin between the laces follows the character's skin as his skin on the male limbs does
+ * (maleSkin.ts), from the skin he painted on, so in that skin it is his pixels and it meets the knee above it.
+ * On the male bodies his legs come whole (owner, 2026-10-21: "copia la referencia con exactitud en la
+ * rodilla"): his knee between the skirt and the strap band rides the leg too, all of it his skin (his muscle
+ * lines too) and his black line, and his far leg reaches down to where he drew it (ROMAN_KIT_REACH, turned
+ * with the shin), so at rest his legs below the skirt are his pixels. The female bodies keep their own knees,
+ * the sandals on our ankles. Lifted well off the ground, his sandal turns with his laced shin (ankle.ts).
  */
-function footTurns(g: DrawCtx, s: Side): boolean {
-  const r = g.rig;
-  const idle = idleRig(r.body);
-  const [knee, ankle] = s === 'N' ? [r.kneeN, r.ankleN] : [r.kneeF, r.ankleF];
-  const [knee0, ankle0] = s === 'N' ? [idle.kneeN, idle.ankleN] : [idle.kneeF, idle.ankleF];
-  return Math.abs(wrap180(segAngle(knee, ankle) - segAngle(knee0, ankle0))) > FOOT_TURN && (ankle0.y - ankle.y) * RES > FOOT_LIFT;
-}
-
-/** The sandals' pieces in a paint: his Solen's (the default) or his Roman ones (feet_gladiator_sandals' Paint part). */
-export function sandalPieces(paint: string | undefined) {
-  const solen = paint !== 'roman';
-  return {
-    N: { shin: solen ? FOUNDER_SANDAL_SHIN_N : SANDAL_SHIN_N, foot: solen ? FOUNDER_SANDAL_FOOT_N : SANDAL_FOOT_N },
-    F: { shin: solen ? FOUNDER_SANDAL_SHIN_F : SANDAL_SHIN_F, foot: solen ? FOUNDER_SANDAL_FOOT_F : SANDAL_FOOT_F },
-    kind: (solen ? FOUNDER_SANDAL_KIND : ROMAN_KIT_KIND) as Record<string, string>,
-    skin: solen ? FOUNDER_SANDAL_SKIN : SANDAL_SKIN,
-    leather: solen ? FOUNDER_SANDAL_LEATHER : SANDAL_LEATHER,
-  };
-}
-
-/** Rows across his laced shin that make one turn of its lacing (continuedTo). */
-const LACE_PERIOD = 2;
-
-const SHIN_MOVING = new Map<string, PaintedPiece>();
-
-/** His Solen's laced shin on a moving leg: only the shin (limbOnly), its lacing continued up to the knee. */
-function sandalShinMoving(body: BodyType, s: Side): PaintedPiece {
-  const key = body + s;
-  let p = SHIN_MOVING.get(key);
-  if (!p) {
-    const shin = s === 'N' ? FOUNDER_SANDAL_SHIN_N : FOUNDER_SANDAL_SHIN_F;
-    const line = (hex: string) => FOUNDER_SANDAL_KIND[hex] === 'line';
-    const kneeRow = shin.pivot[1] - founderLegLen(body, s, 'shin') * Math.sin((shin.angle * Math.PI) / 180);
-    SHIN_MOVING.set(key, (p = continuedTo(limbOnly(shin, line), kneeRow, 3, line, (hex) => !line(hex), LACE_PERIOD)));
+function drawRomanSandals(g: DrawCtx, tint: (ch: string, hex: string) => string): void {
+  const skinTint = (_ch: string, hex: string) => (ROMAN_KIT_KIND[hex] === 'line' ? hex : retintSkinLifted(hex, MALE_SKIN_BASE, g.look.skin));
+  // (on the male body: the bulky body keeps his broad man's own legs, the sandals on our ankles)
+  const whole = paintsMaleSkin(g.rig.body);
+  for (const s of SIDES) {
+    const { hip, knee, ankle } = legJoints(g.rig, s);
+    bareFootOff(g, s);
+    const shin = s === 'N' ? SANDAL_SHIN_N : SANDAL_SHIN_F;
+    const foot = s === 'N' ? SANDAL_FOOT_N : SANDAL_FOOT_F;
+    const shinDeg = segAngle(knee, ankle);
+    const at = whole ? add(ankle, reach(s, ankle, shinDeg - shin.angle, foot)) : ankle;
+    const kneeP = ROMAN_KIT_KNEES[s];
+    const L = legDepth(s, 'feet');
+    if (whole) {
+      const thighDeg = segAngle(hip, knee);
+      legToHisLeg(g, s, kneeP.thigh, knee, thighDeg, kneeP.shin ? [kneeP.shin, shin] : [shin], at, shinDeg, kneeP.bend);
+      if (kneeP.thigh) stampKnee(g, s, kneeP.thigh, knee, thighDeg, false, skinTint);
+      if (kneeP.shin) stampKnee(g, s, kneeP.shin, at, shinDeg, true, skinTint);
+    } else {
+      legToLacedShin(g, s, shin, ankle, shinDeg);
+    }
+    stampPiece(g, L, shin, at, shinDeg, `shin${s}`, tint);
+    const turn = footTurn(g, s);
+    stampPiece(g, L, foot, at, foot.angle + turn, `foot${s}`, tint);
+    if (turn) {
+      const lineHex = [...Object.values(shin.colors), ...Object.values(foot.colors)].filter((hex) => ROMAN_KIT_KIND[hex] === 'line');
+      if (lineHex.length) closeAnkle(g, s, at, g.m(lineHex[0], 'flat'), new Set(lineHex.map((hex) => g.m(hex, 'flat'))));
+    }
   }
-  return p;
 }
 
 export const FEET_ITEMS: ItemDef[] = [
@@ -698,7 +714,8 @@ export const FEET_ITEMS: ItemDef[] = [
         // His ankle, carried round with the shin (shinCarried): his greave, turned about our knee, and his
         // sabaton meet there in every pose as at rest; lifted well off the ground the sabaton turns with the shin.
         const [dx, dy] = SABATON_SHIFT[s];
-        const at = add(ankle, shinCarried(g, s, dx, dy));
+        // A body standing on lower ankles (the female bodies' small feet) keeps his sabaton on the ground.
+        const at = add(ankle, add(shinCarried(g, s, dx, dy), v(0, -ankleLiftOf(g.bp, s))));
         const shin = s === 'N' ? SABATON_SHIN_N : SABATON_SHIN_F;
         const foot = s === 'N' ? SABATON_FOOT_N : SABATON_FOOT_F;
         stampPiece(g, legDepth(s, 'feet'), shin, at, segAngle(knee, ankle), `shin${s}`, tint);
@@ -718,7 +735,7 @@ export const FEET_ITEMS: ItemDef[] = [
         label: 'Paint',
         options: [
           { id: 'founder', label: "Solen's", desc: 'As the owner repainted them on his Solen (the new standard): new laces, the far shin shorter.' },
-          { id: 'roman', label: 'Roman', desc: 'As the owner first painted them on his Roman legionary.' },
+          { id: 'roman', label: 'Roman paint', desc: 'As the owner first painted them on his Roman legionary.' },
         ],
       },
     ],
@@ -731,71 +748,44 @@ export const FEET_ITEMS: ItemDef[] = [
       // trousers his legs stand where he drew them at rest (founderOut.ts). His skin between the laces
       // follows the character's skin, his leather the slot; his black line stays.
       const pieces = sandalPieces(parts.paint);
-      const roman = parts.paint === 'roman';
       // Either paint's own leather (the default before and after his repaint) means his.
       const lc = [SANDAL_LEATHER, FOUNDER_SANDAL_LEATHER].includes(leather.toLowerCase()) ? pieces.leather : leather;
-      // His Roman paint on the male body comes whole (owner, 2026-10-21: "copia la referencia con exactitud en
-      // la rodilla"): his knee between the skirt and the strap band rides the leg too, all of it his skin
-      // (his muscle lines too) and his black line, and his far leg reaches down to where he drew it
-      // (ROMAN_KIT_REACH, turned with the shin), so at rest his legs below the skirt are his pixels; our
-      // lower leg takes his laced shin's shape (legToHisLeg, legToLacedShin), so no bare calf shows beside
-      // it, and his skin follows the character's as his skin on the male limbs does (maleSkin.ts). The
-      // other bodies keep their own knees, the Roman sandals on our ankles.
       const tint = (_ch: string, hex: string) => {
         const k = pieces.kind[hex];
         if (k === 'line') return hex;
-        if (k === 'skin') return roman ? retintSkinLifted(hex, MALE_SKIN_BASE, g.look.skin) : retintHex(hex, pieces.skin, g.look.skin);
+        // His Roman skin follows the character's as his skin on the male limbs does (maleSkin.ts).
+        if (k === 'skin') return parts.paint === 'roman' ? retintSkinLifted(hex, MALE_SKIN_BASE, g.look.skin) : retintHex(hex, pieces.skin, g.look.skin);
         return retintHex(hex, pieces.leather, lc);
       };
-      const skinTint = (_ch: string, hex: string) => (ROMAN_KIT_KIND[hex] === 'line' ? hex : retintSkinLifted(hex, MALE_SKIN_BASE, g.look.skin));
-      const whole = roman && paintsMaleSkin(g.rig.body);
       // Moving, his Solen's laced shin goes alone (not what was lifted beside it) and laced on up to the knee
       // (his far one is drawn short: at rest his trouser leg and the sword hide the rest).
+      const roman = parts.paint === 'roman';
       const moving = !roman && !founderLegsStill(g);
       // His Solen's laced shin keeps its line whole as it turns (rotateLined).
       const line = !roman ? (hex: string) => pieces.kind[hex] === 'line' : undefined;
+      if (roman) {
+        drawRomanSandals(g, tint);
+        return;
+      }
       for (const s of SIDES) {
-        const { hip, knee, ankle } = legJoints(g.rig, s);
+        const { knee, ankle } = legJoints(g.rig, s);
         bareFootOff(g, s);
-        if (roman) {
-          const shin = s === 'N' ? SANDAL_SHIN_N : SANDAL_SHIN_F;
-          const foot = s === 'N' ? SANDAL_FOOT_N : SANDAL_FOOT_F;
-          const shinDeg = segAngle(knee, ankle);
-          const at = whole ? add(ankle, reach(s, ankle, shinDeg - shin.angle, foot)) : ankle;
-          const kneeP = ROMAN_KIT_KNEES[s];
-          const L = legDepth(s, 'feet');
-          if (whole) {
-            const thighDeg = segAngle(hip, knee);
-            legToHisLeg(g, s, kneeP.thigh, knee, thighDeg, kneeP.shin ? [kneeP.shin, shin] : [shin], at, shinDeg, kneeP.bend);
-            if (kneeP.thigh) stampKnee(g, s, kneeP.thigh, knee, thighDeg, false, skinTint);
-            if (kneeP.shin) stampKnee(g, s, kneeP.shin, at, shinDeg, true, skinTint);
-          } else {
-            legToLacedShin(g, s, shin, ankle, shinDeg);
-          }
-          stampPiece(g, L, shin, at, shinDeg, `shin${s}`, tint);
-          // Lifted well off the ground, his sandal turns with his laced shin about the ankle, as he drew them.
-          const turns = footTurns(g, s);
-          stampPiece(g, L, foot, at, foot.angle + (turns ? wrap180(shinDeg - shin.angle) : 0), `foot${s}`, tint);
-          if (turns) {
-            const lineHex = [...Object.values(shin.colors), ...Object.values(foot.colors)].filter((hex) => ROMAN_KIT_KIND[hex] === 'line');
-            if (lineHex.length) closeAnkle(g, s, at, g.m(lineHex[0], 'flat'), new Set(lineHex.map((hex) => g.m(hex, 'flat'))));
-          }
-          continue;
-        }
         const shin = moving ? sandalShinMoving(g.rig.body, s) : pieces[s].shin;
         const foot = pieces[s].foot;
         const at = add(ankle, founderLegOut(g, s).out);
         // Lifted well off the ground (a kick, the run's back leg), either sandal turns with its laced shin about
         // the ankle, as he drew them as one (footTurn: 0 standing, so at rest every pixel is his).
-        const turn = moving ? footTurn(g, s) : 0;
+        const turn = moving || roman ? footTurn(g, s) : 0;
         stampPiece(g, legDepth(s, 'feet'), shin, at, segAngle(knee, ankle), `shin${s}`, tint, line);
         stampPiece(g, legDepth(s, 'feet'), foot, at, foot.angle + turn, `foot${s}`, tint, line);
         if (moving || turn) {
           // His line round the ankle: the pieces' line colours (his line is never tinted).
-          const lineHex = [...Object.values(shin.colors)].filter((hex) => pieces.kind[hex] === 'line');
+          const lineHex = [...Object.values(shin.colors), ...(roman ? Object.values(foot.colors) : [])].filter((hex) => pieces.kind[hex] === 'line');
           if (lineHex.length) closeAnkle(g, s, at, g.m(lineHex[0], 'flat'), new Set(lineHex.map((hex) => g.m(hex, 'flat'))));
         }
       }
     },
   },
+  // Lyra's thigh-high boots, the owner's pixels (items/lyraBoots.ts)
+  LYRA_BOOTS,
 ];

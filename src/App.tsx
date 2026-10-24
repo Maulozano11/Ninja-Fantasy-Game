@@ -13,6 +13,7 @@ import { soundManager } from './utils/audio';
 import { setAppNavigate } from './appNav';
 import type { AppView } from './appNav';
 import { loadHero, saveHero } from './game/saves';
+import { getAppearance, withRomanHead } from './sprite/legacy';
 import { saveRun } from './game/missionRun';
 import { Menu } from 'lucide-react';
 
@@ -22,8 +23,11 @@ const T = strings({
 
 const founderPreset = LEGENDARY_PRESETS.find((p) => p.character.id === 'preset_founder')?.character ?? LEGENDARY_PRESETS[0].character;
 
-/** A new game's ninja: the creator's starting sheet under an id of its own (so it never overwrites a saved one). */
-const freshNinja = (): ShinobiCharacter => ({ ...founderPreset, id: `ninja_${Date.now().toString(36)}` });
+/**
+ * A new game's ninja: the creator's starting sheet under an id of its own (so it never overwrites a saved
+ * one), with the owner's Roman head, his neck and hair (2026-10-23, "1 si"); the Solen preset keeps his.
+ */
+const freshNinja = (): ShinobiCharacter => ({ ...founderPreset, id: `ninja_${Date.now().toString(36)}`, appearance: withRomanHead(getAppearance(founderPreset)) });
 
 /** The new party battle that matches an old encounter type (the arena and campaign still use them). */
 function encounterFor(type?: 'skirmish' | 'rogue_squad' | 'giant_beast' | 'titanic_threat'): EncounterId | undefined {

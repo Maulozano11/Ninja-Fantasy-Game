@@ -112,7 +112,7 @@ export class MaterialTable {
     if (i === undefined) {
       i = this.ramps.length;
       const ramp = [...makeRamp(hex, kind)] as Ramp;
-      if (kind !== 'flat' && kind !== 'glow') ramp[0] = mixHex(ramp[0], INK, 0.7);
+      if (kind !== 'flat' && kind !== 'glow' && kind !== 'painted') ramp[0] = mixHex(ramp[0], INK, 0.7);
       this.ramps.push(ramp);
       this.kinds.push(kind);
       this.index.set(key, i);

@@ -8,6 +8,7 @@ import type { ClanType, JutsuDefinition } from '../types/shinobi';
 import type { Ability, Advantage } from '../rules/checks';
 import type { EffectId } from '../types/mission';
 import type { AreaShape, DamageType, Pt } from './types';
+import { IMBUE_COST, WEAPON_ELEMENT } from './imbue';
 
 export type VfxElement = 'fire' | 'water' | 'wind' | 'lightning' | 'earth' | 'genjutsu' | 'chakra' | 'poison';
 export type VfxRole = 'bolt' | 'beast' | 'stream' | 'breath' | 'sphere' | 'slash' | 'multi' | 'blast' | 'wall' | 'aura' | 'hit';
@@ -82,6 +83,8 @@ export interface JutsuSeq {
    * cut travels, and a cut that leaves Bleeding splashes drops onto the screen. Never in a chakra colour.
    */
   blood?: boolean;
+  /** What a charged hand holds while its charge lasts (`handCharge`): a sheet's animation, drawn at the near hand. */
+  held?: { group: string; name: string; anim: string };
 }
 
 export type StageKind = 'dragonHead' | 'dragonStream' | 'waterDragon' | 'rockVolleys' | 'sealChain' | 'crescents' | 'crowDive' | 'hurricane' | 'woodDragon' | 'handLightning';
@@ -113,7 +116,7 @@ export interface JutsuSpec {
   save?: Ability;
   /** On a successful save: half damage, or nothing. */
   saveHalf: boolean;
-  special?: 'heal' | 'flicker' | 'clone' | 'kawarimi' | 'earthWall' | 'waterWall' | 'seal' | 'confuse' | 'evasion' | 'metalBlock' | 'metalWall' | 'warp' | 'swap' | 'command' | 'submission' | 'mantle' | 'galeZone';
+  special?: 'heal' | 'flicker' | 'clone' | 'kawarimi' | 'earthWall' | 'waterWall' | 'seal' | 'confuse' | 'evasion' | 'metalBlock' | 'metalWall' | 'warp' | 'swap' | 'command' | 'submission' | 'mantle' | 'galeZone' | 'imbue';
   /** The projectile or effect the screen plays. */
   vfx: VfxRole;
   /** A signature effect of its own (vfx_<element>/<sig>, and <sig>_great or <sig>_enh enhanced). */
@@ -167,6 +170,13 @@ export interface JutsuSpec {
   douse?: boolean;
   /** How long the ground it soaks stays wet, in rounds (a water jutsu; WET_ROUNDS when unset). */
   wetRounds?: number;
+  /**
+   * Activated, not thrown (the owner, 2026-10-21: the Chidori, and the Rasengan when it is built): the
+   * cast charges the near hand with it for up to `rounds` of the caster's turns (shape 'self'), and
+   * its blow, one melee jutsu attack, goes off by itself the moment the caster moves within reach of
+   * a foe (battle/charged.ts). Its range is that reach.
+   */
+  handCharge?: { rounds: number };
   /** What it does to the ground around it. */
   env?: 'ignite' | 'electrify' | 'clearFoliage';
   /** A failed save adds Tension (the hydra's roar). */
@@ -215,8 +225,11 @@ const OVERRIDE: Record<string, Partial<JutsuSpec>> = {
   earth_wall_doryuheki: { shape: 'wall', special: 'earthWall', vfx: 'wall', length: 4.5 },
   earth_spear_doryuudan: { shape: 'line', width: 1.2, vfx: 'multi', seq: { stage: 'rockVolleys' } },
   wind_blade_daitoppa: { vfx: 'slash' },
-  // A thrust of the bare hand with the lightning gathered in it (the owner's answer 11): the weapon is put away.
-  chidori_lightning_blade: { vfx: 'hit', melee: true, weapon: 'stow', seq: { stage: 'handLightning' } },
+  // Activated (the owner, 2026-10-21: "chidori sera una habilidad que actives"): a bonus action charges
+  // the bare hand for up to 3 rounds, and its blow (a melee jutsu attack roll, 5d8) goes off by itself
+  // within reach of the first foe the ninja comes to. The weapon is put away; the thrust is still his
+  // lightning in the hand (the owner's answer 11).
+  chidori_lightning_blade: { shape: 'self', vfx: 'hit', melee: true, weapon: 'stow', handCharge: { rounds: 3 }, seq: { stage: 'handLightning', held: { group: 'vfx_charged', name: 'chidori_hand', anim: 'charged' } } },
   lightning_hound_raidon: { vfx: 'beast' },
   // Not a weapon attack (the owner): the weapon is put away for an unarmed combo.
   leaf_hurricane_senpuu: { shape: 'selfCircle', vfx: 'slash', melee: true, weapon: 'stow', seq: { stage: 'hurricane' } },
@@ -231,7 +244,6 @@ const OVERRIDE: Record<string, Partial<JutsuSpec>> = {
   rasenshuriken_wind: { vfx: 'sphere' },
   great_fire_annihilation: { vfx: 'breath', length: 12, effect: 'burning', sig: 'annihilation' },
   wood_golem_titan: { element: 'earth', vfx: 'blast' },
-  yasaka_magatama: { element: 'chakra', vfx: 'multi', width: 1.5 },
   night_guy_dragon: { element: 'chakra', vfx: 'beast', melee: true },
   // The rank D and C jutsu (the owner's answers of 2026-10-21; docs/GAMEPLAY_DESIGN.md, "Rank D and C
   // jutsu"). The projectiles fly apart, on three paths, to reach the target from different angles.
@@ -538,7 +550,35 @@ const CLAN_SPECS: JutsuSpec[] = [
   },
 ];
 
-export const JUTSU: Record<string, JutsuSpec> = Object.fromEntries([...JUTSUS_DATA.map((j) => [j.id, specOf(j)]), ...HYDRA_SPECS.map((j) => [j.id, j]), ...CLAN_SPECS.map((j) => [j.id, j])]);
+/**
+ * The classes' own abilities, which come with the class (and, for this one, the nature), not a slot
+ * (battle/imbue.ts). Weapon Element Enhancement: chakra worked into the weapon in hand, no hand
+ * seals; its element is the ninja's own, so the screen reads it from the unit, not from here.
+ */
+const CLASS_SPECS: JutsuSpec[] = [
+  {
+    id: WEAPON_ELEMENT,
+    name: 'Weapon Element Enhancement',
+    nameEs: 'Potenciación elemental del arma',
+    ability: true,
+    rank: '',
+    element: 'chakra',
+    cost: IMBUE_COST,
+    enhCost: 0,
+    cast: 'bonus',
+    range: 0,
+    shape: 'self',
+    saveHalf: false,
+    special: 'imbue',
+    vfx: 'aura',
+    melee: false,
+    // A sword art's rule: the weapon is drawn for it (free, once a turn).
+    weapon: 'draw',
+    loud: false,
+  },
+];
+
+export const JUTSU: Record<string, JutsuSpec> = Object.fromEntries([...JUTSUS_DATA.map((j) => [j.id, specOf(j)]), ...HYDRA_SPECS.map((j) => [j.id, j]), ...CLAN_SPECS.map((j) => [j.id, j]), ...CLASS_SPECS.map((j) => [j.id, j])]);
 
 /** The abilities a clan's members have, in order. */
 export const clanAbilities = (clan: ClanType): string[] => CLAN_SPECS.filter((j) => j.clan === clan).map((j) => j.id);

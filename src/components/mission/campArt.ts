@@ -264,9 +264,6 @@ function lookOf(m: ShinobiCharacter): SpriteAppearance {
   return l;
 }
 
-/** A member's body (the seat a pose sits on can depend on it: sprite/seats.ts seatFor). */
-export const bodyOf = (m: ShinobiCharacter): SpriteAppearance['body'] => lookOf(m).body;
-
 /** True once the sprite system knows a pose (new camp poses may land later). */
 export const knownPose = (p: string): p is SpritePose => p in POSE_FPS;
 

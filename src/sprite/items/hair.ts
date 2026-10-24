@@ -14,11 +14,15 @@
 //   hairFront — over the head (cap, bangs, side locks)
 
 import { faceAnchor } from '../body';
-import { retintHex } from '../color';
+import { retintHex, retintSkinLifted } from '../color';
 import type { DrawCtx, ItemDef } from '../ctx';
 import { ellipse, F_NO_OUTLINE, F_NO_TEXTURE, GRID, Layer, Pen, poly, RES, v, Vec } from '../raster';
 import type { PaintedPart } from './capeArt';
+import { ROMAN_SKIN } from '../romanHeadArt';
 import { braid, BraidArt, hairTemplate, hd, hlock, lock, LockOpts } from './hairkit';
+import { HAIR_COPPER_BRAID } from './lyraHair';
+import { BASE_HAIR, BASE_HAIR_BASE, BASE_HAIR_LINE, BASE_HAIR_SKULL } from './baseHairArt';
+import { ROMAN_HAIR_BACK, ROMAN_HAIR_BASE, ROMAN_HAIR_FRONT, ROMAN_HAIR_LINE, ROMAN_HAIR_SHADE } from './romanHairArt';
 import { VALIANT_HAIR_BACK, VALIANT_HAIR_BASE, VALIANT_HAIR_FRONT, VALIANT_HAIR_LINE } from './valiantHairArt';
 import { LOCK_HAIR_BACK, LOCK_HAIR_BASE, LOCK_HAIR_FRONT, LOCK_HAIR_LINE, LOCK_HAIR_LOCK } from './lockHairArt';
 import { segAngle, type PaintedPiece } from '../painted';
@@ -1612,9 +1616,9 @@ const hairStyle = (id: string, name: string, desc: string, def: string, body?: (
  * Stamps a part of the owner's painted hair (his pixels and colours, valiantHairArt.ts) with its pivot
  * on the face anchor, the near eye's lash start, so it frames the eyes as he drew it on every body and
  * in every pose. His pixels are already the final on-screen pixels: they go in unscaled, like the
- * hair templates.
+ * hair templates. With `onlyOver`, only over what the layer already has (a shadow on the head).
  */
-function paintedHair(g: DrawCtx, L: Layer, p: PaintedPart, color: (ch: string, hex: string) => string): void {
+function paintedHair(g: DrawCtx, L: Layer, p: PaintedPart, color: (ch: string, hex: string) => string, onlyOver = false): void {
   const { nx, ny } = faceAnchor(g);
   const ax = nx - p.pivot[0];
   const ay = ny - p.pivot[1];
@@ -1624,7 +1628,7 @@ function paintedHair(g: DrawCtx, L: Layer, p: PaintedPart, color: (ch: string, h
   p.rows.forEach((row, j) => {
     for (let i = 0; i < row.length; i++) {
       const ch = row[i];
-      if (ch !== '.') L.set(ax + i, ay + j, pens[ch], 3, 'head', F_NO_TEXTURE | F_NO_OUTLINE);
+      if (ch !== '.' && (!onlyOver || L.has(ax + i, ay + j))) L.set(ax + i, ay + j, pens[ch], 3, 'head', F_NO_TEXTURE | F_NO_OUTLINE);
     }
   });
 }
@@ -1696,6 +1700,9 @@ const lockHairColor = (hair: string) => (_ch: string, hex: string) => (LOCK_HAIR
 
 /** His hair recoloured: his black line stays, his browns move the way his mid brown does. */
 const valiantHairColor = (hair: string) => (ch: string, hex: string) => (VALIANT_HAIR_LINE.includes(ch) ? hex : retintHex(hex, VALIANT_HAIR_BASE, hair));
+
+/** His Roman hair recoloured: his black line stays, his blues move the way his middle blue does. */
+const romanHairColor = (hair: string) => (ch: string, hex: string) => (ROMAN_HAIR_LINE.includes(ch) ? hex : retintHex(hex, ROMAN_HAIR_BASE, hair));
 
 export const HAIR_ITEMS: ItemDef[] = [
   {
@@ -1906,6 +1913,40 @@ export const HAIR_ITEMS: ItemDef[] = [
       // peinado que debe ir encima de la ropa y cuerpo"): over the body and every piece of clothing.
       paintedLock(g, g.L('hairOver'), LOCK_HAIR_LOCK, tint);
       trimSkull(g, LOCK_HAIR_BACK);
+    },
+  },
+  // Lyra's hair, after the owner's first heroine picture (lyraHair.ts).
+  HAIR_COPPER_BRAID,
+  {
+    id: 'hair_messy_ponytail',
+    slot: 'hair',
+    name: 'Messy Ponytail',
+    desc: 'Black hair in tufts over the crown, tied high in a messy tail at the back, a fringe swept over the far eye and a lock before the near cheek.',
+    colors: hairColor(BASE_HAIR_BASE),
+    draw: (g, [c]) => {
+      // The owner's bare female body's hair (2026-10-21), every pixel his over the head as he drew it
+      // on his woman; the head under it is trimmed to his head, so nothing of our skull shows past it.
+      const tint = (ch: string, hex: string) => (BASE_HAIR_LINE.includes(ch) ? hex : retintHex(hex, BASE_HAIR_BASE, c));
+      paintedHair(g, g.L('hairFront'), BASE_HAIR, tint);
+      trimSkull(g, BASE_HAIR_SKULL);
+    },
+  },
+  {
+    id: 'hair_roman',
+    slot: 'hair',
+    name: 'Roman Spikes',
+    desc: 'Dark spiky hair: a crown of blue-black locks lit in grey, spikes over the back of the head and the far temple, strands over the brow, locks framing the ear and a tail down the nape.',
+    colors: hairColor(ROMAN_HAIR_BASE),
+    draw: (g, [c]) => {
+      // The owner's hair on his Roman, his pixels (asked for on 2026-10-23, "me gusta mas el de mi
+      // dibujo"): every lock and line of his over the head, and behind it the same hair with what his
+      // face hides filled in, as his Aiden's hair is drawn. On his Roman face every pixel is where he drew it.
+      const tint = romanHairColor(c);
+      paintedHair(g, g.L('hairBack'), ROMAN_HAIR_BACK, tint);
+      // the shadow his locks cast on the forehead, in the character's skin, on the head only
+      paintedHair(g, g.L('head.body'), ROMAN_HAIR_SHADE, (_ch, hex) => retintSkinLifted(hex, ROMAN_SKIN, g.look.skin), true);
+      paintedHair(g, g.L('hairFront'), ROMAN_HAIR_FRONT, tint);
+      trimSkull(g, ROMAN_HAIR_BACK);
     },
   },
 ];

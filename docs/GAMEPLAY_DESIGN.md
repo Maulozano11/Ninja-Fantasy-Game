@@ -427,6 +427,117 @@ D21 and D24 there):
 - **Shooting-Star Thrust** (*Estocada Fugaz*, once Warp Strike) to a Node someone stands on lands 1 to 1.5 m from them,
   never on top of them.
 
+## Class abilities in battle
+
+### Weapon Element Enhancement (the owner, 2026-10-23; in the game since 2026-10-23, every element)
+
+**His answer on the effects (2026-10-23), verbatim:** *"me gusta las armas con mejora elemental metelas en el
+juego menos la de agua se ve mal y no de calidad mejorala para que se ve mas epica y proporcional y los iconos
+que hiciste para la hotbar no me gustaron los mejorare"*.
+- Lightning, wind, fire and earth on the weapon are **approved** and in the game.
+- Water: the first one was **not approved**; redone on `vfx/weapon-water-v2` as a torrent drawn as his water
+  stream is (his water sheet: his blues, a light strand running along it, white foam caps breaking on the
+  crests of waves that run along its upper edge, a rounded head of foam, his spray dots, drops falling), his
+  dark water line round it. Then his *"al de agua hazlo mas largo para que se entienda la extension de alcance
+  hazlo unos 1.35 mas largo"*: the whole water 1.35 times as long, past the tip about the blade again (46 to
+  48 px on Solen's and Ren's blades), short of the frame's edge where the blade points near it (the lunge, a
+  cut, hurt), one length over a pose where the blade barely turns (at rest, walking, running). **Approved**
+  (2026-10-23, *"me gusta agua aprovado"*) and in the game: water is offered again (`IMBUE_PENDING` in
+  `src/battle/imbue.ts` is empty), as a main or a second element.
+- The hotbar icons: he did not like ours (the element icons the button shows); **he will paint them himself**.
+  Ours stay on the button only until his arrive.
+
+**His answers to the four open questions (2026-10-23), verbatim:** *"1 si me gusta dime que haria cada elemento
+(ejemplo: fuego efecto Burn o quemado ) 2 aprovado 3 tambien segundo elemento al momento de desbloquear , 4 no"*.
+1. The numbers are **decided** as proposed below: a bonus action, 2 chakra, 3 turns, +1d4 a blow, and each
+   element's rider in the table (fire's crit burns, lightning's crit numbs 2 rounds, wind's crit blows the foe
+   back 1.5 m, water +1.5 m reach and puts out flames, earth's obsidian crits on a natural 19).
+2. The Spanish name *Potenciación elemental del arma*, button *Arma elemental*: **approved**.
+3. **The second element too, once it is unlocked** (the level-5 choice of a second element,
+   `rules/natureGrowth.ts`): a Bukijutsu Master with a second element can put either of its elements on the
+   weapon, one at a time. Then his *"si el triple naturaleza tambien cuenta"* (2026-10-23): the third
+   element that Triple Nature opens (the feat, level 9 and a second element) counts too, a third button,
+   the same rules. The hotbar shows a button for each ("Arma
+   elemental · Fuego", "Arma elemental · Rayo"), in its element's colour; with one element, one button as
+   before. A ninja whose type has no element (Light, Void) but whose second element is one has it for that
+   one. The AI picks among them: water when only its longer reach brings the foe within a blow this turn;
+   not fire at a foe already burning or standing in the wet, nor water at a burning foe; otherwise the first
+   left of its chakra type's, its second, its third (`imbueChoice` in
+   `src/battle/ai.ts`; `unitImbueElements`, `imbueNaturesOf` in `src/battle/imbue.ts`).
+4. Thrown weapons: **no** (as built).
+
+The owner, verbatim: *"ok ahora para la clase de maestro de armas , agregale weapon
+element enhacement como habilidad y le pondra un efecto de animacion a las armas (si
+es rayo , electricidad alredor del arma , si es viento , vfx de viento alrededor del
+arma , si es fuego el arma prende en llamas , si es agua se extiende el alcance del
+arma con agua vfx , si es tierra se ponen obsdiana filosa en tu arma , no aplica para
+genjutsu, solo elemental )"*.
+
+**Decided by him:**
+- The weapon class (the Maestro de Bukijutsu, `Bukijutsu Master`) has the ability
+  *Weapon Element Enhancement*; it puts the ninja's element on its weapon, with an
+  animated effect on the weapon.
+- Lightning: electricity round the weapon. Wind: wind effects round the weapon. Fire:
+  the weapon bursts into flames. Water: the weapon's **reach grows**, with water
+  effects. Earth: sharp obsidian forms on the weapon.
+- Only the five elements; never genjutsu.
+
+**The rules (proposed by the builder, decided by him on 2026-10-23 as above; constants in `src/battle/imbue.ts`):**
+- Spanish name *Potenciación elemental del arma* (his own English name, translated);
+  the button reads *Arma elemental* (approved). Id `weapon_element`.
+- Who: a Bukijutsu Master whose chakra type is Fire, Water, Wind, Lightning or Earth
+  (its main element, the one its chakra type says; Light and Void, and the pending
+  Shadow and Spirit, have none to give), or whose unlocked second element is one (his
+  answer 3 above). From level 1, as
+  the class's own ability, after the clan's on the hotbar. The rogues (Fire Bukijutsu
+  Masters) have it too.
+- How: a **bonus action, 2 chakra**, no hand seals (chakra worked into the weapon in
+  hand, like a clan ability: the weapon stays in hand, sealed chakra stops it). A
+  weapon put away is drawn for it (free, once a turn, as a sword art draws it). Fists
+  and palm techniques have nothing to hold it: not available. Once at a time.
+- How long: **3 of the ninja's own turns**, the one it is cast in counted (as the
+  activated Chidori). It ends early if the ninja falls or its chakra is sealed. Put
+  away, the weapon keeps it (it shows again when drawn), but the fists strike without it.
+- Every melee weapon blow that hits adds **1d4** of the element (a critical hit makes
+  it the maximum of two dice, 8, the owner's crit rule), landed right after the blow's
+  damage (a clone, Kawarimi or Evasion that stops the blow stops it too). Water, wind
+  and earth deal what their jutsu deal, as the game has no such damage types:
+  | Element | Damage | And (decided) |
+  |---|---|---|
+  | Fire | fire | a critical hit sets the foe **burning** (not on wet ground); a fire blade seals a hydra stump it has just cut |
+  | Lightning | lightning | a critical hit leaves the foe **Numb** (2 rounds); a lightning blade seals a hydra stump too; Downpour makes it hit harder, as all lightning |
+  | Wind | slashing | a critical hit **blows the foe back 1.5 m** (a ninja; big creatures stand firm) |
+  | Water | bludgeoning | **+1.5 m melee reach** (his rule; the 1.5 m is ours): a sword reaches 3 m, a naginata 4.5 m, for attacks, opportunity attacks and the AI; and it puts out the flames of the foe it strikes ("el agua apaga el fuego") |
+  | Earth | piercing (obsidian) | the obsidian edge makes a **natural 19** a critical hit too |
+- Thrown weapons: **no**. The element is on the weapon in hand; a kunai thrown from the
+  pouch is another weapon. Kenjutsu jutsu (the Crescent Moon Dance, the Bleeding Cut)
+  are jutsu with their own damage, and don't add it either.
+- The AI: a Bukijutsu Master whose plan is a blow of its weapon at a foe it can reach
+  this turn (water's longer reach counted) puts its element on first. It doesn't plan
+  differently because it could (the plans are as before).
+- The log: "El arma de Aki se prende en llamas", "La electricidad chisporrotea
+  alrededor del arma de Aki", "El viento gira alrededor del arma de Aki", "El agua
+  recorre el arma de Aki: +1.5 m de alcance", "Obsidiana filosa cubre el arma de Aki",
+  and a line when it leaves the weapon. The class panel in the creator names it.
+
+**How it looks (new art, waiting for his approval; `src/sprite/imbue.ts`):** drawn on the
+weapon's own pixels in every frame that holds it (idle, walk, run, attack, thrust,
+charge, cast, victory, the camp kata), so it follows the weapon's angle (`grip.ts`).
+None where the weapon is not in the hand (hand seals, the unarmed combo, the tackle,
+stowed, knocked out). Each element loops over 8 ticks at 10 a second. The colours are
+his: each ramp is taken from his effect sheets (fire, lightning, wind, water). Fire:
+tongues of flame rise off the blade's upper edge and sway, the steel glows under them,
+embers fly up. Lightning: two bolts fork along the blade and crackle off it, new forks
+every tick, his deep-blue ring and glow. Wind: two strands turn round the blade like a
+helix (the far half behind the figure), dashes running to the tip, small crescents
+flicked off it. Water (approved after its redo, above): a torrent along the blade and a longer blade of water
+past the tip (the longer reach, not to scale), with his water line. Earth: teeth
+of black obsidian along both edges and a point past the tip, glass catching the light
+on their edges, a glint running along them. Energy carries his element's darkest tone
+at its edge, no black line; the obsidian is solid and carries the characters' black
+line. The energy takes the ninja's chakra colour like his jutsu; the obsidian keeps
+its own.
+
 ## Party, missions and defeat
 
 - A party of up to 4. Each ally is played by a person or by the AI, depending

@@ -28,6 +28,7 @@ import { ankleLiftOf, BodyParams, drawRig, neckLocal, Rig } from './rig';
 import { gripAngle } from './grip';
 import { PixelTemplate, stampTemplate, TemplatePalette } from './rotsprite';
 import { FEMALE_HANDS } from './femaleBodyArt';
+import { ownerHand } from './ownerHands';
 import { isFemaleBody, type BodyType, type EyeSpecial, type SlotId, type SpriteAppearance } from './types';
 
 /**
@@ -95,6 +96,11 @@ export interface DrawCtx {
   skin: number;
   /** Which single-choice slots are filled (items use this to adapt, e.g. hair under a helm). */
   has(slot: SlotId, id?: string): boolean;
+  /**
+   * Work that needs the whole figure (every layer, as the items after this one leave it): run once all
+   * is drawn, before the layers are flattened. The Roman skirt closes what the figure leaves open behind it.
+   */
+  after(fn: (layers: ReadonlyMap<Depth, Layer>) => void): void;
 }
 
 export type Side = 'N' | 'F';
@@ -566,6 +572,12 @@ export function handDraw(g: DrawCtx, L: Layer, s: Side, pen: Pen, grow = 0): voi
     // where turning loses a pixel of his line the layer's outline closes the hand again.
     const turn = g.bp.fit || kind === 'grip' ? rot : Math.round(rot / 90) * 90;
     if (g.bp.fit) flags = F_NO_TEXTURE;
+    // Reading or sitting, the fitted bodies' hands are his Lyra's there (ownerHands.ts), on the wrist where he drew hers.
+    const his = g.bp.fit && kind !== 'fist' && kind !== 'grip' ? ownerHand(g.rig.pose, g.rig.frame, s) : null;
+    if (his) {
+      stampTemplate(L, his.t, j.wrist, 0, { o: [pen.mat, 0], '1': [pen.mat, 1], '2': [pen.mat, 2], '3': [pen.mat, 3] }, pen.part, { flags });
+      return;
+    }
     if (kind === 'cradle') stampTemplate(L, H.cradle, j.wrist, 0, s === 'F' ? far : pal, pen.part, { flags });
     else if (s === 'F' && kind === 'fist') stampTemplate(L, H.fistFar, j.wrist, turn, own, pen.part, { flipX, flags });
     else if (s === 'F' && kind === 'relaxed') stampTemplate(L, H.relaxedFar, j.wrist, turn, own, pen.part, { flipX, flags });

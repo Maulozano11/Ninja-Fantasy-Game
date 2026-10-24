@@ -1,0 +1,114 @@
+"""The owner's skin pixels from his Roman paint-over (docs/reference/roman-owner-reference.jpg), for the tests.
+
+The tests of his male skin and his Roman face (src/sprite/maleSkin.test.ts) check the game's frames against
+his picture itself, not against the pieces the other scripts lift out of it: a lifting script that took the
+wrong pixels, or a frame that leaves our own skin where he painted his, then fails. This script reads his
+pixels (tools/refs/roman_ref.py: one of his pixels is one fine pixel of our sprites) and writes every pixel
+of his skin colours in each region, where he painted it (his pixel coordinates; our idle frame 0 has his
+pixel (x, y) at (x + OFFSET[0], y + OFFSET[1]) before any limb is registered):
+
+  upperArmN, upperArmF, handN, handF   his arms' bare skin and his fists
+  legN, legF                           his legs from under the skirt to the ankle (between the laces too)
+  face                                 his face below the hair, ear to chin (not his eyes)
+
+and every pixel of his legs below the skirt (ROMAN_LEG_PIXELS: legN, legF), knee to sole: his skin, the
+sandals and his black line round them, for the test that his whole legs are in the frame at rest; and every
+pixel of his head (ROMAN_HEAD_PIXELS): hair, face, eyes and neck down to the collar, all he painted above
+the cuirass and the shoulder guards, for the test that his head stands at rest where he drew it.
+
+The same picture always gives the same bytes. Run from the repo root with python3 -I:
+
+  python3 -I tools/refs/roman-test-pixels-from-ref.py docs/reference/roman-owner-reference.jpg src/sprite/romanRefPixels.ts
+"""
+
+import os
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+import numpy as np  # noqa: E402
+
+import roman_ref as R  # noqa: E402
+
+# The regions (polygons in his pixel corners), drawn here on their own (not taken from the lifting scripts).
+REGIONS = {
+    'upperArmN': [(31, 34.5), (45, 34.5), (45, 45), (31, 45)],
+    'upperArmF': [(61, 37.5), (66, 37.5), (66, 46), (61, 46)],
+    'handN': [(31, 53.5), (42, 53.5), (42, 61), (31, 61)],
+    'handF': [(62, 52.5), (70, 52.5), (70, 59), (62, 59)],
+    'legN': [(34, 66.5), (50, 66.5), (50, 92), (34, 92)],
+    'legF': [(54, 67.5), (66, 67.5), (66, 92), (54, 92)],
+    'face': [(43, 15), (62, 15), (62, 26), (43, 26)],
+}
+# His head and neck: all he painted above row 28 (the cuirass's collar line), less the cuirass and guards.
+HEAD = [(25, 0), (70, 0), (70, 28), (25, 28)]
+# His legs below the skirt, knee to sole (the skirt's strips end on rows 66 to 68 above them).
+LEGS = {
+    'legN': [(33, 66.5), (51, 66.5), (51, 99.5), (33, 99.5)],
+    'legF': [(53, 67.5), (75, 67.5), (75, 98.5), (53, 98.5)],
+}
+
+
+def main():
+    a = R.native(sys.argv[1])
+    K = np.array([[R.kind(a[y, x]) for x in range(a.shape[1])] for y in range(a.shape[0])])
+    out = [
+        "// The owner's skin pixels in his Roman paint-over, for the tests (tools/refs/roman-test-pixels-from-ref.py",
+        '// from docs/reference/roman-owner-reference.jpg). Generated: rerun the script to change it.',
+        '',
+        "/** His pixel (x, y) is at (x + ROMAN_OFFSET[0], y + ROMAN_OFFSET[1]) of our male idle frame 0, before a limb is registered. */",
+        f'export const ROMAN_OFFSET: [number, number] = [{R.OFFSET[0]}, {R.OFFSET[1]}];',
+        '',
+        '/** Every pixel of his skin colours in each region, where he painted it: [x, y, colour]. */',
+        'export const ROMAN_SKIN_PIXELS: Record<string, [number, number, string][]> = {',
+    ]
+    for name, poly in REGIONS.items():
+        m = R.inside(poly, *a.shape[:2]) & (K == 'skin')
+        cells = [f"[{x}, {y}, '{R.hexc(a[y, x])}']" for y, x in zip(*np.nonzero(m))]
+        out.append(f'  {name}: [')
+        for i in range(0, len(cells), 6):
+            out.append('    ' + ', '.join(cells[i:i + 6]) + ',')
+        out.append('  ],')
+        print(name, len(cells))
+    out += ['};', '']
+    # His legs below the skirt, whole: his skin, the sandals' leather and his black line round them.
+    bg = R.background(a) | (R.luma(a) > 225)
+    out += [
+        '/**',
+        ' * Every pixel of his legs below the skirt, where he painted it: his skin, his knees\' muscle lines, the',
+        ' * sandals\' straps, laces and soles, and his black line round them (with whatever of the skirt\'s hem line',
+        ' * touches them, which the tests leave to the skirt): [x, y, colour].',
+        ' */',
+        'export const ROMAN_LEG_PIXELS: Record<string, [number, number, string][]> = {',
+    ]
+    for name, poly in LEGS.items():
+        region = R.inside(poly, *a.shape[:2]) & ~bg
+        solid = region & np.isin(K, ('skin', 'leather', 'hair'))
+        m = solid | (region & (K == 'line') & R.near8(solid))
+        cells = [f"[{x}, {y}, '{R.hexc(a[y, x])}']" for y, x in zip(*np.nonzero(m))]
+        out.append(f'  {name}: [')
+        for i in range(0, len(cells), 6):
+            out.append('    ' + ', '.join(cells[i:i + 6]) + ',')
+        out.append('  ],')
+        print(name, len(cells))
+    out += ['};', '']
+    # His head and neck: every pixel he painted there that is not the cuirass's or a shoulder guard's.
+    masks, _cols = R.pieces(a)
+    owned = np.zeros(a.shape[:2], bool)
+    for m in masks.values():
+        owned |= m
+    m = R.inside(HEAD, *a.shape[:2]) & ~R.background(a) & ~owned
+    cells = [f"[{x}, {y}, '{R.hexc(a[y, x])}']" for y, x in zip(*np.nonzero(m))]
+    out += [
+        '/** Every pixel of his head where he painted it, hair, face, eyes and neck to the collar (not the cuirass or the guards): [x, y, colour]. */',
+        'export const ROMAN_HEAD_PIXELS: [number, number, string][] = [',
+    ]
+    for i in range(0, len(cells), 6):
+        out.append('  ' + ', '.join(cells[i:i + 6]) + ',')
+    out += ['];', '']
+    print('head', len(cells))
+    R.write(sys.argv[2], '\n'.join(out))
+
+
+if __name__ == '__main__':
+    main()

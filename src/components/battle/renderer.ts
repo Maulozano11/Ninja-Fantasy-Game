@@ -27,7 +27,9 @@ import { edgeFoe, leavesNodes, nodeUnder, WARP, warpLanding } from '../../battle
 import { GRID, RES } from '../../sprite/raster';
 import { depthFx, drawAuraBack, drawCracks, drawDouses, drawWetGround, drawHeld, drawLinger, drawScreenBlood, drawVfxSprite, drawWallSprite, wallTint } from './vfxSprites';
 import { isTintElement, vfxTintColors } from '../../sprite/vfxTint';
-import { jutsuTint } from './vfxTintPlan';
+import { jutsuTint, unitTint } from './vfxTintPlan';
+import { IMBUE_FPS, IMBUE_LOOP } from '../../sprite/imbue';
+import type { ImbueFx } from '../../sprite/imbue';
 
 export interface Camera {
   /** World pixel at the screen's top-left. */
@@ -910,7 +912,10 @@ function drawUnit(ctx: CanvasRenderingContext2D, sc: Scene, u: Unit, pos: Pt): v
       : charge
         ? { mode: 'aura' as const, tick: Math.floor(now / 83), empowered: true, burst: { color: 'cyan' as const, tint: jutsuTint(charge, u) } }
         : undefined;
-  const fr = unitFrame(u, look, v.pose, frame, aura);
+  // The element on the weapon in hand (Weapon Element Enhancement; sprite/imbue.ts draws it on the
+  // weapon in the frame), its energy in the ninja's chakra colour, obsidian in its own.
+  const imbue = v.imbue && v.armed && !u.down ? { fx: v.imbue.toLowerCase() as ImbueFx, tick: Math.floor((now * IMBUE_FPS) / 1000) % IMBUE_LOOP, tint: v.imbue === 'Earth' ? undefined : unitTint(u) } : undefined;
+  const fr = unitFrame(u, look, v.pose, frame, aura, imbue);
   let lx = 0;
   let ly = 0;
   if (v.lunge) {

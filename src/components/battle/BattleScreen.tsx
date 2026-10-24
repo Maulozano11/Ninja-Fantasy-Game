@@ -19,6 +19,8 @@ import { foreseen } from '../../battle/intent';
 import { MAX_STRUCTURES, STRUCTURE_AC, breakable, jutsuWallAt, ownStructures, structureAt, structureAttack, structureBlocker, structureDist } from '../../battle/structures';
 import { auraEntered, commandBlocker, edgeFoe, nodeInSight, nodeUnder, ownNodeAt, ownNodes, submissionBlocker, submissionRefused, swapBlocker, warpBlocker, warpLanding } from '../../battle/clans';
 import { KUNAI, KUNAI_LONG, wielded } from '../../battle/units';
+import { EARTH_CRIT, IMBUE_COST, IMBUE_DICE, IMBUE_ROUNDS, imbueBlocker, type ImbueElement, unitImbueElements, WATER_REACH, WEAPON_ELEMENT, WIND_PUSH } from '../../battle/imbue';
+import { ELEMENT_ES } from '../../game/ruleText';
 import { STONE_RANGE } from '../../battle/stealth';
 import { TAG } from '../../battle/hazards';
 import { battleResult } from '../../battle/result';
@@ -996,43 +998,54 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
             passive: true,
             disabled: !ready,
             why: !u.turn.reaction ? t('why_reaction') : t('r_noChakra'),
-            help: `${name} · ${T(helpKey, undefined, lang)}`,
+            help: `${name} · ${T(helpKey, helpParams(id), lang)}`,
             tip: jutsuTip(sp, sp.cost, lang),
           });
           continue;
         }
         const cost = jutsuCost(u, sp, false);
         const busyHands = handsBlocker(u, sp);
-        // Clan abilities with nothing to work on: Command, Submission and Swap before the fighting,
-        // Warp and Swap with no Node down, Submission with no beast or summon on the field.
-        const idle =
-          stealth && (sp.special === 'command' || sp.special === 'submission' || sp.special === 'swap')
-            ? t('r_combatOnly')
-            : (sp.special === 'warp' || sp.special === 'swap') && !ownNodes(state, u).length
-              ? t('why_noNodes')
-              : sp.special === 'submission' && Object.values(state.units).every((x) => submissionRefused(state, u, x))
-                ? t('why_noBeast')
-                : null;
-        const spent = sp.cast === 'bonus' ? (can.bonus ? null : t('r_noBonus')) : noAction;
-        const why = idle ?? spent ?? (u.chakra < cost ? t('r_noChakra') : busyHands ? t(`r_${busyHands}` as TKey) : null);
-        add({
-          id: `jutsu:${id}`,
-          label: jutsuShort(id, lang),
-          icon: ABILITY_ICON[id] ?? ELEMENT_ICON[sp.element] ?? ACTION_ICON.focus,
-          badge: cost,
-          tone: 'jutsu',
-          element: sp.element,
-          disabled: !!why,
-          why,
-          active: mode.k === 'jutsu' && mode.id === id,
-          tip: jutsuTip(sp, cost, lang),
-          // Aimed enhanced, the Fireball is the Great Fireball, with its own icon.
-          iconId: mode.k === 'jutsu' && mode.id === id && mode.enhanced && id === 'fireball_goukakyu' ? 'great_fireball' : undefined,
-          // A clan ability explains itself; a jutsu shows its rank, reach, dice and save.
-          help: T.has(helpKey)
-            ? `${name} · ${T(helpKey, undefined, lang)}`
-            : `${name} · ${sp.rank} · ${sp.range} m${sp.dice ? ` · ${sp.dice}` : ''}${sp.save ? ` · ${(lang === 'es' ? SAVE_ES : SAVE_EN)[sp.save]}` : ''}`,
-        });
+        // Weapon Element Enhancement: a button for each element the ninja can put on its weapon (its chakra
+        // type's, and its second element once unlocked), in that element's colour.
+        const choices: (ImbueElement | undefined)[] = id === WEAPON_ELEMENT ? unitImbueElements(u) : [undefined];
+        for (const choice of choices.length ? choices : [undefined]) {
+          const el = choice ? (choice.toLowerCase() as JutsuSpec['element']) : sp.element;
+          // Clan abilities with nothing to work on: Command, Submission and Swap before the fighting,
+          // Warp and Swap with no Node down, Submission with no beast or summon on the field.
+          // Weapon Element Enhancement: already on the weapon, or no weapon to put it on.
+          const imbueWhy = sp.special === 'imbue' ? imbueBlocker(u, choice) : null;
+          const idle = imbueWhy
+            ? t(`r_${imbueWhy}` as TKey)
+            : stealth && (sp.special === 'command' || sp.special === 'submission' || sp.special === 'swap')
+              ? t('r_combatOnly')
+              : (sp.special === 'warp' || sp.special === 'swap') && !ownNodes(state, u).length
+                ? t('why_noNodes')
+                : sp.special === 'submission' && Object.values(state.units).every((x) => submissionRefused(state, u, x))
+                  ? t('why_noBeast')
+                  : null;
+          const spent = sp.cast === 'bonus' ? (can.bonus ? null : t('r_noBonus')) : noAction;
+          const why = idle ?? spent ?? (u.chakra < cost ? t('r_noChakra') : busyHands ? t(`r_${busyHands}` as TKey) : null);
+          // With two elements each button names its own.
+          const two = choices.length > 1 && choice;
+          add({
+            id: two ? `jutsu:${id}@${choice}` : `jutsu:${id}`,
+            label: two ? `${jutsuShort(id, lang)} · ${lang === 'es' ? ELEMENT_ES[choice] : choice}` : jutsuShort(id, lang),
+            icon: ABILITY_ICON[id] ?? ELEMENT_ICON[el] ?? ACTION_ICON.focus,
+            badge: cost,
+            tone: 'jutsu',
+            element: el,
+            disabled: !!why,
+            why,
+            active: mode.k === 'jutsu' && mode.id === id,
+            tip: jutsuTip(sp, cost, lang),
+            // Aimed enhanced, the Fireball is the Great Fireball, with its own icon.
+            iconId: mode.k === 'jutsu' && mode.id === id && mode.enhanced && id === 'fireball_goukakyu' ? 'great_fireball' : undefined,
+            // A clan ability explains itself; a jutsu shows its rank, reach, dice and save.
+            help: T.has(helpKey)
+              ? `${name} · ${T(helpKey, helpParams(id), lang)}`
+              : `${name} · ${sp.rank} · ${sp.range} m${sp.dice ? ` · ${sp.dice}` : ''}${sp.save ? ` · ${(lang === 'es' ? SAVE_ES : SAVE_EN)[sp.save]}` : ''}`,
+          });
+        }
       }
       add({ id: 'dash', label: t('act_dash'), icon: ACTION_ICON.dash, disabled: !can.action, why: noAction, help: t('help_dash') });
       add({ id: 'dodge', label: t('act_dodge'), icon: ACTION_ICON.dodge, disabled: !can.action || stealth, why: noAction ?? t('r_combatOnly'), help: t('help_dodge') });
@@ -1084,12 +1097,13 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
       }
       if (id.startsWith('passive:')) return;
       if (id.startsWith('jutsu:')) {
-        const jid = id.slice(6);
+        // (Weapon Element Enhancement with two elements: `jutsu:weapon_element@Fire`, the element chosen)
+        const [jid, element] = id.slice(6).split('@') as [string, ImbueElement | undefined];
         const sp = JUTSU[jid];
         if (!sp) return;
         if (!tipSeen('tip_jutsu')) setTip('tip_jutsu');
         if (sp.shape === 'self') {
-          act({ type: 'jutsu', unit: u.id, jutsu: jid, at: u.pos });
+          act({ type: 'jutsu', unit: u.id, jutsu: jid, at: u.pos, ...(element ? { element } : {}) });
           return;
         }
         setMode((m) => (m.k === 'jutsu' && m.id === jid ? { k: 'move' } : { k: 'jutsu', id: jid, enhanced: false }));
@@ -1608,6 +1622,7 @@ const SHORT: Record<string, [string, string]> = {
   northstar_command: ['Command', 'Comando'],
   northstar_submission: ['Submit', 'Sumisión'],
   mirai_evasion: ['Evasion', 'Evasión'],
+  weapon_element: ['Element blade', 'Arma elemental'],
   fire_three_embers: ['Embers', 'Brasas'],
   wind_whirl: ['Whirl', 'Remolino'],
   wind_breeze_mantle: ['Mantle', 'Manto'],
@@ -1651,6 +1666,12 @@ function jutsuEffect(sp: JutsuSpec, lang: ReturnType<typeof useLang>): string {
 }
 
 /** The pop-up of a jutsu's slot: its full name, rank, how it is cast, what it does, its description, and enhanced. */
+/** The numbers a help line names (Weapon Element Enhancement's come from battle/imbue.ts). */
+function helpParams(id: string): Record<string, string | number> | undefined {
+  if (id !== WEAPON_ELEMENT) return undefined;
+  return { c: IMBUE_COST, r: IMBUE_ROUNDS, d: IMBUE_DICE, p: WIND_PUSH, m: WATER_REACH, k: EARTH_CRIT };
+}
+
 function jutsuTip(sp: JutsuSpec, cost: number, lang: ReturnType<typeof useLang>): ButtonTip {
   const es = lang === 'es';
   const cast = T(sp.cast === 'bonus' ? 'bonus' : sp.cast === 'reaction' ? 'reaction' : 'action', undefined, lang);
@@ -1658,7 +1679,7 @@ function jutsuTip(sp: JutsuSpec, cost: number, lang: ReturnType<typeof useLang>)
   const meta = [sp.rank ? (es ? `Rango ${sp.rank}` : `Rank ${sp.rank}`) : '', cast, `${cost} chakra`, reach].filter(Boolean).join(' · ');
   const data = JUTSUS_DATA.find((j) => j.id === sp.id);
   const helpKey = `help_${sp.id}`;
-  const text = T.has(helpKey) ? T(helpKey as TKey, undefined, lang) : es ? data?.descriptionEs ?? data?.description : data?.description;
+  const text = T.has(helpKey) ? T(helpKey as TKey, helpParams(sp.id), lang) : es ? data?.descriptionEs ?? data?.description : data?.description;
   let enh: string | undefined;
   if (sp.enhCost) {
     const e = enhancedSpec(sp);

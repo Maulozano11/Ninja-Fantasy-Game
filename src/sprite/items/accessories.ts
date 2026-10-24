@@ -16,7 +16,8 @@ import { KATANA_V2, KATANA_V2_BLADE, KATANA_V2_CHAKRA, KATANA_V2_GOLD, KATANA_V2
 import type { PartSlot, PartsPreview } from '../ctx';
 import type { SpriteAppearance } from '../types';
 import { stampLeaning } from '../painted';
-import { NAVY_SABRE, NAVY_SABRE_GOLD, NAVY_SABRE_GRIP, NAVY_SABRE_JEWEL, NAVY_SABRE_KIND, NAVY_SABRE_STEEL } from './navySabreArt';
+import { NAVY_SABRE, NAVY_SABRE_GOLD, NAVY_SABRE_GRIP, NAVY_SABRE_HILT, NAVY_SABRE_JEWEL, NAVY_SABRE_KIND, NAVY_SABRE_STEEL } from './navySabreArt';
+import { navyScabbardMouth } from './navy';
 import { FOUNDER_COWL, FOUNDER_COWL_GOLD, FOUNDER_COWL_KIND, FOUNDER_COWL_NEAR, FOUNDER_COWL_NECK, FOUNDER_COWL_SEAM_F, FOUNDER_COWL_SEAM_N, FOUNDER_COWL_STUD, FOUNDER_COWL_STUD_F } from './founderCowlArt';
 import { chakraHex } from '../chakraInfo';
 import { LYRA_SWORD_BLADE, LYRA_SWORD_GUARD } from './lyraSwordArt';
@@ -462,6 +463,20 @@ function katanaV2Preview(look: SpriteAppearance, parts: Record<string, string>):
   return { rows: KATANA_V2.rows, colors: Object.fromEntries(Object.entries(KATANA_V2.colors).map(([ch, hex]) => [ch, tint(ch, hex)])) };
 }
 
+
+/**
+ * How far along the blade from the grip (fine px) his hilt reaches: sheathed, the grip stands this far out of
+ * the scabbard's throat, less the 2 px of the guard's foot that sit over the throat.
+ */
+const SHEATHED = (() => {
+  const a = (NAVY_SABRE_HILT.angle * Math.PI) / 180;
+  let far = 0;
+  NAVY_SABRE_HILT.rows.forEach((row, y) => [...row].forEach((ch, x) => {
+    if (ch !== '.') far = Math.max(far, (x - NAVY_SABRE_HILT.pivot[0]) * Math.cos(a) + (y - NAVY_SABRE_HILT.pivot[1]) * Math.sin(a));
+  }));
+  return far - 2;
+})();
+
 export const HELD_ITEMS: ItemDef[] = [
   {
     id: 'held_none',
@@ -574,7 +589,13 @@ export const HELD_ITEMS: ItemDef[] = [
         const [from, to] = k === 'steel' ? [NAVY_SABRE_STEEL, steel] : k === 'jewel' ? [NAVY_SABRE_JEWEL, jewel] : k === 'grip' ? [NAVY_SABRE_GRIP, grip] : [NAVY_SABRE_GOLD, gold];
         return retintHex(hex, from, to);
       };
-      if (handsBusy(g)) drawPaintedWeapon(g, 'backGear', NAVY_SABRE, backGrip(g, 48), backAngle(g, 48), tint);
+      if (handsBusy(g) && g.look.accessories?.some((a) => a.id === 'acc_navy_scabbard')) {
+        // Busy hands with his scabbard at the hip: the sabre sheathed in it, only his hilt out of the throat
+        // (drawn once the scabbard is, over its throat).
+        const { throat, deg } = navyScabbardMouth(g);
+        const a = (deg * Math.PI) / 180;
+        g.after(() => drawPaintedWeapon(g, 'nearArm.held', NAVY_SABRE_HILT, add(throat, v((-Math.cos(a) * SHEATHED) / RES, (-Math.sin(a) * SHEATHED) / RES)), deg, tint));
+      } else if (handsBusy(g)) drawPaintedWeapon(g, 'backGear', NAVY_SABRE, backGrip(g, 48), backAngle(g, 48), tint);
       else if (handsLimp(g)) drawPaintedWeapon(g, 'nearArm.held', NAVY_SABRE, droppedGrip(g, 0.7), -86, tint);
       else if (!handsReleased(g)) drawPaintedWeapon(g, 'nearArm.held', NAVY_SABRE, g.rig.handN, swordAngle(g), tint);
     },

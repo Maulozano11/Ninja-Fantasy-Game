@@ -64,6 +64,15 @@ export const T = strings({
 
   // node panel
   campsite: { en: 'Campsite', es: 'Lugar para acampar' },
+  scene: { en: 'On the road', es: 'En el camino' },
+  doctorWho: { en: 'Who learns from him?', es: '¿Quién aprende de él?' },
+  doctorAntidote: { en: 'Give him an antidote ({n} left)', es: 'Darle un antídoto (quedan {n})' },
+  doctorTreat: { en: 'Set his leg: Medicine DC {dc} ({p} %)', es: 'Entablillar su pierna: Medicina CD {dc} ({p} %)' },
+  doctorLeave: { en: 'Walk on', es: 'Seguir de largo' },
+  doctorNote: {
+    en: 'He teaches Seal Needles: a platinum senbon that can block a foe\'s chakra for a turn. Any class can learn it. He leaves 3 platinum senbon (1 if setting the leg fails).',
+    es: 'Enseña Agujas de sello: un senbon de platino que puede bloquear el chakra de un enemigo durante un turno. Cualquier clase puede aprenderlo. Deja 3 senbons de platino (1 si falla el entablillado).',
+  },
   objective: { en: 'Objective', es: 'Objetivo' },
   battle: { en: 'Battle', es: 'Batalla' },
   makeCamp: { en: 'Make camp (1 camp kit · {n} left)', es: 'Acampar (1 equipo de campamento · quedan {n})' },

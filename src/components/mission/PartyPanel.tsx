@@ -246,7 +246,7 @@ export function PartyPanel({
   );
 }
 
-const SUPPLY_ORDER: SupplyId[] = ['rations', 'campKits', 'bandages', 'antidotes', 'soldierPills', 'explosiveTags', 'wireRolls', 'weaponPoison', 'healingPotions'];
+const SUPPLY_ORDER: SupplyId[] = ['rations', 'campKits', 'bandages', 'antidotes', 'soldierPills', 'explosiveTags', 'wireRolls', 'weaponPoison', 'healingPotions', 'platinumSenbon'];
 
 export function SuppliesBar({ party }: { party: PartyState }) {
   useLang();

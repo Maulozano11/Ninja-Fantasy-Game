@@ -193,7 +193,7 @@ export interface SpriteAppearance {
    * holds a senbon from the case in place of the pouch kunai (the owner, 2026-10-24: thrown "como
    * cualquier arma objeto con la animacion de arrojar sin la espada"; the weapon is stowed).
    */
-  pouchSenbon?: boolean;
+  pouchSenbon?: boolean | 'platinum';
 }
 
 /** Special eye patterns, derived from the character's dojutsu. */

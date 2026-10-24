@@ -31,9 +31,13 @@ interface NodeBase {
   textEs?: string;
 }
 
+/** A scene on the road (the old doctor, game/doctorScene.ts). */
+export type SceneId = 'old_doctor';
+
 export type RoadNode =
   | (NodeBase & { kind: 'battle'; battle: MissionBattle; objective?: boolean })
-  | (NodeBase & { kind: 'camp'; site: Omit<CampSite, 'nodeId' | 'zoneDanger'> });
+  | (NodeBase & { kind: 'camp'; site: Omit<CampSite, 'nodeId' | 'zoneDanger'> })
+  | (NodeBase & { kind: 'scene'; scene: SceneId });
 
 export interface MissionZone {
   name: string;
@@ -92,6 +96,17 @@ export const RIVER_FOREST_PATROL: MissionDef = {
             weather: 'Clear',
             encounter: 'cedar_rogues',
           },
+        },
+        // The owner's way C to Seal Needles (2026-10-24): the wandering old doctor.
+        {
+          id: 'old_doctor',
+          kind: 'scene',
+          scene: 'old_doctor',
+          name: 'The Wandering Doctor',
+          nameEs: 'El médico errante',
+          hours: 1,
+          text: 'Past the cedars an old man sits on a milestone, his leg swollen black where a needle-trap caught him. A case of pale needles lies open on his knees. "Platinum," he says, seeing you look. "It stops chakra where it goes in, if you know where to put it. Help an old doctor, and I will show one of you where."',
+          textEs: 'Pasados los cedros, un anciano está sentado en un mojón, con la pierna hinchada y negra donde lo atrapó una trampa de agujas. Sobre las rodillas tiene abierto un estuche de agujas pálidas. «Platino», dice al ver que miran. «Detiene el chakra donde entra, si sabes dónde ponerla. Ayuden a un viejo médico y le enseñaré a uno de ustedes dónde.»',
         },
       ],
     },

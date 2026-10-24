@@ -414,7 +414,9 @@ function droppedGrip(g: DrawCtx, at: number, off = 1.2): Vec {
  */
 export function drawThrowKunai(g: DrawCtx): void {
   if (!throwsKunai(g)) return;
-  if (g.look.pouchSenbon) drawWeapon(g, 'nearArm.held', SENBON, gripPoint(g), swordAngle(g), { blade: '#b9c2cf', grip: '#3a3346', guard: '#8a94a3' });
+  // Seal Needles' platinum senbon: a paler, warmer metal than steel (placeholder until the owner paints it).
+  if (g.look.pouchSenbon === 'platinum') drawWeapon(g, 'nearArm.held', SENBON, gripPoint(g), swordAngle(g), { blade: '#e6e1d6', grip: '#3a3346', guard: '#c7c0b2' });
+  else if (g.look.pouchSenbon) drawWeapon(g, 'nearArm.held', SENBON, gripPoint(g), swordAngle(g), { blade: '#b9c2cf', grip: '#3a3346', guard: '#8a94a3' });
   else drawWeapon(g, 'nearArm.held', KUNAI, gripPoint(g), swordAngle(g), { blade: '#aab4c2', grip: '#3a3346', guard: '#aab4c2', wrap: '#e2dccb' });
 }
 

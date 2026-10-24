@@ -39,6 +39,7 @@ export const SUPPLY_LABEL: Record<SupplyId, string> = {
   wireRolls: 'Wire rolls',
   weaponPoison: 'Weapon poison',
   healingPotions: 'Healing potions',
+  platinumSenbon: 'Platinum senbon',
 };
 
 export const SUPPLY_LABEL_ES: Record<SupplyId, string> = {
@@ -51,6 +52,7 @@ export const SUPPLY_LABEL_ES: Record<SupplyId, string> = {
   wireRolls: 'Rollos de alambre',
   weaponPoison: 'Veneno para armas',
   healingPotions: 'Pociones curativas',
+  platinumSenbon: 'Senbon de platino',
 };
 
 export const BREAKDOWN_LABEL: Record<string, string> = {

@@ -9,7 +9,7 @@ import type { ShinobiCharacter } from '../types/shinobi';
 import type { PartyBattleResult } from '../battle/result';
 import { deriveStats } from '../rules/derived';
 import { chooseFire, doActivity, rollNight, serveFood, startCamp, startShortStop } from '../rules/rest';
-import { applyOutcome, continueRoad, intoNextZone, migrateRun, MissionRun, newBattle, resolvePartyBattle, startRun } from './missionRun';
+import { answerScene, applyOutcome, continueRoad, intoNextZone, migrateRun, MissionRun, newBattle, resolvePartyBattle, startRun } from './missionRun';
 
 const hero = { ...DEFAULT_CHARACTER, id: 'hero', name: 'Solen' };
 
@@ -116,6 +116,10 @@ describe('mission flow', () => {
 
   it('the road: zone end, short stop, next zone, camp, ambush and an interrupted morning', () => {
     let r = fight(begin(), 'victory', 30);
+    // The old doctor's scene on the Cedar Road (game/doctorScene.ts): the party walks on.
+    r = continueRoad(r);
+    assert.equal(r.pos.node, 1, 'the old doctor');
+    r = answerScene(r, 'leave');
     r = continueRoad(r);
     assert.equal(r.zoneEnd, true);
     r = applyOutcome(r, ok(startShortStop(r.party)), (x, stop) => ({ ...x, stop }));

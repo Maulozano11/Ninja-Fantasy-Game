@@ -61,6 +61,8 @@ export interface UnitView {
    * near fist until it leaves it (renderer.ts senbonLook; the owner, 2026-10-24).
    */
   senbonUntil?: number;
+  /** The senbon thrown is a platinum one (Seal Needles). */
+  senbonPlatinum?: boolean;
   /** What crackles in the near hand, drawn at the hand in every pose (the Chidori's lightning). */
   held?: Held;
   /**
@@ -210,7 +212,7 @@ export interface Fx {
   /** Lightning running across a wet patch: its cells ("c,r"), from `from` outward. */
   cells?: string[];
   /** A thrown senbon (vfx_senbon/needle, its row): plain steel, coated with poison, or dipped in a healing potion. */
-  needle?: 'steel' | 'poison' | 'heal';
+  needle?: 'steel' | 'poison' | 'heal' | 'platinum';
   /** A thrown kunai coated with poison (drawn green). */
   coated?: boolean;
 }
@@ -873,9 +875,10 @@ export class Playback {
   }
 
   /** The senbon throw: the 'throw' pose, held on its last frame, the weapon stowed meanwhile (renderer.ts). */
-  private throwSenbon(v: UnitView, now: number): void {
+  private throwSenbon(v: UnitView, now: number, platinum = false): void {
     this.setPose(v, 'throw', now, SENBON_THROW);
     v.senbonUntil = now + SENBON_THROW / this.speed;
+    v.senbonPlatinum = platinum;
   }
 
   private setPose(v: UnitView, pose: SpritePose, now: number, dur?: number): void {
@@ -1960,8 +1963,8 @@ export class Playback {
         }
         // A senbon is thrown like any thrown object (the owner, 2026-10-24): the throw pose, the weapon
         // stowed, the needle leaving the fist at the release.
-        const needle = ev.ranged && ev.what === 'Senbon' ? (ev.coated ? 'poison' : 'steel') : undefined;
-        if (needle) this.throwSenbon(a, now);
+        const needle = ev.ranged && ev.what === 'Senbon' ? (ev.platinum ? 'platinum' : ev.coated ? 'poison' : 'steel') : undefined;
+        if (needle) this.throwSenbon(a, now, !!ev.platinum);
         else this.setPose(a, 'attack', now, 520);
         if (needle) {
           this.fx.push({ kind: 'kunai', element: 'chakra', from, to, t0: now + SENBON_RELEASE / this.speed, dur: 300, lift: [74, 60], needle });

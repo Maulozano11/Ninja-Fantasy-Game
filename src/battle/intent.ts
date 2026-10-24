@@ -18,7 +18,8 @@ import { KUNAI, KUNAI_LONG, wielded } from './units';
 import { COMMAND, FORESIGHT_RANGE, SUBMISSION, SWAP, WARP, commandRefused, ownNodes, submissionRefused, swapBlocker, warpBlocker, warpLanding } from './clans';
 import { ownStructures, structureAt, structureBlocker } from './structures';
 import { chargedReach } from './charged';
-import { antidotesLeft, coatLeft, HEAL_SENBON_DICE, HEAL_SENBON_RANGE, healSenbonBonus, MEDIC_CLASS, POISON_DC, POISON_DICE, poisonLeft, potionsLeft, senbonLeft } from './senbon';
+import { knowsSealNeedles } from '../rules/sealNeedles';
+import { platinumLeft, SENBON, sealNeedlesDC, antidotesLeft, coatLeft, HEAL_SENBON_DICE, HEAL_SENBON_RANGE, healSenbonBonus, MEDIC_CLASS, POISON_DC, POISON_DICE, poisonLeft, potionsLeft, senbonLeft } from './senbon';
 import { activeImbue, IMBUE_DICE, imbueReach } from './imbue';
 
 const avg = (dice?: string): number => {
@@ -43,6 +44,9 @@ export function visibleFoes(s: BattleState, u: Unit): Unit[] {
       !steamHides(s, u.pos, f.pos),
   );
 }
+
+/** A plan's `what` for a Seal Needles throw (a platinum senbon). */
+export const SEAL_NEEDLES_INTENT = 'Seal Needles';
 
 /** Melee reach to a target (hydra heads rise high, the body is big). */
 export const reachTo = (u: Unit, t: Unit): number => u.weapon.reach + imbueReach(u) + (t.kind === 'hydra_head' ? 2.5 : 0) + (t.bulk ?? 0);
@@ -275,6 +279,12 @@ export function ninjaOptions(s: BattleState, u: Unit, next = false): Option[] {
       const v = ((avg(KUNAI.dice) + dexMod) * 0.55 + venom(f)) * fx * (d > KUNAI.reach + u.speed ? 0.5 : 1) + (plant ? blow * EDGE * 0.5 : 0);
       out.push({ intent: { kind: 'ranged', what: KUNAI.name, target: f.id }, value: v, ...(plant ? { way: 'plant' as const } : {}) });
     }
+    // Seal Needles (a platinum senbon): worth the needle plus, if the CON save fails, the jutsu the foe
+    // would have cast on its next turn.
+    if (knowsSealNeedles(u.character) && platinumLeft(s, u) > 0 && f.kind === 'ninja' && f.jutsus.length && !hasEffect(f.effects, 'chakra_sealed') && d <= SENBON.reach + u.speed) {
+      const fails = 1 - successChance(saveMod(f, 'con'), sealNeedlesDC(u), 'none', true);
+      out.push({ intent: { kind: 'ranged', what: SEAL_NEEDLES_INTENT, target: f.id }, value: ((avg(SENBON.dice) + dexMod) * 0.6 + fails * threat(f) * 0.6) * fx });
+    }
     if (sealed) continue;
     for (const id of u.jutsus) {
       const j = JUTSU[id];
@@ -467,7 +477,7 @@ export function goalOf(s: BattleState, u: Unit, i: Intent): Goal | null {
       return { ...goal(good, t), ready: dist(u.pos, t.pos) <= reach + 0.1 && !fullCoverBetween(s, u.pos, t.pos) };
     }
     case 'ranged':
-      return goal((p) => dist(p, t.pos) <= KUNAI.reach && lineOfSight(s, p, t.pos), t);
+      return goal((p) => dist(p, t.pos) <= (i.what === SEAL_NEEDLES_INTENT ? SENBON.reach : KUNAI.reach) && lineOfSight(s, p, t.pos), t);
     case 'jutsu': {
       const j = JUTSU[i.what];
       if (!j) return null;

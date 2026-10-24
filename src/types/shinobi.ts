@@ -210,6 +210,10 @@ export interface ShinobiCharacter {
   scars?: string[];
   /** Small traits left by a Breakdown or an Awakening. */
   traits?: string[];
+  /** Abilities learned on the road or at camp (rules/sealNeedles.ts: 'seal_needles'); older sheets have none. */
+  abilities?: string[];
+  /** Camps of anatomy study so far toward Seal Needles (rules/sealNeedles.ts); older sheets have none. */
+  anatomyStudy?: number;
   /** 1 or 2 values; the first is the main one. */
   conviction?: ConvictionValue[];
   /** Skills the ninja is proficient in; older sheets use their class's defaults. */

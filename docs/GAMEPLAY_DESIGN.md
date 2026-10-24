@@ -2117,3 +2117,30 @@ section below), 5 (Steady Hand) as a **feat**, 6 (healing at camp) later. The nu
   (1d8 → 2d8, + WIS) and healing jutsu (the Mystical Palm, the Healing Dew). Quick First Aid is not a
   roll and stays 1 HP.
 - Icons: the two new buttons use drawn placeholders until he paints them.
+
+### Agujas de sello / Seal Needles: platinum blocks chakra (the owner, 2026-10-24; built on `items/senbon`)
+
+His words: *"d y c haremos que las senbos sean de platino que en nuestro lore tiene propiedades de
+bloquar el chakra o energia"*. **Decided by him**: the pressure-point ability uses **platinum**
+senbon; in this world **platinum blocks chakra and energy**; it is learned **two ways**, by training
+at camp (D) and from a master on a mission (C). The name is ours (original, no franchise term):
+*Agujas de sello* / Seal Needles. **Our proposal**: every number below (`src/battle/senbon.ts`,
+`src/rules/sealNeedles.ts`).
+
+- **The ability** (action): throw a **senbon de platino** as a senbon (1d4 piercing, +1 to hit, 6 m,
+  18 m with disadvantage; a poison coat rides it too). If it hits, the target makes a **CON save, DC 8
+  + proficiency + the better of DEX and WIS**; failed: its **chakra is blocked for its next turn**
+  (*Chakra sellado*: no jutsu; a charged hand or an element on the weapon lets go). Ninjas only (the
+  hydra has no chakra to block). No uses per battle: the platinum senbon are the limit.
+- **Platinum senbon** (a backpack item, *Senbon de platino*): each ninja who knows the ability brings
+  **3** when a mission sets out; the old doctor leaves **3** when he teaches (1 if setting his leg
+  fails). Each throw spends one, hit or miss (not one of the case's steel ones). A run saved before
+  them loads with 0.
+- **The AI** throws one at a foe with jutsu not already blocked, worth the needle plus, if the save
+  fails, the jutsu the foe would cast.
+- **Learning** (`docs/MISSION_DESIGN.md`, "Seal Needles"): **D** *Estudiar anatomía* at camp, a
+  Medical Specialist's activity, in **3 camps** (any camps, not in a row; the count is saved on the
+  ninja's sheet); **C** the wandering old doctor on the Cedar Road, who teaches **any class**.
+- **Look**: the platinum needle (a fourth row of `vfx_senbon/needle`: a paler, warmer metal with a cold
+  shimmer at the point) and a platinum senbon in the fist; **placeholders** until he paints them. The
+  button's icon is a drawn placeholder too.

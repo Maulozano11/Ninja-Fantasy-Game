@@ -8,6 +8,7 @@ import { rollDice } from './dice';
 import { addEffect, EFFECTS, endBattle, hasEffect, leaveZone } from './effects';
 import { changeChakra, changeExhaustion, changeHp, changeTension, giveEffect, isUnconscious, returnToVillage, Step } from './ninja';
 import { withPouches } from './pouch';
+import { withPlatinum } from './sealNeedles';
 import type { Outcome } from './rest';
 import { Dice, rngFor, rollDie } from './rng';
 
@@ -22,6 +23,8 @@ export const DEFAULT_SUPPLIES: Supplies = {
   // Proposal (docs/GAMEPLAY_DESIGN.md, "Senbon, weapon poison and the healing senbon").
   weaponPoison: 2,
   healingPotions: 2,
+  // Seal Needles' platinum senbon come with the ninjas who know it (rules/sealNeedles.ts withPlatinum).
+  platinumSenbon: 0,
 };
 
 /** A new mission: the backpack (the mission's supplies, plus the explosive tags in each member's own pouch). */
@@ -32,7 +35,7 @@ export function newMission(
   return {
     members,
     dead: [],
-    supplies: withPouches({ ...DEFAULT_SUPPLIES, ...opts.supplies }, members),
+    supplies: withPlatinum(withPouches({ ...DEFAULT_SUPPLIES, ...opts.supplies }, members), members),
     bonds: {},
     leaderId: opts.leaderId ?? members[0]?.id ?? '',
     progress: {

@@ -379,6 +379,8 @@ export interface BattleSupplies {
   weaponPoison?: number;
   /** Healing potions a senbon is dipped in to heal an ally from afar. */
   healingPotions?: number;
+  /** Platinum senbon for Seal Needles (rules/sealNeedles.ts). */
+  platinumSenbon?: number;
 }
 
 export type BattlePhase = 'stealth' | 'combat' | 'ended';
@@ -419,6 +421,8 @@ export interface Hit {
   douse?: boolean;
   /** A blow from a weapon coated with poison: once it lands, a CON save against this DC (battle/senbon.ts). */
   poison?: { dc: number };
+  /** A platinum senbon that went in (Seal Needles): a CON save against this DC, or chakra blocked. */
+  seal?: { dc: number };
   /**
    * The element on the weapon (Weapon Element Enhancement): its own damage, landed right after the
    * blow's, with the blow (a clone, Kawarimi or Evasion that stops the blow stops it too).
@@ -495,8 +499,8 @@ export type ItemId = 'pill' | 'bandage' | 'antidote' | 'tag' | 'tagTrap' | 'pois
 /** What a player or the AI wants to do. */
 export type Action =
   | { type: 'move'; unit: string; to: Cell; sneak?: boolean }
-  /** `senbon`: a thrown senbon instead of a kunai (it implies `ranged`). */
-  | { type: 'attack'; unit: string; target: string; ranged?: boolean; knockout?: boolean; senbon?: boolean }
+  /** `senbon`: a thrown senbon instead of a kunai (it implies `ranged`); `platinum`: Seal Needles' platinum senbon (it implies `senbon`). */
+  | { type: 'attack'; unit: string; target: string; ranged?: boolean; knockout?: boolean; senbon?: boolean; platinum?: boolean }
   | { type: 'jutsu'; unit: string; jutsu: string; at: Pt; target?: string; enhanced?: boolean; target2?: string; element?: 'Fire' | 'Lightning' | 'Wind' | 'Water' | 'Earth' }
   | { type: 'dash' | 'disengage' | 'dodge' | 'hide' | 'focus' | 'crouch' | 'jump' | 'draw'; unit: string }
   | { type: 'shove'; unit: string; target: string; mode: 'prone' | 'push' }
@@ -546,7 +550,7 @@ export type BattleEvent =
   | { t: 'act'; unit: string; act: 'dash' | 'disengage' | 'dodge' | 'focus' | 'crouch' | 'stand' | 'jump' | 'item' | 'stone' }
   /** `reasons`: why the roll had advantage or disadvantage (the preview's keys: 'aura', 'behind'…). */
   /** `coated`: the weapon carried poison (battle/senbon.ts): the screen flies a coated senbon. */
-  | { t: 'attack'; unit: string; target: string; what: string; roll: RollInfo; ranged: boolean; reasons?: string[]; coated?: boolean }
+  | { t: 'attack'; unit: string; target: string; what: string; roll: RollInfo; ranged: boolean; reasons?: string[]; coated?: boolean; platinum?: boolean }
   /** `ab`: the ability the save is made with (dex, wis…). */
   | { t: 'save'; unit: string; what: string; roll: RollInfo; ab?: string }
   | { t: 'check'; unit: string; what: string; roll: RollInfo }

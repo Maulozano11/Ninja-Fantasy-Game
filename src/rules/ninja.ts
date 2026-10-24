@@ -178,6 +178,8 @@ export function sanitizeMissionFields(c: ShinobiCharacter): ShinobiCharacter {
   out.effects = c.effects === undefined ? undefined : sanitizeEffects(c.effects);
   out.scars = strings(c.scars);
   out.traits = strings(c.traits)?.filter((t) => t in TRAITS);
+  out.abilities = strings(c.abilities);
+  out.anatomyStudy = num(c.anatomyStudy, 0, 99);
   out.conviction = strings(c.conviction)?.filter((v): v is ConvictionValue => CONVICTIONS.includes(v as ConvictionValue)).slice(0, 2);
   out.skillProficiencies = strings(c.skillProficiencies)?.filter((s): s is SkillId => s in SKILL_ABILITY);
   for (const k of Object.keys(out) as (keyof ShinobiCharacter)[]) if (out[k] === undefined) delete out[k];

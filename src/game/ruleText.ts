@@ -38,6 +38,13 @@ const EXACT: Record<string, string> = {
   'Not enough incense': 'No le alcanza el incienso',
   'Too late: dinner is served': 'Muy tarde: la cena ya está servida',
   'Missing supplies': 'Faltan suministros',
+  // The old doctor (game/doctorScene.ts).
+  'Pick who learns': 'Elige quién aprende',
+  'Already knows Seal Needles': 'Ya conoce Agujas de sello',
+  'The party walks on past the old doctor': 'El grupo sigue de largo y deja atrás al viejo médico',
+  'Given to the old doctor': 'Dado al viejo médico',
+  'A gift from the old doctor': 'Un regalo del viejo médico',
+  "Set the doctor's leg (Medicine)": 'Entablillar la pierna del médico (Medicina)',
   'No healing jutsu': 'Sin jutsu de curación',
   'Not enough chakra': 'No le alcanza el chakra',
   'Chakra sealed': 'Chakra sellado',
@@ -125,11 +132,17 @@ const EXACT: Record<string, string> = {
 const act = (name: string): string | undefined => ACTIVITY_ES[name];
 
 /** Text with a name or number in it. A function returning null means "not this one". */
+const HOW_ES: Record<string, string> = { 'anatomy study': 'estudio de anatomía', 'the old doctor': 'el viejo médico' };
+
 const PATTERNS: [RegExp, (...m: string[]) => string | null][] = [
   [/^(.+) by (.+)$/, (a, who) => (act(a) ? `${act(a)}, por ${who}` : null)],
   [/^(.+) from (.+)$/, (a, who) => (act(a) ? `${act(a)}, por ${who}` : null)],
   [/^(.+) with (.+)$/, (a, who) => (act(a) ? `${act(a)} con ${who}` : null)],
   [/^Soldier pill for (.+)$/, (who) => `Píldora de soldado para ${who}`],
+  // Seal Needles (rules/sealNeedles.ts) and the old doctor (game/doctorScene.ts).
+  [/^(.+) learns Seal Needles \((.+)\)$/, (who, how) => `${who} aprende Agujas de sello (${HOW_ES[how] ?? how})`],
+  [/^Anatomy studied: (\d+) of (\d+) camps$/, (n, t) => `Anatomía estudiada: ${n} de ${t} campamentos`],
+  [/^(.+) already knows Seal Needles$/, (who) => `${who} ya conoce Agujas de sello`],
   [/^(\d+) h on the road$/, (h) => `${h} h de camino`],
   [/^(.+) refuses help \(Paranoia\)$/, (who) => `${who} rechaza la ayuda (Paranoia)`],
   [/^(.+) cannot act$/, (who) => `${who} no puede actuar`],

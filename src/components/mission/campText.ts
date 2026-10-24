@@ -148,6 +148,7 @@ export const ONE: Record<SupplyId, { en: string; es: string }> = {
   wireRolls: { en: 'wire roll', es: 'rollo de alambre' },
   weaponPoison: { en: 'vial of weapon poison', es: 'frasco de veneno para armas' },
   healingPotions: { en: 'healing potion', es: 'poción curativa' },
+  platinumSenbon: { en: 'platinum senbon', es: 'senbon de platino' },
 };
 
 /** Spanish for the option keys a done activity keeps (the English screen shows the key itself). */

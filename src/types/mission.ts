@@ -89,6 +89,8 @@ export interface Supplies {
   weaponPoison: number;
   /** Healing potions (a senbon dipped in one heals an ally from afar, in battle). */
   healingPotions: number;
+  /** Platinum senbon: platinum blocks chakra (rules/sealNeedles.ts, Seal Needles). */
+  platinumSenbon: number;
 }
 export type SupplyId = keyof Supplies;
 

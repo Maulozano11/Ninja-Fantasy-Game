@@ -10,10 +10,10 @@ import { JUTSU, MIN_AIM } from './jutsu';
 import { KUNAI_LONG } from './units';
 import { applyAction, chargeLanding, handsBlocker, jutsuCost } from './engine';
 import { current } from './turns';
-import { areaValue, bestCell, goalOf, headOptions, ninjaOptions, offensive, planIntent, reachTo, standingUnit, stepToward, swapValue, visibleFoes, WALL, wallCover } from './intent';
+import { SEAL_NEEDLES_INTENT, areaValue, bestCell, goalOf, headOptions, ninjaOptions, offensive, planIntent, reachTo, standingUnit, stepToward, swapValue, visibleFoes, WALL, wallCover } from './intent';
 import type { Goal } from './intent';
 import { breakable, MAX_STRUCTURES, ownStructures, structureAt, structureAttack, structureBlocker, structureDist } from './structures';
-import { antidotesLeft, coatLeft, FIRST_AID_REACH, MEDIC_CLASS, MEDIC_NEAR, poisonLeft, potionsLeft, senbonLeft } from './senbon';
+import { platinumLeft, antidotesLeft, coatLeft, FIRST_AID_REACH, MEDIC_CLASS, MEDIC_NEAR, poisonLeft, potionsLeft, senbonLeft } from './senbon';
 import { IMBUE_COST, imbueBlocker, type ImbueElement, unitImbueElements, WATER_REACH, WEAPON_ELEMENT } from './imbue';
 import { COMMAND, commandRefused, edgeFoe, ownNodes, submissionRefused, SWAP, WARP, warpBlocker, warpLanding } from './clans';
 
@@ -48,6 +48,7 @@ function stillValid(s: BattleState, u: Unit, i: Intent | undefined): i is Intent
   if (i.kind === 'command' && (i.what === COMMAND ? commandRefused : submissionRefused)(s, u, t)) return false;
   if (i.kind === 'heal' && i.what === 'bandage' && s.supplies.bandages < 1) return false;
   if (i.kind === 'heal' && i.what === 'healSenbon' && (potionsLeft(s, u) < 1 || senbonLeft(u) < 1 || t?.id === u.id)) return false;
+  if (i.kind === 'ranged' && i.what === SEAL_NEEDLES_INTENT && (platinumLeft(s, u) < 1 || (t && hasEffect(t.effects, 'chakra_sealed')))) return false;
   if (i.kind === 'heal' && i.what === 'antidoteSenbon' && (antidotesLeft(s, u) < 1 || senbonLeft(u) < 1 || t?.id === u.id || !t || !hasEffect(t.effects, 'poisoned'))) return false;
   return true;
 }
@@ -123,7 +124,7 @@ function carryOut(s: BattleState, u: Unit, i: Intent): Action | null {
       if (g.ready) return { type: 'attack', unit: u.id, target: t.id, knockout: u.team === 'party' };
       return moveToward(s, u, g, i.to) ?? kunaiOr(s, u, t) ?? breakThrough(s, u, t);
     case 'ranged':
-      if (g.ready) return { type: 'attack', unit: u.id, target: t.id, ranged: true };
+      if (g.ready) return i.what === SEAL_NEEDLES_INTENT ? { type: 'attack', unit: u.id, target: t.id, platinum: true } : { type: 'attack', unit: u.id, target: t.id, ranged: true };
       return moveToward(s, u, g, i.to) ?? kunaiOr(s, u, t);
     case 'jutsu': {
       const j = JUTSU[i.what];

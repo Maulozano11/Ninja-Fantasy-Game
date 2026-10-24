@@ -228,6 +228,10 @@ Merge checks (`git merge-tree` on the origin tips, nothing changed):
 - `items/senbon` (2026-10-24): look at the senbon thrown in the throw pose with the weapon stowed, his
   icons in the bar, coating with no aura, and the *Beber poción* button (its icon is a placeholder:
   his to paint).
+- `items/senbon` (2026-10-24): the medic's kit (Quick First Aid, the antidote senbon, the Steady Hand
+  feat) and Seal Needles (platinum senbon; *Estudiar anatomía* at camp; the old doctor on the road):
+  his look at the numbers (our proposal), the platinum needle (a placeholder) and four placeholder
+  icons (*Beber poción*, *Primeros auxilios rápidos*, *Senbon antídoto*, *Agujas de sello*).
 
 - `jutsu/tide-s` (2026-10-22): the Dragon Tsunami is approved (look, rank S, names, numbers for now).
   Still open, small:

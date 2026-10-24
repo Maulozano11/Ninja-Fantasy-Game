@@ -96,3 +96,15 @@ export function healDice(u: Unit, dice: string): string {
 
 /** Antidotes in the party's backpack a unit can dip a senbon in. */
 export const antidotesLeft = (s: BattleState, u: Unit): number => (backpack(u) ? s.supplies.antidotes : 0);
+
+// --- Seal Needles: platinum senbon (rules/sealNeedles.ts) -----------------------------------------
+
+/** A Seal Needles hit: a CON save against 8 + proficiency + the better of DEX and WIS, or chakra blocked. */
+export const sealNeedlesDC = (u: Unit): number => 8 + u.prof + Math.max(abilityMod(u.stats.dex), abilityMod(u.stats.wis));
+/** Chakra blocked for this many of the target's own turns (its next one): no jutsu (chakra_sealed). */
+export const SEAL_ROUNDS = 1;
+/** What the save, the effect and the log say it comes from. */
+export const SEAL_NEEDLE = 'seal_needles';
+
+/** Platinum senbon in the party's backpack a unit can throw. */
+export const platinumLeft = (s: BattleState, u: Unit): number => (backpack(u) ? s.supplies.platinumSenbon ?? 0 : 0);

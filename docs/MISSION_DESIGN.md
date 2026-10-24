@@ -158,6 +158,33 @@ Tactical Trapper sets 2 traps with one activity and its tags deal +1d6 fire.
 fireside talk, and at most +1 per mission when one heals or protects the other.
 From 5, the pair has Comrades' bond in every mission.
 
+## Seal Needles: learning it (the owner, 2026-10-24: ways C and D)
+
+Seal Needles (*Agujas de sello*, `docs/GAMEPLAY_DESIGN.md`) throws platinum senbon, and in this
+world platinum blocks chakra. The owner chose both ways to learn it; the numbers are our proposal.
+
+- **D, at camp: *Estudiar anatomía* / Study anatomy** (Medical Specialist, 2 incense sticks, on
+  oneself, once a camp): one camp of study; after **3 camps** (any camps, in this mission or later
+  ones) the medic knows Seal Needles. The count lives on the ninja's sheet (`anatomyStudy`; the
+  ability in `abilities`), so it comes home with the hero; older sheets start at 0.
+- **C, on the road: the wandering old doctor** (a scene node on the Cedar Road, after the rogues).
+  Text (en): *"Past the cedars an old man sits on a milestone, his leg swollen black where a
+  needle-trap caught him. A case of pale needles lies open on his knees. 'Platinum,' he says, seeing
+  you look. 'It stops chakra where it goes in, if you know where to put it. Help an old doctor, and I
+  will show one of you where.'"* (es): *«Pasados los cedros, un anciano está sentado en un mojón, con la
+  pierna hinchada y negra donde lo atrapó una trampa de agujas. Sobre las rodillas tiene abierto un
+  estuche de agujas pálidas. "Platino", dice al ver que miran. "Detiene el chakra donde entra, si
+  sabes dónde ponerla. Ayuden a un viejo médico y le enseñaré a uno de ustedes dónde."»* The party
+  picks who learns (**any class**), then:
+  - **Give him an antidote** (spends 1): he teaches, and leaves 3 platinum senbon.
+  - **Set his leg**: Medicine check (WIS), DC 13, by the one who would learn. Success: he teaches and
+    leaves 3; a natural 20 also earns a healing potion (the owner's C3 extra). Failure: he thanks them
+    and leaves 1 platinum senbon, teaching nothing (no dead end).
+  - **Walk on**: nothing.
+  The whole cinematic system is not built yet: the scene shows as the road's node panel with its
+  three answers (`src/game/doctorScene.ts`, `MissionMode.tsx`). A companion who learns it forgets it
+  when the mission ends (companions start fresh); the hero keeps it.
+
 ## Night ambush and perimeter traps
 
 - Each zone shows a base %, for example 30 %, as a moon with its number. Fire,

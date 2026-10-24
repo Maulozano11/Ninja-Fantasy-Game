@@ -19,7 +19,8 @@ import { foreseen } from '../../battle/intent';
 import { MAX_STRUCTURES, STRUCTURE_AC, breakable, jutsuWallAt, ownStructures, structureAt, structureAttack, structureBlocker, structureDist } from '../../battle/structures';
 import { auraEntered, commandBlocker, edgeFoe, nodeInSight, nodeUnder, ownNodeAt, ownNodes, submissionBlocker, submissionRefused, swapBlocker, warpBlocker, warpLanding } from '../../battle/clans';
 import { KUNAI, KUNAI_LONG, wielded } from '../../battle/units';
-import { antidotesLeft, MEDIC_CLASS, coatLeft, HEAL_SENBON_DICE, HEAL_SENBON_RANGE, healSenbonBonus, poisonLeft, potionsLeft, SENBON, senbonLeft } from '../../battle/senbon';
+import { knowsSealNeedles } from '../../rules/sealNeedles';
+import { platinumLeft, sealNeedlesDC, antidotesLeft, MEDIC_CLASS, coatLeft, HEAL_SENBON_DICE, HEAL_SENBON_RANGE, healSenbonBonus, poisonLeft, potionsLeft, SENBON, senbonLeft } from '../../battle/senbon';
 import { EARTH_CRIT, IMBUE_COST, IMBUE_DICE, IMBUE_ROUNDS, imbueBlocker, type ImbueElement, unitImbueElements, WATER_REACH, WEAPON_ELEMENT, WIND_PUSH } from '../../battle/imbue';
 import { ELEMENT_ES } from '../../game/ruleText';
 import { STONE_RANGE } from '../../battle/stealth';
@@ -54,7 +55,7 @@ import { unitTint, unitTintSheets } from './vfxTintPlan';
 type Mode =
   | { k: 'move' }
   /** `senbon`: a senbon thrown instead of a kunai. */
-  | { k: 'attack'; ranged: boolean; senbon?: boolean }
+  | { k: 'attack'; ranged: boolean; senbon?: boolean; platinum?: boolean }
   /** `picked`: Command from level 9, the first of its two targets. */
   | { k: 'jutsu'; id: string; enhanced: boolean; picked?: string }
   | { k: 'item'; item: 'bandage' | 'antidote' | 'tag' | 'tagTrap' | 'healSenbon' | 'antidoteSenbon' }
@@ -904,7 +905,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
         return;
       case 'attack': {
         if (u && u.team !== actor.team) {
-          act({ type: 'attack', unit: actor.id, target: u.id, ranged: mode.ranged, knockout: !mode.ranged && u.team === 'enemy', ...(mode.senbon ? { senbon: true } : {}) });
+          act({ type: 'attack', unit: actor.id, target: u.id, ranged: mode.ranged, knockout: !mode.ranged && u.team === 'enemy', ...(mode.senbon ? { senbon: true } : {}), ...(mode.platinum ? { platinum: true } : {}) });
           return;
         }
         // Senbon go at foes only.
@@ -982,7 +983,9 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
     if (!more) {
       add({ id: 'attack', label: t('act_attack'), icon: ACTION_ICON.attack, disabled: !can.action, why: noAction, active: mode.k === 'attack' && !mode.ranged, help: t('help_attack') });
       add({ id: 'throw', label: t('act_throw'), icon: ACTION_ICON.throw, disabled: !can.action, why: noAction, active: mode.k === 'attack' && mode.ranged && !mode.senbon, help: t('help_throw') });
-      add({ id: 'senbon', label: t('act_senbon'), icon: ACTION_ICON.senbon, badge: senbonLeft(u), disabled: !can.action || senbonLeft(u) < 1, why: noAction ?? t('r_noSenbon'), active: mode.k === 'attack' && !!mode.senbon, help: T('help_senbon', { n: senbonLeft(u) }, lang) });
+      // Seal Needles (a learned ability, rules/sealNeedles.ts): a platinum senbon from the backpack.
+      if (knowsSealNeedles(u.character)) add({ id: 'sealNeedles', label: t('act_sealNeedles'), icon: ACTION_ICON.sealNeedles, badge: platinumLeft(state, u), disabled: !can.action || platinumLeft(state, u) < 1, why: noAction ?? t('r_noPlatinum'), active: mode.k === 'attack' && !!mode.platinum, help: T('help_sealNeedles', { dc: sealNeedlesDC(u) }, lang) });
+      add({ id: 'senbon', label: t('act_senbon'), icon: ACTION_ICON.senbon, badge: senbonLeft(u), disabled: !can.action || senbonLeft(u) < 1, why: noAction ?? t('r_noSenbon'), active: mode.k === 'attack' && !!mode.senbon && !mode.platinum, help: T('help_senbon', { n: senbonLeft(u) }, lang) });
       for (const id of u.jutsus) {
         const sp = JUTSU[id];
         if (!sp) continue;
@@ -1133,7 +1136,10 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
           setMode((m) => (m.k === 'attack' && m.ranged && !m.senbon ? { k: 'move' } : { k: 'attack', ranged: true }));
           return;
         case 'senbon':
-          setMode((m) => (m.k === 'attack' && m.senbon ? { k: 'move' } : { k: 'attack', ranged: true, senbon: true }));
+          setMode((m) => (m.k === 'attack' && m.senbon && !m.platinum ? { k: 'move' } : { k: 'attack', ranged: true, senbon: true }));
+          return;
+        case 'sealNeedles':
+          setMode((m) => (m.k === 'attack' && m.platinum ? { k: 'move' } : { k: 'attack', ranged: true, senbon: true, platinum: true }));
           return;
         case 'poison':
           act({ type: 'item', unit: u.id, item: 'poison' });

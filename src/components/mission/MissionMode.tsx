@@ -5,6 +5,7 @@ import {
   Crown,
   Flag,
   Flame,
+  HeartPulse,
   Map as MapIcon,
   RotateCcw,
   ScrollText,
@@ -42,6 +43,7 @@ import { ruleText } from '../../game/ruleText';
 import { Entry, pick, useLang } from '../../i18n';
 import { LangToggle } from '../../i18n/LangToggle';
 import {
+  answerScene,
   applyOutcome,
   BattleRun,
   continueRoad,
@@ -65,6 +67,10 @@ import { Bar, className, classShort, LogLines, PartyPanel, RecentEvents, Supplie
 import { RestCamp } from './RestCamp';
 import { ShortStop } from './ShortStop';
 import { T, WEATHER_ES } from './missionText';
+import { DOCTOR_DC, doctorBlocker } from '../../game/doctorScene';
+import type { DoctorChoice } from '../../game/doctorScene';
+import { knowsSealNeedles } from '../../rules/sealNeedles';
+import { skillModifier, successChance } from '../../rules/checks';
 
 // ---------------------------------------------------------------------------------------------
 
@@ -263,6 +269,10 @@ export function MissionMode({ hero, onHeroReturn }: MissionModeProps) {
                   )
                 }
                 onSkipCamp={() => setRun((r) => (r ? narrate({ ...r, nodeDone: true }, [], both(T, 'logPushOn')) : r))}
+                onScene={(choice, who) => {
+                  soundManager.playSelect();
+                  setRun((r) => (r ? answerScene(r, choice, who) : r));
+                }}
                 onContinue={onContinueRoad}
               />
             )}
@@ -300,6 +310,7 @@ function PartyBattle({ run, onEnd }: { run: MissionRun; onEnd: (r: PartyBattleRe
             explosiveTags: run.party.supplies.explosiveTags,
             weaponPoison: run.party.supplies.weaponPoison,
             healingPotions: run.party.supplies.healingPotions,
+            platinumSenbon: run.party.supplies.platinumSenbon,
           },
           // Bells on the perimeter: nobody is caught asleep. The perimeter traps wait on the raiders' paths.
           partySurprised: b.ambush && !run.camp?.bells,
@@ -356,6 +367,7 @@ function MissionHeader({ run, mission, onAbandon }: { run: MissionRun; mission: 
 
 function nodeIcon(n: RoadNode) {
   if (n.kind === 'camp') return <Tent className="w-4 h-4" />;
+  if (n.kind === 'scene') return <HeartPulse className="w-4 h-4" />;
   if (n.objective) return <Flag className="w-4 h-4" />;
   return <Swords className="w-4 h-4" />;
 }
@@ -419,6 +431,7 @@ function NodePanel({
   nextLabel,
   onCamp,
   onSkipCamp,
+  onScene,
   onContinue,
 }: {
   node: RoadNode;
@@ -428,13 +441,15 @@ function NodePanel({
   nextLabel: string;
   onCamp: () => void;
   onSkipCamp: () => void;
+  onScene: (choice: DoctorChoice, who?: string) => void;
   onContinue: () => void;
 }) {
   useLang();
+  const [who, setWho] = useState<string | undefined>(undefined);
   return (
     <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5 space-y-3">
       <div className="text-[10px] font-mono uppercase tracking-[0.2em] text-cyan-400">
-        {zoneName} · {node.kind === 'camp' ? T('campsite') : node.kind === 'battle' && node.objective ? T('objective') : T('battle')}
+        {zoneName} · {node.kind === 'camp' ? T('campsite') : node.kind === 'scene' ? T('scene') : node.kind === 'battle' && node.objective ? T('objective') : T('battle')}
       </div>
       <h2 className="text-xl font-bold text-white">{nameOf(node)}</h2>
       <p className="text-sm text-slate-300 max-w-[65ch]">{pick(node.text, node.textEs)}</p>
@@ -442,6 +457,8 @@ function NodePanel({
         <button type="button" className={btnMain} onClick={onContinue}>
           {nextLabel} <ChevronRight className="w-4 h-4" />
         </button>
+      ) : node.kind === 'scene' ? (
+        <DoctorChoices party={party} who={who} onWho={setWho} onAnswer={onScene} />
       ) : node.kind === 'camp' ? (
         <div className="flex flex-wrap gap-2">
           <button type="button" className={btnMain} disabled={party.supplies.campKits < 1} onClick={onCamp}>
@@ -452,6 +469,47 @@ function NodePanel({
           </button>
         </div>
       ) : null}
+    </div>
+  );
+}
+
+/** The old doctor's offer (game/doctorScene.ts): who would learn, and the three answers. */
+function DoctorChoices({ party, who, onWho, onAnswer }: { party: PartyState; who?: string; onWho: (id: string) => void; onAnswer: (c: DoctorChoice, who?: string) => void }) {
+  const why = (c: DoctorChoice) => doctorBlocker(party, c, who);
+  const student = party.members.find((m) => m.id === who);
+  const pct = student ? Math.round(successChance(skillModifier(student, 'medicine'), DOCTOR_DC, 'none', true) * 100) : null;
+  return (
+    <div className="space-y-3">
+      <div>
+        <div className="text-xs font-semibold text-slate-300 mb-1.5">{T('doctorWho')}</div>
+        <div className="flex flex-wrap gap-2">
+          {party.members.map((m) => (
+            <button
+              key={m.id}
+              type="button"
+              disabled={knowsSealNeedles(m)}
+              onClick={() => onWho(m.id)}
+              className={`flex items-center gap-2 rounded-xl border px-2 py-1 text-sm ${m.id === who ? 'border-cyan-400 bg-cyan-950/50 text-white' : 'border-slate-700 bg-slate-950/60 text-slate-300'} disabled:opacity-40`}
+            >
+              <ShinobiSpriteCanvas character={m} size={36} showAura={false} />
+              {m.name}
+              <span className="text-[10px] text-slate-500">{classShort(m)}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        <button type="button" className={btnMain} disabled={!!why('antidote')} title={why('antidote') ? ruleText(why('antidote')!) : undefined} onClick={() => onAnswer('antidote', who)}>
+          {T('doctorAntidote', { n: party.supplies.antidotes })}
+        </button>
+        <button type="button" className={btnMain} disabled={!!why('treat')} title={why('treat') ? ruleText(why('treat')!) : undefined} onClick={() => onAnswer('treat', who)}>
+          {T('doctorTreat', { dc: DOCTOR_DC, p: pct ?? '?' })}
+        </button>
+        <button type="button" className={btnQuiet} onClick={() => onAnswer('leave')}>
+          {T('doctorLeave')}
+        </button>
+      </div>
+      <p className="text-[11px] text-slate-400 max-w-[70ch]">{T('doctorNote')}</p>
     </div>
   );
 }

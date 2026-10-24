@@ -12,6 +12,7 @@ import { rollDice } from './dice';
 import { effectMods, hasEffect, morningAfter, treat } from './effects';
 import { changeChakra, changeExhaustion, changeHp, changeTension, chakraDiceLeft, giveEffect, hitDiceLeft, isUnconscious, Step } from './ninja';
 import { checkRng, Dice, pick, rngFor, rollDie } from './rng';
+import { studyAnatomy } from './sealNeedles';
 
 export type FireLevel = 'none' | 'low' | 'bonfire';
 export type FoodLevel = 'none' | 'dry' | 'hot' | 'feast';
@@ -316,6 +317,9 @@ function applyActivity(
     }
     case 'stretching':
       self((c) => changeExhaustion(c, -1, act.name));
+      break;
+    case 'study_anatomy':
+      self((c) => studyAnatomy(c));
       break;
     case 'peaceful_sleep':
       on(targetId, (c) => changeTension(c, -3, act.name, dice, campNo));

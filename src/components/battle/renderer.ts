@@ -139,6 +139,7 @@ const onGround = (f: Fx): boolean => f.kind === 'electric' && f.sig === 'water';
 export const fxPos = (sc: Scene, f: Fx): Pt => (f.follow && f.unit ? sc.pb.posOf(f.unit, sc.now) : f.from);
 
 const senbonLooks = new WeakMap<SpriteAppearance, SpriteAppearance>();
+const platinumLooks = new WeakMap<SpriteAppearance, SpriteAppearance>();
 
 /**
  * The look a ninja throws a senbon with (the owner, 2026-10-24: "el senbon deberia lanzarse como
@@ -146,9 +147,10 @@ const senbonLooks = new WeakMap<SpriteAppearance, SpriteAppearance>();
  * stowed (at the belt or on the back, as for hand seals) and a senbon in the near fist until it
  * leaves it (sprite/items/accessories.ts drawThrowKunai). One object per look, so its frames are kept.
  */
-function senbonLook(look: SpriteAppearance): SpriteAppearance {
-  let l = senbonLooks.get(look);
-  if (!l) senbonLooks.set(look, (l = { ...look, stowed: true, pouchSenbon: true }));
+function senbonLook(look: SpriteAppearance, platinum: boolean): SpriteAppearance {
+  const cache = platinum ? platinumLooks : senbonLooks;
+  let l = cache.get(look);
+  if (!l) cache.set(look, (l = { ...look, stowed: true, pouchSenbon: platinum ? 'platinum' : true }));
   return l;
 }
 
@@ -887,7 +889,7 @@ function drawUnit(ctx: CanvasRenderingContext2D, sc: Scene, u: Unit, pos: Pt): v
   const look0 = lookOf({ ...u, armed: v.armed });
   if (!look0) return;
   // A senbon throw: the weapon stowed, a senbon in the fist until the release.
-  const look = v.senbonUntil !== undefined && now < v.senbonUntil ? senbonLook(look0) : look0;
+  const look = v.senbonUntil !== undefined && now < v.senbonUntil ? senbonLook(look0, !!v.senbonPlatinum) : look0;
   // Gait frames follow the distance walked, so the feet stay planted.
   let frame: number;
   const stride = STRIDE[v.pose];
@@ -1691,7 +1693,7 @@ function drawFx(ctx: CanvasRenderingContext2D, sc: Scene, f: Fx): void {
           ctx.drawImage(sh.img, k * sh.spec.frameW, anim.row * sh.spec.frameH, sh.spec.frameW, sh.spec.frameH, Math.round(x - ax), Math.round(y - ay), sh.spec.frameW, sh.spec.frameH);
           break;
         }
-        ctx.strokeStyle = f.needle === 'heal' ? '#bbf7d0' : f.needle === 'poison' ? '#a3e635' : '#e5e7eb';
+        ctx.strokeStyle = f.needle === 'heal' ? '#bbf7d0' : f.needle === 'poison' ? '#a3e635' : f.needle === 'platinum' ? '#f1ece2' : '#e5e7eb';
         ctx.lineWidth = 1;
         ctx.beginPath();
         ctx.moveTo(x - Math.cos(ang) * 8, y - Math.sin(ang) * 8);

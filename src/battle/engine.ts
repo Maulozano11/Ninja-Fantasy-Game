@@ -33,7 +33,7 @@ import { homeTeam } from './types';
 import { cellBlocked, cellCenter, cellOf, clearRun, coverBetween, dampAt, dist, fullCoverBetween, getMap, gridFor, hideSpotAt, idx, inGrid, levelAtPt, lineOfSight, propRules, sameCell, segmentsCross, waterAtPt } from './map';
 import { canStop, freeSpot, occupancy, pathTo, pathTouchesDeep, reachable, stepCost } from './nav';
 import type { AttackPreview } from './combat';
-import { attackPreview, check, damage, heal, hostileAura, passivePerception, PERFECT_HIDE, reveal, revealOutOfHiding, rollDiceExpr, skillMod } from './combat';
+import { attackPreview, check, damage, heal, hostileAura, passivePerception, PERFECT_HIDE, reveal, revealOutOfHiding, rollDiceExpr, skillMod, savingThrow } from './combat';
 import { JUTSU, MIN_AIM, areaOf, enhanced, fanDice, fanned, fannedBy } from './jutsu';
 import type { JutsuSpec } from './jutsu';
 import { KUNAI, enemyNameOf, enemyUnit, handsFree, unitFrom, wielded } from './units';
@@ -64,7 +64,8 @@ import {
 } from './clans';
 import { reachTo, replanAgainst } from './intent';
 import { chargedFoe, chargeHolds, crackUnder, endCharge } from './charged';
-import { antidotesLeft, ANTIDOTE_SENBON_RANGE, FIRST_AID_REACH, healDice, MEDIC_CLASS, carriesCoat, coatLeft, POTION_DICE, HEAL_SENBON_DICE, HEAL_SENBON_RANGE, healSenbonBonus, POISON_DC, POISON_DICE, POISON_HITS, poisonLeft, potionsLeft, SENBON, senbonLeft, spendPoison, WEAPON_POISON } from './senbon';
+import { knowsSealNeedles } from '../rules/sealNeedles';
+import { platinumLeft, SEAL_NEEDLE, SEAL_ROUNDS, sealNeedlesDC, antidotesLeft, ANTIDOTE_SENBON_RANGE, FIRST_AID_REACH, healDice, MEDIC_CLASS, carriesCoat, coatLeft, POTION_DICE, HEAL_SENBON_DICE, HEAL_SENBON_RANGE, healSenbonBonus, POISON_DC, POISON_DICE, POISON_HITS, poisonLeft, potionsLeft, SENBON, senbonLeft, spendPoison, WEAPON_POISON } from './senbon';
 import { activeImbue, EARTH_CRIT, IMBUE_DAMAGE, IMBUE_DICE, imbueBlocker, imbueHolds, startImbue, unitImbueElement, WIND_PUSH, type ImbueElement } from './imbue';
 
 // --- setup ---------------------------------------------------------------------------------
@@ -259,7 +260,7 @@ function dispatch(s: BattleState, a: Action, ev: BattleEvent[]): string | null {
     case 'move':
       return doMove(s, u, a.to, ev);
     case 'attack':
-      return doAttack(s, u, a.target, !!a.ranged || !!a.senbon, !!a.knockout, ev, !!a.senbon);
+      return doAttack(s, u, a.target, !!a.ranged || !!a.senbon || !!a.platinum, !!a.knockout, ev, !!a.senbon || !!a.platinum, !!a.platinum);
     case 'jutsu':
       return doJutsu(s, u, a.jutsu, a.at, a.target, !!a.enhanced, ev, a.target2, a.element);
     case 'dash':
@@ -467,7 +468,7 @@ function afterMove(s: BattleState, u: Unit, ev: BattleEvent[]): void {
 
 // --- attacks -------------------------------------------------------------------------------
 
-function doAttack(s: BattleState, u: Unit, targetId: string, ranged: boolean, knockout: boolean, ev: BattleEvent[], senbon = false): string | null {
+function doAttack(s: BattleState, u: Unit, targetId: string, ranged: boolean, knockout: boolean, ev: BattleEvent[], senbon = false, platinum = false): string | null {
   if (!u.turn.action) return 'noAction';
   // Senbon are thrown at foes (a crate or a wall takes a kunai).
   if (senbon && (targetId.startsWith('prop:') || targetId.startsWith('wall:'))) return 'badTarget';
@@ -476,7 +477,9 @@ function doAttack(s: BattleState, u: Unit, targetId: string, ranged: boolean, kn
   const t = s.units[targetId];
   if (!t || !targetable(t)) return 'badTarget';
   if (t.team === u.team) return 'ally';
-  if (senbon && senbonLeft(u) < 1) return 'noSenbon';
+  // Seal Needles throws a platinum senbon from the backpack (not one of the case's steel ones).
+  if (platinum && !knowsSealNeedles(u.character)) return 'noSealNeedles';
+  if (platinum ? platinumLeft(s, u) < 1 : senbon && senbonLeft(u) < 1) return platinum ? 'noPlatinum' : 'noSenbon';
   // A blade in its sheath is drawn for free (once a turn); a kunai needs a free hand.
   if (!ranged && u.weapon.held && !u.armed && !u.turn.interacted) setArmed(u, true, 'free', ev);
   if (ranged && u.armed && u.weapon.twoHanded) {
@@ -488,11 +491,12 @@ function doAttack(s: BattleState, u: Unit, targetId: string, ranged: boolean, kn
   if (ranged && !lineOfSight(s, u.pos, t.pos)) return 'noSight';
   if (!ranged && fullCoverBetween(s, u.pos, t.pos)) return 'blocked';
   u.turn.action = false;
-  if (senbon) u.senbon = senbonLeft(u) - 1;
+  if (platinum) s.supplies.platinumSenbon = platinumLeft(s, u) - 1;
+  else if (senbon) u.senbon = senbonLeft(u) - 1;
   const stealth = s.phase === 'stealth';
   const takedown = stealth && canTakedown(s, u, t);
   const after: AfterHits = stealth ? { stealthAttack: { attacker: u.id, target: t.id } } : {};
-  weaponAttack(s, u, t, ranged, pv, { knockout, takedown, senbon }, after, ev);
+  weaponAttack(s, u, t, ranged, pv, { knockout, takedown, senbon, platinum }, after, ev);
   if (!stealth) scareAnimalsNear(s, t.pos, 4, ev);
   return null;
 }
@@ -511,7 +515,7 @@ function weaponAttack(
   t: Unit,
   ranged: boolean,
   pv: AttackPreview,
-  o: { knockout?: boolean; takedown?: boolean; senbon?: boolean },
+  o: { knockout?: boolean; takedown?: boolean; senbon?: boolean; platinum?: boolean },
   after: AfterHits,
   ev: BattleEvent[],
 ): boolean {
@@ -527,7 +531,7 @@ function weaponAttack(
   if (t.pos.x !== a.pos.x) a.facing = t.pos.x > a.pos.x ? 1 : -1;
   const reasons = o.takedown && !pv.reasons.includes('hidden') ? [...pv.reasons, 'unaware'] : pv.reasons;
   const coated = carriesCoat(a, w, ranged);
-  ev.push({ t: 'attack', unit: a.id, target: t.id, what: w.name, roll, ranged, ...(reasons.length ? { reasons } : {}), ...(coated ? { coated } : {}) });
+  ev.push({ t: 'attack', unit: a.id, target: t.id, what: w.name, roll, ranged, ...(reasons.length ? { reasons } : {}), ...(coated ? { coated } : {}), ...(o.platinum ? { platinum: true } : {}) });
   if (leavesNodes(a) && (ranged || !roll.success)) addNode(s, a, t.pos, ev);
   const edge = !!a.cond.warpEdge;
   if (edge) a.cond.warpEdge = false;
@@ -542,7 +546,7 @@ function weaponAttack(
     if (surprise) amount += rollDiceExpr(s, '1d6', roll.crit);
     if (!ranged && hasEffect(a.effects, 'gates_open')) amount += rollDiceExpr(s, '1d8', roll.crit);
     const poison = coated ? spendCoat(a, ev) : undefined;
-    const hit: Hit = { unit: t.id, amount: Math.max(1, amount), type: w.type, source: a.id, what: w.name, crit: roll.crit, knockout: o.knockout && !ranged, melee: !ranged, aimed: true, unseen: surprise, unblockable: edge, ...(poison ? { poison } : {}) };
+    const hit: Hit = { unit: t.id, amount: Math.max(1, amount), type: w.type, source: a.id, what: w.name, crit: roll.crit, knockout: o.knockout && !ranged, melee: !ranged, aimed: true, unseen: surprise, unblockable: edge, ...(poison ? { poison } : {}), ...(o.platinum ? { seal: { dc: sealNeedlesDC(a) } } : {}) };
     if (imbue) imbuedHit(s, a, hit, imbue);
     hits.push(hit);
   }
@@ -584,6 +588,22 @@ function imbuedHit(s: BattleState, a: Unit, h: Hit, element: NonNullable<ReturnT
   if (element === 'Lightning' && h.crit) h.effect = 'jolted';
   if (element === 'Wind' && h.crit) h.push = { from: { ...a.pos }, m: WIND_PUSH };
   if (element === 'Water') h.douse = true;
+}
+
+/**
+ * A platinum senbon that went in (Seal Needles; platinum blocks chakra, the owner's lore): a CON save,
+ * or its chakra is blocked for its next turn (chakra_sealed: no jutsu; a charged hand or an element on
+ * the weapon lets go). Ninjas only: the hydra has no chakra to block.
+ */
+function sealIn(s: BattleState, t: Unit, h: Hit, ev: BattleEvent[]): void {
+  if (!h.seal || t.kind !== 'ninja' || t.down) return;
+  const roll = savingThrow(s, t, 'con', h.seal.dc);
+  ev.push({ t: 'save', unit: t.id, what: SEAL_NEEDLE, roll, ab: 'con' });
+  if (roll.success) return;
+  t.effects = addEffect(t.effects, 'chakra_sealed', { source: SEAL_NEEDLE, count: SEAL_ROUNDS }).effects;
+  ev.push({ t: 'effect', unit: t.id, effect: 'chakra_sealed', on: true });
+  chargeHolds(t, true, ev);
+  imbueHolds(t, true, ev);
 }
 
 function opportunityAttack(s: BattleState, r: Unit, m: Unit, ev: BattleEvent[], resume: NonNullable<AfterHits['resumeWalk']>): boolean {
@@ -728,6 +748,7 @@ function landHit(s: BattleState, t: Unit, h: Hit, ev: BattleEvent[]): void {
   if (t.down || t.head?.severed || t.kind === 'hydra_body') return;
   poisonIn(s, t, h, ev);
   if (t.down) return;
+  sealIn(s, t, h, ev);
   if (h.effect && !(h.effect === 'burning' && dampAt(s, t.pos))) {
     t.effects = addEffect(t.effects, h.effect, { source: JUTSU[h.what]?.name ?? h.what }).effects;
     ev.push({ t: 'effect', unit: t.id, effect: h.effect, on: true });

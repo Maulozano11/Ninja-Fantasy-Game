@@ -10,6 +10,9 @@
 //                      heal    the needle dipped in a healing potion: pale and lit, in a soft
 //                              green-white glow (energy: no line round the glow) with sparkles
 //                              trailing behind it
+//                      platinum  Seal Needles' platinum senbon (2026-10-24, platinum blocks chakra in
+//                              the owner's lore): a paler, warmer metal than steel, with a faint
+//                              cold shimmer at the point. A placeholder until he paints it.
 //   Anchor: the needle's middle, the frame's centre.
 //
 //   WORLD_OUT=<staging dir> npx tsx tools/world-sprites/vfx-senbon.ts
@@ -33,9 +36,11 @@ const STEEL = ['#5b6472', '#8a94a3', '#b9c2cf', '#e4e9f0', '#ffffff'].map((h) =>
 const VENOM = ['#173b12', '#2f6b1f', '#4f9a2a', '#7cc93a', '#b5ef6a', '#e6ffb0'].map((h) => hex(h));
 /** The heals' green (the game's heals are always green, the owner 2026-10-21) to white. */
 const HEAL = ['#2f9e5a', '#5fd38a', '#a6f2bf', '#e4ffe9', '#ffffff'].map((h) => hex(h));
+/** Platinum, tail to tip: warm greys up to a near-white, paler than steel. */
+const PLATINUM = ['#8f887c', '#b8b1a4', '#d9d3c7', '#efebe2', '#ffffff'].map((h) => hex(h));
 const LINE = hex(OUTLINE);
 
-type Kind = 'steel' | 'poison' | 'heal';
+type Kind = 'steel' | 'poison' | 'heal' | 'platinum';
 
 /** The pixels of the needle's core at `deg`: each with how far along it is (0 tail .. 1 tip). */
 function core(deg: number): { x: number; y: number; t: number }[] {
@@ -97,8 +102,17 @@ function needle(deg: number, kind: Kind): Canvas {
     let col: Color;
     if (kind === 'heal') col = p.t > 0.85 ? HEAL[4] : HEAL[Math.min(4, 2 + Math.round(p.t * 2))];
     else if (kind === 'poison' && p.t > 0.4) col = p.t > 0.9 ? VENOM[5] : VENOM[3 + (p.t > 0.65 ? 1 : 0)];
+    else if (kind === 'platinum') col = PLATINUM[Math.min(4, Math.round(p.t * 3) + lit)];
     else col = STEEL[Math.min(4, Math.round(p.t * 3) + lit)];
     c.set(p.x, p.y, col);
+  }
+  if (kind === 'platinum') {
+    // A faint cold shimmer just past the point.
+    const tip = px.reduce((m, p) => (p.t > m.t ? p : m), px[0]);
+    for (const [ox, oy, al] of [[1, 0, 120], [-1, 0, 120], [0, 1, 120], [0, -1, 120], [2, 0, 60], [0, -2, 60]] as const) {
+      const x = Math.floor(tip.x + dx * 2) + ox, y = Math.floor(tip.y + dy * 2) + oy;
+      if (c.alpha(x, y) === 0) c.plot(x, y, [210, 230, 255, al]);
+    }
   }
   if (kind === 'poison') {
     // A drop hanging under the coated half, and two falling behind it (the screen's down, at any angle).
@@ -126,11 +140,11 @@ export function senbonSprites(): WorldSprite[] {
   return [
     {
       name: 'needle',
-      label: 'A thrown senbon at 16 angles (frame k: k x 22.5 degrees clockwise from the right): plain steel, coated with poison, dipped in a healing potion',
+      label: 'A thrown senbon at 16 angles (frame k: k x 22.5 degrees clockwise from the right): plain steel, coated with poison, dipped in a healing potion, platinum (Seal Needles)',
       meters: [+(S / 57).toFixed(2), +(S / 57).toFixed(2)],
       anchor: [C, C],
       tags: ['vfx'],
-      anims: { steel: row('steel'), poison: row('poison'), heal: row('heal') },
+      anims: { steel: row('steel'), poison: row('poison'), heal: row('heal'), platinum: row('platinum') },
     },
   ];
 }

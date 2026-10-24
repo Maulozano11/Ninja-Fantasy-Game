@@ -34,7 +34,8 @@ export type ActivityId =
   | 'peaceful_sleep'
   | 'camp_illusion'
   | 'make_materials'
-  | 'elemental_meditation';
+  | 'elemental_meditation'
+  | 'study_anatomy';
 
 export interface CampActivity {
   id: ActivityId;
@@ -88,6 +89,8 @@ export const CAMP_ACTIVITIES: CampActivity[] = [
 
   a({ id: 'field_surgery', name: 'Field surgery', nameEs: 'Cirugía de campaña', sticks: 2, requires: { shinobiClass: 'Medical Specialist' }, target: 'any', description: 'Medicine check (DC 13): removes Grave wound and cures Fever; a failed check turns the wound into a scar. A natural 20 also heals 1d6 HP.', descriptionEs: 'Prueba de Medicina (CD 13): quita Herida grave y cura la Fiebre; si falla, la herida deja una cicatriz. Con un 20 natural además cura 1d6 PV.' }),
   a({ id: 'make_pills', name: 'Make pills', nameEs: 'Preparar píldoras', sticks: 2, requires: { shinobiClass: 'Medical Specialist' }, target: 'none', description: '1 soldier pill or 1 antidote.', descriptionEs: '1 píldora de soldado o 1 antídoto.' }),
+  // The owner's way D to Seal Needles (2026-10-24): rules/sealNeedles.ts.
+  a({ id: 'study_anatomy', name: 'Study anatomy', nameEs: 'Estudiar anatomía', sticks: 2, requires: { shinobiClass: 'Medical Specialist' }, target: 'self', description: 'One camp of three (in any camps) toward Seal Needles: platinum senbon that block chakra.', descriptionEs: 'Un campamento de tres (en cualquier campamento) para aprender Agujas de sello: senbons de platino que bloquean el chakra.' }),
   a({ id: 'stretching', name: 'Stretching', nameEs: 'Estiramientos', sticks: 1, requires: { shinobiClass: 'Taijutsu Master' }, target: 'self', description: '−1 Exhaustion.', descriptionEs: '−1 de Agotamiento.' }),
   a({ id: 'peaceful_sleep', name: 'Peaceful sleep', nameEs: 'Sueño apacible', sticks: 2, requires: { shinobiClass: 'Genjutsu Adept' }, target: 'any', description: '−3 Tension.', descriptionEs: '−3 de Tensión.' }),
   a({ id: 'camp_illusion', name: 'Camp illusion', nameEs: 'Ilusión de campamento', sticks: 2, requires: { shinobiClass: 'Genjutsu Adept' }, target: 'none', ambush: { add: -15 }, description: '−15 % ambush.', descriptionEs: '−15 % de emboscada.' }),

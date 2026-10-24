@@ -10,6 +10,8 @@ import { CampState, morning, Outcome, StopState } from '../rules/rest';
 import { migrateCharacter, returnToVillage, sanitizeMissionFields } from '../rules/ninja';
 import { pouchTags } from '../rules/pouch';
 import { pick, strings } from '../i18n';
+import { answerDoctor } from './doctorScene';
+import type { DoctorChoice } from './doctorScene';
 import { both, describeEvent, LogLine, LogText } from './eventText';
 import type { PartyBattleResult } from '../battle/result';
 import type { SupplyId } from '../types/mission';
@@ -30,6 +32,9 @@ const T = strings({
   leftForDead: { en: 'The enemy left the party for dead. The survivors get up and go on.', es: 'El enemigo dio al grupo por muerto. Los sobrevivientes se levantan y siguen adelante.' },
   retreat: { en: 'Retreat: {title}', es: 'Retirada: {title}' },
   usedInBattle: { en: 'Used in battle', es: 'Usado en la batalla' },
+  doctorTaught: { en: 'The old doctor shows where the platinum goes in', es: 'El viejo médico enseña dónde entra el platino' },
+  doctorThanks: { en: 'The old doctor thanks you for trying', es: 'El viejo médico les agradece el intento' },
+  doctorLeft: { en: 'You leave the old doctor on his milestone', es: 'Dejan al viejo médico en su mojón' },
 });
 
 const es = (en: string, esText?: string) => pick(en, esText, 'es');
@@ -137,6 +142,15 @@ export function startRun(
   return arrive(narrate(base, [], both(T, 'setsOut', { mission: mission.name }, { mission: es(mission.name, mission.nameEs) })), { zone: 0, node: 0 });
 }
 
+/** The party answers the scene at its node (the old doctor): the result, and the node is done. */
+export function answerScene(run: MissionRun, choice: DoctorChoice, who?: string): MissionRun {
+  const node = nodeAt(missionOf(run), run.pos);
+  if (!node || node.kind !== 'scene' || run.nodeDone) return run;
+  const r = answerDoctor(run.party, node.id, choice, who);
+  if (r.ending === 'left' && choice !== 'leave') return narrate(run, r.events);
+  return narrate({ ...run, party: r.party, nodeDone: true }, r.events, both(T, r.ending === 'taught' ? 'doctorTaught' : r.ending === 'thanks' ? 'doctorThanks' : 'doctorLeft'));
+}
+
 /** On from a finished node: the next node, the end of a zone (short stop offered) or the end. */
 export function continueRoad(run: MissionRun): MissionRun {
   const m = missionOf(run);
@@ -184,7 +198,7 @@ export function resolvePartyBattle(run: MissionRun, result: PartyBattleResult): 
   // Supplies spent in battle.
   const events: RuleEvent[] = [];
   const supplies = { ...run.party.supplies };
-  for (const item of ['soldierPills', 'bandages', 'antidotes', 'explosiveTags', 'weaponPoison', 'healingPotions'] as SupplyId[]) {
+  for (const item of ['soldierPills', 'bandages', 'antidotes', 'explosiveTags', 'weaponPoison', 'healingPotions', 'platinumSenbon'] as SupplyId[]) {
     const left = result.supplies[item as keyof PartyBattleResult['supplies']];
     if (left === undefined || left === supplies[item]) continue;
     events.push({ type: 'supplies', item, delta: left - supplies[item], left, reason: T('usedInBattle', undefined, 'en') });
@@ -217,7 +231,7 @@ export function migrateRun(r: MissionRun): MissionRun {
     const dead = (p.dead ?? []).map(migrateCharacter);
     const grew = [...members, ...dead].reduce((n, now, i) => n + Math.max(0, pouchTags(now) - pouchTags(was[i])), 0);
     // A backpack packed before weapon poison and healing potions existed set out without them.
-    const supplies = { ...p.supplies, weaponPoison: p.supplies.weaponPoison ?? 0, healingPotions: p.supplies.healingPotions ?? 0 };
+    const supplies = { ...p.supplies, weaponPoison: p.supplies.weaponPoison ?? 0, healingPotions: p.supplies.healingPotions ?? 0, platinumSenbon: p.supplies.platinumSenbon ?? 0 };
     return { ...p, members, dead, supplies: grew ? { ...supplies, explosiveTags: supplies.explosiveTags + grew } : supplies };
   };
   return { ...r, party: party(r.party), entry: party(r.entry ?? r.party) };

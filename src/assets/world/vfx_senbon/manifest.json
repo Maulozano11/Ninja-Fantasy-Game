@@ -3,7 +3,7 @@
  "pxPerMeter": 57,
  "sprites": {
   "needle": {
-   "label": "A thrown senbon at 16 angles (frame k: k x 22.5 degrees clockwise from the right): plain steel, coated with poison, dipped in a healing potion",
+   "label": "A thrown senbon at 16 angles (frame k: k x 22.5 degrees clockwise from the right): plain steel, coated with poison, dipped in a healing potion, platinum (Seal Needles)",
    "file": "needle.png",
    "frameW": 48,
    "frameH": 48,
@@ -33,6 +33,12 @@
     },
     "heal": {
      "row": 2,
+     "frames": 16,
+     "fps": 0,
+     "loop": true
+    },
+    "platinum": {
+     "row": 3,
      "frames": 16,
      "fps": 0,
      "loop": true

@@ -18,7 +18,7 @@ npm run sprites -- preset <presetId> out.png  # a preset in every pose
 | Height | About 94 px from the top of the hair to the soles, like the reference. |
 | View | 3/4, facing right. The near arm and leg (screen-left) are drawn in front; the far ones are behind and one shade darker. |
 | Head | Shrunk by `headScale` (about 0.78). The face from the lash row down is a fixed pixel template. |
-| Bodies | Male, female, bulky (the slender body was removed by the owner, 2026-10-22). Every item must work on all three. The female body follows the owner's heroines drawn at our scale (`body/female-v2`, in the game with Lyra, approved 2026-10-23): 92 px tall without hair, a longer torso and neck with the waist higher (`waistY`), narrow shoulders, a slim knee and fuller calf, his hands (5-7 px, cut 1:1 from his pictures) and Aurelia's bare shoulder (`femaleBodyArt.ts`), feet 4 rows shorter (the ankles stand lower, `ankleLift`; every foot template and boot is shortened by `shortFoot`), flat skin with a one-pixel shadow rim inside his near-black line (`skinF` ramp, `flatSkin`). |
+| Bodies | Male, female, bulky (the slender body was removed by the owner, 2026-10-22). Every item must work on all three. The female body follows the owner's heroines drawn at our scale (`body/female-v2`, in the game with Lyra, approved 2026-10-23): 92 px tall without hair, a longer torso and neck with the waist higher (`waistY`), narrow shoulders, a slim knee and fuller calf, his hands (5-7 px, cut 1:1 from his pictures) and Aurelia's bare shoulder (`femaleBodyArt.ts`), feet 4 rows shorter (the ankles stand lower, `ankleLift`; every foot template and boot is shortened by `shortFoot`), flat skin with a one-pixel shadow rim inside his near-black line (`skinF` ramp, `flatSkin`). Hand size is a creator option on the female bodies (the owner, 2026-10-22: "las manos mas pequeñas ponlas como opcion en el juego para personajes femeninos"): "Manos: Normales" (the body's own, default) or "Pequeñas" (his game-scale Aurelia's open hand and fist, his pixels: `tools/refs/aurelia-hands-from-ref.py` -> `src/sprite/aureliaHandsArt.ts`, appearance `hands: 'small'`); Aurelia's preset uses Pequeñas. |
 | Poses | idle, handsigns, attack (3 frames), cast, hurt, victory, charge. Every item must work in all of them. |
 | Posture | Upright: chest slightly out, head over the shoulders. Never hunched. In idle the legs are straight under the hips and the arms hang relaxed and nearly straight, fists at hip height. |
 | Depth | 3/4 front ground plane: the near foot stands lower on screen, the far hip and foot sit higher (`ANKLE_N`, `FAR_LIFT` in `rig.ts`). |
@@ -99,6 +99,7 @@ The face is a template copied pixel by pixel from the reference (`FACE_MAIN` and
 - **One piece per limb, never twice.** Each leg is one piece with its foot, each arm one piece with its hand, on its own layer: never a leg, a foot or a boot drawn a second time (a heroine's skirt or boots must not carry painted legs of their own that stay put while the legs move). `femaleBase.test.ts` checks every pose and frame: one connected near leg and far leg (with and without boots), one connected arm with its hand on each side, no part drawn with more pixels than his piece.
 - **No hand apart from its arm.** A hand turns with its forearm, exactly, and carries a round cap of the wrist, so it never comes away from the wrist (the throw's release). His closed fists are his hands; his heroines' small hands (`femaleBodyArt.ts` `FEMALE_HANDS`) hold a weapon, point, open and cradle on his wrist.
 - **The shoulder is always there.** The upper arm piece carries his shoulder's round and turns about its middle, so a raised arm (the throw's wind-up) keeps its shoulder; the chest under it is continued from his pixels.
+- **The neck stays on the head, at his length.** His neck above its foot (the rows the head covers at rest) is its own piece on the bone from the neck's foot to the head, so a head pitched forward takes the neck with it. Never a neck left standing on the chest behind the head (the owner's "error raro en el hombro espalda", 2026-10-22), and never a neck stretched to reach a head moved away from it (his next verdict, 2026-10-22: "es el cuello lo que se ve raro y hay que corregir y arreglar"). The head stays at his neck's length from the neck's foot in every pose and frame (within 1.5 px, the head sitting on whole design units). A pose that pitches the body far forward keeps the head up on the neck, looking at the target, as he repainted the throw on Lyra (`docs/reference/poses/lyra-throw-owner-reference.jpg`, his "Cuadro 1" and "Cuadro 2" = throw frames 3 and 4): the neck turned only a little forward of his at rest (`rig.ts` `PoseFrame.neckPitch`: 18-23 degrees from upright against his 16 at rest; his painting 14-24), the head above the shoulders. `femaleBase.test.ts` checks every pose and frame of every body and preset: the head at his neck's length, the head up on the neck through the throw, the skin above the neck's foot leading to the head, and no slab of one skin colour on the chest, neck or back.
 - **Joints stay whole.** The lower piece of every joint carries a round cap of the upper piece over the joint (elbow, wrist, knee, ankle), drawn over it; what he hides (the thigh tops under the briefs, the chest's near side under the arm, the far upper arm behind the chest, the neck under the head, the belly under the top) is continued from his pixels and stays hidden at rest.
 - **No pixel cut off.** At rest every pixel is his. In any other pose a pixel of a piece left on its layer's edge becomes his line, so a piece moved apart from the next one, or a pixel of his line lost turning it, never leaves the body cut open.
 - **His sports top and briefs** are part of the body (it always wears them, in his black) and two items, the sports top and the briefs, that recolour them.
@@ -166,6 +167,27 @@ The earlier review (2026-10-21), on the body built from his heroines at our scal
 All item and preset names are original. Never use names, symbols or logos from existing franchises.
 
 The headband is plain cloth only (the owner, 2026-10-22: "deja la pura bandana la pura tela"): no metal plate, no emblem or engraved village symbol, no slash across it (`items/headband.ts`). It replaced his earlier "quita las bandanas". Don't add a plate or symbol back.
+
+## Known errors — check every new character
+
+The owner, 2026-10-23: *"quiero que arregles solo los de la calidad standard"*. On his standard characters
+(`compose.ts` `standardOf`) every frame but idle and his own painted frames goes through `mendGlitches`
+(`src/sprite/glitches.ts`), which closes only what is clearly a dead pixel: a light pixel on the figure's
+edge where his black line is missing (*borde claro*), a one-pixel crack along a seam where two parts that
+meet have come apart (*grieta*), and a bit of a few pixels loose from the figure. `src/sprite/standardMend.test.ts`
+checks it.
+
+**A pocket (*hueco*) is never filled.** Background walled in by the figure is reported by `findGlitches`
+and looked at, never closed by the code: it is nearly always the separation he draws. The owner, on the
+Roman walking and running: *"estas confundiendo el hueco no es pixeles muertos ahi si es la separacion de
+brazo y cuerpo no te confundas y hagas esto con los demas tambien"*; on Lyra's attack: *"aqui tambien
+estas confundiendo en las marcadas"*; on Aurelia (under the chin, between her thigh, shin and skirt, her arm
+and body): *"aqui tambien estas cometiendo ese error demasiado porfavor no lo repitas mas en ningun personaje
+porque cosas que ya estan bien las estamos rehaciendo"*. `mendGlitches` fills a pocket only where its `fill`
+says; the only fills are the ones he saw on the sheets and left unmarked, listed one by one in
+`src/sprite/keptFills.ts` (a pixel of each, by character, body, pose and frame). When he marks a fill
+wrong, its entry goes; a new one is never added without his eye. A pocket that looks wrong is shown to him
+first, never filled on its own.
 
 ## Checklist for a new item
 

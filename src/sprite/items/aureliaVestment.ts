@@ -45,12 +45,41 @@ const vestmentColor = (cloth: string, gold: string, gem: string) => (ch: string,
         : hex;
 
 /**
+ * A dress of the owner's on our fitted female, his pieces for the rig's segments (her Dawn Vestment, and the
+ * bodices and sleeves of his other outfits for her, aureliaOutfits.ts): the bodice and its waist ride the torso,
+ * each sleeve its upper arm and forearm.
+ */
+export interface VestmentArt {
+  /** The bodice (pivot: the base of the neck) and the bodice carried on under the sash to the hips. */
+  bodice?: PaintedPiece;
+  waist?: PaintedPiece;
+  /** Each sleeve: the upper arm's piece (pivot: the shoulder), the forearm's (pivot: the elbow), and what of our arm it stands for (clearArm). */
+  sleeves?: Record<Side, [PaintedPiece, PaintedPiece, [number, number]]>;
+  /** What of our torso the bodice stands for (clearTorso). */
+  torsoSpan?: [number, number, number];
+  /** His black line. */
+  line: string;
+  /** His skin's characters: drawn in the body's skin, at these shades of it. */
+  skinShades: Record<string, number>;
+}
+
+/** Her Dawn Vestment's pieces. */
+const DAWN_VESTMENT_ART: VestmentArt = {
+  bodice: AURELIA_BODICE,
+  waist: AURELIA_WAIST,
+  sleeves: { F: [AURELIA_SLEEVE_UPPER_F, AURELIA_SLEEVE_FORE_F, AURELIA_SLEEVE_SPAN_F], N: [AURELIA_SLEEVE_UPPER_N, AURELIA_SLEEVE_FORE_N, AURELIA_SLEEVE_SPAN_N] },
+  torsoSpan: AURELIA_TORSO_SPAN,
+  line: AURELIA_LINE,
+  skinShades: AURELIA_SKIN_SHADES,
+};
+
+/**
  * Stamps a piece as stampPiece does (at his angle every pixel is his), but his skin (the keyhole under
  * the gem, the armpit) in the body's own skin shades, so it follows the player's skin.
  */
-function stamp(g: DrawCtx, depth: Depth, piece: PaintedPiece, at: Vec, deg: number, part: PartId, color: (ch: string, hex: string) => string): void {
+function stamp(g: DrawCtx, depth: Depth, piece: PaintedPiece, at: Vec, deg: number, part: PartId, color: (ch: string, hex: string) => string, skinShades = AURELIA_SKIN_SHADES): void {
   const pal: TemplatePalette = {};
-  for (const [ch, hex] of Object.entries(piece.colors)) pal[ch] = ch in AURELIA_SKIN_SHADES ? [g.skin, AURELIA_SKIN_SHADES[ch]] : [g.m(color(ch, hex), 'flat'), 3];
+  for (const [ch, hex] of Object.entries(piece.colors)) pal[ch] = ch in skinShades ? [g.skin, skinShades[ch]] : [g.m(color(ch, hex), 'flat'), 3];
   stampTemplate(g.L(depth), piece, at, deg - piece.angle, pal, part, { flags: F_NO_TEXTURE | F_NO_OUTLINE });
 }
 
@@ -80,10 +109,10 @@ const UNDER_SLEEVE = (s: Side): Depth[] => [armDepth(s, 'body'), armDepth(s, 'cl
  * shoulder stays bare (his own shoulder rides the near sleeve over it): of our undergarment nothing
  * shows there (its strap over the near shoulder goes).
  */
-function clearTorso(g: DrawCtx, bodice: Uint8Array): void {
+function clearTorso(g: DrawCtx, bodice: Uint8Array, span: [number, number, number] = AURELIA_TORSO_SPAN): void {
   const r = g.rig;
   const torso = partIndex('torso');
-  const [nearFrom, farFrom, to] = AURELIA_TORSO_SPAN;
+  const [nearFrom, farFrom, to] = span;
   for (const d of UNDER_BODICE) {
     const L = g.L(d);
     if (!L.used) continue;
@@ -140,9 +169,9 @@ const ELBOW_REACH = 6;
  * other piece's edge (touching the sleeve on one side only) goes. In our idle pose her line already
  * closes the sleeve there, so nothing changes.
  */
-function closeElbow(g: DrawCtx, d: Depth, sleeve: Uint8Array, elbow: Vec): void {
+function closeElbow(g: DrawCtx, d: Depth, sleeve: Uint8Array, elbow: Vec, lineHex = AURELIA_LINE): void {
   const L = g.L(d);
-  const line = g.m(AURELIA_LINE, 'flat');
+  const line = g.m(lineHex, 'flat');
   const ex = Math.floor(elbow.x * RES);
   const ey = Math.floor(elbow.y * RES);
   const R = ELBOW_REACH;
@@ -172,9 +201,9 @@ function closeElbow(g: DrawCtx, d: Depth, sleeve: Uint8Array, elbow: Vec): void 
  * pocket of background inside her dress; it takes the piece's own colour from its neighbours instead (the
  * one most of them have, her line only when all of them are), so the edge stays his.
  */
-function fillDents(g: DrawCtx, d: Depth, cover: Uint8Array): void {
+function fillDents(g: DrawCtx, d: Depth, cover: Uint8Array, lineHex = AURELIA_LINE): void {
   const L = g.L(d);
-  const line = g.m(AURELIA_LINE, 'flat');
+  const line = g.m(lineHex, 'flat');
   const layers = DEPTHS.map((x) => g.L(x)).filter((l) => l.used);
   for (let y = 1; y < GRID - 1; y++) {
     for (let x = 1; x < GRID - 1; x++) {
@@ -228,13 +257,24 @@ export function closeOpen(g: DrawCtx, d: Depth, cover: Uint8Array, lineHex = AUR
  * hers.
  */
 function drawDawnVestment(g: DrawCtx, cloth: string, gold: string, gem: string): void {
+  drawVestment(g, DAWN_VESTMENT_ART, vestmentColor(cloth, gold, gem), { bodice: true, sleeves: true });
+}
+
+/**
+ * Draws a dress of his (VestmentArt): its bodice (`parts.bodice`: the bodice over the torso, its waist under the
+ * skirts) and its sleeves (`parts.sleeves`), each part on its own when an outfit makes them separate items. The
+ * far sleeve goes behind the torso (over the far leg); the near sleeve over all. In each sleeve the forearm's
+ * piece goes under the upper arm's, reaching on under it, so a bending elbow opens no gap, and the edge round
+ * the elbow is closed (closeElbow). Then what of our body shows past his clothes is taken away (clearTorso,
+ * clearArm), so the figure's edge is his.
+ */
+export function drawVestment(g: DrawCtx, art: VestmentArt, tint: (ch: string, hex: string) => string, parts: { bodice: boolean; sleeves: boolean }): void {
   const r = g.rig;
-  const tint = vestmentColor(cloth, gold, gem);
   const torso = segAngle(r.pelvis, r.neck);
-  const put = (d: Depth, p: PaintedPiece, at: Vec, deg: number, part: PartId) => stamp(g, d, p, at, deg, part, tint);
-  const sleeves: [Side, PaintedPiece, PaintedPiece, [number, number]][] = [
-    ['F', AURELIA_SLEEVE_UPPER_F, AURELIA_SLEEVE_FORE_F, AURELIA_SLEEVE_SPAN_F],
-    ['N', AURELIA_SLEEVE_UPPER_N, AURELIA_SLEEVE_FORE_N, AURELIA_SLEEVE_SPAN_N],
+  const put = (d: Depth, p: PaintedPiece, at: Vec, deg: number, part: PartId) => stamp(g, d, p, at, deg, part, tint, art.skinShades);
+  const sleeves: [Side, PaintedPiece | undefined, PaintedPiece | undefined, [number, number]][] = [
+    ['F', ...(art.sleeves?.F ?? [undefined, undefined, [0, 0]])],
+    ['N', ...(art.sleeves?.N ?? [undefined, undefined, [0, 0]])],
   ];
   const covers: Uint8Array[] = [];
   const turned: [Depth, Uint8Array][] = [];
@@ -246,47 +286,50 @@ function drawDawnVestment(g: DrawCtx, cloth: string, gold: string, gem: string):
     const d = s === 'F' ? 'farLeg.armor' : armDepth(s, 'armor');
     const up = segAngle(shoulder, elbow);
     const down = segAngle(elbow, wrist);
-    if (s === 'N') {
-      put('torso.top', AURELIA_WAIST, r.neck, torso, 'torso');
-      put('torso.armor', AURELIA_BODICE, r.neck, torso, 'torso');
-      cover(bodice, AURELIA_WAIST, r.neck, torso);
-      cover(bodice, AURELIA_BODICE, r.neck, torso);
-      if (Math.abs(torso - AURELIA_BODICE.angle) >= 0.5) {
+    if (s === 'N' && parts.bodice && art.bodice && art.waist) {
+      put('torso.top', art.waist, r.neck, torso, 'torso');
+      put('torso.armor', art.bodice, r.neck, torso, 'torso');
+      cover(bodice, art.waist, r.neck, torso);
+      cover(bodice, art.bodice, r.neck, torso);
+      if (Math.abs(torso - art.bodice.angle) >= 0.5) {
         const b = new Uint8Array(GRID * GRID);
-        cover(b, AURELIA_BODICE, r.neck, torso);
+        cover(b, art.bodice, r.neck, torso);
         turned.push(['torso.armor', b]);
       }
     }
-    put(d, fore, elbow, down, `forearm${s}`);
-    put(d, upper, shoulder, up, `upperArm${s}`);
     const c = new Uint8Array(GRID * GRID);
-    cover(c, fore, elbow, down);
-    cover(c, upper, shoulder, up);
-    // At rest both pieces lie as he drew them and his own line closes the sleeve: nothing to close (the
-    // sleeve's edge where her belt crosses it is not an open edge).
-    if (Math.abs(up - upper.angle) >= 0.5 || Math.abs(down - fore.angle) >= 0.5) {
-      closeElbow(g, d, c, elbow);
-      turned.push([d, c]);
+    if (parts.sleeves && upper && fore) {
+      put(d, fore, elbow, down, `forearm${s}`);
+      put(d, upper, shoulder, up, `upperArm${s}`);
+      cover(c, fore, elbow, down);
+      cover(c, upper, shoulder, up);
+      // At rest both pieces lie as he drew them and his own line closes the sleeve: nothing to close (the
+      // sleeve's edge where her belt crosses it is not an open edge).
+      if (Math.abs(up - upper.angle) >= 0.5 || Math.abs(down - fore.angle) >= 0.5) {
+        closeElbow(g, d, c, elbow, art.line);
+        turned.push([d, c]);
+      }
     }
     covers.push(c);
   }
-  clearTorso(g, bodice);
-  sleeves.forEach(([s, , , span], k) => clearArm(g, s, covers[k], span));
+  if (parts.bodice && art.bodice) clearTorso(g, bodice, art.torsoSpan);
+  if (parts.sleeves && art.sleeves) sleeves.forEach(([s, , , span], k) => clearArm(g, s, covers[k], span));
   for (const [d, c] of turned) {
     // only the bodice: the sleeves' turns are his approved walk, pixel for pixel
-    if (d === 'torso.armor') fillDents(g, d, c);
-    closeOpen(g, d, c);
+    if (d === 'torso.armor') fillDents(g, d, c, art.line);
+    closeOpen(g, d, c, art.line);
   }
   // her hands come out of the cuffs: a wrist the cuff does not cover is closed in his line (his bare
   // woman's fists, the female body's hands, are bigger than the hands he drew her with, so even at rest
   // the fist's top shows past the cuff)
+  if (!parts.sleeves || !art.sleeves) return;
   for (const s of ['N', 'F'] as Side[]) {
     const d = armDepth(s, 'body');
     const L = g.L(d);
     const hand = partIndex(`hand${s}` as PartId);
     const c = new Uint8Array(GRID * GRID);
     for (let i = 0; i < GRID * GRID; i++) if (L.mat[i] >= 0 && L.part[i] === hand && L.shade[i] > 0) c[i] = 1;
-    closeOpen(g, d, c, AURELIA_LINE, true);
+    closeOpen(g, d, c, art.line, true);
   }
 }
 

@@ -18,6 +18,16 @@ import { fillHoles, legsKeptAsDrawn, sealLegsAfter } from './aureliaBoots';
 import { DAWN_SLIT_F, DAWN_SLIT_N, DAWN_SLIT_SKIN, DAWN_THIGH_N } from './aureliaBootsArt';
 import { DAWN_BASE, DAWN_FAR, DAWN_FRONT, DAWN_LINE, DAWN_LINING, DAWN_NEAR, DAWN_WAIST, type DawnPiece } from './aureliaLowerArt';
 
+/**
+ * A piece of one of his skirts: hers (aureliaLowerArt.ts), or of his other outfits for her (aureliaOutfits.ts),
+ * which say which of their pieces hangs as her far panel does (riding the far leg, `far`) and which only gathers
+ * above the ground as her lining does (`lining`), and their own line.
+ */
+export type SkirtPiece = DawnPiece & { far?: boolean; lining?: boolean; line?: string };
+const isFar = (p: SkirtPiece): boolean => p === DAWN_FAR || !!p.far;
+const isLining = (p: SkirtPiece): boolean => p === DAWN_LINING || !!p.lining;
+const lineOf = (p: SkirtPiece): string => p.line ?? DAWN_LINE;
+
 /** How much a hanging piece follows its thigh (as armor.ts HANG_FOLLOW: skirts never bell out). */
 const FOLLOW = 0.22;
 /**
@@ -101,15 +111,15 @@ function floor(r: Rig, q: Vec): Vec {
  * A piece's columns at rest (fine pixels). The far panel's also bend at the far knee's height (farOnLeg):
  * at rest that is a point on the straight column, so the piece is as drawn.
  */
-const restCols = (p: DawnPiece): Col[] =>
+const restCols = (p: SkirtPiece): Col[] =>
   p.cols.map(([tx, ty, bx, by]) => {
-    if (p !== DAWN_FAR) return [v(tx, ty), v(bx, by)];
+    if (!isFar(p)) return [v(tx, ty), v(bx, by)];
     const k = clamp((rest().kneeF.y * RES - ty) / (by - ty), 0, 1);
     return [v(tx, ty), v(tx + (bx - tx) * k, ty + (by - ty) * k), v(bx, by)];
   });
 
 /** A piece's columns in this frame (fine pixels): the tops ride the torso; the bottoms hang, or ride it too. */
-function poseCols(g: DrawCtx, p: DawnPiece): Col[] {
+function poseCols(g: DrawCtx, p: SkirtPiece): Col[] {
   const R0 = rest();
   const r = g.rig;
   const body = g.look.body;
@@ -126,10 +136,10 @@ function poseCols(g: DrawCtx, p: DawnPiece): Col[] {
     if (!p.hang) return [T, at(bot)];
     // (lying down she is drawn upright and laid afterwards: there the floor is a column, see floor())
     const end = (a: Vec, b: Vec, swing: boolean): Vec => floor(r, scaleRes(r.lay ? v(b.x, Math.min(b.y, GROUND + 1.5)) : hemAbove(a, b, swing)));
-    if (p === DAWN_FAR) {
+    if (isFar(p)) {
       // it bends at the far knee's height, riding the far thigh above and the far shin below
-      const knee = farOnLeg(R0, r, v(col[1].x / RES, col[1].y / RES), 'thigh');
-      return [T, floor(r, scaleRes(knee)), end(knee, farOnLeg(R0, r, v(bot.x / RES, bot.y / RES), 'shin'), true)];
+      const knee = farOnLeg(R0, r, v(col[1].x / RES, col[1].y / RES), 'thigh', p);
+      return [T, floor(r, scaleRes(knee)), end(knee, farOnLeg(R0, r, v(bot.x / RES, bot.y / RES), 'shin', p), true)];
     }
     const lt = local(R0, v(top.x / RES, top.y / RES));
     const w = thighBlend(R0, lt.x);
@@ -141,7 +151,7 @@ function poseCols(g: DrawCtx, p: DawnPiece): Col[] {
     const c = Math.cos(th);
     const s = Math.sin(th);
     const b = v(a1.x + (d.x * c - d.y * s) * legScale, a1.y + (d.x * s + d.y * c) * legScale);
-    return [T, end(a1, b, p !== DAWN_LINING)];
+    return [T, end(a1, b, !isLining(p))];
   });
 }
 
@@ -162,7 +172,7 @@ const FAR_OUT = -1.25;
  * idle frames' legs do not) the panel comes in behind the leg, its middle FAR_OUT past the bone's line,
  * the whole width of it together.
  */
-function farOnLeg(R0: Rig, r: Rig, q: Vec, bone: 'thigh' | 'shin'): Vec {
+function farOnLeg(R0: Rig, r: Rig, q: Vec, bone: 'thigh' | 'shin', far: SkirtPiece = DAWN_FAR): Vec {
   const [a0, b0, a1, b1] = bone === 'thigh' ? [R0.hipF, R0.kneeF, r.hipF, r.kneeF] : [R0.kneeF, R0.ankleF, r.kneeF, r.ankleF];
   const dir = (a: Vec, b: Vec): Vec => {
     const l = Math.hypot(b.x - a.x, b.y - a.y) || 1;
@@ -175,8 +185,8 @@ function farOnLeg(R0: Rig, r: Rig, q: Vec, bone: 'thigh' | 'shin'): Vec {
   const along = (Math.hypot(b1.x - a1.x, b1.y - a1.y) || 1) / (Math.hypot(b0.x - a0.x, b0.y - a0.y) || 1);
   // the middle of the panel's cloth on this point's row at rest (its last row for the hem), and how far it
   // comes in (all of it once the knee and ankle moved half a unit between them)
-  const [ox, oy] = DAWN_FAR.origin;
-  const row = DAWN_FAR.rows[clamp(Math.floor(q.y * RES) - oy, 0, DAWN_FAR.rows.length - 1)];
+  const [ox, oy] = far.origin;
+  const row = far.rows[clamp(Math.floor(q.y * RES) - oy, 0, far.rows.length - 1)];
   const xs = [...row].flatMap((ch, x) => (ch === '.' ? [] : [x]));
   const mid = sub(v((ox + (xs[0] + xs[xs.length - 1] + 1) / 2) / RES, q.y), a0);
   const moved = Math.hypot(r.kneeF.x - R0.kneeF.x, r.kneeF.y - R0.kneeF.y) + Math.hypot(r.ankleF.x - R0.ankleF.x, r.ankleF.y - R0.ankleF.y);
@@ -247,7 +257,7 @@ const lerp2 = (p00: Vec, p10: Vec, p01: Vec, p11: Vec, u: number, w: number): Ve
  * round the edge again (an edge pixel of hers pulled inside takes the colour inside it, an edge pixel
  * of the moved piece is her line, except along the open top).
  */
-export function placePiece(g: DrawCtx, p: DawnPiece, rowsTo = Infinity): Map<number, string> {
+export function placePiece(g: DrawCtx, p: SkirtPiece, rowsTo = Infinity): Map<number, string> {
   const R = restCols(p);
   const P = poseCols(g, p);
   const [ox, oy] = p.origin;
@@ -309,13 +319,13 @@ export function placePiece(g: DrawCtx, p: DawnPiece, rowsTo = Infinity): Map<num
 }
 
 /** Stamps a piece (its rows above `rowsTo`) into a depth in her colours (`tint` recolours a colour of a slot). */
-function drawPiece(g: DrawCtx, depth: Depth, part: PartId, p: DawnPiece, tint: (role: string, hex: string) => string, rowsTo = Infinity): void {
+export function drawPiece(g: DrawCtx, depth: Depth, part: PartId, p: SkirtPiece, tint: (role: string, hex: string) => string, rowsTo = Infinity): void {
   const L = g.L(depth);
   const mats = new Map<string, number>();
   const mat = (ch: string): number => {
     let m = mats.get(ch);
     if (m === undefined) {
-      const hex = ch === 'k' ? DAWN_LINE : p.colors[ch];
+      const hex = ch === 'k' ? lineOf(p) : p.colors[ch];
       const role = p.roles[ch];
       m = g.m(role ? tint(role, hex) : hex, 'flat');
       mats.set(ch, m);
@@ -336,11 +346,11 @@ const SHORTS = '#3b3a46';
  * boot or less, upright, as tall as a shin and reaching down by the shoes) is cut back to the lower knee, its
  * cut edge in her line. Lining showing otherwise, and at rest, is as he drew it.
  */
-function liningOffTheGround(g: DrawCtx): void {
+export function liningOffTheGround(g: DrawCtx, lineHex = DAWN_LINE): void {
   const L = g.L('backGear');
   if (!L.used || g.rig.lay) return;
   const lining = partIndex('pelvis');
-  const line = g.m(DAWN_LINE, 'flat');
+  const line = g.m(lineHex, 'flat');
   const above = DEPTHS.slice(DEPTHS.indexOf('backGear') + 1)
     .map((d) => g.L(d))
     .filter((M) => M.used);
@@ -384,7 +394,7 @@ function liningOffTheGround(g: DrawCtx): void {
 }
 
 /** Takes the base body's shorts away under the skirt (when no trousers are worn): the slits show her thighs. */
-function bareThighs(g: DrawCtx): void {
+export function bareThighs(g: DrawCtx): void {
   if (g.has('bottom')) return;
   const shorts = g.m(SHORTS, 'cloth');
   const r = g.rig;
@@ -422,11 +432,11 @@ function slitThighs(g: DrawCtx): void {
  * A pixel of a panel with at most one drawn neighbour on these depths, and that one his line, goes, again
  * until none is left. At rest the caller leaves his panels be.
  */
-function trimPanelSpurs(g: DrawCtx, depths: Depth[]): void {
+export function trimPanelSpurs(g: DrawCtx, depths: Depth[], lineHex = DAWN_LINE): void {
   const Ls = depths.map((d) => g.L(d)).filter((L) => L.used);
   const panels = new Set([partIndex('thighF'), partIndex('thighN')]);
   const drawn = (i: number) => Ls.some((L) => L.mat[i] >= 0);
-  const lines = new Set([g.m(DAWN_LINE, 'flat'), g.m(DAWN_THIGH_N.colors.k, 'flat')]);
+  const lines = new Set([g.m(lineHex, 'flat'), g.m(DAWN_THIGH_N.colors.k, 'flat')]);
   for (let pass = 0; pass < 8; pass++) {
     const off: [Layer, number][] = [];
     for (const d of ['backGear', 'farLeg.armor', 'skirt'] as Depth[]) {

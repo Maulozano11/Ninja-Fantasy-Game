@@ -27,6 +27,7 @@ import {
   DAWN_THIGH_N,
 } from './aureliaBootsArt';
 import { closeOpen } from './aureliaVestment';
+import { footTurn } from './ankle';
 
 /**
  * Takes our leg (skin and trousers) off below the boot's lace top: the thigh below the line across it
@@ -103,9 +104,6 @@ function cover(out: Uint8Array, piece: PaintedPiece, at: Vec, deg: number): void
 /** How near the knee (fine pixels) the thigh's cells turn with it when it bends (stampBent): about half the boot's width. */
 const KNEE_R = 4;
 
-/** His black line (never tinted). */
-const isLine = (hex: string): boolean => hex === DAWN_THIGH_N.colors.k;
-
 /** How far a knee bends past the way he drew it (degrees, wrapped to -180..180). */
 function kneeBend(thighA: number, shinA: number, thigh: PaintedPiece, shin: PaintedPiece): number {
   const d = shinA - thighA - (shin.angle - thigh.angle);
@@ -121,9 +119,9 @@ const KNEE_REACH = 6;
  * touches a pixel outside the boot takes his line. At rest the shin's piece meets the thigh's and his
  * own line already closes the boot, so nothing changes.
  */
-function closeKnee(g: DrawCtx, s: Side, boot: Uint8Array, knee: Vec): void {
+function closeKnee(g: DrawCtx, s: Side, boot: Uint8Array, knee: Vec, lineHex = DAWN_THIGH_N.colors.k): void {
   const L = g.L(legDepth(s, 'feet'));
-  const line = g.m(DAWN_THIGH_N.colors.k, 'flat');
+  const line = g.m(lineHex, 'flat');
   const kx = Math.floor(knee.x * RES);
   const ky = Math.floor(knee.y * RES);
   const close: number[] = [];
@@ -147,9 +145,9 @@ function closeKnee(g: DrawCtx, s: Side, boot: Uint8Array, knee: Vec): void {
  * boot beside it, and the boot's edge is his line. At rest the pieces meet as he drew them, and the caller
  * leaves them be.
  */
-function sealKnee(g: DrawCtx, s: Side, knee: Vec): void {
+function sealKnee(g: DrawCtx, s: Side, knee: Vec, lineHex = DAWN_THIGH_N.colors.k): void {
   const L = g.L(legDepth(s, 'feet'));
-  const line = g.m(DAWN_THIGH_N.colors.k, 'flat');
+  const line = g.m(lineHex, 'flat');
   const kx = Math.floor(knee.x * RES);
   const ky = Math.floor(knee.y * RES);
   const x0 = Math.max(1, kx - KNEE_REACH);
@@ -282,9 +280,9 @@ function kneeCorners(on: (x: number, y: number) => boolean, leg: (x: number, y: 
  * lays bare take his line. Again until no square corner is left. A corner already cut by a pixel is cut
  * deeper only at the end of a face: elsewhere it already reads round.
  */
-function roundCorners(g: DrawCtx, s: Side, knee: Vec, w: number): void {
+function roundCorners(g: DrawCtx, s: Side, knee: Vec, w: number, lineHex = DAWN_THIGH_N.colors.k): void {
   const L = g.L(legDepth(s, 'feet'));
-  const line = g.m(DAWN_THIGH_N.colors.k, 'flat');
+  const line = g.m(lineHex, 'flat');
   const parts = new Set([partIndex(`thigh${s}`), partIndex(`shin${s}`)]);
   const on = (x: number, y: number) => x >= 0 && y >= 0 && x < GRID && y < GRID && L.mat[y * GRID + x] >= 0;
   const leg = (x: number, y: number) => on(x, y) && parts.has(L.part[y * GRID + x]);
@@ -339,7 +337,7 @@ function roundCorners(g: DrawCtx, s: Side, knee: Vec, w: number): void {
  * corner left on a knee however far it bends, this one too, roundCorners cuts after sealKnee. At rest the
  * caller leaves the knee be.
  */
-function roundKnee(g: DrawCtx, s: Side, hip: Vec, knee: Vec, ankle: Vec, thigh: PaintedPiece, shin: PaintedPiece, thighA: number, shinA: number): void {
+function roundKnee(g: DrawCtx, s: Side, hip: Vec, knee: Vec, ankle: Vec, thigh: PaintedPiece, shin: PaintedPiece, thighA: number, shinA: number, lineHex = DAWN_THIGH_N.colors.k): void {
   if (Math.abs(kneeBend(thighA, shinA, thigh, shin)) < FOLD) return;
   const L = g.L(legDepth(s, 'feet'));
   const parts = new Set([partIndex(`thigh${s}`), partIndex(`shin${s}`)]);
@@ -393,7 +391,7 @@ function roundKnee(g: DrawCtx, s: Side, hip: Vec, knee: Vec, ankle: Vec, thigh: 
   // shin's ending side by side under the knee) is filled: the edge runs on under it. And where the thigh's
   // back meets the shin's front, the edge drops two pixels at once between two longer flats (a stair step):
   // the pixel in its inner corner is filled, two steps of one.
-  const line = g.m(DAWN_THIGH_N.colors.k, 'flat');
+  const line = g.m(lineHex, 'flat');
   for (const swap of [false, true]) {
     const idx = (u: number, w: number) => (swap ? u * GRID + w : w * GRID + u);
     const on2 = (u: number, w: number) => on(idx(u, w));
@@ -508,8 +506,8 @@ export const legsKeptAsDrawn = (g: DrawCtx): boolean => KEEP_LEGS.has(g.rig.pose
  * Every layer drawn so far counts as drawn, so it runs after the last of her boots, her skirt and her sash
  * (sealLegsAfter); the clothes drawn after those lie over her legs.
  */
-function sealLegs(g: DrawCtx): void {
-  const line = g.m(DAWN_THIGH_N.colors.k, 'flat');
+function sealLegs(g: DrawCtx, lineHex = DAWN_THIGH_N.colors.k): void {
+  const line = g.m(lineHex, 'flat');
   const Ls = DEPTHS.map((d) => g.L(d));
   const legDepths = (s: Side) => ['body', 'cloth', 'feet'].map((k) => DEPTHS.indexOf(legDepth(s, k as 'body')));
   const sides: [Side, number[], number][] = (['F', 'N'] as Side[]).map((s) => [s, legDepths(s), partIndex(`foot${s}`)]);
@@ -647,10 +645,101 @@ function sealLegs(g: DrawCtx): void {
  * are seen only then. Only on her boots, and not where her legs are kept as drawn (KEEP_LEGS).
  */
 export function sealLegsAfter(g: DrawCtx, slot: 'feet' | 'skirt' | 'waist'): void {
-  if (slot === 'feet' && g.has('skirt', 'skirt_dawn_panels')) return;
-  if (slot !== 'waist' && g.has('waist', 'waist_dawn_sash')) return;
-  if (!g.has('feet', 'feet_dawn_boots') || KEEP_LEGS.has(g.rig.pose)) return;
-  sealLegs(g);
+  const skirt = g.look.slots.skirt?.id;
+  const waist = g.look.slots.waist?.id;
+  const boots = g.look.slots.feet?.id;
+  if (slot === 'feet' && skirt && LEG_SKIRTS.has(skirt)) return;
+  if (slot !== 'waist' && waist && LEG_WAISTS.has(waist)) return;
+  const line = boots ? LEG_BOOTS.get(boots) : undefined;
+  if (!line || KEEP_LEGS.has(g.rig.pose)) return;
+  sealLegs(g, line);
+}
+
+/**
+ * The owner's skirts, sashes and boots for his heroines on the fitted female body that close her legs' outline
+ * when drawn (sealLegsAfter): the last of them drawn does it. Each boot with its black line.
+ */
+const LEG_SKIRTS = new Set(['skirt_dawn_panels']);
+const LEG_WAISTS = new Set(['waist_dawn_sash']);
+const LEG_BOOTS = new Map([['feet_dawn_boots', DAWN_THIGH_N.colors.k]]);
+
+/** Adds an outfit's skirt, sash and boots (their ids, and the boots' black line) to those that close her legs. */
+export function closesLegs(skirt: string, waist: string, boots: string, line: string): void {
+  LEG_SKIRTS.add(skirt);
+  LEG_WAISTS.add(waist);
+  LEG_BOOTS.set(boots, line);
+}
+
+/** One boot of his: the lace top or stocking and the boot down to the knee, the boot down the shin, the shoe, where the shoe meets the shin and where our leg goes above the knee. */
+export interface BootSide {
+  thigh: PaintedPiece;
+  shin: PaintedPiece;
+  foot: PaintedPiece;
+  join: [number, number];
+  cut: number;
+}
+
+/** A pair of his boots. `turnFoot`: the shoe turns with its shin once the leg swings it off the ground (ankle.ts), as his later boots do; hers stays flat. */
+export interface BootArt {
+  N: BootSide;
+  F: BootSide;
+  line: string;
+  turnFoot: boolean;
+}
+
+const DAWN_BOOT_ART: BootArt = {
+  N: { thigh: DAWN_THIGH_N, shin: DAWN_SHIN_N, foot: DAWN_FOOT_N, join: DAWN_FOOT_JOIN_N, cut: DAWN_BOOT_CUT },
+  F: { thigh: DAWN_THIGH_F, shin: DAWN_SHIN_F, foot: DAWN_FOOT_F, join: DAWN_FOOT_JOIN_F, cut: DAWN_BOOT_CUT_F },
+  line: DAWN_THIGH_N.colors.k,
+  turnFoot: false,
+};
+
+/**
+ * Draws a pair of his boots (BootArt) on her legs. Each leg's pieces turn with it: the shin's about the ankle,
+ * the lace top's about the knee (bent there, stampBent), the shoe flat on the ground under the ankle (or turned
+ * with the shin off the ground, `turnFoot`); our leg below the lace top goes (legOffBelow), and where the moved
+ * pieces part, his line closes them (closeKnee, closeOpen, then roundKnee, sealKnee and roundCorners).
+ */
+export function drawBoots(g: DrawCtx, art: BootArt, tint: (ch: string, hex: string) => string): void {
+  const isLineHex = (hex: string): boolean => hex === art.line;
+  // a turned knee is sealed once both legs are drawn (sealKnee, after the fills of both legs: a fill
+  // between two pieces at a knee is part of the seal)
+  const sealed: [Side, Vec, () => void, number][] = [];
+  for (const s of ['F', 'N'] as Side[]) {
+    const { hip, knee, ankle } = legJoints(g.rig, s);
+    const { thigh, shin, foot, join, cut } = art[s];
+    legOffBelow(g, s, hip, knee, cut);
+    const d = legDepth(s, 'feet');
+    const shinA = segAngle(knee, ankle);
+    const thighA = segAngle(hip, knee);
+    const at = ankle;
+    const turn = art.turnFoot ? footTurn(g, s) : 0;
+    const footAt = turn ? at : add(at, shoeShift(join, shinA - shin.angle));
+    stampBoot(g, d, shin, at, shinA, `shin${s}`, tint);
+    stampBoot(g, d, foot, footAt, foot.angle + turn, `foot${s}`, tint);
+    const boot = new Uint8Array(GRID * GRID);
+    cover(boot, shin, at, shinA);
+    cover(boot, foot, footAt, foot.angle + turn);
+    // the lace top over the knee turns with the thigh, its cells near the knee bent with the shin
+    // (stampBent); it is drawn over the shin's piece, so where it bends it is not drawn over the boot
+    const under = boot.slice();
+    stampBent(g, d, thigh, knee, thighA, `thigh${s}`, [{ about: knee, r: KNEE_R, bend: kneeBend(thighA, shinA, thigh, shin) }], isLineHex, tint, (x, y) => !!under[y * GRID + x]);
+    const L = g.L(d);
+    const tp = partIndex(`thigh${s}`);
+    for (let i = 0; i < GRID * GRID; i++) if (L.mat[i] >= 0 && L.part[i] === tp) boot[i] = 1;
+    closeKnee(g, s, boot, knee, art.line);
+    torsoOffBoot(g, boot);
+    const turned = Math.abs(shinA - shin.angle) >= 0.5 || Math.abs(thighA - thigh.angle) >= 0.5 || footAt.x !== at.x || turn !== 0;
+    if (turned) closeOpen(g, d, boot, art.line);
+    if (turned) sealed.push([s, knee, () => roundKnee(g, s, hip, knee, ankle, thigh, shin, thighA, shinA, art.line), kneeWidth(thigh)]);
+  }
+  if (g.rig.pose !== 'idle') for (const s of ['F', 'N'] as Side[]) fillHoles(g, [legDepth(s, 'body'), legDepth(s, 'cloth'), legDepth(s, 'feet')]);
+  for (const [s, knee, round, w] of sealed) {
+    round();
+    sealKnee(g, s, knee, art.line);
+    roundCorners(g, s, knee, w, art.line);
+  }
+  sealLegsAfter(g, 'feet');
 }
 
 type Kind = 'cloth' | 'leather' | 'metal';
@@ -676,44 +765,6 @@ export const FEET_DAWN_BOOTS: ItemDef = {
     // column beside her front panel, laid where he drew it, on his bare woman's far leg (the same
     // column): its lace top rides the far thigh, the rest the far shin. Each boot is drawn once, on its
     // own leg: our leg below the lace top is the boot's.
-    const sealed: [Side, Vec, () => void, number][] = [];
-    for (const s of ['F', 'N'] as Side[]) {
-      const { hip, knee, ankle } = legJoints(g.rig, s);
-      const [thigh, shin, foot, join, cut] = s === 'N' ? [DAWN_THIGH_N, DAWN_SHIN_N, DAWN_FOOT_N, DAWN_FOOT_JOIN_N, DAWN_BOOT_CUT] : [DAWN_THIGH_F, DAWN_SHIN_F, DAWN_FOOT_F, DAWN_FOOT_JOIN_F, DAWN_BOOT_CUT_F];
-      legOffBelow(g, s, hip, knee, cut);
-      const d = legDepth(s, 'feet');
-      const shinA = segAngle(knee, ankle);
-      const thighA = segAngle(hip, knee);
-      const at = ankle;
-      const footAt = add(at, shoeShift(join, shinA - shin.angle));
-      stampBoot(g, d, shin, at, shinA, `shin${s}`, tint);
-      stampBoot(g, d, foot, footAt, foot.angle, `foot${s}`, tint);
-      const boot = new Uint8Array(GRID * GRID);
-      cover(boot, shin, at, shinA);
-      cover(boot, foot, footAt, foot.angle);
-      // the thigh's piece over the shin's, its cells by the knee filling a bent knee's outside (at rest,
-      // and with the knee bent as he drew it, it is stampPiece exactly)
-      const under = boot.slice();
-      stampBent(g, d, thigh, knee, thighA, `thigh${s}`, [{ about: knee, r: KNEE_R, bend: kneeBend(thighA, shinA, thigh, shin) }], isLine, tint, (x, y) => !!under[y * GRID + x]);
-      // the boot covers the thigh's piece and the bent knee's fill (its pixels of the thigh on this layer)
-      const L = g.L(d);
-      const tp = partIndex(`thigh${s}`);
-      for (let i = 0; i < GRID * GRID; i++) if (L.mat[i] >= 0 && L.part[i] === tp) boot[i] = 1;
-      closeKnee(g, s, boot, knee);
-      torsoOffBoot(g, boot);
-      // turned, an edge of his boot left open is closed in his line (at rest his line closes it)
-      const turned = Math.abs(shinA - shin.angle) >= 0.5 || Math.abs(thighA - thigh.angle) >= 0.5 || footAt.x !== at.x;
-      if (turned) closeOpen(g, d, boot, DAWN_THIGH_N.colors.k);
-      if (turned) sealed.push([s, knee, () => roundKnee(g, s, hip, knee, ankle, thigh, shin, thighA, shinA), kneeWidth(thigh)]);
-    }
-    if (g.rig.pose !== 'idle') for (const s of ['F', 'N'] as Side[]) fillHoles(g, [legDepth(s, 'body'), legDepth(s, 'cloth'), legDepth(s, 'feet')]);
-    // and, last, each turned knee where the thigh's piece meets the shin's is rounded and sealed, and no
-    // square corner is left on it
-    for (const [s, knee, round, w] of sealed) {
-      round();
-      sealKnee(g, s, knee);
-      roundCorners(g, s, knee, w);
-    }
-    sealLegsAfter(g, 'feet');
+    drawBoots(g, DAWN_BOOT_ART, tint);
   },
 };

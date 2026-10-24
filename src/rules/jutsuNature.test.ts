@@ -20,7 +20,8 @@ const ids = (xs: { id: string }[]) => xs.map((j) => j.id);
 describe('which jutsu the nature gates', () => {
   it('elemental jutsu in the Element and S-rank slots; never Utility, clan secrets or jutsu with no element', () => {
     for (const j of JUTSUS_DATA) {
-      const want = (j.category === 'Elemental' || j.category === 'Ultimate') && isElement(j.nature);
+      // Liquid Body is a utility jutsu only Water learns (the owner, 2026-10-24).
+      const want = ((j.category === 'Elemental' || j.category === 'Ultimate') && isElement(j.nature)) || j.id === 'water_liquid_body';
       assert.equal(natureGated(j), want, j.id);
     }
     // The medical palm, a utility jutsu, stays free though its nature is Water (the explosive tag is an item now).
@@ -63,9 +64,10 @@ describe('which jutsu the nature gates', () => {
       assert.deepEqual(offer(n, 'slot2Elemental'), free, n);
       assert.deepEqual(offer(n, 'slot5Ultimate'), ['night_guy_dragon'], n);
     }
-    // Utility and the clan secret are the same for everyone.
+    // Utility and the clan secret are the same for everyone, but Liquid Body is Water's only (the
+    // owner, 2026-10-24).
     for (const n of ALL_NATURES) {
-      assert.deepEqual(offer(n, 'slot1Utility'), ids(JUTSUS_DATA.filter((j) => j.category === 'Utility')), n);
+      assert.deepEqual(offer(n, 'slot1Utility'), ids(JUTSUS_DATA.filter((j) => j.category === 'Utility' && (j.id !== 'water_liquid_body' || n === 'Water'))), n);
       assert.deepEqual(offer(n, 'slot4Clan'), ['dragon_fire_bomb'], n);
     }
   });

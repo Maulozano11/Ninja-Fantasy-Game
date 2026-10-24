@@ -8,6 +8,7 @@ import { cellCenter, cellOf, dist, gridFor, hideSpotAt, lineOfSight, getMap, pro
 import { pathCost, reachable, canStop, pathTo, stepCost } from './nav';
 import { passivePerception } from './combat';
 import { startCombat } from './turns';
+import { foundOut, puddleCover, puddleKnownBy, puddlesUnder } from './puddle';
 
 export const VISION = { day: 12, night: 7, near: 1.5, halfAngle: 50 };
 const PATROL_STEP = 4.5;
@@ -35,10 +36,23 @@ export function seesPoint(s: BattleState, g: Unit, p: Pt): boolean {
   return lineOfSight(s, g.pos, p);
 }
 
-/** How much a guard notices a ninja over a whole turn (0 = not at all, 100 = alarm at once). */
-export function exposure(s: BattleState, g: Unit, u: Unit, at: Pt = u.pos): number {
+/**
+ * How much a guard notices a ninja over a whole turn (0 = not at all, 100 = alarm at once). `moving`:
+ * a step of its walk. A Liquid Body puddle (battle/puddle.ts) the guard didn't see melt is terrain
+ * while it lies still, or moves on wet ground or water, if its Stealth beats the guard's eyes (even
+ * close by); moving on dry ground it is noticed like a crouched ninja.
+ */
+export function exposure(s: BattleState, g: Unit, u: Unit, at: Pt = u.pos, moving = false): number {
   if (!seesPoint(s, g, at)) return 0;
   const d = dist(g.pos, at);
+  if (u.cond.puddle && !puddleKnownBy(u, g)) {
+    const hidden = u.cond.hidden !== undefined && passivePerception(g) < u.cond.hidden;
+    if (hidden && (!moving || puddleCover(s, at))) return 0;
+    const range = s.time === 'night' ? VISION.night : VISION.day;
+    let rate = 100 * Math.max(0.25, 1 - Math.max(0, d - VISION.near) / (range - VISION.near)) * 0.5;
+    if (s.time === 'night') rate *= 0.75;
+    return rate;
+  }
   const hidden = u.cond.hidden !== undefined && hideSpotAt(s, at) >= 0;
   if (hidden && d > VISION.near && passivePerception(g) < (u.cond.hidden ?? 0)) return 0;
   const range = s.time === 'night' ? VISION.night : VISION.day;
@@ -144,7 +158,7 @@ export function stealthMove(s: BattleState, u: Unit, path: Cell[], ev: BattleEve
     u.pos = p;
     pts.push(p);
     for (const g of guards(s)) {
-      const e = exposure(s, g, u, p) * stepShare;
+      const e = exposure(s, g, u, p, true) * stepShare;
       if (e > 0 && addSuspicion(s, g, u, e, ev)) {
         spend(u, cost);
         ev.push({ t: 'move', unit: u.id, path: pts, run: false });
@@ -163,8 +177,8 @@ export function stealthMove(s: BattleState, u: Unit, path: Cell[], ev: BattleEve
       }
     }
   }
-  // Moving out of a hiding place gives the hiding away.
-  if (hideSpotAt(s, u.pos) < 0) u.cond.hidden = undefined;
+  // Moving out of a hiding place gives the hiding away (a puddle is its own).
+  if (hideSpotAt(s, u.pos) < 0 && !u.cond.puddle) u.cond.hidden = undefined;
   spend(u, cost);
   const running = u.turn.moved > u.speed / 2 + 1e-6;
   if (!stopped) ev.push({ t: 'move', unit: u.id, path: pts, run: running });
@@ -265,6 +279,15 @@ export function guardsTurn(s: BattleState, ev: BattleEvent[]): void {
         if (dest.x !== g.pos.x) g.facing = dest.x > g.pos.x ? 1 : -1;
         g.pos = dest;
         ev.push({ t: 'move', unit: g.id, path: [from, dest], run: false });
+        // A guard that treads on a Liquid Body puddle finds the ninja in it: the alarm.
+        const trodden = new Set<Unit>();
+        const n = Math.ceil(dist(from, dest) / 0.25);
+        for (let k = 1; k <= n; k++) for (const p of puddlesUnder(s, g, { x: from.x + ((dest.x - from.x) * k) / n, z: from.z + ((dest.z - from.z) * k) / n })) trodden.add(p);
+        if (trodden.size) {
+          for (const p of trodden) foundOut(p, g, ev);
+          alarm(s, g, ev, [...trodden][0].pos);
+          return;
+        }
       }
       if (dist(g.pos, target) < 0.6) {
         if (gd.investigate) {
@@ -295,7 +318,8 @@ export function guardsTurn(s: BattleState, ev: BattleEvent[]): void {
   }
   s.stealthTurn += 1;
   for (const u of party) {
-    u.turn = { move: u.speed, action: true, bonus: true, reaction: true, moved: 0 };
+    // A Liquid Body puddle moves at half speed.
+    u.turn = { move: u.cond.puddle ? u.speed / 2 : u.speed, action: true, bonus: true, reaction: true, moved: 0 };
     // A warp edge lasts the turn it was won in.
     if (u.cond.warpEdge) u.cond.warpEdge = false;
   }

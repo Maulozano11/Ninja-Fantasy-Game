@@ -14,6 +14,7 @@ import { areaValue, bestCell, goalOf, headOptions, ninjaOptions, offensive, plan
 import type { Goal } from './intent';
 import { breakable, MAX_STRUCTURES, ownStructures, structureAt, structureAttack, structureBlocker, structureDist } from './structures';
 import { IMBUE_COST, imbueBlocker, type ImbueElement, unitImbueElements, WATER_REACH, WEAPON_ELEMENT } from './imbue';
+import { LIQUID_BODY, STEP_ON } from './puddle';
 import { COMMAND, commandRefused, edgeFoe, ownNodes, submissionRefused, SWAP, WARP, warpBlocker, warpLanding } from './clans';
 
 /** Whether the battle is waiting on the AI (an AI unit's turn in the fighting). */
@@ -56,6 +57,8 @@ export function aiAction(s: BattleState): Action | null {
   const end: Action = { type: 'endTurn', unit: u.id };
   if (u.kind === 'hydra_body') return end;
   if (u.kind === 'hydra_head') return headAction(s, u) ?? end;
+  // A Liquid Body puddle waits in ambush, creeps up and strikes out of it (battle/puddle.ts).
+  if (u.cond.puddle) return fromPuddle(s, u) ?? end;
   if (!u.turn.action) {
     // After a dash, keep closing in with the extra movement.
     const plan = u.team === 'enemy' ? u.intent : planIntent(s, u);
@@ -65,6 +68,10 @@ export function aiAction(s: BattleState): Action | null {
     // with the movement it has left, so it doesn't start its next turn burning there.
     return leaveSteam(s, u, plan) ?? bonusAfter(s, u) ?? afterAction(s, u) ?? end;
   }
+  // Liquid Body: hurt and with nobody close, it melts to wait in ambush. A foe it saw melt is trodden
+  // on (that finds it). With no foe in sight at all, it searches.
+  const puddle = meltAway(s, u) ?? treadOn(s, u) ?? searchFor(s, u);
+  if (puddle) return puddle;
   // Enemies follow the plan they committed to (what a Mirai saw); allies plan each turn.
   let intent = u.team === 'enemy' && stillValid(s, u, u.intent) ? u.intent : planIntent(s, u);
   if (!stillValid(s, u, intent)) intent = planIntent(s, u);
@@ -160,6 +167,57 @@ function carryOut(s: BattleState, u: Unit, i: Intent): Action | null {
     default:
       return null;
   }
+}
+
+// --- Liquid Body (battle/puddle.ts; the owner's AI use, 2026-10-24) -----------------------------
+
+/**
+ * Melts (the jutsu at its own feet) when it is hurt (half its HP or less) and no foe stands within 3 m,
+ * with the action, the chakra and its hands for the seals. Allies on the AI only under the Defensive
+ * order; enemies whenever it holds.
+ */
+function meltAway(s: BattleState, u: Unit): Action | null {
+  if (!u.jutsus.includes(LIQUID_BODY) || !u.turn.action || u.hp > u.maxHp / 2) return null;
+  if (u.team === 'party' && u.aiOrder !== 'defensive') return null;
+  const j = JUTSU[LIQUID_BODY];
+  if (!j || effectMods(u.effects).noJutsu || u.chakra < jutsuCost(u, j, false) || handsBlocker(u, j)) return null;
+  if (Object.values(s.units).some((o) => o.team !== u.team && standingUnit(o) && o.kind !== 'hydra_body' && dist(o.pos, u.pos) <= 3)) return null;
+  return { type: 'jutsu', unit: u.id, jutsu: LIQUID_BODY, at: { ...u.pos } };
+}
+
+/**
+ * In the puddle: a foe in reach of its blow, with the bonus action and the action both there, is
+ * struck at once (the attack rises out of the puddle, paying the bonus action; the weakest such foe
+ * first). Otherwise it creeps (at half speed) toward the nearest foe it could strike next turn, and
+ * waits. Without the bonus action it can't come out at all this turn.
+ */
+function fromPuddle(s: BattleState, u: Unit): Action | null {
+  const foes = visibleFoes(s, u);
+  const inReach = foes.filter((t) => dist(u.pos, t.pos) <= reachTo(u, t) + 0.1 && !fullCoverBetween(s, u.pos, t.pos)).sort((a, b) => a.hp - b.hp);
+  if (u.turn.action && u.turn.bonus && inReach.length) return { type: 'attack', unit: u.id, target: inReach[0].id };
+  if (inReach.length || walkBudget(u) < 0.5 || u.turn.moved > 0) return null;
+  const near = foes.sort((a, b) => dist(u.pos, a.pos) - dist(u.pos, b.pos))[0];
+  if (!near) return null;
+  const g = goalOf(s, u, { kind: 'melee', what: u.weapon.name, target: near.id });
+  return g ? moveToward(s, u, g) : null;
+}
+
+/** A foe in a puddle it knows of (it saw it melt, or move on dry ground) and can get to: it treads on it, which forces it out. */
+function treadOn(s: BattleState, u: Unit): Action | null {
+  if (u.team !== 'enemy' || walkBudget(u) < 0.5 || u.speed <= 0) return null;
+  const known = Object.values(s.units).filter((o) => o.team !== u.team && o.cond.puddle && standingUnit(o) && o.cond.puddle.knownBy.includes(u.id));
+  for (const p of known.sort((a, b) => dist(u.pos, a.pos) - dist(u.pos, b.pos))) {
+    const cell = bestCell(s, u, (q) => dist(q, p.pos) <= STEP_ON, (q) => dist(q, u.pos) * 0.1, walkBudget(u));
+    if (cell) return { type: 'move', unit: u.id, to: cell };
+  }
+  return null;
+}
+
+/** An enemy that sees no foe at all, with its action: it searches (whatever hides nearby may be found). */
+function searchFor(s: BattleState, u: Unit): Action | null {
+  if (u.team !== 'enemy' || !u.turn.action || visibleFoes(s, u).length) return null;
+  const hiding = Object.values(s.units).some((o) => o.team !== u.team && standingUnit(o) && o.cond.hidden !== undefined);
+  return hiding ? { type: 'search', unit: u.id } : null;
 }
 
 /** Out of reach after moving: throw a kunai if it can, otherwise dash to close in. */

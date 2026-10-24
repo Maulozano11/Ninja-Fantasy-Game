@@ -12,6 +12,7 @@ import type { BattleEvent, BattleState, DamageType, Pt, RollInfo, Unit } from '.
 import { homeTeam } from './types';
 import { coverBetween, dist, fullCoverBetween, hideSpotAt, levelAtPt, lineOfSight, steamAt } from './map';
 import { KUNAI, KUNAI_LONG, wielded } from './units';
+import { forcesOut, LIQUID_BODY, puddleDamage, puddleKnownBy, puddleSaveDc, riseFrom } from './puddle';
 
 /** The next dice stream of the battle. */
 export function nextRng(s: BattleState): Rng {
@@ -69,7 +70,8 @@ export function reveal(u: Unit, ev: BattleEvent[]): void {
 
 /** Moved out of a hiding place (on foot or by a teleport): a hidden unit is seen. */
 export function revealOutOfHiding(s: BattleState, u: Unit, ev: BattleEvent[]): void {
-  if (!u.down && hideSpotAt(s, u.pos) < 0) reveal(u, ev);
+  // A puddle (Liquid Body) is its own hiding place.
+  if (!u.down && !u.cond.puddle && hideSpotAt(s, u.pos) < 0) reveal(u, ev);
 }
 
 export function saveMod(u: Unit, ab: Ability): number {
@@ -234,7 +236,7 @@ export function attackPreview(s: BattleState, a: Unit, t: Unit, kind: AttackKind
     advs.push('disadvantage');
     reasons.push('obscured');
   }
-  if (t.cond.hidden !== undefined && passivePerception(a) < t.cond.hidden) {
+  if (t.cond.hidden !== undefined && passivePerception(a) < t.cond.hidden && !puddleKnownBy(t, a)) {
     advs.push('disadvantage');
     reasons.push('targetHidden');
   }
@@ -290,6 +292,10 @@ export interface DamageOpts {
   melee?: boolean;
   /** An explosion (tag, barrel): it seals a hydra stump like fire and lightning. */
   explosion?: boolean;
+  /** A weapon's blow (a blade, a kunai, a fist): a Liquid Body puddle takes half of it. */
+  weapon?: boolean;
+  /** A wind attack: it scatters a Liquid Body puddle. */
+  wind?: boolean;
 }
 
 /** A severed hydra head misses this many of its turns, then grows back unless its stump is sealed. */
@@ -311,7 +317,9 @@ export function damage(s: BattleState, t: Unit, raw: number, type: DamageType, o
     return;
   }
   const attacker = o.source ? s.units[o.source] : undefined;
-  let amount = adjustDamage(s, t, raw, type);
+  // A Liquid Body puddle: weapons and fire do half, lightning double (battle/puddle.ts).
+  const puddle = !!t.cond.puddle;
+  let amount = adjustDamage(s, t, puddle ? puddleDamage(raw, type, !!o.weapon) : raw, type);
   // By the side it belongs to: a commanded enemy is still an enemy.
   if (attacker && homeTeam(attacker) === 'enemy') amount = Math.round(amount * attacker.power);
   if (o.crit) {
@@ -331,7 +339,19 @@ export function damage(s: BattleState, t: Unit, raw: number, type: DamageType, o
   const before = t.hp;
   t.hp = Math.max(0, t.hp - amount);
   ev.push({ t: 'damage', unit: t.id, amount, dmgType: type, hp: t.hp, crit: o.crit, source: o.source });
-  if (t.hp > 0) return;
+  if (t.hp > 0) {
+    // Lightning, fire and wind force a puddle out; any other hit asks for a CON save (5e concentration).
+    if (puddle && t.cond.puddle) {
+      let out = forcesOut(type, !!o.wind);
+      if (!out && amount > 0) {
+        const roll = savingThrow(s, t, 'con', puddleSaveDc(amount));
+        ev.push({ t: 'save', unit: t.id, what: LIQUID_BODY, roll, ab: 'con' });
+        out = !roll.success;
+      }
+      if (out) riseFrom(t, 'forced', ev);
+    }
+    return;
+  }
   const overflow = amount - before;
   if (t.kind === 'hydra_head' && t.head) {
     t.head.severed = true;

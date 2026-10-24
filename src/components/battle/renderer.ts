@@ -30,6 +30,7 @@ import { isTintElement, vfxTintColors } from '../../sprite/vfxTint';
 import { jutsuTint, unitTint } from './vfxTintPlan';
 import { IMBUE_FPS, IMBUE_LOOP } from '../../sprite/imbue';
 import type { ImbueFx } from '../../sprite/imbue';
+import { PUDDLE_SEQ, puddleFrame, type PuddleMode } from './puddleArt';
 
 export interface Camera {
   /** World pixel at the screen's top-left. */
@@ -925,6 +926,8 @@ function drawUnit(ctx: CanvasRenderingContext2D, sc: Scene, u: Unit, pos: Pt): v
     blitFrame(ctx, img, x0, y0, facing);
     ctx.restore();
   };
+  // Liquid Body: melting in, the puddle, rising out (puddleArt.ts).
+  if (v.puddle && drawPuddle(ctx, sc, u, v, x0, y0, alpha, solid)) return;
   if (v.warp) drawWarp(ctx, sc, u, v, look, alpha, solid);
   else if (phase) drawPhase(ctx, sc, u, v, look, phase, alpha, solid);
   // The combo's spin shows the ninja turned away from its target for a moment.
@@ -945,6 +948,61 @@ function drawUnit(ctx: CanvasRenderingContext2D, sc: Scene, u: Unit, pos: Pt): v
     ctx.stroke();
     ctx.restore();
   }
+}
+
+/**
+ * A Liquid Body puddle (battle/puddle.ts), the owner's water (puddleArt.ts): its frame of the melt,
+ * the still puddle's loop or the rise, drawn with the feet at (x0, y0 + FEET.y); the frames where he
+ * kept the ninja go over its own sprite. Without the art, a plain puddle. Returns false once the rise
+ * is over (the sprite is drawn as usual again).
+ */
+function drawPuddle(ctx: CanvasRenderingContext2D, sc: Scene, u: Unit, v: UnitView, x0: number, y0: number, alpha: number, solid: (k: number) => void): boolean {
+  const p = v.puddle!;
+  const seq = PUDDLE_SEQ[p.mode];
+  const elapsed = ((sc.now - p.t0) * sc.pb.speed) / 1000;
+  let i = Math.floor(elapsed * seq.fps);
+  let mode: PuddleMode = p.mode;
+  if (mode === 'in' && i >= seq.n) {
+    mode = 'idle';
+    i = Math.floor((elapsed - seq.n / seq.fps) * PUDDLE_SEQ.idle.fps);
+  }
+  if (mode === 'out' && i >= seq.n) {
+    v.puddle = undefined;
+    return false;
+  }
+  const n = PUDDLE_SEQ[mode].n;
+  i = mode === 'idle' ? ((i % n) + n) % n : Math.min(i, n - 1);
+  if (PUDDLE_SEQ[mode].ninja.includes(i)) solid(1);
+  const img = puddleFrame(u, mode, i);
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  if (img) {
+    if (v.facing < 0) {
+      ctx.translate(x0, 0);
+      ctx.scale(-1, 1);
+      ctx.drawImage(img, -FEET.x, y0);
+    } else ctx.drawImage(img, x0 - FEET.x, y0);
+  } else {
+    // No art: the ninja sinks into (or rises out of) a plain puddle of his water's colours.
+    const t = mode === 'idle' ? 1 : Math.min(1, elapsed / (seq.n / seq.fps));
+    const k = mode === 'in' ? t : mode === 'out' ? 1 - t : 1;
+    if (mode !== 'idle') solid(1 - k);
+    const cx = x0;
+    const cy = y0 + FEET.y;
+    ctx.fillStyle = '#227ea7';
+    ctx.strokeStyle = '#0e263b';
+    ctx.beginPath();
+    ctx.ellipse(cx, cy, 8 + 22 * k, 3 + 5 * k, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.strokeStyle = 'rgba(168, 244, 254, 0.8)';
+    const r = 4 + ((sc.now / 90) % 18);
+    ctx.beginPath();
+    ctx.ellipse(cx, cy, r * k, r * 0.27 * k, 0, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+  ctx.restore();
+  return true;
 }
 
 /** A unit frame drawn with its feet at (x0, y0 + FEET.y), mirrored when it faces left. */

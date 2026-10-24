@@ -956,6 +956,20 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
     };
     const can = { action: u.turn.action, bonus: u.turn.bonus };
     const noAction = can.action ? null : t('r_noAction');
+    // A Liquid Body puddle (battle/puddle.ts): it creeps, rises, or rises to strike; anything out of
+    // the puddle costs the bonus action (the owner: "hagas lo que hagas").
+    if (u.cond.puddle) {
+      const out = !can.bonus ? t('r_noBonus') : noAction;
+      add({ id: 'attack', label: t('act_attack'), icon: ACTION_ICON.attack, disabled: !can.action || !can.bonus, why: out, active: mode.k === 'attack' && !mode.ranged, help: `${t('help_attack')} ${t('help_rise')}` });
+      add({ id: 'throw', label: t('act_throw'), icon: ACTION_ICON.throw, disabled: !can.action || !can.bonus, why: out, active: mode.k === 'attack' && mode.ranged, help: `${t('help_throw')} ${t('help_rise')}` });
+      add({ id: 'rise', label: t('act_rise'), icon: ACTION_ICON.crouch, disabled: !can.bonus, why: t('r_noBonus'), help: t('help_rise') });
+      add({ id: 'dash', label: t('act_dash'), icon: ACTION_ICON.dash, disabled: !can.action, why: noAction, help: t('help_dash') });
+      add({ id: 'end', label: stealth ? t('done') : t('act_end'), icon: ACTION_ICON.end, tone: 'end', help: t('help_end') });
+      b.forEach((x, i) => {
+        x.hotkey = String(i + 1);
+      });
+      return b;
+    }
     if (!more) {
       add({ id: 'attack', label: t('act_attack'), icon: ACTION_ICON.attack, disabled: !can.action, why: noAction, active: mode.k === 'attack' && !mode.ranged, help: t('help_attack') });
       add({ id: 'throw', label: t('act_throw'), icon: ACTION_ICON.throw, disabled: !can.action, why: noAction, active: mode.k === 'attack' && mode.ranged, help: t('help_throw') });
@@ -1044,6 +1058,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
       add({ id: 'shove', label: t('act_shove'), icon: ACTION_ICON.shove, disabled: !can.action, active: mode.k === 'shove' && mode.mode === 'push', help: t('help_shove') });
       add({ id: 'trip', label: t('act_trip'), icon: ACTION_ICON.trip, disabled: !can.action, active: mode.k === 'shove' && mode.mode === 'prone', help: t('help_trip') });
       add({ id: 'focus', label: t('act_focus'), icon: ACTION_ICON.focus, disabled: !can.action || stealth, help: t('help_focus') });
+      if (!stealth) add({ id: 'search', label: t('act_search'), icon: ACTION_ICON.hide, disabled: !can.action, help: t('help_search') });
       add({ id: 'pill', label: t('act_pill'), icon: ACTION_ICON.pill, badge: s.supplies.soldierPills, disabled: !can.bonus || s.supplies.soldierPills < 1 || u.chakra >= u.maxChakra, help: t('help_pill') });
       add({ id: 'bandage', label: t('act_bandage'), icon: ACTION_ICON.bandage, badge: s.supplies.bandages, disabled: !can.action || s.supplies.bandages < 1, active: mode.k === 'item' && mode.item === 'bandage', help: t('help_bandage') });
       add({ id: 'antidote', label: t('act_antidote'), icon: ACTION_ICON.antidote, badge: s.supplies.antidotes, disabled: !can.action || s.supplies.antidotes < 1, active: mode.k === 'item' && mode.item === 'antidote', help: t('help_antidote') });
@@ -1104,6 +1119,8 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
         case 'disengage':
         case 'dodge':
         case 'hide':
+        case 'rise':
+        case 'search':
         case 'crouch':
         case 'jump':
         case 'focus':
@@ -1611,6 +1628,7 @@ const SHORT: Record<string, [string, string]> = {
   earth_pebble_shot: ['Pebbles', 'Guijarros'],
   earth_spike_crown: ['Spike crown', 'Corona'],
   water_healing_dew: ['Dew', 'Rocío'],
+  water_liquid_body: ['Liquid body', 'Cuerpo líquido'],
   water_geyser: ['Geyser', 'Géiser'],
   genjutsu_mirage: ['Mind twist', 'Mente retorcida'],
   kenjutsu_bleeding_cut: ['Bleeding cut', 'Tajo'],

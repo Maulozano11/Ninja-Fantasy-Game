@@ -28,7 +28,8 @@ const avg = (dice?: string): number => {
 export const standingUnit = (u: Unit): boolean => !u.down && !u.head?.severed;
 
 /**
- * Foes a unit knows about: standing, not hidden from it, and no steam between them: not lost in it,
+ * Foes a unit knows about: standing, not hidden from it (or a Liquid Body puddle it saw melt or move),
+ * and no steam between them: not lost in it,
  * nor outside it while the unit stands in it (unless right beside it, steamHides). An enemy in the
  * steam still remembers the plan it made (its intent) and goes on with it, or walks out (ai.ts).
  */
@@ -38,7 +39,7 @@ export function visibleFoes(s: BattleState, u: Unit): Unit[] {
       f.team !== u.team &&
       standingUnit(f) &&
       f.kind !== 'hydra_body' &&
-      (f.cond.hidden === undefined || passivePerception(u) >= f.cond.hidden) &&
+      (f.cond.hidden === undefined || passivePerception(u) >= f.cond.hidden || !!f.cond.puddle?.knownBy.includes(u.id)) &&
       !steamHides(s, u.pos, f.pos),
   );
 }

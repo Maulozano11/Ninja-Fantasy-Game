@@ -8,7 +8,8 @@ import type { BattleEvent, BattleState, Unit } from './types';
 import { homeTeam } from './types';
 import { check, damage, deathSave, nextRng, releaseCommand, rollDiceExpr } from './combat';
 import { dampAt } from './map';
-import { steamBurns, tickGround } from './ground';
+import { soak, steamBurns, tickGround } from './ground';
+import { PUDDLE_WET_ROUNDS, riseFrom } from './puddle';
 import { planEnemy, replanAgainst } from './intent';
 import { chargeHolds, mendCracks, tickCharge } from './charged';
 import { imbueHolds, tickImbue } from './imbue';
@@ -119,6 +120,17 @@ export function beginTurn(s: BattleState, ev: BattleEvent[]): void {
       advance(s, ev);
       continue;
     }
+    // Liquid Body: one of its rounds is gone (at the last it rises), it moves at half speed, and its
+    // cell is water again (battle/puddle.ts).
+    if (u.cond.puddle) {
+      const rounds = u.cond.puddle.rounds - 1;
+      if (rounds <= 0) riseFrom(u, 'timeout', ev);
+      else {
+        u.cond.puddle = { ...u.cond.puddle, rounds };
+        u.turn.move = u.speed / 2;
+        soak(s, { kind: 'circle', center: { ...u.pos }, radius: 0.5 }, u.id, ev, PUDDLE_WET_ROUNDS);
+      }
+    }
     // Confused: one turn in four is lost to the illusion.
     if (u.effects.some((e) => e.id === 'confused') && rollDie(nextRng(s), 4) === 1) {
       u.turn.action = false;
@@ -154,7 +166,8 @@ export function endTurn(s: BattleState, ev: BattleEvent[]): void {
     const tick = tickRound(u.effects);
     u.effects = tick.effects;
     for (const id of tick.expired) ev.push({ t: 'effect', unit: u.id, effect: id, on: false });
-    if (u.cond.hidden !== undefined && !u.cond.crouched && u.cond.perfectHide === undefined) u.cond.hidden = undefined;
+    // A hidden ninja stays hidden crouched, or as a Liquid Body puddle.
+    if (u.cond.hidden !== undefined && !u.cond.crouched && !u.cond.puddle && u.cond.perfectHide === undefined) u.cond.hidden = undefined;
     // A warp edge not struck with is gone.
     if (u.cond.warpEdge) u.cond.warpEdge = false;
     if (u.commanded) spendCommandTurn(s, u, ev);

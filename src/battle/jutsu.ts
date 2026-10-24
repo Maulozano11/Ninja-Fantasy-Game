@@ -116,7 +116,7 @@ export interface JutsuSpec {
   save?: Ability;
   /** On a successful save: half damage, or nothing. */
   saveHalf: boolean;
-  special?: 'heal' | 'flicker' | 'clone' | 'kawarimi' | 'earthWall' | 'waterWall' | 'seal' | 'confuse' | 'evasion' | 'metalBlock' | 'metalWall' | 'warp' | 'swap' | 'command' | 'submission' | 'mantle' | 'galeZone' | 'imbue';
+  special?: 'heal' | 'flicker' | 'clone' | 'kawarimi' | 'earthWall' | 'waterWall' | 'seal' | 'confuse' | 'evasion' | 'metalBlock' | 'metalWall' | 'warp' | 'swap' | 'command' | 'submission' | 'mantle' | 'galeZone' | 'imbue' | 'puddle';
   /** The projectile or effect the screen plays. */
   vfx: VfxRole;
   /** A signature effect of its own (vfx_<element>/<sig>, and <sig>_great or <sig>_enh enhanced). */
@@ -250,6 +250,8 @@ const OVERRIDE: Record<string, Partial<JutsuSpec>> = {
   fire_three_embers: { vfx: 'multi', seq: { volley: { paths: ['high', 'straight', 'low'], stagger: 110 } } },
   wind_whirl: { vfx: 'bolt' },
   wind_breeze_mantle: { shape: 'self', special: 'mantle', vfx: 'aura', loud: false, seq: { lingerAura: 0.4 } },
+  // Liquid Body (the owner, 2026-10-24): the ninja melts into a puddle (battle/puddle.ts). Silent.
+  water_liquid_body: { shape: 'self', special: 'puddle', vfx: 'aura', loud: false },
   lightning_jolt: { vfx: 'multi', effect: 'jolted', seq: { volley: { paths: ['high', 'straight', 'low'], stagger: 110 } } },
   lightning_spark_fan: { vfx: 'breath', seq: { connected: true, hitEach: { stagger: 80 } } },
   earth_pebble_shot: { vfx: 'multi', seq: { volley: { paths: ['high', 'straight', 'low'], stagger: 110 }, castAura: 560 } },

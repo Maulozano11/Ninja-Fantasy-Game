@@ -342,6 +342,26 @@ built.
 - **Toxic Mercury** (Mercurio Tóxico; infiltration, lasting damage)
   - *Liquid Silver Form* (Forma de Plata Líquida): passes through enemies and
     cracks, ignoring collision, and halves physical damage taken.
+    **Decided by the owner on 2026-10-24** (not built; the Paths come later): it is the mercury
+    version of the water jutsu Liquid Body (`docs/GAMEPLAY_DESIGN.md`, "Liquid Body"), and our
+    recommendations are approved, his words: *"2 si el mercurio es de clan"*, *"4 si"*, *"me gusta
+    todas las recomendaciones de mercurio aprovado"*, *"en la version de mercurio sigue escondido"*,
+    *"salir del charco o atacar desde el charco cuesta una bonus accion hagas lo que hagas"*:
+    - 4 chakra, an action; it lasts 3 rounds (the whole stealth phase there).
+    - **Leaving it, or attacking from it, always costs the bonus action** (as Liquid Body).
+    - Full speed; it slips through 1-cell gaps, under doors, between bars and through foes (no
+      opportunity attacks). Maps will mark the gaps and cracks only it fits through.
+    - Half physical damage (above). No attacks or jutsu while in it (its weapon attack out of it
+      pays the bonus action to rise).
+    - **It stays hidden even moving on dry ground** (the water version is noticed there). This
+      replaces our proposal that its shine would give it away by day. On metal (Kōton walls, bars)
+      it is noisy: guards nearby hear it as a thrown stone.
+    - Weaknesses: lightning conducts (double damage and stunned 1 round); fire does no damage but
+      gives off toxic fumes (everyone else within 1.5 m is poisoned); cold or ice solidifies it
+      (restrained 1 round). Heavy: wind doesn't push it, water doesn't carry it, deep water is
+      crossed along the bottom.
+    - Art: the owner's water repaint's motion and shapes in liquid metal
+      (`tools/world-sprites/puddle-mercury.py`), shown to him 2026-10-24.
   - *Capillary Whip* (Látigo Capilar): medium range; Heavy Poison straight
     into the bloodstream.
   - *Amalgam Lake* (Lago de Amalgama): a 3x3 area of slippery mercury; enemy

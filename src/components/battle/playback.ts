@@ -21,6 +21,7 @@ import type { Bend } from './paths';
 import { bendsOf, seedOf } from './paths';
 import { CRESCENT, crescentStart, effectLands, vortexAt } from './stagePlan';
 import { edgeFoe } from '../../battle/clans';
+import { PUDDLE_MS, type PuddleMode } from './puddleArt';
 
 export interface UnitView {
   pos: Pt;
@@ -42,6 +43,8 @@ export interface UnitView {
   armed: boolean;
   hidden: boolean;
   crouched: boolean;
+  /** Liquid Body (puddleArt.ts): melting in, lying still as a puddle, or rising out, since `t0`. */
+  puddle?: { mode: PuddleMode; t0: number };
   /** Fading out (fled), 0..1. */
   fade?: { t0: number; dur: number };
   hurtUntil: number;
@@ -498,6 +501,8 @@ export class Playback {
         armed: u.armed,
         hidden: u.cond.hidden !== undefined,
         crouched: !!u.cond.crouched,
+        // A puddle lies still (or finishes melting); one rising out finishes rising.
+        puddle: u.cond.puddle && !u.down ? (v?.puddle && v.puddle.mode !== 'out' ? v.puddle : { mode: 'idle', t0: now }) : v?.puddle?.mode === 'out' ? v.puddle : undefined,
         hurtUntil: 0,
         severed: !!u.head?.severed,
         creature: v?.creature,
@@ -2056,6 +2061,13 @@ export class Playback {
           if (!v.walk && !v.poseUntil && !v.down) this.setPose(v, ev.on ? 'crouch' : 'idle', now);
         }
         if (ev.cond === 'prone' && ev.on) this.setPose(v, 'downed', now, 500);
+        // Liquid Body: it melts into the puddle, or rises out of it (puddleArt.ts).
+        if (ev.cond === 'puddle') {
+          v.puddle = { mode: ev.on ? 'in' : 'out', t0: now };
+          if (!ev.on && !v.down) this.setPose(v, state.units[ev.unit]?.cond.crouched ? 'crouch' : 'idle', now);
+          if (label) this.float(label, '#7dd3fc', this.posOf(ev.unit, now), now, { rise: 60 });
+          return PUDDLE_MS[ev.on ? 'in' : 'out'];
+        }
         if (ev.cond === 'mantle') {
           const seq = JUTSU.wind_breeze_mantle?.seq;
           if (ev.on && seq?.lingerAura) this.lingers.set(ev.unit, { element: JUTSU.wind_breeze_mantle.element, alpha: seq.lingerAura, t0: now, tint: jutsuTint(JUTSU.wind_breeze_mantle, state.units[ev.unit]) });

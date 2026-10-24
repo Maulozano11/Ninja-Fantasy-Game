@@ -23,7 +23,9 @@ against the JPEG). For each pixel:
 
 Writes every frame at 1x in the 256 x 256 sprite frame (feet where the sample's are), with the
 sample's manifest (the same sequence ids, labels and pace), and own/<frame>: a mask of the
-pixels that are the ninja (tools/world-sprites/puddle-mercury.py turns the rest to metal). With a compare path it also writes his
+pixels that are the ninja (tools/world-sprites/puddle-mercury.py turns the rest to metal), and
+layer/<frame>: his water alone (the ninja's pixels taken out), the art the battle draws over any ninja
+(src/components/battle/puddleArt.ts reads it from src/assets/world/vfx_puddle/ once he approves it). With a compare path it also writes his
 crop beside our copy, at the same scale, labelled "Tu dibujo" / "Copia". Deterministic.
 """
 import json
@@ -193,6 +195,11 @@ def main():
         om[CROP[1]:CROP[1] + K, CROP[0]:CROP[0] + K] = (own & (rgba[..., 3] > 0)) * 255
         os.makedirs(os.path.join(OUT, 'own'), exist_ok=True)
         Image.fromarray(om, 'L').save(os.path.join(OUT, 'own', name))
+        # His water alone, for the game to draw over any ninja (src/components/battle/puddleArt.ts).
+        layer = full.copy()
+        layer[om > 0] = 0
+        os.makedirs(os.path.join(OUT, 'layer'), exist_ok=True)
+        Image.fromarray(layer, 'RGBA').save(os.path.join(OUT, 'layer', name))
         frames[(sid, i)] = rgba
     man = {**MAN, 'source': os.path.basename(REF), 'sequences': [s for s in MAN['sequences'] if s['id'] in ROWS]}
     with open(os.path.join(OUT, 'manifest.json'), 'w') as fh:

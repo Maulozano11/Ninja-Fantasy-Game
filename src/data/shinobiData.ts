@@ -363,6 +363,24 @@ export const JUTSUS_DATA: JutsuDefinition[] = [
     description: 'A drop of clear water crosses the air and breaks over a comrade like fresh dew. It mends scratches; it works no miracles.',
     descriptionEs: 'Una gota de agua clara cruza el aire y se rompe sobre un compañero como rocío fresco. Cierra rasguños, no milagros.',
   },
+  {
+    // The owner's stealth jutsu (2026-10-24; docs/GAMEPLAY_DESIGN.md, "Liquid Body"): Water only, though
+    // it sits in the Utility slot (rules/jutsuNature.ts NATURE_ONLY). Its rules: battle/puddle.ts.
+    id: 'water_liquid_body',
+    name: 'Water Technique: Liquid Body',
+    nameEs: 'Técnica de Agua: Cuerpo Líquido',
+    japaneseName: '液体の身 (Ekitai no Mi)',
+    rank: 'C',
+    category: 'Utility',
+    nature: 'Water',
+    chakraCost: 2,
+    castTime: 'Action',
+    range: 0,
+    enhancementChakraCost: 0,
+    enhancementEffect: 'Cannot be enhanced.',
+    description: 'The ninja kneels and melts into a puddle on the ground. Still, it passes for the terrain; it rises again to strike from below.',
+    descriptionEs: 'El ninja se arrodilla y se derrite en un charco en el suelo. Quieto, pasa por parte del terreno; vuelve a alzarse para golpear desde abajo.',
+  },
 
   // --- SLOT 2 & 3: ELEMENTAL / CORE JUTSUS ---
   // Fire

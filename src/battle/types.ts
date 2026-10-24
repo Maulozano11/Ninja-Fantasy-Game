@@ -79,6 +79,11 @@ export interface Conditions {
   ninjaJump?: boolean;
   /** Warped in next to a foe (Ryusei): the next attack this turn comes from behind. */
   warpEdge?: boolean;
+  /**
+   * Liquid Body (battle/puddle.ts): a puddle on the ground. `rounds`: its turns left in the fighting;
+   * `knownBy`: the foes that saw it melt or noticed it moving on dry ground (they know where it is).
+   */
+  puddle?: { rounds: number; knownBy: string[] };
 }
 
 /** What an enemy will do on its next turn (it commits to it; a Mirai can see it). */
@@ -480,7 +485,8 @@ export type Action =
   | { type: 'move'; unit: string; to: Cell; sneak?: boolean }
   | { type: 'attack'; unit: string; target: string; ranged?: boolean; knockout?: boolean }
   | { type: 'jutsu'; unit: string; jutsu: string; at: Pt; target?: string; enhanced?: boolean; target2?: string; element?: 'Fire' | 'Lightning' | 'Wind' | 'Water' | 'Earth' }
-  | { type: 'dash' | 'disengage' | 'dodge' | 'hide' | 'focus' | 'crouch' | 'jump' | 'draw'; unit: string }
+  /** `rise`: out of a Liquid Body puddle (the bonus action); `search`: Perception against what hides nearby. */
+  | { type: 'dash' | 'disengage' | 'dodge' | 'hide' | 'focus' | 'crouch' | 'jump' | 'draw' | 'rise' | 'search'; unit: string }
   | { type: 'shove'; unit: string; target: string; mode: 'prone' | 'push' }
   /** `tag` throws an explosive tag at a point; `tagTrap` hides one on the ground there. */
   | { type: 'item'; unit: string; item: 'pill' | 'bandage' | 'antidote' | 'tag' | 'tagTrap'; target?: string; at?: Pt }

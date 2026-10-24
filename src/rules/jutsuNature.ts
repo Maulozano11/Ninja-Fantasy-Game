@@ -47,10 +47,19 @@ export const byRankDown = (a: JutsuDefinition, b: JutsuDefinition): number => RA
 
 /**
  * Whether the nature decides if a ninja may learn this jutsu: an elemental jutsu in the Element or
- * S-rank slots. Utility jutsu (the medical palm, a Water jutsu open to every nature) and clan secrets
- * are not gated.
+ * S-rank slots, and a NATURE_ONLY utility jutsu. Other utility jutsu (the medical palm, a Water jutsu
+ * open to every nature) and clan secrets are not gated.
  */
-export const natureGated = (j: JutsuDefinition): boolean => (j.category === 'Elemental' || j.category === 'Ultimate') && ELEMENTS.includes(j.nature);
+export const natureGated = (j: JutsuDefinition): boolean => ((j.category === 'Elemental' || j.category === 'Ultimate') && ELEMENTS.includes(j.nature)) || NATURE_ONLY.has(j.id);
+
+/**
+ * Utility jutsu only their element learns (the owner, 2026-10-24, of Liquid Body: "si", Water only),
+ * though they sit in the Utility slot that is open to every nature.
+ */
+export const NATURE_ONLY: ReadonlySet<string> = new Set(['water_liquid_body']);
+
+/** The slots a nature can make a jutsu wrong in: the Utility slot (for NATURE_ONLY), the Element and S-rank slots. */
+const FIT_SLOTS: JutsuSlot[] = ['slot1Utility', ...GATED_SLOTS];
 
 /**
  * Whether a ninja of this nature may learn the jutsu: it is not gated, or it is of the ninja's element,
@@ -127,12 +136,12 @@ export function fitLoadout(
   allow?: (j: JutsuDefinition) => boolean,
   extra: readonly ChakraNature[] = [],
 ): { loadout: Loadout; swaps: JutsuSwap[] } {
-  return refitSlots(loadout, nature, clan, GATED_SLOTS, (j) => !jutsuFitsNature(j, nature, extra), allow, extra);
+  return refitSlots(loadout, nature, clan, FIT_SLOTS, (j) => !jutsuFitsNature(j, nature, extra), allow, extra);
 }
 
 /** The gated jutsu of a loadout that are of none of the ninja's elements (an older sheet, a second element it doesn't have). */
 export function offNatureJutsus(loadout: Loadout, nature: ChakraNature, extra: readonly ChakraNature[] = []): string[] {
-  return GATED_SLOTS.map((s) => loadout[s]).filter((id) => {
+  return FIT_SLOTS.map((s) => loadout[s]).filter((id) => {
     const j = JUTSUS_DATA.find((x) => x.id === id);
     return !!j && !jutsuFitsNature(j, nature, extra);
   });

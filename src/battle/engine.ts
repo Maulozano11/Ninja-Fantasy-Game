@@ -39,7 +39,7 @@ import { KUNAI, enemyNameOf, enemyUnit, handsFree, unitFrom, wielded } from './u
 import type { EnemyKind } from './units';
 import { hydraUnits } from './hydra';
 import { checkEnd, current, endTurn, startCombat } from './turns';
-import { afterStealthAttack, alarm, canTakedown, dragBody, guardsTurn, openFight, scareAnimalsNear, stealthMove, STONE_RANGE, throwStone } from './stealth';
+import { afterStealthAttack, alarm, canTakedown, dragBody, guardsTurn, openFight, scareAnimalsNear, seesPoint, stealthMove, STONE_RANGE, throwStone, VISION } from './stealth';
 import { conduct, electrify, groundEffects, plantTag, saveHit, springTrap, TAG, throwTag, trapAt, unitsInArea } from './hazards';
 import { blowSteam, pathArea, soak } from './ground';
 import { breakable, damageStructure, faceToward, hitStructuresIn, jutsuWallAt, raiseStructure, STRUCTURE_AC, structureAt, structureAttack, structureBlocker } from './structures';
@@ -63,6 +63,7 @@ import {
 } from './clans';
 import { reachTo, replanAgainst } from './intent';
 import { chargedFoe, chargeHolds, crackUnder, endCharge } from './charged';
+import { foundOut, inPuddle, meltInto, notice, PUDDLE_WET_ROUNDS, puddleBlocks, puddleCover, puddleKnownBy, puddlesUnder, riseFrom } from './puddle';
 import { activeImbue, EARTH_CRIT, IMBUE_DAMAGE, IMBUE_DICE, imbueBlocker, imbueHolds, startImbue, unitImbueElement, WIND_PUSH, type ImbueElement } from './imbue';
 
 // --- setup ---------------------------------------------------------------------------------
@@ -252,6 +253,9 @@ function dispatch(s: BattleState, a: Action, ev: BattleEvent[]): string | null {
     if (s.stealthDone.includes(u.id)) return 'alreadyDone';
   }
   if (u.down && a.type !== 'endTurn') return 'cantAct';
+  // A Liquid Body puddle has no hands: no jutsu, items, hiding or shoving (battle/puddle.ts).
+  const molten = puddleBlocks(u, a.type);
+  if (molten) return molten;
   s.tick++;
   switch (a.type) {
     case 'move':
@@ -267,6 +271,10 @@ function dispatch(s: BattleState, a: Action, ev: BattleEvent[]): string | null {
       return doBasic(s, u, a.type, ev);
     case 'hide':
       return doHide(s, u, ev);
+    case 'rise':
+      return doRise(u, ev);
+    case 'search':
+      return doSearch(s, u, ev);
     case 'crouch':
       return doCrouch(s, u, ev);
     case 'jump':
@@ -356,11 +364,12 @@ function stepHazards(s: BattleState, u: Unit, p: Pt, ev: BattleEvent[]): boolean
 function provoker(s: BattleState, u: Unit, hop: Pt[], skip: string[]): Unit | undefined {
   for (const r of Object.values(s.units)) {
     if (r.team === u.team || r.kind !== 'ninja' || r.down || skip.includes(r.id)) continue;
-    if (!r.turn.reaction || r.cond.surprised) continue;
+    // A Liquid Body puddle takes no reactions.
+    if (!r.turn.reaction || r.cond.surprised || r.cond.puddle) continue;
     // Nothing reaches across a metal wall.
     if (fullCoverBetween(s, r.pos, u.pos)) continue;
     // A hidden mover it can't see slips past.
-    if (u.cond.hidden !== undefined && passivePerception(r) < u.cond.hidden) continue;
+    if (u.cond.hidden !== undefined && passivePerception(r) < u.cond.hidden && !puddleKnownBy(u, r)) continue;
     const reach = wielded(r).reach + 0.1;
     if (dist(r.pos, u.pos) <= reach && hop.some((p) => dist(r.pos, p) > reach)) return r;
   }
@@ -426,6 +435,12 @@ function walk(s: BattleState, u: Unit, path: Cell[], from: number, ev: BattleEve
     u.pos = next;
     pts.push(next);
     at = c;
+    // Liquid Body: a foe that treads on a puddle finds it; a puddle moving on dry ground in a foe's
+    // sight is noticed (battle/puddle.ts).
+    const trodden = puddlesUnder(s, u, next);
+    if (trodden.length) flush();
+    for (const p of trodden) foundOut(p, u, ev);
+    if (inPuddle(u) && !puddleCover(s, next)) noticedMoving(s, u, next, ev);
     const k = crackUnder(s, u, c);
     if (k) cracked.push(k);
     if (u.turn.dashed && auraEntered(s, u, was)) {
@@ -465,6 +480,14 @@ function afterMove(s: BattleState, u: Unit, ev: BattleEvent[]): void {
 
 function doAttack(s: BattleState, u: Unit, targetId: string, ranged: boolean, knockout: boolean, ev: BattleEvent[]): string | null {
   if (!u.turn.action) return 'noAction';
+  // From a Liquid Body puddle: it rises first, which costs the bonus action whatever it does (the
+  // owner: "salir del charco o atacar desde el charco cuesta una bonus accion hagas lo que hagas");
+  // still hidden as it comes up, its blow keeps the advantage and the surprise damage.
+  if (inPuddle(u)) {
+    if (targetId.includes(':')) return 'inPuddle';
+    const err = doRise(u, ev);
+    if (err) return err;
+  }
   if (targetId.startsWith('prop:')) return attackProp(s, u, Number(targetId.slice(5)), ranged, ev);
   if (targetId.startsWith('wall:')) return attackStructure(s, u, targetId.slice(5), ranged, ev);
   const t = s.units[targetId];
@@ -655,7 +678,8 @@ function applyHits(s: BattleState, hits: Hit[], after: AfterHits, ev: BattleEven
       ev.push({ t: 'clone', unit: t.id, on: false });
       continue;
     }
-    if (blockable && !h.evadeDeclined && canEvade(s, t, h)) {
+    // A Liquid Body puddle takes no reactions (no Evasion, no Kawarimi).
+    if (blockable && !t.cond.puddle && !h.evadeDeclined && canEvade(s, t, h)) {
       if (t.controller === 'player') {
         s.pending = { kind: 'evasion', reactor: t.id, hit: h, rest: queue, after };
         ev.push({ t: 'reactionAsk', pending: s.pending });
@@ -666,7 +690,7 @@ function applyHits(s: BattleState, hits: Hit[], after: AfterHits, ev: BattleEven
         continue;
       }
     }
-    if (blockable && canKawarimi(s, t)) {
+    if (blockable && !t.cond.puddle && canKawarimi(s, t)) {
       if (t.controller === 'player') {
         s.pending = { kind: 'kawarimi', reactor: t.id, hit: h, rest: queue, after };
         ev.push({ t: 'reactionAsk', pending: s.pending });
@@ -683,9 +707,13 @@ function applyHits(s: BattleState, hits: Hit[], after: AfterHits, ev: BattleEven
 }
 
 function landHit(s: BattleState, t: Unit, h: Hit, ev: BattleEvent[]): void {
+  const spec = JUTSU[h.what];
+  const wind = spec?.nature === 'Wind';
   if (h.amount > 0 || t.head?.severed) {
-    damage(s, t, h.amount, h.type, { crit: h.crit, source: h.source, knockout: h.knockout, melee: h.melee, explosion: h.explosion }, ev);
+    damage(s, t, h.amount, h.type, { crit: h.crit, source: h.source, knockout: h.knockout, melee: h.melee, explosion: h.explosion, weapon: !spec && !h.explosion, wind }, ev);
   }
+  // A wind attack scatters a Liquid Body puddle even when it does no harm.
+  if (wind && t.cond.puddle && !t.down) riseFrom(t, 'forced', ev);
   // The element on the weapon, after the blow: not on a ninja the blow dropped, but a fire or
   // lightning blade seals the hydra's stump it has just cut.
   if (h.bonus && h.bonus.amount > 0 && (!t.down || t.head?.severed)) damage(s, t, h.bonus.amount, h.bonus.type, { crit: h.crit, source: h.source, knockout: h.knockout, melee: h.melee }, ev);
@@ -1042,6 +1070,9 @@ function doJutsu(s: BattleState, u: Unit, id: string, atIn: Pt, targetId: string
     case 'galeZone':
       raiseGale(s, u, spec, at, ev);
       break;
+    case 'puddle':
+      meltIn(s, u, ev);
+      break;
     default:
       hits.push(...jutsuHits(s, u, fan ? fanned(spec) : spec, target, at, ev));
   }
@@ -1330,6 +1361,80 @@ function doHide(s: BattleState, u: Unit, ev: BattleEvent[]): string | null {
   return null;
 }
 
+// --- Liquid Body (battle/puddle.ts) ----------------------------------------------------------
+
+/** How far a Search looks (m): the foes it has a line of sight to within this. */
+export const SEARCH_RANGE = 9;
+
+/**
+ * Melts into the puddle (the jutsu was paid): a Stealth roll with advantage against the eyes on it,
+ * anywhere (the puddle is its own hiding place). The foes that saw it melt know where it is. Its cell
+ * is water now: wet ground.
+ */
+function meltIn(s: BattleState, u: Unit, ev: BattleEvent[]): void {
+  const foes = Object.values(s.units).filter((o) => o.team !== u.team && !o.down && o.kind !== 'hydra_body');
+  const sees = (o: Unit) => (s.phase === 'stealth' && o.guard ? seesPoint(s, o, u.pos) : lineOfSight(s, o.pos, u.pos));
+  const saw = foes.filter((o) => sees(o) && (u.cond.hidden === undefined || passivePerception(o) >= u.cond.hidden));
+  const watchers = foes.filter((o) => lineOfSight(s, o.pos, u.pos));
+  const roll = check(s, 'check', skillMod(u, 'stealth'), Math.max(10, ...watchers.map((o) => passivePerception(o))), 'advantage');
+  ev.push({ t: 'check', unit: u.id, what: 'stealth', roll });
+  meltInto(u, saw.map((o) => o.id), ev);
+  if (roll.success) {
+    u.cond.hidden = roll.crit ? PERFECT_HIDE : roll.total;
+    if (roll.crit) u.cond.perfectHide = roll.total;
+    ev.push({ t: 'condition', unit: u.id, cond: 'hidden', on: true });
+  } else {
+    reveal(u, ev);
+    ev.push({ t: 'note', key: 'hideFailed', params: { name: u.name } });
+  }
+  soak(s, { kind: 'circle', center: { ...u.pos }, radius: 0.5 }, u.id, ev, PUDDLE_WET_ROUNDS);
+}
+
+/** Out of the puddle by its own choice: the bonus action, always (the owner). Its own legs again for the rest of the turn. */
+function doRise(u: Unit, ev: BattleEvent[]): string | null {
+  if (!inPuddle(u)) return 'notInPuddle';
+  if (!u.turn.bonus) return 'noBonus';
+  u.turn.bonus = false;
+  riseFrom(u, 'rise', ev);
+  u.turn.move = Math.max(0, u.speed - u.turn.moved);
+  return null;
+}
+
+/**
+ * Search (an action): one Perception check against every foe hiding within SEARCH_RANGE in its sight;
+ * the ones it beats are found (a puddle is forced out).
+ */
+function doSearch(s: BattleState, u: Unit, ev: BattleEvent[]): string | null {
+  if (!u.turn.action) return 'noAction';
+  u.turn.action = false;
+  const hiders = Object.values(s.units).filter((o) => o.team !== u.team && !o.down && o.cond.hidden !== undefined && !puddleKnownBy(o, u) && dist(o.pos, u.pos) <= SEARCH_RANGE && lineOfSight(s, u.pos, o.pos));
+  const dc = hiders.length ? Math.min(...hiders.map((o) => o.cond.hidden!)) : 10;
+  const roll = check(s, 'check', skillMod(u, 'perception'), dc);
+  ev.push({ t: 'check', unit: u.id, what: 'perception', roll });
+  const found = hiders.filter((o) => roll.crit || (!roll.fumble && roll.total >= o.cond.hidden!));
+  for (const o of found) {
+    if (o.cond.puddle) foundOut(o, u, ev, 'search');
+    else {
+      reveal(o, ev);
+      ev.push({ t: 'note', key: 'searchFound', params: { name: o.name, other: u.name } });
+    }
+  }
+  if (!found.length) ev.push({ t: 'note', key: 'searchNothing', params: { name: u.name } });
+  return null;
+}
+
+/** A puddle moving on dry ground in the fighting: every foe that sees the spot notices it (it knows where it is from now on). */
+function noticedMoving(s: BattleState, u: Unit, p: Pt, ev: BattleEvent[]): void {
+  if (s.phase !== 'combat' || u.cond.hidden === undefined) return;
+  const range = s.time === 'night' ? VISION.night : VISION.day;
+  for (const f of Object.values(s.units)) {
+    if (f.team === u.team || f.down || f.kind === 'hydra_body' || puddleKnownBy(u, f)) continue;
+    if (dist(f.pos, p) > range || !lineOfSight(s, f.pos, p)) continue;
+    notice(u, f);
+    ev.push({ t: 'note', key: 'puddleNoticed', params: { name: u.name, other: f.name } });
+  }
+}
+
 /** Crouching (a bonus action) keeps a hidden ninja hidden and halves how much guards notice it. */
 function doCrouch(s: BattleState, u: Unit, ev: BattleEvent[]): string | null {
   if (u.cond.crouched) {
@@ -1363,6 +1468,8 @@ function doShove(s: BattleState, u: Unit, targetId: string, mode: 'prone' | 'pus
   const t = s.units[targetId];
   if (!t || t.down || t.team === u.team) return 'badTarget';
   if (t.kind !== 'ninja') return 'tooBig';
+  // A puddle can't be pushed or knocked down.
+  if (t.cond.puddle) return 'targetPuddle';
   if (dist(u.pos, t.pos) > 1.6) return 'outOfRange';
   if (fullCoverBetween(s, u.pos, t.pos)) return 'blocked';
   u.turn.action = false;

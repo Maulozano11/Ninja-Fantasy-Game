@@ -1995,78 +1995,82 @@ for now; its S-rank slot offers its element's (and nothing for Light or Void).
   repo: it is one sheet of the generated chakra set (every element's set has a
   `multi`), no other jutsu flies it today, and deleting art is his call.
 
-## Puddle form: a stealth water jutsu, and mercury later (PROPOSAL, 2026-10-24; not built)
+## Liquid Body: a stealth water jutsu (decided 2026-10-24; built on `jutsu/water-puddle`)
 
-The owner (2026-10-24): *"ahora hare un jutsu de agua que ayudara en el sigilo para convertire
-en un charco de agua diseñamela y dame una opcion que sea un charco de mercurio (como metal
-liquido en vez de agua ) para una habilidad futura en la de mercurio de puedes mover y meterte
-por rendijas"*. Everything below is the builder's proposal, waiting for his answer; the engine
-is untouched. The sample art for him to paint over is made by
-`tools/world-sprites/puddle-sample.ts` (frames, staging only) and
-`tools/world-sprites/puddle-sample-sheets.py` (sheets, GIFs, map shots); it is not game art.
+The owner (2026-10-24): *"ahora hare un jutsu de agua que ayudara en el sigilo para convertire en
+un charco de agua diseñamela y dame una opcion que sea un charco de mercurio (como metal liquido en
+vez de agua ) para una habilidad futura en la de mercurio de puedes mover y meterte por rendijas"*.
+We proposed the rules; his answers the same day, verbatim:
 
-### A. Water Technique: Silent Puddle (`water_silent_puddle`, *Técnica de Agua: Charco Silencioso*)
+> charco de agua numeros costo esta bien menos que salir sea accion bonus escondite me gusta, cuando
+> te descrubren me gusta , lo que no puedes hacer me gusta pero puedes atacar con sigilo desde el
+> agua con ventaja con tu arma movimiento me gusta en suelo seco como ninja agachado pero en la
+> version de mercurio sigue escondido , daño esta bien lo que saca del charco esta bien embocascada
+> si esta bien lo puse anterior mente me gusta todas las recomendaciones de mercurio aprovado
+> preguntas 1 ponle cuerpo liquido 2 si el mercurio es de clan 3 esta bien rango c 2 de chakra 4 si
+> 5 no creo depende como salga la version mejorada con lo que mande
 
-The ninja kneels, melts and lies on the ground as a puddle; still, it passes for terrain.
+> atacar desde el charco no para atacar o salir del charco cuesta la accion adicional en suelo seco
+> te notan como ninja agachado te mueves en su rango de vision
 
-- **Rank C, Water, Utility slot** (as the Healing Dew). **2 chakra.** Entering is an
-  **action with seals**; leaving is **free on its turn** (1.5 m of movement) or part of an
-  attack (the ambush). Lasts until it leaves or 10 rounds; in the stealth phase, the whole phase.
-- **Stealth**: entering rolls Stealth **with advantage**, anywhere (the puddle is its own hiding
-  place, no bush or cover needed). Still, a guard whose passive Perception is below the roll
-  gains no suspicion from it, even close by. A foe that **saw it transform** knows where it is.
-  It is found when a foe **steps into its cell** or takes a **Search** action (Perception
-  against the Stealth roll; a new action). In shallow water or a river it is a perfect hide (as
-  the natural 20) while it stays in the water.
-- **As a puddle it can't** attack, cast, use items, hold a weapon (its gear melts with it), take
-  reactions (Kawarimi included) or opportunity attacks; it can't be knocked prone, shoved or
-  grappled.
-- **Moving**: half speed. On wet ground or shallow water it stays hidden; on dry ground a moving
-  puddle is noticed like a crouched ninja (half the rate) and it rolls Stealth again when it stops.
-- **Defence**: half damage from weapons (slashing, piercing, bludgeoning). Damage calls for a CON
-  save (DC 10 or half the damage, 5e concentration); a failure forces it out.
-- **What forces it out**: **lightning** (double damage; its cell counts as wet ground, so
-  lightning runs into it across a wet patch), **fire** (it turns to steam: half damage, and a
-  steam cloud rises on its cell, which can hide it again), **any wind attack** reaching its cell
-  (scattered 1.5 m, no extra damage), being stepped on or found. Chakra sensing: later (none in
-  the game yet).
-- **Ambush**: leaving and attacking in the same turn, unseen by the target: advantage on the
-  first attack and the extra damage of attacking from hiding; in the stealth phase, a silent
-  takedown as usual.
-- **With what exists**: the wet ground of the water jutsu and the water Elemental Slash is its
-  road (it moves there unseen); lightning on water or wet ground hits it double; fire makes steam
-  as on wet ground; it can **drop off a ledge with no fall damage** but never climb; night's
-  advantage on Stealth doesn't stack with its own.
-- **AI**: an enemy with it waits by a patrol route in the stealth phase, and in battle melts when
-  at half HP or less with no foe beside it, to ambush next turn. A foe that saw it melt strikes
-  the puddle with lightning if it has some, or steps on it. Allies on the AI use it only under the
-  Defensive order.
-- **5e fit**: *Gaseous Form* (no attacks or spells, slow, resistant to weapons) plus the Hide
-  rules; the CON save on damage is concentration.
+> salir del charco o atacar desde el charco cuesta una bonus accion hagas lo que hagas
 
-### B. Mercury (future, design only)
+**Water Technique: Liquid Body** (*Técnica de Agua: Cuerpo Líquido*, `water_liquid_body`). The
+ninja kneels, melts and lies on the ground as a puddle; still, it passes for terrain. Rules in
+`src/battle/puddle.ts` (with `engine.ts`, `stealth.ts`, `turns.ts`, `combat.ts`, `ai.ts`); tests in
+`src/battle/puddle.test.ts`.
 
-The owner already designed it: Kōton, Path of **Toxic Mercury**, *Liquid Silver Form* ("passes
-through enemies and cracks, ignoring collision, and halves physical damage taken", in "Later
-phases: the Paths of Mastery" of `docs/CLANS_DESIGN.md`). Proposed rules for when the Paths are
-built:
+- **Rank C, Water only, 2 chakra** (his "3 esta bien rango c 2 de chakra", "si"). It sits in the
+  Utility slot, but only a Water ninja is offered it (`NATURE_ONLY`, `rules/jutsuNature.ts`; a
+  sheet that changes its type loses it like an off-nature Element jutsu). **Melting is an action
+  with hand seals.**
+- **Leaving the puddle, or attacking from it, always costs the bonus action** ("hagas lo que
+  hagas"): `rise` is the bonus action; an attack from the puddle rises first (the bonus action) and
+  strikes with the action. With the bonus action spent, it can neither leave nor attack that turn.
+  Nothing skips that cost. Only being forced out (below) or the jutsu running out costs nothing.
+- **Hiding**: melting rolls Stealth **with advantage**, anywhere (the puddle is its own hiding
+  place); the foes that saw it melt know where it is (`knownBy`). Still, a foe whose passive
+  Perception is below the roll doesn't see it, even close by; in the stealth phase a guard gains no
+  suspicion. It stays hidden at the end of its turns (no need to crouch). Its cell is water: wet
+  ground (renewed each of its turns).
+- **Moving**: half speed. **On wet ground, in shallow water or a river it stays hidden while it
+  moves. On dry ground, moving within a foe's sight it is noticed like a crouched ninja** (his
+  correction: "en suelo seco te notan como ninja agachado te mueves en su rango de vision"): in the
+  stealth phase the guard's suspicion rises as for a crouched ninja; in the fighting every foe that
+  sees the spot knows where the puddle is from then on. Standing still on dry ground it stays hidden.
+- **What it can't do**: jutsu, items, hiding, crouching, jumping, drawing, shoving, stones,
+  dragging bodies, reactions (no opportunity attacks, no Kawarimi or Evasion). It can't be shoved or
+  knocked down. **It can attack with its weapon from the water**, from hiding: advantage and the
+  surprise damage of attacking from hiding (a silent takedown in the stealth phase), paying the bonus
+  action to rise as it does.
+- **Damage**: weapons do half; any other hit asks for a CON save (DC 10 or half the damage, as 5e
+  concentration) or it is forced out.
+- **What forces it out**: lightning (double damage; its wet cell carries a strike across the wet
+  patch), fire (half damage; fire on its wet cell makes steam as on any wet ground), any wind attack
+  that reaches it (even with no harm), a foe that **treads on it** (steps within 0.6 m: its cell or
+  the one beside it; a guard on patrol that does raises the alarm), or a **Search** that beats its
+  Stealth. Forced out, it is seen by everyone.
+- **Search** (a new action for everyone): one Perception check against every foe hiding within 9 m in
+  sight; the ones it beats are found (a puddle is forced out).
+- **Duration**: until it rises, or 10 rounds in the fighting (the stealth phase doesn't count).
+- **The AI** (approved as proposed): an enemy with it melts when at half HP or less with no foe
+  within 3 m; in the puddle, with a foe in reach and both its action and bonus action, it rises and
+  strikes; otherwise it creeps toward the nearest foe and waits. A foe that knows of a puddle treads
+  on it. An enemy that sees no foe at all while one hides searches. Allies on the AI melt only under
+  the Defensive order.
+- **On the screen**: the owner's repaint of our sample (his "aqui tienes tu mejora"), copied pixel
+  for pixel (`tools/refs/water-puddle-from-ref.py`): his melt, his still puddle and his rise, as
+  water-only layers drawn over the unit's own sprite where he kept the ninja
+  (`src/components/battle/puddleArt.ts`). The art is staged, waiting for his approval: until it is
+  in `src/assets/world/vfx_puddle/` a plain puddle is drawn. The hotbar shows Attack, Throw, Rise,
+  Dash and End while in the puddle; Search is in the second page.
+- **Not built**: dropping off a ledge with no fall damage (falls only come from shoves, which a
+  puddle can't take); chakra sensing (none in the game yet).
 
-- **4 chakra, action**; leaving is a bonus action. Lasts 3 rounds (the whole stealth phase there).
-- **Full speed**; it slips through 1-cell gaps, under doors, between bars and through foes (no
-  opportunity attacks). Maps would mark gaps and cracks in walls and doors that only it fits.
-- Half physical damage (his rule). No attacks or jutsu as mercury.
-- **Not camouflage**: it shines, so by day it hides no better than a ninja; at night or in
-  shadow, as usual. On metal (Kōton walls, bars) it is noisy: guards nearby hear it as a thrown
-  stone.
-- **Weaknesses**: lightning conducts (double damage and stunned 1 round); fire does no damage
-  but gives off **toxic fumes** (everyone else within 1.5 m is poisoned: it fits Toxic Mercury);
-  cold or ice solidifies it (restrained 1 round). Heavy: wind doesn't push it, water doesn't carry
-  it, deep water is crossed along the bottom.
+### Mercury: the Kōton's Liquid Silver Form (decided, future)
 
-### Questions for him
-
-1. The name *Charco Silencioso* / Silent Puddle, or his own?
-2. Water nature only? (Today the Utility slot takes any utility jutsu, as the Healing Dew.)
-3. Rank C and 2 chakra, or dearer?
-4. Is the mercury his Kōton *Liquid Silver Form*?
-5. Will he paint over the sample (then we copy his pixels, as with every set)?
+His answers "2 si el mercurio es de clan", "4 si", "me gusta todas las recomendaciones de mercurio
+aprovado" and "en la version de mercurio sigue escondido": the mercury form is the Kōton clan's
+*Liquid Silver Form* (Path of Toxic Mercury), with our recommendations, **staying hidden on dry
+ground too**. Written in `docs/CLANS_DESIGN.md` under that ability. Its art: his water repaint's
+motion and shapes made of liquid metal (`tools/world-sprites/puddle-mercury.py`), not built.

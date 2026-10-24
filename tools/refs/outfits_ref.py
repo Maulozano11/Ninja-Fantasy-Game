@@ -379,14 +379,23 @@ def shrink(a, K, m, scale, origin, rgb, label, parts):
 # for the fine pixel to show it (read()).
 LINE_COVER = 0.5
 DETAIL_COVER = 0.25
+# The figures whose lit plate edges are kept as he drew them (the owner on the tactical one, 2026-10-24:
+# "tactico refinar armadura": its vest, pads and guards read as raised plates, lit on top), and how.
+LIT_FIGS = ('tactical',)
+LIT_STEP = 22
+LIT_COVER = 0.3
+# (and his line round each plate and panel where it covers a third of a fine pixel)
+LIT_LINE_COVER = 0.34
 
 
-def read(a, K, m, scale, origin, rgb, label, parts, dots=None):
+def read(a, K, m, scale, origin, rgb, label, parts, dots=None, lit=False):
     """Region `m` of his picture shrunk by `scale` into our frame pixel by pixel: each fine pixel one of his
     colours under its footprint (none where less than half of it is his figure): his line where it covers
     LINE_COVER of it, else his gold, white, blue or skin where they cover DETAIL_COVER, else of the colours
     under it the one nearest their mean (so his lit plates, folds and darks keep their share of the area).
-    A dot of `dots` (his laces) whose middle is in a fine pixel is that pixel, unless his line covers it."""
+    A dot of `dots` (his laces) whose middle is in a fine pixel is that pixel, unless his line covers it.
+    With `lit` (the tactical figure's plates, LIT_FIGS) his lit edges where they cover LIT_COVER of it: his
+    pixels LIT_STEP levels lighter than the footprint's mean."""
     ys, xs = np.nonzero(m)
     j0 = int(np.floor((ys.min() - origin[1]) / scale))
     j1 = int(np.ceil((ys.max() + 1 - origin[1]) / scale))
@@ -408,10 +417,13 @@ def read(a, K, m, scale, origin, rgb, label, parts, dots=None):
                 continue
             cover = lambda k: sum(w for w, y, x in cells if K[y, x] == k) / fw
             dot = [c for c in cells if dots is not None and dots[c[1], c[2]] and Y0 <= c[1] + 0.5 < Y1 and X0 <= c[2] + 0.5 < X1]
-            if cover('line') >= LINE_COVER:
+            if cover('line') >= (LIT_LINE_COVER if lit else LINE_COVER):
                 pick = [c for c in cells if K[c[1], c[2]] == 'line']
             elif dot:
                 pick = dot
+            elif lit and sum(w for w, y, x in cells if K[y, x] != 'line' and luma(a[y, x]) >= luma(sum(cw * a[cy, cx] for cw, cy, cx in cells) / fw) + LIT_STEP) / fw >= LIT_COVER:
+                mean0 = luma(sum(cw * a[cy, cx] for cw, cy, cx in cells) / fw)
+                pick = [c for c in cells if K[c[1], c[2]] != 'line' and luma(a[c[1], c[2]]) >= mean0 + LIT_STEP]
             else:
                 pick = [c for c in cells if K[c[1], c[2]] != 'line']
                 for k in ('white', 'gold', 'blue', 'skin'):
@@ -466,7 +478,7 @@ def reduce(name):
     P = part_map(f)
     rgb = np.full((GRID, GRID, 3), 255, np.int32)
     label = np.full((GRID, GRID), '', dtype='<U12')
-    read(a, K, R['body'], f.scale, f.origin, rgb, label, P, laces(name, a, P))
+    read(a, K, R['body'], f.scale, f.origin, rgb, label, P, laces(name, a, P), name in LIT_FIGS)
     for n in OWN_REGIONS.get(name, {}):
         shrink(a, K, R[n], f.scale, f.origin, rgb, label, P)
     hf = FIGURES[HEAD_FIG]
@@ -583,6 +595,11 @@ def mail(name):
             m[y, x] = True
         if (den[m] > MAIL_CORE).sum() < MAIL_LEAST:
             continue
+        if name in LIT_FIGS:
+            # his mesh only where he drew mesh: the panel's middle, off his line round it and its lit rim
+            m = m & (den > MAIL_CORE) & ~near8(kinds(a) == 'line')
+            if m.sum() < MAIL_LEAST:
+                continue
         # his commonest dark and his commonest light there (the darker and the lighter half of its pixels)
         px = a[m].reshape(-1, 3)
         mid = float(np.median(luma(px)))
@@ -674,7 +691,7 @@ def clean(name, rgb, label):
     for m, (dark, light) in mail(name):
         for y in range(1, H - 1):
             for x in range(1, W - 1):
-                if label[y, x] in ('', 'head', 'sword') or K[y, x] == 'line' and not all(figm[q] for q in ((y - 1, x), (y + 1, x), (y, x - 1), (y, x + 1))):
+                if label[y, x] in ('', 'head', 'sword') or K[y, x] == 'line' and (name in LIT_FIGS or not all(figm[q] for q in ((y - 1, x), (y + 1, x), (y, x - 1), (y, x + 1)))):
                     continue
                 if not all(figm[q] for q in ((y - 1, x), (y + 1, x), (y, x - 1), (y, x + 1))):
                     continue

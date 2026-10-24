@@ -21,6 +21,8 @@ const POSES: SpritePose[] = [...SPRITE_POSES, ...MOVE_POSES, ...CAMP_POSES].filt
 function painted(items: Partial<Record<SlotId, string>>): SpriteAppearance {
   const l = defaultAppearance();
   l.slots = {};
+  // (on the head he painted them over: our template head, before his Roman head became the default male's)
+  Object.assign(l, { faceShape: 'tapered', eyeShape: 'standard', eyeColor: '#3b82f6', headband: { ...l.headband, position: 'forehead' } });
   for (const [slot, id] of Object.entries({ ...items, held: 'held_crystal' })) l.slots[slot as SlotId] = { id: id!, colors: getItem(id!)!.colors.map((c) => c.default) };
   l.skin = PAINTED_SKIN;
   return l;
@@ -55,7 +57,6 @@ describe("the owner's standard characters", () => {
       ['Trunks 2 Embestida 1', two, 'tackle', 0, 140, 180, false],
       ['Trunks 2 Caminar 1', two, 'walk', 0, 138, 173, false],
       ['Trunks 2 Caminar 2, left filled', two, 'walk', 1, 116, 200, true],
-      ['Trunks 2 Leer 1, left filled', two, 'read', 0, 122, 180, true],
       ['Trunks 3 Carga 1', three, 'charge', 0, 140, 177, false],
       ['Trunks 3 Correr 2', three, 'run', 1, 116, 160, false],
     ] as [string, SpriteAppearance, SpritePose, number, number, number, boolean][])

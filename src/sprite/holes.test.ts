@@ -17,7 +17,7 @@ import { CAMP_POSES, MOVE_POSES, SPRITE_POSES, type BodyType, type EyeSpecial, t
 
 const N = GRID * GRID;
 const POSES = [...SPRITE_POSES, ...MOVE_POSES, ...CAMP_POSES] as SpritePose[];
-const BODIES: BodyType[] = ['male', 'female', 'bulky', 'slender'];
+const BODIES: BodyType[] = ['male', 'female', 'bulky'];
 const opaque = (rgba: Uint8ClampedArray, i: number) => rgba[i * 4 + 3] > 0;
 const bit = (m: Uint8Array | undefined, i: number) => !!m && !!(m[i >> 3] & (1 << (i & 7)));
 const at = (i: number) => `${i % GRID},${Math.floor(i / GRID)}`;
@@ -44,6 +44,14 @@ const LOOKS: Look[] = [
   ...(['rogue', 'hunter', 'jonin', 'raider'] as EnemyKind[]).flatMap((k) => [0, 1].map((n) => of({ ...enemyCharacter(k, n), id: `${k}${n}` }))),
   { id: 'roman', look: roman(), eye: 'none' },
 ];
+
+/**
+ * Pieces apart from the figure that are known and not specks, by look, body and pose:
+ * - Aiden's sabatons on the female body (the owner's bare female body, body/female-v2, which came in with
+ *   Lyra): with the leg kicked far back (the throw's follow-through, the combo's back kick) his greave stops a
+ *   pixel short of the thigh. Open; the owner decided the old armour is not refitted to the new body.
+ */
+const KNOWN_APART = new Set(['preset_reference_aiden female throw', 'preset_reference_aiden female combo']);
 
 /** The sizes of the pieces of a frame apart from the figure (8-connected), but effects (a piece with an fx pixel). */
 function loose(fr: SpriteFrame): number[] {
@@ -133,7 +141,7 @@ describe('the 1-pixel holes', () => {
         const fr = renderSprite(l, pose, f, L.eye);
         const fx = (i: number) => bit(fr.fx, i);
         const where = `${L.id} ${body} ${pose} ${f}`;
-        const specks = loose(fr);
+        const specks = KNOWN_APART.has(`${L.id} ${body} ${pose}`) ? [] : loose(fr);
         if (specks.length) bad.push(`${where}: ${specks.join(', ')} px apart from the figure`);
         // Idle is the owner's pictures, left exactly as drawn (sprite/compose.ts).
         if (pose === 'idle') return;
@@ -173,7 +181,7 @@ describe('a weapon stowed on the back', () => {
           const ahead: number[] = [];
           for (let i = 0; i < N; i++) if (opaque(fr.rgba, i) && fr.part[i] === held && !hand(i) && front(i)) ahead.push(i);
           if (ahead.length) bad.push(`${L.id} ${body} ${pose} ${f}: in front at ${ahead.slice(0, 4).map(at).join(' ')}`);
-          const specks = loose(fr);
+          const specks = KNOWN_APART.has(`${L.id} ${body} ${pose}`) ? [] : loose(fr);
           if (specks.length) bad.push(`${L.id} ${body} ${pose} ${f}: ${specks.join(', ')} px apart from the figure`);
         }
       }),

@@ -6,11 +6,11 @@ import { renderSprite } from './compose';
 import { throwRelease } from './grip';
 import { defaultAppearance } from './legacy';
 import { GRID, partIndex, RES } from './raster';
-import { COMBO_KICKS, COMBO_TURNED, drawRig, frameCount, POSE_FPS, rigPoseFor, THROW_RELEASE_FRAME } from './rig';
+import { BODY_PARAMS, COMBO_KICKS, COMBO_TURNED, drawRig, frameCount, POSE_FPS, rigPoseFor, THROW_RELEASE_FRAME } from './rig';
 import { SPRITE_POSES, type BodyType, type SpriteAppearance } from './types';
 
-const BODIES: BodyType[] = ['male', 'female', 'bulky', 'slender'];
-const WEAPONS = ['held_katana', 'held_crystal', 'held_ice_crystal', 'held_flame_sword', 'held_kunai', 'held_naginata'];
+const BODIES: BodyType[] = ['male', 'female', 'bulky'];
+const WEAPONS = ['held_katana', 'held_crystal', 'held_ice_crystal', 'held_flame_sword', 'held_gilded_rapier', 'held_kunai', 'held_naginata'];
 
 const look = (body: BodyType, held?: string, stowed = false, cape?: string): SpriteAppearance => {
   const l = defaultAppearance();
@@ -75,7 +75,10 @@ describe('throw and pierce poses', () => {
         const a = drawRig(body, 'throw', f - 1);
         const b = drawRig(body, 'throw', f);
         assert.ok(Math.abs(b.lean - a.lean) <= 12, `${body} ${f}: lean ${a.lean} -> ${b.lean}`);
-        assert.ok(Math.hypot(b.head.x - a.head.x, b.head.y - a.head.y) <= 10, `${body} ${f}: the head moves (${a.head.x},${a.head.y}) -> (${b.head.x},${b.head.y})`);
+        // The same pitch carries the head further on a longer torso (the female bodies, the owner's
+        // heroines at our scale), so the step allowed grows with it.
+        const most = 10 * Math.max(1, BODY_PARAMS[body].torsoLen / BODY_PARAMS.male.torsoLen);
+        assert.ok(Math.hypot(b.head.x - a.head.x, b.head.y - a.head.y) <= most, `${body} ${f}: the head moves (${a.head.x},${a.head.y}) -> (${b.head.x},${b.head.y})`);
       }
     }
   });
@@ -113,7 +116,7 @@ describe('throw and pierce poses', () => {
 
   it('keeps a blade stowed on the back behind the body when it pitches forward', () => {
     for (const body of BODIES) {
-      for (const held of ['held_crystal', 'held_ice_crystal', 'held_flame_sword']) {
+      for (const held of ['held_crystal', 'held_ice_crystal', 'held_flame_sword', 'held_gilded_rapier']) {
         for (const f of [THROW_RELEASE_FRAME, THROW_RELEASE_FRAME + 1]) {
           const b = heldBox(look(body, held, true), 'throw', f)!;
           const neck = drawRig(body, 'throw', f).neck;

@@ -14,7 +14,7 @@ import { worldSprite } from '../world/WorldSpriteView';
 import type { MapArt } from './mapArt';
 import type { Fx, Playback, UnitView } from './playback';
 import type { WarpTimes } from './playback';
-import { FALL_MS, PHASE_DASH, PHASE_IN, PHASE_OUT, phaseDash, RISE_MS, WARP_FRAME, WARP_THRUST, warpDash, warpTimes } from './playback';
+import { CRACK_FADE, FALL_MS, PHASE_DASH, PHASE_IN, PHASE_OUT, phaseDash, RISE_MS, WARP_FRAME, WARP_THRUST, warpDash, warpTimes } from './playback';
 import type { Lang } from '../../i18n';
 import { unitName } from './battleLog';
 import { bodyCenterDx, catchLookOf, FEET, fpsOf, framesOf, hasPhaseFrame, hasReleaseClear, hasThrownFrame, hasUnitFrame, lookOf, phaseFrameOf, releaseClearOf, STRIDE, thrownFrame, unitFrame } from './unitArt';
@@ -25,8 +25,11 @@ import type { SpriteAppearance, SpritePose } from '../../sprite/types';
 import { PHASE_ADD, PHASE_RAMP, phaseHue } from '../../sprite/phase';
 import { edgeFoe, leavesNodes, nodeUnder, WARP, warpLanding } from '../../battle/clans';
 import { GRID, RES } from '../../sprite/raster';
-import { depthFx, drawAuraBack, drawDouses, drawWetGround, drawHeld, drawLinger, drawScreenBlood, drawVfxSprite, drawWallSprite, wallTint } from './vfxSprites';
+import { depthFx, drawAuraBack, drawCracks, drawDouses, drawWetGround, drawHeld, drawLinger, drawScreenBlood, drawVfxSprite, drawWallSprite, wallTint } from './vfxSprites';
 import { isTintElement, vfxTintColors } from '../../sprite/vfxTint';
+import { jutsuTint, unitTint } from './vfxTintPlan';
+import { IMBUE_FPS, IMBUE_LOOP } from '../../sprite/imbue';
+import type { ImbueFx } from '../../sprite/imbue';
 
 export interface Camera {
   /** World pixel at the screen's top-left. */
@@ -183,6 +186,8 @@ export function drawBattle(ctx: CanvasRenderingContext2D, sc: Scene): void {
   // Wet ground lies on the ground itself, under the aiming overlays.
   drawWetGround(ctx, sc);
   drawGroundOverlays(ctx, sc);
+  // The ground cracked by a charged hand's steps lies under everything that stands.
+  drawCracks(ctx, sc, CRACK_FADE);
   warmPhases(sc);
 
   // Everything that stands, sorted by depth.
@@ -879,8 +884,19 @@ function drawUnit(ctx: CanvasRenderingContext2D, sc: Scene, u: Unit, pos: Pt): v
     if (oneShot) frame = Math.min(frame, n - 1);
     if (v.holdFrame !== undefined) frame = v.holdFrame;
   }
-  const aura = v.pose === 'cast' ? { mode: 'cast' as const, tick: Math.floor(now / 83), empowered: !!v.castEnhanced } : undefined;
-  const fr = unitFrame(u, look, v.pose, frame, aura);
+  // A charged hand (the activated Chidori): small bolts crackle on and round the body, Battle Static's
+  // (sprite/chakra.ts) in the charge's chakra colour, whatever the ninja's own burst.
+  const charge = u.charged && !u.down && v.held?.charged ? JUTSU[u.charged.jutsu] : undefined;
+  const aura =
+    v.pose === 'cast'
+      ? { mode: 'cast' as const, tick: Math.floor(now / 83), empowered: !!v.castEnhanced }
+      : charge
+        ? { mode: 'aura' as const, tick: Math.floor(now / 83), empowered: true, burst: { color: 'cyan' as const, tint: jutsuTint(charge, u) } }
+        : undefined;
+  // The element on the weapon in hand (Weapon Element Enhancement; sprite/imbue.ts draws it on the
+  // weapon in the frame), its energy in the ninja's chakra colour, obsidian in its own.
+  const imbue = v.imbue && v.armed && !u.down ? { fx: v.imbue.toLowerCase() as ImbueFx, tick: Math.floor((now * IMBUE_FPS) / 1000) % IMBUE_LOOP, tint: v.imbue === 'Earth' ? undefined : unitTint(u) } : undefined;
+  const fr = unitFrame(u, look, v.pose, frame, aura, imbue);
   let lx = 0;
   let ly = 0;
   if (v.lunge) {
@@ -914,7 +930,7 @@ function drawUnit(ctx: CanvasRenderingContext2D, sc: Scene, u: Unit, pos: Pt): v
   // The combo's spin shows the ninja turned away from its target for a moment.
   else solid(1, v.pose === 'combo' && COMBO_TURNED.includes(frame) ? (-v.facing as 1 | -1) : v.facing);
   // What crackles in the near hand (the Chidori's lightning) goes where the rig puts the hand.
-  if (v.held && now >= v.held.t0 && fr.rig && !phase && !v.warp) drawHeld(ctx, sc, v.held, x0 + v.facing * (fr.rig.handN.x * RES - FEET.x), y0 + fr.rig.handN.y * RES);
+  if (v.held && now >= v.held.t0 && fr.rig && !phase && !v.warp) drawHeld(ctx, sc, v.held, x0 + v.facing * (fr.rig.handN.x * RES - FEET.x), y0 + fr.rig.handN.y * RES, v.facing);
   const leaping = phase?.stage === 'dash' || (v.warp && lit >= 1);
   if (water !== 'none' && v.pose !== 'downed' && !leaping) {
     // Ripples where the body meets the water.

@@ -4,7 +4,14 @@
 // Shadows drift toward cool hues and highlights toward warm hues, which is
 // what gives 16-bit sprites their depth instead of flat darken/lighten.
 
-export type RampKind = 'skin' | 'hair' | 'cloth' | 'metal' | 'leather' | 'glow' | 'flat';
+import { FEMALE_BASE_LINE } from './femaleBaseArt';
+import { FEMALE_SKIN } from './femaleBodyArt';
+
+/**
+ * 'painted' is a colour of the owner's painted on a piece that is outlined where it is cut (the female
+ * bodies' pieces, body.ts drawBaseBody): his colour at every shade but the line, which is his black line.
+ */
+export type RampKind = 'skin' | 'skinF' | 'hair' | 'cloth' | 'metal' | 'leather' | 'glow' | 'flat' | 'painted';
 export type Ramp = [string, string, string, string, string, string];
 
 export function hexToRgb(hex: string): [number, number, number] {
@@ -75,6 +82,15 @@ export function makeRamp(hex: string, kind: RampKind = 'cloth'): Ramp {
 
   if (kind === 'flat') {
     ramp = [hex, hex, hex, hex, hex, hex];
+  } else if (kind === 'painted') {
+    ramp = [FEMALE_BASE_LINE, hex, hex, hex, hex, hex];
+  } else if (kind === 'skinF') {
+    // The female bodies' skin, painted the owner's way (femaleBodyArt.ts, from his heroines at our
+    // scale): his near-black line, his deep shadow and shadow moved the way the player moved the
+    // base, and flat skin with no highlight above the base.
+    const his = FEMALE_SKIN.base;
+    const t = (c: string) => retintHex(c, his, hex);
+    ramp = [t(FEMALE_SKIN.line), t(FEMALE_SKIN.deep), t(FEMALE_SKIN.shadow), hex, hex, hex];
   } else if (kind === 'glow') {
     ramp = [
       hslToHex(h, s, Math.max(0.1, l - 0.35)),
@@ -194,4 +210,44 @@ export function retintHex(hex: string, from: string, to: string): string {
   // A grey base (the owner's black cloth) has no hue of its own to turn from: it takes the new one.
   if (s0 < 0.15) return hslToHex(h1, s1, lt);
   return hslToHex(h + (h1 - h0), s0 > 0.02 ? (s * s1) / s0 : s1, lt);
+}
+
+/**
+ * A colour of the owner's skin (a painted head or limb) in the character's skin: the hue turned and the
+ * saturation scaled from the skin he painted it in (`from`), as retintHex turns his cloth, but the
+ * lightness scaled so that his skin lands exactly on the character's (the rest of the body is drawn in
+ * that skin), his shadows and black line staying as far below it and his lights as far above. In his own
+ * skin, his colour.
+ */
+export function retintSkin(hex: string, from: string, to: string): string {
+  if (to.toLowerCase() === from.toLowerCase()) return hex;
+  const [h, s, l] = rgbToHsl(...hexToRgb(hex));
+  const [h0, s0, l0] = rgbToHsl(...hexToRgb(from));
+  const [h1, s1, l1] = rgbToHsl(...hexToRgb(to));
+  const lt = l <= l0 ? (l * l1) / l0 : l1 + ((l - l0) * (1 - l1)) / (1 - l0);
+  return hslToHex(h + (h1 - h0), Math.min(1, (s * s1) / s0), lt);
+}
+
+/**
+ * retintSkin for his skin where it is mostly in shadow (his limbs and his Roman face): on a skin darker
+ * than the one he painted on, his darks are lifted (the lightness ratio taken to a power under 1, nearer
+ * 1 the nearer the skin is to his) so his mid-tones and creases stay apart from each other and from the
+ * black line instead of all sinking toward it; his lights rise as far above the new skin as our skin ramp's
+ * lights do (makeRamp: up to 0.4). His black line is never tinted. In his own skin, his colour.
+ */
+export function retintSkinLifted(hex: string, from: string, to: string): string {
+  if (to.toLowerCase() === from.toLowerCase() || isLine(hex)) return hex;
+  const [h, s, l] = rgbToHsl(...hexToRgb(hex));
+  const [h0, s0, l0] = rgbToHsl(...hexToRgb(from));
+  const [h1, s1, l1] = rgbToHsl(...hexToRgb(to));
+  const gamma = l1 < l0 ? 1 - 0.5 * (1 - l1 / l0) : 1;
+  const up = (b: number) => Math.min(1 - b, 0.4);
+  const lt = l <= l0 ? l1 * Math.pow(l / l0, gamma) : l1 + ((l - l0) * up(l1)) / up(l0);
+  return hslToHex(h + (h1 - h0), Math.min(1, (s * s1) / s0), Math.min(0.98, lt));
+}
+
+/** His black line (as the tools/refs scripts sort his colours): it keeps its colour in every skin. */
+export function isLine(hex: string): boolean {
+  const [r, g, b] = hexToRgb(hex);
+  return r < 30 && g < 30 && b < 40;
 }

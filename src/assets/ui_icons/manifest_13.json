@@ -1,0 +1,383 @@
+{
+ "kit": "ui_icons_13",
+ "references": [
+  "docs/reference/icons-owner-reference-13.jpg"
+ ],
+ "round": 1,
+ "screen": [
+  1600,
+  900
+ ],
+ "pixel": "one art pixel per screen pixel (as ui_icons, sheet 1): draw at 1x on a 1600x900 screen, @2x on a 2x screen, always with image-rendering: pixelated",
+ "frame": {
+  "from": "ui_icons (sheet 1), read only: skill_slot_steel.png and skill_slot_steel_active.png, 56x56, the icon window 44x44 at 6,6; see ui_icons/manifest.json for its slices",
+  "window": {
+   "x": 6,
+   "y": 6,
+   "w": 44,
+   "h": 44
+  }
+ },
+ "method": "his sheets are pixel art (480x268 scaled 4.1667x and saved as JPEG); his pixels are taken back first (tools/refs/icons-from-ref-23.py). 88: his own pixels one to one (his 90x90 or 93x91 window with the columns and rows that show least dropped), on a palette sampled from his pixels, 1-2 pixel areas merged only where his own pixels do not stand out. 44: area mean of his pixels, except his thin lines and strongest specks, which keep their own colour one pixel wide; a light bilateral filter, nearest palette entry, 1-2 pixel areas merged; then hand-fixes only where that still loses his picture (see tools/ui/ui-icons-23.ts). Sheets 8 to 11 use no bilateral filter (it lightened his dark figures into his ground), and their palettes give his rare colours a slot each: after the k-means, every colour of the 44's and the 88's pictures still far from the palette in hue (his skin, his violet chains, a dragon's teeth, his greys and whites) is grouped and the group missed most gets its own entry, his nearest real colour, up to 20 (paletteCovered); his thin marks of one colour (skin, violet chains, embers, teeth, mouth cores, foam) are kept by colour rules. Sheets 13 to 22 (tools/refs/icons-from-ref-13.py) are made as sheets 9 and 10. Some are 240x134 pictures (sheets 15, 16, 17, 19): their windows are 47 to 63 of his pixels, so at 88 every one of his pixels is kept and some are shown twice (twice88), and their 44 is his pixels one to one too, the columns and rows that show least dropped (dropped44); sheet 18 (78 to 79 of his pixels) is grown to 88 the same way and reduced to 44 as the others. Sheets 20 to 22 (100 to 101 by 103 to 104) are reduced at 88 as sheets 8 and 11",
+ "checks": "small = 8-connected areas of one colour of 1 or 2 pixels: smallHis are his own marks (at 88 his pixel stands out there; at 44 his kept specks), smallDrawn hold a hand-fixed detail, smallOther are left over from the reduction; lowFreq = mean OKLab difference x100 to his box reduction after both are blurred (sigma size/30), lowFreqBoxOnPalette = the same for his box reduction put on our palette; ssim = structural similarity of the lightness (Gaussian window sigma 1.5) to his picture box-reduced to 88, ours (the 44 shown 2x) against ssimBox, his own box reduction to 44 shown 2x; hue = OKLab median hue in degrees (hueHis: his box reduction); thinRun = the longest straight run of one colour one pixel thick [length, row or col, index]",
+ "icons": {
+  "earth_pebble_shot": {
+   "name": "Pebble Shot",
+   "sheet": "docs/reference/icons-owner-reference-13.jpg",
+   "file": "earth_pebble_shot.png",
+   "file2x": "earth_pebble_shot@2x.png",
+   "size": [
+    44,
+    44
+   ],
+   "size2x": [
+    88,
+    88
+   ],
+   "label": "GUIJARROS",
+   "hisWindow": [
+    98,
+    96
+   ],
+   "dropped88": {
+    "columns": [
+     2,
+     15,
+     21,
+     36,
+     44,
+     52,
+     80,
+     86,
+     91,
+     96
+    ],
+    "rows": [
+     3,
+     9,
+     15,
+     30,
+     61,
+     80,
+     86,
+     92
+    ]
+   },
+   "palette": [
+    "#100000",
+    "#170a07",
+    "#231715",
+    "#321c0e",
+    "#3e2416",
+    "#432e20",
+    "#4e3427",
+    "#5a3a25",
+    "#504744",
+    "#624633",
+    "#724d30",
+    "#7f5634",
+    "#895e39",
+    "#916b47",
+    "#877669",
+    "#9e7648",
+    "#ab7f46",
+    "#ae895e",
+    "#b8956e",
+    "#b19e8c",
+    "#c1a074",
+    "#ccac83",
+    "#d8b788",
+    "#e8c490",
+    "#f2d2a1"
+   ],
+   "paletteDetailOnly": [],
+   "paletteCovered": [
+    "#877669",
+    "#504744",
+    "#b19e8c"
+   ],
+   "sampled": [],
+   "checks": {
+    "44": {
+     "small": 1,
+     "smallHis": 1,
+     "smallDrawn": 0,
+     "smallOther": 0,
+     "lowFreq": 0.81,
+     "lowFreqBoxOnPalette": 0.56,
+     "ssim": 0.736,
+     "ssimBox": 0.815,
+     "hue": 64,
+     "hueHis": 64,
+     "colours": 20,
+     "thinRun": [
+      5,
+      "col",
+      41
+     ]
+    },
+    "88": {
+     "small": 709,
+     "smallHis": 709,
+     "smallDrawn": 0,
+     "smallOther": 0,
+     "lowFreq": 1.18,
+     "lowFreqBoxOnPalette": 0.52,
+     "ssim": 0.601,
+     "ssimBox": 1,
+     "hue": 64,
+     "hueHis": 64,
+     "colours": 25,
+     "thinRun": [
+      6,
+      "row",
+      5
+     ]
+    }
+   },
+   "use": "Hotbar skill icon: fills the 44x44 window of skill_slot_steel (ui_icons), at 6,6."
+  },
+  "earth_spike_crown": {
+   "name": "Spike Crown",
+   "sheet": "docs/reference/icons-owner-reference-13.jpg",
+   "file": "earth_spike_crown.png",
+   "file2x": "earth_spike_crown@2x.png",
+   "size": [
+    44,
+    44
+   ],
+   "size2x": [
+    88,
+    88
+   ],
+   "label": "CORONA",
+   "hisWindow": [
+    98,
+    96
+   ],
+   "dropped88": {
+    "columns": [
+     0,
+     5,
+     11,
+     18,
+     29,
+     49,
+     56,
+     64,
+     91,
+     96
+    ],
+    "rows": [
+     3,
+     9,
+     15,
+     22,
+     28,
+     52,
+     87,
+     93
+    ]
+   },
+   "palette": [
+    "#0e0200",
+    "#180c0e",
+    "#261414",
+    "#30201d",
+    "#2c202d",
+    "#3f1c06",
+    "#3a2825",
+    "#44322c",
+    "#4f3c32",
+    "#5d4230",
+    "#624c3c",
+    "#605254",
+    "#765136",
+    "#815e44",
+    "#956237",
+    "#887460",
+    "#b27842",
+    "#968473",
+    "#b08d5d",
+    "#a8937c",
+    "#d08e4c",
+    "#b6a28f",
+    "#d2ac86",
+    "#ccba8b",
+    "#f0b660",
+    "#ecbb7c",
+    "#d8cabc",
+    "#efd296",
+    "#fce1a0"
+   ],
+   "paletteDetailOnly": [],
+   "paletteCovered": [
+    "#3f1c06",
+    "#b08d5d",
+    "#d8cabc",
+    "#f0b660",
+    "#605254",
+    "#2c202d",
+    "#ccba8b"
+   ],
+   "sampled": [],
+   "checks": {
+    "44": {
+     "small": 0,
+     "smallHis": 0,
+     "smallDrawn": 0,
+     "smallOther": 0,
+     "lowFreq": 1.09,
+     "lowFreqBoxOnPalette": 0.75,
+     "ssim": 0.721,
+     "ssimBox": 0.8,
+     "hue": 55,
+     "hueHis": 56,
+     "colours": 22,
+     "thinRun": [
+      6,
+      "col",
+      32
+     ]
+    },
+    "88": {
+     "small": 1027,
+     "smallHis": 1027,
+     "smallDrawn": 0,
+     "smallOther": 0,
+     "lowFreq": 1.7,
+     "lowFreqBoxOnPalette": 0.7,
+     "ssim": 0.535,
+     "ssimBox": 1,
+     "hue": 55,
+     "hueHis": 56,
+     "colours": 29,
+     "thinRun": [
+      14,
+      "col",
+      67
+     ]
+    }
+   },
+   "use": "Hotbar skill icon: fills the 44x44 window of skill_slot_steel (ui_icons), at 6,6."
+  },
+  "earth_rubble_gust": {
+   "name": "Rubble Gust",
+   "sheet": "docs/reference/icons-owner-reference-13.jpg",
+   "file": "earth_rubble_gust.png",
+   "file2x": "earth_rubble_gust@2x.png",
+   "size": [
+    44,
+    44
+   ],
+   "size2x": [
+    88,
+    88
+   ],
+   "label": "POLVAREDA",
+   "hisWindow": [
+    98,
+    96
+   ],
+   "dropped88": {
+    "columns": [
+     4,
+     9,
+     14,
+     25,
+     42,
+     60,
+     74,
+     81,
+     90,
+     95
+    ],
+    "rows": [
+     2,
+     11,
+     17,
+     29,
+     38,
+     73,
+     86,
+     92
+    ]
+   },
+   "palette": [
+    "#0d0300",
+    "#170d0c",
+    "#221819",
+    "#2c201e",
+    "#342a28",
+    "#3d3332",
+    "#443c3a",
+    "#4a4440",
+    "#564c47",
+    "#67502e",
+    "#5e564f",
+    "#685e55",
+    "#75695d",
+    "#7f7262",
+    "#897c6b",
+    "#9a7f54",
+    "#968770",
+    "#989291",
+    "#a2957e",
+    "#bc8e50",
+    "#ad9d83",
+    "#cca35e",
+    "#deb36c",
+    "#e7bc6e",
+    "#dfc294",
+    "#f4cc7e"
+   ],
+   "paletteDetailOnly": [],
+   "paletteCovered": [
+    "#67502e",
+    "#9a7f54",
+    "#dfc294",
+    "#989291"
+   ],
+   "sampled": [],
+   "checks": {
+    "44": {
+     "small": 0,
+     "smallHis": 0,
+     "smallDrawn": 0,
+     "smallOther": 0,
+     "lowFreq": 0.71,
+     "lowFreqBoxOnPalette": 0.37,
+     "ssim": 0.759,
+     "ssimBox": 0.829,
+     "hue": 75,
+     "hueHis": 78,
+     "colours": 21,
+     "thinRun": [
+      5,
+      "col",
+      35
+     ]
+    },
+    "88": {
+     "small": 598,
+     "smallHis": 598,
+     "smallDrawn": 0,
+     "smallOther": 0,
+     "lowFreq": 1.11,
+     "lowFreqBoxOnPalette": 0.35,
+     "ssim": 0.635,
+     "ssimBox": 1,
+     "hue": 78,
+     "hueHis": 78,
+     "colours": 26,
+     "thinRun": [
+      6,
+      "row",
+      1
+     ]
+    }
+   },
+   "use": "Hotbar skill icon: fills the 44x44 window of skill_slot_steel (ui_icons), at 6,6."
+  }
+ }
+}

@@ -5,7 +5,7 @@ import { TINT_CHOICES } from './chakraInfo';
 import { OFFERED_TYPES } from './chakraNature';
 import type { ItemDef } from './ctx';
 import { CLOTH_PALETTE, EYE_COLORS, HAIR_COLORS, SKIN_TONES } from './palettes';
-import { CAST_STYLES, type BodyType, type EyeShape, type FaceShape, type HeadbandPosition, type ItemChoice, type NeckType, type SlotId, type SpriteAppearance } from './types';
+import { CAST_STYLES, type BodyType, type EyeShape, type FaceShape, type HeadbandPosition, type ItemChoice, type SlotId, type SpriteAppearance } from './types';
 
 const pick = <T,>(list: T[]): T => list[Math.floor(Math.random() * list.length)];
 const chance = (p: number) => Math.random() < p;
@@ -28,7 +28,7 @@ function slotItem(slot: SlotId, body: BodyType): ItemChoice | undefined {
 }
 
 export function randomAppearance(): SpriteAppearance {
-  const body = pick<BodyType>(['male', 'female', 'bulky', 'slender']);
+  const body = pick<BodyType>(['male', 'female', 'bulky']);
   const slots: SpriteAppearance['slots'] = {};
   const put = (slot: SlotId, p: number) => {
     if (!chance(p)) return;
@@ -55,9 +55,8 @@ export function randomAppearance(): SpriteAppearance {
     version: 1,
     body,
     skin: pick(SKIN_TONES.slice(0, 9)),
-    eyeShape: pick<EyeShape>(['standard', 'sharp', 'round', 'calm', 'fierce', 'bright', 'piercing', 'valiant', 'glint']),
-    faceShape: pick<FaceShape>(['tapered', 'tapered', 'soft', 'square', 'valiant', 'founder']),
-    neck: pick<NeckType>(['slim', 'slim', 'strong']),
+    eyeShape: pick<EyeShape>(['standard', 'sharp', 'round', 'calm', 'fierce', 'bright', 'piercing', 'valiant', 'glint', 'keen', 'roman']),
+    faceShape: pick<FaceShape>(['tapered', 'tapered', 'soft', 'square', 'valiant', 'founder', 'fine', 'roman']),
     cast: { style: pick(CAST_STYLES) },
     eyeColor: pick(EYE_COLORS),
     slots,

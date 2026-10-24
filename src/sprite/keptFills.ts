@@ -12,7 +12,7 @@ import type { SpritePose } from './types';
 export type KeptFill = [who: string, pose: SpritePose, frame: number, x: number, y: number];
 
 export const KEPT_FILLS: KeptFill[] = [
-  // his Trunks 2 and 3: every fill but the eleven he marked on sheets 1 and 3 (Embestida 1, 2, 4, Herido 1, Victoria 2, Caminar 1; Trunks 3 Embestida 2, Carga 1, Correr 2); sheets 2 and 4 and the other bodies not marked yet
+  // his Trunks 2 and 3: every fill but the eleven he marked on sheets 1 and 3 (Embestida 1, 2, 4, Herido 1, Victoria 2, Caminar 1; Trunks 3 Embestida 2, Carga 1, Correr 2); sheets 2 and 4 and the other bodies not marked yet; his read's fills went with the old read (the new read is his Trunks frame 2: rig.ts READ_MALE)
   ['trunks2@bulky', 'hurt', 1, 138, 170],
   ['trunks2@bulky', 'lean', 0, 97, 191],
   ['trunks2@bulky', 'lean', 1, 97, 191],
@@ -42,18 +42,6 @@ export const KEPT_FILLS: KeptFill[] = [
   ['trunks2@female', 'walk', 7, 118, 194],
   ['trunks2@male', 'lean', 2, 99, 191],
   ['trunks2@male', 'lean', 3, 99, 191],
-  ['trunks2@male', 'read', 0, 122, 180],
-  ['trunks2@male', 'read', 1, 122, 180],
-  ['trunks2@male', 'read', 2, 122, 180],
-  ['trunks2@male', 'read', 3, 122, 180],
-  ['trunks2@male', 'read', 4, 122, 180],
-  ['trunks2@male', 'read', 5, 122, 180],
-  ['trunks2@male', 'read', 6, 122, 180],
-  ['trunks2@male', 'read', 7, 122, 180],
-  ['trunks2@male', 'read', 8, 122, 180],
-  ['trunks2@male', 'read', 9, 122, 180],
-  ['trunks2@male', 'read', 10, 122, 180],
-  ['trunks2@male', 'read', 11, 122, 180],
   ['trunks2@male', 'walk', 1, 116, 200],
   ['trunks3@bulky', 'charge', 0, 110, 174],
   ['trunks3@bulky', 'charge', 1, 111, 174],

@@ -11,6 +11,7 @@
 import { pathToFileURL } from 'node:url';
 import { Canvas, WorldSprite, hex, writeGroup } from './kit';
 import * as REF from './vfx-beasts-ref-fire2';
+import { outlineSprite, solidOutlineOn } from './solid-outline';
 
 interface RefSheet {
   SIZE: [number, number];
@@ -69,7 +70,7 @@ function sharedFrame(anims: [string, Canvas[], number, boolean][], ax: number, a
 }
 
 /** The owner's fire-set phoenix: fly (8 frames), dive (5, loop) and attack (6, once), all at 10 fps. */
-export function buildPhoenix(): WorldSprite {
+export function buildPhoenix({ outline = solidOutlineOn() }: { outline?: boolean } = {}): WorldSprite {
   const f = refFrames(REF);
   const { anchor, anims } = sharedFrame(
     [
@@ -79,7 +80,9 @@ export function buildPhoenix(): WorldSprite {
     ],
     ...REF.ANCHOR,
   );
-  return { name: 'fire', label: 'Phoenix (fire)', meters: [2.0, 1.7], anchor, tags: ['vfx'], anims };
+  const s: WorldSprite = { name: 'fire', label: 'Phoenix (fire)', meters: [2.0, 1.7], anchor, tags: ['vfx'], anims };
+  // The characters' black line round its body (the owner's decision of 2026-10-22); his loose embers are too small for one.
+  return outline ? outlineSprite(s) : s;
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

@@ -20,11 +20,15 @@ export const segAngle = (a: Vec, b: Vec): number => (Math.atan2(b.y - a.y, b.x -
  * Stamps a painted piece with its pivot on `at`, its limb now pointing along `deg`: at his angle
  * every pixel is his. `color` recolours a character's colour (for the item's colour slots). With
  * `line` (which of his colours are his black line), turned it keeps his line whole (rotateLined).
+ * `closed`: turned from his angle, a pixel of the piece left on its layer's edge becomes the line (the
+ * female standard: no piece is ever left cut open where turning it lost a pixel of his line); at his
+ * angle every pixel stays his.
  */
-export function stampPiece(g: DrawCtx, depth: Depth, piece: PaintedPiece, at: Vec, deg: number, part: PartId, color?: (ch: string, hex: string) => string, line?: (hex: string) => boolean): void {
+export function stampPiece(g: DrawCtx, depth: Depth, piece: PaintedPiece, at: Vec, deg: number, part: PartId, color?: (ch: string, hex: string) => string, line?: (hex: string) => boolean, closed = false): void {
   const pal: TemplatePalette = {};
-  for (const [ch, hex] of Object.entries(piece.colors)) pal[ch] = [g.m(color ? color(ch, hex) : hex, 'flat'), 3];
-  stampTemplate(g.L(depth), piece, at, deg - piece.angle, pal, part, { flags: F_NO_TEXTURE | F_NO_OUTLINE, line: line && ((ch) => line(piece.colors[ch])) });
+  for (const [ch, hex] of Object.entries(piece.colors)) pal[ch] = [g.m(color ? color(ch, hex) : hex, closed ? 'painted' : 'flat'), 3];
+  const turned = Math.round(deg - piece.angle) % 360 !== 0;
+  stampTemplate(g.L(depth), piece, at, deg - piece.angle, pal, part, { flags: closed && turned ? F_NO_TEXTURE : F_NO_TEXTURE | F_NO_OUTLINE, line: line && ((ch) => line(piece.colors[ch])) });
 }
 
 const LIMB_ONLY = new WeakMap<PaintedPiece, PaintedPiece>();
@@ -363,4 +367,40 @@ export function stampJoined(
     const [ch, hex] = j.of.get(p.ch)!;
     L.set(ax + p.dx, ay + p.dy, g.m(color ? color(ch, hex) : hex, 'flat'), 3, parts[j.upper.has(p.ch) ? 0 : 1], F_NO_TEXTURE | F_NO_OUTLINE);
   }
+}
+
+const stretched = new Map<PaintedPiece, Map<string, PaintedPiece>>();
+
+/**
+ * His piece for a longer bone (a seated thigh, rig.ts kneeLeg): the bone `extra` fine pixels longer than
+ * the `bone` he painted it for, by repeating whole rows of his between the pivot and the bone's end, spread
+ * evenly; each row after a repeat moves across as far as the bone runs across over a row (the piece's
+ * angle), so a slanted limb keeps its slant. The rows past the bone's end move on whole. Every pixel is his.
+ */
+export function stretchPiece(p: PaintedPiece, extra: number, bone: number): PaintedPiece {
+  const a = (p.angle * Math.PI) / 180;
+  const R = Math.round(bone * Math.sin(a));
+  const E = Math.round(extra * Math.sin(a));
+  if (E <= 0 || R <= 0) return p;
+  let byKey = stretched.get(p);
+  if (!byKey) stretched.set(p, (byKey = new Map()));
+  const key = `${R},${E}`;
+  const hit = byKey.get(key);
+  if (hit) return hit;
+  const [px, py] = p.pivot;
+  const cot = Math.cos(a) / Math.sin(a);
+  const W = Math.max(...p.rows.map((r) => r.length));
+  const src: { row: number; sh: number }[] = [];
+  for (let j = 0; j < p.rows.length + E; j++) {
+    const r = j - py;
+    const from = r <= 0 ? r : r <= R + E ? Math.ceil((r * R) / (R + E)) : r - E;
+    src.push({ row: from + py, sh: Math.round((r - from) * cot) });
+  }
+  const lo = Math.min(0, ...src.map((s) => s.sh));
+  const hi = Math.max(0, ...src.map((s) => s.sh));
+  // (a pivot above the piece: the rows between it and the piece are empty, and repeat as such)
+  const rows = src.map(({ row, sh }) => '.'.repeat(sh - lo) + (p.rows[row] ?? '').padEnd(W, '.') + '.'.repeat(hi - sh));
+  const out: PaintedPiece = { ...p, rows, pivot: [px - lo, py] };
+  byKey.set(key, out);
+  return out;
 }

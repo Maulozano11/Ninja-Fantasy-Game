@@ -28,6 +28,8 @@ import { PARTS } from './raster';
 const look = (items: Partial<Record<SlotId, string>>, body: BodyType = 'male'): SpriteAppearance => {
   const l = defaultAppearance();
   l.body = body;
+  // (on the head he painted them over: our template head, before his Roman head became the default male's)
+  Object.assign(l, { faceShape: 'tapered', eyeShape: 'standard', eyeColor: '#3b82f6', headband: { ...l.headband, position: 'forehead' } });
   l.slots = {};
   for (const [slot, id] of Object.entries(items)) l.slots[slot as SlotId] = { id: id!, colors: getItem(id!)!.colors.map((c) => c.default) };
   return l;
@@ -98,7 +100,7 @@ describe("the owner's Trunks clothes", () => {
   it('draw every pose on the male, bulky and slender bodies', () => {
     const all = look({ cape: 'cape_traveler', top: 'top_highcollar', bottom: 'bottom_cargo', feet: 'feet_leather', waist: 'waist_belt', hands: 'hands_traveler_gloves', hair: 'hair_drifter' });
     const jacket = look({ top: 'top_bomber', bottom: 'bottom_leggings', feet: 'feet_cowboy', hair: 'hair_surge' });
-    for (const body of ['male', 'bulky', 'slender'] as BodyType[]) {
+    for (const body of ['male', 'bulky'] as BodyType[]) {
       for (const l of [all, jacket]) {
         l.body = body;
         for (const pose of POSES) {
@@ -202,7 +204,7 @@ describe("the owner's Trunks clothes", () => {
   it("never lets the traveler's cape hang lower than at rest", () => {
     const hem = cape.TRAVELER_REST.TRAVELER_BACK[1] + cape.TRAVELER_BACK.rows.length - 1;
     assert.ok(hem < GROUND * RES);
-    for (const body of ['male', 'bulky', 'slender'] as BodyType[]) {
+    for (const body of ['male', 'bulky'] as BodyType[]) {
       for (const pose of POSES) {
         if (pose === 'downed') continue;
         const on = renderSprite(look({ cape: 'cape_traveler' }, body), pose, 0);
@@ -261,7 +263,7 @@ describe("the owner's Trunks clothes", () => {
   it('keep the drawn shirt, jacket, trousers and belt on the female bodies', () => {
     // His base colours are the drawn garments' defaults now, so the drawn ones show them too.
     const BASES = new Set([shirt.SHIRT_BLUE, shirt.SHIRT_TRIM, bomber.BOMBER_BLUE, bomber.BOMBER_SHIRT, cargo.CARGO_GREEN, leggings.LEGGINGS_PURPLE, leggings.LEGGINGS_CREST, belt.BELT_LEATHER, belt.BELT_BUCKLE]);
-    for (const body of ['female', 'slender'] as BodyType[]) {
+    for (const body of ['female'] as BodyType[]) {
       for (const [items, mod] of [
         [{ top: 'top_highcollar' }, shirt.SHIRT_BODY],
         [{ top: 'top_bomber' }, bomber.BOMBER_BODY],

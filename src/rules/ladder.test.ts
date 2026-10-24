@@ -94,8 +94,9 @@ describe('the ladder: rank A at level 7, rank S at level 10, for every ninja ("a
     const adept = (level: number, slot: JutsuSlot) => ids(slotChoices(ninja(level, { shinobiClass: 'Genjutsu Adept' }), slot, 'Fire', 'Ryusei'));
     assert.ok(!adept(6, 'slot3Elemental').includes('temple_of_nirvana'));
     assert.ok(adept(7, 'slot3Elemental').includes('temple_of_nirvana'));
-    assert.deepEqual(adept(10, 'slot5Ultimate').sort(), ['great_fire_annihilation', 'yasaka_magatama']);
-    assert.ok(!ids(slotChoices(ninja(10), 'slot5Ultimate', 'Fire', 'Ryusei')).includes('yasaka_magatama'), 'not a Bukijutsu Master\'s');
+    // No genjutsu of rank S since Yasaka no Magatama left the game (the owner, 2026-10-22): Fire's.
+    assert.deepEqual(adept(10, 'slot5Ultimate').sort(), ['great_fire_annihilation']);
+    assert.ok(!ids(slotChoices(ninja(10), 'slot5Ultimate', 'Fire', 'Ryusei')).includes('night_guy_dragon'), 'not a Bukijutsu Master\'s');
   });
 
   it('every offer at every level is of its nature and class, at a rank its level opens', () => {

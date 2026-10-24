@@ -21,8 +21,7 @@ import { natureOf } from '../../rules/ninja';
 
 /**
  * Water's rank S, the Dragon Tsunami (the owner, 2026-10-22), castable in practice by every water
- * ninja so it can be tried: a ninja learns it only at level 10, and Hana's S-rank slot keeps her
- * Yasaka no Magatama (his open question, docs/STATUS.md).
+ * ninja so it can be tried: a ninja learns it only at level 10 (Hana has it in her S-rank slot).
  */
 const PRACTICE_PREVIEW = 'water_tide_s';
 

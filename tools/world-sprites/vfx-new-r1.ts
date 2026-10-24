@@ -23,6 +23,11 @@
 //                           third (bigger), 'dash' the crackle over his bolt's trailing spark
 //                           (vfx_lightning/bolt), for the run in. Anchor: the middle of the ball.
 //
+// The wood dragon and the root are solid: they carry the characters' black line (solid-outline.ts,
+// the owner's decision of 2026-10-22), outside his own line where it has a gap; their frames keep
+// their size, so none goes under the trunk where it rises out of the ground (the frame's edge). The
+// leaves and the lightning are energy: no line. SOLID_OUTLINE=0 leaves it off.
+//
 //   WORLD_OUT=<staging dir> npx tsx tools/world-sprites/vfx-new-r1.ts
 //
 // It refuses to run without WORLD_OUT, so it never writes into src/assets: copy the staged groups
@@ -35,6 +40,7 @@ import { Canvas, Color, WorldSprite, hash, writeGroup } from './kit';
 import { readPng } from './creatures-assemble';
 import { rotSprite } from './vfx-turn';
 import { WOOD_REF } from './vfx-wood-refdata';
+import { outlineSprite, solidOutlineOn } from './solid-outline';
 
 const ASSETS = join(import.meta.dirname, '../../src/assets/world');
 const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
@@ -279,7 +285,7 @@ function lightningHand(): WorldSprite {
 
 const root = process.env.WORLD_OUT;
 if (!root) throw new Error('vfx-new-r1: set WORLD_OUT to the staging folder (this generator never writes into src/assets)');
-const wood = [woodDragon(), woodRoot(), woodLeaves()];
+const wood = [woodDragon(), woodRoot(), woodLeaves()].map((s) => (solidOutlineOn() && s.name !== 'wood_leaves' ? outlineSprite(s) : s));
 const hand = [lightningHand()];
 writeGroup('vfx_wood', wood, root);
 writeGroup('vfx_hand', hand, root);

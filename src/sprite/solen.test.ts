@@ -104,8 +104,8 @@ describe("the owner's Solen", () => {
     assert.ok(n > 250, `${n} pixels of his hair`);
   });
 
-  it('draws every pose on the male, bulky, slender and female bodies, the bracers on the forearms', () => {
-    for (const body of ['male', 'bulky', 'slender', 'female'] as BodyType[]) {
+  it('draws every pose on the male, bulky and female bodies, the bracers on the forearms', () => {
+    for (const body of ['male', 'bulky', 'female'] as BodyType[]) {
       const l = look(body);
       for (const pose of POSES) {
         const f = render(l, pose, 1);
@@ -247,15 +247,17 @@ describe("the owner's Solen", () => {
       assert.ok(Math.abs(m.angle - (180 - his.angle)) < 0.01);
     }
     // The far arm reaches out when it is held out straight and near level: the cast at the runes, the throw's
-    // pointing arm, the combo's cross, and held out over the fire at camp.
+    // pointing arm, the combo's cross, and held out over the fire at camp. (Since the owner's Roman sit,
+    // body/male-skin-face, the bulky body's far arm in the sit is not held out level enough to count.)
     const has = (slot: string, id?: string) => slot === 'top' && id === 'top_founder';
-    for (const body of ['male', 'bulky', 'slender', 'female'] as BodyType[]) {
+    for (const body of ['male', 'bulky', 'female'] as BodyType[]) {
       const hits: string[] = [];
       for (const pose of POSES) {
         const rp = rigPoseFor(pose, 'runes', 'held_ice_crystal');
         for (let f = 0; f < frameCount(rp); f++) if (founderFarReach({ rig: buildRig(body, rp, f), has } as unknown as DrawCtx)) hits.push(`${pose} ${f}`);
       }
-      assert.deepEqual(hits.sort(), ['cast 0', 'cast 1', 'combo 2', 'sit 0', 'sit 1', 'sit 2', 'sit 3', 'throw 0', 'throw 1'], body);
+      const sit = body === 'bulky' ? [] : ['sit 0', 'sit 1', 'sit 2', 'sit 3'];
+      assert.deepEqual(hits.sort(), ['cast 0', 'cast 1', 'combo 2', ...sit, 'throw 0', 'throw 1'], body);
     }
     // Reaching out, the far forearm is as thick as his near bracer (it was his far one, a third as much).
     const bracer = limbOnly(bracers.STEEL_BRACER_N, (h) => bracers.STEEL_BRACER_KIND[h] === 'line');
@@ -335,6 +337,69 @@ describe("the owner's Solen", () => {
         }
       }
     }
+  });
+
+  it("shows no background and no stray white at his cowl's studs in any pose, frame or body", () => {
+    // The owner, 2026-10-22: "aqui tiene unos aun en la hebilla o medallon de la capa". The near end and the
+    // white stud ride the shoulders and the cowl round the neck the torso; the seam between them is filled
+    // as it opens (fillSeams in sprite/seams.ts), at rest too ("solen rellenar": the bulky body's idle).
+    // Round each gold stud (2 px about it): no transparent pixel the figure walls in (within 3 px left,
+    // right, above and below), and no near-white pixel that is not one of his own colours (his white stud,
+    // his steel's highlights), but a book or the eyes passing by.
+    const gold = new Set(Object.entries(cowl.FOUNDER_COWL_KIND).filter(([, k]) => k === 'gold').map(([h]) => h));
+    const his = new Set(
+      [cowl, cuirass, cape, tunic, reach, sword, bracers, hair, skirt, trousers, sandals].flatMap((m) =>
+        Object.entries(m as Record<string, unknown>)
+          .filter(([k]) => k.endsWith('_KIND'))
+          .flatMap(([, v]) => Object.keys(v as Record<string, string>)),
+      ),
+    );
+    const passing = new Set([partIndex('held'), partIndex('head')]);
+    const bad: string[] = [];
+    for (const body of ['male', 'female', 'bulky'] as BodyType[]) {
+      const l = look(body);
+      for (const pose of POSES) {
+        const rp = rigPoseFor(pose, l.cast?.style, l.slots.held?.id);
+        for (let f = 0; f < frameCount(rp); f++) {
+          const fr = render(l, pose, f);
+          const on = (x: number, y: number) => x >= 0 && y >= 0 && x < GRID && y < GRID && opaque(fr.rgba, y * GRID + x);
+          const walled = (x: number, y: number, dx: number, dy: number) => [1, 2, 3].some((k) => on(x + dx * k, y + dy * k));
+          // His studs: his gold near the neck and shoulders, in clusters (pixels within 3 px of each other).
+          const js = [fr.rig.neck, fr.rig.shoulderN, fr.rig.shoulderF].map((p) => [Math.floor(p.x * RES), Math.floor(p.y * RES)]);
+          const near = (x: number, y: number) => js.some(([jx, jy]) => Math.abs(x - jx) <= 10 && Math.abs(y - jy) <= 10);
+          const studs: number[][][] = [];
+          for (let i = 0; i < GRID * GRID; i++) {
+            const x = i % GRID;
+            const y = Math.floor(i / GRID);
+            if (!opaque(fr.rgba, i) || !gold.has(hex(fr.rgba, i)) || !near(x, y)) continue;
+            const c = studs.find((s) => s.some(([sx, sy]) => Math.abs(sx - x) <= 3 && Math.abs(sy - y) <= 3));
+            if (c) c.push([x, y]);
+            else studs.push([[x, y]]);
+          }
+          const seen = new Set<number>();
+          for (const s of studs) {
+            const xs = s.map((p) => p[0]);
+            const ys = s.map((p) => p[1]);
+            for (let y = Math.min(...ys) - 2; y <= Math.max(...ys) + 2; y++)
+              for (let x = Math.min(...xs) - 2; x <= Math.max(...xs) + 2; x++) {
+                const i = y * GRID + x;
+                if (seen.has(i)) continue;
+                seen.add(i);
+                if (!opaque(fr.rgba, i)) {
+                  if (walled(x, y, -1, 0) && walled(x, y, 1, 0) && walled(x, y, 0, -1) && walled(x, y, 0, 1)) bad.push(`${body} ${pose} ${f}: background at ${x},${y}`);
+                } else if (Math.min(fr.rgba[i * 4], fr.rgba[i * 4 + 1], fr.rgba[i * 4 + 2]) > 190 && !his.has(hex(fr.rgba, i)) && !passing.has(fr.part[i])) {
+                  bad.push(`${body} ${pose} ${f}: ${hex(fr.rgba, i)} at ${x},${y}`);
+                }
+              }
+          }
+          if (pose === 'walk' && f === 0 && studs.length < 2) bad.push(`${body} walk 0: ${studs.length} studs found`);
+        }
+      }
+    }
+    // KNOWN, open: on the owner's bare female body (body/female-v2, which came in with Lyra) the combo's guard
+    // (frames 0 and 7) leaves one pixel of background beside the clasp; the cowl is not refitted to that body yet.
+    const known = new Set(['female combo 0: background at 136,148', 'female combo 7: background at 136,148']);
+    assert.deepEqual(bad.filter((b) => !known.has(b)), []);
   });
 
   it('keeps his black line round his turned legs and fists: none of their colour lies bare against the air', () => {

@@ -3,10 +3,10 @@
 
 import type { PartId } from './raster';
 
-export type BodyType = 'male' | 'female' | 'bulky' | 'slender';
+export type BodyType = 'male' | 'female' | 'bulky';
 
 /** Bodies drawn with the female face, lashes, lips and slimmer feet. */
-export const isFemaleBody = (b: BodyType | string): boolean => b === 'female' || b === 'slender';
+export const isFemaleBody = (b: BodyType | string): boolean => b === 'female';
 
 export type SpritePose = 'idle' | 'handsigns' | 'attack' | 'cast' | 'hurt' | 'victory' | 'charge' | StrikePose | MovePose | CampPose;
 
@@ -53,17 +53,27 @@ export interface CastChoice {
   jutsu?: Record<string, CastStyle>;
 }
 
-/** The eye options; valiant is the owner's own eyes from his Aiden picture, in his pixels. */
-export type EyeShape = 'standard' | 'sharp' | 'round' | 'calm' | 'fierce' | 'bright' | 'piercing' | 'valiant' | 'glint';
+/** The eye options; valiant and roman are the owner's own eyes from his Aiden and Roman pictures, in his pixels; keen is his Lyra's, in her colours at our scale. */
+export type EyeShape = 'standard' | 'sharp' | 'round' | 'calm' | 'fierce' | 'bright' | 'piercing' | 'valiant' | 'glint' | 'keen' | 'roman';
 
-/** Back of the neck behind the jaw: slender (default) or thick. */
-export type NeckType = 'slim' | 'strong';
+/**
+ * The owner's heroines' long neck (neck.ts): his Lyra carries the head further forward on a slimmer neck.
+ * Not a creator option: the owner removed the neck picker (2026-10-22, "quitar el cuello del creador y
+ * dejar a todos con el cuello de hoy"), so every look keeps the neck it has today, and only Lyra's
+ * preset has this one. The old 'slim' and 'strong' choices are dropped on load (migrateAppearance).
+ */
+export type NeckType = 'long';
+
+/** Arm length: the body's own (default), or long: his Lyra's longer forearms, her free hand hanging open (rig.ts LONG_ARMS). */
+export type ArmType = 'standard' | 'long';
 
 /**
  * Near-side cheek and jaw: V-line (default), fuller, or a strong flat jaw; or the owner's own head
- * from his Aiden picture (valiant: his skull, ear, cheeks, jaw and chin in his pixels).
+ * from his Aiden picture (valiant: his skull, ear, cheeks, jaw and chin in his pixels); or his Lyra's
+ * face (fine: her narrower face, mouth and chin in his pixels, under our skull).
+ * Or roman, from his Roman paint-over (his whole face with his nose and mouth, in his pixels).
  */
-export type FaceShape = 'tapered' | 'soft' | 'square' | 'valiant' | 'founder';
+export type FaceShape = 'tapered' | 'soft' | 'square' | 'valiant' | 'founder' | 'fine' | 'roman';
 
 /** Single-choice equipment slots, drawn back-to-front by depth (see compose.ts). */
 export type SlotId =
@@ -147,8 +157,10 @@ export interface SpriteAppearance {
   skin: string;
   eyeShape: EyeShape;
   eyeColor: string;
-  /** Missing on older saves; treated as 'slim'. */
+  /** Only Lyra's preset has one (her long neck, NeckType); missing on every other look. */
   neck?: NeckType;
+  /** Missing on older saves; treated as 'standard'. */
+  arms?: ArmType;
   /** Missing on older saves; treated as 'tapered'. */
   faceShape?: FaceShape;
   /** How jutsus are cast. Missing on older saves; treated as 'runes'. */

@@ -76,7 +76,7 @@ export const SHADE_PLEATS: ItemDef = {
   name: 'Shade Pleated Skirt',
   desc: 'A short navy skirt in pleats striped in red, with a red hem. Women only.',
   colors: [col('cloth', 'Cloth', SHADE_BASE.cloth), col('stripe', 'Stripe', SHADE_BASE.stripe)],
-  bodies: ['female', 'slender'],
+  bodies: ['female'],
   draw: (g, [cloth, stripe]) => {
     // The owner's Saya (2026-10-21), his pixels: it hangs from the pelvis and turns with the torso, as
     // our skirts do. Her navy follows Cloth, her reds Stripe; her black line stays.
@@ -96,7 +96,7 @@ export const SHADE_BELTS_ITEM: ItemDef = {
     col('scabbard', 'Scabbard', SHADE_BASE.scabbard, 'leather'),
     col('gold', 'Gold', SHADE_BASE.gold, 'metal'),
   ],
-  bodies: ['female', 'slender'],
+  bodies: ['female'],
   draw: (g, [leather, steel, scabbard, gold]) => {
     // The owner's Saya (2026-10-21), his pixels for the belts and the pouch, riding the pelvis; her
     // scabbard from her big picture, behind the near leg (in front of the far one). Her browns follow

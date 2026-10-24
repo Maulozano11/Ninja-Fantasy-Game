@@ -101,3 +101,25 @@ export function keptFill(who: string, pose: SpritePose, frame: number, px: numbe
   const at = BY_FRAME.get(`${who} ${pose} ${frame}`);
   return !!at && at.some((i) => px.includes(i));
 }
+
+/**
+ * The pockets he marked to stay open where the 1-pixel pass (holes.ts closePinholes) would close them: his
+ * red marks on sheets made before that pass ran on his character. Found as KEPT_FILLS are.
+ */
+export const LEFT_OPEN: KeptFill[] = [
+  // Saya, sheet 1: Sellos 1 and Sellos 2 ("en trunks saya y cazadora tienes unos huecos que si estaban bien")
+  ['saya@female', 'handsigns', 0, 119, 161],
+  ['saya@female', 'handsigns', 1, 119, 161],
+];
+
+const OPEN = new Map<string, number[]>();
+for (const [who, pose, frame, x, y] of LEFT_OPEN) {
+  const key = `${who} ${pose} ${frame}`;
+  OPEN.set(key, [...(OPEN.get(key) ?? []), y * GRID + x]);
+}
+
+/** Whether the pocket `px` (fine pixel indices) of `who` (name@body) in that pose and frame is one he marked to stay open. */
+export function leftOpen(who: string, pose: SpritePose, frame: number, px: number[]): boolean {
+  const at = OPEN.get(`${who} ${pose} ${frame}`);
+  return !!at && at.some((i) => px.includes(i));
+}

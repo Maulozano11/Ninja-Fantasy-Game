@@ -87,7 +87,7 @@ function drawBlouse(g: DrawCtx, blouse: string, lining: string): void {
   // (the bare top of the near shoulder, above the puff, is his skin: in the character's skin)
   const tint = (ch: string, hex: string) => (LYRA_SKIN.includes(hex) ? hisSkinTone(hex, LYRA_SKIN[0], g.look.skin) : cloth(ch, hex));
   // (turned from his angle, a piece's edge is closed in the line: nothing of her is left cut open)
-  const put = (d: Depth, p: PaintedPiece, at: Vec, deg: number, part: PartId) => stampPiece(g, d, p, at, deg, part, tint, true);
+  const put = (d: Depth, p: PaintedPiece, at: Vec, deg: number, part: PartId) => stampPiece(g, d, p, at, deg, part, tint, undefined, true);
   put('farArm.cloth', BLOUSE_FOREARM_F, r.wristF, segAngle(r.elbowF, r.wristF), 'forearmF');
   takeOff(g, 'farArm.body', BLOUSE_FOREARM_F_CUT, r.wristF, segAngle(r.elbowF, r.wristF), CUT_SPREAD);
   put('farArm.cloth', BLOUSE_SLEEVE_F, r.shoulderF, segAngle(r.shoulderF, r.elbowF), 'upperArmF');
@@ -167,7 +167,7 @@ function drawCorset(g: DrawCtx, leather: string, gold: string, steel: string): v
     [LYRA_GOLD, GOLD, gold],
     [LYRA_STEEL, STEEL, steel],
   ]);
-  const put = (d: Depth, p: PaintedPiece, at: Vec, deg: number, part: PartId) => stampPiece(g, d, p, at, deg, part, tint, true);
+  const put = (d: Depth, p: PaintedPiece, at: Vec, deg: number, part: PartId) => stampPiece(g, d, p, at, deg, part, tint, undefined, true);
   const torso = segAngle(r.pelvis, r.neck);
   put('farArm.armor', CORSET_BRACER_F, r.wristF, segAngle(r.elbowF, r.wristF), 'forearmF');
   put('torso.armor', CORSET, r.neck, torso, 'torso');
@@ -182,7 +182,7 @@ export const LYRA_BLOUSE_ITEM: ItemDef = {
   name: 'Off-Shoulder Blouse',
   desc: "Lyra's cream blouse worn off the shoulders: puffed sleeves, a red scarf band round the near shoulder and across the chest, a red V at the neckline edged in gold, long fitted sleeves to a cuff. Women only.",
   colors: [col('blouse', 'Blouse', BLOUSE), col('lining', 'Lining', LINING)],
-  bodies: ['female', 'slender'],
+  bodies: ['female'],
   draw: (g, [blouse, lining]) => drawBlouse(g, blouse, lining),
 };
 
@@ -194,6 +194,6 @@ export const LYRA_CORSET_ITEM: ItemDef = {
   desc: "Lyra's brown leather corset with gold filigree and two steel buckles, one gold pauldron on the far shoulder held by a strap across the chest, and leather bracers with gold studs (+4 AC). Women only.",
   colors: [col('leather', 'Leather', LEATHER, 'leather'), col('gold', 'Gold', GOLD, 'metal'), col('steel', 'Steel', STEEL, 'metal')],
   statsArmor: 'Samurai O-Yoroi',
-  bodies: ['female', 'slender'],
+  bodies: ['female'],
   draw: (g, [leather, gold, steel]) => drawCorset(g, leather, gold, steel),
 };

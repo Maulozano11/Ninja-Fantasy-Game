@@ -49,7 +49,7 @@ describe("Lyra's eyes (keen)", () => {
   });
 
   it('draws her pixels exactly, eyes and brows, in her eye and hair colours, on every body', () => {
-    for (const body of ['female', 'male', 'bulky', 'slender'] as BodyType[]) {
+    for (const body of ['female', 'male', 'bulky'] as BodyType[]) {
       for (const [pose, state] of [['idle', 'open'], ['read', 'lowered']] as [SpritePose, 'open' | 'lowered'][]) {
         const f = renderSprite(look(body), pose, 0);
         const k = f.rig.bp.headScale;

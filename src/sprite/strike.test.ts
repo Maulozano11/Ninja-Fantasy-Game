@@ -6,10 +6,10 @@ import { renderSprite } from './compose';
 import { throwRelease } from './grip';
 import { defaultAppearance } from './legacy';
 import { GRID, partIndex, RES } from './raster';
-import { BODY_PARAMS, drawRig, frameCount, POSE_FPS, rigPoseFor, THROW_RELEASE_FRAME } from './rig';
+import { BODY_PARAMS, COMBO_KICKS, COMBO_TURNED, drawRig, frameCount, POSE_FPS, rigPoseFor, THROW_RELEASE_FRAME } from './rig';
 import { SPRITE_POSES, type BodyType, type SpriteAppearance } from './types';
 
-const BODIES: BodyType[] = ['male', 'female', 'bulky', 'slender'];
+const BODIES: BodyType[] = ['male', 'female', 'bulky'];
 const WEAPONS = ['held_katana', 'held_crystal', 'held_ice_crystal', 'held_flame_sword', 'held_gilded_rapier', 'held_kunai', 'held_naginata'];
 
 const look = (body: BodyType, held?: string, stowed = false, cape?: string): SpriteAppearance => {
@@ -196,6 +196,35 @@ describe('throw and pierce poses', () => {
       assert.ok(b, held);
       assert.ok(b.x1 - b.x0 > 2 * (b.y1 - b.y0), `${held}: level`);
       assert.ok(b.x1 > drawRig('male', 'pierce', 2).handN.x * 2, `${held}: pointing forward`);
+    }
+  });
+});
+
+describe('the unarmed combo (the Leaf Hurricane)', () => {
+  it('is previewed in the creator and plays its 8 frames like the strikes', () => {
+    assert.ok(SPRITE_POSES.includes('combo'));
+    assert.equal(frameCount(rigPoseFor('combo')), 8);
+    assert.ok(POSE_FPS.combo >= 8);
+    assert.deepEqual([...COMBO_TURNED], [3, 4]);
+    assert.deepEqual([...COMBO_KICKS], [4, 6]);
+  });
+
+  it('is struck with the weapon put away', () => {
+    for (const body of BODIES)
+      for (let f = 0; f < frameCount('combo'); f++) assert.equal(heldBox(look(body, 'held_katana'), 'combo' as never, f), null, `${body} ${f}`);
+  });
+
+  it('punches out at the target, then kicks: back into it while turned, then high at it', () => {
+    for (const body of BODIES) {
+      const guard = drawRig(body, 'combo', 0);
+      const jab = drawRig(body, 'combo', 1);
+      assert.ok(jab.handN.x > guard.handN.x + 3, `${body}: the jab reaches out`);
+      const back = drawRig(body, 'combo', 4);
+      // Drawn facing right and shown mirrored: the heel driven back (left in the drawing) is toward the target.
+      assert.ok(back.ankleN.x < back.hipN.x - 8, `${body}: the back kick drives the heel back`);
+      const kick = drawRig(body, 'combo', 6);
+      assert.ok(kick.ankleN.x > kick.hipN.x + 8, `${body}: the finishing kick goes out in front`);
+      assert.ok(kick.ankleN.y < guard.ankleN.y - 8, `${body}: and up off the ground`);
     }
   });
 });

@@ -54,5 +54,7 @@ export function drawSayaSaber(g: DrawCtx, depth: Depth, at: Vec, deg: number, bl
   const tint = tintOf(blade, guard);
   const sword = drawingFor(deg);
   drawPaintedWeapon(g, depth, sword, at, deg, tint);
-  if (sparks) drawPaintedWeapon(g, depth, sparkTemplate(sword, g.rig.frame), at, deg, tint);
+  // The sparkles are an effect over the figure (depth 'top', as Lyra's sword's and Aurelia's staff's), apart
+  // from it as he painted them, so the pass that takes stray specks away (holes.ts) leaves them.
+  if (sparks) drawPaintedWeapon(g, 'top', sparkTemplate(sword, g.rig.frame), at, deg, tint);
 }

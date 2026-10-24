@@ -51,6 +51,11 @@ export interface Conditions {
   prone?: boolean;
   /** Dodge: attacks against it have disadvantage until its next turn. */
   dodging?: boolean;
+  /**
+   * The Breeze Mantle's dodge (it comes with `dodging`): its own mark, so the screen keeps the wind
+   * around this ninja and not around one who simply dodged. Gone at the start of its next turn.
+   */
+  mantle?: boolean;
   /** Disengage: its movement this turn provokes no opportunity attacks. */
   disengaged?: boolean;
   /** Focusing chakra: attacks against it have advantage until its next turn. */
@@ -63,6 +68,11 @@ export interface Conditions {
   crouched?: boolean;
   /** Hidden, with the Stealth total enemies must beat with passive Perception. */
   hidden?: number;
+  /**
+   * Hid with a natural 20: `hidden` is PERFECT_HIDE until the unit's next turn, crouched or not;
+   * then it goes back to this, the roll's real total.
+   */
+  perfectHide?: number;
   /** Paid 2 chakra to walk on deep water this turn. */
   waterWalk?: boolean;
   /** Ninja jump ready: climbing and dropping cost little this turn. */
@@ -186,10 +196,51 @@ export interface Unit {
   creature?: 'beast' | 'summon';
   /** A beast or summon that joined the Northstar's side for the rest of the battle, and the side it left. */
   joined?: { by: string; team: Team };
+  /**
+   * Triple Nature (the feat, rules/feats.ts): the ninja's elements, and whether its once-per-long-rest
+   * discount is spent (it comes spent into a battle when it was used since the last camp).
+   */
+  tripleNature?: { natures: string[]; spent: boolean };
+  /** The nature of the last jutsu it cast this battle ('' for one with none): Triple Nature reads it. */
+  lastNature?: string;
+  /** A jutsu held charged in the hand (the activated Chidori, later the Rasengan): see ChargedHand. */
+  charged?: ChargedHand;
+  /**
+   * Weapon Element Enhancement (the Bukijutsu Master's class ability, battle/imbue.ts): the element on
+   * its weapon and its own turns left, this one counted. Kept out of `cond`, which a fall wipes.
+   */
+  imbued?: { element: 'Fire' | 'Lightning' | 'Wind' | 'Water' | 'Earth'; rounds: number };
   /** Battle bookkeeping for the mission result. */
   stats2: { critsTaken: number; critsLanded: number; pills: number; fell: boolean; fellToCrit: boolean; tension: number; jutsuCast: number };
   /** Skill proficiencies (Stealth, Perception, Medicine...). */
   skills: string[];
+}
+
+/**
+ * A melee jutsu held charged in the near hand (the owner, 2026-10-21: the Chidori becomes an activated
+ * state, "lo mismo para el rasengan"; docs/GAMEPLAY_DESIGN.md). Activated as a bonus action, it waits
+ * up to `rounds` of the ninja's own turns; the moment the ninja moves within reach of a foe it goes
+ * off by itself (battle/charged.ts) and ends. Kept out of `cond`, which a fall wipes.
+ */
+export interface ChargedHand {
+  jutsu: string;
+  enhanced: boolean;
+  /** Its own turns left, this one counted: at the start of a turn it loses one, and at 0 it fades unused. */
+  rounds: number;
+}
+
+/** Why a charged hand ended: its blow went off, it ran out of rounds, its ninja fell, its chakra was sealed, or it was let go (hand seals, the weapon drawn). */
+export type ChargeEnd = 'struck' | 'expired' | 'down' | 'sealed' | 'released';
+
+/**
+ * Ground cracked under a charged ninja's steps (the owner: "terreno dificil 1 turno"): difficult
+ * terrain (each step into it costs double) until the start of that ninja's next turn, so every other
+ * unit gets one turn with it. `round`: when it cracked (it goes after a round in any case, should its
+ * ninja take no more turns).
+ */
+export interface CrackCell {
+  by: string;
+  round: number;
 }
 
 /** The side a unit belongs to, whichever side a Command has it fighting on for now. */
@@ -250,10 +301,34 @@ export interface Wall {
   hp: number;
   /** Rounds left (water barriers fade). */
   rounds?: number;
-  /** The unit that raised it (Kōton structures). */
+  /** The unit that raised it: a Kōton structure, or an earth or water wall (which stands in its chakra colour). */
   owner?: string;
   /** Structures that can be broken show their HP against this. */
   maxHp?: number;
+}
+
+/**
+ * A gale turning on the ground (the Gale Curtain, the owner's answer of 2026-10-21: an area that
+ * fans the fire jutsu that pass through it). It hurts and blocks nothing; it fades after `rounds`
+ * new rounds, like a water barrier.
+ */
+export interface GaleZone {
+  id: string;
+  center: Pt;
+  radius: number;
+  /** The ninja that raised it (it turns in that ninja's chakra colour on the screen). */
+  owner: string;
+  rounds: number;
+}
+
+/**
+ * Steam over wet ground (the owner, 2026-10-21: fire on wet ground makes steam, "como una cortina de
+ * humo que nubla la visión y hace daño por turno"): the rounds it still hangs there, and whose fire
+ * made it (its burns are that ninja's).
+ */
+export interface SteamCell {
+  rounds: number;
+  by: string;
 }
 
 /** A trap on the ground (explosive tag, camp perimeter trap). */
@@ -321,6 +396,20 @@ export interface Hit {
   unblockable?: boolean;
   /** The Mirai let Premonitory Evasion go for this hit (Kawarimi may still be offered). */
   evadeDeclined?: boolean;
+  /** Knocked down on a failed save (a ninja only: big creatures don't fall). */
+  prone?: boolean;
+  /**
+   * Moved on a failed save: `m` meters away from `from` (a wave sweeping it off), or toward it (a
+   * tornado dragging it in, never past `from`). A ninja only; big creatures don't move.
+   */
+  push?: { from: Pt; m: number; toward?: boolean };
+  /** Water that puts out the flames on whoever it reaches (saved or not). */
+  douse?: boolean;
+  /**
+   * The element on the weapon (Weapon Element Enhancement): its own damage, landed right after the
+   * blow's, with the blow (a clone, Kawarimi or Evasion that stops the blow stops it too).
+   */
+  bonus?: { amount: number; type: DamageType };
 }
 
 /** What still has to happen once the queued hits have landed. */
@@ -361,6 +450,18 @@ export interface BattleState {
   units: Record<string, Unit>;
   props: PropState[];
   walls: Wall[];
+  /** Gales turning on the ground (the Gale Curtain); none in a battle saved before they existed. */
+  zones?: GaleZone[];
+  /** Ground cracked by a charged ninja's steps: navigation cell ("c,r") → who cracked it (difficult terrain). */
+  cracks?: Record<string, CrackCell>;
+  /**
+   * Ground a water jutsu soaked (the owner, 2026-10-21: "pone el suelo donde pasa mojado por 2
+   * turnos"): navigation cell ("c,r") → rounds it stays wet. Wet ground puts out flames and carries
+   * lightning; fire on it makes steam. None in a battle saved before it existed.
+   */
+  wet?: Record<string, number>;
+  /** Steam hanging over the cells ("c,r") where fire met wet ground: it blocks sight and burns. */
+  steam?: Record<string, SteamCell>;
   traps: Trap[];
   /** The Ryusei's Weapon Nodes, oldest first. */
   nodes: WeaponNode[];
@@ -378,10 +479,11 @@ export interface BattleState {
 export type Action =
   | { type: 'move'; unit: string; to: Cell; sneak?: boolean }
   | { type: 'attack'; unit: string; target: string; ranged?: boolean; knockout?: boolean }
-  | { type: 'jutsu'; unit: string; jutsu: string; at: Pt; target?: string; enhanced?: boolean; target2?: string }
+  | { type: 'jutsu'; unit: string; jutsu: string; at: Pt; target?: string; enhanced?: boolean; target2?: string; element?: 'Fire' | 'Lightning' | 'Wind' | 'Water' | 'Earth' }
   | { type: 'dash' | 'disengage' | 'dodge' | 'hide' | 'focus' | 'crouch' | 'jump' | 'draw'; unit: string }
   | { type: 'shove'; unit: string; target: string; mode: 'prone' | 'push' }
-  | { type: 'item'; unit: string; item: 'pill' | 'bandage' | 'antidote' | 'tag'; target?: string; at?: Pt }
+  /** `tag` throws an explosive tag at a point; `tagTrap` hides one on the ground there. */
+  | { type: 'item'; unit: string; item: 'pill' | 'bandage' | 'antidote' | 'tag' | 'tagTrap'; target?: string; at?: Pt }
   | { type: 'stabilize'; unit: string; target: string }
   | { type: 'flee'; unit: string }
   | { type: 'endTurn'; unit: string }
@@ -410,10 +512,12 @@ export interface RollInfo {
 
 /** What happened, in order, for the screens to animate and the log to tell. */
 export type BattleEvent =
-  | { t: 'move'; unit: string; path: Pt[]; run: boolean }
-  /** `how`: 'phase' for a Ryusei's Warp Strike and Spatial Swap (the screen plays them as a body of blue light crossing over). */
+  /** `jutsu`: the melee jutsu this run in belongs to (a flash-in, or a charge: JUTSU[jutsu].charge). */
+  | { t: 'move'; unit: string; path: Pt[]; run: boolean; jutsu?: string }
+  /** `how`: 'phase' for a Ryusei's Shooting-Star Thrust and Spatial Swap (the screen plays them as a body of blue light crossing over). */
   | { t: 'teleport'; unit: string; from: Pt; to: Pt; log?: boolean; how?: 'phase' }
-  | { t: 'pushed'; unit: string; from: Pt; to: Pt; fall: number }
+  /** `what`: the jutsu that swept or dragged it (a shove has none). */
+  | { t: 'pushed'; unit: string; from: Pt; to: Pt; fall: number; what?: string }
   | { t: 'weapon'; unit: string; armed: boolean; cost: 'free' | 'bonus' }
   | { t: 'act'; unit: string; act: 'dash' | 'disengage' | 'dodge' | 'focus' | 'crouch' | 'stand' | 'jump' | 'item' | 'stone' }
   /** `reasons`: why the roll had advantage or disadvantage (the preview's keys: 'aura', 'behind'…). */
@@ -424,7 +528,13 @@ export type BattleEvent =
   | { t: 'damage'; unit: string; amount: number; dmgType: DamageType; hp: number; crit?: boolean; source?: string }
   | { t: 'heal'; unit: string; amount: number; hp: number; source?: string }
   | { t: 'chakra'; unit: string; delta: number; chakra: number; reason: string }
-  | { t: 'jutsu'; unit: string; jutsu: string; at: Pt; shape: AreaShape | null; enhanced: boolean }
+  /**
+   * `released`: the blow of a hand charged with it (the activated Chidori) going off by itself as its
+   * ninja comes within reach of a foe (no cast: the charge was paid when it was activated).
+   * `fanned`: a fire jutsu that went through a gale on the ground (the Gale Curtain) and burns
+   * harder: the gale's id, and where the fire meets the wind (for the screen's swirl).
+   */
+  | { t: 'jutsu'; unit: string; jutsu: string; at: Pt; shape: AreaShape | null; enhanced: boolean; fanned?: { zone: string; at: Pt }; released?: boolean }
   | { t: 'down'; unit: string; state: Down }
   | { t: 'condition'; unit: string; cond: keyof Conditions | 'stood'; on: boolean }
   | { t: 'effect'; unit: string; effect: string; on: boolean }
@@ -440,9 +550,26 @@ export type BattleEvent =
   | { t: 'investigate'; guard: string; at: Pt }
   | { t: 'body'; unit: string; hidden: boolean }
   | { t: 'wall'; wall: Wall; on: boolean }
+  /** A hand is charged with a jutsu (the activated Chidori), or the charge ends (`end` says why). */
+  | { t: 'charged'; unit: string; jutsu: string; on: boolean; enhanced?: boolean; end?: ChargeEnd }
+  /** The element goes onto the weapon (Weapon Element Enhancement), or leaves it (`end` says why). */
+  | { t: 'imbue'; unit: string; element: 'Fire' | 'Lightning' | 'Wind' | 'Water' | 'Earth'; on: boolean; end?: 'expired' | 'down' | 'sealed' }
+  /** The ground cracks under a charged ninja's steps (these cells, "c,r", in the order stepped), or mends. `first`: its first cracks this turn. */
+  | { t: 'cracks'; unit: string; cells: string[]; on: boolean; first?: boolean }
+  /** A gale on the ground starts turning, or dies down. */
+  | { t: 'zone'; zone: GaleZone; on: boolean }
   | { t: 'wallHit'; wall: string; amount: number; hp: number; at: Pt }
   | { t: 'prop'; prop: number; state: 'burnt' | 'cut' | 'broken' | 'exploded' }
-  | { t: 'electrified'; at: Pt; radius: number }
+  /** `source`: whose lightning it is (its rays take that ninja's chakra colour on the screen). */
+  | { t: 'electrified'; at: Pt; radius: number; source?: string }
+  /**
+   * Wet ground soaks or dries, steam rises or clears, on these cells ("c,r"). `by`: whose water,
+   * fire or wind did it (wet ground turned to steam, steam blown away); unset when it ran out of rounds.
+   * `blown`: steam the wind carried off, from this point (it drifts away from it on the screen).
+   */
+  | { t: 'ground'; kind: 'wet' | 'steam'; cells: string[]; on: boolean; by?: string; blown?: Pt }
+  /** Lightning runs across a patch of wet ground (these cells), from where it struck: whose it is. */
+  | { t: 'conduct'; cells: string[]; at: Pt; source?: string }
   | { t: 'trap'; trap: Trap; on: boolean }
   | { t: 'node'; node: WeaponNode; on: boolean }
   | { t: 'explode'; at: Pt; radius: number }
@@ -451,7 +578,8 @@ export type BattleEvent =
   | { t: 'evade'; unit: string; from: Pt; to: Pt; source?: string; what?: string }
   | { t: 'clone'; unit: string; on: boolean }
   | { t: 'sever'; unit: string }
-  | { t: 'seal'; unit: string; how: 'fire' | 'lightning' | 'explosion' }
+  /** `source`: whose fire or lightning sealed it (its flare takes that ninja's chakra colour on the screen). */
+  | { t: 'seal'; unit: string; how: 'fire' | 'lightning' | 'explosion'; source?: string }
   | { t: 'regrow'; unit: string }
   | { t: 'reactionAsk'; pending: PendingReaction }
   | { t: 'intent'; unit: string; intent: Intent }

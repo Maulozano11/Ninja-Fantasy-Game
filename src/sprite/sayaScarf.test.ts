@@ -50,7 +50,7 @@ describe('Saya scarf', () => {
     const idle = colours(renderSprite(look('female'), 'idle', 0).rgba);
     for (const c of Object.values(SAYA_SCARF_WRAP.colors)) assert.ok(idle.has(c), c);
     const poses: [SpritePose, number][] = [['run', 2], ['attack', 1], ['downed', 0], ['cast', 2], ['sit', 0]];
-    for (const body of ['female', 'male', 'bulky', 'slender'] as BodyType[]) {
+    for (const body of ['female', 'male', 'bulky'] as BodyType[]) {
       for (const [pose, f] of poses) assert.ok(colours(renderSprite(look(body), pose, f).rgba).has(SAYA_SCARF_BASE), `${body} ${pose}`);
     }
   });

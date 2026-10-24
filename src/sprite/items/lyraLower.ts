@@ -243,7 +243,7 @@ export const STRIPED_PLEATS: ItemDef = {
     { key: 'cloth', label: 'Cloth', default: LYRA_SKIRT_CLOTH_BASE },
     { key: 'stripes', label: 'Stripes', default: LYRA_SKIRT_STRIPES_BASE },
   ],
-  bodies: ['female', 'slender'],
+  bodies: ['female'],
   draw: (g, [cloth, stripes]) => {
     // in the owner's own frames of her (ownerFrames.ts) the skirt is his there
     if (drawOwner(g, 'bottom', slotTint({ cloth: [LYRA_SKIRT_CLOTH_BASE, cloth], stripes: [LYRA_SKIRT_STRIPES_BASE, stripes] }))) return;
@@ -267,7 +267,7 @@ export const GILDED_TABARD: ItemDef = {
     { key: 'gold', label: 'Gold', default: LYRA_TABARD_GOLD_BASE, kind: 'metal' },
   ],
   // cut for her hips, as her skirt is: on the male and bulky bodies it would sit off them
-  bodies: ['female', 'slender'],
+  bodies: ['female'],
   draw: (g, [cloth, trim, gold]) => {
     if (drawOwner(g, 'skirt', slotTint({ cloth: [LYRA_TABARD_CLOTH_BASE, cloth], trim: [LYRA_TABARD_TRIM_BASE, trim], gold: [LYRA_TABARD_GOLD_BASE, gold] }))) return;
     const t = tint([
@@ -296,7 +296,7 @@ export const POUCH_BELT: ItemDef = {
     { key: 'gold', label: 'Gold', default: LYRA_BELT_GOLD_BASE, kind: 'metal' },
   ],
   // cut for her hips (on the bulky body it stopped short of the far hip)
-  bodies: ['female', 'slender'],
+  bodies: ['female'],
   draw: (g, [leather, steel, pouch, gold]) => {
     if (drawOwner(g, 'waist', slotTint({ leather: [LYRA_BELT_LEATHER_BASE, leather], steel: [LYRA_BELT_STEEL_BASE, steel], pouch: [LYRA_BELT_POUCH_BASE, pouch], gold: [LYRA_BELT_GOLD_BASE, gold] }))) return;
     const t = tint([

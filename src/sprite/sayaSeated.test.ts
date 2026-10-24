@@ -82,12 +82,13 @@ describe('Saya seated', () => {
   it('is whole sitting and reading: no pixel open in the figure (but the loops of her swept hilt on her back)', () => {
     for (const [pose, f] of SEATED) {
       assert.deepEqual(holes(renderSprite(bare, pose, f, eye).rgba).map((h) => h.length), [], `${pose} ${f} without the sword`);
-      // with her sword stowed on her back, only the hilt's loops show the background through them
+      // with her sword stowed on her back, only the hilt's loops show the background through them (stowed
+      // as the integration branch holds a back blade, the hilt stands upright: its guard's loop is up to 8)
       const { layers } = spriteLayers(look, pose, f, eye);
       const gear = layers.get('backGear')!;
       for (const h of holes(renderSprite(look, pose, f, eye).rgba)) {
         const touches = h.some((i) => [i - 1, i + 1, i - GRID, i + GRID].some((j) => gear.mat[j] >= 0));
-        assert.ok(touches && h.length <= 3, `${pose} ${f}: a hole of ${h.length} at ${h[0] % GRID},${(h[0] / GRID) | 0}`);
+        assert.ok(touches && h.length <= 8, `${pose} ${f}: a hole of ${h.length} at ${h[0] % GRID},${(h[0] / GRID) | 0}`);
       }
     }
   });

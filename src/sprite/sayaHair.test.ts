@@ -101,7 +101,7 @@ describe('Saya hair', () => {
 
   it('draws on every body, standing, moving, seated and knocked out', () => {
     const poses: SpritePose[] = ['idle', 'attack', 'hurt', 'run', 'crouch', 'downed', 'sit'];
-    for (const body of ['female', 'slender', 'male', 'bulky'] as BodyType[]) {
+    for (const body of ['female', 'male', 'bulky'] as BodyType[]) {
       for (const pose of poses) {
         const bare = renderSprite({ ...look(body), slots: {} }, pose, 0).rgba;
         assert.notDeepEqual(renderSprite(look(body), pose, 0).rgba, bare, `${body} ${pose}`);

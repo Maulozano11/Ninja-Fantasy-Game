@@ -70,19 +70,23 @@ export function combineAdvantage(...sources: Advantage[]): Advantage {
 }
 
 /**
- * Chance (0..1) that d20 + mod reaches the DC. Attacks always hit on a natural 20 and miss on a
- * natural 1; checks and saves don't (5e).
+ * Chance (0..1) that d20 + mod reaches the DC. With `natural` (attacks, and by the owner's rule
+ * saves and checks too: docs/GAMEPLAY_DESIGN.md "Dice") a natural 20 always succeeds and a natural
+ * 1 always fails; without it (death saves, initiative) only the total counts.
  */
-export function successChance(mod: number, dc: number, adv: Advantage = 'none', attack = false): number {
+export function successChance(mod: number, dc: number, adv: Advantage = 'none', natural = false): number {
   let faces = 0;
-  for (let f = 1; f <= 20; f++) if (attack ? f === 20 || (f !== 1 && f + mod >= dc) : f + mod >= dc) faces++;
+  for (let f = 1; f <= 20; f++) if (natural ? f === 20 || (f !== 1 && f + mod >= dc) : f + mod >= dc) faces++;
   const p = faces / 20;
   return adv === 'advantage' ? 1 - (1 - p) ** 2 : adv === 'disadvantage' ? p * p : p;
 }
 
-/** Rolls a check. With no `rng` (no-randomness mode) the d20 counts as 10. */
-export function rollCheck(rng: Rng | null, mod: number, dc: number, adv: Advantage = 'none', attack = false): CheckOutcome {
-  const chance = successChance(mod, dc, adv, attack);
+/**
+ * Rolls a check. With no `rng` (no-randomness mode) the d20 counts as 10. `natural`: a natural 20
+ * always succeeds and a natural 1 always fails (attacks, saves and checks; see successChance).
+ */
+export function rollCheck(rng: Rng | null, mod: number, dc: number, adv: Advantage = 'none', natural = false): CheckOutcome {
+  const chance = successChance(mod, dc, adv, natural);
   if (!rng) {
     const total = 10 + mod;
     return { d20: 10, rolls: [10], modifier: mod, total, dc, success: total >= dc, chance, natural20: false, natural1: false };
@@ -90,7 +94,7 @@ export function rollCheck(rng: Rng | null, mod: number, dc: number, adv: Advanta
   const rolls = adv === 'none' ? [rollDie(rng, 20)] : [rollDie(rng, 20), rollDie(rng, 20)];
   const d20 = adv === 'advantage' ? Math.max(...rolls) : adv === 'disadvantage' ? Math.min(...rolls) : rolls[0];
   const total = d20 + mod;
-  const success = attack ? d20 === 20 || (d20 !== 1 && total >= dc) : total >= dc;
+  const success = natural ? d20 === 20 || (d20 !== 1 && total >= dc) : total >= dc;
   return { d20, rolls, modifier: mod, total, dc, success, chance, natural20: d20 === 20, natural1: d20 === 1 };
 }
 
@@ -139,7 +143,7 @@ export function saveAdvantage(c: ShinobiCharacter, ability: Ability, opts: { vsG
 
 /** Rolls a skill check for a character against a DC. */
 export function skillCheck(rng: Rng | null, c: ShinobiCharacter, skill: SkillId, dc: number, extra: Advantage = 'none'): CheckOutcome {
-  return rollCheck(rng, skillModifier(c, skill), dc, combineAdvantage(checkAdvantage(c, skill), extra));
+  return rollCheck(rng, skillModifier(c, skill), dc, combineAdvantage(checkAdvantage(c, skill), extra), true);
 }
 
 /** Rolls a saving throw for a character against a DC. */
@@ -150,7 +154,7 @@ export function savingThrow(
   dc: number,
   opts: { vsGenjutsu?: boolean; tensionSave?: boolean } = {},
 ): CheckOutcome {
-  return rollCheck(rng, saveModifier(c, ability), dc, saveAdvantage(c, ability, opts));
+  return rollCheck(rng, saveModifier(c, ability), dc, saveAdvantage(c, ability, opts), true);
 }
 
 /** A check shaped for the existing dice window. */

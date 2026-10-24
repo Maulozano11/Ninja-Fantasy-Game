@@ -200,7 +200,8 @@ function ownerOf(part: Uint8Array, top: Int16Array, beside: number[]): number {
  * Fills the pinholes and nicks of a flattened frame in place (rgba, the body part and the depth of each
  * pixel), a few rounds while closing one leaves another, then takes the specks away. `fx` marks effect
  * pixels; `outline` gives the line colour (0xRRGGBB) of the material at a pixel, for a nick with no line
- * beside it. Returns the pixels filled.
+ * beside it; a hole `keep` holds (its pixels) stays open (one the owner marked to stay as drawn:
+ * keptFills.ts LEFT_OPEN). Returns the pixels filled.
  */
 export function closePinholes(
   rgba: Uint8ClampedArray,
@@ -208,6 +209,7 @@ export function closePinholes(
   top: Int16Array,
   fx: (i: number) => boolean,
   outline: (i: number) => number,
+  keep: (px: number[]) => boolean = () => false,
 ): number[] {
   const filled: number[] = [];
   // `from` gives the colour, `owner` the piece the pixel joins (its body part and depth).
@@ -224,6 +226,7 @@ export function closePinholes(
     // Filling a pinhole leaves the air as it was: one flood a round serves both.
     const air = airOf(rgba);
     for (const hole of findPinholes(rgba, fx, air)) {
+      if (keep(hole)) continue;
       const inHole = new Set(hole);
       const border = [...new Set(hole.flatMap(sides))].filter((k) => !inHole.has(k));
       const lines = border.filter((k) => isLinePixel(rgba, k));

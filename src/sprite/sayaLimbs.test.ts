@@ -14,7 +14,7 @@ import { frameCount } from './rig';
 import { CAMP_POSES, MOVE_POSES, SPRITE_POSES, type BodyType, type SpritePose } from './types';
 
 const saya = LEGENDARY_PRESETS.find((p) => p.character.id === 'preset_saya')!.character.appearance!;
-const BODIES: BodyType[] = ['female', 'slender'];
+const BODIES: BodyType[] = ['female'];
 
 function* frames(): Generator<[BodyType, SpritePose, number]> {
   for (const body of BODIES) for (const pose of [...SPRITE_POSES, ...MOVE_POSES, ...CAMP_POSES] as SpritePose[]) for (let f = 0; f < frameCount(pose); f++) yield [body, pose, f];

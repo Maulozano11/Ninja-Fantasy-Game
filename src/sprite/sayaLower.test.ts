@@ -37,7 +37,7 @@ describe("Saya's skirt, belts and scabbard", () => {
     assert.equal(skirt.slot, 'skirt');
     assert.equal(belts.slot, 'waist');
     for (const d of [skirt, belts]) {
-      assert.deepEqual(d.bodies, ['female', 'slender']);
+      assert.deepEqual(d.bodies, ['female']);
       assert.ok(!fitsBody(d, 'male') && !fitsBody(d, 'bulky'));
     }
   });
@@ -66,7 +66,7 @@ describe("Saya's skirt, belts and scabbard", () => {
 
   it('renders every pose on the female and slender bodies', () => {
     const poses: SpritePose[] = ['idle', 'attack', 'cast', 'handsigns', 'hurt', 'victory', 'charge', 'walk', 'run', 'crouch', 'sneak', 'downed', 'sit', 'read', 'lean', 'train'];
-    for (const body of ['female', 'slender'] as BodyType[]) {
+    for (const body of ['female'] as BodyType[]) {
       const a = look(body, SAYA);
       for (const pose of poses) {
         const n = frameCount(rigPoseFor(pose, 'runes', 'held_katana'));

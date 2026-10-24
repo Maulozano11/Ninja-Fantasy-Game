@@ -23,6 +23,10 @@
 // vfx-b-poison.ts, reproduced here exactly (the code it needs is copied below), with the new frame
 // counts. The poison beast (the cobra) is out of scope: beast.png and its manifest entry are copied
 // through from vfx_poison unchanged.
+// The front and 3/4 walls carry the characters' black line round their stone frame (solid-outline.ts,
+// the owner's decision of 2026-10-22, "3 si"), never round his slime, its drips and bubbles or his
+// light: his neutral (stone) colours are the frame. The end-on wall is our mist curtain and the rest
+// of the set is energy: no line. SOLID_OUTLINE=0 leaves it off.
 // Deterministic: no Math.random.
 
 import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync } from 'node:fs';
@@ -33,6 +37,7 @@ import { TAU, clamp, clearEdgeBits, fade, fract, pnoise, rnd, rr, smooth, vfxSpr
 import * as B from './vfx-b-lib';
 import { DPM, HGT, LEN, Orient, PPM, orientations, proj } from './vfx-b-wall3d';
 import { PV3_LIGHT, PV3_PAL, PV3_REF, PV3_VEIL } from './vfx-poison-v3-refdata';
+import { outlineSprite, solidOutlineOn, type SolidOutlineOptions } from './solid-outline';
 
 const GROUP = 'vfx_poison_v3';
 
@@ -2910,6 +2915,23 @@ export function poisonV3Sprites(): WorldSprite[] {
   ].map(edgeClean);
 }
 
+/** The walls with a stone frame. */
+const LINED = new Set(['wall', 'wall_diag']);
+const rgbaKey = (r: number, g: number, b: number, a: number): number => ((r << 24) | (g << 16) | (b << 8) | a) >>> 0;
+/** His stone: the opaque neutral colours of his palette (body and rim); his slime is green and violet, his light is glow. */
+const STONE = new Set(PAL.filter((_, i) => FAM[i] === 'neutral' && KIND[i] !== 'glow').map((c) => rgbaKey(c[0], c[1], c[2], c[3])));
+
+/** The line's options for a sprite of the set (null: energy, no line). */
+export function poisonLineOptions(name: string): SolidOutlineOptions | null {
+  return LINED.has(name) ? { particleColour: (r, g, b, a) => !STONE.has(rgbaKey(r, g, b, a)) } : null;
+}
+
+/** The characters' line round a wall's stone frame; every other sprite unchanged. */
+export function poisonLine(s: WorldSprite): WorldSprite {
+  const opts = poisonLineOptions(s.name);
+  return opts ? outlineSprite(s, opts) : s;
+}
+
 /** For review tools only: one of his pieces of a key frame, or one sprite built alone (nothing is written). */
 export const poisonV3Dev = {
   piece: (name: string, p: string): Canvas => key(name).part(p).render(),
@@ -2928,15 +2950,17 @@ function main(): void {
   const beastSrc = join(worldOut, 'vfx_poison', 'beast.png');
   const oldManifest = join(worldOut, 'vfx_poison', 'manifest.json');
   if (!existsSync(beastSrc) || !existsSync(oldManifest)) throw new Error(`vfx-poison-v3: the approved cobra is copied from ${beastSrc}; it is missing`);
-  const sprites = poisonV3Sprites();
+  const art = poisonV3Sprites();
   if (WALL_HOLES.length) throw new Error('vfx-poison-v3: see-through stone:\n  ' + WALL_HOLES.join('\n  '));
   if (MIST_FAULTS.length) throw new Error('vfx-poison-v3: straight-topped mist:\n  ' + MIST_FAULTS.join('\n  '));
   if (TOP_FAULTS.length) throw new Error('vfx-poison-v3: post tops change shape in the rise:\n  ' + TOP_FAULTS.join('\n  '));
   if (AURA_FAULTS.length) throw new Error('vfx-poison-v3: see-through aura:\n  ' + AURA_FAULTS.join('\n  '));
   if (BLAST_HOLES.length) throw new Error('vfx-poison-v3: see-through pockets in the blast:\n  ' + BLAST_HOLES.join('\n  '));
   if (LIGHT_FAULTS.length) throw new Error('vfx-poison-v3: holes in the blast light:\n  ' + LIGHT_FAULTS.join('\n  '));
-  const bad = sprites.flatMap(borderCheck);
+  // The border check is on his art; the line may then take the clear pixel round it.
+  const bad = art.flatMap(borderCheck);
   if (bad.length) throw new Error('vfx-poison-v3: art on the frame border:\n  ' + bad.join('\n  '));
+  const sprites = solidOutlineOn() ? art.map(poisonLine) : art;
   for (const s of sprites)
     for (const [k, a] of Object.entries(s.anims)) {
       const rowW = a.frames.length * a.frames[0].w;

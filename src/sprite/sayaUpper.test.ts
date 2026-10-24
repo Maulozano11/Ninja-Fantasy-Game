@@ -48,9 +48,9 @@ describe("Saya's top, arm guards and gloves", () => {
     const gloves = getItem('hands_shade_fingerless')!;
     assert.equal(armor.slot, 'armor');
     assert.equal(gloves.slot, 'hands');
-    assert.deepEqual(armor.bodies, ['female', 'slender']);
+    assert.deepEqual(armor.bodies, ['female']);
     assert.ok(!fitsBody(armor, 'male') && !fitsBody(armor, 'bulky'));
-    for (const b of ['female', 'slender', 'male', 'bulky'] as BodyType[]) assert.ok(fitsBody(gloves, b));
+    for (const b of ['female', 'male', 'bulky'] as BodyType[]) assert.ok(fitsBody(gloves, b));
   });
 
   it('keeps every piece a whole picture: even rows, every character one of her colours', () => {
@@ -73,7 +73,7 @@ describe("Saya's top, arm guards and gloves", () => {
     // rows the pelvis lies straight below the neck: the upper piece's last row must reach the lower
     // piece's first, or skin would show between her collar and her belts (crouching, throwing, down).
     const poses = [...new Set<SpritePose>([...SPRITE_POSES, ...MOVE_POSES, ...CAMP_POSES])];
-    for (const body of ['female', 'slender'] as BodyType[]) {
+    for (const body of ['female'] as BodyType[]) {
       const a = look(body, SAYA);
       for (const pose of poses) {
         const n = frameCount(rigPoseFor(pose, 'runes', 'held_katana'));
@@ -123,7 +123,7 @@ describe("Saya's top, arm guards and gloves", () => {
       ['near', new Set([partIndex('upperArmN'), partIndex('forearmN')])],
     ];
     const poses = [...new Set<SpritePose>([...SPRITE_POSES, ...MOVE_POSES, ...CAMP_POSES])];
-    for (const body of ['female', 'slender'] as BodyType[]) {
+    for (const body of ['female'] as BodyType[]) {
       const a = look(body, SAYA);
       for (const pose of poses) {
         const n = frameCount(rigPoseFor(pose, 'runes', 'held_katana'));
@@ -170,7 +170,7 @@ describe("Saya's top, arm guards and gloves", () => {
     const skins = new Set([skin, '#f6c7a6', retintHex(SAYA_SHOULDER_N.colors.v, SAYA_SHOULDER_N.colors.H, '#f6c7a6')]);
     const empty = (rgba: Uint8ClampedArray, x: number, y: number) => rgba[(y * GRID + x) * 4 + 3] === 0;
     const raised: [SpritePose, number][] = [['throw', 2], ['throw', 3], ['throw', 4], ['victory', 0], ['victory', 1], ['attack', 1], ['pierce', 2], ['pierce', 3]];
-    for (const body of ['female', 'slender'] as BodyType[]) {
+    for (const body of ['female'] as BodyType[]) {
       for (const [pose, fr] of raised) {
         const { rgba, rig, part } = renderSprite(look(body, SAYA), pose, fr);
         const sx = Math.floor(rig.shoulderN.x * RES);
@@ -205,7 +205,7 @@ describe("Saya's top, arm guards and gloves", () => {
 
   it('renders every pose on the female and slender bodies, and the gloves alone on the male and bulky', () => {
     const poses: SpritePose[] = ['idle', 'attack', 'cast', 'handsigns', 'hurt', 'victory', 'charge', 'walk', 'run', 'crouch', 'sneak', 'downed', 'sit', 'read', 'lean', 'train'];
-    for (const body of ['female', 'slender', 'male', 'bulky'] as BodyType[]) {
+    for (const body of ['female', 'male', 'bulky'] as BodyType[]) {
       const a = look(body, SAYA);
       for (const pose of poses) {
         // the first and the middle frame of each

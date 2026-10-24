@@ -53,8 +53,8 @@ const FRAMES: [SpritePose, number, OwnerPiece[]][] = [
 ];
 
 describe("the owner's own frames of Lyra", () => {
-  it('are his lift, every pixel of his where he drew it and nothing else, on the female and slender bodies', () => {
-    for (const body of ['female', 'slender'] as BodyType[]) {
+  it('are his lift, every pixel of his where he drew it and nothing else, on the female body', () => {
+    for (const body of ['female'] as BodyType[]) {
       for (const [pose, frame, pieces] of FRAMES) {
         const f = renderSprite({ ...lyra, body }, pose, frame);
         assert.equal(differing(f.rgba, his(pieces)), 0, `${body} ${pose} ${frame}`);
@@ -128,11 +128,12 @@ describe("the owner's own frames of Lyra", () => {
     assert.ok(differing(other.rgba, his(LYRA_READ[0])) > 100, 'drawn on the rig');
   });
 
-  it('draws his book for every reader, his pixels on the near wrist', () => {
+  it('draws his book for every female reader, his pixels on the near wrist', () => {
+    // (the male bodies read his Trunks' book, his frame 2: seats.test.ts)
     const book = LYRA_READ[0].filter((p) => p.owner === 'book');
     assert.ok(book.length >= 1);
     const ink = new Set(book.flatMap((p) => Object.values(p.colors)).filter((h) => h !== '#000000'));
-    for (const body of ['male', 'bulky', 'female', 'slender'] as BodyType[]) {
+    for (const body of ['female'] as BodyType[]) {
       const look: SpriteAppearance = { ...lyra, body, faceShape: 'tapered', slots: {} };
       const f = renderSprite(look, 'read', 0);
       let n = 0;

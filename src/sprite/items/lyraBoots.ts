@@ -114,7 +114,7 @@ export const LYRA_BOOTS: ItemDef = {
     { key: 'gold', label: 'Gold', default: LYRA_BOOT_GOLD, kind: 'metal' },
     { key: 'buckle', label: 'Buckle', default: LYRA_BOOT_BUCKLE, kind: 'metal' },
   ],
-  bodies: ['female', 'slender'],
+  bodies: ['female'],
   draw: (g, [leather, gold, buckle]) => {
     // In the owner's own frames of her (ownerFrames.ts) the boots and her bare thighs are his there:
     // our body's legs come off under them.
@@ -145,9 +145,9 @@ export const LYRA_BOOTS: ItemDef = {
       legOffBelow(g, s, pieceTop(thigh, now.knee, thighA), hip, knee);
       const d = legDepth(s, 'feet');
       // (turned from his angle, a piece's edge is closed in the line: nothing of her is left cut open)
-      stampPiece(g, d, foot, now.ankle, foot.angle, `foot${s}`, tint, true);
-      stampPiece(g, d, shin, now.ankle, shinA, `shin${s}`, tint, true);
-      stampPiece(g, d, thigh, now.knee, thighA, `thigh${s}`, tint, true);
+      stampPiece(g, d, foot, now.ankle, foot.angle, `foot${s}`, tint, undefined, true);
+      stampPiece(g, d, shin, now.ankle, shinA, `shin${s}`, tint, undefined, true);
+      stampPiece(g, d, thigh, now.knee, thighA, `thigh${s}`, tint, undefined, true);
     }
   },
 };

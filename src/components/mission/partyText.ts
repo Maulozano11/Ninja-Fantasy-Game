@@ -54,6 +54,7 @@ export const EFFECT_DESC_ES: Record<EffectId, string> = {
   poisoned: 'Desventaja en ataques y pruebas.',
   wounded_leg: '−3 m de velocidad.',
   numb: '−2 a las tiradas de DES.',
+  jolted: '−2 a las tiradas de DES (salvaciones de DES, ataques a distancia, pruebas de DES) durante 2 rondas.',
   hungry: 'Desventaja en salvaciones de CON; comer lo quita.',
   crash: '−2 a todas las tiradas (después de una píldora de soldado).',
   fever: 'Los descansos no devuelven PV.',

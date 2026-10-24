@@ -202,7 +202,7 @@ export const SHADE_WRAPS: ItemDef = {
     { key: 'band', label: 'Band', default: SHADE_BAND, kind: 'cloth' },
     { key: 'boot', label: 'Boot', default: SHADE_CLOTH, kind: 'cloth' },
   ],
-  bodies: ['female', 'slender'],
+  bodies: ['female'],
   draw: (g, [cloth, band, boot]) => {
     // Her legs from the owner's Saya picture at our scale, on our female leg: the legging above the
     // knee turns with the thigh about the knee, the knee pad and the wrapped shin turn with the shin

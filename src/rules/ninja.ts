@@ -299,6 +299,23 @@ export function addLegendNatures(c: ShinobiCharacter): ShinobiCharacter {
   };
 }
 
+/**
+ * Aurelia became Wind, her chakra yellow (the owner, 2026-10-24: "que se vuelva viento y lo gane en
+ * nivel 10 pero te digo que hagas que su chakra y sus tecnicas sean chakra amarrilo"). A saved copy of
+ * her that still has her old Light burst gets the Wind burst, and her old gold becomes the yellow;
+ * a colour its player chose stays. A copy whose player changed her type keeps it. Her jutsu have no
+ * element, so they fit as they are. A moved copy is Wind, so the move happens once.
+ */
+export const AURELIA_WIND = { id: 'preset_aurelia', old: { color: 'white' as ChakraColorId, tint: '#fac856' }, now: { color: 'green' as ChakraColorId, tint: 'yellow' } };
+export function aureliaToWind(c: ShinobiCharacter): ShinobiCharacter {
+  if (c.id !== AURELIA_WIND.id || !c.appearance) return c;
+  const look = getAppearance(c);
+  const chakra = look.chakra;
+  if (!chakra || chakra.color !== AURELIA_WIND.old.color) return c;
+  const tint = !chakra.tint || chakra.tint === AURELIA_WIND.old.tint ? AURELIA_WIND.now.tint : chakra.tint;
+  return { ...c, appearance: { ...look, chakra: { ...chakra, color: AURELIA_WIND.now.color, tint } } };
+}
+
 /** A sheet whose look still has the old headband plate, the slender body or a neck choice, with today's look (the same sheet if not). */
 function withTodaysLook(c: ShinobiCharacter): ShinobiCharacter {
   if (!c.appearance) return c;
@@ -332,6 +349,7 @@ export function dropRemovedJutsus(c: ShinobiCharacter): ShinobiCharacter {
  *   in the ninja's pouch (rules/pouch.ts, tagJutsuToItem);
  * - a legend's or companion's copy with its old chakra burst and the legend's own jutsu moved to the
  *   legend's type (updateLegendChakra);
+ * - a copy of Aurelia with her old Light burst made Wind, her gold the yellow (aureliaToWind);
  * - a copy of Kaien or Raiga given the legend's second element (addLegendNatures);
  * - a jutsu in the S-rank slot that is an Element slot's now moved to one (tideToElement);
  * - a jutsu taken out of the game swapped for the best one the ninja may learn in its slot
@@ -348,7 +366,7 @@ export function dropRemovedJutsus(c: ShinobiCharacter): ShinobiCharacter {
  * the look only that old burst, the headband plate, the slender body and the neck change. A sheet that is already today's comes back as it is.
  */
 export function migrateCharacter(saved: ShinobiCharacter): ShinobiCharacter {
-  const c = dropRemovedJutsus(tideToElement(addLegendNatures(updateLegendChakra(tagJutsuToItem(withTodaysLook(saved))))));
+  const c = dropRemovedJutsus(tideToElement(addLegendNatures(aureliaToWind(updateLegendChakra(tagJutsuToItem(withTodaysLook(saved)))))));
   const clan = migrateClan(c.clan) ?? DEFAULT_CHARACTER.clan;
   const before = (c.sheetVersion ?? 1) < SHEET_VERSION;
   if (clan === c.clan && !before) return c;

@@ -21,6 +21,7 @@ import type { BattleState, ViewRect } from './types';
 import { jutsuChoices } from '../rules/jutsuNature';
 import { logLine } from '../components/battle/battleLog';
 import { WIND_S_LINE_REF } from '../../tools/world-sprites/vfx-wind-s-line-refdata';
+import { tintVfx } from '../sprite/vfxTint';
 
 const RAY = 'wind_dragon_ray_s';
 const WHOLE: ViewRect = { x0: 0, z0: 0, x1: 60.6, z1: 20 };
@@ -216,5 +217,32 @@ describe('the Gale Dragon Ray: his layers (his paint-over, waiting for his yes)'
     assert.ok(dx1 > bx1 && dx0 > L.hand[0] + 150, 'the dragon leads the beam');
     assert.ok(kx0 > bx0 && kx1 < dx1 && ky1 < L.hand[1] && ky0 < by0 + 20, 'the kanji above the beam');
     assert.ok(lx0 < L.hand[0] && lx1 < rx0 && rx1 > dx0, 'the dust at both ends');
+  });
+});
+
+describe('the Gale Dragon Ray in a chakra colour (Aurelia: yellow, the owner 2026-10-24)', () => {
+  // His opaque colours, one pixel each, as one of the ray's sheets.
+  const L = WIND_S_LINE_REF;
+  const his = L.pal.slice(0, L.opaque).map((h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16)));
+  const rgba = new Uint8Array(his.length * 4);
+  his.forEach((c, i) => rgba.set([...c, 255], i * 4));
+  const sheet = { width: his.length, height: 1, sprite: 'tile' };
+  const luma = (c: number[]) => 0.299 * c[0] + 0.587 * c[1] + 0.114 * c[2];
+
+  it('green (Natural for wind) keeps his pixels; yellow keeps his brightness steps, his near-white core and his near-black', () => {
+    assert.equal(tintVfx(rgba, 'wind', 'green', sheet), rgba);
+    const y = tintVfx(rgba, 'wind', 'yellow', sheet);
+    const px = (i: number) => [...y.subarray(i * 4, i * 4 + 3)];
+    for (let i = 0; i < his.length; i++) {
+      // His values stay his: the same order of brightness, within a few steps of his own.
+      assert.ok(Math.abs(luma(px(i)) - luma(his[i])) < 40, `${L.pal[i]}: its brightness`);
+      if (i > 0) assert.ok(luma(px(i)) >= luma(px(i - 1)) - 6, `${L.pal[i]}: brighter than the one before`);
+    }
+    // His core stays nearly white, his darkest stays his.
+    assert.ok(Math.min(...px(his.length - 1)) > 215, 'the core');
+    assert.deepEqual(px(0), his[0], 'his near-black');
+    // His teal middle turns yellow (red and green above blue).
+    const mid = px(Math.floor(his.length / 2));
+    assert.ok(mid[0] > mid[2] + 40 && mid[1] > mid[2] + 40, `yellow: ${mid}`);
   });
 });

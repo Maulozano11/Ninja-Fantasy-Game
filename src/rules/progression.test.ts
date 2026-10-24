@@ -117,7 +117,7 @@ describe('a new ninja learns rank D and C jutsu, and its clan\'s ("d y c y los d
     const kaien = LEGENDARY_PRESETS.find((p) => p.character.id === 'preset_storm')!.character;
     assert.deepEqual(aboveRank(kaien.selectedJutsus, kaien.clan).sort(), ['chidori_lightning_blade', 'kirin_thunder']);
     for (const { character: c } of LEGENDARY_PRESETS) {
-      // Aurelia's S-rank slot is empty (Yasaka no Magatama removed; her sheet waits for the owner's jutsu).
+      // Aurelia's S-rank slot is empty (Yasaka no Magatama removed; her Wind ray comes at level 10).
       if (c.selectedJutsus.slot5Ultimate || c.id !== 'preset_aurelia')
         assert.ok(aboveRank(c.selectedJutsus, c.clan).includes(c.selectedJutsus.slot5Ultimate), `${c.id}: its S-rank stays`);
       assert.ok(!aboveRank(c.selectedJutsus, c.clan).includes(c.selectedJutsus.slot4Clan), `${c.id}: its clan secret is its own`);

@@ -83,6 +83,13 @@ const KIRIN: Family = { natural: ['blue'], stops: [0.083, 0.152, 0.29, 0.8, 0.98
 // brown and green chakra keep it his.
 const WOOD: Family = { natural: ['brown', 'green'], stops: [0.097, 0.153, 0.248, 0.407, 0.645], line: ['#041010'], hue: null, material: null, vivid: 0.75, earth: true };
 
+// The Gale Dragon Ray (vfx_wind_s_line: its start, its repeating stretch, its end with the dragon, and
+// the kanji; out of his paint-over for Aurelia, docs/reference/aurelia-wind-s-owner-reference.jpg): far
+// brighter than the wind set, nearly white at the core, so its stops are its own (over all four
+// sheets), and its teal runs a little bluer. It has no black line (energy takes none), so only his
+// nearly black pixels stay. Its dust and loose rocks are off the hue and stay his.
+const WIND_RAY: Family = { natural: ['green'], stops: [0.231, 0.402, 0.681, 0.857, 0.987], line: [], hue: [160, 45], material: [0.08, 0.16], vivid: 1 };
+
 const FAMILIES: Record<TintElement, { set: Family; beast: Family; sprites?: Record<string, Family> }> = {
   fire: {
     set: { natural: ['red', 'orange'], stops: [0.103, 0.276, 0.561, 0.787, 0.965], line: FIRE_LINE, hue: [20, 45], material: [0.22, 0.42], vivid: 1, fiery: true, hot: true },
@@ -98,6 +105,7 @@ const FAMILIES: Record<TintElement, { set: Family; beast: Family; sprites?: Reco
     set: { natural: ['green'], stops: [0.151, 0.282, 0.446, 0.682, 0.936], line: WIND_LINE, hue: [148, 40], material: [0.08, 0.16], vivid: 1 },
     // The crane.
     beast: { natural: ['green'], stops: [0.216, 0.395, 0.557, 0.724, 0.903], line: ['#234a49', '#020a10'], hue: [168, 30], material: [0.08, 0.16], vivid: 1 },
+    sprites: { start: WIND_RAY, tile: WIND_RAY, end: WIND_RAY, kanji: WIND_RAY },
   },
   lightning: {
     // Set by hand: his electric-blue glow (#0033ff..#0f6cff) is the lightning's own colour, so it sits

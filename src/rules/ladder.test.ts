@@ -122,8 +122,8 @@ describe('the ladder: rank A at level 7, rank S at level 10, for every ninja ("a
     for (const { character: c } of LEGENDARY_PRESETS) {
       assert.ok(c.level < RANK_S_LEVEL, `${c.id} is below level 10`);
       const g = growthOf(c, natureOf(c));
-      // Aurelia (a Light medic) lost Yasaka no Magatama with nothing of rank S to learn in its place (her
-      // provisional sheet waits for the owner's jutsu, docs/STATUS.md): her S-rank slot is empty.
+      // Aurelia lost Yasaka no Magatama; she is Wind now and learns the Gale Dragon Ray at level 10 (the
+      // owner, 2026-10-24): her S-rank slot is empty until then.
       if (c.id === 'preset_aurelia' && !c.selectedJutsus.slot5Ultimate) continue;
       assert.ok(aboveRank(c.selectedJutsus, c.clan, g.rankUp ? natureOf(c) : undefined, c.level).includes(c.selectedJutsus.slot5Ultimate), `${c.id}: its S-rank stays, marked`);
       assert.ok(Object.values(c.selectedJutsus).includes(c.selectedJutsus.slot5Ultimate));

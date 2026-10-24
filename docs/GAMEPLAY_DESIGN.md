@@ -488,6 +488,17 @@ de tipo deidad angel y dios y el de vacio sombra y espiritu va ser demoniaco
    (violet); of the companions, Hana Water (green) and Kenji Earth (violet).
    Kaien, Raiga and Kenji lose the ghost-warrior burst. Solen, Akira and Aiden
    already matched.
+   **Aurelia becomes Wind, in yellow** (decided 2026-10-24, when he chose how she
+   gets the Gale Dragon Ray): *"que se vuelva viento y lo gane en nivel 10 pero te digo que hagas que su chakra y sus tecnicas sean chakra amarrilo"*.
+   Her type is Wind (the Wind burst) and her colour yellow, so her chakra and
+   every elemental jutsu she casts play in yellow (the chakra colour tints the
+   jutsu: `vfxTint.ts`), the Gale Dragon Ray, its kanji and its dragon too;
+   anyone else's ray stays in his teal (Natural) or their own colour. She learns
+   the ray by the usual rule, at level 10 (her preset is level 5, its S-rank
+   slot empty). Her other jutsu have no element and stay. A saved copy of her
+   with her old Light burst loads as Wind, her old staff gold (#fac856) turned
+   to the yellow (a colour its player chose stays; a copy given another type by
+   its player keeps it): `aureliaToWind` in `rules/ninja.ts`.
 2. **Saved copies are updated** ("actualiza"). A copy of a legend or companion
    (the hero, the roster, the party and the fallen of a mission under way, an
    import; matched by its id) that still has the burst it had before (Kaien,
@@ -1115,13 +1126,9 @@ folder (`WORLD_OUT`) until then. Approved so far: the river bridge.
 
 - The Gale Dragon Ray (Wind's second rank S, "The Gale Dragon Ray" below): its
   name, its numbers (12 chakra +4; 8d8 slashing, DEX half, enhanced 10d8; a 3 m
-  sweep), and the farthest view counted for a Full HD screen. And how Aurelia
-  gets it: she is a Light-chakra medic at level 5, and an S-rank is offered only
-  to its element's ninjas from level 10. Options: (a) she becomes Wind (or gets
-  Wind as her element), and the ray waits for her level 10; (b) the ray is her
-  own signature, in her S-rank slot whatever her nature and level (an exception
-  to the gate, like Hana's Dragon Tsunami was given to her preset); (c) she
-  keeps it only in practice battles until she grows.
+  sweep), and the farthest view counted for a Full HD screen. (How Aurelia
+  gets it he answered on 2026-10-24: option (a), she becomes Wind and learns it
+  at level 10; her chakra and her jutsu in yellow. See "Chakra type".)
   It was drawn because Earth had none; Kenji is Earth (his answer 1), but the
   art itself waits for his yes.
 - Lightning's second burst (*Estática de batalla* / Battle Static, his request
@@ -1913,9 +1920,20 @@ So:
   dragon's head sits at the ray's front end, where the view stops it.
 - **The aiming preview** frames the farthest view on the ground (dashed green)
   and shows the line only inside it, with who it reaches.
-- **Aurelia**: open question for him. She is a Light-chakra medic at level 5,
-  and the rules give an S-rank only to its element's ninjas from level 10 (see
-  "Open questions").
+- **Aurelia** (his answer, 2026-10-24: *"que se vuelva viento y lo gane en nivel 10 pero te digo que hagas que su chakra y sus tecnicas sean chakra amarrilo"*):
+  she is Wind now and learns it at level 10 by the usual rule; her chakra and
+  her jutsu, this ray included, play in yellow (see "Chakra type"). The ray
+  keeps his teal for everyone else (Natural) and takes any other caster's
+  colour; in yellow it keeps his brightness steps and his near-white core
+  (its own five tones in `vfxTint.ts`, `WIND_RAY`).
+- **The start lives too** (his request, 2026-10-24: *"la parte donde se queda
+  estatica enfrete de aurelia arreglala para que tambien este animada y no se
+  quede estatica"*): from his flare on, inside his tube, the stretch's flow runs
+  as in the tiles (no joint, the same speed); his rings, strands and flare pulse
+  a step brighter in a wave from the hand; his core shimmers; the dust at her
+  feet and under the dragon churns while the ray lasts. His outline and shape
+  stay. The dark wedge at her hand (his white flare had been read as dust) and
+  the filled throat in the dragon's mouth are continued from his own pixels.
 
 ## Jutsu effects, round 1 (proposed 2026-10-21; the owner's answer the same day)
 

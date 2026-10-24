@@ -1907,9 +1907,11 @@ export const LEGENDARY_PRESETS: { name: string; tag: string; nameEs?: string; ta
       capeStyle: 'None',
       dojutsu: 'None',
       selectedFeats: ['chakra_prodigy', 'sharingan_precog'],
-      // Light chakra: no element, so the jutsu with none (the healing palm, the feathers). Her Yasaka no
-      // Magatama was removed from the game (the owner, 2026-10-22: "quitala del juego"); a Light medic has
-      // no other rank S to learn, so the slot is empty, as loading an old sheet leaves it (refitRemoved).
+      // Wind chakra in yellow (the owner, 2026-10-24: "que se vuelva viento y lo gane en nivel 10 pero te
+      // digo que hagas que su chakra y sus tecnicas sean chakra amarrilo"): she learns the Gale Dragon
+      // Ray, Wind's rank S made for her, at level 10 by the usual rule, so her S-rank slot stays empty at
+      // level 5. Her other jutsu have no element and fit any type. (Her Yasaka no Magatama was removed
+      // from the game: the owner, 2026-10-22, "quitala del juego".)
       selectedJutsus: {
         slot1Utility: 'mystical_palm',
         slot2Elemental: 'temple_of_nirvana',
@@ -1943,7 +1945,7 @@ export const LEGENDARY_PRESETS: { name: string; tag: string; nameEs?: string; ta
           feet: it('feet_dawn_boots'),
           held: it('held_dawn_staff'),
         },
-        chakra: { color: 'white', tint: '#fac856', onCharge: true, onCast: true, onVictory: true }, // Light, in her staff's gold
+        chakra: { color: 'green', tint: 'yellow', onCharge: true, onCast: true, onVictory: true }, // Wind, in yellow (the owner, 2026-10-24)
       }),
     },
   },

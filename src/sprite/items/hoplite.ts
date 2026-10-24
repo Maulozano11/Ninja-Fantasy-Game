@@ -11,13 +11,12 @@
 
 import { retintHex, retintSkinLifted } from '../color';
 import { armDepth, armJoints, type Depth, DrawCtx, handPose, ItemDef, legDepth, legJoints, Side } from '../ctx';
-import { type PaintedPiece, type PieceJoint, segAngle, stampBent, stampPiece } from '../painted';
+import { type PaintedPiece, type PieceJoint, segAngle, stampBent, stampLeaning, stampPiece } from '../painted';
 import { GRID, partIndex, PartId, RES, v } from '../raster';
 import { HOPLITE_SKIN } from '../hopliteHeadArt';
 import { hopliteArmStill, hopliteRig } from '../hopliteRig';
 import { drawRig, type Rig } from '../rig';
 import type { BodyType } from '../types';
-import { stampLeaning } from './armor';
 import { HOPLITE_ARMOR_BRONZE, HOPLITE_ARMOR_STEEL, HOPLITE_CHEST, HOPLITE_CHEST_KIND, HOPLITE_CLASP, HOPLITE_CLASP_KIND } from './hopliteArmorArt';
 import {
   HOPLITE_ARM_F,

@@ -28,6 +28,7 @@ import { ankleLiftOf, BodyParams, drawRig, neckLocal, Rig } from './rig';
 import { gripAngle } from './grip';
 import { PixelTemplate, stampTemplate, TemplatePalette } from './rotsprite';
 import { FEMALE_HANDS } from './femaleBodyArt';
+import { ownerHand } from './ownerHands';
 import { isFemaleBody, type BodyType, type EyeSpecial, type SlotId, type SpriteAppearance } from './types';
 
 /**
@@ -183,7 +184,64 @@ export const sideBias = (s: Side): number => (s === 'F' ? -1 : 0);
 export function armSpan(g: DrawCtx, L: Layer, s: Side, from: number, to: number, inflate: number, pen: Pen, shade?: number | 'skin'): void {
   const j = armJoints(g.rig, s);
   const at = (t: number) => (t <= 1 ? lerp(j.shoulder, j.elbow, t) : lerp(j.elbow, j.wrist, t - 1));
-  spans(L, at, profileR(ARM_PROFILE, g.bp.armR), from, to, inflate, pen, shade);
+  const reach = armReaches(g.rig, s);
+  spans(L, at, (t) => armRadius(g, t, s), from, to, inflate, pen, shade, reach ? REACH_CUTS : ARM_CUTS);
+}
+
+/**
+ * The owner's forearm on an arm reaching out (the rule, docs/SPRITE_STYLE_GUIDE.md section 5, "The extended
+ * forearm"): how many rows across it is, his 1 px line on both sides included, from the elbow to
+ * FOREARM_TAPER of the way down, and at the wrist; straight between, no swell. Measured on his pictures:
+ * Ren's far forearm casting (nightCastArmsArt.ts, 8 rows after "1-2 pixels less", 6 at the wrist; the
+ * owner on the combo: "pon como el antebrazo del modelo de lanzar jutsu"), Ren's near forearm (8 to 6),
+ * the bare female forearm he drew (7 to 5, body/female-v2 femaleBaseArt.ts). The bulky body has no picture
+ * of his: his 8 and 6 grown as our bulky arm is from the male one (armR 2.75 / 2.25, 1.85 / 1.5).
+ */
+export const FOREARM_RULE: Record<BodyType, { rows: number; wrist: number }> = {
+  male: { rows: 8, wrist: 6 },
+  female: { rows: 7, wrist: 5 },
+  bulky: { rows: 10, wrist: 7 },
+};
+/** How far down the forearm (0 elbow, 1 wrist) it keeps its rows before tapering to the wrist. */
+export const FOREARM_TAPER = 2 / 3;
+/** Forearm radius (design units) at t (1 elbow, 2 wrist) under the rule: a capsule of radius r is 2 * r * RES rows across. */
+export function forearmRuleR(body: BodyType, t: number): number {
+  const { rows, wrist } = FOREARM_RULE[body];
+  const k = Math.max(0, Math.min(1, (t - 1 - FOREARM_TAPER) / (1 - FOREARM_TAPER)));
+  return (rows + (wrist - rows) * k) / (2 * RES);
+}
+
+/**
+ * Forearm radius at `f` of the way from the elbow to the wrist, for armour and cloth that run straight down
+ * the forearm (its top to its wrist radius): under the rule (FOREARM_RULE) on an arm reaching out.
+ */
+export function forearmR(g: DrawCtx, s: Side, f: number): number {
+  if (armReaches(g.rig, s)) return forearmRuleR(g.rig.body, 1 + f);
+  const R = g.bp.armR;
+  return R[2] + (R[3] - R[2]) * f;
+}
+
+/** How straight (wrist from shoulder over the arm's length) and how near level (degrees, the torso's turn taken off) an arm reaching out is. */
+const REACH_STRAIGHT = 0.85;
+const REACH_LEVEL = 45;
+const IDLE_RIGS = new Map<BodyType, Rig>();
+const wrap180 = (a: number) => ((a + 540) % 360) - 180;
+const segDeg = (a: Vec, b: Vec): number => (Math.atan2(b.y - a.y, b.x - a.x) * 180) / Math.PI;
+
+/**
+ * Whether an arm reaches out forward: straight, its upper arm within REACH_LEVEL degrees of level, the
+ * torso's turn taken off (the cast at the runes, the combo's jab and cross, the attack's follow-through, the
+ * pierce, the throw's pointing arm). Its forearm follows FOREARM_RULE. (Solen's far arm is his near arm
+ * mirrored on the same arms: founderFarReach.)
+ */
+export function armReaches(r: Rig, s: Side): boolean {
+  let idle = IDLE_RIGS.get(r.body);
+  if (!idle) IDLE_RIGS.set(r.body, (idle = drawRig(r.body, 'idle', 0)));
+  const t = segDeg(r.pelvis, r.neck) - segDeg(idle.pelvis, idle.neck);
+  const j = armJoints(r, s);
+  const len = Math.hypot(j.elbow.x - j.shoulder.x, j.elbow.y - j.shoulder.y) + Math.hypot(j.wrist.x - j.elbow.x, j.wrist.y - j.elbow.y);
+  const straight = Math.hypot(j.wrist.x - j.shoulder.x, j.wrist.y - j.shoulder.y) / len;
+  return straight >= REACH_STRAIGHT && Math.abs(wrap180(segDeg(j.shoulder, j.elbow) - t)) <= REACH_LEVEL;
 }
 
 /**
@@ -220,10 +278,16 @@ const profileR = (P: Profile, R: number[]) => (t: number): number => {
   }
   return P[P.length - 1][1](R);
 };
-/** Radius of the bare arm at t (0 shoulder, 1 elbow, 2 wrist), following the natural taper. */
-export const armRadius = (g: DrawCtx, t: number): number => profileR(ARM_PROFILE, g.bp.armR)(t);
+/**
+ * Radius of the bare arm at t (0 shoulder, 1 elbow, 2 wrist), following the natural taper; with the arm's
+ * side, a forearm reaching out follows the owner's forearm (FOREARM_RULE).
+ */
+export const armRadius = (g: DrawCtx, t: number, s?: Side): number =>
+  t > 1 && s && armReaches(g.rig, s) ? forearmRuleR(g.rig.body, t) : profileR(ARM_PROFILE, g.bp.armR)(t);
 /** Control points of the profiles, used as extra capsule cuts so the outline follows the curve. */
 const ARM_CUTS = [0.45, 1, 1.3];
+/** The same for an arm reaching out: its forearm keeps its rows to FOREARM_TAPER, then tapers. */
+export const REACH_CUTS = [0.45, 1, 1 + FOREARM_TAPER];
 const LEG_CUTS = [0.5, 1, 1.32];
 
 /** Capsules along a limb, split at the joint and profile points; 'skin' uses the reference cylinder shading. */
@@ -571,6 +635,12 @@ export function handDraw(g: DrawCtx, L: Layer, s: Side, pen: Pen, grow = 0): voi
     // where turning loses a pixel of his line the layer's outline closes the hand again.
     const turn = g.bp.fit || kind === 'grip' ? rot : Math.round(rot / 90) * 90;
     if (g.bp.fit) flags = F_NO_TEXTURE;
+    // Reading or sitting, the fitted bodies' hands are his Lyra's there (ownerHands.ts), on the wrist where he drew hers.
+    const his = g.bp.fit && kind !== 'fist' && kind !== 'grip' ? ownerHand(g.rig.pose, g.rig.frame, s) : null;
+    if (his) {
+      stampTemplate(L, his.t, j.wrist, 0, { o: [pen.mat, 0], '1': [pen.mat, 1], '2': [pen.mat, 2], '3': [pen.mat, 3] }, pen.part, { flags });
+      return;
+    }
     if (kind === 'cradle') stampTemplate(L, H.cradle, j.wrist, 0, s === 'F' ? far : pal, pen.part, { flags });
     else if (s === 'F' && kind === 'fist') stampTemplate(L, H.fistFar, j.wrist, turn, own, pen.part, { flipX, flags });
     else if (s === 'F' && kind === 'relaxed') stampTemplate(L, H.relaxedFar, j.wrist, turn, own, pen.part, { flipX, flags });

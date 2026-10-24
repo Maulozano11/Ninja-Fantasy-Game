@@ -2,6 +2,7 @@
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
+import { LEGENDARY_PRESETS } from '../data/shinobiData';
 import { renderSprite } from './compose';
 import { throwRelease } from './grip';
 import { defaultAppearance } from './legacy';
@@ -10,7 +11,9 @@ import { BODY_PARAMS, COMBO_KICKS, COMBO_TURNED, drawRig, frameCount, POSE_FPS, 
 import { SPRITE_POSES, type BodyType, type SpriteAppearance } from './types';
 
 const BODIES: BodyType[] = ['male', 'female', 'bulky'];
-const WEAPONS = ['held_katana', 'held_crystal', 'held_ice_crystal', 'held_flame_sword', 'held_gilded_rapier', 'held_kunai', 'held_naginata'];
+/** The bodies solveRig poses (not the fitted female body, BodyParams.fit). */
+const RIGGED = BODIES.filter((b) => !BODY_PARAMS[b].fit);
+const WEAPONS = ['held_katana', 'held_crystal', 'held_ice_crystal', 'held_flame_sword', 'held_gilded_rapier', 'held_kunai', 'held_naginata', 'held_dawn_staff'];
 
 const look = (body: BodyType, held?: string, stowed = false, cape?: string): SpriteAppearance => {
   const l = defaultAppearance();
@@ -62,8 +65,8 @@ describe('throw and pierce poses', () => {
       assert.ok(r.handN.x > r.neck.x + 2, `${body}: the throwing hand is out in front`);
       for (const held of WEAPONS) {
         const b = heldBox(look(body, held), 'throw', THROW_RELEASE_FRAME - 1)!;
-        // (the short kunai is as tall as its ring and guard)
-        assert.ok(b.x1 - b.x0 > (held === 'held_kunai' ? 1.5 : 2) * (b.y1 - b.y0), `${body} ${held}: level`);
+        // (the short kunai is as tall as its ring and guard; the short Dawn Staff about as tall as its winged head is wide)
+        assert.ok(b.x1 - b.x0 > (held === 'held_kunai' ? 1.5 : held === 'held_dawn_staff' ? 1 : 2) * (b.y1 - b.y0), `${body} ${held}: level`);
         assert.ok(b.x1 > r.handN.x * RES + 4, `${body} ${held}: pointing at the target`);
       }
     }
@@ -83,12 +86,55 @@ describe('throw and pierce poses', () => {
     }
   });
 
-  it('hangs the head ahead of the chest and below the shoulders at the release, like the reference', () => {
-    for (const body of BODIES) {
-      const r = drawRig(body, 'throw', THROW_RELEASE_FRAME);
-      const below = (Math.atan2(r.head.y - r.neck.y, r.head.x - r.neck.x) * 180) / Math.PI;
-      assert.ok(below > 20 && below < 45, `${body}: neck to head ${below.toFixed(1)} degrees below level (his 33)`);
-      assert.ok(r.head.y > r.shoulderN.y, `${body}: the head hangs below the shoulder line`);
+  // (These two check the bodies solveRig poses, PoseFrame.maleNeckPitch; the fitted female bodies turn his neck
+  // less, PoseFrame.neckPitch in solveFit, and femaleBase.test.ts checks them.)
+  it('keeps the head up on the neck at its length through the release and follow-through, on every body', () => {
+    // The release once hung the head ahead of the chest by a fixed offset (headDx 6, headDy 8): 13 px from the
+    // neck's foot against 9 at rest, below the shoulders, no neck to it (the owner: "hay que arreglarle el
+    // cuello y la cabeza a las ultimas 2 poses de arrojar"). As on his heroine's throw (neckPitch), the head
+    // stays on the neck at its rest length, the neck 10-30 degrees forward of upright, above the shoulders.
+    for (const body of RIGGED) {
+      const rest = drawRig(body, 'idle', 0);
+      const len = Math.hypot(rest.head.x - rest.neck.x, rest.head.y - rest.neck.y) * RES;
+      for (let f = 0; f < frameCount('throw'); f++) {
+        const r = drawRig(body, 'throw', f);
+        const d = Math.hypot(r.head.x - r.neck.x, r.head.y - r.neck.y) * RES;
+        // no frame stretches the neck past its length (the head on whole fine pixels: 1.5 px)
+        assert.ok(d <= len + 1.5, `${body} throw ${f}: the head ${d.toFixed(1)} px from the neck's foot (at rest ${len.toFixed(1)})`);
+        if (f < THROW_RELEASE_FRAME) continue;
+        assert.ok(Math.abs(d - len) <= 1.5, `${body} throw ${f}: the head ${d.toFixed(1)} px from the neck's foot (at rest ${len.toFixed(1)})`);
+        const deg = (Math.atan2(r.head.x - r.neck.x, r.neck.y - r.head.y) * 180) / Math.PI;
+        assert.ok(deg >= 10 && deg <= 30, `${body} throw ${f}: the neck leans ${deg.toFixed(1)} degrees forward`);
+        assert.ok(r.head.y < Math.min(r.shoulderN.y, r.shoulderF.y) - 1, `${body} throw ${f}: the head sits above the shoulders`);
+      }
+    }
+  });
+
+  it('joins the head to the body with no gap in every throw frame', () => {
+    // From the neck's foot to the head's centre every pixel is the figure (skin, collar or hair): the head
+    // never floats off the shoulders. The default look, and the owner's Ren, Aiden and the Roman.
+    const looks: [string, SpriteAppearance][] = [['default', look('male')], ...['preset_night', 'preset_reference_aiden'].map((id) => [id, LEGENDARY_PRESETS.find((p) => p.character.id === id)!.character.appearance!] as [string, SpriteAppearance])];
+    const roman = look('male');
+    roman.slots.armor = { id: 'armor_bronze', colors: [] };
+    roman.slots.skirt = { id: 'skirt_imperial', colors: [], parts: { drapes: 'on' } };
+    roman.slots.hands = { id: 'hands_bronze_bracers', colors: [] };
+    roman.slots.feet = { id: 'feet_gladiator_sandals', colors: [], parts: { paint: 'roman' } };
+    delete roman.slots.top;
+    delete roman.slots.bottom;
+    looks.push(['roman', roman]);
+    for (const [name, base] of looks) {
+      for (const body of RIGGED) {
+        const l = { ...base, body };
+        for (let f = 0; f < frameCount('throw'); f++) {
+          const r = drawRig(body, rigPoseFor('throw', l.cast?.style, l.slots.held?.id), f);
+          const fr = renderSprite(l, 'throw', f).rgba;
+          for (let k = 0; k <= 20; k++) {
+            const x = Math.floor((r.neck.x + ((r.head.x - r.neck.x) * k) / 20) * RES);
+            const y = Math.floor((r.neck.y + ((r.head.y - r.neck.y) * k) / 20) * RES);
+            assert.ok(fr[(y * GRID + x) * 4 + 3] > 0, `${name} ${body} throw ${f}: a gap at ${x},${y} between the neck and the head`);
+          }
+        }
+      }
     }
   });
 
@@ -192,7 +238,7 @@ describe('throw and pierce poses', () => {
     for (const held of WEAPONS) {
       const b = heldBox(look('male', held), 'pierce', 2)!;
       assert.ok(b, held);
-      assert.ok(b.x1 - b.x0 > 2 * (b.y1 - b.y0), `${held}: level`);
+      assert.ok(b.x1 - b.x0 > (held === 'held_dawn_staff' ? 1 : 2) * (b.y1 - b.y0), `${held}: level`);
       assert.ok(b.x1 > drawRig('male', 'pierce', 2).handN.x * 2, `${held}: pointing forward`);
     }
   });

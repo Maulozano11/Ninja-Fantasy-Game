@@ -4,15 +4,19 @@ import { drawBody, faceCells, sculptClothes } from './body';
 import { fitsBody, getItem } from './catalog';
 import { hexToRgb } from './color';
 import { Depth, DEPTHS, DrawCtx, ItemDef, NO_OUTLINE_DEPTHS, resolveParts } from './ctx';
+import { mendGlitches } from './glitches';
+import { keptFill } from './keptFills';
 import { closePinholes } from './holes';
 import { fillSeams } from './seams';
 import { paintedFrame, wearsHisFigure } from './ownerFrames';
+import { renSitFrame, stampRenSit } from './renSit';
 import { clipStowed, drawThrowKunai } from './items/accessories';
 import { CAPE_DEPTHS } from './items/capes';
 import { drawHeadband } from './items/headband';
 import { add, F_NO_OUTLINE, F_NO_TEXTURE, GRID, Layer, MaterialTable, norm, PAD, PartId, partIndex, PARTS, perp, RES, scale, sub, v, Vec } from './raster';
 import { drawRig, Lay, layRig, Rig, rigPoseFor, turnPoint, turnRig } from './rig';
 import { carryHead } from './neck';
+import { aureliaRig, onAureliaHead } from './aureliaHead';
 import { drawCampFx } from './campfx';
 import { drawCastFx } from './castfx';
 import { sealCloth } from './seal';
@@ -272,10 +276,12 @@ export function spriteLayers(look: SpriteAppearance, pose: SpritePose, frame: nu
 
 function drawLayers(look: SpriteAppearance, pose: SpritePose, frame: number, eyeSpecial: EyeSpecial, heldOnly?: Rig) {
   // heldOnly: just the held item (or the kunai bare hands throw) on that rig, no body (sprite/thrown.ts).
-  // (the long neck carries the head higher and further forward: neck.ts; his Roman face on a male body
-  // stands higher on his neck: romanNeck.ts)
+  // (the long neck carries the head higher and further forward: neck.ts; Aurelia's face stands her head
+  // where the owner drew it: aureliaHead.ts; his Roman face on a male body stands higher on his neck:
+  // romanNeck.ts)
   // (his bronze warrior's figure stands on his joints: hopliteRig.ts)
-  const rig = heldOnly ?? hopliteRig(romanRig(carryHead(drawRig(look.body, rigPoseFor(pose, look.cast?.style, look.stowed ? undefined : look.slots.held?.id), frame, look.arms), look.neck), look), look);
+  // (his own figure in his painted frames sits on his joints; any other look holds its hands from its own neck: rig.ts PoseAt.hisNeck)
+  const rig = heldOnly ?? hopliteRig(aureliaRig(romanRig(carryHead(drawRig(look.body, rigPoseFor(pose, look.cast?.style, look.stowed ? undefined : look.slots.held?.id), frame, look.arms, wearsHisFigure(look)), look.neck), look), look), look);
   const mats = new MaterialTable();
   const layers = new Map<Depth, Layer>();
   const equipped = new Map<SlotId, ItemDef>();
@@ -368,6 +374,14 @@ export function renderSprite(
   // Outline and flatten
   const rgba = new Uint8ClampedArray(GRID * GRID * 4);
   const part = new Uint8Array(GRID * GRID);
+  // Ren seated on the male body is the owner's own frame, pixel for pixel (renSit.ts): nothing of ours drawn.
+  const his = opts.heldOnly || opts.depths ? null : renSitFrame(look, pose, frame, eyeSpecial);
+  if (his) {
+    const hair = new Uint8Array((GRID * GRID) >> 3);
+    stampRenSit(his, rig, look, rgba, part, hair);
+    if (!opts.skipEdits && look.pixelEdits?.length) applyEdits(look.pixelEdits, rig, rgba, part);
+    return { rgba, part, hair, fx: new Uint8Array((GRID * GRID) >> 3), rig };
+  }
   const rgbCache = new Map<string, [number, number, number]>();
   const rgb = (hex: string) => {
     let c = rgbCache.get(hex);
@@ -414,7 +428,15 @@ export function renderSprite(
   // The 1-pixel holes turned pieces leave (sprite/holes.ts), each closed with its neighbours' line or
   // colour. Idle is left exactly as drawn: it is the frame the owner's pictures were copied into; so are
   // the frames he painted himself (his Lyra reading, sitting and throwing, ownerFrames.ts).
-  if (pose !== 'idle' && !(wearsHisFigure(look) && paintedFrame(rig.pose, rig.frame))) closePinholes(rgba, part, top, (i) => top[i] === FX, (i) => (topMat[i] < 0 ? 0x07060b : parseInt(mats.ramps[topMat[i]][0].slice(1), 16)));
+  const lineOf = (i: number) => (topMat[i] < 0 ? 0x07060b : parseInt(mats.ramps[topMat[i]][0].slice(1), 16));
+  const hisFrame = wearsHisFigure(look) && !!paintedFrame(rig.pose, rig.frame);
+  if (pose !== 'idle' && !hisFrame) closePinholes(rgba, part, top, (i) => top[i] === FX, lineOf);
+  // The owner's standard characters (2026-10-23: "quiero que arregles solo los de la calidad standard"): off
+  // his pictures, the cracks and light edge pixels their moved pieces open are closed; a pocket only where he saw
+  // it filled and left it (glitches.ts, keptFills.ts).
+  // (her walk he approved pixel for pixel stays as it is: aureliaLegs.test.ts)
+  const who = pose === 'idle' || hisFrame ? null : standardOf(look);
+  if (who && !(who === 'aurelia' && pose === 'walk')) mendGlitches(rgba, part, top, (i) => top[i] === FX, lineOf, undefined, (px) => keptFill(`${who}@${look.body}`, pose, frame, px));
   const hair = new Uint8Array(N >> 3);
   const fx = new Uint8Array(N >> 3);
   for (let i = 0; i < N; i++) {
@@ -468,6 +490,13 @@ function layFrame(rgba: Uint8ClampedArray, part: Uint8Array, hair: Uint8Array, l
  * layer's own fill, so the two never stack into a 2px dark line. Silhouette
  * outlines (next to transparency) are always kept.
  */
+/** Which of the owner's standard characters a look is on this branch (keptFills.ts names), or null: his Lyra, his Aurelia, his Roman set (cuirass and skirt). */
+function standardOf(look: SpriteAppearance): string | null {
+  if (wearsHisFigure(look)) return 'lyra';
+  if (onAureliaHead(look)) return 'aurelia';
+  return look.slots.armor?.id === 'armor_bronze' && look.slots.skirt?.id === 'skirt_imperial' ? 'roman' : null;
+}
+
 function thinDoubleOutlines(rgba: Uint8ClampedArray, top: Int16Array, isLine: Uint8Array): void {
   const N = GRID * GRID;
   const fixes: [number, number][] = [];

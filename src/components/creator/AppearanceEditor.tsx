@@ -13,6 +13,7 @@ import type {
   EyeShape,
   EyeSpecial,
   FaceShape,
+  HandSize,
   HeadbandPosition,
   ItemChoice,
   SlotId,
@@ -124,8 +125,10 @@ const FACE_SHAPES: { id: FaceShape; label: string; sub: string }[] = [
   { id: 'soft', label: 'Soft', sub: 'Fuller cheeks' },
   { id: 'square', label: 'Square', sub: 'Strong jaw' },
   { id: 'valiant', label: 'Valiant', sub: "Aiden's face" },
+  { id: 'night', label: 'Night', sub: "Ren's face" },
   { id: 'founder', label: 'Founder', sub: "Solen's face" },
   { id: 'fine', label: 'Fine', sub: "Lyra's face" },
+  { id: 'aurelia', label: 'Serene', sub: "Aurelia's face" },
   { id: 'roman', label: 'Roman', sub: "The Roman's face" },
   { id: 'hoplite', label: 'Bronze warrior', sub: "The bronze warrior's face" },
 ];
@@ -133,6 +136,11 @@ const FACE_SHAPES: { id: FaceShape; label: string; sub: string }[] = [
 const ARMS: { id: ArmType; label: string; sub: string }[] = [
   { id: 'standard', label: 'Standard', sub: "The body's own" },
   { id: 'long', label: 'Long', sub: "Lyra's arms" },
+];
+
+const HANDS: { id: HandSize; label: string; sub: string }[] = [
+  { id: 'normal', label: 'Normal hands', sub: "The body's own hands" },
+  { id: 'small', label: 'Small hands', sub: "Aurelia's hands" },
 ];
 
 const EYE_SHAPES: { id: EyeShape; label: string; sub?: string }[] = [
@@ -144,6 +152,8 @@ const EYE_SHAPES: { id: EyeShape; label: string; sub?: string }[] = [
   { id: 'bright', label: 'Bright' },
   { id: 'piercing', label: 'Piercing' },
   { id: 'valiant', label: 'Valiant', sub: "Aiden's eyes" },
+  { id: 'night', label: 'Night', sub: "Ren's eyes" },
+  { id: 'dawn', label: 'Dawn', sub: "Aurelia's eyes" },
   { id: 'keen', label: 'Keen', sub: "Lyra's eyes" },
   { id: 'roman', label: 'Roman', sub: "The Roman's eyes" },
   { id: 'hoplite', label: 'Bronze warrior', sub: "The bronze warrior's eyes" },
@@ -362,6 +372,27 @@ export const AppearanceEditor: React.FC<{
                 ))}
               </div>
             </div>
+            {isFemaleBody(look.body) && (
+              <div>
+                <SectionLabel>Hands</SectionLabel>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {HANDS.map((h) => (
+                    <OptionCard
+                      key={h.id}
+                      selected={(look.hands || 'normal') === h.id}
+                      label={h.label}
+                      sub={h.sub}
+                      onClick={() => {
+                        soundManager.playSelect();
+                        onChange({ ...look, hands: h.id });
+                      }}
+                    >
+                      <SpriteThumb look={{ ...look, hands: h.id }} eye={eye} />
+                    </OptionCard>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -734,8 +765,8 @@ const SlotPicker: React.FC<{
           <ChevronLeft className="w-4 h-4" />
         </button>
         <div className="flex-1 text-center">
-          <div className="text-sm font-bold text-white">{currentDef?.name ?? L('None')}</div>
-          <div className="text-[11px] text-slate-400">{currentDef?.desc ?? L('Nothing equipped in this slot.')}</div>
+          <div className="text-sm font-bold text-white">{currentDef ? L(currentDef.name) : L('None')}</div>
+          <div className="text-[11px] text-slate-400">{currentDef ? L(currentDef.desc) : L('Nothing equipped in this slot.')}</div>
         </div>
         <button
           type="button"

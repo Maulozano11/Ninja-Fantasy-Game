@@ -53,8 +53,8 @@ export interface CastChoice {
   jutsu?: Record<string, CastStyle>;
 }
 
-/** The eye options; valiant and roman are the owner's own eyes from his Aiden and Roman pictures, in his pixels; keen is his Lyra's, in her colours at our scale; hoplite his bronze warrior's red eyes. */
-export type EyeShape = 'standard' | 'sharp' | 'round' | 'calm' | 'fierce' | 'bright' | 'piercing' | 'valiant' | 'keen' | 'roman' | 'hoplite';
+/** The eye options; valiant, night and roman are the owner's own eyes from his Aiden, Ren and Roman pictures, in his pixels; dawn is his Aurelia's, in her pixels at our scale; keen is his Lyra's, in her colours at our scale; hoplite his bronze warrior's red eyes. */
+export type EyeShape = 'standard' | 'sharp' | 'round' | 'calm' | 'fierce' | 'bright' | 'piercing' | 'valiant' | 'night' | 'dawn' | 'keen' | 'roman' | 'hoplite';
 
 /**
  * The owner's heroines' long neck (neck.ts): his Lyra carries the head further forward on a slimmer neck.
@@ -68,13 +68,22 @@ export type NeckType = 'long';
 export type ArmType = 'standard' | 'long';
 
 /**
- * Near-side cheek and jaw: V-line (default), fuller, or a strong flat jaw; or the owner's own head
- * from his Aiden picture (valiant: his skull, ear, cheeks, jaw and chin in his pixels); or his Lyra's
- * face (fine: her narrower face, mouth and chin in his pixels, under our skull).
- * Or roman, from his Roman paint-over (his whole face with his nose and mouth, in his pixels). Or hoplite,
- * his bronze warrior's face brought down to our scale (hopliteHeadArt.ts).
+ * Hand size on the female bodies: the body's own (default), or small: his Aurelia's smaller hands in his
+ * pixels (body.ts smallHand). Ignored on the male and bulky bodies.
  */
-export type FaceShape = 'tapered' | 'soft' | 'square' | 'valiant' | 'founder' | 'fine' | 'roman' | 'hoplite';
+export type HandSize = 'normal' | 'small';
+
+/**
+ * Near-side cheek and jaw: V-line (default), fuller, or a strong flat jaw; or the owner's own head
+ * from his Aiden picture (valiant: his skull, ear, cheeks, jaw and chin in his pixels), or from his Ren
+ * picture (night: his narrower face with his own mouth, in his pixels); or his Lyra's face (fine: her
+ * narrower face, mouth and chin in his pixels, under our skull); or his Aurelia's face (aurelia: her ear,
+ * cheeks, mouth, jaw and chin in his pixels from his game-scale picture, under our skull; on a female body
+ * her head stands where he drew it, src/sprite/aureliaHead.ts).
+ * Or roman, from his Roman paint-over (his whole face with his nose and mouth, in his pixels). Or hoplite,
+ * his bronze warrior's face (hopliteHeadArt.ts; worn with his leather chest, his repaint's: items/hopliteRepaintArt.ts).
+ */
+export type FaceShape = 'tapered' | 'soft' | 'square' | 'valiant' | 'night' | 'founder' | 'fine' | 'aurelia' | 'roman' | 'hoplite';
 
 /** Single-choice equipment slots, drawn back-to-front by depth (see compose.ts). */
 export type SlotId =
@@ -164,6 +173,8 @@ export interface SpriteAppearance {
   arms?: ArmType;
   /** Missing on older saves; treated as 'tapered'. */
   faceShape?: FaceShape;
+  /** Missing on older saves; treated as 'normal'. */
+  hands?: HandSize;
   /** How jutsus are cast. Missing on older saves; treated as 'runes'. */
   cast?: CastChoice;
   slots: Partial<Record<SlotId, ItemChoice>>;

@@ -12,7 +12,7 @@
 
 import { retintHex, retintSkinLifted } from '../color';
 import { armDepth, armJoints, type Depth, DrawCtx, handPose, ItemDef, legDepth, legJoints, Side } from '../ctx';
-import { type PaintedPiece, segAngle, stampBent, stampPiece, stretchPiece } from '../painted';
+import { LEAN_SHEAR, type PaintedPiece, segAngle, stampBent, stampLeaning, stampPiece, stretchPiece } from '../painted';
 import { add, F_NO_OUTLINE, F_NO_TEXTURE, GRID, partIndex, PartId, RES, sub, v, Vec } from '../raster';
 import { drawRig, GROUND, type Rig } from '../rig';
 import { SAMURAI_BODIES, samuraiLegsStill, samuraiRestRig } from '../samuraiRig';
@@ -20,7 +20,6 @@ import { SAMURAI_SKIN } from '../samuraiHeadArt';
 import { sealCloth } from '../seal';
 import type { BodyType } from '../types';
 import { closeAnkle, footTurn } from './ankle';
-import { LEAN_SHEAR, stampLeaning } from './armor';
 import { capeWind, paintedBack } from './capes';
 import { clothPen, glove } from './clothes';
 import { SAMURAI_ARM_CORD, SAMURAI_ARM_GOLD, SAMURAI_ARM_IRON, SAMURAI_ARMS_KIND, SAMURAI_GLOVE, SAMURAI_HAND_F, SAMURAI_HAND_N, SAMURAI_KOTE_F, SAMURAI_KOTE_N, SAMURAI_SLEEVE_F, SAMURAI_SLEEVE_N } from './samuraiArmsArt';

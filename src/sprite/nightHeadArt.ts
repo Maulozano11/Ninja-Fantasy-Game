@@ -1,0 +1,70 @@
+// The owner's head on his Ren, his pixels (tools/refs/ren-face-from-ref.py from
+// docs/reference/ren-owner-reference.jpg). Generated: rerun the script to change it.
+
+import type { PaintedPiece } from './painted';
+
+/** The skin colour he painted Ren in: a player's skin moves every colour of it as far. */
+export const NIGHT_SKIN = '#ecac85';
+
+/** The owner's head (the 'night' face shape), his pixels from his Ren: his skull, ear, cheeks, mouth, chin and the top of his neck, his skin shading and black line; the eye options draw the eyes on it. Its pivot is the cell on the face anchor. */
+export const NIGHT_HEAD: PaintedPiece = {
+  pivot: [7, 12],
+  angle: 0.00,
+  rows: [
+    '.....aaaaaaaa.......',
+    '...aabbbbbbbbaa.....',
+    '..abbbbbbbbbbbba....',
+    '.acbbbbbbbbbbbbba...',
+    '.acbbbbbbbbbbbbba...',
+    'acbbbbbbbbbbbbbbca..',
+    'acbbbbbbbbbbbbbbca..',
+    'acbbbbbbbbbbbbbbca..',
+    'acbbbbbbbbbbbbbbca..',
+    'acbbbbbbbbdbbbbbbca.',
+    'acbbbbbbbbebbbbbbfa.',
+    'acbbbbbbbfbbcbbbhca.',
+    'acijdbbbbfbbccbkhcaa',
+    '.aablbbbbfbbcimkhca.',
+    '.aajnadddfbbbbjphca.',
+    '..aabaccbbbjjbbqrrs.',
+    '...aaaccbbbtjbuvccs.',
+    '.....aicbbbbbbjccwa.',
+    '......axjbjbyzArcii.',
+    '.......aBejbbbbrCai.',
+    '........aDEcjtda....',
+    '.........alaaaa.....',
+    '.........aFfffa.....',
+  ],
+  colors: {
+    a: '#010312',
+    b: '#ecac85',
+    c: '#cc7e63',
+    d: '#c57c64',
+    e: '#c37860',
+    f: '#9a564f',
+    h: '#a45e53',
+    i: '#01020e',
+    j: '#edb28b',
+    k: '#b16a5d',
+    l: '#864846',
+    m: '#e8aa84',
+    n: '#a86054',
+    p: '#f3cca7',
+    q: '#f3c79d',
+    r: '#cc8369',
+    s: '#0e0613',
+    t: '#eaae89',
+    u: '#bd6d58',
+    v: '#7f4141',
+    w: '#25101b',
+    x: '#4c242d',
+    y: '#b26555',
+    z: '#8a4a44',
+    A: '#8e4f46',
+    B: '#603034',
+    C: '#010217',
+    D: '#2a121f',
+    E: '#50272e',
+    F: '#b6705c',
+  },
+};

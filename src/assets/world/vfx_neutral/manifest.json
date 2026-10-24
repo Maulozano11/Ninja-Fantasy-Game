@@ -1,0 +1,31 @@
+{
+ "group": "vfx_neutral",
+ "pxPerMeter": 57,
+ "sprites": {
+  "slash": {
+   "label": "Neutral slash: his wind crescent in white (a sword art with no element)",
+   "file": "slash.png",
+   "frameW": 64,
+   "frameH": 68,
+   "anchor": [
+    31,
+    31
+   ],
+   "meters": [
+    1.12,
+    1.19
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "fly": {
+     "row": 0,
+     "frames": 8,
+     "fps": 10,
+     "loop": true
+    }
+   }
+  }
+ }
+}

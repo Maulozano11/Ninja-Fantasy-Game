@@ -237,13 +237,15 @@ Merge checks (`git merge-tree` on the origin tips, nothing changed):
   thrown weapons decided the same day): approve the new water on `vfx/weapon-water-v2` (his "mejorala para que
   se ve mas epica y proporcional", then "hazlo unos 1.35 mas largo"); his own hotbar icons for it (he will
   paint them).
-- `jutsu/shadow-clone` (2026-10-23): his four clone answers are built (`docs/GAMEPLAY_DESIGN.md`,
-  "Shadow Clone"). Look at the captures and confirm the builder's proposals: what a controlled clone
-  may do (walk, strike 1d6, throw 1d4, cast, dodge, hide; no items), a player's clones coming out
-  controlled and the AI's following, one turn a round each; "Elegido" read as Legend (sub-bosses and
-  bosses don't learn it); the Shadow Shuffle's 1 chakra, the Mirai as the keen-eyed clan (1.6 m), the
-  AI shuffling at 8 m; still open from before: foes fooled n in n + 2 and the clone's look. Balance:
-  with captains (and on Legend every minion) summoning, the night raid gets harder (doc, point 5).
+- `jutsu/shadow-clone` (2026-10-24): his five clone answers are built (`docs/GAMEPLAY_DESIGN.md`,
+  "Shadow Clone"). Decided on the 24th: Legend is his "Elegido"; the controlled clone and the decoy
+  are fine for now; the Shadow Shuffle costs one bonus action (no chakra). Still his to confirm: the
+  Mirai as the keen-eyed clan (1.6 m), the clone's throw (1d4, no ammo), the AI shuffling at 8 m, foes
+  fooled n in n + 2, the clone's look. Legend: he asked how to win it. The guide for him (outside the
+  repo) shows Solen, Hana and Kenji win the night raid 30 of 30 with the bell wire, chakra for their
+  S-rank jutsu, the three S-ranks in round 1 and area jutsu after (clones take every aimed blow, not
+  an area); without S-ranks it falls to 5-25 %, surprised 73 %. The earlier "lost 10 of 10" was
+  measured without S-ranks.
 
 - Approve or correct: `ryusei/phase`, `poses/throw-pierce`, the Shooting-Star Thrust choreography
   and its comet on `ryusei/warp-throw`, the icons on `icons/sheets-8-11`, the camp poses once redone.

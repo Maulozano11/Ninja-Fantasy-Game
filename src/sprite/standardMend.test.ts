@@ -37,8 +37,8 @@ describe("the owner's standard characters", () => {
       }
       assert.deepEqual(found, []);
     });
-  // his marks (2026-10-23): a pocket stays open (his separation) but where he saw it filled and left it, a light
-  // edge he marked red stays as drawn, and where he marked green the elbow is skin
+  // his marks (2026-10-23): a pocket stays open (his separation) but where he saw it filled and left it (or
+  // marked it back in blue), a light edge he marked red stays as drawn, and where he marked green the elbow is skin
   it('fills only the pockets he left filled, keeps his marked edges and makes the elbows skin', () => {
     const px = (n: number, pose: SpritePose, frame: number, x: number, y: number) => {
       const c = enemyCharacter('hunter', n);
@@ -46,9 +46,9 @@ describe("the owner's standard characters", () => {
       return [...renderSprite(getAppearance(c), pose, frame, dojutsuToEye(c.dojutsu)).rgba.subarray(i, i + 4)];
     };
     for (const [what, n, pose, frame, x, y, want] of [
-      ['the Cazadora Arrojar 2, red', 1, 'throw', 1, 114, 145, 'open'],
+      ['the Cazadora Arrojar 2, red then blue ("el de azul regresalo si estaba bien")', 1, 'throw', 1, 114, 145, 'filled'],
       ['the Cazadora Caminar 5, red', 1, 'walk', 4, 121, 167, 'open'],
-      ['the Cazadora Arrojar 2, red: the arm edge as drawn', 1, 'throw', 1, 108, 152, 'skin'],
+      ['the Cazadora Estocada 2, red: the arm edge as drawn', 1, 'pierce', 1, 104, 166, 'skin'],
       ['Cazador 1 Carga 1, green ("les falta rellenar con pixeles los codos")', 0, 'charge', 0, 105, 165, 'skin'],
       ['Cazador 1 Sigilo 2, green', 0, 'sneak', 1, 116, 170, 'skin'],
       ['Cazador 1 Reposo 1, his picture: no elbow of ours beside his arm', 0, 'idle', 0, 113, 167, 'open'],

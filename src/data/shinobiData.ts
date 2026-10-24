@@ -13,7 +13,7 @@ import {
   AbilityScores,
 } from '../types/shinobi';
 import type { ItemChoice, SpriteAppearance } from '../sprite/types';
-import { HOPLITE_IRIS, HOPLITE_SKIN } from '../sprite/hopliteHeadArt';
+import { HOPLITE_R_IRIS as HOPLITE_IRIS, HOPLITE_R_SKIN as HOPLITE_SKIN } from '../sprite/items/hopliteRepaintArt';
 import { NIGHT_IRIS } from '../sprite/nightEyeArt';
 import { NIGHT_SKIN } from '../sprite/nightHeadArt';
 

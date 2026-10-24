@@ -128,7 +128,7 @@ screens (`CampaignMode.tsx`, `ArenaSandbox.tsx`) are English only.
 | `claude/eloquent-noether-ix51z1` | `8dfd107` | Everything approved | **Integration**, live |
 | `aiden/*` (8 branches) | `aiden/integration` `995be5d`; parts `armor` `dee8d17`, `boots-gloves` `c5dec79`, `cape` `ad183d4`, `eyes` `313d514`, `flame-sword` `4052fef`, `hair` `201cb44`, `head-shape` `930d3ad` | The owner's Aiden, part by part | Merged (`c2b84f5`) |
 | `icons/sheet-12`, `icons/sheet-12-fix` | `cd8e07b`, `b8dd15c` | Sabueso rayo, Luna creciente, Nirvana | Merged (`8dfd107`) |
-| `hero/bronze-warrior` | `9c47c07` | The owner's bronze warrior, both of his sets (`bronze-warrior-owner-reference.jpg`, `bronze-warrior-leather-chest-owner-reference.jpg`): his picture shrunk and cleaned as he decided (`tools/refs/bronze_ref.py` and one script per part), his parts as male-only items (`items/hoplite.ts`), his proportions on our rig (`hopliteRig.ts`), presets `preset_bronze_warrior` and `preset_bronze_warrior_leather` (provisional names); `src/sprite/hoplite.test.ts`. Touches `compose.ts`, `body.ts`, `types.ts`, `catalog.ts`, `random.ts`, `words.ts`, `AppearanceEditor.tsx`, `shinobiData.ts` | Waiting for his approval of the idle; poses not done |
+| `hero/bronze-warrior` | (pushed) | The owner's bronze warrior, both of his sets (`bronze-warrior-owner-reference.jpg`, `bronze-warrior-leather-chest-owner-reference.jpg`, `bronze-warrior-repaint-owner-reference.jpg`): his first picture shrunk and cleaned as he decided (`tools/refs/bronze_ref.py`) for the bronze cuirass, clasp and pauldrons; his own game-scale repaint, pixel for pixel, for the leather set and for every piece both sets share (`tools/refs/bronze-repaint-from-ref.py`); male-only items (`items/hoplite.ts`), his proportions on our rig (`hopliteRig.ts`), presets `preset_bronze_warrior` and `preset_bronze_warrior_leather` (provisional names); `src/sprite/hoplite.test.ts`. Touches `compose.ts`, `body.ts`, `types.ts`, `catalog.ts`, `random.ts`, `words.ts`, `AppearanceEditor.tsx`, `shinobiData.ts` | Idle approved for the repaint pieces; poses not done |
 | `icons/sheet-13` | see the branch | His icon sheets 13–22 (34 icons: earth, fire, lightning, water, wind, taijutsu and genjutsu jutsu, the items, Hide Tag and the stealth actions); copies of his pictures | **Pushed, to merge** |
 | `camp/owner-ref` | `70293ba` | Read, lean and sit camp poses from his picture (`camp-poses-owner-reference.webp` on that branch); touches `rig.ts`, `compose.ts`, `ctx.ts`, `campfx.ts` | **WIP, being redone**: copy his book and both hands exactly; show Aiden reading |
 | `camp/hands-book` | `a3ae184` | Earlier pass, already inside `camp/owner-ref` | Superseded |
@@ -229,10 +229,11 @@ Merge checks (`git merge-tree` on the origin tips, nothing changed):
 
 ## 3. Waiting for the owner
 
-- `hero/bronze-warrior` (2026-10-24): approve the idle of both sets (his picture shrunk 2.85x and cleaned).
-  At this size his cuirass spirals, lion and greave filigree are at the limit of what the pixels hold; he may
-  repaint them at 1:1 (bases in the session's `sets-nuevos/bronze/para-repintar/`). Names for the warrior and
-  his items are his to give. Then every pose on male and bulky.
+- `hero/bronze-warrior` (2026-10-24): he answered our reduction of his leather set with his own repaint at
+  the game's scale ("aqui esta tu nueva version"), now that set pixel for pixel; and he chose his repainted
+  head, hair, diadem, cape, skirt, arms and legs for the bronze set too, which keeps its bronze cuirass ("si
+  las usamos si arregla el pixel"; the pixel, his neck showing beside the scarf, is fixed). Names for the
+  warrior and his items are his to give. Next: every pose on male and bulky, after his OK on the idle.
 
 - `jutsu/tide-s` (2026-10-22): the Dragon Tsunami is approved (look, rank S, names, numbers for now).
   Still open, small:

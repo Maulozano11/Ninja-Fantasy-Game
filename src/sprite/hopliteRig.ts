@@ -1,7 +1,7 @@
 // The owner's bronze warrior stands his own way (docs/reference/bronze-warrior-owner-reference.jpg, brought
 // down to our scale by tools/refs/bronze_ref.py): his torso is a little longer than ours, his legs a little
 // shorter, his feet a little smaller, and he rests his near fist on his hip where our arm hangs. Worn whole,
-// his figure stands on his joints (hopliteFigureArt.ts HOPLITE_JOINTS), so at rest every piece of his is
+// his figure stands on his joints (items/hopliteRepaintArt.ts HOPLITE_JOINTS), so at rest every piece of his is
 // where he drew it, and in every other pose our joints move with the pose while keeping his proportions:
 //   - his torso (neck, shoulders, pelvis, hips) where his stands from ours, turned with the torso;
 //   - each foot as far from ours as his stands at rest (his smaller feet still on our ground), each knee
@@ -14,7 +14,7 @@
 import { segAngle } from './painted';
 import { add, len, RES, scale, sub, v, Vec } from './raster';
 import { drawRig, type Rig } from './rig';
-import { HOPLITE_JOINTS } from './hopliteFigureArt';
+import { HOPLITE_JOINTS } from './items/hopliteRepaintArt';
 import { isFemaleBody, type BodyType, type SpriteAppearance } from './types';
 
 /** The armours that stand a look on his figure: his cuirass or his leather chest, on a male body. */

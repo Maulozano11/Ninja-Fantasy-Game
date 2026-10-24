@@ -7,8 +7,7 @@ import { faceAnchor } from './body';
 import { getItem } from './catalog';
 import { renderSprite } from './compose';
 import type { DrawCtx } from './ctx';
-import { HOPLITE_FIGURE, HOPLITE_FIGURE_AT, HOPLITE_JOINTS } from './hopliteFigureArt';
-import { HOPLITE_R_FIGURE, HOPLITE_R_FIGURE_AT } from './items/hopliteRepaintArt';
+import { HOPLITE_FIGURE, HOPLITE_FIGURE_AT, HOPLITE_JOINTS, HOPLITE_R_FIGURE, HOPLITE_R_FIGURE_AT } from './items/hopliteRepaintArt';
 import { hopliteRig } from './hopliteRig';
 import { GRID, RES } from './raster';
 import { drawRig } from './rig';
@@ -54,7 +53,7 @@ describe("the owner's bronze warrior", () => {
     assert.deepEqual([nx, ny], [123, 139]);
   });
 
-  it('is his cleaned reduction pixel for pixel at male idle frame 0, and nothing else', () => {
+  it('in his bronze set is his repainted pieces with the bronze cuirass pixel for pixel at male idle frame 0, and nothing else', () => {
     const wrong = wrongPixels(renderSprite(look(), 'idle', 0).rgba, figure());
     assert.equal(wrong.length, 0, `${wrong.length} pixels differ: ${wrong.slice(0, 12).join('; ')}`);
   });

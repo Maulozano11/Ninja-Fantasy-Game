@@ -13,47 +13,11 @@ import { retintHex, retintSkinLifted } from '../color';
 import { armDepth, armJoints, type Depth, DrawCtx, handPose, ItemDef, legDepth, legJoints, Side } from '../ctx';
 import { type PaintedPiece, type PieceJoint, segAngle, stampBent, stampLeaning, stampPiece } from '../painted';
 import { GRID, partIndex, PartId, RES, v } from '../raster';
-import { HOPLITE_SKIN } from '../hopliteHeadArt';
 import { hopliteArmStill, hopliteRig } from '../hopliteRig';
 import { drawRig, type Rig } from '../rig';
 import type { BodyType } from '../types';
 import { HOPLITE_ARMOR_BRONZE, HOPLITE_ARMOR_STEEL, HOPLITE_CHEST, HOPLITE_CHEST_KIND, HOPLITE_CLASP, HOPLITE_CLASP_KIND } from './hopliteArmorArt';
-import {
-  HOPLITE_ARM_F,
-  HOPLITE_ARM_F_KIND,
-  HOPLITE_ARM_N,
-  HOPLITE_ARM_N_KIND,
-  HOPLITE_ARMS_BRONZE,
-  HOPLITE_BRACER_F,
-  HOPLITE_BRACER_F_KIND,
-  HOPLITE_BRACER_N,
-  HOPLITE_BRACER_N_KIND,
-  HOPLITE_FIST_F,
-  HOPLITE_FIST_F_KIND,
-  HOPLITE_FIST_N,
-  HOPLITE_FIST_N_KIND,
-} from './hopliteArmsArt';
-import { HOPLITE_CAPE, HOPLITE_CAPE_CLOTH, HOPLITE_CAPE_KIND, HOPLITE_SCARF, HOPLITE_SCARF_KIND } from './hopliteCapeArt';
-import { HOPLITE_DIADEM, HOPLITE_DIADEM_BRONZE, HOPLITE_DIADEM_KIND } from './hopliteDiademArt';
-import {
-  HOPLITE_GREAVE_F,
-  HOPLITE_GREAVE_F_KIND,
-  HOPLITE_GREAVE_N,
-  HOPLITE_GREAVE_N_KIND,
-  HOPLITE_GREAVES_BRONZE,
-  HOPLITE_GREAVES_SHOE,
-  HOPLITE_SHOE_F,
-  HOPLITE_SHOE_F_KIND,
-  HOPLITE_SHOE_N,
-  HOPLITE_SHOE_N_KIND,
-  HOPLITE_THIGH_F,
-  HOPLITE_THIGH_F_KIND,
-  HOPLITE_THIGH_N,
-  HOPLITE_THIGH_N_KIND,
-} from './hopliteGreavesArt';
-import { HOPLITE_BRAID, HOPLITE_BRAID_KIND, HOPLITE_HAIR, HOPLITE_HAIR_BAND, HOPLITE_HAIR_BASE, HOPLITE_HAIR_KIND } from './hopliteHairArt';
 import { HOPLITE_PAULDRON_BRONZE, HOPLITE_PAULDRON_F, HOPLITE_PAULDRON_F_KIND, HOPLITE_PAULDRON_N, HOPLITE_PAULDRON_N_KIND } from './hoplitePauldronsArt';
-import { HOPLITE_SKIRT, HOPLITE_SKIRT_KIND, HOPLITE_SKIRT_LEATHER, HOPLITE_SKIRT_NAVY } from './hopliteSkirtArt';
 import * as RP from './hopliteRepaintArt';
 import { faceAnchor } from '../body';
 
@@ -72,81 +36,41 @@ export function hopliteTint(g: DrawCtx, kinds: Record<string, string>, slots: Re
   return (_ch: string, hex: string): string => {
     const k = kinds[hex];
     if (k === 'line' || k === 'dark') return hex;
-    if (k === 'skin') return retintSkinLifted(hex, HOPLITE_SKIN, g.look.skin);
+    if (k === 'skin') return retintSkinLifted(hex, RP.HOPLITE_R_SKIN, g.look.skin);
     const s = slots[k];
     return s ? retintHex(hex, s[0], s[1]) : hex;
   };
 }
 const lineOf = (kinds: Record<string, string>) => (hex: string) => kinds[hex] === 'line';
 
-/**
- * His pieces in one of his sets: the first picture's, brought down and cleaned, or his own repaint of the
- * leather set at our scale (docs/reference/bronze-warrior-repaint-owner-reference.jpg, the owner, 2026-10-24:
- * "aqui esta tu nueva version"). Both stand on the same joints (his repaint's body lies on ours to the pixel).
- */
 type Kinds = Record<string, string>;
-interface HopliteArt {
-  hair: PaintedPiece;
-  hairK: Kinds;
-  braid: PaintedPiece;
-  braidK: Kinds;
-  diadem: PaintedPiece;
-  diademK: Kinds;
-  cape: PaintedPiece;
-  capeK: Kinds;
-  scarf: PaintedPiece;
-  scarfK: Kinds;
-  skirt: PaintedPiece;
-  skirtK: Kinds;
-  arms: Record<Side, { arm: PaintedPiece; armK: Kinds; bracer: PaintedPiece; bracerK: Kinds; fist: PaintedPiece; fistK: Kinds }>;
-  legs: Record<Side, { thigh: PaintedPiece; thighK: Kinds; greave: PaintedPiece; greaveK: Kinds; shoe: PaintedPiece; shoeK: Kinds }>;
-}
-const ORIGINAL: HopliteArt = {
-  hair: HOPLITE_HAIR,
-  hairK: HOPLITE_HAIR_KIND,
-  braid: HOPLITE_BRAID,
-  braidK: HOPLITE_BRAID_KIND,
-  diadem: HOPLITE_DIADEM,
-  diademK: HOPLITE_DIADEM_KIND,
-  cape: HOPLITE_CAPE,
-  capeK: HOPLITE_CAPE_KIND,
-  scarf: HOPLITE_SCARF,
-  scarfK: HOPLITE_SCARF_KIND,
-  skirt: HOPLITE_SKIRT,
-  skirtK: HOPLITE_SKIRT_KIND,
-  arms: {
-    N: { arm: HOPLITE_ARM_N, armK: HOPLITE_ARM_N_KIND, bracer: HOPLITE_BRACER_N, bracerK: HOPLITE_BRACER_N_KIND, fist: HOPLITE_FIST_N, fistK: HOPLITE_FIST_N_KIND },
-    F: { arm: HOPLITE_ARM_F, armK: HOPLITE_ARM_F_KIND, bracer: HOPLITE_BRACER_F, bracerK: HOPLITE_BRACER_F_KIND, fist: HOPLITE_FIST_F, fistK: HOPLITE_FIST_F_KIND },
-  },
-  legs: {
-    N: { thigh: HOPLITE_THIGH_N, thighK: HOPLITE_THIGH_N_KIND, greave: HOPLITE_GREAVE_N, greaveK: HOPLITE_GREAVE_N_KIND, shoe: HOPLITE_SHOE_N, shoeK: HOPLITE_SHOE_N_KIND },
-    F: { thigh: HOPLITE_THIGH_F, thighK: HOPLITE_THIGH_F_KIND, greave: HOPLITE_GREAVE_F, greaveK: HOPLITE_GREAVE_F_KIND, shoe: HOPLITE_SHOE_F, shoeK: HOPLITE_SHOE_F_KIND },
-  },
-};
-const REPAINT: HopliteArt = {
+/**
+ * The pieces his two sets share are his own repaint's at our scale (docs/reference/bronze-warrior-repaint-owner-reference.jpg,
+ * the owner, 2026-10-24: "aqui esta tu nueva version", and for the bronze set too: "si las usamos si arregla el
+ * pixel"); his body there lies on his first picture's reduction to the pixel, so it stands on the same joints.
+ */
+const ART = {
   hair: RP.HOPLITE_R_HAIR,
-  hairK: RP.HOPLITE_R_HAIR_KIND,
+  hairK: RP.HOPLITE_R_HAIR_KIND as Kinds,
   braid: RP.HOPLITE_R_BRAID,
-  braidK: RP.HOPLITE_R_BRAID_KIND,
+  braidK: RP.HOPLITE_R_BRAID_KIND as Kinds,
   diadem: RP.HOPLITE_R_DIADEM,
-  diademK: RP.HOPLITE_R_DIADEM_KIND,
+  diademK: RP.HOPLITE_R_DIADEM_KIND as Kinds,
   cape: RP.HOPLITE_R_CAPE,
-  capeK: RP.HOPLITE_R_CAPE_KIND,
+  capeK: RP.HOPLITE_R_CAPE_KIND as Kinds,
   scarf: RP.HOPLITE_R_SCARF,
-  scarfK: RP.HOPLITE_R_SCARF_KIND,
+  scarfK: RP.HOPLITE_R_SCARF_KIND as Kinds,
   skirt: RP.HOPLITE_R_SKIRT,
-  skirtK: RP.HOPLITE_R_SKIRT_KIND,
+  skirtK: RP.HOPLITE_R_SKIRT_KIND as Kinds,
   arms: {
-    N: { arm: RP.HOPLITE_R_ARM_N, armK: RP.HOPLITE_R_ARM_N_KIND, bracer: RP.HOPLITE_R_BRACER_N, bracerK: RP.HOPLITE_R_BRACER_N_KIND, fist: RP.HOPLITE_R_FIST_N, fistK: RP.HOPLITE_R_FIST_N_KIND },
-    F: { arm: RP.HOPLITE_R_ARM_F, armK: RP.HOPLITE_R_ARM_F_KIND, bracer: RP.HOPLITE_R_BRACER_F, bracerK: RP.HOPLITE_R_BRACER_F_KIND, fist: RP.HOPLITE_R_FIST_F, fistK: RP.HOPLITE_R_FIST_F_KIND },
+    N: { arm: RP.HOPLITE_R_ARM_N, armK: RP.HOPLITE_R_ARM_N_KIND as Kinds, bracer: RP.HOPLITE_R_BRACER_N, bracerK: RP.HOPLITE_R_BRACER_N_KIND as Kinds, fist: RP.HOPLITE_R_FIST_N, fistK: RP.HOPLITE_R_FIST_N_KIND as Kinds },
+    F: { arm: RP.HOPLITE_R_ARM_F, armK: RP.HOPLITE_R_ARM_F_KIND as Kinds, bracer: RP.HOPLITE_R_BRACER_F, bracerK: RP.HOPLITE_R_BRACER_F_KIND as Kinds, fist: RP.HOPLITE_R_FIST_F, fistK: RP.HOPLITE_R_FIST_F_KIND as Kinds },
   },
   legs: {
-    N: { thigh: RP.HOPLITE_R_THIGH_N, thighK: RP.HOPLITE_R_THIGH_N_KIND, greave: RP.HOPLITE_R_GREAVE_N, greaveK: RP.HOPLITE_R_GREAVE_N_KIND, shoe: RP.HOPLITE_R_SHOE_N, shoeK: RP.HOPLITE_R_SHOE_N_KIND },
-    F: { thigh: RP.HOPLITE_R_THIGH_F, thighK: RP.HOPLITE_R_THIGH_F_KIND, greave: RP.HOPLITE_R_GREAVE_F, greaveK: RP.HOPLITE_R_GREAVE_F_KIND, shoe: RP.HOPLITE_R_SHOE_F, shoeK: RP.HOPLITE_R_SHOE_F_KIND },
+    N: { thigh: RP.HOPLITE_R_THIGH_N, thighK: RP.HOPLITE_R_THIGH_N_KIND as Kinds, greave: RP.HOPLITE_R_GREAVE_N, greaveK: RP.HOPLITE_R_GREAVE_N_KIND as Kinds, shoe: RP.HOPLITE_R_SHOE_N, shoeK: RP.HOPLITE_R_SHOE_N_KIND as Kinds },
+    F: { thigh: RP.HOPLITE_R_THIGH_F, thighK: RP.HOPLITE_R_THIGH_F_KIND as Kinds, greave: RP.HOPLITE_R_GREAVE_F, greaveK: RP.HOPLITE_R_GREAVE_F_KIND as Kinds, shoe: RP.HOPLITE_R_SHOE_F, shoeK: RP.HOPLITE_R_SHOE_F_KIND as Kinds },
   },
 };
-/** His repaint is the leather set: worn with the leather chest, the pieces the two sets share are his repaint's. */
-const artOf = (g: DrawCtx) => (g.has('armor', 'armor_hoplite_leather') ? REPAINT : ORIGINAL);
 
 const REST = new Map<BodyType, Rig>();
 /**
@@ -233,10 +157,9 @@ function drawPauldrons(g: DrawCtx, slots: Record<string, [string, string]>, piec
 
 function drawCape(g: DrawCtx, cloth: string): void {
   const r = g.rig;
-  const slots = { purple: [HOPLITE_CAPE_CLOTH, cloth] as [string, string] };
-  const A = artOf(g);
-  stampLeaning(g, 'capeBack', A.cape, r.neck, torsoAngle(g), 'torso', hopliteTint(g, A.capeK, slots), lineOf(A.capeK));
-  stampLeaning(g, 'capeFront', A.scarf, r.neck, torsoAngle(g), 'torso', hopliteTint(g, A.scarfK, slots), lineOf(A.scarfK));
+  const slots = { purple: [RP.HOPLITE_R_CAPE_CLOTH, cloth] as [string, string] };
+  stampLeaning(g, 'capeBack', ART.cape, r.neck, torsoAngle(g), 'torso', hopliteTint(g, ART.capeK, slots), lineOf(ART.capeK));
+  stampLeaning(g, 'capeFront', ART.scarf, r.neck, torsoAngle(g), 'torso', hopliteTint(g, ART.scarfK, slots), lineOf(ART.scarfK));
 }
 
 // ---------------------------------------------------------------------------------------------------
@@ -245,9 +168,8 @@ function drawCape(g: DrawCtx, cloth: string): void {
 
 function drawSkirt(g: DrawCtx, navy: string, leather: string): void {
   const r = g.rig;
-  const slots = { navy: [HOPLITE_SKIRT_NAVY, navy] as [string, string], warm: [HOPLITE_SKIRT_LEATHER, leather] as [string, string] };
-  const A = artOf(g);
-  stampLeaning(g, 'skirt', A.skirt, r.pelvis, torsoAngle(g), 'pelvis', hopliteTint(g, A.skirtK, slots), lineOf(A.skirtK));
+  const slots = { navy: [RP.HOPLITE_R_SKIRT_NAVY, navy] as [string, string], warm: [RP.HOPLITE_R_SKIRT_LEATHER, leather] as [string, string] };
+  stampLeaning(g, 'skirt', ART.skirt, r.pelvis, torsoAngle(g), 'pelvis', hopliteTint(g, ART.skirtK, slots), lineOf(ART.skirtK));
 }
 
 // ---------------------------------------------------------------------------------------------------
@@ -260,7 +182,7 @@ const JOINT_R = 4;
 /** How far an arm bends past the way he drew it (degrees): at the shoulder (the torso's turn taken off) and at the elbow. */
 function armBends(g: DrawCtx, s: Side): { shoulder: number; elbow: number } {
   const r = g.rig;
-  const P = artOf(g).arms[s];
+  const P = ART.arms[s];
   const j = armJoints(r, s);
   const idle = restRig(r.body);
   const t = torsoAngle(g) - segAngle(idle.pelvis, idle.neck);
@@ -272,9 +194,9 @@ function armBends(g: DrawCtx, s: Side): { shoulder: number; elbow: number } {
 
 function drawArm(g: DrawCtx, s: Side, bronze: string): void {
   const r = g.rig;
-  const P = artOf(g).arms[s];
+  const P = ART.arms[s];
   const j = armJoints(r, s);
-  const slots = { warm: [HOPLITE_ARMS_BRONZE, bronze] as [string, string] };
+  const slots = { warm: [RP.HOPLITE_R_ARMS_BRONZE, bronze] as [string, string] };
   const kind = handPose(g, s).kind;
   // his fist on every closed hand; a pointing hand or one cradling a book stays ours
   const fist = kind !== 'point' && kind !== 'cradle';
@@ -302,7 +224,7 @@ function drawArm(g: DrawCtx, s: Side, bronze: string): void {
 
 
 function legBends(g: DrawCtx, s: Side): { hip: number; knee: number } {
-  const P = artOf(g).legs[s];
+  const P = ART.legs[s];
   const j = legJoints(g.rig, s);
   const thigh = segAngle(j.hip, j.knee);
   const shin = segAngle(j.knee, j.ankle);
@@ -312,7 +234,7 @@ function legBends(g: DrawCtx, s: Side): { hip: number; knee: number } {
 
 function drawLegs(g: DrawCtx, bronze: string, shoe: string): void {
   for (const s of ['F', 'N'] as Side[]) {
-    const P = artOf(g).legs[s];
+    const P = ART.legs[s];
     const j = legJoints(g.rig, s);
     partsOff(g, [legDepth(s, 'body'), legDepth(s, 'cloth'), legDepth(s, 'feet')], [prt('thigh', s), prt('shin', s), prt('foot', s)]);
     const thigh = segAngle(j.hip, j.knee);
@@ -323,8 +245,8 @@ function drawLegs(g: DrawCtx, bronze: string, shoe: string): void {
       { about: j.knee, r: 5, bend: bend.knee, carry: true },
       { about: j.hip, r: 5, bend: bend.hip },
     ], lineOf(P.thighK), skin);
-    stampPiece(g, legDepth(s, 'feet'), P.shoe, j.ankle, shin, prt('foot', s), hopliteTint(g, P.shoeK, { warm: [HOPLITE_GREAVES_SHOE, shoe] }), lineOf(P.shoeK));
-    stampPiece(g, legDepth(s, 'armor'), P.greave, j.knee, shin, prt('shin', s), hopliteTint(g, P.greaveK, { warm: [HOPLITE_GREAVES_BRONZE, bronze] }), lineOf(P.greaveK));
+    stampPiece(g, legDepth(s, 'feet'), P.shoe, j.ankle, shin, prt('foot', s), hopliteTint(g, P.shoeK, { warm: [RP.HOPLITE_R_GREAVES_SHOE, shoe] }), lineOf(P.shoeK));
+    stampPiece(g, legDepth(s, 'armor'), P.greave, j.knee, shin, prt('shin', s), hopliteTint(g, P.greaveK, { warm: [RP.HOPLITE_R_GREAVES_BRONZE, bronze] }), lineOf(P.greaveK));
   }
 }
 
@@ -345,14 +267,13 @@ export const HOPLITE_ITEMS: ItemDef[] = [
     slot: 'hair',
     name: "Bronze Warrior's Mane",
     desc: 'Long wild black hair with a braid tied in bronze bands behind, painted by the owner for his bronze warrior.',
-    colors: [col('main', 'Hair', HOPLITE_HAIR_BASE), col('band', 'Bands', HOPLITE_HAIR_BAND, 'metal')],
+    colors: [col('main', 'Hair', RP.HOPLITE_R_HAIR_BASE), col('band', 'Bands', RP.HOPLITE_R_HAIR_BAND, 'metal')],
     bodies: [...MEN],
     draw: (g, [c, band]) => {
-      const hair = [HOPLITE_HAIR_BASE, c] as [string, string];
-      const slots = { hair, navy: hair, grey: hair, purple: hair, warm: [HOPLITE_HAIR_BAND, band] as [string, string] };
-      const A = artOf(g);
-      stampOnFace(g, 'hairBack', A.braid, hopliteTint(g, A.braidK, slots));
-      stampOnFace(g, 'hairFront', A.hair, hopliteTint(g, A.hairK, slots));
+      const hair = [RP.HOPLITE_R_HAIR_BASE, c] as [string, string];
+      const slots = { hair, navy: hair, grey: hair, purple: hair, warm: [RP.HOPLITE_R_HAIR_BAND, band] as [string, string] };
+          stampOnFace(g, 'hairBack', ART.braid, hopliteTint(g, ART.braidK, slots));
+      stampOnFace(g, 'hairFront', ART.hair, hopliteTint(g, ART.hairK, slots));
     },
   },
   {
@@ -360,11 +281,10 @@ export const HOPLITE_ITEMS: ItemDef[] = [
     slot: 'accessory',
     name: "Bronze Warrior's Diadem",
     desc: 'A bronze diadem across the forehead with a small emblem, painted by the owner for his bronze warrior.',
-    colors: [col('bronze', 'Bronze', HOPLITE_DIADEM_BRONZE, 'metal')],
+    colors: [col('bronze', 'Bronze', RP.HOPLITE_R_DIADEM_BRONZE, 'metal')],
     bodies: [...MEN],
     draw: (g, [c]) => {
-      const A = artOf(g);
-      stampOnFace(g, 'head.gear', A.diadem, hopliteTint(g, A.diademK, { warm: [HOPLITE_DIADEM_BRONZE, c] }));
+          stampOnFace(g, 'head.gear', ART.diadem, hopliteTint(g, ART.diademK, { warm: [RP.HOPLITE_R_DIADEM_BRONZE, c] }));
     },
   },
   {
@@ -445,7 +365,7 @@ export const HOPLITE_ITEMS: ItemDef[] = [
     slot: 'cape',
     name: "Bronze Warrior's Cape",
     desc: 'A deep purple cape with a scarf of the same cloth wrapped round the neck, painted by the owner for his bronze warrior.',
-    colors: [col('cloth', 'Cloth', HOPLITE_CAPE_CLOTH)],
+    colors: [col('cloth', 'Cloth', RP.HOPLITE_R_CAPE_CLOTH)],
     bodies: [...MEN],
     draw: (g, [c]) => drawCape(g, c),
   },
@@ -454,7 +374,7 @@ export const HOPLITE_ITEMS: ItemDef[] = [
     slot: 'skirt',
     name: "Bronze Warrior's Pteruges",
     desc: 'A navy skirt under bronze-studded leather straps with gold tassels and a gold meander border, painted by the owner for his bronze warrior.',
-    colors: [col('navy', 'Cloth', HOPLITE_SKIRT_NAVY), col('leather', 'Straps', HOPLITE_SKIRT_LEATHER, 'leather')],
+    colors: [col('navy', 'Cloth', RP.HOPLITE_R_SKIRT_NAVY), col('leather', 'Straps', RP.HOPLITE_R_SKIRT_LEATHER, 'leather')],
     bodies: [...MEN],
     draw: (g, [n, l]) => drawSkirt(g, n, l),
   },
@@ -463,7 +383,7 @@ export const HOPLITE_ITEMS: ItemDef[] = [
     slot: 'hands',
     name: "Bronze Warrior's Bracers",
     desc: 'Spiral bronze bracers with fingerless wraps on bare arms, painted by the owner for his bronze warrior.',
-    colors: [col('bronze', 'Bronze', HOPLITE_ARMS_BRONZE, 'metal')],
+    colors: [col('bronze', 'Bronze', RP.HOPLITE_R_ARMS_BRONZE, 'metal')],
     bodies: [...MEN],
     draw: (g, [b]) => {
       drawArm(g, 'F', b);
@@ -475,7 +395,7 @@ export const HOPLITE_ITEMS: ItemDef[] = [
     slot: 'feet',
     name: "Bronze Warrior's Greaves",
     desc: 'Engraved bronze greaves over brown shoes, on bare thighs, painted by the owner for his bronze warrior.',
-    colors: [col('bronze', 'Bronze', HOPLITE_GREAVES_BRONZE, 'metal'), col('shoe', 'Shoes', HOPLITE_GREAVES_SHOE, 'leather')],
+    colors: [col('bronze', 'Bronze', RP.HOPLITE_R_GREAVES_BRONZE, 'metal'), col('shoe', 'Shoes', RP.HOPLITE_R_GREAVES_SHOE, 'leather')],
     bodies: [...MEN],
     draw: (g, [b, s]) => drawLegs(g, b, s),
   },

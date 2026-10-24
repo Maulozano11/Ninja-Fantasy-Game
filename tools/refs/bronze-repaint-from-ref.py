@@ -1,9 +1,12 @@
-"""The owner's repaint of his bronze warrior in the leather set at our scale (docs/reference/bronze-warrior-repaint-owner-reference.jpg) as that set's pieces.
+"""The owner's repaint of his bronze warrior at our scale (docs/reference/bronze-warrior-repaint-owner-reference.jpg) as his pieces, for both his sets.
 
 He answered our cleaned reduction of his leather-set picture with his own repaint of it at the game's scale
 (2026-10-24, "aqui esta tu nueva version"): on the right of his picture, our idle figure drawn again by him,
 one of his pixels one fine pixel of ours (about 15.05 picture pixels). It replaces our reduction for the
-leather set: every pixel of his is copied as he painted it, in his place.
+leather set: every pixel of his is copied as he painted it, in his place. And he chose his repainted pieces for
+the bronze set too ("si las usamos si arregla el pixel"): head, hair and braid, diadem, cape and scarf, skirt,
+arms and legs; the bronze set keeps its own cuirass, clasp and pauldrons (bronze-armor-from-ref.py,
+bronze-pauldrons-from-ref.py).
 
   - His grid is read off the picture (tools/refs/owner_paintover.py native), each of his pixels the median of
     its cell's middle, and the JPEG's noise snapped to his colours (owner_paintover.merge, within TOL).
@@ -12,26 +15,27 @@ leather set: every pixel of his is copied as he painted it, in his place.
     rows lower at the top, his chin where ours is.
   - Each of his pixels is a piece of the set: below his chin the piece our reduction drew there at rest
     (tools/refs/bronze_ref.py figure, the leather order), or the nearest one where ours drew nothing; on his
-    head, by his colours: his gold and bronze down to his gold's last row the diadem, his skin, eyes and the brown in his
-    face the face, the rest of his head (his line, his near-blacks and blue-greys) the hair.
+    head, by his colours: his gold and bronze down to his gold's last row the diadem, his skin, eyes and the
+    brown in his face the face, the rest of his head (his line, his near-blacks and blue-greys) the hair.
   - Each piece is continued where the pieces in front of it hide it, so it still shows whole when they move
     or are not worn: below his chin with our reduction's pixels of that piece there (his body lies on ours);
     his face up under his hair to his skull (the skin he painted nearest, his line round it), his hair under
     his diadem (his hair's colour above it). Only where a piece in front of it covers it, so at male idle
-    frame 0 every pixel is his (src/sprite/hoplite.test.ts).
-  - His face and eyes are the 'hoplite' face and eye shapes when the leather chest is worn (body.ts), his eyes
-    lifted cell by cell as tools/refs/bronze-face-from-ref.py lifts the first picture's.
-  - The pieces both sets share are recoloured from the first picture's bases (src/sprite/items/hoplite.ts), so
-    a colour kept at its default keeps every pixel his and a colour chosen moves both sets alike; the leather
-    set's own items from his repaint's (HOPLITE_R_LEATHER_*).
+    frame 0 his leather set is his repaint pixel for pixel (src/sprite/hoplite.test.ts).
+  - With the bronze cuirass his neck shows where the leather collar covered it: what the bronze set leaves
+    open inside his figure there (his "pixel") is his neck, the face continued with his nearest skin.
+  - His face and eyes are the 'hoplite' face and eye shapes (body.ts), his eyes cell by cell with the lid
+    states the game needs (eye_states).
+  - HOPLITE_FIGURE is the bronze set at male idle frame 0 as these pieces draw it with the bronze cuirass,
+    clasp and pauldrons; HOPLITE_R_FIGURE the leather set, his repaint; HOPLITE_JOINTS where his figure
+    stands (hopliteRig.ts).
 
 The same picture always gives the same bytes. Run from the repository root:
 
-  python3 -I tools/refs/bronze-leather-repaint-from-ref.py src/sprite/items/hopliteRepaintArt.ts [labels.png]
+  python3 -I tools/refs/bronze-repaint-from-ref.py src/sprite/items/hopliteRepaintArt.ts [labels.png]
 """
 
 import colorsys
-import importlib.util
 import os
 import sys
 
@@ -61,9 +65,9 @@ CHIN = 149
 SKULL_IN = 2
 HEAD = ('hair', 'face', 'diadem')
 
-_face = importlib.util.spec_from_file_location('bronze_face', os.path.join(os.path.dirname(os.path.abspath(__file__)), 'bronze-face-from-ref.py'))
-F = importlib.util.module_from_spec(_face)
-_face.loader.exec_module(F)
+# The pieces the two sets share (the rest of the bronze set is its cuirass, clasp and pauldrons).
+SHARED = ('hair', 'braid', 'diadem', 'face', 'cape', 'scarf', 'skirt', 'arm_n', 'arm_f', 'bracer_n', 'bracer_f', 'fist_n', 'fist_f',
+          'thigh_n', 'thigh_f', 'greave_n', 'greave_f', 'shoe_n', 'shoe_f')
 
 
 def his():
@@ -229,6 +233,44 @@ def build(col, on, pieces, who):
     return {n: tuple(v) for n, v in out.items()}, own
 
 
+def bronze(rep, pieces):
+    """The bronze set at rest with these pieces: (colours, which piece each pixel is), back to front."""
+    img = np.zeros((256, 256, 3), np.int32)
+    who = np.full((256, 256), '', object)
+    for _, n in R.GAME_ORDER:
+        m, c, _ = rep[n] if n in SHARED else pieces[n]
+        img[m] = c[m]
+        who[m] = n
+    return img, who
+
+
+def neck(rep, pieces, own):
+    """His neck where the bronze set leaves his figure open (pixels nothing draws that the frame's edge cannot
+    reach): the face continued there with his nearest skin, so long as at rest in his leather set a piece in
+    front of the face covers it."""
+    _, who = bronze(rep, pieces)
+    empty = who == ''
+    out = np.zeros((256, 256), bool)
+    out[0, :], out[-1, :], out[:, 0], out[:, -1] = empty[0, :], empty[-1, :], empty[:, 0], empty[:, -1]
+    while True:
+        grown = empty & R.near4(out) & ~out
+        if not grown.any():
+            break
+        out |= grown
+    hole = empty & ~out
+    order = [n for _, n in R.leather_order()]
+    m, c, isl = rep['face']
+    skin = m & ~isl & (mat_of(c, m) == 'skin')
+    for y, x in sorted(zip(*np.nonzero(hole))):
+        if own[y, x] == '' or order.index(own[y, x]) < order.index('face'):
+            raise SystemExit(f'his neck at {x}, {y} would show in his leather set')
+        ys, xs = np.nonzero(skin)
+        k = int(np.argmin(np.abs(ys - y) + np.abs(xs - x) + 0.001 * (ys * 256 + xs)))
+        m[y, x] = True
+        c[y, x] = c[ys[k], xs[k]]
+    return rep
+
+
 SKULL_X = 6
 # His gold on his head (hue, degrees), and his bronze (hue, at least this saturated, at most this bright).
 GOLD_HUE = (30, 65)
@@ -242,6 +284,105 @@ def mat_of(col, mask):
     for y, x in zip(*np.nonzero(mask)):
         out[y, x] = R.material(col[y, x], 'face')
     return out
+
+def eyes(m, c):
+    """His eyes on the face piece: {'near'|'far': (x0, y0, x1, y1)} in our frame, each from his lash line above
+    it to its last row of white or red."""
+    eye = np.zeros(m.shape, bool)
+    for y, x in zip(*np.nonzero(m)):
+        if R.material(c[y, x], 'face') in ('red', 'white'):
+            eye[y, x] = True
+    ys, xs = np.nonzero(eye)
+    cols = sorted(set(xs))
+    # the two eyes: the columns split at the widest gap
+    gaps = [(cols[k + 1] - cols[k], k) for k in range(len(cols) - 1)]
+    _, k = max(gaps)
+    out = {}
+    for side, (lo, hi) in (('near', (cols[0], cols[k])), ('far', (cols[k + 1], cols[-1]))):
+        sel = (xs >= lo) & (xs <= hi)
+        out[side] = (int(lo), int(ys[sel].min() - 1), int(hi), int(ys[sel].max()))
+    return out
+
+
+LETTER = {'line': 'L', 'red': 'i', 'white': 'w', 'skin': 's', 'dark': 'd'}
+
+
+def eye_states(m, c):
+    """His eyes on the face piece in the three lid states, with the template's letters (L his lash line, w his
+    white, i his red, d his dark red, s the face's skin), as the Roman eyes are:
+      lowered  (reading) his lash line one row lower, over the top of the eye
+      closed   (knocked out) his lash line over the shut eye, under it the face's skin
+    (colours {hex: char}, states {state: {side: (letters, rows)}}, each eye's first column from the anchor's,
+    his brightest red)."""
+    E = eyes(m, c)
+    reds = sorted({R.hexc(c[y, x]) for y, x in zip(*np.nonzero(m)) if R.material(c[y, x], 'face') == 'red'}, key=lambda h: -R.luma(np.array([int(h[k:k + 2], 16) for k in (1, 3, 5)], float)))
+    colors = {}
+
+    def ch(hexv):
+        if hexv not in colors:
+            colors[hexv] = R.CHARS[len(colors)]
+        return colors[hexv]
+
+    states = {'open': {}, 'lowered': {}, 'closed': {}}
+    nx, ny = R.ANCHOR
+    at = {}
+    for side, (x0, y0, x1, y1) in E.items():
+        letters, rows = [], []
+        for y in range(ny, y1 + 1):
+            lr, rr = '', ''
+            for x in range(x0, x1 + 1):
+                if y < y0 or not m[y, x]:
+                    lr += '.'
+                    rr += '.'
+                    continue
+                lt = LETTER.get(R.material(c[y, x], 'face'), 's')
+                if lt == 'i' and R.hexc(c[y, x]) != reds[0]:
+                    lt = 'd'
+                lr += lt
+                rr += '.' if lt == 's' else ch(R.hexc(c[y, x]))
+            letters.append(lr)
+            rows.append(rr)
+        at[side] = x0 - nx
+        states['open'][side] = (letters, rows)
+        lash = y0 - ny
+        low_l = [list(r) for r in letters]
+        low_r = [list(r) for r in rows]
+        if lash + 1 < len(letters):
+            for i in range(len(letters[lash])):
+                if letters[lash][i] == 'L' and letters[lash + 1][i] != '.':
+                    low_l[lash + 1][i] = 'L'
+                    low_r[lash + 1][i] = rows[lash][i]
+        states['lowered'][side] = ([''.join(r) for r in low_l], [''.join(r) for r in low_r])
+        cl_l = [list(r) for r in letters]
+        cl_r = [list(r) for r in rows]
+        for j in range(lash + 1, len(letters)):
+            for i in range(len(letters[j])):
+                if letters[j][i] in 'wid':
+                    # the skin under the eye: his nearest skin pixel below it on the face
+                    yy = ny + j
+                    while yy < m.shape[0] and not (m[yy, x0 + i] and R.material(c[yy, x0 + i], 'face') == 'skin'):
+                        yy += 1
+                    cl_l[j][i] = 's'
+                    cl_r[j][i] = ch(R.hexc(c[yy, x0 + i]))
+        states['closed'][side] = ([''.join(r) for r in cl_l], [''.join(r) for r in cl_r])
+    return colors, states, at, reds[0]
+
+
+def eyes_ts(prefix, colors, states, at, iris):
+    t = ["/** His eyes' colours, one character each (his pixels on his face). */", f'export const {prefix}_EYE_COLORS: Record<string, string> = {{']
+    t += [f"  {k}: '{hexv}'," for hexv, k in colors.items()]
+    t += ['};', '', "/** His eyes in each lid state, stamped on the template's eye cells from the anchor's row (body.ts drawFace). */"]
+    t.append(f"export const {prefix}_EYES: Record<'open' | 'lowered' | 'closed', {{ near: PaintedEye; far: PaintedEye }}> = {{")
+    for state, sides in states.items():
+        t.append(f'  {state}: {{')
+        for side in ('near', 'far'):
+            letters, rows = sides[side]
+            t += [f'    {side}: {{', '      letters: [' + ', '.join(f"'{r}'" for r in letters) + '],', '      rows: [' + ', '.join(f"'{r}'" for r in rows) + '],', '    },']
+        t.append('  },')
+    t += ['};', '', "/** Where his eyes start, columns from the anchor (body.ts PaintedHead ex, fx). */", f"export const {prefix}_EYE_AT = {{ ex: {at['near']}, fx: {at['far']} }};", '']
+    t += ["/** The eye colour his red iris is: the player's eye colour moves his reds as far. */", f"export const {prefix}_IRIS = '{iris}';", '']
+    return t
+
 
 # The pieces, front of the module to back: (const, piece, what it is).
 CONSTS = [
@@ -274,12 +415,23 @@ CONSTS = [
 
 
 def bases(p):
-    """The colours the leather set's own items recolour from (the shared items recolour from the first picture's)."""
+    """His colours the colour slots recolour from (at these every pixel is his): his middle shade of each."""
+    m = lambda names, kinds: R.middle_colour(p, names, kinds)
     return {
-        'HOPLITE_R_LEATHER_MAIN': R.middle_colour(p, ['lchest'], ('warm',)),
-        'HOPLITE_R_LEATHER_COLLAR': R.middle_colour(p, ['lcollar', 'sleeve_n', 'sleeve_f'], ('navy',)),
-        'HOPLITE_R_LEATHER_IRON': R.middle_colour(p, ['lpauldron_n', 'lpauldron_f'], ('grey',)),
-        'HOPLITE_R_LEATHER_GOLD': R.middle_colour(p, ['lpauldron_n', 'lpauldron_f', 'sleeve_n', 'sleeve_f'], ('warm',)),
+        'HOPLITE_R_SKIN': m(['face'], ('skin',)),
+        'HOPLITE_R_HAIR_BASE': m(['hair'], ('hair', 'navy', 'grey', 'purple')),
+        'HOPLITE_R_HAIR_BAND': m(['braid'], ('warm',)),
+        'HOPLITE_R_DIADEM_BRONZE': m(['diadem'], ('warm',)),
+        'HOPLITE_R_CAPE_CLOTH': m(['cape', 'scarf'], ('purple',)),
+        'HOPLITE_R_SKIRT_NAVY': m(['skirt'], ('navy',)),
+        'HOPLITE_R_SKIRT_LEATHER': m(['skirt'], ('warm',)),
+        'HOPLITE_R_ARMS_BRONZE': m(['bracer_n', 'bracer_f'], ('warm',)),
+        'HOPLITE_R_GREAVES_BRONZE': m(['greave_n', 'greave_f'], ('warm',)),
+        'HOPLITE_R_GREAVES_SHOE': m(['shoe_n', 'shoe_f'], ('warm',)),
+        'HOPLITE_R_LEATHER_MAIN': m(['lchest'], ('warm',)),
+        'HOPLITE_R_LEATHER_COLLAR': m(['lcollar', 'sleeve_n', 'sleeve_f'], ('navy',)),
+        'HOPLITE_R_LEATHER_IRON': m(['lpauldron_n', 'lpauldron_f'], ('grey',)),
+        'HOPLITE_R_LEATHER_GOLD': m(['lpauldron_n', 'lpauldron_f', 'sleeve_n', 'sleeve_f'], ('warm',)),
     }
 
 
@@ -299,15 +451,23 @@ def main(out, study=None):
     col, on = his()
     pieces, who = ours()
     rep, own = build(col, on, pieces, who)
-    head = ("// The owner's repaint of his bronze warrior in the leather set, at our scale: his pixels, in his place.\n"
-            f'// Lifted from docs/reference/{os.path.basename(SRC)} by tools/refs/bronze-leather-repaint-from-ref.py.\n'
-            f'// Generated: rerun the script to change it:\n//   python3 -I tools/refs/bronze-leather-repaint-from-ref.py {out}\n')
-    text = R.module(head,
-                    [(c, rep[n], d, n) for c, n, d in CONSTS], 'HOPLITE_R', bases(rep))
+    rep = neck(rep, pieces, own)
+    head = ("// The owner's repaint of his bronze warrior at our scale: his pixels, in his place, for both his sets.\n"
+            f'// Lifted from docs/reference/{os.path.basename(SRC)} by tools/refs/bronze-repaint-from-ref.py.\n'
+            f'// Generated: rerun the script to change it:\n//   python3 -I tools/refs/bronze-repaint-from-ref.py {out}\n')
+    text = R.module(head, [(c, rep[n], d, n) for c, n, d in CONSTS], 'HOPLITE_R', bases(rep))
     text = text.replace("import type { PaintedPiece } from '../painted';", "import type { PaintedEye } from '../eyeArt';\nimport type { PaintedPiece } from '../painted';")
     m, c, _ = rep['face']
-    t = [text] + F.eyes_ts('HOPLITE_R', *F.eye_states(m, c))
-    t += figure_ts('HOPLITE_R_FIGURE', 'His repaint whole, as the game draws the leather set at male idle frame 0: the first row\'s first cell at HOPLITE_R_FIGURE_AT.', col, on)
+    t = [text] + eyes_ts('HOPLITE_R', *eye_states(m, c))
+    t.append('/** His joints at our scale, where his figure stands them at male idle frame 0 (fine pixels; hopliteRig.ts). */')
+    t.append('export const HOPLITE_JOINTS = {')
+    for k in ('neck', 'pelvis', 'shoulderN', 'shoulderF', 'elbowN', 'elbowF', 'wristN', 'wristF', 'handN', 'handF', 'hipN', 'hipF', 'kneeN', 'kneeF', 'ankleN', 'ankleF'):
+        x, y = R.fine_joint(k)
+        t.append(f'  {k}: [{x:.4f}, {y:.4f}],')
+    t += ['} as const;', '']
+    img, bwho = bronze(rep, pieces)
+    t += figure_ts('HOPLITE_FIGURE', 'The bronze set whole at male idle frame 0, as the game draws its preset: the first row\'s first cell at HOPLITE_FIGURE_AT.', img, bwho != '')
+    t += figure_ts('HOPLITE_R_FIGURE', 'His repaint whole, the leather set at male idle frame 0 as the game draws its preset: the first row\'s first cell at HOPLITE_R_FIGURE_AT.', col, on)
     R.write(out, '\n'.join(t))
     if study:
         names = sorted(set(own[on]))

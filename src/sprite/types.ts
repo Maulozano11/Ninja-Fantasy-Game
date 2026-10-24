@@ -81,7 +81,7 @@ export type HandSize = 'normal' | 'small';
  * cheeks, mouth, jaw and chin in his pixels from his game-scale picture, under our skull; on a female body
  * her head stands where he drew it, src/sprite/aureliaHead.ts).
  * Or roman, from his Roman paint-over (his whole face with his nose and mouth, in his pixels). Or hoplite,
- * his bronze warrior's face (hopliteHeadArt.ts; worn with his leather chest, his repaint's: items/hopliteRepaintArt.ts).
+ * his bronze warrior's face, his own repaint at our scale (items/hopliteRepaintArt.ts).
  */
 export type FaceShape = 'tapered' | 'soft' | 'square' | 'valiant' | 'night' | 'founder' | 'fine' | 'aurelia' | 'roman' | 'hoplite';
 

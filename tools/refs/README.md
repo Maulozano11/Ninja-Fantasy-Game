@@ -135,6 +135,23 @@ folders.
       python3 -I tools/refs/tide-s-from-ref.py docs/reference/tide-s-owner-reference.jpg tools/world-sprites/vfx-tide-s-refdata.ts [reviewDir]
       WORLD_OUT=<staging dir> npx tsx tools/world-sprites/vfx-tide-s.ts
 
+- `wind-s-line-from-ref.py`: the Gale Dragon Ray (Wind's second rank S) from his paint-over of our
+  sample (`docs/reference/aurelia-wind-s-owner-reference.jpg`; a proposal). His picture is one 480x267
+  pixel-art canvas at about 4.17x on a night forest; one of his pixels is one game px. Aurelia and the
+  ray out of the dragon's mouth are left out (his words). His solid pixels are kept as they are; his
+  glow over the night is read as his glow colour at an alpha over the forest he painted (read off the
+  picture away from the effect), in the wind set's alpha steps. What Aurelia and the cut ray hid is
+  continued with his own pixels (the dust behind her, the mouth, the beam under the kanji). Layers:
+  beam, dragon, kanji, dust_l, dust_r and his loose rocks and leaves; one palette of 64 (46 opaque, 18
+  glow); `tile`: the stretch of his beam whose ends match best, repeated to any length. It writes
+  `tools/world-sprites/vfx-wind-s-line-refdata.ts` (with probes for `src/battle/windRayS.test.ts`),
+  which `vfx-wind-s-line.ts` animates (`vfx_wind_s_line`: start, tile, end, kanji, dust_l, dust_r,
+  debris). With a third argument, a folder, it also writes his canvas, the lifted layers over light,
+  grass and night, and the masks over his picture.
+
+      python3 -I tools/refs/wind-s-line-from-ref.py docs/reference/aurelia-wind-s-owner-reference.jpg tools/world-sprites/vfx-wind-s-line-refdata.ts [reviewDir]
+      WORLD_OUT=<staging dir> npx tsx tools/world-sprites/vfx-wind-s-line.ts
+
 - `wind-from-ref.py`: the whole wind set (`vfx_wind_v3`) from his wind sheet. It writes
   `tools/world-sprites/vfx-wind-v3-refdata.ts` (his key frames cut into the pieces that
   `vfx-wind-v3.ts` animates, one palette per sprite from his pixels). With a third argument, a

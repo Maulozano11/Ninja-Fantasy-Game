@@ -20,6 +20,7 @@ import type { MapDef } from './map';
 import type { BattleState, ViewRect } from './types';
 import { jutsuChoices } from '../rules/jutsuNature';
 import { logLine } from '../components/battle/battleLog';
+import { WIND_S_LINE_REF } from '../../tools/world-sprites/vfx-wind-s-line-refdata';
 
 const RAY = 'wind_dragon_ray_s';
 const WHOLE: ViewRect = { x0: 0, z0: 0, x1: 60.6, z1: 20 };
@@ -175,5 +176,45 @@ describe('the Gale Dragon Ray: the jutsu', () => {
     r.hp = 999;
     const act = aiAction(two);
     if (act?.type === 'jutsu' && act.jutsu === RAY) assert.ok(act.view, 'the action carries its view');
+  });
+});
+
+describe('the Gale Dragon Ray: his layers (his paint-over, waiting for his yes)', () => {
+  const A = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+  const rgb = (h: string) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+  const L = WIND_S_LINE_REF;
+
+  it('his canvas: 480x267 of his pixels, one per game px; the hand, the ground and a stretch that repeats', () => {
+    assert.deepEqual([L.native, L.k], [[480, 267], 1]);
+    assert.ok(L.hand[0] > 110 && L.hand[0] < 130 && L.hand[1] > 145 && L.hand[1] < 170, `hand ${L.hand}`);
+    assert.ok(L.tile[1] % 8 === 0 && L.tile[0] > L.hand[0] && L.tile[0] + L.tile[1] < 330, `tile ${L.tile}`);
+    assert.ok(L.pal.length <= 64 && L.pal.slice(0, L.opaque).every((c) => c.endsWith('ff')));
+  });
+
+  it('every layer is his pixels at his places: each probe of his picture is there, in a colour of his near it', () => {
+    for (const [name, probes] of Object.entries(L.probes)) {
+      const p = L.layers[name as keyof typeof L.layers];
+      assert.ok(probes.length >= 16, name);
+      for (const [x, y, his] of probes) {
+        const ch = p.rows[y - p.y]?.[x - p.x];
+        assert.ok(ch && ch !== '.', `${name}: his pixel (${x}, ${y}) is in the layer`);
+        const c = L.pal[A.indexOf(ch)];
+        if (!c.endsWith('ff')) continue; // his glow: his colour over his night, unmixed
+        const d = Math.hypot(...rgb(c).map((v, i) => v - rgb(his)[i]));
+        assert.ok(d < 48, `${name} (${x}, ${y}): ${c} vs his ${his}`);
+      }
+    }
+  });
+
+  it('the dragon at the front, the kanji above the beam, the dust at the feet and under the dragon', () => {
+    const box = (p: { x: number; y: number; rows: string[] }) => [p.x, p.y, p.x + Math.max(...p.rows.map((r) => r.length)), p.y + p.rows.length];
+    const [bx0, by0, bx1] = box(L.layers.beam);
+    const [dx0, , dx1] = box(L.layers.dragon);
+    const [kx0, ky0, kx1, ky1] = box(L.layers.kanji);
+    const [lx0, , lx1] = box(L.layers.dust_l);
+    const [rx0, , rx1] = box(L.layers.dust_r);
+    assert.ok(dx1 > bx1 && dx0 > L.hand[0] + 150, 'the dragon leads the beam');
+    assert.ok(kx0 > bx0 && kx1 < dx1 && ky1 < L.hand[1] && ky0 < by0 + 20, 'the kanji above the beam');
+    assert.ok(lx0 < L.hand[0] && lx1 < rx0 && rx1 > dx0, 'the dust at both ends');
   });
 });

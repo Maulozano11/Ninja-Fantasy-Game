@@ -43,12 +43,28 @@ describe("the owner's noble swordsman", () => {
     assert.deepEqual(differences(f.rgba).slice(0, 10), []);
   });
 
-  it('without the cape every pixel of his that is not the cape is still his: the coat, front and arms are whole', () => {
+  it("without the cape every pixel of his that is not the cape or his coat's torso is still his", () => {
     const l = look();
     delete l.slots.cape;
     const f = renderSprite(l, 'idle', 0, dojutsuToEye(NOBLE.dojutsu));
-    // c the cape's cloth, m the mantles, l the collar and its studs
-    assert.deepEqual(differences(f.rgba, 'cml').slice(0, 10), []);
+    // c the cape's cloth, m the mantles, l the collar and its studs; o and t his coat's torso and tails, which
+    // without the cape are the plain shirt (the owner: "ponle una camisa lisa no lo pongas esas telas
+    // triangulares raras")
+    assert.deepEqual(differences(f.rgba, 'cmlot').slice(0, 10), []);
+  });
+
+  it('without the cape the coat is the plain shirt, his tails gone, and so is the Plain Noble Shirt with it', () => {
+    const l = look();
+    delete l.slots.cape;
+    const coat = renderSprite(l, 'idle', 0, dojutsuToEye(NOBLE.dojutsu)).rgba;
+    l.slots.top = { id: 'top_noble_shirt', colors: [] };
+    const shirt = renderSprite(l, 'idle', 0, dojutsuToEye(NOBLE.dojutsu)).rgba;
+    assert.deepEqual([...coat], [...shirt]);
+    // with the cape, his coat's tails are drawn (at rest they are his pixels: the first test)
+    const withCape = look();
+    withCape.slots.top = { id: 'top_noble_shirt', colors: [] };
+    const plain = renderSprite(withCape, 'idle', 0, dojutsuToEye(NOBLE.dojutsu)).rgba;
+    assert.ok(differences(plain).length > 0, 'the plain shirt is not his coat');
   });
 
   it('every part is its own creator option, made for the male bodies only (the cape and headband fit everyone)', () => {

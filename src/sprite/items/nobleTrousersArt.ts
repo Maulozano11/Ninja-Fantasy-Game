@@ -57,6 +57,8 @@ export const NOBLE_TROUSERS_REST: Record<string, [number, number]> = {
   NOBLE_SHIN_N: [109, 191],
   NOBLE_THIGH_F: [125, 172],
   NOBLE_SHIN_F: [127, 192],
+  NOBLE_SEAT: [118, 165],
+  NOBLE_SEAT_WHOLE: [117, 165],
 };
 
 /** His joints at rest, where his picture has them (fine pixels of our male idle frame 0). */
@@ -245,5 +247,57 @@ export const NOBLE_SHIN_F: PaintedPiece = {
     m: '#875637',
     n: '#ce9054',
     p: '#d89450',
+  },
+};
+
+/** The seat between his hips, up to the belt: it rides the pelvis (hidden by the coat's tails at rest). */
+export const NOBLE_SEAT: PaintedPiece = {
+  pivot: [9, 11],
+  angle: -89.65,
+  rows: [
+    '.aaaaaaaaaaaaaaaa',
+    '..aabcadaaaaaaaaa',
+    '..aabcadaaaaaaaaa',
+    '.aaabcadaaaaaaaaa',
+    'aaaabcadaaaaaaaa.',
+    'aaaabcadaaaaaaaa.',
+    'aaaab.adaaaaaaaaa',
+    'a....cadaa.....aa',
+    '......ada.......a',
+    '.......d........a',
+    '.......d.........',
+    '.......d.........',
+  ],
+  colors: {
+    a: '#000008',
+    b: '#262d4a',
+    c: '#141228',
+    d: '#ecac5c',
+  },
+};
+
+/** The whole seat, worn without the cape (where his lining shows between his legs at rest too): it rides the pelvis. */
+export const NOBLE_SEAT_WHOLE: PaintedPiece = {
+  pivot: [10, 11],
+  angle: -89.65,
+  rows: [
+    'aaaaaaaaaaaaaaaaaa',
+    '.aaaabcadaaaaaaaaa',
+    '.aaaabcadaaaaaaaaa',
+    '.aaaabcadaaaaaaaaa',
+    '.aaaabcadaaaaaaaaa',
+    '.aaaabcadaaaaaaaaa',
+    '.aaaabcadaaaaaaaaa',
+    '.a....cadaa.....aa',
+    '.......ada.......a',
+    '........d........a',
+    '........d.........',
+    '........d.........',
+  ],
+  colors: {
+    a: '#000008',
+    b: '#262d4a',
+    c: '#141228',
+    d: '#ecac5c',
   },
 };

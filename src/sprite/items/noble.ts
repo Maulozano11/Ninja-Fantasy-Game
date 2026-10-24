@@ -19,11 +19,11 @@ import { NOBLE_SKIN } from '../nobleHeadArt';
 import { capeWind } from './capes';
 import { NOBLE_BELT, NOBLE_BELT_GOLD, NOBLE_BELT_KIND, NOBLE_BELT_LEATHER } from './nobleBeltArt';
 import { NOBLE_BOOT_FOOT_F, NOBLE_BOOT_FOOT_N, NOBLE_BOOT_GOLD, NOBLE_BOOT_SHIN_F, NOBLE_BOOT_SHIN_N, NOBLE_BOOTS, NOBLE_BOOTS_KIND } from './nobleBootsArt';
-import { NOBLE_COAT, NOBLE_COAT_BODY, NOBLE_COAT_GOLD, NOBLE_COAT_KIND, NOBLE_SLEEVE_F_LOWER, NOBLE_SLEEVE_F_UPPER, NOBLE_SLEEVE_N_LOWER, NOBLE_SLEEVE_N_UPPER, NOBLE_TAILS } from './nobleCoatArt';
+import { NOBLE_COAT, NOBLE_COAT_BODY, NOBLE_COAT_GOLD, NOBLE_COAT_KIND, NOBLE_SHIRT, NOBLE_SLEEVE_F_LOWER, NOBLE_SLEEVE_F_UPPER, NOBLE_SLEEVE_N_LOWER, NOBLE_SLEEVE_N_UPPER, NOBLE_TAILS } from './nobleCoatArt';
 import { NOBLE_CRAVAT, NOBLE_FRONT, NOBLE_FRONT_CLOTH, NOBLE_FRONT_GOLD, NOBLE_FRONT_KIND } from './nobleFrontArt';
 import { NOBLE_HAIR_KIND, NOBLE_HEADBAND, NOBLE_HEADBAND_BASE } from './nobleHairArt';
 import { NOBLE_CUFF_F, NOBLE_CUFF_GOLD, NOBLE_CUFF_N, NOBLE_CUFFS, NOBLE_GLOVE_F, NOBLE_GLOVE_N, NOBLE_GLOVES, NOBLE_HANDS_KIND } from './nobleHandsArt';
-import { NOBLE_LEG_JOINTS, NOBLE_SHIN_F, NOBLE_SHIN_N, NOBLE_THIGH_F, NOBLE_THIGH_N, NOBLE_TROUSERS, NOBLE_TROUSERS_GOLD, NOBLE_TROUSERS_KIND } from './nobleTrousersArt';
+import { NOBLE_LEG_JOINTS, NOBLE_SEAT, NOBLE_SEAT_WHOLE, NOBLE_SHIN_F, NOBLE_SHIN_N, NOBLE_THIGH_F, NOBLE_THIGH_N, NOBLE_TROUSERS, NOBLE_TROUSERS_GOLD, NOBLE_TROUSERS_KIND } from './nobleTrousersArt';
 import { ROYAL_CAPE_BACK, ROYAL_CAPE_BLACK, ROYAL_CAPE_COLLAR, ROYAL_CAPE_GOLD, ROYAL_CAPE_KIND, ROYAL_CAPE_LINING, ROYAL_CAPE_MANTLE_F, ROYAL_CAPE_MANTLE_N, ROYAL_CAPE_REST } from './royalCapeArt';
 import { faceAnchor } from '../body';
 
@@ -176,31 +176,51 @@ function capeBack(g: DrawCtx, color: (ch: string, hex: string) => string): void 
   });
 }
 
+/**
+ * His coat on the body: the torso rides the torso about the neck, each sleeve its upper arm about the shoulder
+ * and its forearm about the elbow, the tails hang from the pelvis; ours is taken away under them. `plain`: the
+ * plain shirt in place of his coat's torso and tails (the owner, 2026-10-24, on the coat without the cape:
+ * "reimagina sus hombros y ponle una camisa lisa no lo pongas esas telas triangulares raras").
+ */
+function drawCoat(g: DrawCtx, main: string, gold: string, plain: boolean): void {
+  const r = g.rig;
+  const tint = nobleColor(g, NOBLE_COAT_KIND, { cloth: [NOBLE_COAT, main], gold: [NOBLE_COAT_GOLD, gold] });
+  torsoOff(g);
+  for (const s of SIDES) {
+    armOff(g, s);
+    const j = armJoints(r, s);
+    const L = armDepth(s, 'cloth');
+    stampPiece(g, L, arm(s, NOBLE_SLEEVE_N_LOWER, NOBLE_SLEEVE_F_LOWER), j.elbow, segAngle(j.elbow, j.wrist), `forearm${s}` as PartId, tint);
+    stampPiece(g, L, arm(s, NOBLE_SLEEVE_N_UPPER, NOBLE_SLEEVE_F_UPPER), j.shoulder, segAngle(j.shoulder, j.elbow), `upperArm${s}` as PartId, tint);
+  }
+  const torso = segAngle(r.pelvis, r.neck);
+  if (plain) {
+    stampLeaning(g, 'torso.top', NOBLE_SHIRT, r.neck, torso, 'torso', tint);
+    return;
+  }
+  stampLeaning(g, 'torso.top', NOBLE_COAT_BODY, r.neck, torso, 'torso', tint);
+  stampLeaning(g, 'skirt', NOBLE_TAILS, r.pelvis, torso, 'pelvis', tint);
+}
+
 export const NOBLE_ITEMS: ItemDef[] = [
   {
     id: 'top_noble_coat',
     slot: 'top',
     name: 'Noble Coat',
-    desc: 'A long black coat with gold piping: plum sleeves to the cuffs and pointed tails below the belt, a long one down each side.',
+    desc: 'A long black coat with gold piping: plum sleeves to the cuffs and pointed tails below the belt, a long one down each side. Without a cape it is worn as the plain noble shirt.',
     colors: [col('main', 'Coat', NOBLE_COAT), col('gold', 'Piping', NOBLE_COAT_GOLD, 'metal')],
     bodies: [...MEN],
-    draw: (g, [main, gold]) => {
-      // His coat: the torso rides the torso about the neck, each sleeve its upper arm about the shoulder and
-      // its forearm about the elbow, the tails hang from the pelvis; ours is taken away under them.
-      const r = g.rig;
-      const tint = nobleColor(g, NOBLE_COAT_KIND, { cloth: [NOBLE_COAT, main], gold: [NOBLE_COAT_GOLD, gold] });
-      torsoOff(g);
-      for (const s of SIDES) {
-        armOff(g, s);
-        const j = armJoints(r, s);
-        const L = armDepth(s, 'cloth');
-        stampPiece(g, L, arm(s, NOBLE_SLEEVE_N_LOWER, NOBLE_SLEEVE_F_LOWER), j.elbow, segAngle(j.elbow, j.wrist), `forearm${s}` as PartId, tint);
-        stampPiece(g, L, arm(s, NOBLE_SLEEVE_N_UPPER, NOBLE_SLEEVE_F_UPPER), j.shoulder, segAngle(j.shoulder, j.elbow), `upperArm${s}` as PartId, tint);
-      }
-      const torso = segAngle(r.pelvis, r.neck);
-      stampLeaning(g, 'torso.top', NOBLE_COAT_BODY, r.neck, torso, 'torso', tint);
-      stampLeaning(g, 'skirt', NOBLE_TAILS, r.pelvis, torso, 'pelvis', tint);
-    },
+    // His coat as he drew it under his cape; without a cape, the plain shirt he asked for.
+    draw: (g, [main, gold]) => drawCoat(g, main, gold, !g.has('cape')),
+  },
+  {
+    id: 'top_noble_shirt',
+    slot: 'top',
+    name: 'Plain Noble Shirt',
+    desc: 'A plain black shirt with rounded shoulders seamed in gold piping, tucked into the belt, with plum sleeves to the cuffs.',
+    colors: [col('main', 'Shirt', NOBLE_COAT), col('gold', 'Piping', NOBLE_COAT_GOLD, 'metal')],
+    bodies: [...MEN],
+    draw: (g, [main, gold]) => drawCoat(g, main, gold, true),
   },
   {
     id: 'armor_noble_front',
@@ -238,6 +258,9 @@ export const NOBLE_ITEMS: ItemDef[] = [
     draw: (g, [main, gold]) => {
       // His trousers on each leg: the thigh turns about his hip, the shin about his knee (nobleLeg).
       const tint = nobleColor(g, NOBLE_TROUSERS_KIND, { cloth: [NOBLE_TROUSERS, main], gold: [NOBLE_TROUSERS_GOLD, gold] });
+      // the seat between the hips, up to the belt (under his coat's tails at rest; whole without his cape, which
+      // shows between his legs at rest)
+      stampLeaning(g, 'torso.bottom', g.has('cape') ? NOBLE_SEAT : NOBLE_SEAT_WHOLE, g.rig.pelvis, segAngle(g.rig.pelvis, g.rig.neck), 'pelvis', tint);
       for (const s of SIDES) {
         legOff(g, s);
         const { hip, knee, ankle } = nobleLeg(g, s);

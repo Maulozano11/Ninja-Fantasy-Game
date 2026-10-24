@@ -34,6 +34,8 @@ def main():
         th, sh = N.split(m, J['hip' + s], J['knee' + s], J['ankle' + s])
         consts.append((f'NOBLE_THIGH_{s}', th, c, 'The thigh: it turns about his hip.', J['hip' + s], N.angle_of(J['hip' + s], J['knee' + s])))
         consts.append((f'NOBLE_SHIN_{s}', sh, c, 'The shin: it turns about his knee.', J['knee' + s], N.angle_of(J['knee' + s], J['ankle' + s])))
+    consts.append(('NOBLE_SEAT', *P['seat'], "The seat between his hips, up to the belt: it rides the pelvis (hidden by the coat's tails at rest).", J['pelvis'], N.angle_of(J['pelvis'], J['neck'])))
+    consts.append(('NOBLE_SEAT_WHOLE', *P['seat_whole'], 'The whole seat, worn without the cape (where his lining shows between his legs at rest too): it rides the pelvis.', J['pelvis'], N.angle_of(J['pelvis'], J['neck'])))
     bases = {'NOBLE_TROUSERS': N.middle(['trousers_n', 'trousers_f'], P, ('dark',)), 'NOBLE_TROUSERS_GOLD': N.middle(['trousers_n', 'trousers_f'], P, ('gold',))}
     extra = N.joints_ts('NOBLE_LEG_JOINTS', ['hipN', 'kneeN', 'ankleN', 'hipF', 'kneeF', 'ankleF'])
     N.run_part('noble-trousers-from-ref.py', "The owner's trousers on his noble swordsman", out_ts, study, consts, bases, 'NOBLE_TROUSERS', kind_of, extra)

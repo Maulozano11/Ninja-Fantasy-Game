@@ -15,7 +15,7 @@ import noble_ref as N  # noqa: E402
 
 PART_LETTERS = {
     'cape': 'c', 'mantle_n': 'm', 'mantle_f': 'm', 'collar_n': 'l', 'collar_f': 'l', 'stud_n': 'l', 'stud_f': 'l',
-    'face': 'f', 'hair': 'h', 'headband': 'b', 'coat': 'o', 'sleeve_n': 'o', 'sleeve_f': 'o', 'tails': 't', 'front': 'r',
+    'face': 'f', 'hair': 'h', 'headband': 'b', 'coat': 'o', 'sleeve_n': 'v', 'sleeve_f': 'v', 'tails': 't', 'front': 'r',
     'belt': 'w', 'trousers_n': 'p', 'trousers_f': 'p', 'boot_n': 'k', 'boot_f': 'k', 'cuff_n': 'u', 'cuff_f': 'u',
     'glove_n': 'g', 'glove_f': 'g', 'blade': 's', 'hilt': 's',
 }

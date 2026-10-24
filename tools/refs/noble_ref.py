@@ -473,6 +473,17 @@ MOTIF_MAPS = {
             '#gg#',
         ]),
     ],
+    'head': [
+        # the headband's tail hangs from its knot behind the head as he drew it: his red runs on from the knot
+        # into the tail (the shrinking had left a row of his line between them) and the tail is two of his
+        # pixels wide where it leaves the knot
+        (35, 13, [
+            '...r',
+            '...r',
+            '...r',
+            'r...',
+        ]),
+    ],
 }
 
 
@@ -755,6 +766,16 @@ def game(clean=True):
 
 
 HEAD_PARTS = ('face', 'hair', 'headband')
+# How far from its bones (game picture pixels) a limb piece reaches: the sleeves round the arm, the cuffs round
+# the forearm, the fists round the hand.
+LIMB_REACH = [
+    ('sleeve_n', [('shoulderN', 'elbowN'), ('elbowN', 'wristN')], 4.6),
+    ('sleeve_f', [('shoulderF', 'elbowF'), ('elbowF', 'wristF')], 4.2),
+    ('cuff_n', [('elbowN', 'wristN')], 4.8),
+    ('cuff_f', [('elbowF', 'wristF')], 4.8),
+    ('glove_n', [('wristN', 'handN')], 6.0),
+    ('glove_f', [('wristF', 'handF')], 6.2),
+]
 
 
 def tidy_parts(part, mask, GK):
@@ -763,6 +784,13 @@ def tidy_parts(part, mask, GK):
     neighbours are (the cape's first): shrinking his picture can leave a bit of a neighbour's line or trim on
     a part, which would hang loose once that part moves or the cape is taken off."""
     H, W = mask.shape
+    # each limb piece only near its bones: what lies farther from them is the cape's black or trim beside it
+    ys, xs = np.mgrid[0:H, 0:W]
+    for n, bones, reach in LIMB_REACH:
+        near = np.zeros((H, W), bool)
+        for a_, b_ in bones:
+            near |= band(JOINTS[a_], JOINTS[b_], reach)
+        part[(part == n) & ~near] = CAPE
     for _ in range(3):
         changed = False
         sizes = {}
@@ -1004,7 +1032,7 @@ if __name__ == '__main__':
 # hidden cells are filled only where a piece later in this order (or his head) covers them at rest, so put
 # together at rest they are his figure pixel for pixel.
 DEPTH_ORDER = [
-    'cape', 'hair_back', 'sleeve_f', 'glove_f', 'cuff_f', 'trousers_f', 'boot_f', 'trousers_n', 'boot_n',
+    'cape', 'hair_back', 'sleeve_f', 'glove_f', 'cuff_f', 'trousers_f', 'boot_f', 'trousers_n', 'boot_n', 'seat',
     'coat', 'tails', 'front', 'belt', 'mantle_f', 'collar_n', 'collar_f', 'stud_n', 'stud_f', 'face', 'hair',
     'headband', 'hilt', 'blade', 'sleeve_n', 'glove_n', 'cuff_n', 'mantle_n',
 ]
@@ -1087,7 +1115,7 @@ def poly(pts):
 def rank(n):
     """Where a piece is drawn among the others (DEPTH_ORDER): a boot's shin and foot where the boot is, the
     sabre where its blade is (a name not in it: in the order given)."""
-    base = {'sabre': 'blade', 'back': 'hair_back', 'front': 'hair', 'band': 'headband'}.get(n, n.replace('_shin', '').replace('_foot', ''))
+    base = {'sabre': 'blade', 'back': 'hair_back', 'front': 'hair', 'band': 'headband', 'seat_whole': 'seat'}.get(n, n.replace('_shin', '').replace('_foot', ''))
     if base not in DEPTH_ORDER:
         return 1000
     return DEPTH_ORDER.index(base) + (0.5 if n.endswith('_foot') else 0)
@@ -1121,6 +1149,8 @@ SLEEVE_HALF = {'N': 3.6, 'F': 3.1}
 # Each trouser leg's half width about his leg's line, from the hip down into the boot.
 TROUSER_HALF = {'N': 4.4, 'F': 3.9}
 TROUSER_TO = {'N': 87, 'F': 86}
+# The trousers' seat between his hips (worn without the coat's tails): from the belt to where his legs part.
+SEAT_SHAPE = [(42.5, 45.5), (60.5, 45.5), (60, 55), (57, 58), (52, 59.5), (47, 58), (43, 55)]
 # The first row of each boot's foot (the shaft above it turns with the shin).
 BOOT_FOOT_FROM = {'N': 91, 'F': 90}
 # How far across the sword the coat's tails run on behind it.
@@ -1138,6 +1168,12 @@ def joint(name):
 def pieces():
     """His figure at our scale cut into pieces, with what his picture hides of each continued from his own
     pixels: {name: (mask, colours)} in game picture pixels."""
+    if 'pieces' not in _CACHE:
+        _CACHE['pieces'] = _pieces()
+    return {n: (m.copy(), c.copy()) for n, (m, c) in _CACHE['pieces'].items()}
+
+
+def _pieces():
     g, mask, part, GK = game()
     line = his_line()
     H, W = mask.shape
@@ -1188,6 +1224,27 @@ def pieces():
         src = m & ~isline
         c = continue_along(g, src, hid, (0, 1), 1, edge, line)
         grow(n, hid, c)
+
+    # The trousers' seat: between his hips, from the belt down to where his legs part, his cloth continued up
+    # from both legs (worn without his coat's tails, the trousers are whole up to the belt).
+    shape = poly(SEAT_SHAPE)
+    legs = out['trousers_n'][0] | out['trousers_f'][0]
+    hid = shape & ~legs & front_of(part, 'seat', ['head'])
+    edge = edge4(shape) & hid & ~near8(legs)
+    src = legs & ~isline
+    cl = g.copy()
+    for n in ('trousers_n', 'trousers_f'):
+        lm, lc = out[n]
+        cl[lm] = lc[lm]
+    c = continue_along(cl, src, hid & ~edge, (0, 1), 1)
+    c[hid & edge] = line
+    out['seat'] = (hid, c)
+    # (without the cape, the whole seat: also where his cape's lining shows between his legs at rest)
+    whole = shape & ~legs
+    edge = edge4(shape) & whole & ~near8(legs)
+    c = continue_along(cl, src, whole & ~edge, (0, 1), 1)
+    c[whole & edge] = line
+    out['seat_whole'] = (whole, c)
 
     # The boots: the shaft runs on two rows under the foot's top (his two rows above it again), so the shin
     # can turn without a gap at the ankle; where the blade hides the boot his leather runs on across.
@@ -1295,7 +1352,7 @@ def compose(pcs, names=None):
     out = np.zeros((SIZE, SIZE, 3), np.int32)
     mask = np.zeros((SIZE, SIZE), bool)
     for n in sorted(pcs, key=rank):
-        if names is not None and n not in names:
+        if (names is not None and n not in names) or (names is None and n.endswith('_whole')):
             continue
         m, c = pcs[n]
         out[m] = c[m]

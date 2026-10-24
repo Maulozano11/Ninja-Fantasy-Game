@@ -4,10 +4,12 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { LEGENDARY_PRESETS } from '../data/shinobiData';
 import { fitsBody, getItem } from './catalog';
+import { findGlitches } from './glitches';
 import { renderSprite } from './compose';
 import { GRID } from './raster';
+import { frameCount, rigPoseFor } from './rig';
 import { SAMURAI_REF_AT, SAMURAI_REF_COLORS, SAMURAI_REF_ROWS } from './samuraiRefPixels';
-import type { BodyType, SpriteAppearance } from './types';
+import type { BodyType, SpriteAppearance, SpritePose } from './types';
 
 const SAMURAI = LEGENDARY_PRESETS.find((p) => p.character.id === 'preset_samurai')!.character.appearance!;
 const on = (body: BodyType): SpriteAppearance => ({ ...SAMURAI, body });
@@ -52,5 +54,17 @@ describe("the owner's samurai", () => {
       else if (hex(a.rgba, i) !== hex(b.rgba, i)) changed++;
     }
     assert.ok(changed > 200, `${changed} pixels recoloured`);
+  });
+
+  // his marks on the pose sheets (2026-10-24): "tienes muchos errores de pixeles muertos blancos checalos" (the
+  // white between the raised arm and the chest, the shoulder guard and the do): for him every pocket is filled
+  // (keptFills.ts FILL_EVERY_POCKET)
+  it('no white walled in by the figure, no crack and no light edge in the poses he marked', () => {
+    const found: string[] = [];
+    for (const body of ['male', 'bulky'] as BodyType[])
+      for (const pose of ['handsigns', 'attack', 'pierce', 'tackle', 'hurt', 'victory', 'charge'] as SpritePose[])
+        for (let f = 0; f < frameCount(rigPoseFor(pose)); f++)
+          for (const g of findGlitches(renderSprite(on(body), pose, f))) found.push(`${body} ${pose} ${f}: ${g.kind} at ${g.x},${g.y} (${g.parts.join('/')})`);
+    assert.deepEqual(found, []);
   });
 });

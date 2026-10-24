@@ -480,10 +480,11 @@ function layFrame(rgba: Uint8ClampedArray, part: Uint8Array, hair: Uint8Array, l
  * layer's own fill, so the two never stack into a 2px dark line. Silhouette
  * outlines (next to transparency) are always kept.
  */
-/** Which of the owner's standard characters a look is on this branch (keptFills.ts names), or null: his Lyra, his Aurelia, his Roman set (cuirass and skirt). */
+/** Which of the owner's standard characters a look is on this branch (keptFills.ts names), or null: his Lyra, his Aurelia, his samurai (his do), his Roman set (cuirass and skirt). */
 function standardOf(look: SpriteAppearance): string | null {
   if (wearsHisFigure(look)) return 'lyra';
   if (onAureliaHead(look)) return 'aurelia';
+  if (look.slots.armor?.id === 'armor_samurai_do') return 'samurai';
   return look.slots.armor?.id === 'armor_bronze' && look.slots.skirt?.id === 'skirt_imperial' ? 'roman' : null;
 }
 

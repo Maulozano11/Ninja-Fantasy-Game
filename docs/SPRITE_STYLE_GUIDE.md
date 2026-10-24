@@ -187,7 +187,10 @@ porque cosas que ya estan bien las estamos rehaciendo"*. `mendGlitches` fills a 
 says; the only fills are the ones he saw on the sheets and left unmarked, listed one by one in
 `src/sprite/keptFills.ts` (a pixel of each, by character, body, pose and frame). When he marks a fill
 wrong, its entry goes; a new one is never added without his eye. A pocket that looks wrong is shown to him
-first, never filled on its own.
+first, never filled on its own. The one exception is a character whose every pocket he marked as an error:
+his samurai (2026-10-24, the white between the raised arm and the chest and between the shoulder guard and
+the do circled on his sheets: *"tienes muchos errores de pixeles muertos blancos checalos"*). For him alone
+every pocket is filled (`FILL_EVERY_POCKET` in `keptFills.ts`); every other character keeps the rule above.
 
 ## Checklist for a new item
 

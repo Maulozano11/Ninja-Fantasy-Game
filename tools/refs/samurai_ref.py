@@ -845,6 +845,36 @@ def fill_spans(col, mask, line, allowed=None):
     return m, c
 
 
+def continue_lames(col, mask, rows, x_to, line, allowed, inset=2, period=2):
+    """A plated piece carried on to the left along its rows where something in front hides it (the do under
+    the near arm): on each row his `period` pixels `inset` in from his line at the row's left end, repeated
+    out to column `x_to`, closed on his line there; where his pixel there is his line (a seam between two
+    lames) the seam is carried on. His lacing's reds and golds are passed over: only his plate is carried. Only `allowed` cells are filled, so at rest the piece adds nothing."""
+    m = mask.copy()
+    c = col.copy()
+    for y in rows:
+        xs = np.nonzero(mask[y])[0]
+        if not len(xs):
+            continue
+        edge = xs.min()
+        # his pixels of the row from its left end in; a seam where the first of them are all his line; else
+        # the first pixels of his lacquer or steel (not his lacing's reds and golds, which run down the side)
+        run = [q for q in range(edge, min(edge + 16, m.shape[1])) if mask[y, q]]
+        plate = [q for q in run if kind(col[y, q]) in ('dark', 'steel')]
+        if all(kind(col[y, q]) == 'line' for q in run[:4]) or not plate:
+            src, start = [run[0]], edge
+        else:
+            src, start = plate[inset:inset + period] or plate[:period], plate[0]
+        k = 0
+        for x in range(start - 1, x_to - 1, -1):
+            if m[y, x] or not allowed[y, x]:
+                continue
+            c[y, x] = line if x == x_to else col[y, src[k % len(src)]]
+            m[y, x] = True
+            k += 1
+    return m, c
+
+
 def continue_cols(col, mask, cols, y_to, direction, line, period=1, close=True, inset=0, allowed=None):
     """continue_rows down (direction 1) or up (-1) the columns."""
     m, c, f = continue_rows(col.transpose(1, 0, 2), mask.T, cols, y_to, direction, line, period, close, inset, None if allowed is None else allowed.T)
@@ -983,7 +1013,10 @@ CAPE_BASE_ROWS = 3
 # The way his cape's folds run (dy, dx): down to the left, from the waist to the hem.
 CAPE_FOLD = (1, -1)
 DO_BELOW = 6
-DO_BEHIND_HAND = 12
+# How many of the tassets' top rows are carried on under the near hand.
+KUSAZURI_BEHIND_HAND = 9
+# How many columns apart the folds carried up his hakama's hidden thigh are.
+HAKAMA_FOLD = 5
 # His chin's row below the face anchor: his head's line below it that bounds none of his head is the collar's.
 CHIN_ROWS = 7
 
@@ -1018,12 +1051,10 @@ def pieces(rgb=None, label=None):
     m, c = cut(rgb, label, ['do'])
     sx, sy = his_game('shoulderN')
     ys, xs = np.nonzero(m)
-    m, c, _ = continue_rows(c, m, range(ys.min() + 1, ys.max()), int(np.floor(sx)), -1, line, allowed=under('sode_n', 'sleeve_n', 'kote_n', 'hand_n', 'head'), from_x=int(np.floor(his_game('neck')[0])) - 4)
-    # and down under the sash to the tassets (a torso lengthened in a pose never parts from the sash)
-    ys, xs = np.nonzero(m)
+    m, c = continue_lames(c, m, range(ys.min() + 1, ys.max() + 1), int(np.floor(sx)), line, under('sode_n', 'sleeve_n', 'kote_n', 'hand_n', 'head', 'obi'))
+    # and down under the sash to the tassets (a torso lengthened in a pose never parts from the sash), his
+    # own columns only
     m, c, _ = continue_cols(c, m, range(xs.min() + 1, xs.max()), ys.max() + DO_BELOW, 1, line, inset=1, allowed=under('obi', 'kusazuri', 'hand_n', 'kote_n', 'hand_f', 'kote_f'))
-    # and on down behind the near hand on the hip (only there: the tassets are drawn behind the do)
-    m, c, _ = continue_cols(c, m, range(xs.min() + 1, xs.max()), ys.max() + DO_BEHIND_HAND, 1, line, inset=1, allowed=under('hand_n', 'kote_n'))
     out['do'] = (m, c)
     # the sash on round the waist under the near forearm (bared when the arm moves off the hip), along its
     # rows to the near shoulder's column
@@ -1031,6 +1062,11 @@ def pieces(rgb=None, label=None):
     ys, xs = np.nonzero(m)
     m, c, _ = continue_rows(c, m, range(ys.min() + 1, ys.max()), int(np.floor(sx)), -1, line, allowed=under('kote_n', 'hand_n'))
     out['obi'] = (m, c)
+    # the tassets' top on round the waist under the near hand, along their rows to the same column
+    m, c = out['kusazuri']
+    ys, xs = np.nonzero(m)
+    m, c, _ = continue_rows(c, m, range(ys.min(), ys.min() + KUSAZURI_BEHIND_HAND), int(np.floor(sx)), -1, line, allowed=under('kote_n', 'hand_n'))
+    out['kusazuri'] = (m, c)
     # the hakama's legs: each leg his cloth, under its knee guard his cloth beside it along the row, and up
     # under the tassets to the hip each column of his carried up (his folds run on up the thigh)
     for s in ('n', 'f'):
@@ -1043,7 +1079,19 @@ def pieces(rgb=None, label=None):
         for x in (xs.min(), xs.max()):
             reach[top, x] = True
         front = under('knee_n', 'knee_f', 'kusazuri', 'obi', 'hand_n', 'hand_f', 'shin_n', 'shin_f')
+        his = m.copy()
         m, c = fill_hull(c, m, reach, front, line, along=(1, 0))
+        # his drapes carried up the thigh where he drew none (bared when a thigh swings out from under the
+        # tassets): every HAKAMA_FOLD columns a fold, lit on its left in his lightest red (the light from
+        # the upper left) and creased on its right in his line, on his darkest red
+        reds = sorted((tuple(int(v) for v in c[y, x]) for y, x in zip(*np.nonzero(his)) if kind(c[y, x]) == 'red'), key=lambda v: (float(luma(np.array(v))), v))
+        dark, lit = np.array(reds[0], np.uint8), np.array(reds[-1], np.uint8)
+        x0 = xs.min()
+        for y, x in zip(*np.nonzero(m & ~his)):
+            if kind(c[y, x]) == 'line' or not (m[y, x - 1] and m[y, x + 1]):
+                continue
+            k = (x - x0) % HAKAMA_FOLD
+            c[y, x] = lit if k == HAKAMA_FOLD - 2 else line if k == HAKAMA_FOLD - 1 else dark
         out['thigh_' + s] = (m, c)
     # the cape: his cloth as he drew it, and its top behind his tassets filled out to the near hip (it hangs
     # from behind the waist as wide as the waist: moved, it never comes away from the body and never shows a

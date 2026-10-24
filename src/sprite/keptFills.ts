@@ -20,6 +20,15 @@ export const KEPT_FILLS: KeptFill[] = [
   ['aurelia@female', 'crouch', 0, 143, 197],
 ];
 
+/**
+ * The characters whose every pocket he marked as an error, so each is filled (glitches.ts mendGlitches: the
+ * piece furthest back round it carried on, its line kept where the pieces meet). His samurai (2026-10-24),
+ * the white between the raised arm and the chest and between the shoulder guard and the do circled on his
+ * sheets: "tienes muchos errores de pixeles muertos blancos checalos". Only these: every other character's
+ * pockets stay his separation.
+ */
+export const FILL_EVERY_POCKET = new Set(['samurai']);
+
 const BY_FRAME = new Map<string, number[]>();
 for (const [who, pose, frame, x, y] of KEPT_FILLS) {
   const key = `${who} ${pose} ${frame}`;
@@ -28,6 +37,7 @@ for (const [who, pose, frame, x, y] of KEPT_FILLS) {
 
 /** Whether a pocket (its pixels) of this character's frame is one he left filled. */
 export function keptFill(who: string, pose: SpritePose, frame: number, px: number[]): boolean {
+  if (FILL_EVERY_POCKET.has(who.split('@')[0])) return true;
   const at = BY_FRAME.get(`${who} ${pose} ${frame}`);
   return !!at && at.some((i) => px.includes(i));
 }

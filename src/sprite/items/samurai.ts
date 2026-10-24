@@ -260,6 +260,8 @@ export function tassetStamps(g: DrawCtx): TassetStamp[] {
   // (the thigh's turn against the waist the panels hang from: a body bent or lying down with its legs
   // turns the panels once, with the waist)
   const thighTurn = (s: Side) => {
+    // knocked out the figure lies on its back: the panels lie along the body, not up off a raised knee
+    if (r.lay) return 0;
     const now = legJoints(r, s);
     const was = legJoints(home, s);
     const w = wrap180(segAngle(now.hip, now.knee) - segAngle(was.hip, was.knee) - torso);

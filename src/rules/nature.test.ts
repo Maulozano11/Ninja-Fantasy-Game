@@ -147,6 +147,8 @@ describe('the legends', () => {
       preset_lyra: ['Wind', '#40cccb'], // a heroine: wind in the cyan of her blade
       preset_bronze_warrior: ['Fire', '#f27c18'], // the owner's bronze warrior: fire in his bronze's orange
       preset_bronze_warrior_leather: ['Fire', '#f27c18'],
+      preset_bronze_general_spiral: ['Fire', '#f27c18'],
+      preset_bronze_general_muscle: ['Fire', '#f27c18'],
     };
     assert.deepEqual(LEGENDARY_PRESETS.map((p) => p.character.id).sort(), Object.keys(want).sort());
     for (const { character: c } of LEGENDARY_PRESETS) {

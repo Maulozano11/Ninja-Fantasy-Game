@@ -53,8 +53,8 @@ export interface CastChoice {
   jutsu?: Record<string, CastStyle>;
 }
 
-/** The eye options; valiant, night and roman are the owner's own eyes from his Aiden, Ren and Roman pictures, in his pixels; dawn is his Aurelia's, in her pixels at our scale; keen is his Lyra's, in her colours at our scale; hoplite his bronze warrior's red eyes. */
-export type EyeShape = 'standard' | 'sharp' | 'round' | 'calm' | 'fierce' | 'bright' | 'piercing' | 'valiant' | 'night' | 'dawn' | 'keen' | 'roman' | 'hoplite';
+/** The eye options; valiant, night and roman are the owner's own eyes from his Aiden, Ren and Roman pictures, in his pixels; dawn is his Aurelia's, in her pixels at our scale; keen is his Lyra's, in her colours at our scale; hoplite his bronze warrior's red eyes; general his Roman general's dark brown eyes. */
+export type EyeShape = 'standard' | 'sharp' | 'round' | 'calm' | 'fierce' | 'bright' | 'piercing' | 'valiant' | 'night' | 'dawn' | 'keen' | 'roman' | 'hoplite' | 'general';
 
 /**
  * The owner's heroines' long neck (neck.ts): his Lyra carries the head further forward on a slimmer neck.
@@ -81,9 +81,10 @@ export type HandSize = 'normal' | 'small';
  * cheeks, mouth, jaw and chin in his pixels from his game-scale picture, under our skull; on a female body
  * her head stands where he drew it, src/sprite/aureliaHead.ts).
  * Or roman, from his Roman paint-over (his whole face with his nose and mouth, in his pixels). Or hoplite,
- * his bronze warrior's face, his own repaint at our scale (items/hopliteRepaintArt.ts).
+ * his bronze warrior's face, his own repaint at our scale (items/hopliteRepaintArt.ts). Or general, his Roman
+ * general's strong tanned face brought down to our scale (generalHeadArt.ts).
  */
-export type FaceShape = 'tapered' | 'soft' | 'square' | 'valiant' | 'night' | 'founder' | 'fine' | 'aurelia' | 'roman' | 'hoplite';
+export type FaceShape = 'tapered' | 'soft' | 'square' | 'valiant' | 'night' | 'founder' | 'fine' | 'aurelia' | 'roman' | 'hoplite' | 'general';
 
 /** Single-choice equipment slots, drawn back-to-front by depth (see compose.ts). */
 export type SlotId =

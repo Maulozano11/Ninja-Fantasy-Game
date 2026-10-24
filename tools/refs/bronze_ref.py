@@ -871,8 +871,12 @@ def reduce(a, lab, names, M, K=None, own=None):
             continue
         tot = sum(w for _, _, w in cells)
         for k in EYE_KINDS:
-            # (his iris: every red of his there, his darkest reds round the pupil too)
-            is_k = (lambda y, x: int(a[y, x][0]) >= 0x30 and int(a[y, x][0]) > 2.5 * max(int(a[y, x][1]), int(a[y, x][2]))) if k == 'red' else (lambda y, x: K[y, x] == k)
+            # (his iris: every red of his there, his darkest reds round the pupil too; a picture's own
+            # EYE_TESTS where his eyes are another colour)
+            if EYE_TESTS:
+                is_k = (lambda y, x, k=k: EYE_TESTS[k](a[y, x]) and (EYE_AREA is None or EYE_AREA[y, x]))
+            else:
+                is_k = (lambda y, x: int(a[y, x][0]) >= 0x30 and int(a[y, x][0]) > 2.5 * max(int(a[y, x][1]), int(a[y, x][2]))) if k == 'red' else (lambda y, x: K[y, x] == k)
             mine = [(y, x, w) for y, x, w in cells if is_k(y, x) and lab[y, x] == who[j, i]]
             if sum(w for _, _, w in mine) >= EYE_SHARE[k] * tot:
                 tally = {}
@@ -882,6 +886,7 @@ def reduce(a, lab, names, M, K=None, own=None):
                 col[j, i] = max(sorted(tally), key=lambda t: t[0]) if k == 'red' else max(sorted(tally), key=lambda t: tally[t])
                 isl[j, i] = False
                 eye.append((j, i))
+                EYE_PIXELS[(j, i)] = 'i' if k in ('red', 'iris') else 'w'
                 break
     for j, i in eye:
         if who[j - 1, i] in EYE_PIECES and (j - 1, i) not in eye:
@@ -893,6 +898,12 @@ def reduce(a, lab, names, M, K=None, own=None):
 EYE_PIECES = ('face',)
 EYE_KINDS = ('red', 'steel')
 EYE_SHARE = {'red': 0.35, 'steel': 0.2}
+# A picture whose eyes are not red: what each of EYE_KINDS is (a test on his colour), and where his eyes are
+# (a mask of his cells), so his brows and shading of the same colours stay what they are.
+EYE_TESTS = None
+EYE_AREA = None
+# The fine pixels the last reduce() made his eyes ('w' white, 'i' iris), for eye_states.
+EYE_PIXELS = {}
 
 
 def around(cells, H, W):
@@ -1791,3 +1802,107 @@ def strap(a, lab, name, m, col, isl, keep, M, pts, R, K, Lg, mine):
         if m[q] and not isl[q]:
             col[q] = c
             keep[q] = True
+
+
+# ---------------------------------------------------------------------------------------------------
+# His eyes on a face piece, as the game's painted eyes (body.ts PaintedEyes)
+# ---------------------------------------------------------------------------------------------------
+def eyes(m, c, given=None):
+    """His eyes on the face piece: {'near'|'far': (x0, y0, x1, y1)} in our frame, each from his lash line above
+    it to its last row of white or red (or of the pixels `given`: {(y, x): letter})."""
+    eye = np.zeros(m.shape, bool)
+    for y, x in zip(*np.nonzero(m)):
+        if (y, x) in given if given else material(c[y, x], 'face') in ('red', 'white'):
+            eye[y, x] = True
+    ys, xs = np.nonzero(eye)
+    cols = sorted(set(xs))
+    # the two eyes: the columns split at the widest gap
+    gaps = [(cols[k + 1] - cols[k], k) for k in range(len(cols) - 1)]
+    _, k = max(gaps)
+    out = {}
+    for side, (lo, hi) in (('near', (cols[0], cols[k])), ('far', (cols[k + 1], cols[-1]))):
+        sel = (xs >= lo) & (xs <= hi)
+        out[side] = (int(lo), int(ys[sel].min() - 1), int(hi), int(ys[sel].max()))
+    return out
+
+
+LETTER = {'line': 'L', 'red': 'i', 'white': 'w', 'skin': 's', 'dark': 'd'}
+
+
+def eye_states(m, c, given=None):
+    """His eyes on the face piece in the three lid states, with the template's letters (L his lash line, w his
+    white, i his red, d his dark red, s the face's skin), as the Roman eyes are:
+      lowered  (reading) his lash line one row lower, over the top of the eye
+      closed   (knocked out) his lash line over the shut eye, under it the face's skin
+    (colours {hex: char}, states {state: {side: (letters, rows)}}, each eye's first column from the anchor's,
+    his brightest red)."""
+    E = eyes(m, c, given)
+    reds = sorted({hexc(c[y, x]) for y, x in zip(*np.nonzero(m)) if (given.get((y, x)) == 'i' if given else material(c[y, x], 'face') == 'red')}, key=lambda h: -luma(np.array([int(h[k:k + 2], 16) for k in (1, 3, 5)], float)))
+    colors = {}
+
+    def ch(hexv):
+        if hexv not in colors:
+            colors[hexv] = CHARS[len(colors)]
+        return colors[hexv]
+
+    states = {'open': {}, 'lowered': {}, 'closed': {}}
+    nx, ny = ANCHOR
+    at = {}
+    for side, (x0, y0, x1, y1) in E.items():
+        letters, rows = [], []
+        for y in range(ny, y1 + 1):
+            lr, rr = '', ''
+            for x in range(x0, x1 + 1):
+                if y < y0 or not m[y, x]:
+                    lr += '.'
+                    rr += '.'
+                    continue
+                lt = given[(y, x)] if given and (y, x) in given else LETTER.get(material(c[y, x], 'face'), 's')
+                if given and lt in 'iw' and (y, x) not in given:
+                    lt = 's'
+                if lt == 'i' and hexc(c[y, x]) != reds[0]:
+                    lt = 'd'
+                lr += lt
+                rr += '.' if lt == 's' else ch(hexc(c[y, x]))
+            letters.append(lr)
+            rows.append(rr)
+        at[side] = x0 - nx
+        states['open'][side] = (letters, rows)
+        lash = y0 - ny
+        low_l = [list(r) for r in letters]
+        low_r = [list(r) for r in rows]
+        if lash + 1 < len(letters):
+            for i in range(len(letters[lash])):
+                if letters[lash][i] == 'L' and letters[lash + 1][i] != '.':
+                    low_l[lash + 1][i] = 'L'
+                    low_r[lash + 1][i] = rows[lash][i]
+        states['lowered'][side] = ([''.join(r) for r in low_l], [''.join(r) for r in low_r])
+        cl_l = [list(r) for r in letters]
+        cl_r = [list(r) for r in rows]
+        for j in range(lash + 1, len(letters)):
+            for i in range(len(letters[j])):
+                if letters[j][i] in 'wid':
+                    # the skin under the eye: his nearest skin pixel below it on the face
+                    yy = ny + j
+                    while yy < m.shape[0] and not (m[yy, x0 + i] and material(c[yy, x0 + i], 'face') == 'skin' and (yy, x0 + i) not in (given or {})):
+                        yy += 1
+                    cl_l[j][i] = 's'
+                    cl_r[j][i] = ch(hexc(c[yy, x0 + i]))
+        states['closed'][side] = ([''.join(r) for r in cl_l], [''.join(r) for r in cl_r])
+    return colors, states, at, reds[0]
+
+
+def eyes_ts(prefix, colors, states, at, iris):
+    t = ["/** His eyes' colours, one character each (his pixels on his face). */", f'export const {prefix}_EYE_COLORS: Record<string, string> = {{']
+    t += [f"  {k}: '{hexv}'," for hexv, k in colors.items()]
+    t += ['};', '', "/** His eyes in each lid state, stamped on the template's eye cells from the anchor's row (body.ts drawFace). */"]
+    t.append(f"export const {prefix}_EYES: Record<'open' | 'lowered' | 'closed', {{ near: PaintedEye; far: PaintedEye }}> = {{")
+    for state, sides in states.items():
+        t.append(f'  {state}: {{')
+        for side in ('near', 'far'):
+            letters, rows = sides[side]
+            t += [f'    {side}: {{', '      letters: [' + ', '.join(f"'{r}'" for r in letters) + '],', '      rows: [' + ', '.join(f"'{r}'" for r in rows) + '],', '    },']
+        t.append('  },')
+    t += ['};', '', "/** Where his eyes start, columns from the anchor (body.ts PaintedHead ex, fx). */", f"export const {prefix}_EYE_AT = {{ ex: {at['near']}, fx: {at['far']} }};", '']
+    t += ["/** The eye colour his red iris is: the player's eye colour moves his reds as far. */", f"export const {prefix}_IRIS = '{iris}';", '']
+    return t

@@ -32,16 +32,16 @@ const prt = (base: 'upperArm' | 'forearm' | 'hand' | 'thigh' | 'shin' | 'foot', 
  * character's skin (as his skin on the male limbs does), each other material follows its slot ([his base,
  * the chosen colour]; his own colour when the slot keeps his).
  */
-export function hopliteTint(g: DrawCtx, kinds: Record<string, string>, slots: Record<string, [string, string]>) {
+export function hopliteTint(g: DrawCtx, kinds: Record<string, string>, slots: Record<string, [string, string]>, skin = RP.HOPLITE_R_SKIN) {
   return (_ch: string, hex: string): string => {
     const k = kinds[hex];
     if (k === 'line' || k === 'dark') return hex;
-    if (k === 'skin') return retintSkinLifted(hex, RP.HOPLITE_R_SKIN, g.look.skin);
+    if (k === 'skin') return retintSkinLifted(hex, skin, g.look.skin);
     const s = slots[k];
     return s ? retintHex(hex, s[0], s[1]) : hex;
   };
 }
-const lineOf = (kinds: Record<string, string>) => (hex: string) => kinds[hex] === 'line';
+export const lineOf = (kinds: Record<string, string>) => (hex: string) => kinds[hex] === 'line';
 
 type Kinds = Record<string, string>;
 /**
@@ -88,7 +88,7 @@ function restRig(body: BodyType): Rig {
 const torsoAngle = (g: DrawCtx) => segAngle(g.rig.pelvis, g.rig.neck);
 
 /** Takes the pixels of these parts of ours out of these layers (his pieces are that part there). */
-function partsOff(g: DrawCtx, depths: Depth[], parts: PartId[]): void {
+export function partsOff(g: DrawCtx, depths: Depth[], parts: PartId[]): void {
   const ids = new Set(parts.map((p) => partIndex(p)));
   for (const d of depths) {
     const L = g.L(d);
@@ -98,7 +98,7 @@ function partsOff(g: DrawCtx, depths: Depth[], parts: PartId[]): void {
 }
 
 /** Takes our torso away below the neck (his cuirass is the torso there). */
-function torsoOff(g: DrawCtx): void {
+export function torsoOff(g: DrawCtx): void {
   const r = g.rig;
   const torso = partIndex('torso');
   const neck = (r.neck.x - r.pelvis.x) * r.up.x + (r.neck.y - r.pelvis.y) * r.up.y;
@@ -254,7 +254,7 @@ function drawLegs(g: DrawCtx, bronze: string, shoe: string): void {
 // His hair and diadem (stamped on the face anchor, as his Roman hair is)
 // ---------------------------------------------------------------------------------------------------
 
-function stampOnFace(g: DrawCtx, depth: Depth, p: PaintedPiece, tint: (ch: string, hex: string) => string): void {
+export function stampOnFace(g: DrawCtx, depth: Depth, p: PaintedPiece, tint: (ch: string, hex: string) => string): void {
   const { nx, ny } = faceAnchor(g);
   const L = g.L(depth);
   L.noFray = true;

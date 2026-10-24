@@ -13,6 +13,7 @@ import {
   AbilityScores,
 } from '../types/shinobi';
 import type { ItemChoice, SpriteAppearance } from '../sprite/types';
+import { GENERAL_IRIS, GENERAL_SKIN } from '../sprite/generalHeadArt';
 import { HOPLITE_R_IRIS as HOPLITE_IRIS, HOPLITE_R_SKIN as HOPLITE_SKIN } from '../sprite/items/hopliteRepaintArt';
 import { NIGHT_IRIS } from '../sprite/nightEyeArt';
 import { NIGHT_SKIN } from '../sprite/nightHeadArt';
@@ -1279,6 +1280,13 @@ export const CAPE_STYLES: { id: CapeStyleType; label: string; desc: string }[] =
 
 const it = (id: string, ...colors: string[]): ItemChoice => ({ id, colors });
 
+/**
+ * Presets whose poses wait for the owner's OK on their idle (docs/STATUS.md): their idle is tested pixel for
+ * pixel, but the checks over every pose (holes.test.ts, forearm.test.ts) leave them out until their poses are
+ * done. Remove an id when its poses are.
+ */
+export const POSES_PENDING = new Set(['preset_bronze_warrior', 'preset_bronze_warrior_leather', 'preset_bronze_general_spiral', 'preset_bronze_general_muscle']);
+
 function spriteLook(o: Partial<SpriteAppearance>): SpriteAppearance {
   return {
     version: 1,
@@ -1910,6 +1918,142 @@ export const LEGENDARY_PRESETS: { name: string; tag: string; nameEs?: string; ta
           cape: it('cape_hoplite'),
         },
         accessories: [it('acc_hoplite_iron_pauldrons'), it('acc_hoplite_diadem')],
+        chakra: { color: 'orange', onCharge: true, onCast: true, onVictory: true },
+      }),
+    },
+  },
+  // The owner's Roman general (docs/reference/roman-general-owner-reference.jpg): his two chest sets with his
+  // face and hair; the rest of him (red skirt, bracers, sandals) from our Roman pieces.
+  {
+    name: 'Roman General (spiral)',
+    tag: 'Spiral Cuirass · Gold-rimmed Pauldrons',
+    nameEs: 'General Romano (espirales)',
+    tagEs: 'Coraza de espirales · Hombreras de borde dorado',
+    character: {
+      id: 'preset_bronze_general_spiral',
+      name: 'Roman General',
+      title: 'The Roman General',
+      level: 5,
+      clan: 'Mirai',
+      shinobiClass: 'Taijutsu Master',
+      stats: { str: 18, dex: 14, con: 16, int: 10, wis: 12, cha: 14 },
+      palette: {
+        skinTone: '#fed7aa',
+        hairColor: '#8a5a2b',
+        eyeColor: '#4a2a1e',
+        armorPrimary: '#b8913a',
+        armorSecondary: '#9d1b5a',
+        clothColor: '#1e2a44',
+        headbandCloth: '#1e3a8a',
+        headbandPlate: '#cbd5e1',
+        chakraAuraColor: '#f59e0b',
+        capeColor: '#9d1b5a',
+        accentColor: '#f59e0b',
+      },
+      hairstyle: 'Madara Wild Cascade',
+      armorStyle: 'Greek Hoplite Cuirass',
+      headbandPosition: 'Forehead',
+      weaponStyle: 'Gentle Fist Palm',
+      capeStyle: 'Ronin Traveler Cape',
+      dojutsu: 'None',
+      selectedFeats: ['iron_skin', 'eight_gates_initiate'],
+      selectedJutsus: {
+        slot1Utility: 'body_flicker',
+        slot2Elemental: 'leaf_hurricane_senpuu',
+        slot3Elemental: 'taijutsu_rush',
+        slot4Clan: 'dragon_fire_bomb',
+        slot5Ultimate: 'great_fire_annihilation',
+      },
+      sheetVersion: 2,
+      maxHp: 49,
+      currentHp: 49,
+      maxChakra: 33,
+      currentChakra: 33,
+      armorClass: 18,
+      speed: 6,
+      jutsuSaveDC: 15,
+      jutsuAttackBonus: 7,
+      appearance: spriteLook({
+        skin: GENERAL_SKIN,
+        faceShape: 'general',
+        eyeShape: 'general',
+        eyeColor: GENERAL_IRIS,
+        slots: {
+          hair: it('hair_general'),
+          armor: it('armor_general_spiral'),
+          top: it('top_general_sleeves'),
+          skirt: it('skirt_imperial'),
+          hands: it('hands_bronze_bracers'),
+          feet: it('feet_gladiator_sandals'),
+        },
+        accessories: [it('acc_general_pauldrons'), it('acc_general_scarf')],
+        chakra: { color: 'orange', onCharge: true, onCast: true, onVictory: true },
+      }),
+    },
+  },
+  {
+    name: 'Roman General (muscle)',
+    tag: 'Muscle Cuirass · Studded Pauldrons',
+    nameEs: 'General Romano (musculada)',
+    tagEs: 'Coraza musculada · Hombreras tachonadas',
+    character: {
+      id: 'preset_bronze_general_muscle',
+      name: 'Roman General',
+      title: 'The Roman General',
+      level: 5,
+      clan: 'Mirai',
+      shinobiClass: 'Taijutsu Master',
+      stats: { str: 18, dex: 14, con: 16, int: 10, wis: 12, cha: 14 },
+      palette: {
+        skinTone: '#fed7aa',
+        hairColor: '#8a5a2b',
+        eyeColor: '#4a2a1e',
+        armorPrimary: '#b8913a',
+        armorSecondary: '#9d1b5a',
+        clothColor: '#1e2a44',
+        headbandCloth: '#1e3a8a',
+        headbandPlate: '#cbd5e1',
+        chakraAuraColor: '#f59e0b',
+        capeColor: '#9d1b5a',
+        accentColor: '#f59e0b',
+      },
+      hairstyle: 'Madara Wild Cascade',
+      armorStyle: 'Greek Hoplite Cuirass',
+      headbandPosition: 'Forehead',
+      weaponStyle: 'Gentle Fist Palm',
+      capeStyle: 'Ronin Traveler Cape',
+      dojutsu: 'None',
+      selectedFeats: ['iron_skin', 'eight_gates_initiate'],
+      selectedJutsus: {
+        slot1Utility: 'body_flicker',
+        slot2Elemental: 'leaf_hurricane_senpuu',
+        slot3Elemental: 'taijutsu_rush',
+        slot4Clan: 'dragon_fire_bomb',
+        slot5Ultimate: 'great_fire_annihilation',
+      },
+      sheetVersion: 2,
+      maxHp: 49,
+      currentHp: 49,
+      maxChakra: 33,
+      currentChakra: 33,
+      armorClass: 18,
+      speed: 6,
+      jutsuSaveDC: 15,
+      jutsuAttackBonus: 7,
+      appearance: spriteLook({
+        skin: GENERAL_SKIN,
+        faceShape: 'general',
+        eyeShape: 'general',
+        eyeColor: GENERAL_IRIS,
+        slots: {
+          hair: it('hair_general'),
+          armor: it('armor_general_muscle'),
+          top: it('top_general_sleeves'),
+          skirt: it('skirt_imperial'),
+          hands: it('hands_bronze_bracers'),
+          feet: it('feet_gladiator_sandals'),
+        },
+        accessories: [it('acc_general_studded_pauldrons'), it('acc_general_scarf')],
         chakra: { color: 'orange', onCharge: true, onCast: true, onVictory: true },
       }),
     },

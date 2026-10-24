@@ -8,6 +8,7 @@ import { CAPE_ITEMS } from './items/capes';
 import { BOTTOM_ITEMS, HAND_ITEMS, TOP_ITEMS, WAIST_ITEMS } from './items/clothes';
 import { FEET_ITEMS } from './items/feet';
 import { HAIR_ITEMS } from './items/hair';
+import { GENERAL_ITEMS } from './items/general';
 import { HOPLITE_ITEMS } from './items/hoplite';
 import { NIGHT_ITEMS } from './items/night';
 import type { BodyType, SlotId } from './types';
@@ -27,6 +28,8 @@ export const ALL_ITEMS: ItemDef[] = [
   ...ACCESSORY_ITEMS,
   // the owner's bronze warrior, part by part (hair, diadem, cuirass, pauldrons, cape, skirt, bracers, greaves)
   ...HOPLITE_ITEMS,
+  // the owner's Roman general: his two chest sets, pauldrons, sleeves, scarf and hair
+  ...GENERAL_ITEMS,
   // the owner's Ren, part by part (the jacket, belt, skirt, trousers and boots)
   ...NIGHT_ITEMS,
 ];

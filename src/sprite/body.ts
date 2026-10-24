@@ -27,6 +27,7 @@ import { drawOwner, slotTint } from './ownerFrames';
 import { rotateTemplate, stampTemplate, type TemplatePalette } from './rotsprite';
 import { ROMAN_EYE_COLORS, ROMAN_EYES, ROMAN_IRIS } from './romanEyeArt';
 import { ROMAN_HEAD, ROMAN_SKIN } from './romanHeadArt';
+import { GENERAL_EYE_AT, GENERAL_EYE_COLORS, GENERAL_EYES, GENERAL_HEAD, GENERAL_HEAD_KIND, GENERAL_IRIS, GENERAL_SKIN } from './generalHeadArt';
 import { HOPLITE_R_EYE_AT, HOPLITE_R_EYE_COLORS, HOPLITE_R_EYES, HOPLITE_R_HEAD, HOPLITE_R_HEAD_KIND, HOPLITE_R_IRIS, HOPLITE_R_SKIN } from './items/hopliteRepaintArt';
 import { drawRomanNeck } from './romanNeck';
 import { ballShade, capsule, ellipse, F_NO_OUTLINE, F_NO_TEXTURE, GRID, Layer, PartId, Pen, poly, RES, seam, v, Vec } from './raster';
@@ -584,6 +585,8 @@ const PAINTED_HEADS: Partial<Record<FaceShape, PaintedHead>> = {
   // His bronze warrior's face, his own repaint at our scale (src/sprite/items/hopliteRepaintArt.ts): his eyes and
   // mouth in it; his skin follows the character's as his skin on the male limbs does, his line and near-blacks kept.
   hoplite: { head: HOPLITE_R_HEAD, skin: HOPLITE_R_SKIN, ex: HOPLITE_R_EYE_AT.ex, fx: HOPLITE_R_EYE_AT.fx, mouth: false, tint: (hex, from, to) => (HOPLITE_R_HEAD_KIND[hex] === 'skin' ? retintSkinLifted(hex, from, to) : hex) },
+  // His Roman general's face (src/sprite/generalHeadArt.ts), brought down to our scale: his eyes and mouth in it.
+  general: { head: GENERAL_HEAD, skin: GENERAL_SKIN, ex: GENERAL_EYE_AT.ex, fx: GENERAL_EYE_AT.fx, mouth: false, tint: (hex, from, to) => (GENERAL_HEAD_KIND[hex] === 'skin' ? retintSkinLifted(hex, from, to) : hex) },
 };
 const paintedHead = (g: DrawCtx): PaintedHead | undefined => (g.look.faceShape ? PAINTED_HEADS[g.look.faceShape] : undefined);
 
@@ -601,6 +604,7 @@ const PAINTED_EYES: Partial<Record<EyeShape, PaintedEyes>> = {
   night: { eyes: NIGHT_EYES, colors: NIGHT_EYE_COLORS, iris: NIGHT_IRIS },
   roman: { eyes: ROMAN_EYES, colors: ROMAN_EYE_COLORS, iris: ROMAN_IRIS },
   hoplite: { eyes: HOPLITE_R_EYES, colors: HOPLITE_R_EYE_COLORS, iris: HOPLITE_R_IRIS },
+  general: { eyes: GENERAL_EYES, colors: GENERAL_EYE_COLORS, iris: GENERAL_IRIS },
 };
 
 function drawHead(g: DrawCtx): void {
@@ -707,7 +711,7 @@ function drawFounderHead(g: DrawCtx): void {
  * square: the reference's original strong jaw, with a flat jaw line.
  * (valiant, night, roman and founder, the owner's heads, are his pixels whole: see drawPaintedHead, drawFounderHead.)
  */
-const FACE_LEFT: Record<Exclude<FaceShape, 'valiant' | 'night' | 'founder' | 'fine' | 'aurelia' | 'roman' | 'hoplite'>, string[]> = {
+const FACE_LEFT: Record<Exclude<FaceShape, 'valiant' | 'night' | 'founder' | 'fine' | 'aurelia' | 'roman' | 'hoplite' | 'general'>, string[]> = {
   tapered: ['osbbbbb', 'ossbbbb', '.osbbbb', '..osbbb', '...osbb', '....osb', '.....os', '......o', '.......', '.......'],
   soft: ['osbbbbb', 'ossbbbb', 'ossbbbb', '.osbbbb', '..osbbb', '...osbb', '....osb', '.....oo', '.......', '.......'],
   square: ['osbbbbb', 'ossbbbb', 'osDsbbb', 'ossbbbb', '.osbbbs', '..osbbs', '...osbs', '....ooo', '.......', '.......'],
@@ -716,7 +720,7 @@ const FACE_LEFT: Record<Exclude<FaceShape, 'valiant' | 'night' | 'founder' | 'fi
 const faceLeft = (g: DrawCtx): string[] => {
   const s = g.look.faceShape;
   // (Lyra's face, 'fine', has the default near cheek under her hair)
-  return (s && s !== 'valiant' && s !== 'night' && s !== 'founder' && s !== 'fine' && s !== 'aurelia' && s !== 'roman' && s !== 'hoplite' && FACE_LEFT[s]) || FACE_LEFT.tapered;
+  return (s && s !== 'valiant' && s !== 'night' && s !== 'founder' && s !== 'fine' && s !== 'aurelia' && s !== 'roman' && s !== 'hoplite' && s !== 'general' && FACE_LEFT[s]) || FACE_LEFT.tapered;
 };
 
 /** Aurelia's face (aureliaFaceArt.ts) in fine pixels, its pivot on the face anchor. */
@@ -922,7 +926,7 @@ function drawFace(g: DrawCtx): void {
   const closed = g.rig.pose === 'downed';
   // Reading: the lids come down over the eyes, the gaze lowered to the page.
   const lowered = g.rig.pose === 'read';
-  // The owner's eyes ('valiant', 'night', 'roman', 'hoplite'): his pixels in each lid state, laid on the template's eye cells.
+  // The owner's eyes ('valiant', 'night', 'roman', 'hoplite', 'general'): his pixels in each lid state, laid on the template's eye cells.
   const painted = PAINTED_EYES[shape];
   const his = painted?.eyes[closed ? 'closed' : lowered ? 'lowered' : 'open'];
   // Aurelia's eyes ('dawn'): her pixels in each lid state, on our own eye cells and rows.

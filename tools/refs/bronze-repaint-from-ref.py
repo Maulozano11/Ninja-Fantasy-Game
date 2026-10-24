@@ -285,105 +285,6 @@ def mat_of(col, mask):
         out[y, x] = R.material(col[y, x], 'face')
     return out
 
-def eyes(m, c):
-    """His eyes on the face piece: {'near'|'far': (x0, y0, x1, y1)} in our frame, each from his lash line above
-    it to its last row of white or red."""
-    eye = np.zeros(m.shape, bool)
-    for y, x in zip(*np.nonzero(m)):
-        if R.material(c[y, x], 'face') in ('red', 'white'):
-            eye[y, x] = True
-    ys, xs = np.nonzero(eye)
-    cols = sorted(set(xs))
-    # the two eyes: the columns split at the widest gap
-    gaps = [(cols[k + 1] - cols[k], k) for k in range(len(cols) - 1)]
-    _, k = max(gaps)
-    out = {}
-    for side, (lo, hi) in (('near', (cols[0], cols[k])), ('far', (cols[k + 1], cols[-1]))):
-        sel = (xs >= lo) & (xs <= hi)
-        out[side] = (int(lo), int(ys[sel].min() - 1), int(hi), int(ys[sel].max()))
-    return out
-
-
-LETTER = {'line': 'L', 'red': 'i', 'white': 'w', 'skin': 's', 'dark': 'd'}
-
-
-def eye_states(m, c):
-    """His eyes on the face piece in the three lid states, with the template's letters (L his lash line, w his
-    white, i his red, d his dark red, s the face's skin), as the Roman eyes are:
-      lowered  (reading) his lash line one row lower, over the top of the eye
-      closed   (knocked out) his lash line over the shut eye, under it the face's skin
-    (colours {hex: char}, states {state: {side: (letters, rows)}}, each eye's first column from the anchor's,
-    his brightest red)."""
-    E = eyes(m, c)
-    reds = sorted({R.hexc(c[y, x]) for y, x in zip(*np.nonzero(m)) if R.material(c[y, x], 'face') == 'red'}, key=lambda h: -R.luma(np.array([int(h[k:k + 2], 16) for k in (1, 3, 5)], float)))
-    colors = {}
-
-    def ch(hexv):
-        if hexv not in colors:
-            colors[hexv] = R.CHARS[len(colors)]
-        return colors[hexv]
-
-    states = {'open': {}, 'lowered': {}, 'closed': {}}
-    nx, ny = R.ANCHOR
-    at = {}
-    for side, (x0, y0, x1, y1) in E.items():
-        letters, rows = [], []
-        for y in range(ny, y1 + 1):
-            lr, rr = '', ''
-            for x in range(x0, x1 + 1):
-                if y < y0 or not m[y, x]:
-                    lr += '.'
-                    rr += '.'
-                    continue
-                lt = LETTER.get(R.material(c[y, x], 'face'), 's')
-                if lt == 'i' and R.hexc(c[y, x]) != reds[0]:
-                    lt = 'd'
-                lr += lt
-                rr += '.' if lt == 's' else ch(R.hexc(c[y, x]))
-            letters.append(lr)
-            rows.append(rr)
-        at[side] = x0 - nx
-        states['open'][side] = (letters, rows)
-        lash = y0 - ny
-        low_l = [list(r) for r in letters]
-        low_r = [list(r) for r in rows]
-        if lash + 1 < len(letters):
-            for i in range(len(letters[lash])):
-                if letters[lash][i] == 'L' and letters[lash + 1][i] != '.':
-                    low_l[lash + 1][i] = 'L'
-                    low_r[lash + 1][i] = rows[lash][i]
-        states['lowered'][side] = ([''.join(r) for r in low_l], [''.join(r) for r in low_r])
-        cl_l = [list(r) for r in letters]
-        cl_r = [list(r) for r in rows]
-        for j in range(lash + 1, len(letters)):
-            for i in range(len(letters[j])):
-                if letters[j][i] in 'wid':
-                    # the skin under the eye: his nearest skin pixel below it on the face
-                    yy = ny + j
-                    while yy < m.shape[0] and not (m[yy, x0 + i] and R.material(c[yy, x0 + i], 'face') == 'skin'):
-                        yy += 1
-                    cl_l[j][i] = 's'
-                    cl_r[j][i] = ch(R.hexc(c[yy, x0 + i]))
-        states['closed'][side] = ([''.join(r) for r in cl_l], [''.join(r) for r in cl_r])
-    return colors, states, at, reds[0]
-
-
-def eyes_ts(prefix, colors, states, at, iris):
-    t = ["/** His eyes' colours, one character each (his pixels on his face). */", f'export const {prefix}_EYE_COLORS: Record<string, string> = {{']
-    t += [f"  {k}: '{hexv}'," for hexv, k in colors.items()]
-    t += ['};', '', "/** His eyes in each lid state, stamped on the template's eye cells from the anchor's row (body.ts drawFace). */"]
-    t.append(f"export const {prefix}_EYES: Record<'open' | 'lowered' | 'closed', {{ near: PaintedEye; far: PaintedEye }}> = {{")
-    for state, sides in states.items():
-        t.append(f'  {state}: {{')
-        for side in ('near', 'far'):
-            letters, rows = sides[side]
-            t += [f'    {side}: {{', '      letters: [' + ', '.join(f"'{r}'" for r in letters) + '],', '      rows: [' + ', '.join(f"'{r}'" for r in rows) + '],', '    },']
-        t.append('  },')
-    t += ['};', '', "/** Where his eyes start, columns from the anchor (body.ts PaintedHead ex, fx). */", f"export const {prefix}_EYE_AT = {{ ex: {at['near']}, fx: {at['far']} }};", '']
-    t += ["/** The eye colour his red iris is: the player's eye colour moves his reds as far. */", f"export const {prefix}_IRIS = '{iris}';", '']
-    return t
-
-
 # The pieces, front of the module to back: (const, piece, what it is).
 CONSTS = [
     ('HOPLITE_R_HEAD', 'face', 'His head, skull to neck: stamped on the face anchor.'),
@@ -458,7 +359,7 @@ def main(out, study=None):
     text = R.module(head, [(c, rep[n], d, n) for c, n, d in CONSTS], 'HOPLITE_R', bases(rep))
     text = text.replace("import type { PaintedPiece } from '../painted';", "import type { PaintedEye } from '../eyeArt';\nimport type { PaintedPiece } from '../painted';")
     m, c, _ = rep['face']
-    t = [text] + eyes_ts('HOPLITE_R', *eye_states(m, c))
+    t = [text] + R.eyes_ts('HOPLITE_R', *R.eye_states(m, c))
     t.append('/** His joints at our scale, where his figure stands them at male idle frame 0 (fine pixels; hopliteRig.ts). */')
     t.append('export const HOPLITE_JOINTS = {')
     for k in ('neck', 'pelvis', 'shoulderN', 'shoulderF', 'elbowN', 'elbowF', 'wristN', 'wristF', 'handN', 'handF', 'hipN', 'hipF', 'kneeN', 'kneeF', 'ankleN', 'ankleF'):

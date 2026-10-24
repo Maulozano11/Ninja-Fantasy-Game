@@ -21,6 +21,8 @@ import { type PaintedPiece, segAngle, stampPiece } from './painted';
 import { rotateTemplate, stampTemplate, type TemplatePalette } from './rotsprite';
 import { ROMAN_EYE_COLORS, ROMAN_EYES, ROMAN_IRIS } from './romanEyeArt';
 import { ROMAN_HEAD, ROMAN_SKIN } from './romanHeadArt';
+import { SAMURAI_EYE_COLORS, SAMURAI_EYES, SAMURAI_IRIS } from './samuraiEyeArt';
+import { SAMURAI_EYE_COLS, SAMURAI_HEAD, SAMURAI_SKIN } from './samuraiHeadArt';
 import { drawRomanNeck } from './romanNeck';
 import { ballShade, capsule, ellipse, F_NO_OUTLINE, F_NO_TEXTURE, GRID, Layer, PartId, Pen, poly, RES, seam, v, Vec } from './raster';
 import { type EyeShape, isFemaleBody, type FaceShape } from './types';
@@ -514,6 +516,8 @@ const PAINTED_HEADS: Partial<Record<FaceShape, PaintedHead>> = {
   valiant: { head: VALIANT_HEAD, skin: VALIANT_SKIN, ex: 1, fx: 8, mouth: true, tint: (hex, from, to) => skinTone(hex, to, from) },
   // His Roman face (src/sprite/romanHeadArt.ts): its eyes where his Aiden head has them, his own mouth.
   roman: { head: ROMAN_HEAD, skin: ROMAN_SKIN, ex: 1, fx: 8, mouth: false, tint: retintSkinLifted },
+  // His samurai face (src/sprite/samuraiHeadArt.ts): his eyes where he drew them, his own mouth.
+  samurai: { head: SAMURAI_HEAD, skin: SAMURAI_SKIN, ex: SAMURAI_EYE_COLS[0], fx: SAMURAI_EYE_COLS[1], mouth: false, tint: retintSkinLifted },
 };
 const paintedHead = (g: DrawCtx): PaintedHead | undefined => (g.look.faceShape ? PAINTED_HEADS[g.look.faceShape] : undefined);
 
@@ -529,6 +533,7 @@ interface PaintedEyes {
 const PAINTED_EYES: Partial<Record<EyeShape, PaintedEyes>> = {
   valiant: { eyes: VALIANT_EYES, colors: VALIANT_EYE_COLORS, iris: VALIANT_IRIS, brow: VALIANT_BROW_HAIR },
   roman: { eyes: ROMAN_EYES, colors: ROMAN_EYE_COLORS, iris: ROMAN_IRIS },
+  samurai: { eyes: SAMURAI_EYES, colors: SAMURAI_EYE_COLORS, iris: SAMURAI_IRIS },
 };
 
 function drawHead(g: DrawCtx): void {
@@ -648,7 +653,7 @@ function skinTone(hex: string, skin: string, base = VALIANT_SKIN): string {
  * square: the reference's original strong jaw, with a flat jaw line.
  * (valiant, roman and founder, the owner's heads, are his pixels whole: see drawPaintedHead, drawFounderHead.)
  */
-const FACE_LEFT: Record<Exclude<FaceShape, 'valiant' | 'founder' | 'fine' | 'roman'>, string[]> = {
+const FACE_LEFT: Record<Exclude<FaceShape, 'valiant' | 'founder' | 'fine' | 'roman' | 'samurai'>, string[]> = {
   tapered: ['osbbbbb', 'ossbbbb', '.osbbbb', '..osbbb', '...osbb', '....osb', '.....os', '......o', '.......', '.......'],
   soft: ['osbbbbb', 'ossbbbb', 'ossbbbb', '.osbbbb', '..osbbb', '...osbb', '....osb', '.....oo', '.......', '.......'],
   square: ['osbbbbb', 'ossbbbb', 'osDsbbb', 'ossbbbb', '.osbbbs', '..osbbs', '...osbs', '....ooo', '.......', '.......'],
@@ -657,7 +662,7 @@ const FACE_LEFT: Record<Exclude<FaceShape, 'valiant' | 'founder' | 'fine' | 'rom
 const faceLeft = (g: DrawCtx): string[] => {
   const s = g.look.faceShape;
   // (Lyra's face, 'fine', has the default near cheek under her hair)
-  return (s && s !== 'valiant' && s !== 'founder' && s !== 'fine' && s !== 'roman' && FACE_LEFT[s]) || FACE_LEFT.tapered;
+  return (s && s !== 'valiant' && s !== 'founder' && s !== 'fine' && s !== 'roman' && s !== 'samurai' && FACE_LEFT[s]) || FACE_LEFT.tapered;
 };
 
 const FACE_MAIN: Record<string, string[]> = {
@@ -720,6 +725,9 @@ const EYE_ROWS: Record<string, { near: string[]; far: string[] }> = {
   // His Roman eyes (src/sprite/romanEyeArt.ts), where his Aiden eyes sit: a heavy black line, brow and
   // lash in one, and a single row of white and red iris under it. Drawn in his pixels.
   roman: { near: ROMAN_EYES.open.near.letters, far: ROMAN_EYES.open.far.letters },
+  // His samurai eyes (src/sprite/samuraiEyeArt.ts): his heavy black lash line, his pupil in it and the
+  // glint under it. Drawn in his pixels.
+  samurai: { near: SAMURAI_EYES.open.near.letters, far: SAMURAI_EYES.open.far.letters },
 };
 
 /** Closed eyes (knocked out): each eye a dark lid line across its middle row. */

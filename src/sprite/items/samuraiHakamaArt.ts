@@ -1,0 +1,112 @@
+// The owner's samurai hakama, his pixels at our scale (tools/refs/samurai-hakama-from-ref.py from
+// docs/reference/samurai-owner-reference.jpg, shrunk and cleaned by tools/refs/samurai_ref.py).
+// Generated: rerun the script to change it.
+import type { PaintedPiece } from '../painted';
+
+/** His colours the colour slots recolour from (at these, every pixel is his). */
+export const SAMURAI_HAKAMA = '#390d1e';
+
+/** What each of his colours is, as the script sorts them (tools/refs/samurai_ref.py kind). */
+export const SAMURAI_HAKAMA_KIND: Record<string, 'hair' | 'line' | 'red'> = {
+  '#000113': 'line',
+  '#131722': 'hair',
+  '#1e222d': 'hair',
+  '#390d1e': 'red',
+  '#49111e': 'red',
+  '#520b1c': 'red',
+  '#610c23': 'red',
+  '#66151c': 'red',
+  '#7f1d1e': 'red',
+  '#881f23': 'red',
+};
+
+/** Where each piece lands in our male idle frame 0, unturned: the fine pixel of its first row's first cell. */
+export const SAMURAI_HAKAMA_REST: Record<string, [number, number]> = {
+  SAMURAI_THIGH_N: [110, 177],
+  SAMURAI_THIGH_F: [125, 176],
+};
+
+/** His hakama's near leg, wide and bloused over the knee. It rides the thigh about the hip. */
+export const SAMURAI_THIGH_N: PaintedPiece = {
+  pivot: [9, 1],
+  angle: 98.88,
+  rows: [
+    '.aaaaaaaaaaaaa.',
+    '.bbbbbbbbbbccc.',
+    '.bbbbbbbbbbccc.',
+    '.bbbbbbbbbbccc.',
+    '.bbbbbbbbbbccc.',
+    '...bbbbbbbbccc.',
+    '..bbbbbbbbbccc.',
+    '..bbbbbbbbbccc.',
+    '..bbbbbbbbbccc.',
+    '..bbbbbbbbbccc.',
+    '..bbbbbbbbbccc.',
+    '..bbbbbbbbbccc.',
+    '..bbbbbbbbbccc.',
+    'aabbbbbbabbcca.',
+    'abcbcbdccbbaacc',
+    'abbbbbbbbbbbbcc',
+    'abbbbbbccccccbb',
+    'aabbbbbbbbbbbba',
+    'aabbbbbbbbbabaa',
+    'aa..........aaa',
+    'aa..........aaa',
+    'aabbbbbbbbbbaab',
+    'aabbbbbbbbbaabb',
+    '.........aabbbb',
+    '.........abaaaa',
+    '.........aa....',
+  ],
+  colors: {
+    a: '#000113',
+    b: '#390d1e',
+    c: '#881f23',
+    d: '#7f1d1e',
+  },
+};
+
+/** His hakama's far leg, wide and bloused over the knee. It rides the thigh about the hip. */
+export const SAMURAI_THIGH_F: PaintedPiece = {
+  pivot: [7, 1],
+  angle: 73.61,
+  rows: [
+    '....aa.aaaaaaaa.',
+    '....bc.deffffff.',
+    '....bc.deffffff.',
+    '....bc.deffffff.',
+    '....bc.deffffff.',
+    '....bc.deffffff.',
+    '....bc.deffffff.',
+    '....bc.deffffff.',
+    '....bc.deffffff.',
+    '....bc.deffffff.',
+    '....bc.deffffff.',
+    '....bc.deffffff.',
+    '....bc.deffffff.',
+    '....bc.deffffff.',
+    '.a.abc.defffaafa',
+    'haaabbddbeddbdba',
+    'aaaabcadeffffffa',
+    'aaaabbibbb......',
+    'aaaabbbiib......',
+    'aaaaaababb......',
+    'aaaaaaabbaa.....',
+    'baaaaajkja......',
+    'aaaaaa.aaa......',
+    'aaaa............',
+    'aa..............',
+  ],
+  colors: {
+    a: '#000113',
+    b: '#390d1e',
+    c: '#66151c',
+    d: '#881f23',
+    e: '#520b1c',
+    f: '#610c23',
+    h: '#49111e',
+    i: '#7f1d1e',
+    j: '#131722',
+    k: '#1e222d',
+  },
+};

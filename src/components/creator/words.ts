@@ -290,6 +290,30 @@ const ES: Record<string, string> = {
   // Lyra's sword
   'Gilded Rapier': 'Estoque Dorado',
   'Blade glow': 'Brillo de la hoja',
+  // The owner's samurai (items/samurai.ts, the 'samurai' face and eyes): placeholder names, his to give
+  Samurai: 'Samurái',
+  "The samurai's face": 'La cara del samurái',
+  "The samurai's eyes": 'Los ojos del samurái',
+  'Samurai Topknot': 'Moño samurái',
+  'Messy black hair over the brow and ears, gathered on the crown in a topknot tied with red cord.': 'Cabello negro revuelto sobre la frente y las orejas, recogido en la coronilla en un moño atado con cordón rojo.',
+  Cord: 'Cordón',
+  'Samurai Do': 'Do samurái',
+  'Black lacquered lamellar armour laced in red, its top band patterned in gold, with big layered shoulder guards (+4 AC).': 'Armadura laminar lacada en negro, atada con cordón rojo, la banda de arriba con dibujo de oro, y grandes hombreras en capas (+4 CA).',
+  Lacing: 'Cordaje',
+  'Samurai Sleeves': 'Mangas samurái',
+  'Mail sleeves, armoured kote over the forearms tied with red cord, and fingerless gloves.': 'Mangas de malla, kote acorazados sobre los antebrazos atados con cordón rojo y guantes sin dedos.',
+  Iron: 'Hierro',
+  'Samurai Obi': 'Obi samurái',
+  'A gold rope sash wound round the waist and knotted at the front.': 'Una faja de cuerda dorada enrollada en la cintura y anudada al frente.',
+  'Samurai Kusazuri': 'Kusazuri samurái',
+  'Layered lacquered tassets laced in red and rimmed in gold, hanging from the waist over the thighs.': 'Faldares lacados en capas, atados en rojo y ribeteados en oro, que cuelgan de la cintura sobre los muslos.',
+  'Samurai Hakama': 'Hakama samurái',
+  'Wide red hakama trousers, bloused over the knees.': 'Pantalones hakama rojos y anchos, abombados sobre las rodillas.',
+  'Samurai Suneate': 'Suneate samurái',
+  'Round knee guards, armoured shin guards tied in red, and dark sandal-boots with gold straps.': 'Rodilleras redondas, espinilleras acorazadas atadas en rojo y botas-sandalia oscuras con correas de oro.',
+  Greaves: 'Grebas',
+  'Samurai Cape': 'Capa samurái',
+  'A red cape flowing back from behind the waist in long folds.': 'Una capa roja que ondea hacia atrás desde la cintura en pliegues largos.',
 };
 
 /** An editor label in the screen's language. */

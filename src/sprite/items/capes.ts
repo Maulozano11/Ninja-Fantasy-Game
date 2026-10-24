@@ -518,7 +518,7 @@ function crimsonBack(g: DrawCtx, color: (ch: string, hex: string) => string): vo
  * how far above the ground line its hem hangs at rest, `edge` the character of his line drawn along the
  * cut when it lies knocked out.
  */
-function paintedBack(g: DrawCtx, p: PaintedPart, hem: number, edgeCh: string, color: (ch: string, hex: string) => string): void {
+export function paintedBack(g: DrawCtx, p: PaintedPart, hem: number, edgeCh: string, color: (ch: string, hex: string) => string): void {
   const L = g.L('capeBack');
   const r = g.rig;
   const w = capeWind(g);

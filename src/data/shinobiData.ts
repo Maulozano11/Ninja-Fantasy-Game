@@ -13,6 +13,8 @@ import {
   AbilityScores,
 } from '../types/shinobi';
 import type { ItemChoice, SpriteAppearance } from '../sprite/types';
+import { SAMURAI_SKIN } from '../sprite/samuraiHeadArt';
+import { SAMURAI_IRIS } from '../sprite/samuraiEyeArt';
 
 export const CLANS_DATA: Record<
   ClanType,
@@ -1841,6 +1843,81 @@ export const LEGENDARY_PRESETS: { name: string; tag: string; nameEs?: string; ta
     },
   },
   // ── Heroine: Lyra (end) ────────────────────────────────────────────────────────────────────────
+  // ── The owner's samurai (begin) ─────────────────────────────────────────────────────────────────
+  // His samurai picture (docs/reference/samurai-owner-reference.jpg, 2026-10-24) shrunk to our scale and
+  // cleaned (tools/refs/samurai_ref.py), part by part: hair, face, eyes, do, sleeves, obi, kusazuri,
+  // hakama, shin guards and cape, each its own creator item in his colours (his skin, so his face and
+  // fingers are his pixels). No weapon, as he drew him. Name and title are placeholders: the owner names
+  // him. His numbers are the creator's formula.
+  {
+    name: 'The Samurai',
+    tag: 'Samurai Do · Topknot',
+    nameEs: 'El Samurái',
+    tagEs: 'Do samurái · Moño',
+    character: {
+      id: 'preset_samurai',
+      name: 'Samurai',
+      title: 'The Samurai',
+      level: 5,
+      clan: 'Mirai',
+      shinobiClass: 'Taijutsu Master',
+      stats: { str: 16, dex: 16, con: 16, int: 10, wis: 14, cha: 12 },
+      palette: {
+        skinTone: '#c38055',
+        hairColor: '#1e222d',
+        eyeColor: '#000113',
+        armorPrimary: '#60322c',
+        armorSecondary: '#610c23',
+        clothColor: '#7e1b25',
+        headbandCloth: '#18181b',
+        headbandPlate: '#cbd5e1',
+        chakraAuraColor: '#dc2626',
+        capeColor: '#7e1b25',
+        accentColor: '#ad7439',
+      },
+      hairstyle: 'Squall Modern Fringe',
+      armorStyle: 'Samurai O-Yoroi',
+      headbandPosition: 'Neck',
+      weaponStyle: 'Unarmed Brawler',
+      capeStyle: 'None',
+      dojutsu: 'None',
+      selectedFeats: ['iron_skin', 'silent_killing'],
+      selectedJutsus: {
+        slot1Utility: 'body_flicker',
+        slot2Elemental: 'fireball_goukakyu',
+        slot3Elemental: 'crescent_moon_dance',
+        slot4Clan: 'dragon_fire_bomb',
+        slot5Ultimate: 'great_fire_annihilation',
+      },
+      sheetVersion: 2,
+      maxHp: 49,
+      currentHp: 49,
+      maxChakra: 33,
+      currentChakra: 33,
+      armorClass: 19,
+      speed: 6,
+      jutsuSaveDC: 14,
+      jutsuAttackBonus: 6,
+      appearance: spriteLook({
+        skin: SAMURAI_SKIN,
+        faceShape: 'samurai',
+        eyeShape: 'samurai',
+        eyeColor: SAMURAI_IRIS,
+        slots: {
+          hair: it('hair_samurai'),
+          armor: it('armor_samurai_do'),
+          hands: it('hands_samurai'),
+          waist: it('waist_samurai_obi'),
+          skirt: it('skirt_samurai_kusazuri'),
+          bottom: it('bottom_samurai_hakama'),
+          feet: it('feet_samurai_suneate'),
+          cape: it('cape_samurai'),
+        },
+        chakra: { color: 'red', onCharge: true, onCast: true, onVictory: true },
+      }),
+    },
+  },
+  // ── The owner's samurai (end) ───────────────────────────────────────────────────────────────────
 ];
 
 export const DEFAULT_CHARACTER: ShinobiCharacter = LEGENDARY_PRESETS[0].character;

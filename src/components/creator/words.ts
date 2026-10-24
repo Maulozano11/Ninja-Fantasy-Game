@@ -35,6 +35,11 @@ const ES: Record<string, string> = {
   'Strong jaw': 'Mandíbula fuerte',
   Valiant: 'Valiente',
   "Aiden's face": 'La cara de Aiden',
+  Hands: 'Manos',
+  'Normal hands': 'Normales',
+  'Small hands': 'Pequeñas',
+  "The body's own hands": 'Las del cuerpo',
+  "Aurelia's hands": 'Las manos de Aurelia',
   Roman: 'Romano',
   "The Roman's face": 'La cara del romano',
   Standard: 'Normal',
@@ -48,10 +53,14 @@ const ES: Record<string, string> = {
   Shade: 'Sombra',
   "Saya's eyes": 'Los ojos de Saya',
   "Saya's face": 'La cara de Saya',
+  Dawn: 'Alba',
+  "Aurelia's eyes": 'Los ojos de Aurelia',
   Keen: 'Decididos',
   "Lyra's eyes": 'Los ojos de Lyra',
   Fine: 'Fina',
   "Lyra's face": 'La cara de Lyra',
+  Serene: 'Serena',
+  "Aurelia's face": 'La cara de Aurelia',
   Long: 'Largo',
   Arms: 'Brazos',
   "The body's own": 'Los del cuerpo',
@@ -320,6 +329,24 @@ const ES: Record<string, string> = {
   // Lyra's sword
   'Gilded Rapier': 'Estoque Dorado',
   'Blade glow': 'Brillo de la hoja',
+  // Aurelia's vestment
+  Gem: 'Gema',
+  // Aurelia's skirt and sash (items/aureliaLower.ts)
+  'Dawn Priestess Skirt': 'Falda de la Sacerdotisa del Alba',
+  'Dawn Priestess Sash': 'Fajín de la Sacerdotisa del Alba',
+  'A long white skirt open at the sides: an embroidered front panel with a gold border, side panels flaring back over a pale grey lining, gold scrolls along the hems. Women only.': 'Una falda blanca larga abierta por los lados: un panel delantero bordado con ribete de oro, paneles laterales que se abren hacia atrás sobre un forro gris pálido y volutas de oro en los bajos. Solo mujeres.',
+  'A wide gold sash over a brown belt with a steel buckle, a leather pouch with a gold stud on the hip, a red charm and the sash end draped over the hip. Women only.': 'Un fajín ancho de oro sobre un cinturón marrón con hebilla de acero, una bolsa de cuero con un remache de oro en la cadera, un amuleto rojo y la punta del fajín caída sobre la cadera. Solo mujeres.',
+  'Thigh-high white boots with gold lace tops, a gold seam down the front and gold heeled shoes. Women only.': 'Botas blancas altas hasta el muslo con remate de encaje dorado, una costura dorada al frente y zapatos dorados de tacón. Solo mujeres.',
+  // Aurelia's hair, vestment and boots
+  'Dawn Bun': 'Moño del Alba',
+  'Golden hair gathered into a braided bun at the back of the head with a gold ornament, side-swept bangs and a long lock framing each side of the face.': 'Cabello dorado recogido en un moño trenzado en la nuca con un adorno de oro, flequillo de lado y un mechón largo que enmarca cada lado de la cara.',
+  'Dawn Vestment': 'Vestidura del Alba',
+  "A priestess's white dress: a high gold-edged collar with a blue gem at the throat, bare shoulders, a bodice embroidered in gold, and white sleeves of their own banded and cuffed in gold (+1 AC). Women only.": 'El vestido blanco de una sacerdotisa: cuello alto ribeteado de oro con una gema azul en la garganta, hombros descubiertos, corpiño bordado en oro y mangas blancas sueltas con bandas y puños de oro (+1 CA). Solo mujeres.',
+  'Dawn Boots': 'Botas del Alba',
+  // Aurelia's staff
+  'Dawn Staff': 'Báculo del Alba',
+  'A short gold staff with winged arms round a glowing pearl orb that sheds golden sparkles: the owner drew it for Aurelia.': 'Un báculo corto de oro con brazos alados alrededor de un orbe de perla luminoso que suelta destellos dorados: el dueño lo dibujó para Aurelia.',
+  'Orb': 'Orbe',
 };
 
 /** An editor label in the screen's language. */

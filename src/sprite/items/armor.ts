@@ -37,6 +37,8 @@ import {
   PLATE_WAIST,
 } from './crimsonPlateArt';
 import { SAYA_SHADE_ARMOR } from './sayaUpper';
+import { ARMOR_DAWN_VESTMENT } from './aureliaVestment';
+import { SKIRT_DAWN_PANELS } from './aureliaLower';
 import { CUIRASS_BRONZE, CUIRASS_CHEST, CUIRASS_GUARD_F, CUIRASS_GUARD_N, CUIRASS_KIND, CUIRASS_LEATHER } from './bronzeCuirassArt';
 import { PTERUGES_DRAPE, PTERUGES_DRAPE_FIST_ROWS, PTERUGES_FRONT, PTERUGES_KIND, PTERUGES_LEATHER, PTERUGES_REST, PTERUGES_STUD, PTERUGES_TUNIC } from './pterugesArt';
 import { capeWind } from './capes';
@@ -3281,6 +3283,8 @@ export const ARMOR_ITEMS: ItemDef[] = [
   },
   // Saya's ninja top and arm guards, from the owner's Saya picture (sayaUpper.ts)
   SAYA_SHADE_ARMOR,
+  // The owner's Aurelia's dress bodice and sleeves (2026-10-21), her picture at our scale
+  ARMOR_DAWN_VESTMENT,
   // Lyra's corset, pauldron and bracers, the owner's pixels (items/lyraUpper.ts)
   LYRA_CORSET_ITEM,
 ];
@@ -3485,5 +3489,7 @@ export const SKIRT_ITEMS: ItemDef[] = [
   },
   // Saya's pleated skirt, from the owner's Saya picture (sayaLower.ts)
   SHADE_PLEATS,
+  // Aurelia, the owner's fourth heroine (aureliaLower.ts)
+  SKIRT_DAWN_PANELS,
   GILDED_TABARD,
 ];

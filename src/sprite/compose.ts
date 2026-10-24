@@ -15,6 +15,7 @@ import { drawHeadband } from './items/headband';
 import { add, F_NO_OUTLINE, F_NO_TEXTURE, GRID, Layer, MaterialTable, norm, PAD, PartId, partIndex, PARTS, perp, RES, scale, sub, v, Vec } from './raster';
 import { drawRig, Lay, layRig, Rig, rigPoseFor, turnPoint, turnRig } from './rig';
 import { carryHead } from './neck';
+import { aureliaRig, onAureliaHead } from './aureliaHead';
 import { drawCampFx } from './campfx';
 import { drawCastFx } from './castfx';
 import { sealCloth } from './seal';
@@ -274,10 +275,11 @@ export function spriteLayers(look: SpriteAppearance, pose: SpritePose, frame: nu
 
 function drawLayers(look: SpriteAppearance, pose: SpritePose, frame: number, eyeSpecial: EyeSpecial, heldOnly?: Rig) {
   // heldOnly: just the held item (or the kunai bare hands throw) on that rig, no body (sprite/thrown.ts).
-  // (the long neck carries the head higher and further forward: neck.ts; his Roman face on a male body
-  // stands higher on his neck: romanNeck.ts)
+  // (the long neck carries the head higher and further forward: neck.ts; Aurelia's face stands her head
+  // where the owner drew it: aureliaHead.ts; his Roman face on a male body stands higher on his neck:
+  // romanNeck.ts)
   // (his own figure in his painted frames sits on his joints; any other look holds its hands from its own neck: rig.ts PoseAt.hisNeck)
-  const rig = heldOnly ?? romanRig(carryHead(drawRig(look.body, rigPoseFor(pose, look.cast?.style, look.stowed ? undefined : look.slots.held?.id), frame, look.arms, wearsHisFigure(look)), look.neck), look);
+  const rig = heldOnly ?? aureliaRig(romanRig(carryHead(drawRig(look.body, rigPoseFor(pose, look.cast?.style, look.stowed ? undefined : look.slots.held?.id), frame, look.arms, wearsHisFigure(look)), look.neck), look), look);
   const mats = new MaterialTable();
   const layers = new Map<Depth, Layer>();
   const equipped = new Map<SlotId, ItemDef>();
@@ -416,17 +418,19 @@ export function renderSprite(
   // The 1-pixel holes turned pieces leave (sprite/holes.ts), each closed with its neighbours' line or
   // colour. Idle is left exactly as drawn: it is the frame the owner's pictures were copied into; so are
   // the frames he painted himself (his Lyra reading, sitting and throwing, ownerFrames.ts).
+  const lineOf = (i: number) => (topMat[i] < 0 ? 0x07060b : parseInt(mats.ramps[topMat[i]][0].slice(1), 16));
+  const hisFrame = wearsHisFigure(look) && !!paintedFrame(rig.pose, rig.frame);
   // (a pocket he marked to stay open on his standard characters stays: keptFills.ts LEFT_OPEN)
-  const who = pose === 'idle' ? null : standardOf(look);
-  if (pose !== 'idle' && !(wearsHisFigure(look) && paintedFrame(rig.pose, rig.frame))) closePinholes(rgba, part, top, (i) => top[i] === FX, (i) => (topMat[i] < 0 ? 0x07060b : parseInt(mats.ramps[topMat[i]][0].slice(1), 16)), (px) => !!who && leftOpen(`${who}@${look.body}`, pose, frame, px));
+  const who = pose === 'idle' || hisFrame ? null : standardOf(look);
+  if (pose !== 'idle' && !hisFrame) closePinholes(rgba, part, top, (i) => top[i] === FX, lineOf, (px) => !!who && leftOpen(`${who}@${look.body}`, pose, frame, px));
   // The owner's standard characters (2026-10-23: "quiero que arregles solo los de la calidad standard"): off
-  // his pictures, the cracks and light edge pixels their moved pieces open are closed (glitches.ts). What he
-  // draws so is kept: the windows between her skirt and her thighs.
-  if (who) {
-    const keep = new Set(['pelvis', 'thighN', 'thighF'].map((p) => partIndex(p as PartId)));
-    const lineOf = (i: number) => (topMat[i] < 0 ? 0x07060b : parseInt(mats.ramps[topMat[i]][0].slice(1), 16));
-    // (the pockets are filled only where he saw them filled and left them: keptFills.ts)
-    mendGlitches(rgba, part, top, (i) => top[i] === FX, lineOf, (i) => keep.has(part[i]), (px) => keptFill(`${who}@${look.body}`, pose, frame, px));
+  // his pictures, the cracks and light edge pixels their moved pieces open are closed; a pocket only where he saw
+  // it filled and left it (glitches.ts, keptFills.ts).
+  // (her walk he approved pixel for pixel stays as it is: aureliaLegs.test.ts; on Saya what he draws so is kept:
+  // the windows between her skirt and her thighs)
+  if (who && !(who === 'aurelia' && pose === 'walk')) {
+    const hers = who === 'saya' ? new Set(['pelvis', 'thighN', 'thighF'].map((p) => partIndex(p as PartId))) : null;
+    mendGlitches(rgba, part, top, (i) => top[i] === FX, lineOf, hers ? (i) => hers.has(part[i]) : undefined, (px) => keptFill(`${who}@${look.body}`, pose, frame, px));
   }
   const hair = new Uint8Array(N >> 3);
   const fx = new Uint8Array(N >> 3);
@@ -481,9 +485,12 @@ function layFrame(rgba: Uint8ClampedArray, part: Uint8Array, hair: Uint8Array, l
  * layer's own fill, so the two never stack into a 2px dark line. Silhouette
  * outlines (next to transparency) are always kept.
  */
-/** Which of the owner's standard characters a look is on this branch (keptFills.ts names), or null: his Saya (her Crimson Shade armour and pleats). */
+/** Which of the owner's standard characters a look is on this branch (keptFills.ts names), or null: his Lyra, his Aurelia, his Saya (her Crimson Shade armour and pleats), his Roman set (cuirass and skirt). */
 function standardOf(look: SpriteAppearance): string | null {
-  return look.slots.armor?.id === 'armor_crimson_shade' && look.slots.skirt?.id === 'skirt_shade_pleats' ? 'saya' : null;
+  if (wearsHisFigure(look)) return 'lyra';
+  if (onAureliaHead(look)) return 'aurelia';
+  if (look.slots.armor?.id === 'armor_crimson_shade' && look.slots.skirt?.id === 'skirt_shade_pleats') return 'saya';
+  return look.slots.armor?.id === 'armor_bronze' && look.slots.skirt?.id === 'skirt_imperial' ? 'roman' : null;
 }
 
 function thinDoubleOutlines(rgba: Uint8ClampedArray, top: Int16Array, isLine: Uint8Array): void {

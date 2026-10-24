@@ -12,6 +12,7 @@ import { add, along, ellipse, F_NO_EDGE, F_NO_OUTLINE, F_NO_TEXTURE, GRID, norm,
 import { rotateTemplate } from '../rotsprite';
 import { takesMaleSkin } from '../maleSkin';
 import { MALE_SKIN_BASE } from '../maleSkinArt';
+import { FEET_DAWN_BOOTS } from './aureliaBoots';
 import { across, crease, fpx, limb, limbR, stitch, stud, tube, wrapStripes } from './clothes';
 import { closeAnkle, footTurn, shinCarried } from './ankle';
 import { founderLegLen, founderLegOut, founderLegsStill } from './founderOut';
@@ -723,6 +724,7 @@ export const FEET_ITEMS: ItemDef[] = [
       }
     },
   },
+  FEET_DAWN_BOOTS,
   {
     id: 'feet_gladiator_sandals',
     slot: 'feet',

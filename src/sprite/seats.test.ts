@@ -492,11 +492,11 @@ describe('the male read on a seat', () => {
     let top = 0;
     while (!rock[(top * GRID + x) * 4 + 3]) top++;
     assert.ok(top <= READ_MALE_SEAT_TOP && top >= READ_MALE_SEAT_TOP - 6, `his rock's top at row ${top} under the hips`);
-    // the female bodies read as his Lyra does (her own hands, on the same rock)
+    // the female bodies read as his Lyra does (her own seat and hands, on the same rock): not on the male read's
+    // hips (her hands, held from her own neck as his Lyra holds them, can come near his)
     for (const body of ['female'] as const) {
       const r = buildRig(body, rigPoseFor('read'), 0);
-      const j = READ_JOINTS[READ_MALE_KEYS[0]];
-      assert.ok(Math.hypot(r.handN.x * RES - j.handN[0], r.handN.y * RES - j.handN[1]) > 3, `${body}: her own read`);
+      assert.ok(Math.abs(r.pelvis.y * RES - (READ_MALE_SEAT_TOP - 5.4)) > 2, `${body}: her own read`);
     }
   });
 

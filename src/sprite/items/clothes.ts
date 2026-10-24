@@ -15,6 +15,7 @@ import { stampTemplate, TemplatePalette } from '../rotsprite';
 import { sealCloth } from '../seal';
 import { crimsonKind, GAUNTLET_F, GAUNTLET_N, GLOVE_LEATHER, GLOVE_STEEL, GLOVE_TONES, GLOVE_TRIM } from './sabatonsGauntletsArt';
 import { SAYA_SHADE_GLOVES } from './sayaUpper';
+import { WAIST_DAWN_SASH } from './aureliaLower';
 import { BRACER_BRONZE, BRACER_F, BRACER_N, ROMAN_KIT_KIND } from './bracersSandalsArt';
 import { sandalPieces } from './feet';
 import { clearParts, clipParts, founderArmAtRest, founderArmBends, founderFarOut, founderFarReach, founderLegBends, founderLegLen, founderLegOut, moveParts } from './founderOut';
@@ -1947,6 +1948,8 @@ export const WAIST_ITEMS: ItemDef[] = liftMain([
   },
   // Saya's belts, pouch and scabbard, from the owner's Saya picture (sayaLower.ts)
   SHADE_BELTS_ITEM,
+  // Aurelia, the owner's fourth heroine (aureliaLower.ts)
+  WAIST_DAWN_SASH,
   POUCH_BELT,
 ]);
 

@@ -1105,8 +1105,8 @@ export const JUTSUS_DATA: JutsuDefinition[] = [
     environmentalEffect: 'Clears Foliage',
     enhancementChakraCost: 4,
     enhancementEffect: 'Deals 10d8 slashing damage.',
-    description: 'A ray of wind 2 m wide, led by a wind dragon\'s head under the kanji for wind, runs from the ninja\'s hand to the edge of the battlefield. No wall, cover or height stops it and it cannot be blocked; it strikes everyone it crosses within sight of the farthest view and sweeps those who fail 3 m on.',
-    descriptionEs: 'Un rayo de viento de 2 m de ancho, con la cabeza de un dragón de viento al frente bajo el kanji del viento, corre de la mano del ninja hasta el borde del campo de batalla. Ningún muro, cobertura ni altura lo detiene y no se puede bloquear; golpea a todos los que cruza dentro de la vista más lejana y arrastra 3 m a quienes fallan.',
+    description: 'A ray of wind 2 m wide, led by a wind dragon\'s head under the kanji for wind, runs from the ninja\'s hand as far as the farthest view of the battlefield reaches. No wall, cover or height stops it and it cannot be blocked; it strikes everyone it crosses in that view and sweeps those who fail 3 m on.',
+    descriptionEs: 'Un rayo de viento de 2 m de ancho, con la cabeza de un dragón de viento al frente bajo el kanji del viento, corre de la mano del ninja hasta donde alcanza la vista más lejana del campo de batalla. Ningún muro, cobertura ni altura lo detiene y no se puede bloquear; golpea a todos los que cruza en esa vista y arrastra 3 m a quienes fallan.',
   },
   {
     id: 'great_fire_annihilation',

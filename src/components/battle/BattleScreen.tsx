@@ -1670,7 +1670,9 @@ function jutsuEffect(sp: JutsuSpec, lang: ReturnType<typeof useLang>): string {
   const area =
     (sp.shape === 'circle' || sp.shape === 'selfCircle') && sp.radius
       ? es ? `área de ${m(sp.radius)} m` : `${m(sp.radius)} m radius`
-      : sp.shape === 'line' && sp.length
+      : sp.shape === 'line' && sp.toEdge
+        ? es ? `línea de ${m(sp.width ?? 2)} m de ancho hasta donde alcanza la vista` : `${m(sp.width ?? 2)} m wide line, as far as the view goes`
+        : sp.shape === 'line' && sp.length
         ? es ? `línea de ${m(sp.length)} m` : `${m(sp.length)} m line`
         : sp.shape === 'cone' && sp.length
           ? es ? `cono de ${m(sp.length)} m` : `${m(sp.length)} m cone`
@@ -1692,7 +1694,7 @@ function helpParams(id: string): Record<string, string | number> | undefined {
 function jutsuTip(sp: JutsuSpec, cost: number, lang: ReturnType<typeof useLang>): ButtonTip {
   const es = lang === 'es';
   const cast = T(sp.cast === 'bonus' ? 'bonus' : sp.cast === 'reaction' ? 'reaction' : 'action', undefined, lang);
-  const reach = sp.shape === 'self' || sp.shape === 'selfCircle' ? (es ? 'en ti' : 'on yourself') : sp.melee || sp.range <= 1.5 ? (es ? 'cuerpo a cuerpo' : 'melee') : `${fmtM(sp.range, lang)} m`;
+  const reach = sp.shape === 'self' || sp.shape === 'selfCircle' ? (es ? 'en ti' : 'on yourself') : sp.melee || sp.range <= 1.5 ? (es ? 'cuerpo a cuerpo' : 'melee') : sp.toEdge ? (es ? 'vista más lejana' : 'farthest view') : `${fmtM(sp.range, lang)} m`;
   const meta = [sp.rank ? (es ? `Rango ${sp.rank}` : `Rank ${sp.rank}`) : '', cast, `${cost} chakra`, reach].filter(Boolean).join(' · ');
   const data = JUTSUS_DATA.find((j) => j.id === sp.id);
   const helpKey = `help_${sp.id}`;

@@ -128,14 +128,16 @@ const partsOf = (f: Flat, px: number[]) => [...new Set(px.map((i) => PARTS[f.par
  * weapon (a sword's hilt, a blade against a leg), nor one between the hair and a shoulder or the cape's
  * collar (a lock hanging beside the face), nor a window between the two legs: those are drawn so.
  */
-export function findPockets(f: Flat, max = POCKET_MAX, air = airOf(f.rgba)): { px: number[]; border: number[]; parts: string[] }[] {
+export function findPockets(f: Flat, max = POCKET_MAX, air = airOf(f.rgba), onePart = false): { px: number[]; border: number[]; parts: string[] }[] {
   const out: { px: number[]; border: number[]; parts: string[] }[] = [];
   for (const g of flood((i) => !opaque(f.rgba, i) && !air[i], false)) {
     if (g.length > max) continue;
     const inG = new Set(g);
     const border = [...new Set(g.flatMap(sides))].filter((k) => !inG.has(k));
     const parts = partsOf(f, border);
-    if (border.some(f.fx) || parts.length < 2 || parts.includes('held')) continue;
+    // (`onePart`: also a pocket walled in by one part, as between two plates of the same armour, but never
+    // one in the hair or the face, which are drawn so)
+    if (border.some(f.fx) || (parts.length < 2 && !(onePart && parts[0] !== 'head')) || parts.includes('held')) continue;
     if (parts.includes('head') && parts.some((p) => p.startsWith('upperArm') || p === 'back')) continue;
     // a window between the two legs (under the crotch, between a bent knee and the other leg) is a real gap
     if (parts.every((p) => LEGS.has(p)) && parts.some((p) => p.endsWith('N')) && parts.some((p) => p.endsWith('F'))) continue;
@@ -215,7 +217,9 @@ export const CAPE_POCKET_MAX = 48;
  *   pixels, CAPE_POCKET_MAX when that piece is the cape.
  * - a crack takes the line across it, so the two parts meet.
  * - a light edge pixel takes its piece's line (`outline`, 0xRRGGBB).
- * With `keep`, what `keep` accepts all round is left as drawn.
+ * With `keep`, what `keep` accepts all round is left as drawn. With `everyPocket` (keptFills.ts
+ * FILL_EVERY_POCKET: his samurai), a pocket walled in by one part of the body (between two of his plates)
+ * is mended too, and any up to CAPE_POCKET_MAX pixels whatever piece is behind it.
  * Returns the pixels changed.
  */
 export function mendGlitches(
@@ -226,6 +230,7 @@ export function mendGlitches(
   outline: (i: number) => number,
   keep: (i: number) => boolean = () => false,
   fill: (px: number[]) => boolean = () => false,
+  everyPocket = false,
 ): number[] {
   const f: Flat = { rgba, part, fx };
   const changed: number[] = [];
@@ -236,10 +241,10 @@ export function mendGlitches(
     changed.push(i);
   };
   const pockets = () => {
-    for (const p of findPockets(f, CAPE_POCKET_MAX)) {
+    for (const p of findPockets(f, CAPE_POCKET_MAX, airOf(rgba), everyPocket)) {
       if (p.border.every(keep) || !fill(p.px)) continue;
       const back = p.border.reduce((b, k) => (top[k] < top[b] ? k : b), p.border[0]);
-      if (p.px.length > POCKET_MAX && PARTS[part[back]] !== 'back') continue;
+      if (p.px.length > POCKET_MAX && PARTS[part[back]] !== 'back' && !everyPocket) continue;
       // the back piece's pixels that are not line, up to four pixels in from the pocket
       const same = (k: number) => opaque(rgba, k) && top[k] === top[back] && part[k] === part[back];
       const near: number[] = [];

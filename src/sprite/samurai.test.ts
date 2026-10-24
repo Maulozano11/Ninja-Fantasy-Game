@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { LEGENDARY_PRESETS } from '../data/shinobiData';
 import { fitsBody, getItem } from './catalog';
-import { findGlitches } from './glitches';
+import { CAPE_POCKET_MAX, findGlitches, findPockets } from './glitches';
 import { renderSprite } from './compose';
 import { GRID } from './raster';
 import { frameCount, rigPoseFor } from './rig';
@@ -59,12 +59,17 @@ describe("the owner's samurai", () => {
   // his marks on the pose sheets (2026-10-24): "tienes muchos errores de pixeles muertos blancos checalos" (the
   // white between the raised arm and the chest, the shoulder guard and the do): for him every pocket is filled
   // (keptFills.ts FILL_EVERY_POCKET)
-  it('no white walled in by the figure, no crack and no light edge in the poses he marked', () => {
+  it('no white walled in by the figure, no crack and no light edge in any pose', () => {
     const found: string[] = [];
     for (const body of ['male', 'bulky'] as BodyType[])
-      for (const pose of ['handsigns', 'attack', 'pierce', 'tackle', 'hurt', 'victory', 'charge'] as SpritePose[])
-        for (let f = 0; f < frameCount(rigPoseFor(pose)); f++)
-          for (const g of findGlitches(renderSprite(on(body), pose, f))) found.push(`${body} ${pose} ${f}: ${g.kind} at ${g.x},${g.y} (${g.parts.join('/')})`);
+      for (const pose of ['handsigns', 'attack', 'pierce', 'tackle', 'hurt', 'victory', 'charge', 'walk', 'run', 'crouch', 'sneak', 'lean', 'train', 'cast', 'throw', 'combo'] as SpritePose[])
+        for (let f = 0; f < frameCount(rigPoseFor(pose)); f++) {
+          const fr = renderSprite(on(body), pose, f);
+          for (const g of findGlitches(fr)) found.push(`${body} ${pose} ${f}: ${g.kind} at ${g.x},${g.y} (${g.parts.join('/')})`);
+          // and none walled in by one part (between two of his plates)
+          const fx = (i: number) => !!fr.fx && !!(fr.fx[i >> 3] & (1 << (i & 7)));
+          for (const p of findPockets({ rgba: fr.rgba, part: fr.part, fx }, CAPE_POCKET_MAX, undefined, true)) found.push(`${body} ${pose} ${f}: pocket at ${p.px[0] % GRID},${(p.px[0] / GRID) | 0} (${p.parts.join('/')})`);
+        }
     assert.deepEqual(found, []);
   });
 });

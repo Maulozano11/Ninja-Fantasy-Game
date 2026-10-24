@@ -5,7 +5,7 @@ import { fitsBody, getItem } from './catalog';
 import { hexToRgb } from './color';
 import { Depth, DEPTHS, DrawCtx, ItemDef, NO_OUTLINE_DEPTHS, resolveParts } from './ctx';
 import { mendGlitches } from './glitches';
-import { keptFill } from './keptFills';
+import { FILL_EVERY_POCKET, keptFill } from './keptFills';
 import { closePinholes } from './holes';
 import { fillSeams } from './seams';
 import { paintedFrame, wearsHisFigure } from './ownerFrames';
@@ -435,7 +435,7 @@ export function renderSprite(
   // it filled and left it (glitches.ts, keptFills.ts).
   // (her walk he approved pixel for pixel stays as it is: aureliaLegs.test.ts)
   const who = pose === 'idle' || hisFrame ? null : standardOf(look);
-  if (who && !(who === 'aurelia' && pose === 'walk')) mendGlitches(rgba, part, top, (i) => top[i] === FX, lineOf, undefined, (px) => keptFill(`${who}@${look.body}`, pose, frame, px));
+  if (who && !(who === 'aurelia' && pose === 'walk')) mendGlitches(rgba, part, top, (i) => top[i] === FX, lineOf, undefined, (px) => keptFill(`${who}@${look.body}`, pose, frame, px), FILL_EVERY_POCKET.has(who));
   const hair = new Uint8Array(N >> 3);
   const fx = new Uint8Array(N >> 3);
   for (let i = 0; i < N; i++) {

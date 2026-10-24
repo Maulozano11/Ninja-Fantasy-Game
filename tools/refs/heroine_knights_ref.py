@@ -805,7 +805,55 @@ def clean(fig, rgb, lab):
             elif luma(rgb[y, x]) > 150 and all(luma(rgb[q]) < luma(rgb[y, x]) - 50 for q in nb):
                 rgb[y, x] = mode
                 K[y, x] = kind(mode)
+    gems(fig, rgb, lab)
     return rgb, lab
+
+
+# A gem of his (his blue, GEM_KINDS) of at least GEM_LEAST pixels is at least 2 x 2 at our scale; a single
+# pixel of his that is an eye (EYES: the dragon pauldron's green eye) is kept.
+GEM_KINDS = ('blue',)
+GEM_LEAST = 3
+EYES = {'dragon': [(30, 37)]}
+
+
+def gems(fig, rgb, lab):
+    """His gems at our scale (the owner: gems at least 2 x 2 with his highlight): each gem of his laid on the box
+    its corners shrink to, at least 2 x 2, each cell his gem pixel nearest it, his lightest pixel (the
+    highlight) on the cell nearest it; only on its own part. His eyes on the pauldron: his pixel where it
+    lands."""
+    a = figure_native(fig)
+    K = kinds(a)
+    nl = labels(fig)
+    for c in components(np.isin(K, GEM_KINDS), True):
+        if len(c) < GEM_LEAST:
+            continue
+        part = nl[c[0]]
+        ys = [p[0] for p in c]
+        xs = [p[1] for p in c]
+        fx0, fy0 = frame_of(fig, min(xs), min(ys))
+        fx1, fy1 = frame_of(fig, max(xs) + 1, max(ys) + 1)
+        x0, y0 = int(np.floor(fx0)), int(np.floor(fy0))
+        w = max(2, int(round(fx1 - fx0)))
+        h = max(2, int(round(fy1 - fy0)))
+        cells = [(y, x) for y in range(y0, y0 + h) for x in range(x0, x0 + w) if lab[y, x] == part]
+        if not cells:
+            continue
+        for y, x in cells:
+            # his gem pixel nearest this cell's middle, in his pixels
+            gx = min(xs) + (x - x0 + 0.5) / w * (max(xs) + 1 - min(xs))
+            gy = min(ys) + (y - y0 + 0.5) / h * (max(ys) + 1 - min(ys))
+            q = min(c, key=lambda p: ((p[1] + 0.5 - gx) ** 2 + (p[0] + 0.5 - gy) ** 2, p))
+            rgb[y, x] = a[q]
+        hi = max(c, key=lambda p: (luma(a[p]), -p[0], -p[1]))
+        hx = x0 + (hi[1] + 0.5 - min(xs)) / (max(xs) + 1 - min(xs)) * w
+        hy = y0 + (hi[0] + 0.5 - min(ys)) / (max(ys) + 1 - min(ys)) * h
+        y, x = min(cells, key=lambda p: ((p[1] + 0.5 - hx) ** 2 + (p[0] + 0.5 - hy) ** 2, p))
+        rgb[y, x] = a[hi]
+    for ex, ey in EYES.get(fig, []):
+        fx, fy = frame_of(fig, ex + 0.5, ey + 0.5)
+        x, y = int(np.floor(fx)), int(np.floor(fy))
+        if lab[y, x] == nl[ey, ex]:
+            rgb[y, x] = a[ey, ex]
 
 
 _GAME = {}

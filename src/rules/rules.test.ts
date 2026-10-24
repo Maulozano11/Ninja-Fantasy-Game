@@ -209,6 +209,7 @@ describe('clans', () => {
       preset_lyra: [44, 32, 18, 15, 7],
       // The owner's samurai (2026-10-24): the creator's formula for his sheet.
       preset_samurai: [49, 33, 18, 14, 6],
+      preset_aurelia: [38, 41, 13, 15, 7],
     };
     assert.deepEqual(LEGENDARY_PRESETS.map((p) => p.character.id).sort(), Object.keys(owner).sort());
     for (const { character: c } of LEGENDARY_PRESETS) {

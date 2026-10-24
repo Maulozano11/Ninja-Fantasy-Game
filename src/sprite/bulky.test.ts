@@ -252,19 +252,17 @@ describe("the owner's bare broad man (the bulky body)", () => {
 });
 
 describe('the other bodies are unchanged', () => {
-  // Frames with the integration branch merged in (sha1 of the RGBA buffer): the male ones and the female walk and
-  // cast are the integration branch's own, byte for byte.
+  // Frames with the integration branch merged in (sha1 of the RGBA buffer): every one is the integration
+  // branch's own, byte for byte (the bulky body's fixes stay on the bulky body).
   const PINNED: [BodyType, string, SpritePose, number, string][] = [
     ['male', 'default', 'idle', 0, '4d0feedaeef8c63253803cdea5fe18ce640ab98a'],
     ['male', 'preset_reference_aiden', 'attack', 1, '432511738c2d728185d2e8d8c4b7f3615407421f'],
     ['male', 'preset_founder', 'run', 3, '8a8e42a06e724ebe63414725cb1365d2693455a2'],
     ['male', 'default', 'sit', 0, '75a8179318b0c6c83d6481e9ba71350e33276b40'],
     ['female', 'default', 'walk', 3, '6d1b04d5061ba21e1bc86b7e02a223afc231064a'],
-    // (throw 2 with the head up on the neck, as on every body: the owner on Solen's Arrojar 3)
-    ['female', 'preset_reference_aiden', 'throw', 2, '64a3835979cd5459a21873dec4d3176b0d6bae18'],
+    ['female', 'preset_reference_aiden', 'throw', 2, '3a499c048eaafabd4860d537b08326b681754157'],
     ['female', 'default', 'cast', 0, '53e66725569733e683a3bc6cf8c81698e03a7970'],
-    // (Solen's far hand on the ground with this branch's arm: 13 pixels round the hand differ from the integration branch's)
-    ['female', 'preset_founder', 'downed', 0, '22d64014362c72b0c8be403013599ea8474bb814'],
+    ['female', 'preset_founder', 'downed', 0, 'f7a680dd86c8da2f0f86bc52dc24d83411fc0adf'],
   ];
   it('male and female frames are byte for byte what they were', () => {
     for (const [body, name, pose, frame, sha] of PINNED) {

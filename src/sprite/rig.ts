@@ -294,6 +294,13 @@ interface PoseFrame {
    * las ultimas 2 poses de arrojar").
    */
   maleNeckPitch?: number;
+  /**
+   * The same on the bulky body only, where the male body keeps its headDx/headDy: the broad man's neck and
+   * shoulders are his painted torso, broad and high at the back, and a head sunk ahead of them by a fixed
+   * offset left his neck standing up behind it as a hump above the hair (the owner on Solen there: "solen
+   * sigue teniendo problemas de cuello").
+   */
+  bulkyNeckPitch?: number;
   handN: HandTarget;
   handF: HandTarget;
   /** Ankle positions relative to each hip, in leg-length units. */
@@ -620,6 +627,7 @@ const SNEAK: PoseFrame[] = SNEAK_STEPS.map((legs, i) => {
 /** Crouch, 2 frames: low behind cover, knees bent, leaning in, the weapon ready and the free palm out against the cover; breathing. */
 const CROUCH_BASE: PoseFrame = {
   lean: 30,
+  bulkyNeckPitch: 22,
   snap: true,
   hip: 0.42,
   footN: v(0.2, groundY(0.42, 0.2)),
@@ -975,15 +983,15 @@ const PIERCE: PoseFrame[] = [
 // headDx/headDy there sank the head below the shoulders, the neck folded under it.
 const TACKLE: PoseFrame[] = [
   // Set: low over the front foot, the fists tucked in before the chest.
-  { lean: 20, sink: 1.5, headDx: 1, headDy: 1.5, neckPitch: 6, footN: v(-0.44, 0.88), footF: v(0.36, 0.88), handN: chest(4, 1.5), handF: chest(5, -0.5), shapeN: 'fist', shapeF: 'fist', farHandFront: true },
+  { lean: 20, sink: 1.5, headDx: 1, headDy: 1.5, neckPitch: 6, bulkyNeckPitch: 20, footN: v(-0.44, 0.88), footF: v(0.36, 0.88), handN: chest(4, 1.5), handF: chest(5, -0.5), shapeN: 'fist', shapeF: 'fist', farHandFront: true },
   // Drive: off the back foot, pitched forward, the head down behind the shoulder.
-  { lean: 32, pelvisDx: 2.5, headDx: 1.5, headDy: 6.5, neckPitch: 9, footN: v(-0.62, 0.8), footF: v(0.3, 0.72), handN: chest(3.5, 2.5), handF: arm(0.42, 0.55), shapeN: 'fist', shapeF: 'fist', streamBack: true },
+  { lean: 32, pelvisDx: 2.5, headDx: 1.5, headDy: 6.5, neckPitch: 9, bulkyNeckPitch: 32, footN: v(-0.62, 0.8), footF: v(0.3, 0.72), handN: chest(3.5, 2.5), handF: arm(0.42, 0.55), shapeN: 'fist', shapeF: 'fist', streamBack: true },
   // IMPACT: shoulder first, the body long, the front knee driving, off the ground.
-  { lean: 38, pelvisDx: 4.5, headDx: 1, headDy: 8.5, neckPitch: 12, lift: 1.5, footN: v(-0.68, 0.74), footF: v(0.2, 0.62), handN: chest(3, 3), handF: arm(0.36, 0.6), shapeN: 'fist', shapeF: 'fist', streamBack: true },
+  { lean: 38, pelvisDx: 4.5, headDx: 1, headDy: 8.5, neckPitch: 12, lift: 1.5, bulkyNeckPitch: 38, footN: v(-0.68, 0.74), footF: v(0.2, 0.62), handN: chest(3, 3), handF: arm(0.36, 0.6), shapeN: 'fist', shapeF: 'fist', streamBack: true },
   // Hold on the hit.
-  { lean: 38, pelvisDx: 5, headDx: 1, headDy: 8.5, neckPitch: 12, lift: 1, chestDy: 0.5, footN: v(-0.68, 0.75), footF: v(0.2, 0.64), handN: chest(3, 3), handF: arm(0.36, 0.6), shapeN: 'fist', shapeF: 'fist', streamBack: true },
+  { lean: 38, pelvisDx: 5, headDx: 1, headDy: 8.5, neckPitch: 12, lift: 1, chestDy: 0.5, bulkyNeckPitch: 38, footN: v(-0.68, 0.75), footF: v(0.2, 0.64), handN: chest(3, 3), handF: arm(0.36, 0.6), shapeN: 'fist', shapeF: 'fist', streamBack: true },
   // Recovery: back onto both feet, guard up.
-  { lean: 14, pelvisDx: 2, headDx: 1, headDy: 1, neckPitch: 4, footN: v(-0.42, 0.9), footF: v(0.38, 0.9), handN: chest(4.5, -1.5), handF: chest(3, -3), shapeN: 'fist', shapeF: 'fist', farHandFront: true },
+  { lean: 14, pelvisDx: 2, headDx: 1, headDy: 1, neckPitch: 4, bulkyNeckPitch: 14, footN: v(-0.42, 0.9), footF: v(0.38, 0.9), handN: chest(4.5, -1.5), handF: chest(3, -3), shapeN: 'fist', shapeF: 'fist', farHandFront: true },
 ];
 
 /** The tackle's frame where the shoulder hits (the battle lands the blow on it). */
@@ -1010,7 +1018,7 @@ const COMBO: PoseFrame[] = [
   // Coming round to face the target, the near knee chambered high.
   { lean: -4, footN: v(0.36, 0.5), footF: v(0.12, 0.97), handN: chest(4, -2), handF: chest(2, -3.5), shapeN: 'fist', shapeF: 'fist', farHandFront: true },
   // Finishing kick: the near foot high at the target's head, leaning back from it.
-  { lean: -20, pelvisDx: -2, footN: v(0.8, -0.58), footF: v(0.08, 0.97), handN: arm(-0.42, 0.6), handF: chest(3, -3), shapeN: 'fist', shapeF: 'fist', farHandFront: true },
+  { lean: -20, pelvisDx: -2, bulkyNeckPitch: -10, footN: v(0.8, -0.58), footF: v(0.08, 0.97), handN: arm(-0.42, 0.6), handF: chest(3, -3), shapeN: 'fist', shapeF: 'fist', farHandFront: true },
   // Back to guard.
   { lean: 6, footN: v(-0.36, 0.93), footF: v(0.38, 0.93), handN: chest(4.5, -2.5), handF: chest(2.5, -4), shapeN: 'fist', shapeF: 'fist', farHandFront: true },
 ];
@@ -1670,10 +1678,11 @@ function solveRig(body: BodyType, bp: BodyParams, pose: RigPose, frame: number, 
       : hangFolded(shoulderF, f.handF, solveArm(shoulderF, f.handF, 1, foreF, -outF));
 
   let head: Vec;
-  if (f.maleNeckPitch !== undefined) {
-    // The head at the neck's rest length, the neck turned forward (PoseFrame.maleNeckPitch), on whole
-    // fine pixels so the length stays.
-    const at = turnPoint(add(neck, NECK_REST(bp)), neck, f.maleNeckPitch);
+  const pitch = f.maleNeckPitch ?? (body === 'bulky' ? f.bulkyNeckPitch : undefined);
+  if (pitch !== undefined) {
+    // The head at the neck's rest length, the neck turned forward (PoseFrame.maleNeckPitch, bulkyNeckPitch),
+    // on whole fine pixels so the length stays.
+    const at = turnPoint(add(neck, NECK_REST(bp)), neck, pitch);
     head = v(Math.round(at.x * RES) / RES, Math.round(at.y * RES) / RES);
   } else {
     const headY = neck.y + NECK_REST(bp).y + (f.headDy || 0);
@@ -1693,7 +1702,7 @@ function solveRig(body: BodyType, bp: BodyParams, pose: RigPose, frame: number, 
     up,
     right,
     head,
-    neckPitch: f.maleNeckPitch,
+    neckPitch: pitch,
     shoulderN,
     shoulderF,
     elbowN: aN.elbow,

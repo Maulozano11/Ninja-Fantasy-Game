@@ -14,16 +14,14 @@
 
 import { retintHex } from '../color';
 import { armDepth, armJoints, type Depth, DrawCtx, ItemDef, legDepth, legJoints, Side } from '../ctx';
-import { type PaintedPiece, segAngle, stampBent, stampPiece } from '../painted';
+import { type PaintedPiece, segAngle, skinTone, stampBent, stampLeaning, stampPiece } from '../painted';
 import { F_NO_OUTLINE, F_NO_TEXTURE, GRID, partIndex, PartId, RES, v, Vec } from '../raster';
 import { drawRig, GROUND, type Rig } from '../rig';
 import { HK_BODIES, hkRestRig, type HkSet } from '../heroineKnightsRig';
-import { skinTone } from '../body';
 import { HK_FACE_SKIN } from '../heroineKnightFaceArt';
 import { faceAnchor } from '../body';
 import type { BodyType } from '../types';
 import { closeAnkle, footTurn } from './ankle';
-import { stampLeaning } from './armor';
 import { capeWind } from './capes';
 import * as ARMOR from './heroineKnightArmorArt';
 import * as ARMS from './heroineKnightArmsArt';
@@ -80,7 +78,7 @@ function tint(g: DrawCtx, kinds: Record<string, string>, slots: Slot[]) {
   return (_ch: string, hex: string): string => {
     const k = kinds[hex];
     if (k === 'line' || k === 'white') return hex;
-    if (k === 'skin') return skinTone(hex, g.look.skin, HK_FACE_SKIN);
+    if (k === 'skin') return skinTone(hex, HK_FACE_SKIN, g.look.skin);
     const s = slots.find(([ks]) => ks.includes(k));
     return s ? retintHex(hex, s[1], s[2]) : hex;
   };

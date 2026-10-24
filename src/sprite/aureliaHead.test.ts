@@ -10,9 +10,10 @@ import { LEGENDARY_PRESETS } from '../data/shinobiData';
 import { AURELIA_FACE, AURELIA_FACE_LINE, AURELIA_FACE_SKIN } from './aureliaFaceArt';
 import { DAWN_EYE_COLORS, DAWN_EYES } from './aureliaEyeArt';
 import { AURELIA_HEAD_AHEAD, AURELIA_HEAD_UP, bodyHead } from './aureliaHead';
-import { faceAnchor, skinTone } from './body';
+import { faceAnchor } from './body';
 import { retintHex } from './color';
 import { renderSprite, spriteLayers } from './compose';
+import { skinTone } from './painted';
 import { AURELIA_HAIR_FRONT_HIS, AURELIA_HAIR_LINE, AURELIA_HAIR_SKIN, AURELIA_SKIN_BASE } from './items/aureliaHairArt';
 import { GRID, RES } from './raster';
 import { frameCount } from './rig';
@@ -41,7 +42,7 @@ function expected(look: SpriteAppearance): Map<number, string> {
     for (let c = 0; c < row.length; c++) {
       if (row[c] === '.') continue;
       const h = AURELIA_FACE.colors[row[c]];
-      put(nx - AURELIA_FACE.pivot[0] + c, ny - AURELIA_FACE.pivot[1] + r, lines.has(h) ? h : skinTone(h, look.skin, AURELIA_FACE_SKIN));
+      put(nx - AURELIA_FACE.pivot[0] + c, ny - AURELIA_FACE.pivot[1] + r, lines.has(h) ? h : skinTone(h, AURELIA_FACE_SKIN, look.skin));
     }
   });
   const eyes = DAWN_EYES.open;

@@ -17,6 +17,8 @@ import * as tunic from './items/founderTunicArt';
 import * as reach from './items/founderReachArt';
 import * as sword from './items/iceSwordArt';
 import * as bracers from './items/steelBracersArt';
+import { BULKY_BASE, BULKY_BASE_KIND, BULKY_BASE_SKIN } from './bulkyBaseArt';
+import { ownerSkin } from './bulkyBody';
 import { dojutsuToEye, getAppearance } from './legacy';
 import { continuedTo, limbOnly, type PaintedPiece } from './painted';
 import { GRID, MaterialTable, partIndex, RES } from './raster';
@@ -534,5 +536,34 @@ describe('his throw on the bulky body', () => {
           }
       }
     }
+  });
+});
+
+describe('his cowl on the bulky body', () => {
+  // the owner on Solen on the bulky body, 2026-10-24: "solen sigue teniendo problemas de cuello"
+  it("shows none of the broad man's bare neck round his cowl in any pose or frame: the cowl goes over it", () => {
+    const l = look('bulky');
+    const torso = partIndex('torso');
+    // his skin on the broad man's chest (the neck and shoulders), in Solen's skin
+    const skin = new Set(Object.values(BULKY_BASE.chest.colors).filter((c) => BULKY_BASE_KIND[c] === 'skin').map((c) => ownerSkin(c, BULKY_BASE_SKIN, l.skin).toLowerCase()));
+    assert.ok(skin.size > 0);
+    const bare: string[] = [];
+    for (const pose of POSES)
+      for (let f = 0; f < frameCount(rigPoseFor(pose, l.cast?.style, l.slots.held?.id)); f++) {
+        const fr = render(l, pose, f);
+        const r = fr.rig;
+        const n = Math.hypot(r.neck.x - r.pelvis.x, r.neck.y - r.pelvis.y);
+        const up = { x: (r.neck.x - r.pelvis.x) / n, y: (r.neck.y - r.pelvis.y) / n };
+        const nx = Math.floor(r.neck.x * RES);
+        const ny = Math.floor(r.neck.y * RES);
+        for (let y = ny - 16; y <= ny + 16; y++)
+          for (let x = nx - 16; x <= nx + 16; x++) {
+            const i = y * GRID + x;
+            // above the root of the neck, skin of the torso (the broad man's neck: his head's skin is the head's)
+            if ((x + 0.5 - r.neck.x * RES) * up.x + (y + 0.5 - r.neck.y * RES) * up.y < -3 || fr.part[i] !== torso) continue;
+            if (skin.has(hex(fr.rgba, i))) bare.push(`${pose} ${f} ${x},${y} ${hex(fr.rgba, i)}`);
+          }
+      }
+    assert.deepEqual(bare, []);
   });
 });

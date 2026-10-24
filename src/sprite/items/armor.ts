@@ -35,6 +35,8 @@ import {
   PLATE_VAMBRACE_N,
   PLATE_WAIST,
 } from './crimsonPlateArt';
+import { ARMOR_DAWN_VESTMENT } from './aureliaVestment';
+import { SKIRT_DAWN_PANELS } from './aureliaLower';
 import { CUIRASS_BRONZE, CUIRASS_CHEST, CUIRASS_GUARD_F, CUIRASS_GUARD_N, CUIRASS_KIND, CUIRASS_LEATHER } from './bronzeCuirassArt';
 import { PTERUGES_DRAPE, PTERUGES_DRAPE_FIST_ROWS, PTERUGES_FRONT, PTERUGES_KIND, PTERUGES_LEATHER, PTERUGES_REST, PTERUGES_STUD, PTERUGES_TUNIC } from './pterugesArt';
 import { capeWind } from './capes';
@@ -3277,6 +3279,8 @@ export const ARMOR_ITEMS: ItemDef[] = [
     statsArmor: 'Dark Knight Plate',
     draw: (g, [steel, trim]) => drawCrimsonPlate(g, steel, trim),
   },
+  // The owner's Aurelia's dress bodice and sleeves (2026-10-21), her picture at our scale
+  ARMOR_DAWN_VESTMENT,
   // Lyra's corset, pauldron and bracers, the owner's pixels (items/lyraUpper.ts)
   LYRA_CORSET_ITEM,
 ];
@@ -3479,5 +3483,7 @@ export const SKIRT_ITEMS: ItemDef[] = [
       });
     },
   },
+  // Aurelia, the owner's fourth heroine (aureliaLower.ts)
+  SKIRT_DAWN_PANELS,
   GILDED_TABARD,
 ];

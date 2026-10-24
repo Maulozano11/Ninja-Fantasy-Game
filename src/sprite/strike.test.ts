@@ -10,7 +10,7 @@ import { BODY_PARAMS, COMBO_KICKS, COMBO_TURNED, drawRig, frameCount, POSE_FPS, 
 import { SPRITE_POSES, type BodyType, type SpriteAppearance } from './types';
 
 const BODIES: BodyType[] = ['male', 'female', 'bulky'];
-const WEAPONS = ['held_katana', 'held_crystal', 'held_ice_crystal', 'held_flame_sword', 'held_gilded_rapier', 'held_kunai', 'held_naginata'];
+const WEAPONS = ['held_katana', 'held_crystal', 'held_ice_crystal', 'held_flame_sword', 'held_gilded_rapier', 'held_kunai', 'held_naginata', 'held_dawn_staff'];
 
 const look = (body: BodyType, held?: string, stowed = false, cape?: string): SpriteAppearance => {
   const l = defaultAppearance();
@@ -62,8 +62,8 @@ describe('throw and pierce poses', () => {
       assert.ok(r.handN.x > r.neck.x + 2, `${body}: the throwing hand is out in front`);
       for (const held of WEAPONS) {
         const b = heldBox(look(body, held), 'throw', THROW_RELEASE_FRAME - 1)!;
-        // (the short kunai is as tall as its ring and guard)
-        assert.ok(b.x1 - b.x0 > (held === 'held_kunai' ? 1.5 : 2) * (b.y1 - b.y0), `${body} ${held}: level`);
+        // (the short kunai is as tall as its ring and guard; the short Dawn Staff about as tall as its winged head is wide)
+        assert.ok(b.x1 - b.x0 > (held === 'held_kunai' ? 1.5 : held === 'held_dawn_staff' ? 1 : 2) * (b.y1 - b.y0), `${body} ${held}: level`);
         assert.ok(b.x1 > r.handN.x * RES + 4, `${body} ${held}: pointing at the target`);
       }
     }
@@ -84,7 +84,9 @@ describe('throw and pierce poses', () => {
   });
 
   it('hangs the head ahead of the chest and below the shoulders at the release, like the reference', () => {
-    for (const body of BODIES) {
+    // The female bodies follow the owner's own repaint of this moment on his heroine (Lyra) instead: the
+    // head up on the neck at its length (femaleBase.test.ts checks them).
+    for (const body of BODIES.filter((b) => !BODY_PARAMS[b].fit)) {
       const r = drawRig(body, 'throw', THROW_RELEASE_FRAME);
       const below = (Math.atan2(r.head.y - r.neck.y, r.head.x - r.neck.x) * 180) / Math.PI;
       assert.ok(below > 20 && below < 45, `${body}: neck to head ${below.toFixed(1)} degrees below level (his 33)`);
@@ -192,7 +194,7 @@ describe('throw and pierce poses', () => {
     for (const held of WEAPONS) {
       const b = heldBox(look('male', held), 'pierce', 2)!;
       assert.ok(b, held);
-      assert.ok(b.x1 - b.x0 > 2 * (b.y1 - b.y0), `${held}: level`);
+      assert.ok(b.x1 - b.x0 > (held === 'held_dawn_staff' ? 1 : 2) * (b.y1 - b.y0), `${held}: level`);
       assert.ok(b.x1 > drawRig('male', 'pierce', 2).handN.x * 2, `${held}: pointing forward`);
     }
   });

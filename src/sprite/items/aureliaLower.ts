@@ -7,10 +7,9 @@
 // skirts do (armor.ts hang()), so the panels move with the legs in walk, run, sit and crouch. The piece
 // is sampled between its columns: at rest every pixel is his as drawn, moved it keeps his line round it.
 
-import { skinTone } from '../body';
 import { retintHex } from '../color';
 import { type Depth, DEPTHS, type DrawCtx, type ItemDef, legDepth, legJoints, type Side } from '../ctx';
-import { segAngle, stampPiece } from '../painted';
+import { segAngle, skinTone, stampPiece } from '../painted';
 import { F_NO_OUTLINE, F_NO_TEXTURE, GRID, type Layer, partIndex, type PartId, RES, v, type Vec } from '../raster';
 import { BODY_PARAMS, drawRig, GROUND, type Rig } from '../rig';
 import type { BodyType } from '../types';
@@ -412,7 +411,7 @@ function bareThighs(g: DrawCtx): void {
 function slitThighs(g: DrawCtx): void {
   for (const s of ['F', 'N'] as Side[]) {
     const { hip, knee } = legJoints(g.rig, s);
-    stampPiece(g, legDepth(s, 'body'), s === 'N' ? DAWN_SLIT_N : DAWN_SLIT_F, knee, segAngle(hip, knee), `thigh${s}`, (_ch, hex) => skinTone(hex, g.look.skin, DAWN_SLIT_SKIN));
+    stampPiece(g, legDepth(s, 'body'), s === 'N' ? DAWN_SLIT_N : DAWN_SLIT_F, knee, segAngle(hip, knee), `thigh${s}`, (_ch, hex) => skinTone(hex, DAWN_SLIT_SKIN, g.look.skin));
   }
 }
 

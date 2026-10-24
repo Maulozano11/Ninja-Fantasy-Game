@@ -9,6 +9,7 @@ import { keptFill } from './keptFills';
 import { closePinholes } from './holes';
 import { fillSeams } from './seams';
 import { paintedFrame, wearsHisFigure } from './ownerFrames';
+import { renSitFrame, stampRenSit } from './renSit';
 import { clipStowed, drawThrowKunai } from './items/accessories';
 import { CAPE_DEPTHS } from './items/capes';
 import { drawHeadband } from './items/headband';
@@ -371,6 +372,14 @@ export function renderSprite(
   // Outline and flatten
   const rgba = new Uint8ClampedArray(GRID * GRID * 4);
   const part = new Uint8Array(GRID * GRID);
+  // Ren seated on the male body is the owner's own frame, pixel for pixel (renSit.ts): nothing of ours drawn.
+  const his = opts.heldOnly || opts.depths ? null : renSitFrame(look, pose, frame, eyeSpecial);
+  if (his) {
+    const hair = new Uint8Array((GRID * GRID) >> 3);
+    stampRenSit(his, rig, look, rgba, part, hair);
+    if (!opts.skipEdits && look.pixelEdits?.length) applyEdits(look.pixelEdits, rig, rgba, part);
+    return { rgba, part, hair, fx: new Uint8Array((GRID * GRID) >> 3), rig };
+  }
   const rgbCache = new Map<string, [number, number, number]>();
   const rgb = (hex: string) => {
     let c = rgbCache.get(hex);

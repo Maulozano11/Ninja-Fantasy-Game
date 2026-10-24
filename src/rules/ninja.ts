@@ -299,6 +299,33 @@ export function addLegendNatures(c: ShinobiCharacter): ShinobiCharacter {
   };
 }
 
+/** The pieces Ren wore before the owner's new standard (2026-10-21), slot by slot. */
+const OLD_REN_PIECES: Record<string, string> = {
+  hair: 'hair_midnight',
+  top: 'top_royalcoat',
+  bottom: 'bottom_shinobi',
+  feet: 'feet_leather',
+  hands: 'hands_fingerless',
+  held: 'held_katana',
+};
+
+/**
+ * A copy of Ren saved before the owner's new standard (the owner, 2026-10-21: "pasa a nuevo aspecto")
+ * wears his new look: the preset's look of today, with the copy's own chakra and cast settings. Only a
+ * copy of the preset (its id) that still wears exactly the old Ren's pieces, slot for slot (in any
+ * colours: the preset's colours changed over time); a hero whose player changed a piece, or any other
+ * hero wearing some of the same pieces, keeps the look it has.
+ */
+export function withRensNewLook(c: ShinobiCharacter): ShinobiCharacter {
+  if (c.id !== 'preset_night') return c;
+  const look = getAppearance(c);
+  const worn = Object.entries(look.slots).filter(([, v]) => v);
+  const old = worn.length === Object.keys(OLD_REN_PIECES).length && worn.every(([slot, v]) => OLD_REN_PIECES[slot] === v!.id);
+  const ren = LEGENDARY_PRESETS.find((p) => p.character.id === 'preset_night')?.character.appearance;
+  if (!old || !ren) return c;
+  return { ...c, appearance: { ...structuredClone(ren), chakra: look.chakra, ...(look.cast ? { cast: look.cast } : {}) } };
+}
+
 /** A sheet whose look still has the old headband plate, the slender body or a neck choice, with today's look (the same sheet if not). */
 function withTodaysLook(c: ShinobiCharacter): ShinobiCharacter {
   if (!c.appearance) return c;
@@ -341,14 +368,15 @@ export function dropRemovedJutsus(c: ShinobiCharacter): ShinobiCharacter {
  *   bonus into them, its max HP and chakra are worked out again without it, and what it has left is
  *   kept under the new maxima;
  * - the clan's ability bonus counted in its numbers, once (countClanBonus);
+ * - a copy of Ren in his old look given the owner's new Ren (withRensNewLook);
  * - its headband as plain cloth: the old plate's fields dropped (sprite/legacy.ts, migrateAppearance);
  * - a look on the slender body, which is gone, on the female body (migrateAppearance);
  * - a saved neck choice dropped: every look has today's slim nape, Lyra's long neck kept (migrateAppearance).
  * Hand-made numbers (the presets) keep their hand-made part; the other jutsu stay as they are, and of
- * the look only that old burst, the headband plate, the slender body and the neck change. A sheet that is already today's comes back as it is.
+ * the look only that old burst, the old Ren, the headband plate, the slender body and the neck change. A sheet that is already today's comes back as it is.
  */
 export function migrateCharacter(saved: ShinobiCharacter): ShinobiCharacter {
-  const c = dropRemovedJutsus(tideToElement(addLegendNatures(updateLegendChakra(tagJutsuToItem(withTodaysLook(saved))))));
+  const c = dropRemovedJutsus(tideToElement(addLegendNatures(updateLegendChakra(tagJutsuToItem(withTodaysLook(withRensNewLook(saved)))))));
   const clan = migrateClan(c.clan) ?? DEFAULT_CHARACTER.clan;
   const before = (c.sheetVersion ?? 1) < SHEET_VERSION;
   if (clan === c.clan && !before) return c;

@@ -7,7 +7,7 @@
 import type { PaintedPiece } from '../painted';
 
 /** His colours the colour slots recolour from (at these, every pixel is his). */
-export const HOPLITE_DIADEM_BRONZE = '#4e2e25';
+export const HOPLITE_DIADEM_BRONZE = '#8e5a36';
 
 /** Where each piece lands in our male idle frame 0 (his joints), unturned: the fine pixel of its first row's first cell. */
 export const HOPLITE_DIADEM_REST: Record<string, [number, number]> = {
@@ -21,23 +21,19 @@ export const HOPLITE_DIADEM: PaintedPiece = {
   rows: [
     '...aaa......aa...aaa.',
     'aaabba.......a...aaa.',
-    '.aabba.....a.cdef...a',
-    '...aa......aahijkbaaa',
+    '.aabba.....a.ccde...a',
+    '...aa......aacccfbaaa',
     '...........aaaaa.aaaa',
-    '................la...',
+    '................ha...',
   ],
   colors: {
     a: '#010216',
     b: '#442824',
-    c: '#ac7c48',
-    d: '#4e2e25',
-    e: '#2e1a1c',
-    f: '#8e5a36',
-    h: '#9c6842',
-    i: '#bc884e',
-    j: '#362222',
-    k: '#85583a',
-    l: '#a66e41',
+    c: '#96603a',
+    d: '#2e1a1c',
+    e: '#8e5a36',
+    f: '#85583a',
+    h: '#a66e41',
   },
 };
 
@@ -45,13 +41,9 @@ export const HOPLITE_DIADEM: PaintedPiece = {
 export const HOPLITE_DIADEM_KIND: Record<string, 'line' | 'warm'> = {
   '#010216': 'line',
   '#2e1a1c': 'warm',
-  '#362222': 'warm',
   '#442824': 'warm',
-  '#4e2e25': 'warm',
   '#85583a': 'warm',
   '#8e5a36': 'warm',
-  '#9c6842': 'warm',
+  '#96603a': 'warm',
   '#a66e41': 'warm',
-  '#ac7c48': 'warm',
-  '#bc884e': 'warm',
 };

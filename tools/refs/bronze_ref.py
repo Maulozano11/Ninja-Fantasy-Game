@@ -440,13 +440,13 @@ def labels(a):
 # half's commonest colour (so a pixel is his engraving or his bronze, not a muddy mean of both); where the
 # cells under it are all near one lightness (within FLAT), simply their commonest colour.
 FIG = 0.5
-LINE_IN = 0.5
+LINE_IN = 0.7
 FLAT = 34
 # How much of a pixel his dark half must cover to win it (pick_colour); MODE 'mode' takes the commonest
 # colour under it whatever its lightness.
-DARK_WINS = 0.65
+DARK_WINS = 'balance'
 MODE = 'split'
-BIG_PATCH = 40
+BIG_PATCH = 200
 # The dark share a piece's pixel needs to be dark, where it is not DARK_WINS (his face: his red eyes and
 # lash are dark against his skin, and must stay).
 DARK_WINS_OF = {'face': 0.45}
@@ -638,7 +638,7 @@ def reduce(a, lab, names, M, K=None, own=None):
                 lights = Ls
             surf[(j, i)] = (sum(l * w for l, w, _ in lights) / sum(w for _, w, _ in lights), max(sorted(set(k for _, _, k in lights)), key=lambda k: sum(w for _, w, kk in lights if kk == k)))
             dfrac[j, i] = fd
-            c = dk if fd > DARK_WINS_OF.get(n, DARK_WINS) else lt
+            c = dk if fd > DARK_WINS_OF.get(n, DARK_WINS if DARK_WINS != 'balance' else 0.5) else lt
             col[j, i] = c
             support[j, i] = sum(w for y, x, w in solid if max(abs(int(a[y, x][k]) - c[k]) for k in range(3)) <= 40) / cover[n]
             big = {}
@@ -652,6 +652,7 @@ def reduce(a, lab, names, M, K=None, own=None):
     # same piece (SMOOTH: its own share counts that many times), so his engraving and his bronze come out in
     # clusters as his brush strokes do, not in single pixels.
     if SMOOTH:
+        sm = {}
         for (j, i), (dk, lt) in halves.items():
             n = who[j, i]
             if n in NO_SMOOTH:
@@ -663,7 +664,24 @@ def reduce(a, lab, names, M, K=None, own=None):
                     if (dj or di) and who[q] == n and q in halves:
                         tot += dfrac[q]
                         wsum += 1
-            col[j, i] = dk if tot / wsum > DARK_WINS_OF.get(n, DARK_WINS) else lt
+            sm[(j, i)] = tot / wsum
+        # DARK_WINS 'balance': each piece as dark as his is, its dark half on as many of its pixels (those whose
+        # smoothed dark share is the greatest) as his dark half covers of it
+        cut = {}
+        if DARK_WINS == 'balance':
+            for n in set(who[q] for q in sm):
+                qs = [q for q in sm if who[q] == n and tuple(halves[q][0]) != tuple(halves[q][1])]
+                if not qs:
+                    continue
+                share = float(np.mean([dfrac[q] for q in qs]))
+                vals = sorted((sm[q] for q in qs), reverse=True)
+                k = int(round(share * len(vals)))
+                cut[n] = vals[k - 1] - 1e-9 if k > 0 else 2.0
+        for (j, i), v_ in sm.items():
+            dk, lt = halves[(j, i)]
+            n = who[j, i]
+            t = DARK_WINS_OF.get(n, cut.get(n, DARK_WINS if DARK_WINS != 'balance' else 0.5))
+            col[j, i] = dk if v_ > t else lt
     if MODE == 'surface':
         # the light half's lightness smoothed with its neighbours', as the material's shade of his nearest it
         for (j, i), (dk, lt) in halves.items():
@@ -682,11 +700,13 @@ def reduce(a, lab, names, M, K=None, own=None):
             if r:
                 m = tot / wsum
                 col[j, i] = min(r, key=lambda c: (abs(0.299 * c[0] + 0.587 * c[1] + 0.114 * c[2] - m), c))
+    if MOTIF:
+        motif_lines(a, lab, names, M, K, who, col, feet)
     # His small marks (a stud, a glint, a tassel's strand, a key of the meander: a patch of his between
     # FEATURE cells inside his line, standing out from what is round it by FEATURE_CONTRAST in lightness):
     # each in its own commonest colour at the fine pixel its middle lands on, when it is the only mark there,
     # so each reads as his mark and not as a blur.
-    if FEATURE:
+    if FEATURE and (not MOTIF or FEATURE_ALSO):
         marks = {}
         for c in range(nc):
             if not (FEATURE[0] <= size[c] <= FEATURE[1]):
@@ -907,8 +927,12 @@ def reduce_piece(a, lab, name, mask=None, colours=None, M=None):
     aa[mask] = colours[mask]
     ll = np.full(lab.shape, '', object)
     ll[mask] = name
-    who, col, isl = reduce(aa, ll, [name], M or map_of(name), own=(lab == name))
-    return who == name, col, isl
+    M = M or map_of(name)
+    who, col, isl = reduce(aa, ll, [name], M, own=(lab == name))
+    m = who == name
+    if CLEAN:
+        clean(aa, ll, name, m, col, isl, M)
+    return m, col, isl
 
 
 # The game draws each piece at a depth (src/sprite/ctx.ts DEPTHS); at rest his figure is the pieces drawn
@@ -1247,3 +1271,404 @@ def study_sheet(a, lab, pieces, path):
         sheet.paste(t, (x, 0))
         x += t.width + 16
     sheet.save(path)
+
+
+# ---------------------------------------------------------------------------------------------------
+# His engraving, folds and trim rebuilt as lines (the owner, 2026-10-24: spirals as a continuous 1 px line
+# of his dark engraving on his bronze, the lion as a few of his key dark cells, the meander as a regular
+# pattern on his gold, the cloth's folds as a few clear lines of his darkest tones, not speckle)
+# ---------------------------------------------------------------------------------------------------
+# A cell of his is a mark (his engraving, a fold, a line of gold trim) where it is MOTIF_DELTA darker or
+# lighter than the middle of the piece round it (MOTIF_R cells each way), in a run of MOTIF_MIN or more such
+# cells. Each mark cell lands on the fine pixel its middle lands on, so a 1-cell line of his is a 1-px line
+# of ours, unbroken; the pixels between keep his surface's commonest colour. The marks are laid strongest
+# first (the cells of his longest lines), never four in a square and never more than MOTIF_CROWD round one
+# pixel, so they stay lines and do not clot into blots.
+MOTIF = False
+MOTIF_PIECES = ('cuirass', 'clasp', 'pauldron_n', 'pauldron_f', 'bracer_n', 'bracer_f', 'skirt', 'greave_n', 'greave_f', 'shoe_n', 'shoe_f', 'cape', 'scarf', 'braid')
+MOTIF_DELTA = 28
+MOTIF_R = 2
+MOTIF_MIN = 3
+MOTIF_CROWD = 3
+MOTIF_BASE = True
+FEATURE_ALSO = False
+
+
+def motif_lines(a, lab, names, M, K, who, col, feet):
+    H, W = lab.shape
+    Lg = luma(a.astype(float))
+    for n in names:
+        if n not in MOTIF_PIECES:
+            continue
+        mk = lab == n
+        if not mk.any():
+            continue
+        ys, xs = np.nonzero(mk)
+        mid = np.zeros((H, W))
+        for y, x in zip(ys, xs):
+            y0, y1, x0, x1 = max(0, y - MOTIF_R), min(H, y + MOTIF_R + 1), max(0, x - MOTIF_R), min(W, x + MOTIF_R + 1)
+            win = Lg[y0:y1, x0:x1][mk[y0:y1, x0:x1]]
+            mid[y, x] = np.median(win)
+        sign = np.zeros((H, W), int)
+        sign[mk & (Lg < mid - MOTIF_DELTA)] = -1
+        sign[mk & (Lg > mid + MOTIF_DELTA)] = 1
+        # runs of marks (8-neighbours, one sign)
+        size = np.zeros((H, W), int)
+        seen = np.zeros((H, W), bool)
+        for y, x in zip(*np.nonzero(sign)):
+            if seen[y, x]:
+                continue
+            group, stack = [], [(y, x)]
+            seen[y, x] = True
+            while stack:
+                q, p = stack.pop()
+                group.append((q, p))
+                for dq in (-1, 0, 1):
+                    for dp in (-1, 0, 1):
+                        yy, xx = q + dq, p + dp
+                        if 0 <= yy < H and 0 <= xx < W and not seen[yy, xx] and sign[yy, xx] == sign[y, x]:
+                            seen[yy, xx] = True
+                            stack.append((yy, xx))
+            for q, p in group:
+                size[q, p] = len(group)
+        # the pixels between: his surface's commonest colour under each (his marks left out)
+        for (j, i), cells in (feet.items() if MOTIF_BASE else ()):
+            if who[j, i] != n:
+                continue
+            surf = [(y, x, w) for y, x, w in cells if lab[y, x] == n and sign[y, x] == 0 and K[y, x] != 'line']
+            if surf:
+                tally = {}
+                for y, x, w in surf:
+                    t = tuple(int(v) for v in a[y, x])
+                    tally[t] = tally.get(t, 0) + w
+                col[j, i] = max(sorted(tally), key=lambda t: tally[t])
+        # the marks, strongest first
+        cand = {}
+        for y, x in zip(*np.nonzero(sign)):
+            if size[y, x] < MOTIF_MIN:
+                continue
+            fx, fy = M.fine((x + 0.5, y + 0.5))
+            q = (int(np.floor(fy)), int(np.floor(fx)))
+            if who[q] != n:
+                continue
+            c = cand.setdefault((q, int(sign[y, x])), [0, {}])
+            c[0] += size[y, x]
+            t = tuple(int(v) for v in a[y, x])
+            c[1][t] = c[1].get(t, 0) + 1
+        taken = {}
+        for (q, sg), (wt, tally) in sorted(cand.items(), key=lambda kv: (-kv[1][0], kv[0])):
+            if q in taken:
+                continue
+            j, i = q
+            crowd = sum(1 for dj in (-1, 0, 1) for di in (-1, 0, 1) if (dj or di) and (j + dj, i + di) in taken)
+            if crowd > MOTIF_CROWD:
+                continue
+            square = False
+            for dj, di in ((-1, -1), (-1, 0), (0, -1), (0, 0)):
+                block = [(j + dj + a_, i + di + b_) for a_ in (0, 1) for b_ in (0, 1)]
+                if all(b == q or taken.get(b) == sg for b in block):
+                    square = True
+            if square:
+                continue
+            taken[q] = sg
+            col[j, i] = max(sorted(tally), key=lambda t: tally[t])
+
+
+# ---------------------------------------------------------------------------------------------------
+# Keeping his rows and columns (as Ren's cast arms were brought down: tools/refs/ren-cast-arms-from-ref.py
+# keep()): each fine row of ours shows one whole row of his, each fine column one whole column, picked near
+# where the even shrink puts it, so that the rows and columns kept are those that carry his lines and
+# edges. Every fine pixel is then one of his cells, his colour at his place, and a line of his along a kept
+# row or column stays a whole 1 px line.
+# ---------------------------------------------------------------------------------------------------
+KEEP_SLACK = 1.0      # how far (his cells) a kept row may stand from where the even shrink puts it
+KEEP_DRIFT = 0.15     # what straying from there costs, against what a row's lines are worth (per cell)
+
+
+def importance(a, mask, axis):
+    """What each of his rows (axis 0) or columns (axis 1) carries inside `mask`: how many of its cells
+    differ from the cells beside them across it (his lines, edges and engraving)."""
+    L = luma(a.astype(float))
+    if axis == 1:
+        L, mask = L.T, mask.T
+    n = L.shape[0]
+    out = np.zeros(n)
+    for r in range(n):
+        m = mask[r]
+        if not m.any():
+            continue
+        up = L[r - 1] if r > 0 else L[r]
+        dn = L[r + 1] if r + 1 < n else L[r]
+        d = np.maximum(np.abs(L[r] - up), np.abs(L[r] - dn))
+        out[r] = float((m * (d > 24)).sum())
+    return out
+
+
+def keep_axis(imp, first, count, off, k):
+    """Which of his rows (or columns) fine rows first..first+count-1 show (off: where his 0 lands in ours,
+    k: his cells per fine pixel): increasing, each within KEEP_SLACK of the even shrink's, worth the most."""
+    ideal = [(f + 0.5 - off) * k - 0.5 for f in range(first, first + count)]
+    n = len(imp)
+    val = lambda c: imp[c] if 0 <= c < n else 0.0
+    scale_ = max(1.0, float(np.mean(imp[imp > 0])) if (imp > 0).any() else 1.0)
+    cands = [[c for c in range(int(np.floor(t - KEEP_SLACK)), int(np.ceil(t + KEEP_SLACK)) + 1)] for t in ideal]
+    best = [{c: (-val(c) + KEEP_DRIFT * scale_ * abs(c - ideal[0]), None) for c in cands[0]}]
+    for j in range(1, count):
+        row = {}
+        for c in cands[j]:
+            opts = [(v + (-val(c) + KEEP_DRIFT * scale_ * abs(c - ideal[j])), p) for p, (v, _) in best[-1].items() if p < c]
+            if opts:
+                row[c] = min(opts)
+        best.append(row)
+    c = min(best[-1], key=lambda q: (best[-1][q][0], q))
+    out = [c]
+    for j in range(count - 1, 0, -1):
+        c = best[j][c][1]
+        out.append(c)
+    return out[::-1]
+
+
+def reduce_keep(a, lab, names, M):
+    """The pieces `names` at our scale by keeping his rows and columns: (who, colours) in our frame."""
+    H, W = lab.shape
+    sel = np.isin(lab, list(names))
+    ys, xs = np.nonzero(sel)
+    fx0, fy0 = M.fine((xs.min(), ys.min()))
+    fx1, fy1 = M.fine((xs.max() + 1, ys.max() + 1))
+    i0, i1, j0, j1 = int(np.floor(fx0)), int(np.ceil(fx1)), int(np.floor(fy0)), int(np.ceil(fy1))
+    cols = keep_axis(importance(a, sel, 1), i0, i1 - i0, M.off[0], M.k)
+    rows = keep_axis(importance(a, sel, 0), j0, j1 - j0, M.off[1], M.k)
+    who = np.full((256, 256), '', object)
+    col = np.zeros((256, 256, 3), np.int32)
+    for jj, y in enumerate(rows):
+        for ii, x in enumerate(cols):
+            if 0 <= y < H and 0 <= x < W and sel[y, x]:
+                who[j0 + jj, i0 + ii] = lab[y, x]
+                col[j0 + jj, i0 + ii] = a[y, x]
+    return who, col
+
+
+# ---------------------------------------------------------------------------------------------------
+# Cleaning a piece at our scale (the owner's rules, 2026-10-24): no stray specks; his gold trim as continuous
+# 1 px lines; his motifs (spirals, the lion, the meander) as their cleanest reading among his pixels: each in
+# his own colours of that motif, at its place.
+# ---------------------------------------------------------------------------------------------------
+CLEAN = True
+# A pixel unlike three or four of its four neighbours, which agree on one colour of his, takes that colour,
+# unless it differs from it by less than SPECK_LUMA in lightness (a shade, not a speck).
+SPECK_LUMA = 16
+# His gold trim: a run of his light cells (TRIM_DELTA lighter than the piece round it) at least TRIM_LEN of
+# his cells long and thin (no more than TRIM_THICK of his cells across, on average).
+TRIM_DELTA = 30
+TRIM_LEN = 8
+TRIM_THICK = 1.7
+# His motifs, each where he drew it (his cells): (what, piece, centre, radius in his cells).
+MOTIFS = [
+    ('spiral', 'cuirass', (95.5, 79.5), 5.5),
+    ('spiral', 'cuirass', (121.0, 82.5), 4.5),
+    ('lion', 'cuirass', (112.5, 114.5), 11.0),
+    ('spiral', 'pauldron_f', (122.5, 82.5), 4.5),
+    ('spiral', 'bracer_n', (55.5, 113.5), 4.5),
+    ('spiral', 'bracer_n', (55.5, 125.5), 4.5),
+    ('ring', 'clasp', (92.5, 66.5), 4.5),
+    ('ring', 'greave_n', (74.0, 190.0), 6.5),
+    ('ring', 'greave_f', (125.0, 189.0), 6.0),
+    ('strap', 'cuirass', ((100.5, 75.5), (118.5, 95.5)), 1.5),
+]
+# The spiral at our scale, by its size in fine pixels: L his line of the spiral, . his plate between.
+SPIRALS = {
+    3: ['LLL', 'L.L', '.LL'],
+    4: ['.LLL', 'L..L', 'L.LL', 'L...'],
+    5: ['.LLL.', 'L...L', 'L.L.L', 'L.LL.', '.L...'],
+}
+# The skirt's meander: his gold border along the hem, at our scale a gold line over a row of gold keys
+# every other pixel (the cleanest reading of his keys, 6 of his cells apart, at 2 of ours).
+MEANDER_FROM = 162
+MEANDER_GOLD = 0.2
+
+
+def commonest(cells, a):
+    tally = {}
+    for y, x in cells:
+        t = tuple(int(v) for v in a[y, x])
+        tally[t] = tally.get(t, 0) + 1
+    return max(sorted(tally), key=lambda t: tally[t]) if tally else None
+
+
+def clean(a, lab, name, m, col, isl, M):
+    H, W = lab.shape
+    K = kinds(a)
+    Lg = luma(a.astype(float))
+    mine = lab == name
+    keep = isl.copy()
+    lum = lambda c: 0.299 * c[0] + 0.587 * c[1] + 0.114 * c[2]
+    # 1. specks
+    for _ in range(2):
+        out = col.copy()
+        for j, i in zip(*np.nonzero(m & ~keep)):
+            nb = [tuple(int(v) for v in col[j + dj, i + di]) for dj, di in ((1, 0), (-1, 0), (0, 1), (0, -1)) if m[j + dj, i + di] and not isl[j + dj, i + di]]
+            if len(nb) < 3:
+                continue
+            tally = {}
+            for c in nb:
+                tally[c] = tally.get(c, 0) + 1
+            c, n = max(sorted(tally.items()), key=lambda kv: kv[1])
+            if n >= 3 and c != tuple(int(v) for v in col[j, i]) and abs(lum(c) - lum(col[j, i])) >= SPECK_LUMA:
+                out[j, i] = c
+        col[:] = out
+    # 2. his gold trim as continuous lines
+    ys, xs = np.nonzero(mine)
+    mid = np.zeros((H, W))
+    for y, x in zip(ys, xs):
+        win = Lg[max(0, y - 2):y + 3, max(0, x - 2):x + 3][mine[max(0, y - 2):y + 3, max(0, x - 2):x + 3]]
+        mid[y, x] = np.median(win)
+    light = mine & (Lg > mid + TRIM_DELTA) & (K != 'line')
+    seen = np.zeros((H, W), bool)
+    taken = set()
+    runs = []
+    for y, x in zip(*np.nonzero(light)):
+        if seen[y, x]:
+            continue
+        group, stack = [], [(y, x)]
+        seen[y, x] = True
+        while stack:
+            q, p = stack.pop()
+            group.append((q, p))
+            for dq in (-1, 0, 1):
+                for dp in (-1, 0, 1):
+                    yy, xx = q + dq, p + dp
+                    if 0 <= yy < H and 0 <= xx < W and light[yy, xx] and not seen[yy, xx]:
+                        seen[yy, xx] = True
+                        stack.append((yy, xx))
+        gy = [q for q, _ in group]
+        gx = [p for _, p in group]
+        ext = max(max(gy) - min(gy), max(gx) - min(gx)) + 1
+        if ext >= TRIM_LEN and len(group) / ext <= TRIM_THICK:
+            runs.append((len(group), group))
+    for _, group in sorted(runs, key=lambda r: (-r[0], r[1][0])):
+        c = commonest(group, a)
+        for y, x in group:
+            fx, fy = M.fine((x + 0.5, y + 0.5))
+            q = (int(np.floor(fy)), int(np.floor(fx)))
+            if not m[q] or isl[q]:
+                continue
+            col[q] = c
+            keep[q] = True
+            taken.add(q)
+    # 3. his motifs
+    for what, piece, (cx, cy), R in MOTIFS:
+        if piece != name:
+            continue
+        if what == 'strap':
+            strap(a, lab, name, m, col, isl, keep, M, (cx, cy), R, K, Lg, mine)
+            continue
+        disk = [(y, x) for y in range(int(cy - R), int(cy + R) + 1) for x in range(int(cx - R), int(cx + R) + 1)
+                if 0 <= y < H and 0 <= x < W and mine[y, x] and (x + 0.5 - cx) ** 2 + (y + 0.5 - cy) ** 2 <= R * R and K[y, x] != 'line']
+        if not disk:
+            continue
+        ls = sorted(disk, key=lambda q: (Lg[q], q))
+        dark = commonest(ls[:len(ls) // 3], a)
+        lite = commonest(ls[-len(ls) // 3:], a)
+        mid_ = commonest(ls[len(ls) // 3:-len(ls) // 3] or ls, a)
+        fx, fy = M.fine((cx, cy))
+        rf = R / M.k
+        if what in ('spiral', 'ring'):
+            n = max(3, min(5, int(round(2 * rf))))
+            x0, y0 = int(round(fx - n / 2)), int(round(fy - n / 2))
+            # his spiral's line: gold on a dark plate, or dark on a gold one (whichever he drew more thinly)
+            on_dark = sum(1 for q in disk if Lg[q] > Lg[ls[len(ls) // 2]]) < len(disk) / 2
+            line_c, plate_c = (lite, dark) if on_dark else (dark, lite)
+            rows = SPIRALS[n] if what == 'spiral' else ['.' + 'L' * (n - 2) + '.'] + ['L' + '.' * (n - 2) + 'L'] * (n - 2) + ['.' + 'L' * (n - 2) + '.']
+            for j, row in enumerate(rows):
+                for i, ch in enumerate(row):
+                    q = (y0 + j, x0 + i)
+                    if not m[q] or isl[q]:
+                        continue
+                    col[q] = line_c if ch == 'L' else plate_c
+                    keep[q] = True
+        elif what == 'lion':
+            # his gold face, the edge of his mane round it, and his darkest marks inside (eyes, nose, mouth)
+            for j in range(int(fy - rf) - 1, int(fy + rf) + 2):
+                for i in range(int(fx - rf) - 1, int(fx + rf) + 2):
+                    d = np.hypot(i + 0.5 - fx, j + 0.5 - fy)
+                    if d > rf or not m[j, i] or isl[j, i]:
+                        continue
+                    col[j, i] = mid_ if d > rf - 1 else lite
+                    keep[j, i] = True
+            inner = [(y, x) for y, x in disk if (x + 0.5 - cx) ** 2 + (y + 0.5 - cy) ** 2 <= (0.75 * R) ** 2]
+            darks = np.zeros((H, W), bool)
+            for y, x in inner:
+                darks[y, x] = Lg[y, x] < Lg[ls[len(ls) // 4]]
+            comps = []
+            seen2 = np.zeros((H, W), bool)
+            for y, x in zip(*np.nonzero(darks)):
+                if seen2[y, x]:
+                    continue
+                g2, st = [], [(y, x)]
+                seen2[y, x] = True
+                while st:
+                    q, p = st.pop()
+                    g2.append((q, p))
+                    for dq, dp in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                        yy, xx = q + dq, p + dp
+                        if darks[yy, xx] and not seen2[yy, xx]:
+                            seen2[yy, xx] = True
+                            st.append((yy, xx))
+                comps.append(g2)
+            for g2 in sorted(comps, key=lambda g: (-len(g), g[0]))[:LION_MARKS]:
+                if len(g2) < 2:
+                    continue
+                gy = np.mean([q for q, _ in g2]) + 0.5
+                gx = np.mean([p for _, p in g2]) + 0.5
+                ffx, ffy = M.fine((gx, gy))
+                q = (int(np.floor(ffy)), int(np.floor(ffx)))
+                if m[q] and not isl[q]:
+                    col[q] = dark
+    # 4. the meander along the skirt's hem
+    if name == 'skirt':
+        gold = mine & (K == 'gold')
+        band = np.zeros(m.shape, bool)
+        for j, i in zip(*np.nonzero(m & ~isl)):
+            x0_, y0_ = M.his((i, j))
+            x1_, y1_ = M.his((i + 1, j + 1))
+            if y0_ < MEANDER_FROM:
+                continue
+            cells = [(y, x) for y in range(int(y0_), int(np.ceil(y1_))) for x in range(int(x0_), int(np.ceil(x1_))) if 0 <= y < H and 0 <= x < W]
+            if cells and sum(1 for q in cells if gold[q]) >= MEANDER_GOLD * len(cells):
+                band[j, i] = True
+        g_c = commonest([q for q in zip(*np.nonzero(gold)) if q[0] >= MEANDER_FROM], a)
+        navy = commonest([q for q in zip(*np.nonzero(mine & (K == 'navy'))) if q[0] >= MEANDER_FROM], a)
+        for i in range(256):
+            js = [j for j in range(256) if band[j, i]]
+            if not js:
+                continue
+            top = js[0]
+            col[top, i] = g_c
+            if band[top + 1, i] or (m[top + 1, i] and not isl[top + 1, i]):
+                col[top + 1, i] = g_c if i % 2 == 0 else navy
+            for j in js[2:]:
+                if j > top + 1:
+                    col[j, i] = navy
+
+
+LION_MARKS = 5
+
+
+def strap(a, lab, name, m, col, isl, keep, M, pts, R, K, Lg, mine):
+    """His leather strap across the chest: a 1 px line of his strap's colour (the darker half of his cells
+    along it) from one end to the other."""
+    H, W = lab.shape
+    (ax, ay), (bx, by) = pts
+    along = [(y, x) for y in range(int(min(ay, by)) - 1, int(max(ay, by)) + 2) for x in range(int(min(ax, bx)) - 2, int(max(ax, bx)) + 3)
+             if 0 <= y < H and 0 <= x < W and mine[y, x] and K[y, x] != 'line' and
+             abs((bx - ax) * (y + 0.5 - ay) - (by - ay) * (x + 0.5 - ax)) / np.hypot(bx - ax, by - ay) <= R]
+    if not along:
+        return
+    c = commonest(sorted(along, key=lambda q: (Lg[q], q))[:max(1, len(along) // 2)], a)
+    (fax, fay), (fbx, fby) = M.fine((ax, ay)), M.fine((bx, by))
+    n = int(np.ceil(max(abs(fbx - fax), abs(fby - fay)))) + 1
+    for t in range(n):
+        q = (int(np.floor(fay + (fby - fay) * t / (n - 1))), int(np.floor(fax + (fbx - fax) * t / (n - 1))))
+        if m[q] and not isl[q]:
+            col[q] = c
+            keep[q] = True

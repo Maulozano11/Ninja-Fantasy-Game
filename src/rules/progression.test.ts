@@ -117,7 +117,9 @@ describe('a new ninja learns rank D and C jutsu, and its clan\'s ("d y c y los d
     const kaien = LEGENDARY_PRESETS.find((p) => p.character.id === 'preset_storm')!.character;
     assert.deepEqual(aboveRank(kaien.selectedJutsus, kaien.clan).sort(), ['chidori_lightning_blade', 'kirin_thunder']);
     for (const { character: c } of LEGENDARY_PRESETS) {
-      assert.ok(aboveRank(c.selectedJutsus, c.clan).includes(c.selectedJutsus.slot5Ultimate), `${c.id}: its S-rank stays`);
+      // Aurelia's S-rank slot is empty (Yasaka no Magatama removed; her sheet waits for the owner's jutsu).
+      if (c.selectedJutsus.slot5Ultimate || c.id !== 'preset_aurelia')
+        assert.ok(aboveRank(c.selectedJutsus, c.clan).includes(c.selectedJutsus.slot5Ultimate), `${c.id}: its S-rank stays`);
       assert.ok(!aboveRank(c.selectedJutsus, c.clan).includes(c.selectedJutsus.slot4Clan), `${c.id}: its clan secret is its own`);
       assert.equal(migrateCharacter(c), c, `${c.id}: loads as it is`);
     }
@@ -159,9 +161,10 @@ describe('a new ninja learns rank D and C jutsu, and its clan\'s ("d y c y los d
         // Kaien and Raiga keep their second element (rules/natureGrowth.ts) unless it is the new type.
         const growth = growthOf(c, nature);
         assert.deepEqual(r, fitLoadout(c.selectedJutsus, nature, c.clan, (j) => jutsuFitsClass(j, c.shinobiClass), growth.extra), `${c.id} as ${nature}: every rank, of its class`);
-        const s = byId(c.selectedJutsus.slot5Ultimate)!;
-        const fits = jutsuFitsNature(s, nature, growth.extra) || learnable('slot5Ultimate', nature, c.clan, c.shinobiClass, growth).length > 0;
-        assert.equal(!!r.loadout.slot5Ultimate, fits, `${c.id} as ${nature}: its S-rank slot stays filled when something fits`);
+        const s = byId(c.selectedJutsus.slot5Ultimate);
+        const fits = (!!s && jutsuFitsNature(s, nature, growth.extra)) || learnable('slot5Ultimate', nature, c.clan, c.shinobiClass, growth).length > 0;
+        // (Aurelia's slot is empty to begin with: nothing to carry over)
+        if (s || c.id !== 'preset_aurelia') assert.equal(!!r.loadout.slot5Ultimate, fits, `${c.id} as ${nature}: its S-rank slot stays filled when something fits`);
       }
     assert.equal(fitToType(DEFAULT_CHARACTER, 'Lightning').loadout.slot5Ultimate, 'kirin_thunder');
     // Solen (Bukijutsu) as Water: Water's own S-rank, the Dragon Tsunami (the owner, 2026-10-22).

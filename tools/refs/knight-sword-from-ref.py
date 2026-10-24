@@ -25,6 +25,8 @@ import knights_ref as K  # noqa: E402
 
 # The blade each figure gives (the dark knight's is the paladin's).
 BLADES = {'flame': 'paladin', 'dragon': 'dragon'}
+# The knights who hold each blade at rest.
+HELD_BY = {'flame': ('paladin', 'dark'), 'dragon': ('dragon',)}
 
 
 def blade_angle(fig):
@@ -73,12 +75,22 @@ def hilt(fig):
 
 def blade(fig, name):
     """A blade, carried back under its own guard along its line (his first rows across repeated), only where
-    the guard or the fist hides it at rest: with another guard, no gap opens between guard and blade."""
+    the guard or the fist hides it at rest on every knight who holds it: with another guard, no gap opens between guard and blade."""
     P = K.pieces(fig)
     m, c = P['blade']
     rgb, label = K.game(fig)
     ang, *_ = blade_angle(fig)
-    hidden = np.isin(label, ('hilt', 'guard', 'hand_n'))
+    # hidden at rest on every knight who holds this blade (the paladin's is the dark knight's too)
+    ox, oy = K.offset(fig)
+    hidden = np.ones(label.shape, bool)
+    for other in HELD_BY[name]:
+        _, _, lab = K.our_frame(other)
+        under = np.isin(lab, ('hilt', 'guard', 'hand_n'))
+        for y in range(label.shape[0]):
+            for x in range(label.shape[1]):
+                Y, X = y + oy, x + ox
+                if not (0 <= Y < 256 and 0 <= X < 256 and under[Y, X]):
+                    hidden[y, x] = False
     t = np.radians(ang)
     step = np.array([np.cos(t), np.sin(t)])
     H, W = m.shape

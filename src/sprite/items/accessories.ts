@@ -3,7 +3,7 @@
 // T(), head-local hd()) so it works on every body type and pose.
 
 import { armJoints, Depth, DEPTHS, DrawCtx, ItemDef, legPoint, Side } from '../ctx';
-import { add, capsule, ellipse, F_NO_OUTLINE, fine, GRID, Layer, len, lerp, line, norm, partIndex, Pen, perp, poly, px, RES, scale, seam, sub, UNITS, v, Vec } from '../raster';
+import { add, capsule, ellipse, F_NO_OUTLINE, F_NO_TEXTURE, fine, GRID, Layer, len, lerp, line, norm, partIndex, Pen, perp, poly, px, RES, scale, seam, sub, UNITS, v, Vec } from '../raster';
 import { hexToRgb, retintHex, type RampKind } from '../color';
 import { hd } from './hairkit';
 import { CRYSTAL_SWORD, drawPaintedWeapon, drawWeapon, KUNAI } from './weapons';
@@ -16,6 +16,7 @@ import { chakraHex } from '../chakraInfo';
 import { gripPoint, handsBusy, handsLimp, handsReleased, poleAngle, swordAngle, throwsKunai } from '../grip';
 import type { Rig } from '../rig';
 import { addSeam, clothSeam } from '../seams';
+import { BULKY_BASE_KIND } from '../bulkyBaseArt';
 
 const col = (key: string, label: string, def: string, kind: RampKind = 'cloth') => ({ key, label, default: def, kind });
 
@@ -884,6 +885,75 @@ const COWL_SEAM = 3;
 /** How far (px) from his studs a seam is filled with his greys. */
 const COWL_SEAM_ROUND = 5;
 
+/** How far (px) round the neck joint his cowl covers a broader neck. */
+const COWL_NAPE = 16;
+/** How far (px) below the neck joint, along the torso, the neck it covers goes down (the shoulders below are his armour's). */
+const COWL_NAPE_ROOT = 3;
+
+/**
+ * His cowl wound round a broader neck than he drew it on: the bulky body's neck and shoulders rise wider and
+ * higher at the back than the cowl, and between the hair and the cowl a strip of bare skin showed behind the
+ * head, and bowed (the tackle) a hump of it above the hair (the owner on Solen on the bulky body: "solen sigue
+ * teniendo problemas de cuello"). The cowl goes over it: each pixel of skin of the body's torso showing round
+ * the neck, above its root, takes the nearest of the cowl's greys. The body's own line round it stays, so the
+ * figure's outline does not change.
+ */
+function cowlOverNape(g: DrawCtx, layers: ReadonlyMap<Depth, Layer>, greys: ReadonlySet<number>, lines: ReadonlySet<number>): void {
+  const L = layers.get('torso.body');
+  if (!L) return;
+  const cowl = (['capeFront', 'nearArm.over'] as const).map((d) => layers.get(d)).filter((l): l is Layer => !!l);
+  const above = DEPTHS.slice(DEPTHS.indexOf('torso.body') + 1).map((d) => layers.get(d)).filter((l): l is Layer => !!l);
+  const nx = Math.floor(g.rig.neck.x * RES);
+  const ny = Math.floor(g.rig.neck.y * RES);
+  const R = COWL_NAPE;
+  const greyAt = (i: number) => {
+    let top: Layer | undefined;
+    for (const l of above) if (l.mat[i] >= 0) top = l;
+    return top && cowl.includes(top) && greys.has(top.mat[i]) ? top : undefined;
+  };
+  // (above the root of the neck: along the torso from the neck joint, no further below it than COWL_NAPE_ROOT)
+  const r = g.rig;
+  const up = norm(sub(r.neck, r.pelvis));
+  const skin: number[] = [];
+  for (let y = ny - R; y <= ny + R; y++)
+    for (let x = nx - R; x <= nx + R; x++) {
+      const i = y * GRID + x;
+      if (L.mat[i] < 0 || lines.has(L.mat[i]) || above.some((l) => l.mat[i] >= 0)) continue;
+      if ((x + 0.5 - r.neck.x * RES) * up.x + (y + 0.5 - r.neck.y * RES) * up.y < -COWL_NAPE_ROOT) continue;
+      skin.push(i);
+    }
+  if (!skin.length) return;
+  // the nearest of his greys, breadth first from every grey of the cowl in the window (in reading order)
+  const from = new Map<number, number>();
+  let ring: number[] = [];
+  for (let y = ny - R - 2; y <= ny + R; y++)
+    for (let x = nx - R - 2; x <= nx + R; x++) {
+      const i = y * GRID + x;
+      if (greyAt(i)) {
+        from.set(i, i);
+        ring.push(i);
+      }
+    }
+  for (let k = 0; k < 2 * R && ring.length; k++) {
+    const next: number[] = [];
+    for (const i of ring)
+      for (const q of [i - GRID - 1, i - GRID, i - GRID + 1, i - 1, i + 1, i + GRID - 1, i + GRID, i + GRID + 1])
+        if (!from.has(q) && Math.abs((q % GRID) - nx) <= R + 2 && Math.abs(((q / GRID) | 0) - ny) <= R + 2) {
+          from.set(q, from.get(i)!);
+          next.push(q);
+        }
+    ring = next;
+  }
+  for (const i of skin) {
+    const s = from.get(i);
+    if (s === undefined) continue;
+    const src = greyAt(s)!;
+    L.mat[i] = src.mat[s];
+    L.shade[i] = src.shade[s];
+    L.flags[i] = F_NO_OUTLINE | F_NO_TEXTURE;
+  }
+}
+
 /** Clears pixels of a front layer that cover the head, so wraps sit under the chin. */
 function tuckUnderChin(g: DrawCtx, L: Layer): void {
   const H = g.L('head.body');
@@ -1256,6 +1326,12 @@ export const ACCESSORY_ITEMS: ItemDef[] = [
           else if (k === 'gold' || k === 'white' || k === 'stud' || k === 'steel') studs.add(g.m(tint(ch, hex), 'flat'));
         }
       addSeam(g, clothSeam(g, { depths: ['capeFront', 'nearArm.over'], cloth: greys, studs, reach: COWL_SEAM, round: COWL_SEAM_ROUND }), { walls: 3, at: 'idle', again: true });
+      // On the bulky body's broader neck, over the skin that shows behind the head (cowlOverNape). On the male
+      // body, the one he drew it on, the cowl stays as he drew it.
+      if (r.body === 'bulky') {
+        const lines = new Set(Object.keys(BULKY_BASE_KIND).filter((hex) => BULKY_BASE_KIND[hex] === 'line').map((hex) => g.m(hex, 'flat')));
+        g.after((layers) => cowlOverNape(g, layers, greys, lines));
+      }
     },
   },
   {

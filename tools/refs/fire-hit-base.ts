@@ -7,8 +7,8 @@
 //
 //   npx tsx tools/refs/fire-hit-base.ts tools/refs/data/fire-hit-base.png
 //
-// Writes one strip of the 12 cells, 1536x176. Rerun only if the rogue's art changes (and then rerun
-// the converter: his picture was painted over this rogue).
+// Writes one strip of the 12 cells, 1536x176. The strip in tools/refs/data is the rogue as he painted
+// over it: keep it even if the rogue's art changes later (a rerun only checks that it has not).
 
 import { enemyUnit } from '../../src/battle/units';
 import { renderSprite } from '../../src/sprite/compose';

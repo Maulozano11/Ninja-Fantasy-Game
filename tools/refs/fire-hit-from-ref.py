@@ -27,7 +27,6 @@ The frame is the box round his effect in all 12 frames (2 px spare); the anchor 
 anchor was on the rogue (60 px over his feet, the usual single-target impact), so his burst sits on the
 target where he painted it. 12 frames at 12 fps, as before.
 
-    npx tsx tools/refs/fire-hit-base.ts tools/refs/data/fire-hit-base.png   # only if the rogue changes
     python3 -I tools/refs/fire-hit-from-ref.py [--check DIR]
 
 Writes tools/world-sprites/vfx-fire-hit-refdata.ts (generated: rerun this to change it), which

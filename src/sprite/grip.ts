@@ -131,10 +131,10 @@ export const handsBusy = (g: DrawCtx): boolean => BUSY.has(g.rig.pose) || !!g.lo
 export const handsReleased = (g: DrawCtx): boolean => g.rig.released && !handsBusy(g);
 
 /** The held items that are weapons, with a handle the fist holds; the others are empty hands or a technique held in the palm. */
-const WEAPONS = new Set(['held_katana', 'held_crystal', 'held_ice_crystal', 'held_flame_sword', 'held_gilded_rapier', 'held_kunai', 'held_naginata']);
+const WEAPONS = new Set(['held_katana', 'held_crystal', 'held_ice_crystal', 'held_flame_sword', 'held_navy_sabre', 'held_gilded_rapier', 'held_kunai', 'held_naginata']);
 
 /** The owner's longswords, held by their own grip at the hand joint (the others at the fist's middle, gripPoint). */
-export const HAND_JOINT_SWORDS = new Set(['held_flame_sword', 'held_ice_crystal']);
+export const HAND_JOINT_SWORDS = new Set(['held_flame_sword', 'held_ice_crystal', 'held_navy_sabre']);
 export const isWeapon = (held: string | undefined): boolean => !!held && WEAPONS.has(held);
 
 /**
@@ -161,7 +161,7 @@ export function gripAngle(g: DrawCtx): number | null {
   if (g.has('held', 'held_naginata')) return poleAngle(g);
   // Aurelia's staff is in her far fist at rest (her near hand is empty), in the near one like a pole otherwise.
   if (g.has('held', 'held_dawn_staff')) return dawnStaffInFarHand(g) ? null : poleAngle(g);
-  if (g.has('held', 'held_katana') || g.has('held', 'held_crystal') || g.has('held', 'held_ice_crystal') || g.has('held', 'held_flame_sword') || g.has('held', 'held_kunai')) return swordAngle(g);
+  if (g.has('held', 'held_katana') || g.has('held', 'held_crystal') || g.has('held', 'held_ice_crystal') || g.has('held', 'held_flame_sword') || g.has('held', 'held_navy_sabre') || g.has('held', 'held_kunai')) return swordAngle(g);
   return null;
 }
 

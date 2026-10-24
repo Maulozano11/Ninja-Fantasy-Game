@@ -1920,6 +1920,83 @@ export const LEGENDARY_PRESETS: { name: string; tag: string; nameEs?: string; ta
     },
   },
   // ── Heroine: Aurelia (end) ─────────────────────────────────────────────────────────────────────
+  // ── Hero: the navy officer (begin) ─────────────────────────────────────────────────────────────
+  // The owner's navy officer, his favourite ("es mi favorito hasta ahora"), copied part by part from his
+  // pictures of him (docs/reference/navy-officer-*-owner-reference.jpg, shrunk to our scale and cleaned with his
+  // palette only): hair, face and eyes, five coats, three under-layers, belt, sash, trousers, boots, gloves,
+  // shoulder pieces, sabre and scabbard, each its own creator item in his colours. He wears his first picture's
+  // outfit. Name and title are provisional (the owner will rename him). His numbers are the creator's formula
+  // for his sheet; Northstar's bonus (CHA +2, WIS +1) counted in. Water chakra (a navy officer) in the blue of
+  // his sabre's jewel.
+  {
+    name: 'Navy Officer',
+    tag: "Officer's Coat · Officer's Sabre",
+    nameEs: 'Oficial naval',
+    tagEs: 'Abrigo de oficial · Sable de oficial',
+    character: {
+      id: 'preset_navy_officer',
+      name: 'Navy Officer',
+      title: 'The Navy Officer',
+      level: 5,
+      clan: 'Northstar',
+      shinobiClass: 'Bukijutsu Master',
+      stats: { str: 14, dex: 17, con: 14, int: 12, wis: 12, cha: 16 },
+      palette: {
+        skinTone: '#da9a74',
+        hairColor: '#32201e',
+        eyeColor: '#a21a1c',
+        armorPrimary: '#1c223a',
+        armorSecondary: '#c8904b',
+        clothColor: '#1c223a',
+        headbandCloth: '#1c223a',
+        headbandPlate: '#cbd5e1',
+        chakraAuraColor: '#325082',
+        accentColor: '#2b0d25',
+      },
+      hairstyle: 'Knight Pointed Helm', // (a legacy field the sprite does not read; the one name here that is no franchise's)
+      armorStyle: 'Ronin Wanderer Cloak',
+      headbandPosition: 'Neck',
+      weaponStyle: 'Katana Blade',
+      capeStyle: 'None',
+      dojutsu: 'None',
+      selectedFeats: ['chakra_prodigy', 'sharingan_precog'],
+      selectedJutsus: {
+        slot1Utility: 'substitution_kawarimi',
+        slot2Elemental: 'water_dragon_suiryuudan',
+        slot3Elemental: 'water_geyser',
+        slot4Clan: 'adamantine_sealing_chains',
+        slot5Ultimate: 'water_tide_s',
+      },
+      sheetVersion: 2,
+      maxHp: 44,
+      currentHp: 44,
+      maxChakra: 36,
+      currentChakra: 36,
+      armorClass: 14,
+      speed: 7,
+      jutsuSaveDC: 14,
+      jutsuAttackBonus: 6,
+      appearance: spriteLook({
+        body: 'male',
+        skin: '#da9a74',
+        eyeShape: 'navy',
+        eyeColor: '#a21a1c',
+        faceShape: 'navy',
+        slots: {
+          hair: it('hair_navy_tousle'),
+          top: it('top_navy_coat_high'),
+          bottom: { ...it('bottom_navy_trousers'), parts: { paint: 'navy' } },
+          waist: it('waist_navy_belt'),
+          feet: it('feet_navy_boots'),
+          hands: it('hands_navy_gloves'),
+          held: it('held_navy_sabre'),
+        },
+        accessories: [it('acc_navy_epaulets'), it('acc_navy_scabbard')],
+        chakra: { color: 'blue', tint: '#325082', onCharge: true, onCast: true, onVictory: true }, // Water, in the blue of his sabre's jewel
+      }),
+    },
+  },
+  // ── Hero: the navy officer (end) ───────────────────────────────────────────────────────────────
 ];
 
 export const DEFAULT_CHARACTER: ShinobiCharacter = LEGENDARY_PRESETS[0].character;

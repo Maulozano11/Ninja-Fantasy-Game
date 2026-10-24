@@ -26,6 +26,8 @@ import { ROMAN_HAIR_BACK, ROMAN_HAIR_BASE, ROMAN_HAIR_FRONT, ROMAN_HAIR_LINE, RO
 import { VALIANT_HAIR_BACK, VALIANT_HAIR_BASE, VALIANT_HAIR_FRONT, VALIANT_HAIR_LINE } from './valiantHairArt';
 import { AURELIA_HAIR_BACK, AURELIA_HAIR_BACK_HIS, AURELIA_HAIR_BASE, AURELIA_HAIR_FRONT, AURELIA_HAIR_FRONT_HIS, AURELIA_HAIR_LINE, AURELIA_HAIR_ORNAMENT, AURELIA_HAIR_SKIN, AURELIA_ORNAMENT_BASE, AURELIA_SKIN_BASE } from './aureliaHairArt';
 import { FOUNDER_HAIR_BACK, FOUNDER_HAIR_BASE, FOUNDER_HAIR_FRONT, FOUNDER_HAIR_LINE } from './founderHairArt';
+import { NAVY_HAIR_BACK, NAVY_HAIR_BASE, NAVY_HAIR_FRONT, NAVY_HAIR_KIND } from './navyHairArt';
+import { SWEPT_HAIR_BACK, SWEPT_HAIR_BASE, SWEPT_HAIR_FRONT, SWEPT_HAIR_KIND } from './navySweptHairArt';
 
 const hairColor = (def: string) => [{ key: 'hair', label: 'Hair', default: def, kind: 'hair' as const }];
 
@@ -1905,6 +1907,37 @@ export const HAIR_ITEMS: ItemDef[] = [
       paintedHair(g, g.L('head.body'), ROMAN_HAIR_SHADE, (_ch, hex) => retintSkinLifted(hex, ROMAN_SKIN, g.look.skin), true);
       paintedHair(g, g.L('hairFront'), ROMAN_HAIR_FRONT, tint);
       trimSkull(g, ROMAN_HAIR_BACK);
+    },
+  },
+  {
+    id: 'hair_navy_tousle',
+    slot: 'hair',
+    name: "Officer's Tousle",
+    desc: 'Brown tousled hair: spiky locks over the crown, a fringe swept over the brow and strands over the ear. Painted by the owner for his navy officer.',
+    colors: hairColor(NAVY_HAIR_BASE),
+    draw: (g, [c]) => {
+      // The owner's hair on his navy officer, his pixels at our scale (2026-10-24; tools/refs/
+      // navy-hair-from-ref.py), drawn as his Roman's hair is: over the head every lock and line of his, behind
+      // it the same hair with what his face hides filled in.
+      const tint = (_ch: string, hex: string) => (NAVY_HAIR_KIND[hex] === 'line' ? hex : retintHex(hex, NAVY_HAIR_BASE, c));
+      paintedHair(g, g.L('hairBack'), NAVY_HAIR_BACK, tint);
+      paintedHair(g, g.L('hairFront'), NAVY_HAIR_FRONT, tint);
+      trimSkull(g, NAVY_HAIR_BACK);
+    },
+  },
+  {
+    id: 'hair_navy_swept',
+    slot: 'hair',
+    name: 'Swept-Back Spikes',
+    desc: 'Black spiky hair swept back from the brow, with loose strands at the temple. Painted by the owner for his dark-coated officer.',
+    colors: hairColor(SWEPT_HAIR_BASE),
+    draw: (g, [c]) => {
+      // The owner's black hair from his dark-coated officer (2026-10-24, "copia el pelo tambien"; tools/refs/
+      // navy-swept-hair-from-ref.py), drawn as his officer's other hair.
+      const tint = (_ch: string, hex: string) => (SWEPT_HAIR_KIND[hex] === 'line' ? hex : retintHex(hex, SWEPT_HAIR_BASE, c));
+      paintedHair(g, g.L('hairBack'), SWEPT_HAIR_BACK, tint);
+      paintedHair(g, g.L('hairFront'), SWEPT_HAIR_FRONT, tint);
+      trimSkull(g, SWEPT_HAIR_BACK);
     },
   },
 ];

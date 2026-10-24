@@ -13,6 +13,9 @@ import { dawnStaffInFarHand, dawnStaffRest, drawDawnFarFist, drawDawnStaff } fro
 import { ICE_SWORD, ICE_SWORD_BLADE, ICE_SWORD_KIND } from './iceSwordArt';
 import { KATANA_PARTS, katanaHipColors, katanaTemplate } from './katana';
 import { stampLeaning } from './armor';
+import { navyArm } from './navy';
+import { NAVY_SABRE_BLADE, NAVY_SABRE_GOLD, NAVY_SABRE_GRIP, NAVY_SABRE_HILT, NAVY_SABRE_JEWEL, NAVY_SABRE_KIND, NAVY_SABRE_STEEL } from './navySabreArt';
+import { stampPiece } from '../painted';
 import { FOUNDER_COWL, FOUNDER_COWL_GOLD, FOUNDER_COWL_KIND, FOUNDER_COWL_NEAR, FOUNDER_COWL_NECK, FOUNDER_COWL_SEAM_F, FOUNDER_COWL_SEAM_N, FOUNDER_COWL_STUD, FOUNDER_COWL_STUD_F } from './founderCowlArt';
 import { chakraHex } from '../chakraInfo';
 import { LYRA_SWORD_BLADE, LYRA_SWORD_GUARD } from './lyraSwordArt';
@@ -493,6 +496,33 @@ export const HELD_ITEMS: ItemDef[] = [
       // His grip crosses his fist at the hand joint (higher in the fist than our other blades' grip
       // point): held there, at rest every pixel is his and his gauntlet's place is our fist's.
       else if (!handsReleased(g)) drawPaintedWeapon(g, 'nearArm.held', FLAME_LONGSWORD, g.rig.handN, swordAngle(g), tint);
+    },
+  },
+  {
+    id: 'held_navy_sabre',
+    slot: 'held',
+    name: "Officer's Sabre",
+    desc: 'A sabre with a gold swept guard and knuckle bow set with a blue jewel, on a dark grip: the owner drew it for his navy officer.',
+    colors: [col('blade', 'Blade', NAVY_SABRE_STEEL, 'metal'), col('guard', 'Guard', NAVY_SABRE_GOLD, 'metal'), col('grip', 'Grip', NAVY_SABRE_GRIP, 'leather'), col('jewel', 'Jewel', NAVY_SABRE_JEWEL, 'metal')],
+    draw: (g, [steel, gold, grip, jewel]) => {
+      // His sabre, his pixels at our scale (2026-10-24; tools/refs/navy-sabre-from-ref.py). In his coat at rest
+      // its hilt is in his far fist at his hip, as he drew it (its blade behind his body); otherwise the near
+      // fist holds it by its grip at the hand joint. He drew no blade: the one shown is made of his colours.
+      const kinds = NAVY_SABRE_KIND as Record<string, string>;
+      const tint = (_ch: string, hex: string) => {
+        const k = kinds[hex];
+        if (k === 'line') return hex;
+        const [from, to] = k === 'steel' ? [NAVY_SABRE_STEEL, steel] : k === 'jewel' ? [NAVY_SABRE_JEWEL, jewel] : k === 'grip' ? [NAVY_SABRE_GRIP, grip] : [NAVY_SABRE_GOLD, gold];
+        return retintHex(hex, from, to);
+      };
+      const both = (depth: Depth, at: Vec, deg: number) => {
+        drawPaintedWeapon(g, depth, NAVY_SABRE_BLADE, at, deg, tint);
+        drawPaintedWeapon(g, depth, NAVY_SABRE_HILT, at, deg, tint);
+      };
+      if (handsBusy(g)) both('backGear', backGrip(g, 48), backAngle(g, 48));
+      else if (handsLimp(g)) both('nearArm.held', droppedGrip(g, 0.7), -86);
+      else if (sabreAtHip(g)) stampPiece(g, 'torso.acc', NAVY_SABRE_HILT, navyArm(g, 'F').hand, NAVY_SABRE_HILT.angle, 'handF', tint);
+      else if (!handsReleased(g)) both('nearArm.held', g.rig.handN, swordAngle(g));
     },
   },
   {
@@ -1366,3 +1396,12 @@ export const ACCESSORY_ITEMS: ItemDef[] = [
     },
   },
 ];
+
+/**
+ * Whether his sabre rests in his far fist at his hip, as he drew it: in one of his officer's coats (they bend his
+ * far arm there), the far arm standing as at rest and its fist closed.
+ */
+export function sabreAtHip(g: DrawCtx): boolean {
+  const top = g.look.slots.top?.id ?? '';
+  return top.startsWith('top_navy_coat') && navyArm(g, 'F').still === 1 && !handsReleased(g);
+}

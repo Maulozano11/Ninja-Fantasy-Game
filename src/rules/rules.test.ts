@@ -208,6 +208,8 @@ describe('clans', () => {
       // The heroines are not his hand-made numbers: the creator's formula for their sheets.
       preset_lyra: [44, 32, 18, 15, 7],
       preset_aurelia: [38, 41, 13, 15, 7],
+      // The owner's navy officer: the creator's formula for his sheet too.
+      preset_navy_officer: [44, 36, 14, 14, 6],
     };
     assert.deepEqual(LEGENDARY_PRESETS.map((p) => p.character.id).sort(), Object.keys(owner).sort());
     for (const { character: c } of LEGENDARY_PRESETS) {

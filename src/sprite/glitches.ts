@@ -208,9 +208,11 @@ export const CAPE_POCKET_MAX = 48;
 
 /**
  * Closes a frame's pockets, cracks and light edge pixels in place (rgba, part and depth of each pixel):
- * - a pocket takes the piece furthest back round it, as if it went on behind the pieces in front: each
- *   pixel the colour of that piece's nearest pixel that is not line (its line where none is near). Up to
- *   POCKET_MAX pixels, CAPE_POCKET_MAX when that piece is the cape.
+ * - a pocket is filled only where `fill` says (never by default: the owner, 2026-10-23, "cosas que ya estan
+ *   bien las estamos rehaciendo"; a pocket is reported by findGlitches and looked at, not filled). Then it
+ *   takes the piece furthest back round it, as if it went on behind the pieces in front: each pixel the
+ *   colour of that piece's nearest pixel that is not line (its line where none is near). Up to POCKET_MAX
+ *   pixels, CAPE_POCKET_MAX when that piece is the cape.
  * - a crack takes the line across it, so the two parts meet.
  * - a light edge pixel takes its piece's line (`outline`, 0xRRGGBB).
  * With `keep`, what `keep` accepts all round is left as drawn.
@@ -223,6 +225,7 @@ export function mendGlitches(
   fx: (i: number) => boolean,
   outline: (i: number) => number,
   keep: (i: number) => boolean = () => false,
+  fill: (px: number[]) => boolean = () => false,
 ): number[] {
   const f: Flat = { rgba, part, fx };
   const changed: number[] = [];
@@ -234,7 +237,7 @@ export function mendGlitches(
   };
   const pockets = () => {
     for (const p of findPockets(f, CAPE_POCKET_MAX)) {
-      if (p.border.every(keep)) continue;
+      if (p.border.every(keep) || !fill(p.px)) continue;
       const back = p.border.reduce((b, k) => (top[k] < top[b] ? k : b), p.border[0]);
       if (p.px.length > POCKET_MAX && PARTS[part[back]] !== 'back') continue;
       // the back piece's pixels that are not line, up to four pixels in from the pocket

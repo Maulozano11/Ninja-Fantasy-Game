@@ -5,6 +5,7 @@ import { fitsBody, getItem } from './catalog';
 import { hexToRgb } from './color';
 import { Depth, DEPTHS, DrawCtx, ItemDef, NO_OUTLINE_DEPTHS, resolveParts } from './ctx';
 import { mendGlitches } from './glitches';
+import { keptFill } from './keptFills';
 import { closePinholes } from './holes';
 import { clipStowed, drawThrowKunai } from './items/accessories';
 import { joinFlat, openJoint } from './items/ankle';
@@ -390,11 +391,14 @@ export function renderSprite(
   const lineOf = (i: number) => (topMat[i] < 0 ? 0x07060b : parseInt(mats.ramps[topMat[i]][0].slice(1), 16));
   if (pose !== 'idle') closePinholes(rgba, part, top, (i) => top[i] === FX, lineOf);
   // The owner's standard characters (2026-10-23: "quiero que arregles solo los de la calidad standard"): off
-  // his pictures, the pockets, cracks and light edge pixels their moved pieces open are closed (glitches.ts).
-  if (pose !== 'idle' && standardLook(look)) {
-    // (his open-toed boots' bare toes are light to their tip as he drew them: kept)
+  // his pictures, the cracks and light edge pixels their moved pieces open are closed; a pocket only where he saw
+  // it filled and left it (glitches.ts, keptFills.ts).
+  const who = pose === 'idle' ? null : standardOf(look);
+  if (who) {
+    // (his open-toed boots' bare toes are light to their tip as he drew them: kept; the pockets are filled
+    // only where he saw them filled and left them: keptFills.ts)
     const toes = look.slots.feet?.id === 'feet_cowboy' ? new Set([partIndex('footN'), partIndex('footF')]) : new Set<number>();
-    mendGlitches(rgba, part, top, (i) => top[i] === FX, lineOf, (i) => toes.has(part[i]));
+    mendGlitches(rgba, part, top, (i) => top[i] === FX, lineOf, (i) => toes.has(part[i]), (px) => keptFill(`${who}@${look.body}`, pose, frame, px));
     hisLine(rgba, part, top);
     dropLooseBits(rgba, part, top);
   }
@@ -451,11 +455,12 @@ function layFrame(rgba: Uint8ClampedArray, part: Uint8Array, hair: Uint8Array, l
  * layer's own fill, so the two never stack into a 2px dark line. Silhouette
  * outlines (next to transparency) are always kept.
  */
-/** A look of the owner's standard characters on this branch: his Trunks 2 (shirt, cargo trousers) and Trunks 3 (bomber, belted trousers). */
-function standardLook(look: SpriteAppearance): boolean {
+/** Which of the owner's standard characters a look is on this branch (keptFills.ts names), or null: his Trunks 2 (shirt, cargo trousers) and Trunks 3 (bomber, belted trousers). */
+function standardOf(look: SpriteAppearance): string | null {
   const top = look.slots.top?.id;
   const bottom = look.slots.bottom?.id;
-  return (top === 'top_highcollar' && bottom === 'bottom_cargo') || (top === 'top_bomber' && bottom === 'bottom_leggings');
+  if (top === 'top_highcollar' && bottom === 'bottom_cargo') return 'trunks2';
+  return top === 'top_bomber' && bottom === 'bottom_leggings' ? 'trunks3' : null;
 }
 
 /**

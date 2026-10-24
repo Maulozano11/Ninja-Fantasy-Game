@@ -119,6 +119,27 @@ All item and preset names are original. Never use names, symbols or logos from e
 
 The headband is plain cloth only (the owner, 2026-10-22: "deja la pura bandana la pura tela"): no metal plate, no emblem or engraved village symbol, no slash across it (`items/headband.ts`). It replaced his earlier "quita las bandanas". Don't add a plate or symbol back.
 
+## Known errors — check every new character
+
+The owner, 2026-10-23: *"quiero que arregles solo los de la calidad standard"*. On his standard characters
+(`compose.ts` `standardOf`) every frame but idle and his own painted frames goes through `mendGlitches`
+(`src/sprite/glitches.ts`), which closes only what is clearly a dead pixel: a light pixel on the figure's
+edge where his black line is missing (*borde claro*), a one-pixel crack along a seam where two parts that
+meet have come apart (*grieta*), and a bit of a few pixels loose from the figure. `src/sprite/standardMend.test.ts`
+checks it.
+
+**A pocket (*hueco*) is never filled.** Background walled in by the figure is reported by `findGlitches`
+and looked at, never closed by the code: it is nearly always the separation he draws. The owner, on the
+Roman walking and running: *"estas confundiendo el hueco no es pixeles muertos ahi si es la separacion de
+brazo y cuerpo no te confundas y hagas esto con los demas tambien"*; on Lyra's attack: *"aqui tambien
+estas confundiendo en las marcadas"*; on Aurelia (under the chin, between her thigh, shin and skirt, her arm
+and body): *"aqui tambien estas cometiendo ese error demasiado porfavor no lo repitas mas en ningun personaje
+porque cosas que ya estan bien las estamos rehaciendo"*. `mendGlitches` fills a pocket only where its `fill`
+says; the only fills are the ones he saw on the sheets and left unmarked, listed one by one in
+`src/sprite/keptFills.ts` (a pixel of each, by character, body, pose and frame). When he marks a fill
+wrong, its entry goes; a new one is never added without his eye. A pocket that looks wrong is shown to him
+first, never filled on its own.
+
 ## Checklist for a new item
 
 1. Render `npm run sprites -- item <id>` and check every body and pose.

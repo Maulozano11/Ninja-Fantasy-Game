@@ -28,7 +28,7 @@ export const HK_EYES: Record<'open' | 'lowered' | 'closed', { near: PaintedEye; 
       rows: ['aaaab', 'cdefh'],
     },
     far: {
-      letters: ['bbL', 'whi'],
+      letters: ['bbL', 'wii'],
       rows: ['ija', 'dkm'],
     },
   },

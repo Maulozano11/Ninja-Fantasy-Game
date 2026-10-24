@@ -174,6 +174,8 @@ def kind(c):
     hd = h * 360
     if L > 225 and s < 0.12:
         return 'white'
+    if b > r + 20 and g > r + 20 and L > 150:
+        return 'cyan'
     if b > r + 25 and b >= g - 10 and s > 0.35:
         return 'blue' if g < b - 20 else 'cyan'
     if g > r + 20 and g > b - 10 and s > 0.3:
@@ -395,7 +397,8 @@ BLADE_KINDS = ('cyan', 'steel', 'blue', 'white', 'ivory', 'line')
 def sword_mask(fig):
     """The sword's pixels in a figure: from his blade's colours down its middle (BLADE), every pixel of his
     reached through the sword's polygons (SWORD) and the blade's strip without crossing his black line, and
-    his line round them there."""
+    his line round them there. Only his sword's own colours (SWORD_KINDS): where her dark cloth meets the guard
+    without a line of his between, the fill stops."""
     a = figure_native(fig)
     H, W, _ = a.shape
     K = kinds(a)
@@ -404,14 +407,14 @@ def sword_mask(fig):
     for pts in SWORD:
         env |= inside(pts, H, W)
     env &= figure_mask(fig)
-    seeds = blade_mask(fig, H, W, 1.0) & np.isin(K, ('cyan', 'white'))
+    seeds = blade_mask(fig, H, W, 2.0) & np.isin(K, ('cyan', 'white', 'ivory'))
     # (the pommel past the fist: his steel and gold in its polygon)
     seeds |= inside(SWORD[0], H, W) & np.isin(K, ('steel', 'gold', 'ivory', 'white'))
     out = np.zeros((H, W), bool)
     st = list(zip(*np.nonzero(seeds)))
     while st:
         y, x = st.pop()
-        if out[y, x] or not env[y, x] or line[y, x]:
+        if out[y, x] or not env[y, x] or line[y, x] or K[y, x] not in SWORD_KINDS + ('green',):
             continue
         out[y, x] = True
         st += [(y + 1, x), (y - 1, x), (y, x + 1), (y, x - 1)]
@@ -450,7 +453,7 @@ POLYS = {
         'hairBack': [[(8, 26), (31, 26), (31, 32), (24, 36), (21, 47), (18, 63), (8, 63)]],
     },
     'rogue': {
-        'handN': [[(15, 66), (28, 66), (28, 81), (15, 81)]],
+        'handN': [[(15, 66), (28, 66), (28, 72), (24, 74), (22, 77), (21, 81), (15, 81)]],
         'foreN': [[(18, 57), (30, 57), (30, 66), (18, 66)]],
         'upperN': [[(19, 45), (33, 45), (33, 57), (19, 57)]],
         'pauldN': [[(23, 27), (47, 27), (47, 44), (40, 47), (31, 52), (23, 52)]],
@@ -461,16 +464,16 @@ POLYS = {
         'upperF': [[(55, 46), (64, 46), (64, 57), (55, 57)]],
         'foreF': [[(56, 57), (67, 57), (67, 66), (56, 66)]],
         'handF': [[(57, 66), (71, 66), (71, 82), (57, 82)]],
-        'thighN': [[(32, 80), (45, 80), (45, 93), (32, 93)]],
-        'shinN': [[(20, 92), (37, 92), (37, 120), (20, 120)]],
-        'footN': [[(17, 119), (37, 119), (37, 133), (17, 133)]],
-        'thighF': [[(46, 82), (54, 82), (54, 92), (46, 92)]],
-        'shinF': [[(45, 92), (63, 92), (63, 117), (45, 117)]],
-        'footF': [[(46, 116), (73, 116), (73, 131), (46, 131)]],
+        'thighN': [[(36, 82), (45, 82), (45, 92), (36, 92)]],
+        'shinN': [[(33, 91), (42, 91), (42, 100), (36, 104), (35, 118), (23, 118), (25, 104), (31, 100)]],
+        'footN': [[(21, 118), (36, 118), (36, 132), (21, 132)]],
+        'thighF': [[(49, 84), (56, 84), (56, 91), (49, 91)]],
+        'shinF': [[(55, 91), (64, 91), (64, 101), (59, 104), (59, 117), (48, 117), (49, 104), (55, 100)]],
+        'footF': [[(46, 116), (72, 116), (72, 131), (46, 131)]],
         'hairBack': [[(8, 26), (26, 26), (26, 50), (20, 58), (8, 58)]],
     },
     'dragon': {
-        'handN': [[(15, 68), (25, 68), (25, 79), (15, 79)]],
+        'handN': [[(15, 68), (25, 68), (25, 73), (22, 76), (21, 79), (15, 79)]],
         'foreN': [[(17, 57), (29, 57), (29, 68), (17, 68)]],
         'upperN': [[(18, 49), (31, 49), (31, 57), (18, 57)]],
         'pauldN': [[(17, 29), (41, 29), (41, 50), (31, 52), (17, 52)]],
@@ -534,20 +537,21 @@ def components(mask, conn8=False):
 _LABELS = {}
 
 
-def labels(fig):
+def labels(fig, skip=()):
     """Which part each pixel of a figure is (a (134, 80) array of part names, '' off the figure): each part's
     polygons (POLYS, SHARED) front to back, then snapped to his line: a cell of his colours walled in by his
     line goes whole to the part most of it is in (CELL_MAJORITY), and his line between parts to the frontmost
     part beside it."""
-    if fig in _LABELS:
-        return _LABELS[fig].copy()
+    key = (fig, tuple(skip))
+    if key in _LABELS:
+        return _LABELS[key].copy()
     a = figure_native(fig)
     m = figure_mask(fig)
     H, W = m.shape
     raw = np.full((H, W), '', dtype='<U10')
     free = m.copy()
     polys = POLYS[fig]
-    for name in ORDER.get(fig, PARTS):
+    for name in [n for n in ORDER.get(fig, PARTS) if n not in skip]:
         if name == 'cape':
             raw[free] = 'cape'
             break
@@ -572,7 +576,7 @@ def labels(fig):
         nb = [out[y + dy, x + dx] for dy in (-1, 0, 1) for dx in (-1, 0, 1) if (dy or dx) and 0 <= y + dy < H and 0 <= x + dx < W and m[y + dy, x + dx] and not line[y + dy, x + dx]]
         if nb:
             out[y, x] = min(nb, key=lambda n: rank[n])
-    _LABELS[fig] = out
+    _LABELS[key] = out
     return out.copy()
 
 
@@ -637,7 +641,7 @@ def raw_frame(fig):
     return lay(rgb, out, hrgb, hlab, ('head',))
 
 
-def lay(rgb, lab, srgb, slab, shared):
+def lay(rgb, lab, srgb, slab, shared, under=None):
     """`shared` parts (srgb, slab) laid on a figure (rgb, lab) where the game draws them over what is there
     (DRAWN: nothing of the figure's in front of them); where the figure's own such parts showed and the laid
     ones do not cover them, its own parts under them continue (the commonest part of its neighbours, a ring at
@@ -651,6 +655,12 @@ def lay(rgb, lab, srgb, slab, shared):
     rgb[theirs] = srgb[theirs]
     lab[theirs] = slab[theirs]
     left = own & ~theirs
+    # where the figure's own part under them is known (`under`: its labels with the shared parts left out), its
+    # own pixels there are that part's
+    if under is not None:
+        known = left & (under != '') & ~np.isin(under, shared)
+        lab[known] = under[known]
+        left &= ~known
     for _ in range(8):
         if not left.any():
             break
@@ -673,10 +683,15 @@ def lay(rgb, lab, srgb, slab, shared):
     return rgb, lab
 
 
-# The parts back to front as the game draws them (src/sprite/ctx.ts DEPTHS): the cape, the long hair, the far
+# The parts back to front as the game draws them (src/sprite/ctx.ts DEPTHS, and within a depth the items in
+# compose.ts SLOT_ORDER, each item its pieces in turn): the cape, the long hair, the far
 # arm, the legs, the skirt, the torso, the belt, the head, the sword, the near arm.
-DRAWN = ['cape', 'hairBack', 'handF', 'foreF', 'upperF', 'pauldF', 'thighF', 'shinF', 'footF', 'thighN', 'shinN', 'footN', 'skirt',
-         'torso', 'belt', 'head', 'blade', 'handN', 'foreN', 'upperN', 'pauldN']
+DRAWN = ['cape', 'hairBack', 'upperF', 'pauldF', 'foreF', 'handF', 'thighF', 'footF', 'shinF', 'thighN', 'footN', 'shinN', 'skirt',
+         'torso', 'belt', 'head', 'blade', 'upperN', 'pauldN', 'foreN', 'handN']
+# (the rogue's hood and collar are her cape's: the collar over her corset, the hood over her near arm)
+DRAWN_OF = {'rogue': [n for n in DRAWN if n not in ('pauldF', 'pauldN')]}
+DRAWN_OF['rogue'].insert(DRAWN_OF['rogue'].index('torso') + 1, 'pauldF')
+DRAWN_OF['rogue'].append('pauldN')
 
 
 def composed(fig):
@@ -686,7 +701,14 @@ def composed(fig):
     if fig == SHARED_FROM:
         return rgb, lab
     prgb, plab = raw_frame(SHARED_FROM)
-    return lay(rgb, lab, prgb, np.where(np.isin(plab, ('hairBack', 'blade')), plab, ''), ('hairBack', 'blade'))
+    # under her own sword, where the paladin's does not lie, her own pixels are the parts he drew there
+    rows, cols = kept(fig)
+    fr, fc = to_frame(fig)
+    under = np.full((GRID, GRID), '', dtype='<U10')
+    alt = labels(fig, skip=('blade',))[np.ix_(rows, cols)]
+    under[fr[0]:fr[-1] + 1, fc[0]:fc[-1] + 1] = alt
+    under[lab != 'blade'] = ''
+    return lay(rgb, lab, prgb, np.where(np.isin(plab, ('hairBack', 'blade')), plab, ''), ('hairBack', 'blade'), under)
 
 
 def his_line():
@@ -805,8 +827,77 @@ def clean(fig, rgb, lab):
             elif luma(rgb[y, x]) > 150 and all(luma(rgb[q]) < luma(rgb[y, x]) - 50 for q in nb):
                 rgb[y, x] = mode
                 K[y, x] = kind(mode)
+    if fig in SCALES:
+        scales(fig, rgb, lab)
     gems(fig, rgb, lab)
     return rgb, lab
+
+
+# The dragon's scale armour (the owner: scales a regular pattern): these parts' copper is laid as rows of
+# scales, his light where he lit the armour and his shadow where he shaded it.
+SCALES = {'dragon': ('torso', 'pauldF', 'upperN', 'upperF', 'foreN', 'foreF', 'handF', 'thighN', 'thighF', 'shinN', 'shinF')}
+SCALE_KINDS = ('warm', 'red', 'skin', 'plum')
+# One scale, 4 across and 2 down (each row of scales two across from the one above, so their edges run as
+# overlapping arcs): its lit top, its body and its shaded edge, as steps down his copper (0 his light for that
+# part of the armour, 2 the darkest).
+SCALE_TILE = [
+    [0, 0, 1, 2],
+    [1, 1, 2, 1],
+]
+
+
+def scales(fig, rgb, lab):
+    """His copper on the scale parts (SCALES) laid as a regular pattern of scales (SCALE_TILE) in his own
+    colours: a ramp of five of his copper colours (the commonest at each fifth of their lightness), and at each
+    pixel how lit he drew the armour there (the mean lightness round it), so the pattern keeps his light and
+    shade. His line round each part and his longer lines inside it (the edges of his plates), his brightest
+    lights, his gold, steel and gems stay."""
+    H, W = lab.shape
+    m = np.isin(lab, SCALES[fig])
+    K = np.array([[kind(rgb[y, x]) if m[y, x] else '' for x in range(W)] for y in range(H)])
+    copper = m & np.isin(K, SCALE_KINDS)
+    # his line inside a part (the gaps between his scales) goes with the scales; his line round the part stays
+    inner_line = m & (K == 'line')
+    # (a speck of it: his longer lines inside, the edges of his plates, stay)
+    for c in components(inner_line, True):
+        if len(c) > 2:
+            continue
+        for y, x in c:
+            if all(0 <= y + dy < H and 0 <= x + dx < W and lab[y + dy, x + dx] == lab[y, x] for dy in (-1, 0, 1) for dx in (-1, 0, 1)):
+                copper[y, x] = True
+    # his copper ramp: the commonest of his copper colours (hue up to 30 degrees, saturated) at each fifth of
+    # its lightness, darkest first
+    pix = [tuple(rgb[y, x]) for y, x in zip(*np.nonzero(m & np.isin(K, SCALE_KINDS)))]
+    def is_copper(c):
+        h, sat, v = colorsys.rgb_to_hsv(*(np.array(c) / 255))
+        return (h * 360 <= 30 or h * 360 >= 350) and sat > 0.3 and v > 0.25
+    pix = [c for c in pix if is_copper(c)]
+    if len(pix) < 20:
+        return
+    lum_of = np.array([luma(c) for c in pix])
+    ramp = []
+    for q in (0.1, 0.3, 0.5, 0.7, 0.92):
+        t = np.quantile(lum_of, q)
+        near = [c for c, l in zip(pix, lum_of) if abs(l - t) <= 12]
+        ramp.append(max(sorted(set(near)), key=near.count))
+    L = luma(rgb.astype(float))
+    lums = []
+    lum = {}
+    for y, x in zip(*np.nonzero(copper)):
+        q = [(y + dy, x + dx) for dy in (-2, -1, 0, 1, 2) for dx in (-2, -1, 0, 1, 2) if 0 <= y + dy < H and 0 <= x + dx < W and m[y + dy, x + dx] and K[y + dy, x + dx] != 'line']
+        lum[(y, x)] = np.mean([L[p] for p in q]) if q else L[y, x]
+        lums.append(lum[(y, x)])
+    # how lit the armour is here: which fifth of the parts' light
+    edges = np.quantile(lums, [0.2, 0.4, 0.6, 0.8])
+    # his brightest lights (the shine on a shoulder or a knee) stay his
+    shine = np.quantile(lum_of, 0.96)
+    for (y, x), l in lum.items():
+        if L[y, x] >= shine and K[y, x] != 'line':
+            continue
+        band = y // 2
+        step = SCALE_TILE[y % 2][(x + 2 * (band % 2)) % 4]
+        lit = int(np.searchsorted(edges, l))
+        rgb[y, x] = ramp[max(0, min(4, lit + 1 - step))]
 
 
 # A gem of his (his blue, GEM_KINDS) of at least GEM_LEAST pixels is at least 2 x 2 at our scale; a single
@@ -1079,14 +1170,115 @@ FACE_BOX = (121, 134, 132, 146)
 FACE_BROW = 138
 
 
+# How each part is continued where the parts in front of it hide it at rest (complete()): along its columns
+# (an arm, a leg, a tabard's stripes, long hair) or its rows (the torso, the belt, the cape behind her).
+FILL_AXIS = {'torso': 'rows', 'belt': 'rows', 'cape': 'rows', 'skirt': 'cols', 'pauldN': 'cols', 'pauldF': 'cols',
+             'upperN': 'cols', 'upperF': 'cols', 'foreN': 'cols', 'foreF': 'cols', 'thighN': 'cols', 'thighF': 'cols',
+             'shinN': 'cols', 'shinF': 'cols', 'hairBack': 'cols'}
+
+
+def hull(mask):
+    """The cells inside the convex hull of a mask's cells (their middles)."""
+    ys, xs = np.nonzero(mask)
+    pts = sorted(set((x + 0.5, y + 0.5) for y, x in zip(ys, xs)))
+    cross = lambda o, a, b: (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0])
+
+    def half(ps):
+        h = []
+        for p in ps:
+            while len(h) >= 2 and cross(h[-2], h[-1], p) <= 0:
+                h.pop()
+            h.append(p)
+        return h[:-1]
+
+    hl = half(pts) + half(pts[::-1])
+    H, W = mask.shape
+    yy, xx = np.mgrid[0:H, 0:W]
+    px, py = xx + 0.5, yy + 0.5
+    out = np.ones((H, W), bool)
+    for k in range(len(hl)):
+        a, b = hl[k], hl[(k + 1) % len(hl)]
+        out &= (b[0] - a[0]) * (py - a[1]) - (b[1] - a[1]) * (px - a[0]) >= -1e-9
+    return out
+
+
+# What a continued part copies (complete()): his cloth's own body, not its trim, gems, embers or the blade's light.
+FILL_NOT = {'cape': ('gold', 'blue', 'cyan', 'ember', 'steel', 'ivory', 'white', 'green'), 'skirt': ('blue', 'cyan', 'white'),
+            # (the rogue's bare thigh shows only where her skirt is torn: under it, her leggings)
+            'thighN': ('blue', 'cyan', 'skin'), 'thighF': ('blue', 'cyan', 'skin')}
+
+
+# The joints a part reaches to under what hides it (its hull takes them in): the torso to the shoulders, a limb
+# to the joints at its ends, the cape up to the shoulders.
+REACH = {'torso': ('shoulderN', 'shoulderF', 'neck'), 'upperN': ('shoulderN', 'elbowN'), 'upperF': ('shoulderF', 'elbowF'),
+         'foreN': ('elbowN', 'wristN'), 'foreF': ('elbowF', 'wristF'), 'thighN': ('hipN', 'kneeN'), 'thighF': ('hipF', 'kneeF'),
+         'shinN': ('kneeN', 'ankleN'), 'shinF': ('kneeF', 'ankleF'), 'cape': ('shoulderN', 'shoulderF')}
+# The cape behind her body is its lining in shade: one colour of his (the commonest of its darker half), not
+# streaks of its edges carried across.
+FLAT = ('cape',)
+
+
+def complete(lab, name, mask, col, axis, fig=SHARED_FROM):
+    """A piece continued where the parts drawn in front of it (DRAWN) hide it at rest, within the hull of its
+    own cells: each hidden cell takes the piece's nearest pixel of his that is not his line along its columns
+    or rows (axis), else the nearest at all; a filled cell on the hull's edge is his line. At rest nothing
+    changes: the parts in front cover every filled cell. Returns (mask, colours)."""
+    order = DRAWN_OF.get(fig, DRAWN)
+    rank = {n: i for i, n in enumerate(order)}
+    front = np.isin(lab, [n for n in order if rank[n] > rank[name]])
+    reach = mask.copy()
+    for j in REACH.get(name, ()):
+        x, y = his_joint(j)
+        reach[int(y), int(x)] = True
+    hm = hull(reach)
+    add = hm & front & ~mask
+    if not add.any():
+        return mask, col
+    c = col.copy()
+    solid = mask & ~is_line(col)
+    bad = FILL_NOT.get(name, ('blue', 'cyan'))
+    solid &= ~np.array([[solid[y, x] and kind(col[y, x]) in bad for x in range(GRID)] for y in range(GRID)])
+    sy, sx = np.nonzero(solid)
+    if not len(sy):
+        return mask, col
+    flat = None
+    if name in FLAT:
+        cl = [tuple(col[y, x]) for y, x in zip(sy, sx)]
+        med = np.median([luma(c) for c in cl])
+        dark = [c for c in cl if luma(c) <= med]
+        flat = np.array(max(sorted(set(dark)), key=dark.count))
+    for y, x in zip(*np.nonzero(add)):
+        if flat is not None:
+            c[y, x] = flat
+            continue
+        if axis == 'cols':
+            cand = [(abs(yy - y), yy, x) for yy in np.nonzero(solid[:, x])[0]]
+        else:
+            cand = [(abs(xx - x), y, xx) for xx in np.nonzero(solid[y])[0]]
+        if not cand:
+            d = (sy - y) ** 2 + (sx - x) ** 2
+            k = int(np.argmin(d))
+            cand = [(0, sy[k], sx[k])]
+        _, qy, qx = min(cand)
+        c[y, x] = col[qy, qx]
+    m = mask | add
+    edge = add & ~(np.roll(hm, 1, 0) & np.roll(hm, -1, 0) & np.roll(hm, 1, 1) & np.roll(hm, -1, 1))
+    c[edge] = his_line()
+    return m, c
+
+
 def set_pieces(fig):
     """A set's game() cut into the pieces its items stamp: {part: (mask, colours)} in our frame, each a part's
-    pixels with his line round them (cut())."""
+    pixels with his line round them (cut()), continued where the parts in front of it hide it at rest
+    (complete()), so it is whole when it moves apart from them."""
     rgb, lab = game(fig)
     out = {}
     for n in ('torso', 'pauldN', 'pauldF', 'upperN', 'upperF', 'foreN', 'foreF', 'handN', 'handF', 'belt', 'skirt',
               'thighN', 'thighF', 'shinN', 'shinF', 'footN', 'footF', 'cape'):
-        out[n] = cut(rgb, lab, [n])
+        m, c = cut(rgb, lab, [n])
+        if n in FILL_AXIS and m.any():
+            m, c = complete(lab, n, m, c, FILL_AXIS[n], fig)
+        out[n] = (m, c)
     return out
 
 
@@ -1105,7 +1297,8 @@ def head_pieces():
     # his line round the face goes with it too
     ln = is_line(rgb) & head
     face_l = face | (ln & near4(face & ~ln))
-    return {'face': (face_l, rgb.copy()), 'hair': (hair, rgb.copy()), 'hairBack': cut(rgb, lab, ['hairBack']),
+    glab = game(SHARED_FROM)[1]
+    return {'face': (face_l, rgb.copy()), 'hair': (hair, rgb.copy()), 'hairBack': complete(glab, 'hairBack', *cut(rgb, lab, ['hairBack']), 'cols'),
             'sword': cut(rgb, lab, ['blade'], False)}
 
 

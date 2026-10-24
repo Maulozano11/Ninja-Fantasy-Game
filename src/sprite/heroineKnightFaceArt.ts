@@ -7,7 +7,7 @@ import type { PaintedPiece } from './painted';
 export const HK_FACE_SKIN = '#febf9c';
 
 /** What each of his colours is, as the script sorts them (tools/refs/heroine_knights_ref.py kind). */
-export const HK_FACE_KIND: Record<string, 'gold' | 'green' | 'ivory' | 'line' | 'red' | 'skin' | 'warm' | 'white'> = {
+export const HK_FACE_KIND: Record<string, 'cyan' | 'gold' | 'green' | 'ivory' | 'line' | 'red' | 'skin' | 'warm' | 'white'> = {
   '#000100': 'line',
   '#085a43': 'green',
   '#106650': 'green',
@@ -24,7 +24,7 @@ export const HK_FACE_KIND: Record<string, 'gold' | 'green' | 'ivory' | 'line' | 
   '#70372e': 'warm',
   '#80372f': 'red',
   '#854832': 'warm',
-  '#88b6ab': 'warm',
+  '#88b6ab': 'cyan',
   '#8c604c': 'warm',
   '#aa5c43': 'warm',
   '#c88f7c': 'skin',

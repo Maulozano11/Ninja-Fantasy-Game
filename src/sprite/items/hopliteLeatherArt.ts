@@ -9,8 +9,8 @@ import type { PaintedPiece } from '../painted';
 /** His colours the colour slots recolour from (at these, every pixel is his). */
 export const HOPLITE_LEATHER_MAIN = '#443633';
 export const HOPLITE_LEATHER_COLLAR = '#1f2638';
-export const HOPLITE_LEATHER_IRON = '#6c6c6f';
-export const HOPLITE_LEATHER_GOLD = '#4c4240';
+export const HOPLITE_LEATHER_IRON = '#443633';
+export const HOPLITE_LEATHER_GOLD = '#8e643e';
 
 /** Where each piece lands in our male idle frame 0 (his joints), unturned: the fine pixel of its first row's first cell. */
 export const HOPLITE_LEATHER_REST: Record<string, [number, number]> = {
@@ -171,69 +171,49 @@ export const HOPLITE_LPAULDRON_N: PaintedPiece = {
   angle: 105.61,
   rows: [
     '......aaaa....',
-    '.....abbcda...',
-    'a...aeefhija..',
-    'aaaabkeliiima.',
-    '.aaacbnpqrrjla',
-    '...annnnnnhhha',
-    '...aclennsteea',
-    '...acuvennnkaa',
-    '..abbwleexaa..',
-    '..aaxxyxxa....',
+    '.....abbbba...',
+    'a...accbddda..',
+    'aaaaeecbfhdda.',
+    '.aaaeeicddddba',
+    '...aiiiiibfffa',
+    '...aebciijkcca',
+    '...abdlciiibaa',
+    '..abfdbccmaa..',
+    '..aammnmma....',
     '....aaaaa.....',
   ],
   colors: {
     a: '#000418',
-    b: '#4e3026',
-    c: '#43302a',
-    d: '#9c6e44',
-    e: '#2b2122',
-    f: '#54362c',
-    h: '#4a3a3a',
-    i: '#7c7c82',
-    j: '#4c4240',
-    k: '#785436',
-    l: '#443633',
-    m: '#584d49',
-    n: '#8e643e',
-    p: '#6c4632',
-    q: '#a57544',
-    r: '#6c6c6f',
-    s: '#222029',
-    t: '#171820',
-    u: '#6c6260',
-    v: '#352222',
-    w: '#665c5a',
-    x: '#885d36',
-    y: '#22161e',
+    b: '#443633',
+    c: '#2b2122',
+    d: '#4c4240',
+    e: '#362c2a',
+    f: '#4a3a3a',
+    h: '#584d49',
+    i: '#8e643e',
+    j: '#222029',
+    k: '#171820',
+    l: '#352222',
+    m: '#885d36',
+    n: '#22161e',
   },
 };
 
 /** What each colour of HOPLITE_LPAULDRON_N is (tools/refs/bronze_ref.py material): his line and near-blacks are never tinted. */
-export const HOPLITE_LPAULDRON_N_KIND: Record<string, 'dark' | 'grey' | 'hair' | 'line' | 'warm'> = {
+export const HOPLITE_LPAULDRON_N_KIND: Record<string, 'dark' | 'grey' | 'line' | 'warm'> = {
   '#000418': 'line',
   '#171820': 'dark',
   '#22161e': 'dark',
-  '#222029': 'hair',
-  '#2b2122': 'warm',
+  '#222029': 'grey',
+  '#2b2122': 'grey',
   '#352222': 'warm',
-  '#43302a': 'warm',
-  '#443633': 'warm',
-  '#4a3a3a': 'warm',
-  '#4c4240': 'warm',
-  '#4e3026': 'warm',
-  '#54362c': 'warm',
-  '#584d49': 'warm',
-  '#665c5a': 'grey',
-  '#6c4632': 'warm',
-  '#6c6260': 'grey',
-  '#6c6c6f': 'grey',
-  '#785436': 'warm',
-  '#7c7c82': 'grey',
+  '#362c2a': 'grey',
+  '#443633': 'grey',
+  '#4a3a3a': 'grey',
+  '#4c4240': 'grey',
+  '#584d49': 'grey',
   '#885d36': 'warm',
   '#8e643e': 'warm',
-  '#9c6e44': 'warm',
-  '#a57544': 'warm',
 };
 
 /** His far iron pauldron: rides the far shoulder. */
@@ -249,31 +229,29 @@ export const HOPLITE_LPAULDRON_F: PaintedPiece = {
     '.afha.',
     '..aha.',
     '..aia.',
-    '...aja',
+    '...aba',
     '....aa',
   ],
   colors: {
     a: '#000418',
     b: '#443633',
-    c: '#584d49',
+    c: '#4a3a3a',
     d: '#43302a',
-    e: '#665c5a',
+    e: '#584d49',
     f: '#362c2a',
     h: '#a57544',
     i: '#6c4632',
-    j: '#4a3a3a',
   },
 };
 
 /** What each colour of HOPLITE_LPAULDRON_F is (tools/refs/bronze_ref.py material): his line and near-blacks are never tinted. */
 export const HOPLITE_LPAULDRON_F_KIND: Record<string, 'grey' | 'line' | 'warm'> = {
   '#000418': 'line',
-  '#362c2a': 'warm',
+  '#362c2a': 'grey',
   '#43302a': 'warm',
-  '#443633': 'warm',
-  '#4a3a3a': 'warm',
-  '#584d49': 'warm',
-  '#665c5a': 'grey',
+  '#443633': 'grey',
+  '#4a3a3a': 'grey',
+  '#584d49': 'grey',
   '#6c4632': 'warm',
   '#a57544': 'warm',
 };

@@ -461,6 +461,9 @@ def labels(a, parts=None):
 # cells under it are all near one lightness (within FLAT), simply their commonest colour.
 FIG = 0.5
 LINE_IN = 0.7
+# His face's line where it covers this much (his brows and lids are drawn heavy and black: half a pixel of
+# them is his lid line at our scale, not a reddish shadow).
+LINE_IN_OF = {'face': 0.5}
 FLAT = 34
 # How much of a pixel his dark half must cover to win it (pick_colour); MODE 'mode' takes the commonest
 # colour under it whatever its lightness.
@@ -488,6 +491,10 @@ FEATURE_CONTRAST = 45
 NO_FEATURES = ('face',)
 KEEP_SPLIT = ('face', 'hair', 'diadem')
 SURFACE_DARK = 0.0
+# Pieces whose surface is all one material of his (his iron pauldrons: his grey iron, never his gold trim
+# spread over it; the cleaning draws his trim back as his lines).
+SURFACE_KIND = {'lpauldron_n': 'leather', 'lpauldron_f': 'leather'}
+SURFACE_GREY = 18
 
 
 def footprint(M, i, j):
@@ -659,7 +666,7 @@ def reduce(a, lab, names, M, K=None, own=None):
             dk, lt, fd = split_colours(solid, a)
             halves[(j, i)] = (dk, lt)
             # the lightness of his surface under it (the light half, or all of it when flat) and its material
-            Ls = sorted((float(luma(a[y, x])), w, K[y, x]) for y, x, w in solid)
+            Ls = sorted((float(luma(a[y, x])), w, K[y, x]) for y, x, w in solid if n not in SURFACE_KIND or K[y, x] == SURFACE_KIND[n]) or sorted((float(luma(a[y, x])), w, K[y, x]) for y, x, w in solid)
             wsum = sum(w for _, w, _ in Ls)
             if fd > 0:
                 lthr = 0.299 * dk[0] + 0.587 * dk[1] + 0.114 * dk[2]
@@ -725,14 +732,18 @@ def reduce(a, lab, names, M, K=None, own=None):
             if n in KEEP_SPLIT or tuple(col[j, i]) == tuple(dk) and dfrac[j, i] > SURFACE_DARK:
                 continue
             l0, k0 = surf[(j, i)]
+            k0 = SURFACE_KIND.get(n, k0)
             tot, wsum = 2 * l0, 2
             for dj in (-1, 0, 1):
                 for di in (-1, 0, 1):
                     q = (j + dj, i + di)
-                    if (dj or di) and who[q] == n and q in surf and surf[q][1] == k0:
+                    if (dj or di) and who[q] == n and q in surf and (surf[q][1] == k0 or n in SURFACE_KIND):
                         tot += surf[q][0]
                         wsum += 1
             r = ramp.get((n, k0))
+            if r and n in SURFACE_KIND:
+                # (his greys of it, not the brown leather of the same kind)
+                r = [c for c in r if max(c) - min(c) <= SURFACE_GREY] or r
             if r:
                 m = tot / wsum
                 col[j, i] = min(r, key=lambda c: (abs(0.299 * c[0] + 0.587 * c[1] + 0.114 * c[2] - m), c))
@@ -778,7 +789,7 @@ def reduce(a, lab, names, M, K=None, own=None):
                 col[q] = c_
                 MARKS.add(q)
     # 1. his line through the pixel
-    cand = fig & (frac >= LINE_IN)
+    cand = fig & (frac >= np.vectorize(lambda n: LINE_IN_OF.get(n, LINE_IN))(who))
     for j, i in zip(*np.nonzero(cand)):
         if any(cand[j + dj, i + di] for dj in (-1, 0, 1) for di in (-1, 0, 1) if dj or di):
             isl[j, i] = True
@@ -849,29 +860,39 @@ def reduce(a, lab, names, M, K=None, own=None):
             fixed[j, i] = max(sorted(tally), key=lambda c: tally[c])
     col = fixed
     col[isl] = black
-    # His eyes (EYE_KINDS: his red irises and their whites) where they cover EYE_SHARE of a pixel: that
-    # pixel is the eye, in his commonest colour of that kind under it (red first), never his line or skin,
-    # so his red eyes stay red at our scale.
+    # His eyes (EYE_KINDS: his red irises and their whites) where they cover EYE_SHARE of a pixel (more for the
+    # iris, so his red does not run down onto the cheek below it): that pixel is the eye, never his line or
+    # skin, the iris in his brightest red under it and the white in his commonest white, and the pixel above
+    # each is his lid line (his heavy black lid, which at our scale falls between two rows), so each eye reads
+    # as a lid, a small white and a red iris.
+    eye = []
     for (j, i), cells in feet.items():
         if who[j, i] not in EYE_PIECES:
             continue
         tot = sum(w for _, _, w in cells)
         for k in EYE_KINDS:
-            mine = [(y, x, w) for y, x, w in cells if K[y, x] == k and lab[y, x] == who[j, i]]
-            if sum(w for _, _, w in mine) >= EYE_SHARE * tot:
+            # (his iris: every red of his there, his darkest reds round the pupil too)
+            is_k = (lambda y, x: int(a[y, x][0]) >= 0x30 and int(a[y, x][0]) > 2.5 * max(int(a[y, x][1]), int(a[y, x][2]))) if k == 'red' else (lambda y, x: K[y, x] == k)
+            mine = [(y, x, w) for y, x, w in cells if is_k(y, x) and lab[y, x] == who[j, i]]
+            if sum(w for _, _, w in mine) >= EYE_SHARE[k] * tot:
                 tally = {}
                 for y, x, w in mine:
                     t = tuple(int(v) for v in a[y, x])
                     tally[t] = tally.get(t, 0) + w
-                col[j, i] = max(sorted(tally), key=lambda t: tally[t])
+                col[j, i] = max(sorted(tally), key=lambda t: t[0]) if k == 'red' else max(sorted(tally), key=lambda t: tally[t])
                 isl[j, i] = False
+                eye.append((j, i))
                 break
+    for j, i in eye:
+        if who[j - 1, i] in EYE_PIECES and (j - 1, i) not in eye:
+            col[j - 1, i] = black
+            isl[j - 1, i] = True
     return who, col, isl
 
 
 EYE_PIECES = ('face',)
 EYE_KINDS = ('red', 'steel')
-EYE_SHARE = 0.2
+EYE_SHARE = {'red': 0.35, 'steel': 0.2}
 
 
 def around(cells, H, W):
@@ -1175,6 +1196,9 @@ def material(rgb, name):
         return 'dark'
     if k == 'red':
         return 'red'
+    if name in SURFACE_KIND and max(int(v) for v in rgb) - min(int(v) for v in rgb) <= SURFACE_GREY:
+        # his iron's warm greys are the iron, not his trim's gold
+        return 'grey'
     if name == 'face' and k == 'steel':
         return 'white'
     if k == 'skin':

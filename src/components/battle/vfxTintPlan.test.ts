@@ -7,6 +7,9 @@ import { JUTSU } from '../../battle/jutsu';
 import type { Unit } from '../../battle/types';
 import type { ChakraChoice, SpriteAppearance } from '../../sprite/types';
 import { vfxTintIsNatural } from '../../sprite/vfxTint';
+import { DEFAULT_CHARACTER } from '../../data/shinobiData';
+import { getAppearance } from '../../sprite/legacy';
+import { withNature } from '../../sprite/chakraNature';
 import { HEAL_TINT, TINT_BUDGET, cropFrame, evictions, heldFrame, isBigSheet, jutsuTint, preparable, tintBytesOf, tintSheetsOf, unitTint, unitTintSheets, wallElement } from './vfxTintPlan';
 
 /** A unit with a chakra (its burst `color`, its colour `tint`) and these jutsu. */
@@ -107,6 +110,24 @@ describe('jutsu effects in the caster\'s chakra colour', () => {
     assert.equal(new Set(keys).size, keys.length);
     assert.ok(keys.includes('vfx_fire/fireball') && keys.includes('vfx_fire/hit') && !keys.some((k) => k.startsWith('vfx_genjutsu')));
     assert.ok(green.every((s) => s.color === 'green'));
+  });
+
+  it('an Elemental Slash\'s crescent and hit are prepared for each element its ninja can put on the weapon (earth keeps its own)', () => {
+    const specOf = (id: string) => JUTSU[id];
+    // A Water Bukijutsu Master (its blue chakra) with a second element.
+    const master = (tint: string | undefined, extra: string[] = []): Pick<Unit, 'look' | 'character' | 'jutsus'> => {
+      const look = getAppearance(DEFAULT_CHARACTER);
+      const chakra = { ...withNature(look.chakra, 'Water'), tint };
+      return { look: { ...look, chakra }, character: { ...DEFAULT_CHARACTER, shinobiClass: 'Bukijutsu Master', level: 5, natureGrowth: 'element', extraNatures: extra, appearance: { ...look, chakra } } as Unit['character'], jutsus: ['weapon_element', 'elemental_slash'] };
+    };
+    const keys = (u: Pick<Unit, 'look' | 'character' | 'jutsus'>) => unitTintSheets(u, specOf).map((s) => `${s.ref.group}/${s.ref.name}:${s.color}`);
+    assert.deepEqual(keys(master('violet', ['Earth'])), ['vfx_water/slash:violet', 'vfx_water/hit:violet']);
+    assert.deepEqual(keys(master('violet', ['Wind'])), ['vfx_water/slash:violet', 'vfx_water/hit:violet', 'vfx_wind/slash:violet', 'vfx_wind/hit:violet']);
+    // Green is the wind's own colour: its sheets stay his.
+    assert.deepEqual(keys(master('green', ['Wind'])), ['vfx_water/slash:green', 'vfx_water/hit:green']);
+    assert.deepEqual(keys(master(undefined, ['Wind'])), []);
+    assert.deepEqual(keys({ ...master('violet'), jutsus: ['weapon_element'] }), []);
+    for (const g of ['fire', 'lightning', 'wind', 'water', 'earth']) for (const n of ['slash', 'hit']) assert.ok(manifest(`vfx_${g}`)[n], `vfx_${g}/${n}`);
   });
 
   it('a unit\'s heals are prepared in green whatever its colour, Natural and blue too, beside its chakra-coloured jutsu', () => {

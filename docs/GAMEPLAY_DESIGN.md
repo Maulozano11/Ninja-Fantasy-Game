@@ -380,7 +380,17 @@ genjutsu, solo elemental )"*.
   recorre el arma de Aki: +1.5 m de alcance", "Obsidiana filosa cubre el arma de Aki",
   and a line when it leaves the weapon. The class panel in the creator names it.
 
-**How it looks (new art, waiting for his approval; `src/sprite/imbue.ts`):** drawn on the
+**The activation (approved 2026-10-24, *"apruevo animacion de activar y corte elemetal"*; in the game).** His words
+(2026-10-23): *"hazle una animacion para activar la mejora de elemento con la pose de victoria"*. When the
+element goes onto the weapon the ninja holds the victory pose (the weapon raised) for 1 s (`ACTIVATE_MS`,
+10 frames) while it plays: the element gathers into the hand (motes of its light drawn in from round it),
+surges up the blade from the hand to the tip (the loop's own pixels up to a bright front), flares off the
+point (a flash over the whole effect, rays and sparks off the tip, a halo round it) and settles into the
+loop; then back to rest. Each element in its own tones, the energy in the ninja's chakra colour, obsidian in
+its own (`renderImbueActivation` in `src/sprite/imbue.ts`; `playback.ts`, `renderer.ts`, `unitArt.ts`). It
+replaces the cast pose and the aura burst of the first build. The log is as before.
+
+**How it looks (approved: lightning, wind, fire and earth, then the redone water; `src/sprite/imbue.ts`):** drawn on the
 weapon's own pixels in every frame that holds it (idle, walk, run, attack, thrust,
 charge, cast, victory, the camp kata), so it follows the weapon's angle (`grip.ts`).
 None where the weapon is not in the hand (hand seals, the unarmed combo, the tackle,
@@ -397,6 +407,69 @@ on their edges, a glint running along them. Energy carries his element's darkest
 at its edge, no black line; the obsidian is solid and carries the characters' black
 line. The energy takes the ninja's chakra colour like his jutsu; the obsidian keeps
 its own.
+
+### Elemental Slash (the owner, 2026-10-23; approved 2026-10-24, *"apruevo animacion de activar y corte elemetal"*; in the game)
+
+The owner, verbatim: *"ahora pon en el juego una habilidad para maestro de armas que si tienes la mejora de
+arma que dura 3 turnos puedes tambien tener una opcion de lanzar la habilidad en un slash del elemento que
+tengas para usarlo como habilidad de largo alcance para maestro de armas"*, and then *"el tajo sera un bonus
+action y elimina la mejora del arma"*.
+
+**Decided by him:**
+- The Bukijutsu Master has a second class ability: **while Weapon Element Enhancement is on its weapon**, it can
+  throw that element off the weapon in a slash, an attack **at long range**.
+- It is a **bonus action** (the action stays free: the master can still strike that turn).
+- It **ends the enhancement**: the element leaves the weapon with the slash.
+- Water: *"el de agua apaga las llamas y pone mojado abajo del objetivo"*: a water slash puts out the target's
+  flames **and leaves the ground under the target wet**: the same wet ground a water jutsu leaves (`soak` in
+  `src/battle/ground.ts`: a 1 m circle round the target, as a water jutsu thrown at one target soaks, for
+  WET_ROUNDS; its art, and what fire and lightning do on it, are the ones the game has), with its log line ("El
+  suelo queda mojado"). On every water slash that hits, not only a critical hit (his *"si asi lo quiero"*,
+  2026-10-24); a miss leaves the ground dry.
+- *"y en este jutsu el efecto se aplica si o si no solo en critico"*: in the slash **the element's effect
+  applies on every hit**, not only on a critical hit (on the blade it stays a critical's): fire sets the foe
+  **burning**, lightning leaves it **Numb** (2 rounds), wind **blows it back 1.5 m**, water puts out its flames
+  and wets the ground under it.
+- Earth: *"derribar"*: an earth slash **knocks the target down** (prone) on every hit, the game's own knock-down
+  (a ninja; big creatures stand firm), with its log line ("… cae derribado"). It replaces the obsidian's 19–20
+  critical range in the slash; on the blade the obsidian keeps it.
+
+**The rest is the builder's proposal, approved with the slash** (constants in `src/battle/imbue.ts`):
+- Name *Corte elemental* (*Elemental Slash*), the same on the button. Id `elemental_slash`.
+- Who: whoever has Weapon Element Enhancement (it comes with it, `classAbilities`); usable only with an element
+  on the weapon ("Solo con tu elemento en el arma"). It throws the element on the weapon now, whichever of its
+  elements that is.
+- **2 chakra**, decided: asked *"¿2 de chakra y alcance como un jutsu de rango C?"*, he answered *"15 si"*
+  (2026-10-24). No hand seals; sealed chakra stops it; a weapon put away is drawn for it (free, once a turn, as
+  a sword art draws it).
+- The economy: the enhancement is itself a bonus action, so the slash comes on a later turn of it (its second or
+  third). A blow struck before the slash in the same turn still carries the element; one after it doesn't.
+- Range **9 m**, decided (the same answer: as a rank C jutsu thrown at one target; the rank C ones are 9 m, the
+  Pursuing Flame's 12 m apart), **10.5 m with water** (its 1.5 m longer reach). One foe in sight; not at a
+  friend. *Open:* whether his "15" meant 15 m.
+- The roll: **the weapon's attack** (proficiency and STR, or the better of STR and DEX with a finesse weapon), at
+  range like a jutsu thrown at one target: cover counts, a foe within 1.5 m gives disadvantage, the height
+  (±2), steam, a prone target (disadvantage). A Ryusei's warp edge goes with it.
+- A hit deals **the weapon's die + 1d4 of the element** (the damage types of the table above), no ability
+  modifier (a bonus-action blow, like an off-hand one in 5e), and the element's effect (his rules, above). A
+  critical hit: the dice at their maximum, doubled (his crit rule); it crits on a natural 20 only, earth too.
+  Only water does anything to the ground (fire sets none alight, lightning doesn't run through water).
+- The AI keeps the element on the blade while the blade can reach a foe this turn (walking there counted), and
+  throws it at the foe it is likeliest to hit (the most wounded on a tie) when none can be reached, or, its blow
+  struck, on the element's last turn, before it fades anyway (`slashAway` in `src/battle/ai.ts`).
+- The hotbar: a *Corte elemental* button after *Arma elemental*, in the colour of the element on the weapon; a
+  crescent icon until he paints one. Aiming shows the reach (10.5 m with water) and, over a foe, the chance and
+  the dice ("1d8+1d4").
+- The log: "Aki lanza Corte elemental", then the element leaving the weapon ("Las llamas salen del arma de Aki
+  en un corte", "El rayo sale…", "El viento sale…", "El agua sale…", "La obsidiana sale…"), then the roll's miss
+  or the damage.
+
+**How it looks (approved; `elementSlash` in `src/components/battle/playback.ts`):** the attack
+pose's cut, the element still on the blade as it rises; on the strike frame the element leaves the blade (its
+loop is gone) as his crescent of that element (`vfx_<element>/slash`, the crescents of his element sheets) flying
+from the blade at blade height to the target, 75 ms a metre (300 ms at least), where his hit of that element
+bursts (`vfx_<element>/hit`) with a small shake; a miss flies on 2 m past the target and fades. The attack's die
+lands as the crescent arrives. In the ninja's chakra colour, as on the weapon; earth in its own.
 
 ## Party, missions and defeat
 

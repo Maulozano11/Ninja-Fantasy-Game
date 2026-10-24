@@ -187,9 +187,10 @@ export function logLine(ev: BattleEvent, s: BattleState, lang: Lang, wallOf = (i
       return k ? { text: t(k, p), tone: 'text-slate-400' } : null;
     }
     case 'imbue': {
-      // The element goes onto the weapon (Weapon Element Enhancement), or leaves it.
+      // The element goes onto the weapon (Weapon Element Enhancement), or leaves it (in an Elemental Slash too).
       const p = { a: nameOf(s, ev.unit, lang), m: WATER_REACH };
       if (ev.on) return { text: t(`l_imbue_${ev.element}` as TKey, p), tone: 'text-orange-300' };
+      if (ev.end === 'slashed') return { text: t(`l_imbueSlashed_${ev.element}` as TKey, p), tone: 'text-orange-300' };
       return { text: t(ev.end === 'sealed' ? 'l_imbueSealed' : (`l_imbueEnd_${ev.element}` as TKey), p), tone: 'text-slate-400' };
     }
     case 'cracks':

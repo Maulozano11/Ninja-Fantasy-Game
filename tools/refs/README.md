@@ -200,6 +200,37 @@ folders.
       python3 -I tools/refs/roman-cuirass-from-ref.py src/sprite/items/bronzeCuirassArt.ts [studyDir]
       python3 -I tools/refs/roman-skirt-from-ref.py src/sprite/items/pterugesArt.ts [studyDir]
       python3 -I tools/refs/roman-bracers-sandals-from-ref.py src/sprite/items/bracersSandalsArt.ts [studyDir]
+- `noble_ref.py` + `noble-*-from-ref.py`: the owner's noble swordsman (`docs/reference/noble-swordsman-owner-reference.jpg`,
+  2026-10-24, a new male character in his own pixel art at twice our scale: 200x200 of his pixels at 10 picture
+  pixels each). His choice for the sets drawn bigger than our sprite, "Reducir y limpiar yo": `noble_ref.py`
+  shrinks the body evenly by 2 (`BODY_SCALE`: his wrists, shoulders and soles fall on our male idle frame 0's) and
+  the head by 1.7 (`HEAD_SCALE`: our Roman head's size), raised 3 px as his Roman head is (`HEAD_UP`), then cleans
+  it with his palette only (`game()`): every fine pixel is one of his pixels of its block (his commonest colour,
+  his accents first where they fill half the block), his 1 px line round the figure, his gold piping thinned to
+  continuous 1 px lines (`piping`), his thin details joined again where the shrinking broke them (`bridge`:
+  his eyes, the cravat, the blade's light core, the cuffs, his inner line), his big areas without specks
+  (`despeckle`), and a few motifs read cell by cell (`MOTIFS`, `MOTIF_MAPS`: the jewel, the studs and chains,
+  the buckle). `game(False)` is the even reduction before the cleaning. His figure is cut into parts on his
+  own picture (`BODY_PARTS`, `head_labels`), carried down through the reduction, and `pieces()` continues
+  what each part hides from his own pixels (the coat under the front and the mantles, the sleeves to the
+  shoulder and the wrist, the trousers under the tails, the cape behind the body). Each script writes one
+  part's module; at rest the preset is the cleaned reduction pixel for pixel (`src/sprite/noble.test.ts`,
+  against `src/sprite/nobleRefPixels.ts`). `python3 -I tools/refs/noble_ref.py <dir>` writes his picture, the
+  even reduction and the cleaned one; `--labels out.png` and `--parts out.png` show the parts.
+
+      python3 -I tools/refs/noble-head-from-ref.py src/sprite/nobleHeadArt.ts [studyDir]
+      python3 -I tools/refs/noble-eyes-from-ref.py src/sprite/nobleEyeArt.ts
+      python3 -I tools/refs/noble-hair-from-ref.py src/sprite/items/nobleHairArt.ts [studyDir]
+      python3 -I tools/refs/noble-coat-from-ref.py src/sprite/items/nobleCoatArt.ts [studyDir]
+      python3 -I tools/refs/noble-front-from-ref.py src/sprite/items/nobleFrontArt.ts [studyDir]
+      python3 -I tools/refs/noble-belt-from-ref.py src/sprite/items/nobleBeltArt.ts [studyDir]
+      python3 -I tools/refs/noble-trousers-from-ref.py src/sprite/items/nobleTrousersArt.ts [studyDir]
+      python3 -I tools/refs/noble-boots-from-ref.py src/sprite/items/nobleBootsArt.ts [studyDir]
+      python3 -I tools/refs/noble-hands-from-ref.py src/sprite/items/nobleHandsArt.ts [studyDir]
+      python3 -I tools/refs/noble-cape-from-ref.py src/sprite/items/royalCapeArt.ts [studyDir]
+      python3 -I tools/refs/noble-sabre-from-ref.py src/sprite/items/jewelSabreArt.ts [studyDir]
+      python3 -I tools/refs/noble-test-pixels-from-ref.py src/sprite/nobleRefPixels.ts
+
 - `solen_ref.py` + `solen-*-from-ref.py`: the owner's Solen (`docs/reference/solen-owner-reference.jpg`, the new
   standard, 2026-10-21; pitch 20, our male idle frame 0 at offset (74, 120), the Roman picture's window). It is a
   repaint of his Roman picture. `solen_ref.pieces()` cuts his figure by region polygons (`REGIONS`) and colour kinds

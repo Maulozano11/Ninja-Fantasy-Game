@@ -200,6 +200,42 @@ folders.
       python3 -I tools/refs/roman-cuirass-from-ref.py src/sprite/items/bronzeCuirassArt.ts [studyDir]
       python3 -I tools/refs/roman-skirt-from-ref.py src/sprite/items/pterugesArt.ts [studyDir]
       python3 -I tools/refs/roman-bracers-sandals-from-ref.py src/sprite/items/bracersSandalsArt.ts [studyDir]
+- `ren_ref.py` + `ren-face-from-ref.py`, `ren-eyes-from-ref.py`, `ren-hair-from-ref.py`, `ren-jacket-from-ref.py`,
+  `ren-belt-skirt-from-ref.py`, `ren-trousers-from-ref.py`, `ren-boots-gloves-from-ref.py`, `ren-katana-from-ref.py`: the
+  owner's Ren paint-over (`docs/reference/ren-owner-reference.jpg`, "el nuevo estandar"; pitch 20, our male idle frame 0 at
+  offset (75, 120), the same as his Aiden), copied like Aiden, one script per part, each part its own creator option.
+  `ren_ref.pieces()` sorts his colours into kinds (`kind()`: his navy line under luma 8, skin, gold, blue, silver, dark
+  cloth and hair, white), cuts his figure into pieces by region polygons (`REGIONS`, claimed in order: the gloves and the
+  sword in front), gives his line to the pieces it bounds, and continues each piece where something in front of it hides
+  it (`continue_along`): the skirt's panels and studs down their columns under the fist, guard and blade; the chest under
+  the near sleeve and the belt; the grip in the fist along the sword; the forearms under the gloves; the trousers up each
+  leg under the skirt; only cells that something hides are filled, so where he shows white it stays white. The skin
+  (and his warm line) round the top of each glove, above the wrist, is the forearm's, so a fist turned at the wrist
+  leaves it on the arm. In the game every arm piece turns whole about our joints (`nightArmStamps` in
+  `src/sprite/items/night.ts`: his sleeve and the end of his upper arm with the upper arm, his forearm with the forearm,
+  his elbow swept through a bend; `nightFistStamps` in `items/clothes.ts`: his cuff with the forearm, his fist on the
+  wrist), and his skirt lies on the thighs to the knees in panels cut down his seams and hangs from there
+  (`nightSkirtStamps`). His legs stand
+  wider than our rig's (`LEG_SHIFT`: near foot 5 px back, far foot 5 px lower): the leg pieces hang from our joints, and
+  worn together his trousers and boots move the whole leg back by it (`NIGHT_LEG_SHIFT`, `src/sprite/items/night.ts`), so
+  at rest every pixel of his figure is his, in his place (`src/sprite/ren.test.ts` pins it). The face (`MAP`: his skin
+  and line as he painted them, his skull continued under his hair in our male skull's outline, his eyes taken out) and
+  the eyes (his lashes, whites and blues over our template's eye cells, with lowered and closed lids made of his pixels)
+  are the `night` face and eye shapes (`src/sprite/nightHeadArt.ts`, `nightEyeArt.ts`); the katana is the Katana v2
+  (`src/sprite/items/katanaV2Art.ts`: its blade, gold, wrap and steel characters; his blade is painted in Ren's chakra
+  blue, so a nichirin blade moves from there). Each module also exports what each of his colours is (`*_KIND`) and where
+  each piece lands at rest (`*_REST`). With a last argument, a folder, each script writes his figure beside its pieces
+  at 8x. The same picture always gives the same bytes (checked by rerunning).
+
+      python3 -I tools/refs/ren-face-from-ref.py src/sprite/nightHeadArt.ts [studyDir]
+      python3 -I tools/refs/ren-eyes-from-ref.py src/sprite/nightEyeArt.ts [studyDir]
+      python3 -I tools/refs/ren-hair-from-ref.py src/sprite/items/nightHairArt.ts [studyDir]
+      python3 -I tools/refs/ren-jacket-from-ref.py src/sprite/items/nightJacketArt.ts [studyDir]
+      python3 -I tools/refs/ren-belt-skirt-from-ref.py src/sprite/items/nightBeltArt.ts src/sprite/items/nightSkirtArt.ts [studyDir]
+      python3 -I tools/refs/ren-trousers-from-ref.py src/sprite/items/nightTrousersArt.ts [studyDir]
+      python3 -I tools/refs/ren-boots-gloves-from-ref.py src/sprite/items/nightBootsGlovesArt.ts [studyDir]
+      python3 -I tools/refs/ren-katana-from-ref.py src/sprite/items/katanaV2Art.ts [studyDir]
+
 - `solen_ref.py` + `solen-*-from-ref.py`: the owner's Solen (`docs/reference/solen-owner-reference.jpg`, the new
   standard, 2026-10-21; pitch 20, our male idle frame 0 at offset (74, 120), the Roman picture's window). It is a
   repaint of his Roman picture. `solen_ref.pieces()` cuts his figure by region polygons (`REGIONS`) and colour kinds
@@ -453,3 +489,19 @@ folders.
   `owner_paintover.py` (copied byte for byte from `heroine/lyra-v2`), with a pitch per axis.
 
       python3 -I tools/refs/roman-read-from-ref.py [src/sprite/maleReadArt.ts] [study.png]
+- `ren-sit-palm-from-ref.py` (with `trunks_sit_ref.py` and `trunks_read_ref.py`, from `trunks/read-pose`): Ren's far hand when
+  seated, the owner's open palm up from his Trunks sit picture (`docs/reference/trunks-sit-owner-reference.jpg`, brought down to
+  our scale by `trunks_sit_ref.frame`), the hands' standard: his far hand without the bit of bare forearm his frame gives with it,
+  every pixel his; his line kept, his skin and glove recoloured in the game (`src/sprite/items/nightSitPalmArt.ts`; `clothes.ts`
+  Fingerless Gloves). Its angle is his bare forearm's, fitted on its columns; its pivot his wrist on that line.
+
+      python3 -I tools/refs/ren-sit-palm-from-ref.py src/sprite/items/nightSitPalmArt.ts [studyDir]
+- `ren-sit-from-ref.py` (with `ren_sit_painted_over.py`, written once by `ren-sit-painted-over.mts`): Ren seated on the male
+  body, the owner's repaint (`docs/reference/ren-sit-owner-reference.jpg`, the lower row of our sit sheet), his four frames pixel
+  for pixel: each cell found on his picture and brought onto our fine pixels by its scale and offset (fitted on the rock he did
+  not repaint), each fine pixel the median of its middle, his colours snapped to one palette of his; his figure off his page and
+  off our rock (over it, where the figure he painted over was), the page's blend round his edge peeled off, and the holes and
+  notches the game closes in every frame closed with his own pixel there. Cut by body part (nearest bone), pinned to the male
+  pelvis (`src/sprite/items/renSitArt.ts`, drawn by `src/sprite/renSit.ts` in place of our drawing on Ren's figure).
+
+      python3 -I tools/refs/ren-sit-from-ref.py [src/sprite/items/renSitArt.ts] [studyDir]

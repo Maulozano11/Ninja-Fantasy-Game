@@ -10,6 +10,7 @@ import { legDepth, type DrawCtx, type Side } from './ctx';
 import { footTurn, shinCarried, shinTurn } from './items/ankle';
 import { defaultAppearance, getAppearance } from './legacy';
 import { GRID, partIndex, RES } from './raster';
+import { renSitFrame } from './renSit';
 import { drawRig, frameCount, rigPoseFor } from './rig';
 import { CAMP_POSES, MOVE_POSES, SPRITE_POSES, type BodyType, type SpriteAppearance, type SpritePose } from './types';
 
@@ -147,6 +148,7 @@ function skinOn(l: SpriteAppearance, pose: SpritePose, f: number, parts: number[
 }
 const LEG_PARTS = (['thighN', 'shinN', 'footN', 'thighF', 'shinF', 'footF'] as const).map(partIndex);
 const BELOW_KNEE = (['shinN', 'footN', 'shinF', 'footF'] as const).map(partIndex);
+const FEET = (['footN', 'footF'] as const).map(partIndex);
 
 describe('closed boots', () => {
   it('see the skin (the check itself): our bare foot is skin', () => {
@@ -162,11 +164,17 @@ describe('closed boots', () => {
     const bad: string[] = [];
     for (const body of BODIES) {
       const l: SpriteAppearance = { ...structuredClone(getAppearance(ren)), body };
-      // (on the female body his trousers, not refitted to her, leave a thigh's edge in a kick: only below the knee there)
-      const parts = body === 'female' ? BELOW_KNEE : LEG_PARTS;
+      // (the female body does not wear his trousers, his rule for female clothes, so her legs are bare down to his
+      // boots: there only the feet, whose toes are what poked out past the boot; renBoots.test.ts checks her shins
+      // below the boot's top)
+      const parts = body === 'female' ? FEET : LEG_PARTS;
       for (const pose of POSES) {
         const n = frameCount(rigPoseFor(pose, l.cast?.style, l.slots.held?.id));
         for (let f = 0; f < n; f++) {
+          // Seated on the male body he is the owner's own repaint, every pixel his ("ren sentado aprovado"; renSit.ts,
+          // checked pixel for pixel in ren.test.ts): his boots' browns are in his skin's palette there, so they follow
+          // the skin.
+          if (renSitFrame(l, pose, f, 'none')) continue;
           const hits = skinOn(l, pose, f, parts);
           if (hits.length) bad.push(`${body} ${pose}#${f}: ${hits.length} at ${hits.slice(0, 3).join(' ')}`);
         }

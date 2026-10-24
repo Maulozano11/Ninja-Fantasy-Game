@@ -29,7 +29,7 @@ import { ROMAN_EYE_COLORS, ROMAN_EYES, ROMAN_IRIS } from './romanEyeArt';
 import { ROMAN_HEAD, ROMAN_SKIN } from './romanHeadArt';
 import { drawRomanNeck } from './romanNeck';
 import { STERN_BROW_HAIR, STERN_EYE_COLORS, STERN_EYES, STERN_HEAD, STERN_IRIS, STERN_SKIN } from './sternFaceArt';
-import { closeNape, drawBulkyBase } from './bulkyBody';
+import { drawBulkyBase } from './bulkyBody';
 import { ballShade, capsule, ellipse, F_NO_OUTLINE, F_NO_TEXTURE, GRID, Layer, PartId, Pen, poly, RES, seam, v, Vec } from './raster';
 import { type EyeShape, isFemaleBody, type FaceShape } from './types';
 
@@ -51,8 +51,6 @@ export function drawBody(g: DrawCtx): void {
     drawHead(g);
     return;
   }
-  // (the head turned forward on the neck: no background walled in behind the nape, bulkyBody.ts closeNape)
-  if (r.neckPitch !== undefined) g.after((layers) => closeNape(g, layers, g.skin, 1));
 
   // Far arm (behind the torso, one shade darker)
   drawArm(g, g.L('farArm.body'), 'F', skin('upperArmF', -1), skin('forearmF', -1));

@@ -6,8 +6,8 @@ import type { PaintedEye } from './eyeArt';
 
 /** His colours, one character each. */
 export const SAMURAI_EYE_COLORS: Record<string, string> = {
-  a: '#ffffff',
-  b: '#000113',
+  a: '#000113',
+  b: '#ffffff',
 };
 
 /** His eyes in each lid state: open, lowered (reading) and closed (knocked out). */
@@ -15,34 +15,34 @@ export const SAMURAI_EYES: Record<'open' | 'lowered' | 'closed', { near: Painted
   /** His eyes as he drew them: the heavy lash line on the anchor row, his pupil in it, the glint under it. */
   open: {
     near: {
-      letters: ['wLdLL', 'bbbbb'],
-      rows: ['abbbb', '.....'],
+      letters: ['LLdLL', 'bwbbb'],
+      rows: ['aaaaa', '.b...'],
     },
     far: {
-      letters: ['bdL', 'bbb'],
-      rows: ['.bb', '...'],
+      letters: ['LdL', 'bbw'],
+      rows: ['aaa', '..b'],
     },
   },
   /** Reading: his lash line, the glint gone under the lowered lid. */
   lowered: {
     near: {
-      letters: ['wLLLL', 'bbbbb'],
-      rows: ['abbbb', '.....'],
+      letters: ['LLLLL', 'bbbbb'],
+      rows: ['aaaaa', '.....'],
     },
     far: {
-      letters: ['bLL', 'bbb'],
-      rows: ['.bb', '...'],
+      letters: ['LLL', 'bbb'],
+      rows: ['aaa', '...'],
     },
   },
   /** Knocked out: his lash line over the shut eye; under it the face's skin. */
   closed: {
     near: {
-      letters: ['wLLLL', 'bbbbb'],
-      rows: ['abbbb', '.....'],
+      letters: ['LLLLL', 'bbbbb'],
+      rows: ['aaaaa', '.....'],
     },
     far: {
-      letters: ['bLL', 'bbb'],
-      rows: ['.bb', '...'],
+      letters: ['LLL', 'bbb'],
+      rows: ['aaa', '...'],
     },
   },
 };

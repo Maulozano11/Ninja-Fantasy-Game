@@ -89,7 +89,7 @@ export const SAMURAI_THIGH_F: PaintedPiece = {
     'aaaaaabab.',
     'aaaaaaabb.',
     'baaaaaddda',
-    'aaaaa.aa..',
+    'aaaaa.aaa.',
     'aaaa......',
     'aa........',
   ],

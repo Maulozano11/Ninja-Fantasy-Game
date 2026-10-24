@@ -81,7 +81,7 @@ export const SAMURAI_SUNEATE_REST: Record<string, [number, number]> = {
   SAMURAI_KNEE_N: [110, 191],
   SAMURAI_SHIN_N: [107, 198],
   SAMURAI_FOOT_N: [108, 208],
-  SAMURAI_KNEE_F: [134, 191],
+  SAMURAI_KNEE_F: [133, 191],
   SAMURAI_SHIN_F: [129, 197],
   SAMURAI_FOOT_F: [130, 208],
 };
@@ -221,20 +221,20 @@ export const SAMURAI_FOOT_N: PaintedPiece = {
 
 /** His far knee guard, a round plate with gold studs. It rides the shin about the knee. */
 export const SAMURAI_KNEE_F: PaintedPiece = {
-  pivot: [4, 5],
+  pivot: [5, 5],
   angle: 96.84,
   rows: [
-    '....aa.a.',
-    'bbaaccdda',
-    'baefhiiia',
-    'ajklmmfna',
-    'dkllpmika',
-    'dkkqiiiaa',
-    'aaaaaaaaa',
-    'rrrlsiaaa',
-    'tauaaaaaa',
-    'vvawaxaaa',
-    '.....a...',
+    '.....aa.a.',
+    '.bbaaccdda',
+    '.baefhiiia',
+    '.ajklmmfna',
+    '.dkllpmika',
+    '.dkkqiiiaa',
+    '.aaaaaaaaa',
+    'arrrlsiaaa',
+    '.tauaaaaaa',
+    '.vvawaxaaa',
+    '......a...',
   ],
   colors: {
     a: '#000113',
@@ -268,7 +268,7 @@ export const SAMURAI_SHIN_F: PaintedPiece = {
   angle: 96.84,
   rows: [
     'aa..........',
-    'abaa........',
+    'abaaa.......',
     'abbbcd......',
     'abefh..a.a..',
     'aeeehcbijha.',

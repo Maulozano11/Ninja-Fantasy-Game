@@ -56,10 +56,7 @@ SODE_TOP = [(40, 34), (58, 34), (58, 39), (40, 39)]
 # The point the head is shrunk about (his pixels): his chin over his neck. It lands where the body's
 # shrink puts it, so the head stays on his neck.
 HEAD_ANCHOR = (71.0, 39.0)
-# His face in his picture (his pixel corners: x0, y0, x1, y1): his forehead under the bangs, his brows, eyes,
-# nose, mouth and chin. Shrunk on its own by whole rows and columns of his, his eyes, brows and the skin
-# between them weighing most (drop_costs face=True); the rest of his head (the hair) read pixel by pixel.
-FACE_NATIVE = (64, 25, 85, 40)
+
 # Where game()'s pixel (0, 0) lies in our 256 x 256 frame: his near sole on our near sole's row (218), his
 # neck over our neck's column.
 OFFSET = (76, 112)
@@ -201,6 +198,14 @@ def dots(a, K):
     return out
 
 
+def lone_red(K):
+    """A red pixel of his with no red beside it (4-neighbours): what the head's reading takes as a dot."""
+    red = K == 'red'
+    out = np.zeros_like(red)
+    out[1:-1, 1:-1] = red[1:-1, 1:-1] & ~(red[:-2, 1:-1] | red[2:, 1:-1] | red[1:-1, :-2] | red[1:-1, 2:])
+    return out
+
+
 def undotted(a, K, D):
     """His picture with his lacing dots taken off the plates: each dot pixel the plate's colour beside it on
     its row (left first, past the other pixel of a two-pixel dot), so the plates shrink by their bands and
@@ -216,11 +221,10 @@ def undotted(a, K, D):
     return b
 
 
-def unlikeness(a, K, m, axis, face=False):
+def unlikeness(a, K, m, axis):
     """How unlike two of his rows (axis 0) or columns (axis 1) are inside region `m`: U(i, j). His line
     against anything else, gold against anything else and the region's edge count most; a lit rim against
-    the plate's body (10 to 25 levels) counts as a band he drew. With `face`, skin against his line or a
-    glint (his eyes, brows, nose and mouth) weighs most of all."""
+    the plate's body (10 to 25 levels) counts as a band he drew."""
     if axis == 1:
         a, K, m = a.transpose(1, 0, 2), K.T, m.T
     n = a.shape[0]
@@ -238,10 +242,6 @@ def unlikeness(a, K, m, axis, face=False):
         k = np.where(K[i] != K[j], 3.0, k)
         k = np.where((K[i] != K[j]) & ((K[i] == 'line') | (K[j] == 'line') | (K[i] == 'gold') | (K[j] == 'gold')), 6.0, k)
         k = np.where(m[i] != m[j], 6.0, k)
-        if face:
-            sk = (K[i] == 'skin') | (K[j] == 'skin')
-            k = np.where(sk & (K[i] != K[j]), 14.0, k)
-            k = np.where((K[i] == 'white') != (K[j] == 'white'), 20.0, k)
         memo[key] = float((k * both).sum())
         return memo[key]
 
@@ -286,11 +286,14 @@ GLINT_COVER = 0.15
 RED_COVER = 0.2
 
 
-def reading(a, K, D, line, m, scale, origin, j, i):
+def reading(a, K, D, line, m, scale, origin, j, i, first=False):
     """What fine pixel (i, j) of a region `m` shrunk by `scale` about his point `origin` shows: one of his
-    colours under its footprint (None where less than half of it is his figure). His line where it covers
-    LINE_COVER of the footprint; else a glint of his eyes; else a lacing dot of his whose middle is in it;
-    else his gold where it covers GOLD_COVER; else, of the colours under it, the one nearest their mean."""
+    colours under its footprint (None where less than half of it is his figure). A lacing dot (or a pixel
+    of his cord) whose middle is in it; else his line where it covers LINE_COVER of the footprint; else a
+    glint of his eyes;
+    else his gold where it covers GOLD_COVER; else, of the colours under it, the one nearest their mean.
+    `first`: the first reading, the one his head keeps (the owner chose it, 2026-10-24: "la cabeza esta
+    mejor la de antes"): his line first, then a glint, then a dot, then gold, no cord rule."""
     H, W = m.shape
     y0, y1 = origin[1] + j * scale, origin[1] + (j + 1) * scale
     x0, x1 = origin[0] + i * scale, origin[0] + (i + 1) * scale
@@ -305,16 +308,18 @@ def reading(a, K, D, line, m, scale, origin, j, i):
     if fw < 0.5 * tot:
         return None
     cover = lambda k: sum(w for w, y, x in cells if K[y, x] == k) / fw
+    dot = [(y, x) for w, y, x in cells if D[y, x] and y0 <= y + 0.5 < y1 and x0 <= x + 0.5 < x1]
+    if dot and not first:
+        return a[dot[0]], cells
     if cover('line') >= LINE_COVER:
         return line, cells
     if cover('white') >= GLINT_COVER:
         w, y, x = max((c for c in cells if K[c[1], c[2]] == 'white'), key=lambda c: (c[0], -c[1], -c[2]))
         return a[y, x], cells
-    dot = [(y, x) for w, y, x in cells if D[y, x] and y0 <= y + 0.5 < y1 and x0 <= x + 0.5 < x1]
     if dot:
         return a[dot[0]], cells
     pick = [c for c in cells if K[c[1], c[2]] != 'line']
-    if cover('red') >= RED_COVER and cover('red') < 0.9:
+    if cover('red') >= RED_COVER and cover('red') < 0.9 and not first:
         # a red cord through his hair or his armour (on his red cloth every pixel is red)
         pick = [c for c in pick if K[c[1], c[2]] == 'red']
     elif cover('gold') >= GOLD_COVER:
@@ -412,15 +417,10 @@ def reduce(a):
     from, '' for none), in a frame whose (0, 0) is fine pixel (-PAD, -PAD) of the body's shrink about his
     picture's corner. Every fine pixel is one of his pixels (GROUPS says how each group chooses them)."""
     R = regions(a)
-    fx0, fy0, fx1, fy1 = FACE_NATIVE
-    box = np.zeros(R['head'].shape, bool)
-    box[fy0:fy1, fx0:fx1] = True
-    R['face_r'] = R['head'] & box
-    R['hair_r'] = R['head'] & ~box
-    xx = np.arange(box.shape[1])[None, :]
+    xx = np.arange(R['head'].shape[1])[None, :]
     starts = sorted(KUSAZURI_PANELS.items(), key=lambda kv: kv[1])
     for k, (n, x0) in enumerate(starts):
-        x1 = starts[k + 1][1] if k + 1 < len(starts) else box.shape[1]
+        x1 = starts[k + 1][1] if k + 1 < len(starts) else xx.shape[1]
         R[n] = R['kusazuri'] & (xx >= x0) & (xx < x1)
     K = kinds(a)
     D = dots(a, K)
@@ -432,7 +432,7 @@ def reduce(a):
     rgb = np.full(size + (3,), 255, np.int32)
     label = np.full(size, '', dtype='<U10')
 
-    def put(names, scale, origin, at, how, face=False, lames=None):
+    def put(names, scale, origin, at, how, lames=None, marks=None, first=False):
         m = np.zeros(R['head'].shape, bool)
         for n in names:
             m |= R[n]
@@ -444,7 +444,7 @@ def reduce(a):
         if how == 'read':
             for j in range(j0, j1):
                 for i in range(i0, i1):
-                    got = reading(a, K, D, line, m, scale, origin, j, i)
+                    got = reading(a, K, D if marks is None else marks, line, m, scale, origin, j, i, first)
                     if got is None:
                         continue
                     c, cells = got
@@ -459,8 +459,8 @@ def reduce(a):
             rm = m.copy()
             rm[:, :lames[0]] = False
             rm[:, lames[1]:] = False
-        rows = keep(m.shape[0], j1 - j0, scale, origin[1] + j0 * scale, unlikeness(src, SK, rm, 0, face))
-        cols = keep(m.shape[1], i1 - i0, scale, origin[0] + i0 * scale, unlikeness(src, SK, m, 1, face))
+        rows = keep(m.shape[0], j1 - j0, scale, origin[1] + j0 * scale, unlikeness(src, SK, rm, 0))
+        cols = keep(m.shape[1], i1 - i0, scale, origin[0] + i0 * scale, unlikeness(src, SK, m, 1))
         for jj, r in enumerate(rows):
             for ii, c in enumerate(cols):
                 if m[r, c]:
@@ -474,12 +474,11 @@ def reduce(a):
     for g in GROUP_ORDER:
         names, how = GROUPS[g]
         put(names, BODY_SCALE, (0.0, 0.0), (0, 0), how, lames=LAME_COLS.get(g))
-    # the head about his chin, which lands where the body's shrink puts that point; his eyes, brows and the
-    # skin between them weigh most (his face readable under the bangs)
+    # the head about his chin, which lands where the body's shrink puts that point: read pixel by pixel as he
+    # chose it (first=True; his lone red pixels the dots, lone_red())
     hx, hy = HEAD_ANCHOR
     at = (int(round(hx / BODY_SCALE)), int(round(hy / BODY_SCALE)))
-    put(('hair_r',), HEAD_SCALE, HEAD_ANCHOR, at, 'read')
-    put(('face_r',), HEAD_SCALE, HEAD_ANCHOR, at, 'keep', face=True)
+    put(('head',), HEAD_SCALE, HEAD_ANCHOR, at, 'read', marks=lone_red(K), first=True)
     return rgb, label
 
 
@@ -510,7 +509,7 @@ def plate_dots(a, D, rows, cols, at, rgb, label):
 
 PAD = 12
 # The head's two parts are one region, his head.
-ALIAS = {'face_r': 'head', 'hair_r': 'head', 'kz_n': 'kusazuri', 'kz_c': 'kusazuri', 'kz_f': 'kusazuri'}
+ALIAS = {'kz_n': 'kusazuri', 'kz_c': 'kusazuri', 'kz_f': 'kusazuri'}
 
 
 def his_line(a):
@@ -521,10 +520,70 @@ def his_line(a):
     return cols[i]
 
 
+# The largest hole in the figure the cleaning closes (fine pixels).
+HOLE = 3
+
+
+def components(mask, conn8):
+    """The connected parts of a mask (8- or 4-neighbours), each a list of (y, x)."""
+    H, W = mask.shape
+    seen = np.zeros_like(mask)
+    out = []
+    steps = [(dy, dx) for dy in (-1, 0, 1) for dx in (-1, 0, 1) if (dy or dx) and (conn8 or not (dy and dx))]
+    for y, x in zip(*np.nonzero(mask)):
+        if seen[y, x]:
+            continue
+        st = [(y, x)]
+        seen[y, x] = True
+        c = []
+        while st:
+            q, p = st.pop()
+            c.append((q, p))
+            for dy, dx in steps:
+                a, b = q + dy, p + dx
+                if 0 <= a < H and 0 <= b < W and mask[a, b] and not seen[a, b]:
+                    seen[a, b] = True
+                    st.append((a, b))
+        out.append(c)
+    return out
+
+
 # The cloth read pixel by pixel (GROUPS 'read'): its specks are taken off by clean().
 CLOTH = ('hakama', 'cape', 'cape_f')
 # His mail (a fine checker of two of his colours) on these regions.
 MAIL = ('sleeve_n', 'sleeve_f')
+
+
+def head_first(rgb, K, fig, head):
+    """His head cleaned as at first (the owner chose that head): a lone speck of his head (unlike all four
+    neighbours, which are one colour among themselves) takes that colour unless it is his line, a glint,
+    gold or red; of two red pixels of his head standing alone and touching (8-neighbours), the first, row by
+    row, stays and the other takes the commonest colour round it that is not red or his line."""
+    H, W = fig.shape
+    for y in range(1, H - 1):
+        for x in range(1, W - 1):
+            if not head[y, x] or K[y, x] in ('line', 'white', 'gold', 'red'):
+                continue
+            nb = [(y - 1, x), (y + 1, x), (y, x - 1), (y, x + 1)]
+            if not all(fig[q] for q in nb):
+                continue
+            c0 = rgb[nb[0]]
+            if all((rgb[q] == c0).all() for q in nb) and not (rgb[y, x] == c0).all():
+                rgb[y, x] = c0
+                K[y, x] = kind(c0)
+    kept = np.zeros_like(fig)
+    for y in range(1, H - 1):
+        for x in range(1, W - 1):
+            if not head[y, x] or K[y, x] != 'red' or any(K[q] == 'red' for q in ((y - 1, x), (y + 1, x), (y, x - 1), (y, x + 1))):
+                continue
+            if kept[y - 1:y + 2, x - 1:x + 2].any():
+                nb = [tuple(rgb[y + dy, x + dx]) for dy in (-1, 0, 1) for dx in (-1, 0, 1) if (dy or dx) and K[y + dy, x + dx] not in ('red', 'line', '')]
+                if nb:
+                    c = max(sorted(set(nb)), key=nb.count)
+                    rgb[y, x] = c
+                    K[y, x] = kind(c)
+                    continue
+            kept[y, x] = True
 
 
 def mail_colours(a):
@@ -537,19 +596,47 @@ def mail_colours(a):
     return sorted((cols[i] for i in top), key=lambda c: luma(c))
 
 
-def clean(rgb, label, line, mail):
+def clean(rgb, label, line, mail, a):
     """The reduction cleaned with his palette only (the owner's "Reducir y limpiar yo"):
       - his 1 px line all round the figure: a pixel of the figure beside the white round it is his line;
       - his mail a 1 px checker of his two mail colours (mail_colours()) wherever the shrink left his mail;
       - on his cloth (CLOTH), a speck (a colour none of its eight neighbours has) takes the colour most of
         its neighbours have, so his folds read as his folds, not speckle (his line stays);
       - a light speck off his face (a pixel much lighter than everything round it that is not his gold):
-        what the shrink kept of a highlight he drew bigger takes the colour round it.
+        what the shrink kept of a highlight he drew bigger takes the colour round it;
+      - a pixel or two of the figure standing alone off it (a strand's tip the shrink cut off) goes;
+      - a hole of up to HOLE pixels the figure walls in where his picture has none (no white of his under
+        it: the shrink parted two pieces or a piece) takes the commonest of his pixels round it; a gap he
+        left between an arm and the body stays open.
     Returns (rgb, label)."""
     rgb = rgb.copy()
     label = label.copy()
+    H, W = label.shape
+    head = label == 'head'
+    for c in components(label != '', True):
+        if len(c) < 3 and not any(head[q] for q in c):
+            for y, x in c:
+                label[y, x] = ''
+                rgb[y, x] = 255
+    his_white = (luma(a) > 225)
+    for c in components(label == '', False):
+        if len(c) > HOLE or any(y in (0, H - 1) or x in (0, W - 1) for y, x in c):
+            continue
+        if any(head[y + dy, x + dx] for y, x in c for dy, dx in ((1, 0), (-1, 0), (0, 1), (0, -1))):
+            continue
+        under = False
+        for y, x in c:
+            ny, nx = (y - PAD) * BODY_SCALE, (x - PAD) * BODY_SCALE
+            under |= his_white[int(np.floor(ny)):int(np.ceil(ny + BODY_SCALE)), int(np.floor(nx)):int(np.ceil(nx + BODY_SCALE))].any()
+        if under:
+            continue
+        for y, x in c:
+            nb = [(y + dy, x + dx) for dy, dx in ((1, 0), (-1, 0), (0, 1), (0, -1)) if label[y + dy, x + dx]]
+            cols = [tuple(rgb[q]) for q in nb]
+            rgb[y, x] = max(sorted(set(cols)), key=cols.count)
+            labs = [label[q] for q in nb]
+            label[y, x] = max(sorted(set(labs)), key=labs.count)
     fig = label != ''
-    H, W = fig.shape
     out = np.zeros_like(fig)
     stack = [(y, x) for y in (0, H - 1) for x in range(W)] + [(y, x) for x in (0, W - 1) for y in range(H)]
     while stack:
@@ -564,6 +651,8 @@ def clean(rgb, label, line, mail):
             if fig[y, x] and (out[y - 1, x] or out[y + 1, x] or out[y, x - 1] or out[y, x + 1]):
                 rgb[y, x] = line
                 K[y, x] = 'line'
+    # his head as the owner chose it (2026-10-24, "la cabeza esta mejor la de antes"): the first cleaning
+    head_first(rgb, K, fig, head)
     # his mail checker
     for y in range(H):
         for x in range(W):
@@ -572,7 +661,7 @@ def clean(rgb, label, line, mail):
     near = [(dy, dx) for dy in (-1, 0, 1) for dx in (-1, 0, 1) if dy or dx]
     for y in range(1, H - 1):
         for x in range(1, W - 1):
-            if not fig[y, x] or K[y, x] == 'line':
+            if not fig[y, x] or K[y, x] == 'line' or head[y, x]:
                 continue
             nb = [(y + dy, x + dx) for dy, dx in near if fig[y + dy, x + dx]]
             cols = [tuple(rgb[q]) for q in nb if K[q] != 'line']
@@ -597,7 +686,7 @@ def game():
         a = palette(native())
         rgb, label = reduce(a)
         _GAME['line'] = his_line(a)
-        _GAME['g'] = clean(rgb, label, _GAME['line'], mail_colours(a))
+        _GAME['g'] = clean(rgb, label, _GAME['line'], mail_colours(a), a)
     rgb, label = _GAME['g']
     return rgb.copy(), label.copy()
 

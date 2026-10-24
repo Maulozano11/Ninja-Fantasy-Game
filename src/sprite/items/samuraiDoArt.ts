@@ -95,7 +95,7 @@ export const SAMURAI_DO: PaintedPiece = {
   pivot: [15, 2],
   angle: -89.65,
   rows: [
-    '..........a...........aaa.',
+    '..........a...a.....aaaaa.',
     '..........abaaacdefcahija.',
     '..........abaakaaalcmahjna',
     '...........naappqaaamaraaa',
@@ -110,7 +110,7 @@ export const SAMURAI_DO: PaintedPiece = {
     '...........aNNUauu44uuZa5.',
     '...........aZ5UaaaaaaaaaU.',
     '...........a65UaZqqZquNaU.',
-    '.......a.masUrCauu44uuuaE.',
+    '.......aamasUrCauu44uuuaE.',
     '........saaNNTaaaaaaaaaaa.',
     'a777777aak7aaam0qq4qq1Omm.',
     'amma.a..kmmmmnmmn00nummm8.',

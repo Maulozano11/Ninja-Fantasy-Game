@@ -439,12 +439,14 @@ action y elimina la mejora del arma"*.
 - Who: whoever has Weapon Element Enhancement (it comes with it, `classAbilities`); usable only with an element
   on the weapon ("Solo con tu elemento en el arma"). It throws the element on the weapon now, whichever of its
   elements that is.
-- **1 chakra** (a little: the element, paid for already, goes with it). No hand seals; sealed chakra stops it; a
-  weapon put away is drawn for it (free, once a turn, as a sword art draws it).
+- **2 chakra**, decided: asked *"¿2 de chakra y alcance como un jutsu de rango C?"*, he answered *"15 si"*
+  (2026-10-24). No hand seals; sealed chakra stops it; a weapon put away is drawn for it (free, once a turn, as
+  a sword art draws it).
 - The economy: the enhancement is itself a bonus action, so the slash comes on a later turn of it (its second or
   third). A blow struck before the slash in the same turn still carries the element; one after it doesn't.
-- Range **9 m** (as the rank D and C jutsu thrown at one target, 7.5 to 12 m), **10.5 m with water** (its
-  1.5 m longer reach). One foe in sight; not at a friend.
+- Range **9 m**, decided (the same answer: as a rank C jutsu thrown at one target; the rank C ones are 9 m, the
+  Pursuing Flame's 12 m apart), **10.5 m with water** (its 1.5 m longer reach). One foe in sight; not at a
+  friend. *Open:* whether his "15" meant 15 m.
 - The roll: **the weapon's attack** (proficiency and STR, or the better of STR and DEX with a finesse weapon), at
   range like a jutsu thrown at one target: cover counts, a foe within 1.5 m gives disadvantage, the height
   (±2), steam, a prone target (disadvantage). A Ryusei's warp edge goes with it.

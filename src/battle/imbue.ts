@@ -32,7 +32,7 @@ export const IMBUE_CLASS = 'Bukijutsu Master';
  * tambien tener una opcion de lanzar la habilidad en un slash del elemento que tengas para usarlo como
  * habilidad de largo alcance para maestro de armas", and then "el tajo sera un bonus action y elimina la
  * mejora del arma": only while the element is on the weapon, a bonus action, and the element leaves the
- * weapon with it. The rest (its chakra, its range, its roll and its damage) is the builder's proposal.
+ * weapon with it. Its chakra and range are his too (SLASH_COST); its roll and its damage are the builder's, approved with it.
  */
 export const ELEMENTAL_SLASH = 'elemental_slash';
 
@@ -55,9 +55,9 @@ export const WIND_PUSH = 1.5;
 /** Earth: the lowest natural d20 that is a critical hit with obsidian on the edge (proposal: 19–20). */
 export const EARTH_CRIT = 19;
 
-/** Elemental Slash: chakra it costs (proposal: a little; the element on the weapon, paid for already, goes with it). */
-export const SLASH_COST = 1;
-/** Elemental Slash: how far it flies (m; proposal: as the rank D and C jutsu thrown at one target, 9 m), water's 1.5 m more. */
+/** Elemental Slash: chakra it costs (the owner, 2026-10-24: 2, asked "¿2 de chakra y alcance como un jutsu de rango C?", he said "15 si"). */
+export const SLASH_COST = 2;
+/** Elemental Slash: how far it flies (m): as a rank C jutsu thrown at one target (his same answer), water's 1.5 m more. */
 export const SLASH_RANGE = 9;
 
 /**

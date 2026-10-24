@@ -5,7 +5,7 @@
 import type { AreaShape, BattleState, Cell, Intent, PropDef, Pt, Trap, Unit, Wall, WeaponNode } from '../../battle/types';
 import { homeTeam } from '../../battle/types';
 import type { MapDef } from '../../battle/map';
-import { BLOCK_HALF, CELL, cellCenter, dist, segmentsCross } from '../../battle/map';
+import { BLOCK_HALF, CELL, cellCenter, dist, PROP_RULES, segmentsCross } from '../../battle/map';
 import { JUTSU, areaOf } from '../../battle/jutsu';
 import { breakable } from '../../battle/structures';
 import { AURA_RADIUS, sovereign } from '../../battle/combat';
@@ -29,6 +29,7 @@ import { depthFx, drawAuraBack, drawCracks, drawDouses, drawWetGround, drawHeld,
 import { isTintElement, vfxTintColors } from '../../sprite/vfxTint';
 import { jutsuTint, unitTint } from './vfxTintPlan';
 import { ACTIVATE_FRAMES, IMBUE_FPS, IMBUE_LOOP } from '../../sprite/imbue';
+import { DROP_MS, drawHideFx, drawLeap, drawStreaks, LEAP_BEHIND, leapK, VANISH_MS } from './vanishArt';
 import type { ImbueFx } from '../../sprite/imbue';
 
 export interface Camera {
@@ -214,8 +215,20 @@ export function drawBattle(ctx: CanvasRenderingContext2D, sc: Scene): void {
       continue;
     }
     const pos = sc.pb.posOf(u.id, sc.now);
+    // In a tree or a bush (the Vanish Jump) its streaks go over the leaves; leaping in, it goes
+    // behind them once it is over the crown.
+    const perchZ = v.perch ? map.props[v.perch.prop]?.z : undefined;
+    const leaping = v.vanish && (sc.now - v.vanish.t0) * sc.pb.speed < VANISH_MS;
+    const z =
+      perchZ === undefined
+        ? pos.z + (v.warp ? 0.03 : 0.01)
+        : leaping
+          ? leapK((sc.now - v.vanish!.t0) * sc.pb.speed) > LEAP_BEHIND[v.vanish!.kind]
+            ? perchZ - 0.01
+            : v.vanish!.from.z + 0.01
+          : perchZ + 0.02;
     // A Ryusei thrusting at the foe beside it in its Shooting-Star Thrust is drawn over it, so the thrust shows.
-    items.push({ z: pos.z + (v.warp ? 0.03 : 0.01), draw: () => drawUnit(ctx, sc, u, pos) });
+    items.push({ z, draw: () => drawUnit(ctx, sc, u, pos) });
   }
   void hydra;
   // An aura's back layer sits just behind its caster.
@@ -242,6 +255,8 @@ export function drawBattle(ctx: CanvasRenderingContext2D, sc: Scene): void {
   for (const [id, l] of sc.pb.burns) drawLinger(ctx, sc, id, l, 'front');
   drawDouses(ctx, sc);
   for (const fx of sc.pb.fx) if (!onGround(fx) && fx.depth === undefined && !drawVfxSprite(ctx, sc, fx)) drawFx(ctx, sc, fx);
+  // The Vanish Jump's take-off puffs and bursts of leaves (over the crowns they come out of).
+  sc.pb.hideFx = sc.pb.hideFx.filter((f) => drawHideFx(ctx, map, f, sc.now, sc.pb.speed));
 
   if (state.time === 'night') drawNight(ctx, sc, all);
   if (state.weather === 'Downpour') drawRain(ctx, sc);
@@ -786,6 +801,9 @@ function drawProp(ctx: CanvasRenderingContext2D, sc: Scene, p: PropDef, index: n
   const { spec, img } = ws;
   const anims = Object.entries(spec.anims).sort((a, b) => a[1].row - b[1].row);
   let anim = (p.anim && spec.anims[p.anim]) || anims[0][1];
+  // A bush shakes as a ninja vanishes into it or comes out (the Vanish Jump).
+  const rustle = index >= 0 ? sc.pb.rustles.get(index) : undefined;
+  if (rustle !== undefined && spec.anims.rustle && (sc.now - rustle) * sc.pb.speed < 700) anim = spec.anims.rustle;
   const pos = project(sc.map, p, p.level);
   let dx = 0;
   let dy = -(p.lift ?? 0);
@@ -815,6 +833,29 @@ function drawProp(ctx: CanvasRenderingContext2D, sc: Scene, p: PropDef, index: n
   ctx.restore();
 }
 
+/**
+ * A ninja in a tree or a bush (the Vanish Jump) isn't drawn: its ring at the foot when it acts or is
+ * picked, and the streaks on the leaves, for its own side always, for the other side only once it
+ * is seen.
+ */
+function drawPerched(ctx: CanvasRenderingContext2D, sc: Scene, u: Unit, v: UnitView, pos: Pt): void {
+  const s = project(sc.map, pos);
+  const acting = sc.pb.turnUnit === u.id && sc.state.phase === 'combat';
+  if (acting || sc.selected === u.id || sc.hover === u.id || sc.overlay.targets?.includes(u.id)) {
+    ctx.save();
+    ctx.lineWidth = 2;
+    const pulse = 0.65 + 0.35 * Math.sin(sc.now / 180);
+    ctx.strokeStyle = sc.overlay.targets?.includes(u.id) ? `rgba(248, 113, 113, ${pulse})` : acting ? `rgba(250, 204, 21, ${pulse})` : homeTeam(u) === 'party' ? 'rgba(125, 211, 252, 0.9)' : 'rgba(248, 113, 113, 0.9)';
+    ctx.beginPath();
+    ctx.ellipse(Math.round(s.X), Math.round(s.Y) - 1, 22, 7, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+  }
+  if (u.down === 'dead' || u.down === 'fled' || foeHidden(sc, u, v)) return;
+  const n = Object.values(sc.state.units).filter((o) => o.id < u.id && sc.pb.views.get(o.id)?.perch?.prop === v.perch!.prop).length;
+  drawStreaks(ctx, sc.state.mapId, v.perch!.prop, n, sc.now, 1);
+}
+
 /** How opaque a unit is drawn: fading out as it flees, fainter while hidden (more so to the other side) or dead. */
 function unitAlpha(sc: Scene, u: Unit, v: UnitView): number {
   let alpha = 1;
@@ -832,7 +873,17 @@ function drawUnit(ctx: CanvasRenderingContext2D, sc: Scene, u: Unit, pos: Pt): v
   const lvl = map.levelAt(pos.x, pos.z);
   const s = project(map, pos, lvl);
   const alpha = unitAlpha(sc, u, v);
-  if (alpha <= 0) return;
+  if (alpha <= 0 && !v.perch) return;
+  // The Vanish Jump: the leap into a tree or a bush, then only its streaks while it sits there.
+  if (v.vanish && (now - v.vanish.t0) * sc.pb.speed < VANISH_MS) {
+    const look = lookOf({ ...u, armed: v.armed });
+    if (look) drawLeap(ctx, map, u, look, v.vanish, (now - v.vanish.t0) * sc.pb.speed, v.facing, Math.max(alpha, 0.35));
+    return;
+  }
+  if (v.perch) {
+    drawPerched(ctx, sc, u, v, pos);
+    return;
+  }
   const water = map.waterAt(pos.x, pos.z);
   const swimming = water === 'deep' && !u.cond.waterWalk && !v.walk ? true : water === 'deep' && !u.cond.waterWalk;
 
@@ -910,6 +961,12 @@ function drawUnit(ctx: CanvasRenderingContext2D, sc: Scene, u: Unit, pos: Pt): v
     } else v.lunge = undefined;
   }
   const hurt = now < v.hurtUntil;
+  // Coming down out of a tree: it drops from the crown as it steps to where it lands.
+  if (v.drop) {
+    const k = ((now - v.drop.t0) * sc.pb.speed) / DROP_MS;
+    if (k >= 1) v.drop = undefined;
+    else ly -= v.drop.lift * (1 - k * k);
+  } else if (v.aloft) ly -= v.aloft;
   const x0 = Math.round(s.X + lx);
   const y0 = Math.round(s.Y + ly - FEET.y);
   /** The solid sprite (or another frame of it), `k` of its own alpha (a phase fades it out and back in). */
@@ -2250,6 +2307,37 @@ export function pickUnit(sc: { state: BattleState; pb: Playback; map: MapDef; no
     }
   }
   return best?.id;
+}
+
+/**
+ * The tree or bush (a prop the Vanish Jump can go into) drawn under a map pixel: its sprite's box,
+ * the nearest to the viewer first; else the one whose foot is within 1.2 m of the ground point.
+ */
+export function pickPerch(sc: { state: BattleState; map: MapDef }, X: number, Y: number, pt: Pt | null): number | undefined {
+  let best: { i: number; z: number } | undefined;
+  sc.map.props.forEach((p, i) => {
+    if (sc.state.props[i]?.destroyed) return;
+    const rules = PROP_RULES[`${p.group}/${p.name}`];
+    if (!rules?.perch) return;
+    const ws = worldSprite(p.group, p.name);
+    if (!ws) return;
+    const at = project(sc.map, p, p.level);
+    const [ax, ay] = ws.spec.anchor;
+    // The crown or the bush itself, not the empty corners of its frame.
+    const x0 = at.X - ax + ws.spec.frameW * 0.1;
+    const x1 = at.X - ax + ws.spec.frameW * 0.9;
+    const y0 = at.Y - ay + ws.spec.frameH * 0.05;
+    if (X >= x0 && X <= x1 && Y >= y0 && Y <= at.Y + 6 && (!best || p.z > best.z)) best = { i, z: p.z };
+  });
+  if (best) return best.i;
+  if (!pt) return undefined;
+  let near: { i: number; d: number } | undefined;
+  sc.map.props.forEach((p, i) => {
+    if (sc.state.props[i]?.destroyed || !PROP_RULES[`${p.group}/${p.name}`]?.perch) return;
+    const d = dist(p, pt);
+    if (d <= 1.2 && (!near || d < near.d)) near = { i, d };
+  });
+  return near?.i;
 }
 
 /** A point inside a polygon (even-odd rule). */

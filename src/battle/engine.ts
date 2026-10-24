@@ -29,7 +29,7 @@ import type {
   Unit,
 } from './types';
 import { homeTeam } from './types';
-import { cellBlocked, cellCenter, cellOf, clearRun, coverBetween, dampAt, dist, fullCoverBetween, getMap, gridFor, hideSpotAt, idx, inGrid, levelAtPt, lineOfSight, propRules, sameCell, segmentsCross, waterAtPt } from './map';
+import { cellBlocked, cellCenter, cellOf, clearRun, coverBetween, dampAt, dist, fullCoverBetween, getMap, gridFor, hideSpotAt, idx, inGrid, inTree, levelAtPt, lineOfSight, perchOf, propRules, sameCell, segmentsCross, waterAtPt } from './map';
 import { canStop, freeSpot, occupancy, pathTo, pathTouchesDeep, reachable, stepCost } from './nav';
 import type { AttackPreview } from './combat';
 import { attackPreview, check, damage, heal, hostileAura, passivePerception, PERFECT_HIDE, reveal, revealOutOfHiding, rollDiceExpr, skillMod } from './combat';
@@ -39,7 +39,8 @@ import { KUNAI, enemyNameOf, enemyUnit, handsFree, unitFrom, wielded } from './u
 import type { EnemyKind } from './units';
 import { hydraUnits } from './hydra';
 import { checkEnd, current, endTurn, startCombat } from './turns';
-import { afterStealthAttack, alarm, canTakedown, dragBody, guardsTurn, openFight, scareAnimalsNear, stealthMove, STONE_RANGE, throwStone } from './stealth';
+import { afterStealthAttack, alarm, canTakedown, dragBody, guardsTurn, openFight, sawVanish, scareAnimalsNear, stealthMove, STONE_RANGE, throwStone, VISION } from './stealth';
+import { DROP_REACH, leavePerch, perchBlocker, perchers, perchKind, perchSpot, VANISH_RANGE } from './perch';
 import { conduct, electrify, groundEffects, plantTag, saveHit, springTrap, TAG, throwTag, trapAt, unitsInArea } from './hazards';
 import { blowSteam, pathArea, soak } from './ground';
 import { breakable, damageStructure, faceToward, hitStructuresIn, jutsuWallAt, raiseStructure, STRUCTURE_AC, structureAt, structureAttack, structureBlocker } from './structures';
@@ -217,6 +218,12 @@ export function applyAction(state: BattleState, action: Action): Outcome {
 
 /** After an action: the battle may be over, or the acting unit may have fallen or fled. */
 function settle(s: BattleState, ev: BattleEvent[]): void {
+  // Moved out of its tree or bush by something else (a Kawarimi, a push, a pull): out of it.
+  for (const u of Object.values(s.units)) {
+    if (u.cond.perch === undefined || perchOf(s, u) >= 0) continue;
+    u.cond.perch = undefined;
+    revealOutOfHiding(s, u, ev);
+  }
   if (s.pending || s.phase === 'ended') return;
   if (checkEnd(s, ev)) return;
   if (s.phase === 'combat') {
@@ -252,14 +259,24 @@ function dispatch(s: BattleState, a: Action, ev: BattleEvent[]): string | null {
     if (s.stealthDone.includes(u.id)) return 'alreadyDone';
   }
   if (u.down && a.type !== 'endTurn') return 'cantAct';
+  // In a tree or a bush it can only strike from it, cast from it, jump on, climb down, search, throw
+  // a stone or wait (docs/GAMEPLAY_DESIGN.md, Stealth: the Vanish Jump).
+  const perched = perchOf(s, u) >= 0;
+  if (perched && !PERCHED_ACTS.includes(a.type)) return 'perched';
   s.tick++;
   switch (a.type) {
     case 'move':
       return doMove(s, u, a.to, ev);
     case 'attack':
-      return doAttack(s, u, a.target, !!a.ranged, !!a.knockout, ev);
+      return perched ? attackFromPerch(s, u, a.target, !!a.ranged, !!a.knockout, ev) : doAttack(s, u, a.target, !!a.ranged, !!a.knockout, ev);
     case 'jutsu':
-      return doJutsu(s, u, a.jutsu, a.at, a.target, !!a.enhanced, ev, a.target2, a.element);
+      return perched ? jutsuFromPerch(s, u, a, ev) : doJutsu(s, u, a.jutsu, a.at, a.target, !!a.enhanced, ev, a.target2, a.element);
+    case 'vanish':
+      return doVanish(s, u, a.prop, ev);
+    case 'climbDown':
+      return doClimbDown(s, u, ev);
+    case 'search':
+      return doSearch(s, u, ev);
     case 'dash':
     case 'disengage':
     case 'dodge':
@@ -296,6 +313,9 @@ function dispatch(s: BattleState, a: Action, ev: BattleEvent[]): string | null {
       return null;
   }
 }
+
+/** What a ninja in a tree or a bush can do. */
+const PERCHED_ACTS: Action['type'][] = ['attack', 'jutsu', 'vanish', 'climbDown', 'search', 'stone', 'endTurn'];
 
 /** A ninja is done for this stealth turn; when everyone is, the guards move. */
 function stealthDone(s: BattleState, u: Unit, ev: BattleEvent[]): void {
@@ -357,6 +377,8 @@ function provoker(s: BattleState, u: Unit, hop: Pt[], skip: string[]): Unit | un
   for (const r of Object.values(s.units)) {
     if (r.team === u.team || r.kind !== 'ninja' || r.down || skip.includes(r.id)) continue;
     if (!r.turn.reaction || r.cond.surprised) continue;
+    // Up in a tree or in a bush it strikes nobody passing by (it would give itself away).
+    if (perchOf(s, r) >= 0) continue;
     // Nothing reaches across a metal wall.
     if (fullCoverBetween(s, r.pos, u.pos)) continue;
     // A hidden mover it can't see slips past.
@@ -416,7 +438,7 @@ function walk(s: BattleState, u: Unit, path: Cell[], from: number, ev: BattleEve
         ev.push({ t: 'reactionAsk', pending: s.pending });
         return;
       }
-      const paused = opportunityAttack(s, r, u, ev, { unit: u.id, path, stepIndex: i, skip, at });
+      const paused = opportunityAttack(s, r, u, ev, { resumeWalk: { unit: u.id, path, stepIndex: i, skip, at } });
       if (paused || u.down || !sameCell(cellOf(u.pos), at)) return;
     }
     u.turn.move = Math.max(0, u.turn.move - cost);
@@ -592,9 +614,9 @@ function elementalSlash(s: BattleState, u: Unit, t: Unit, ev: BattleEvent[]): vo
   applyHits(s, hits, loud(s, u), ev);
 }
 
-function opportunityAttack(s: BattleState, r: Unit, m: Unit, ev: BattleEvent[], resume: NonNullable<AfterHits['resumeWalk']>): boolean {
+function opportunityAttack(s: BattleState, r: Unit, m: Unit, ev: BattleEvent[], after: AfterHits): boolean {
   r.turn.reaction = false;
-  return weaponAttack(s, r, m, false, attackPreview(s, r, m, 'melee'), {}, { resumeWalk: resume }, ev);
+  return weaponAttack(s, r, m, false, attackPreview(s, r, m, 'melee'), {}, after, ev);
 }
 
 /** Attacking a prop: an explosive barrel blows up, crates and fences break. */
@@ -728,6 +750,7 @@ function landHit(s: BattleState, t: Unit, h: Hit, ev: BattleEvent[]): void {
   // The element on the weapon, after the blow: not on a ninja the blow dropped, but a fire or
   // lightning blade seals the hydra's stump it has just cut.
   if (h.bonus && h.bonus.amount > 0 && (!t.down || t.head?.severed)) damage(s, t, h.bonus.amount, h.bonus.type, { crit: h.crit, source: h.source, knockout: h.knockout, melee: h.melee }, ev);
+  if (h.amount > 0 && perchOf(s, t) >= 0) hitInPerch(s, t, h, ev);
   // A charged hand, or an element on the weapon, doesn't outlast its ninja's fall.
   chargeHolds(t, false, ev);
   imbueHolds(t, false, ev);
@@ -845,6 +868,11 @@ function finishAfter(s: BattleState, after: AfterHits, ev: BattleEvent[], resume
     const m = s.units[r.unit];
     if (m && !m.down && sameCell(cellOf(m.pos), r.at)) walk(s, m, r.path, r.stepIndex, ev, r.skip);
   }
+  if (resumed && after.resumeVanish) {
+    const r = after.resumeVanish;
+    const m = s.units[r.unit];
+    if (m && !m.down && sameCell(cellOf(m.pos), r.at)) vanishOn(s, m, r.prop, r.skip, ev);
+  }
 }
 
 /** The answer to a reaction prompt. */
@@ -856,11 +884,16 @@ function react(s: BattleState, unitId: string, take: boolean, ev: BattleEvent[])
     const r = s.units[p.reactor];
     const m = s.units[p.mover];
     const at = cellOf(m.pos);
+    const jump = p.vanish;
     if (take && r.turn.reaction && !r.down) {
-      const paused = opportunityAttack(s, r, m, ev, { unit: m.id, path: p.path, stepIndex: p.stepIndex, skip: p.skip, at });
+      const after: AfterHits = jump !== undefined ? { resumeVanish: { unit: m.id, prop: jump, skip: p.skip, at } } : { resumeWalk: { unit: m.id, path: p.path, stepIndex: p.stepIndex, skip: p.skip, at } };
+      const paused = opportunityAttack(s, r, m, ev, after);
       if (paused) return null;
     }
-    if (!m.down && sameCell(cellOf(m.pos), at)) walk(s, m, p.path, p.stepIndex, ev, p.skip);
+    if (!m.down && sameCell(cellOf(m.pos), at)) {
+      if (jump !== undefined) vanishOn(s, m, jump, p.skip, ev);
+      else walk(s, m, p.path, p.stepIndex, ev, p.skip);
+    }
     return null;
   }
   const t = s.units[p.reactor];
@@ -1363,6 +1396,12 @@ function doHide(s: BattleState, u: Unit, ev: BattleEvent[]): string | null {
   const covered = watchers.every((o) => coverBetween(s, o.pos, u.pos, [o.id, u.id]) >= 2);
   if (!inSpot && !covered && s.time !== 'night') return 'nowhereToHide';
   u.turn.action = false;
+  hideRoll(s, u, watchers, 'hideFailed', ev);
+  return null;
+}
+
+/** The Stealth roll of a hide against the foes who see it (the Hide action, the Vanish Jump). */
+function hideRoll(s: BattleState, u: Unit, watchers: Unit[], failKey: string, ev: BattleEvent[]): void {
   const adv = s.time === 'night' || effectMods(u.effects).advStealth ? 'advantage' : 'none';
   const dc = Math.max(10, ...watchers.map((o) => passivePerception(o)));
   const roll = check(s, 'check', skillMod(u, 'stealth'), dc, adv);
@@ -1377,7 +1416,157 @@ function doHide(s: BattleState, u: Unit, ev: BattleEvent[]): string | null {
       ev.push({ t: 'note', key: 'hideCrit', params: { name: u.name } });
     }
     ev.push({ t: 'condition', unit: u.id, cond: 'hidden', on: true });
-  } else ev.push({ t: 'note', key: 'hideFailed', params: { name: u.name } });
+  } else ev.push({ t: 'note', key: failKey, params: { name: u.name } });
+}
+
+// --- the Vanish Jump: hiding in a tree or a bush ---------------------------------------------
+// The owner's rules (2026-10-24, docs/GAMEPLAY_DESIGN.md, Stealth): a basic action for everyone,
+// up to 6 m, Hide's roll; leaving or striking from it costs the bonus action; one ninja per tree,
+// two in the oak, one per bush.
+
+/** The leap: the action and the movement of its length; leaving a foe's reach provokes it. */
+function doVanish(s: BattleState, u: Unit, prop: number, ev: BattleEvent[]): string | null {
+  if (u.kind !== 'ninja' || u.speed <= 0) return 'cantMove';
+  if (u.cond.prone) return 'prone';
+  if (!u.turn.action) return 'noAction';
+  const blocker = perchBlocker(s, u, prop);
+  if (blocker) return blocker;
+  // From one tree to another: leaving the first costs the bonus action.
+  const from = perchOf(s, u);
+  if (from >= 0 && !u.turn.bonus) return 'noBonus';
+  const p = getMap(s.mapId).props[prop];
+  const d = dist(u.pos, p);
+  if (d > VANISH_RANGE + 0.1) return 'outOfRange';
+  if (d > u.turn.move + 0.1) return 'noMovement';
+  u.turn.action = false;
+  if (from >= 0) u.turn.bonus = false;
+  u.turn.move = Math.max(0, u.turn.move - d);
+  u.turn.moved += d;
+  vanishOn(s, u, prop, [], ev);
+  return null;
+}
+
+/**
+ * The leap goes on: first the opportunity attacks of the foes whose reach it leaves (in the fight;
+ * none from a tree, where no blade reaches it), then it lands in the tree or bush and rolls to hide.
+ */
+function vanishOn(s: BattleState, u: Unit, prop: number, skip: string[], ev: BattleEvent[]): void {
+  if (s.phase === 'combat' && !u.cond.disengaged && !inTree(s, u)) {
+    const at = cellOf(u.pos);
+    const spot = perchSpot(s, prop, 0);
+    for (;;) {
+      const r = provoker(s, u, [spot], skip);
+      if (!r) break;
+      skip = [...skip, r.id];
+      if (r.controller === 'player') {
+        s.pending = { kind: 'opportunity', reactor: r.id, mover: u.id, path: [], stepIndex: 0, skip, vanish: prop };
+        ev.push({ t: 'reactionAsk', pending: s.pending });
+        return;
+      }
+      const paused = opportunityAttack(s, r, u, ev, { resumeVanish: { unit: u.id, prop, skip, at } });
+      if (paused || u.down || !sameCell(cellOf(u.pos), at)) return;
+    }
+  }
+  // Someone else may have taken the last place meanwhile: then it stays where it is.
+  if (perchBlocker(s, u, prop)) return;
+  const from = { ...u.pos };
+  const to = perchSpot(s, prop, perchers(s, prop).filter((o) => o.id !== u.id).length);
+  u.cond.perch = prop;
+  u.cond.crouched = true;
+  u.cond.hidden = undefined;
+  u.cond.perfectHide = undefined;
+  u.pos = to;
+  if (Math.abs(to.x - from.x) > 1e-6) u.facing = to.x > from.x ? 1 : -1;
+  ev.push({ t: 'vanish', unit: u.id, prop, from, to: { ...to }, kind: perchKind(s, prop)! });
+  // Hide's roll, against the foes who see the leap (where it set off or where it lands).
+  const watchers = Object.values(s.units).filter((o) => o.team !== u.team && !o.down && o.kind !== 'hydra_body' && (lineOfSight(s, o.pos, from) || lineOfSight(s, o.pos, to)));
+  hideRoll(s, u, watchers, 'vanishSeen', ev);
+  if (s.phase === 'stealth') sawVanish(s, u, from, ev);
+}
+
+/** Climbing down (the bonus action): to the foot of the tree, or out beside the bush. */
+function doClimbDown(s: BattleState, u: Unit, ev: BattleEvent[]): string | null {
+  if (perchOf(s, u) < 0) return 'notPerched';
+  if (!u.turn.bonus) return 'noBonus';
+  u.turn.bonus = false;
+  leavePerch(s, u, ev);
+  return null;
+}
+
+/**
+ * Striking from a tree or a bush (the bonus action and the action): a throw from where it sits,
+ * then down to the foot; a blow by dropping onto a foe within 3 m of the trunk.
+ */
+function attackFromPerch(s: BattleState, u: Unit, targetId: string, ranged: boolean, knockout: boolean, ev: BattleEvent[]): string | null {
+  if (!u.turn.bonus) return 'noBonus';
+  if (!u.turn.action) return 'noAction';
+  u.turn.bonus = false;
+  if (ranged || targetId.startsWith('prop:') || targetId.startsWith('wall:')) {
+    const err = doAttack(s, u, targetId, ranged, knockout, ev);
+    if (err) return err;
+    if (perchOf(s, u) >= 0) leavePerch(s, u, ev);
+    return null;
+  }
+  const t = s.units[targetId];
+  if (!t || !targetable(t)) return 'badTarget';
+  if (t.team === u.team) return 'ally';
+  const p = getMap(s.mapId).props[u.cond.perch!];
+  if (dist(t.pos, p) > DROP_REACH + (t.bulk ?? 0) + 0.1) return 'outOfRange';
+  // It lands beside the foe, on the side of its tree, and strikes still unseen.
+  const reach = wielded(u).reach;
+  const land = freeSpot(s, u, t.pos, 0.4, reach + (t.bulk ?? 0), (q) => -dist(q, p));
+  if (dist(land, t.pos) < 0.4 || dist(land, t.pos) > reach + (t.bulk ?? 0) + 0.1) return 'blocked';
+  leavePerch(s, u, ev, { to: land, keepHidden: true });
+  return doAttack(s, u, targetId, false, knockout, ev);
+}
+
+/** A jutsu from a tree or a bush (and the bonus action): cast from where it sits, then down. */
+function jutsuFromPerch(s: BattleState, u: Unit, a: Extract<Action, { type: 'jutsu' }>, ev: BattleEvent[]): string | null {
+  if (!u.turn.bonus) return 'noBonus';
+  u.turn.bonus = false;
+  const err = doJutsu(s, u, a.jutsu, a.at, a.target, !!a.enhanced, ev, a.target2, a.element);
+  if (err) return err;
+  if (perchOf(s, u) >= 0) leavePerch(s, u, ev);
+  return null;
+}
+
+/**
+ * Hit in its hiding place: found. In a tree it falls to the foot (1d6 and prone, a level's fall,
+ * unless the blow dropped it already); in a bush it only gives itself away.
+ */
+function hitInPerch(s: BattleState, t: Unit, h: Hit, ev: BattleEvent[]): void {
+  if (perchKind(s, t.cond.perch!) !== 'tree') {
+    reveal(t, ev);
+    return;
+  }
+  leavePerch(s, t, ev, { fall: true });
+  if (t.down) return;
+  t.cond.prone = true;
+  ev.push({ t: 'condition', unit: t.id, cond: 'prone', on: true });
+  landHit(s, t, { unit: t.id, amount: rollDiceExpr(s, '1d6'), type: 'Bludgeoning', source: h.source, what: 'fall' }, ev);
+}
+
+/**
+ * Search (an action): a Perception check against every hidden foe it could see (in sight and within
+ * eyeshot, 12 m by day, 7 by night): the Stealth totals it matches or beats are found. A perfect
+ * hide (a natural 20) is never found before its turn.
+ */
+function doSearch(s: BattleState, u: Unit, ev: BattleEvent[]): string | null {
+  if (!u.turn.action) return 'noAction';
+  u.turn.action = false;
+  const range = s.time === 'night' ? VISION.night : VISION.day;
+  const roll = check(s, 'check', skillMod(u, 'perception'), 10);
+  ev.push({ t: 'check', unit: u.id, what: 'perception', roll });
+  let found = 0;
+  for (const f of Object.values(s.units)) {
+    if (f.team === u.team || f.down || f.cond.hidden === undefined || f.cond.hidden >= PERFECT_HIDE) continue;
+    if (dist(u.pos, f.pos) > range || !lineOfSight(s, u.pos, f.pos)) continue;
+    if (roll.total < f.cond.hidden) continue;
+    reveal(f, ev);
+    ev.push({ t: 'note', key: 'searchFound', params: { name: u.name, foe: f.name } });
+    found++;
+  }
+  if (!found) ev.push({ t: 'note', key: 'searchNothing', params: { name: u.name } });
   return null;
 }
 

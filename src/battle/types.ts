@@ -79,6 +79,11 @@ export interface Conditions {
   ninjaJump?: boolean;
   /** Warped in next to a foe (Ryusei): the next attack this turn comes from behind. */
   warpEdge?: boolean;
+  /**
+   * In a tree or a bush after a Vanish Jump: the prop's index in the map. It counts only while the
+   * unit still stands there (map.ts perchOf), so whatever moves it out (a Kawarimi, a push) ends it.
+   */
+  perch?: number;
 }
 
 /** What an enemy will do on its next turn (it commits to it; a Mirai can see it). */
@@ -271,6 +276,10 @@ export interface PropRules {
   blocksSight: boolean;
   /** Bushes, tall grass, reeds: a ninja inside can hide; it doesn't block walking. */
   hideSpot: boolean;
+  /** A tree or a bush a ninja can vanish into with the Vanish Jump (docs/GAMEPLAY_DESIGN.md, Stealth). */
+  perch?: 'tree' | 'bush';
+  /** How many ninjas fit in it (1 unless said: the big oak takes 2). */
+  perchRoom?: number;
   /** Walkable decoration (flowers, ferns, lily pads). */
   passable: boolean;
   hp?: number;
@@ -422,11 +431,13 @@ export interface AfterHits {
   alarmAt?: Pt;
   /** A move paused by an opportunity attack goes on (if the mover is still where it was). */
   resumeWalk?: { unit: string; path: Cell[]; stepIndex: number; skip: string[]; at: Cell };
+  /** A Vanish Jump paused by an opportunity attack goes on (if the jumper is still where it was). */
+  resumeVanish?: { unit: string; prop: number; skip: string[]; at: Cell };
 }
 
 /** A reaction the engine is waiting for (reactions always ask the player). */
 export type PendingReaction =
-  | { kind: 'opportunity'; reactor: string; mover: string; path: Cell[]; stepIndex: number; skip: string[] }
+  | { kind: 'opportunity'; reactor: string; mover: string; path: Cell[]; stepIndex: number; skip: string[]; vanish?: number }
   | { kind: 'kawarimi'; reactor: string; hit: Hit; rest: Hit[]; after: AfterHits }
   | { kind: 'evasion'; reactor: string; hit: Hit; rest: Hit[]; after: AfterHits };
 
@@ -488,6 +499,11 @@ export type Action =
   | { type: 'flee'; unit: string }
   | { type: 'endTurn'; unit: string }
   | { type: 'react'; unit: string; take: boolean }
+  /** The Vanish Jump into a tree or a bush (`prop`: its index in the map); `climbDown` leaves it. */
+  | { type: 'vanish'; unit: string; prop: number }
+  | { type: 'climbDown'; unit: string }
+  /** Search: a Perception check that finds hidden foes. */
+  | { type: 'search'; unit: string }
   // stealth phase
   | { type: 'stone'; unit: string; at: Pt }
   | { type: 'drag'; unit: string; body: string; to: Cell }
@@ -576,6 +592,10 @@ export type BattleEvent =
   | { t: 'node'; node: WeaponNode; on: boolean }
   | { t: 'explode'; at: Pt; radius: number }
   | { t: 'kawarimi'; unit: string; from: Pt; to: Pt }
+  /** The Vanish Jump: from where it leapt into the tree or bush `prop`. */
+  | { t: 'vanish'; unit: string; prop: number; from: Pt; to: Pt; kind: 'tree' | 'bush' }
+  /** Out of a tree or bush: climbed down, dropped onto a foe, knocked out (`fall`) or burnt out. */
+  | { t: 'leavePerch'; unit: string; prop: number; from: Pt; to: Pt; fall?: boolean }
   /** `what`: the blow or jutsu stepped away from. */
   | { t: 'evade'; unit: string; from: Pt; to: Pt; source?: string; what?: string }
   | { t: 'clone'; unit: string; on: boolean }

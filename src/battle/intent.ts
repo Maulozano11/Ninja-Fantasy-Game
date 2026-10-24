@@ -8,7 +8,7 @@ import { abilityMod, successChance } from '../rules/checks';
 import { effectMods, hasEffect } from '../rules/effects';
 import type { BattleEvent, BattleState, Cell, Intent, Pt, Unit } from './types';
 import { homeTeam } from './types';
-import { cellCenter, cellOf, clearRun, coverBetween, dist, fullCoverBetween, gridFor, levelAtPt, lineOfSight, sameCell, steamAt, steamHides } from './map';
+import { cellCenter, cellOf, clearRun, coverBetween, dist, fullCoverBetween, gridFor, inTree, levelAtPt, lineOfSight, sameCell, steamAt, steamHides } from './map';
 import { lightningSeeds, unitsOnPatch, wetPatch } from './ground';
 import { canStop, occupancy, reachable } from './nav';
 import { JUTSU, MIN_AIM, areaOf, inArea } from './jutsu';
@@ -262,7 +262,11 @@ export function ninjaOptions(s: BattleState, u: Unit, next = false): Option[] {
     const blow = (avg(u.weapon.dice) + wMod + (imbued ? avg(IMBUE_DICE) : 0)) * 0.65 * fx;
     // A Ryusei with a Node beside the foe warps in and strikes from behind, however far it is.
     const warpIn = warps ? warpStrikeAt(s, u, f) : null;
-    if (warpIn) out.push({ intent: { kind: 'melee', what: u.weapon.name, target: f.id }, value: blow * EDGE, way: 'warp' });
+    // Up in a tree (the Vanish Jump), no blade reaches it: only throws, jutsu and areas.
+    const high = inTree(s, f);
+    if (high) {
+      // No blow to plan.
+    } else if (warpIn) out.push({ intent: { kind: 'melee', what: u.weapon.name, target: f.id }, value: blow * EDGE, way: 'warp' });
     else if (d <= u.speed + reachTo(u, f) + 0.1) out.push({ intent: { kind: 'melee', what: u.weapon.name, target: f.id }, value: blow });
     if (d <= KUNAI_LONG + u.speed) {
       // With no Node near the foe yet (and the foe out of reach), the kunai leaves one: half a blow from behind more.
@@ -288,12 +292,15 @@ export function ninjaOptions(s: BattleState, u: Unit, next = false): Option[] {
         continue;
       }
       if (d > j.range + u.speed + (f.bulk ?? 0)) continue;
+      if (high && j.melee) continue;
       const hits = areaValue(s, u, j, f);
       if (hits <= 0) continue;
+      // A foe in a tree: fire burns it out, an area hits it in the leaves (docs: the Vanish Jump's AI).
+      const smoke = high ? (j.dmgType === 'Fire' ? 1.5 : j.shape !== 'single' ? 1.2 : 1) : 1;
       const thrift = u.chakra >= j.cost * 2 ? 1 : 0.85;
       // A save made with disadvantage (Pursuing Flame) fails more often.
       const lands = j.save ? (j.saveAdv === 'disadvantage' ? 0.85 : 0.75) : 0.65;
-      out.push({ intent: { kind: 'jutsu', what: id, target: f.id, at: { ...f.pos } }, value: avg(j.dice) * lands * hits * fx * thrift, single: hits < 2 });
+      out.push({ intent: { kind: 'jutsu', what: id, target: f.id, at: { ...f.pos } }, value: avg(j.dice) * lands * hits * fx * thrift * smoke, single: hits < 2 });
     }
     // A Northstar takes a foe's mind (Command) or a beast's (Natural Submission): if the WIS save
     // fails, the foe neither strikes the Northstar's side nor holds back from its own: twice its harm.

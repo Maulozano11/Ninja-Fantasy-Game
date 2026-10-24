@@ -1,0 +1,202 @@
+{
+ "group": "vfx_hide",
+ "pxPerMeter": 57,
+ "sprites": {
+  "dash_lines": {
+   "label": "Vanish jump speed lines",
+   "file": "dash_lines.png",
+   "frameW": 208,
+   "frameH": 363,
+   "anchor": [
+    181,
+    181
+   ],
+   "meters": [
+    3.65,
+    6.37
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "a-90": {
+     "row": 0,
+     "frames": 4,
+     "fps": 20,
+     "loop": true
+    },
+    "a-75": {
+     "row": 1,
+     "frames": 4,
+     "fps": 20,
+     "loop": true
+    },
+    "a-60": {
+     "row": 2,
+     "frames": 4,
+     "fps": 20,
+     "loop": true
+    },
+    "a-45": {
+     "row": 3,
+     "frames": 4,
+     "fps": 20,
+     "loop": true
+    },
+    "a-30": {
+     "row": 4,
+     "frames": 4,
+     "fps": 20,
+     "loop": true
+    },
+    "a-15": {
+     "row": 5,
+     "frames": 4,
+     "fps": 20,
+     "loop": true
+    },
+    "a0": {
+     "row": 6,
+     "frames": 4,
+     "fps": 20,
+     "loop": true
+    },
+    "a15": {
+     "row": 7,
+     "frames": 4,
+     "fps": 20,
+     "loop": true
+    },
+    "a30": {
+     "row": 8,
+     "frames": 4,
+     "fps": 20,
+     "loop": true
+    },
+    "a45": {
+     "row": 9,
+     "frames": 4,
+     "fps": 20,
+     "loop": true
+    },
+    "a60": {
+     "row": 10,
+     "frames": 4,
+     "fps": 20,
+     "loop": true
+    },
+    "a75": {
+     "row": 11,
+     "frames": 4,
+     "fps": 20,
+     "loop": true
+    },
+    "a90": {
+     "row": 12,
+     "frames": 4,
+     "fps": 20,
+     "loop": true
+    }
+   }
+  },
+  "vanish_burst": {
+   "label": "Vanish jump take-off",
+   "file": "vanish_burst.png",
+   "frameW": 128,
+   "frameH": 96,
+   "anchor": [
+    64,
+    86
+   ],
+   "meters": [
+    2.25,
+    1.68
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "burst": {
+     "row": 0,
+     "frames": 8,
+     "fps": 20,
+     "loop": false
+    }
+   }
+  },
+  "leaf_burst": {
+   "label": "Leaves burst out of the foliage",
+   "file": "leaf_burst.png",
+   "frameW": 140,
+   "frameH": 130,
+   "anchor": [
+    70,
+    56
+   ],
+   "meters": [
+    2.46,
+    2.28
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "oak": {
+     "row": 0,
+     "frames": 10,
+     "fps": 18,
+     "loop": false
+    },
+    "maple": {
+     "row": 1,
+     "frames": 10,
+     "fps": 18,
+     "loop": false
+    },
+    "pine": {
+     "row": 2,
+     "frames": 10,
+     "fps": 18,
+     "loop": false
+    },
+    "bush": {
+     "row": 3,
+     "frames": 10,
+     "fps": 18,
+     "loop": false
+    }
+   }
+  },
+  "hidden_streaks": {
+   "label": "Someone hides in here",
+   "file": "hidden_streaks.png",
+   "frameW": 84,
+   "frameH": 64,
+   "anchor": [
+    42,
+    32
+   ],
+   "meters": [
+    1.47,
+    1.12
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "tree": {
+     "row": 0,
+     "frames": 18,
+     "fps": 10,
+     "loop": true
+    },
+    "bush": {
+     "row": 1,
+     "frames": 18,
+     "fps": 10,
+     "loop": true
+    }
+   }
+  }
+ }
+}

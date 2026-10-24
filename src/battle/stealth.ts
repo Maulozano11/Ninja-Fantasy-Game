@@ -4,7 +4,7 @@
 // draws a guard to look; silent takedowns leave bodies that raise the alarm if seen.
 
 import type { BattleEvent, BattleState, Cell, Pt, Unit } from './types';
-import { cellCenter, cellOf, dist, gridFor, hideSpotAt, lineOfSight, getMap, propRules, levelAtPt } from './map';
+import { cellCenter, cellOf, dist, gridFor, hideSpotAt, inTree, lineOfSight, getMap, perchOf, propRules, levelAtPt } from './map';
 import { pathCost, reachable, canStop, pathTo, stepCost } from './nav';
 import { passivePerception } from './combat';
 import { startCombat } from './turns';
@@ -39,15 +39,44 @@ export function seesPoint(s: BattleState, g: Unit, p: Pt): boolean {
 export function exposure(s: BattleState, g: Unit, u: Unit, at: Pt = u.pos): number {
   if (!seesPoint(s, g, at)) return 0;
   const d = dist(g.pos, at);
-  const hidden = u.cond.hidden !== undefined && hideSpotAt(s, at) >= 0;
-  if (hidden && d > VISION.near && passivePerception(g) < (u.cond.hidden ?? 0)) return 0;
+  // In the tree or bush of its Vanish Jump (only where it sits now).
+  const perched = at === u.pos && perchOf(s, u) >= 0;
+  // Up in a tree, a guard passing below doesn't see it just for being near (in a bush it does).
+  const high = perched && inTree(s, u);
+  const spot = hideSpotAt(s, at) >= 0 || perched;
+  const hidden = u.cond.hidden !== undefined && spot;
+  if (hidden && (d > VISION.near || high) && passivePerception(g) < (u.cond.hidden ?? 0)) return 0;
   const range = s.time === 'night' ? VISION.night : VISION.day;
   let rate = 100 * Math.max(0.25, 1 - Math.max(0, d - VISION.near) / (range - VISION.near));
   if (u.cond.crouched) rate *= 0.5;
-  if (hideSpotAt(s, at) >= 0) rate *= 0.5;
+  if (spot) rate *= 0.5;
   if (s.time === 'night') rate *= 0.75;
-  if (d <= VISION.near) rate = 100;
+  if (d <= VISION.near && !high) rate = 100;
   return rate;
+}
+
+/**
+ * The guards who saw a Vanish Jump (where it set off or where it landed): one whose passive
+ * Perception beats the roll (or any, if the roll failed) followed it with its eyes: it grows
+ * suspicious as if it saw the ninja there this turn, and goes to look at the tree. The others lost
+ * it (the owner: "si pasas la tirada te pierden de vista").
+ */
+export function sawVanish(s: BattleState, u: Unit, from: Pt, ev: BattleEvent[]): void {
+  for (const g of guards(s)) {
+    if (s.phase !== 'stealth') return;
+    if (!seesPoint(s, g, from) && !seesPoint(s, g, u.pos)) continue;
+    if (u.cond.hidden !== undefined && passivePerception(g) < u.cond.hidden) continue;
+    const d = Math.min(dist(g.pos, from), dist(g.pos, u.pos));
+    const range = s.time === 'night' ? VISION.night : VISION.day;
+    const rate = d <= VISION.near ? 100 : 100 * Math.max(0.25, 1 - (d - VISION.near) / (range - VISION.near));
+    if (addSuspicion(s, g, u, rate, ev)) {
+      alarm(s, g, ev, u.pos);
+      return;
+    }
+    g.guard!.investigate = { ...u.pos };
+    g.guard!.look = deg(Math.atan2(u.pos.z - g.pos.z, u.pos.x - g.pos.x));
+    ev.push({ t: 'investigate', guard: g.id, at: { ...u.pos } });
+  }
 }
 
 function addSuspicion(s: BattleState, g: Unit, u: Unit, amount: number, ev: BattleEvent[]): boolean {

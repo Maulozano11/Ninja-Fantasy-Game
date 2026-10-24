@@ -1,7 +1,7 @@
 // A battle map: its geometry (levels, water, ramps), the props on it with what they do in battle,
 // the hidden navigation grid (0.5 m cells) and the sight, cover and projection queries.
 
-import type { BattleState, Cell, PropDef, PropRules, Pt, Wall, WaterKind } from './types';
+import type { BattleState, Cell, PropDef, PropRules, Pt, Unit, Wall, WaterKind } from './types';
 
 export interface MapDef {
   id: string;
@@ -33,14 +33,14 @@ const R = (radius: number, cover: 0 | 2 | 5, o: Partial<PropRules> = {}): PropRu
 
 /** What each kind of prop does in battle (the sprite manifests' tags, made concrete). */
 export const PROP_RULES: Record<string, PropRules & { halfLen?: number }> = {
-  'trees/oak': R(0.45, 2, { blocksSight: true, flammable: true }),
-  'trees/maple': R(0.4, 2, { blocksSight: true, flammable: true }),
-  'trees/pine': R(0.35, 2, { blocksSight: true, flammable: true }),
-  'trees/bamboo': R(0.7, 2, { blocksSight: true, hideSpot: true, passable: true, flammable: true }),
+  'trees/oak': R(0.45, 2, { blocksSight: true, flammable: true, perch: 'tree', perchRoom: 2 }),
+  'trees/maple': R(0.4, 2, { blocksSight: true, flammable: true, perch: 'tree' }),
+  'trees/pine': R(0.35, 2, { blocksSight: true, flammable: true, perch: 'tree' }),
+  'trees/bamboo': R(0.7, 2, { blocksSight: true, hideSpot: true, passable: true, flammable: true, perch: 'bush' }),
   'trees/stump': R(0.35, 2),
-  'plants/bush_round': R(0.65, 2, { hideSpot: true, passable: true, flammable: true }),
-  'plants/bush_wide': R(0.95, 2, { hideSpot: true, passable: true, flammable: true }),
-  'plants/bush_flower': R(0.65, 2, { hideSpot: true, passable: true, flammable: true }),
+  'plants/bush_round': R(0.65, 2, { hideSpot: true, passable: true, flammable: true, perch: 'bush' }),
+  'plants/bush_wide': R(0.95, 2, { hideSpot: true, passable: true, flammable: true, perch: 'bush' }),
+  'plants/bush_flower': R(0.65, 2, { hideSpot: true, passable: true, flammable: true, perch: 'bush' }),
   'plants/tall_grass': R(0.65, 0, { hideSpot: true, passable: true, flammable: true }),
   'plants/reeds': R(0.5, 0, { hideSpot: true, passable: true }),
   'plants/fern': R(0, 0, { passable: true }),
@@ -241,6 +241,27 @@ export function hideSpotAt(s: BattleState, p: Pt): number {
   const h = g.hide[idx(g, c)];
   return h >= 0 && !s.props[h]?.destroyed ? h : -1;
 }
+
+/**
+ * The tree or bush a unit hides in after a Vanish Jump (Unit.cond.perch), or -1: only while the
+ * prop still stands and the unit is still in it (within 0.45 m of its middle).
+ */
+export function perchOf(s: BattleState, u: Unit): number {
+  const i = u.cond.perch;
+  if (i === undefined || u.down === 'fled' || u.down === 'dead') return -1;
+  const p = getMap(s.mapId).props[i];
+  if (!p || s.props[i]?.destroyed || dist(u.pos, p) > 0.45) return -1;
+  return i;
+}
+
+/** A tree's crown is a level up: the height against foes below, and a level's fall. */
+export const CROWN_LEVEL = 1;
+
+/** The unit hides up in a tree (not a bush): the height, and no blade reaches it. */
+export const inTree = (s: BattleState, u: Unit): boolean => {
+  const i = perchOf(s, u);
+  return i >= 0 && propRules(getMap(s.mapId).props[i]).perch === 'tree';
+};
 
 /** Half the side of a Kōton metal block (1.5 m, one of the owner's squares). */
 export const BLOCK_HALF = 0.75;

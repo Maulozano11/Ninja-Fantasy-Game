@@ -4,7 +4,8 @@
 
 import { effectMods, hasEffect } from '../rules/effects';
 import type { Action, BattleEvent, BattleState, Cell, Intent, Pt, Unit } from './types';
-import { cellCenter, cellOf, coverBetween, dampAt, dist, fullCoverBetween, gridFor, idx, lineOfSight, sameCell, segmentsCross, steamAt } from './map';
+import { cellCenter, cellOf, coverBetween, dampAt, dist, fullCoverBetween, getMap, gridFor, idx, inTree, lineOfSight, perchOf, sameCell, segmentsCross, steamAt } from './map';
+import { DROP_REACH, perchBlocker, perchKind, perchSpot, VANISH_RANGE } from './perch';
 import { canStop, reachable } from './nav';
 import { JUTSU, MIN_AIM } from './jutsu';
 import { KUNAI_LONG } from './units';
@@ -57,6 +58,8 @@ export function aiAction(s: BattleState): Action | null {
   const end: Action = { type: 'endTurn', unit: u.id };
   if (u.kind === 'hydra_body') return end;
   if (u.kind === 'hydra_head') return headAction(s, u) ?? end;
+  // In a tree or a bush (the Vanish Jump): strike from it, or wait there.
+  if (perchOf(s, u) >= 0) return fromPerch(s, u) ?? end;
   if (!u.turn.action) {
     // After a dash, keep closing in with the extra movement.
     const plan = u.team === 'enemy' ? u.intent : planIntent(s, u);
@@ -73,8 +76,8 @@ export function aiAction(s: BattleState): Action | null {
   // here: then it acts first and walks out after.
   const out = leaveSteam(s, u, intent);
   if (out) return out;
-  if (!intent) return end;
-  return bonusBefore(s, u, intent) ?? edgeStrike(s, u, intent) ?? carryOut(s, u, intent) ?? fallback(s, u) ?? end;
+  if (!intent) return search(s, u) ?? end;
+  return bonusBefore(s, u, intent) ?? edgeStrike(s, u, intent) ?? vanishFor(s, u, intent) ?? carryOut(s, u, intent) ?? fallback(s, u) ?? end;
 }
 
 function headAction(s: BattleState, u: Unit): Action | null {
@@ -161,6 +164,65 @@ function carryOut(s: BattleState, u: Unit, i: Intent): Action | null {
     default:
       return null;
   }
+}
+
+// --- the Vanish Jump (docs/GAMEPLAY_DESIGN.md, Stealth: hiding in a tree or a bush) ------------
+
+/**
+ * With a free tree (or bush) within 6 m and its movement, and no foe within 1.5 m, it vanishes into
+ * it: before a throw or a jutsu, to strike from it with advantage on its next turn (a tree from
+ * where its target can be struck); or hurt (half its HP or less), to lie in wait (as the water
+ * puddle's AI). Enemies do it; allies on the AI only under the Defensive order.
+ */
+function vanishFor(s: BattleState, u: Unit, i: Intent): Action | null {
+  if (u.kind !== 'ninja' || u.cond.prone || u.cond.hidden !== undefined || u.charged) return null;
+  if (u.team !== 'enemy' && u.aiOrder !== 'defensive') return null;
+  // A plain throw or an offensive jutsu at range (not a clan ability: a Ryusei's kunai leave the
+  // Nodes it warps to, its Swap and the Koton's walls have their own way).
+  const j = i.kind === 'jutsu' ? JUTSU[i.what] : undefined;
+  const ranged = (i.kind === 'ranged' && u.character?.clan !== 'Ryusei') || (!!j && offensive(j) && !j.special && !j.melee && !j.handCharge && j.cast !== 'bonus');
+  const hurt = u.hp <= u.maxHp / 2 && (i.kind === 'melee' || i.kind === 'ranged' || i.kind === 'move' || (!!j && !j.special));
+  const t = i.target ? s.units[i.target] : undefined;
+  if ((!ranged && !hurt) || !t) return null;
+  const foes = Object.values(s.units).filter((o) => o.team !== u.team && !o.down && o.kind !== 'hydra_body');
+  if (foes.some((o) => dist(o.pos, u.pos) <= 1.6)) return null;
+  const reach = i.kind === 'ranged' ? KUNAI_LONG : JUTSU[i.what]?.range ?? 0;
+  let best: { prop: number; v: number } | undefined;
+  getMap(s.mapId).props.forEach((p, k) => {
+    if (!perchKind(s, k) || perchBlocker(s, u, k)) return;
+    const d = dist(u.pos, p);
+    if (d > Math.min(VANISH_RANGE, u.turn.move) + 0.05) return;
+    const spot = perchSpot(s, k, 0);
+    const strikes = ranged && dist(spot, t.pos) <= reach && lineOfSight(s, spot, t.pos);
+    if (!strikes && !hurt) return;
+    const v = (strikes ? 4 : 0) + (perchKind(s, k) === 'tree' ? 2 : 0) - d * 0.1;
+    if (!best || v > best.v) best = { prop: k, v };
+  });
+  return best ? { type: 'vanish', unit: u.id, prop: best.prop } : null;
+}
+
+/**
+ * In its tree or bush: a blow dropping onto a foe within 3 m of the trunk, else a throw at one in
+ * sight (both with the bonus action, from hiding); nobody to strike: it waits hidden, or climbs
+ * down once it is found.
+ */
+function fromPerch(s: BattleState, u: Unit): Action | null {
+  if (!u.turn.action || !u.turn.bonus) return null;
+  const p = getMap(s.mapId).props[u.cond.perch!];
+  const foes = visibleFoes(s, u).filter((f) => !inTree(s, f));
+  const byFocus = (a: Unit, b: Unit) => a.hp - b.hp;
+  const near = foes.filter((f) => dist(f.pos, p) <= DROP_REACH + (f.bulk ?? 0)).sort(byFocus);
+  if (near.length) return { type: 'attack', unit: u.id, target: near[0].id, knockout: u.team === 'party' };
+  const seen = visibleFoes(s, u).filter((f) => dist(u.pos, f.pos) <= KUNAI_LONG && lineOfSight(s, u.pos, f.pos)).sort((a, b) => dist(u.pos, a.pos) - dist(u.pos, b.pos));
+  if (seen.length) return { type: 'attack', unit: u.id, target: seen[0].id, ranged: true };
+  return u.cond.hidden !== undefined ? null : { type: 'climbDown', unit: u.id };
+}
+
+/** No foe in sight but some hiding: it searches for them. */
+function search(s: BattleState, u: Unit): Action | null {
+  if (u.kind !== 'ninja' || !u.turn.action) return null;
+  const hiding = Object.values(s.units).some((o) => o.team !== u.team && !o.down && o.cond.hidden !== undefined);
+  return hiding ? { type: 'search', unit: u.id } : null;
 }
 
 /** Out of reach after moving: throw a kunai if it can, otherwise dash to close in. */

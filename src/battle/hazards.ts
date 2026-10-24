@@ -11,6 +11,7 @@ import { inArea } from './jutsu';
 import { rollDiceExpr, savingThrow } from './combat';
 import { maxCritDamage } from '../rules/dice';
 import { hitStructuresIn } from './structures';
+import { throwOut } from './perch';
 
 /** Explosive barrels and tags: 3d6 fire in 1.5 m, DEX save for half. */
 export const BARREL = { dice: '3d6', radius: 1.5, dc: 13 };
@@ -130,9 +131,12 @@ export function groundEffects(s: BattleState, area: AreaShape, type: DamageType 
     } else if (rules.flammable && type === 'Fire' && !dampAt(s, p) && !soaked?.has(cellKey(cellOf(p)))) {
       st.destroyed = true;
       ev.push({ t: 'prop', prop: i, state: 'burnt' });
+      // Whoever hid in it (the Vanish Jump) jumps out, seen.
+      throwOut(s, i, ev);
     } else if (clearFoliage && rules.hideSpot) {
       st.destroyed = true;
       ev.push({ t: 'prop', prop: i, state: 'cut' });
+      throwOut(s, i, ev);
     }
   });
   if (fiery) {

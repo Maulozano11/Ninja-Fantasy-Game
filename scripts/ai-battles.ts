@@ -41,7 +41,7 @@ const CLAN_JUTSU: Record<string, string> = {
   northstar_command: 'Command',
   northstar_submission: 'Natural Submission',
 };
-const ROWS = ['Pursuing Flame', 'other Mirai jutsu', 'Premonitory Evasion', 'Ryusei kunai', 'Node left', 'Shooting-Star Thrust', 'blow from behind', 'Spatial Swap', 'Kōton Block', 'Kōton Wall', 'Command', 'Command taken', 'aura slowed a foe', 'attack in a foe\'s aura', 'Weapon Element', 'element blow'];
+const ROWS = ['Pursuing Flame', 'other Mirai jutsu', 'Premonitory Evasion', 'Ryusei kunai', 'Node left', 'Shooting-Star Thrust', 'blow from behind', 'Spatial Swap', 'Kōton Block', 'Kōton Wall', 'Command', 'Command taken', 'aura slowed a foe', 'attack in a foe\'s aura', 'Weapon Element', 'element blow', 'Vanish Jump', 'Search'];
 type Side = 'enemy' | 'party';
 
 let refusedAll = 0;
@@ -93,6 +93,9 @@ for (const id of only ?? (Object.keys(ENCOUNTERS) as EncounterId[])) {
           else if (clan(e.unit) === 'Mirai' && e.jutsu !== 'body_flicker') add(side(e.unit), 'other Mirai jutsu');
         }
         if (e.t === 'evade') add(side(e.unit), 'Premonitory Evasion');
+        // The Vanish Jump into a tree or a bush, and the Search for whoever hides.
+        if (e.t === 'vanish') add(side(e.unit), 'Vanish Jump');
+        if (e.t === 'check' && e.what === 'perception') add(side(e.unit), 'Search');
         // The Bukijutsu Master's class ability: put on the weapon, and the blows that landed its element.
         if (e.t === 'imbue' && e.on) add(side(e.unit), 'Weapon Element');
         if (e.t === 'attack' && e.ranged && e.what === 'Kunai' && clan(e.unit) === 'Ryusei') add(side(e.unit), 'Ryusei kunai');

@@ -188,6 +188,67 @@ elements.
   deer bolts), and that raises the suspicion of the guards nearby. Moving
   slowly doesn't startle them. In battle, animals flee from the noise.
 
+### Hiding in a tree or a bush (decided 2026-10-24; built on `stealth/tree-hide`, art not approved)
+
+The owner (2026-10-24): *"ahora pondremos una accion para enconderte en un arbol y saldra como un
+salto de desvanecerse y unas lineas de movimiento hacia el arbol elegido y saldran unas rayas en el
+arbol simbolizando que estas ahi esto para el sigilo"*, and *"tambien se podra a arbustos"*. His
+answers to the proposal, the same day: *"1 tus recomendaciones estan bien 2 accion basica sin chakra
+para todos, 3 si pasas la tirada te pierden de vista 4 un ninja por arbol en el grande caben 2"*.
+On the look: *"no apruevo como se ven pasamelas para repintarlas"*: the effects in the game are
+placeholders until his repaint, which is copied exactly.
+
+- **The action** (Vanish Jump, *Salto al árbol* / *Salto al arbusto*): a **basic action for
+  everyone, no chakra** (like Hide). The ninja picks a tree or a bush **up to 6 m** away and
+  vanishes into it in one leap; the leap spends the movement of its length (as walking it), and
+  leaving a foe's reach provokes its opportunity attack as usual.
+- **What counts**: trees: the oak, the maple and the pine, not burnt. Bushes: the round, the wide
+  and the flowering bush, and the bamboo. Not the stump, logs, tall grass or reeds (a ninja walks
+  into those, as before).
+- **Room**: **one ninja per tree, two in the big tree (the oak)**, one per bush.
+- **The roll** is Hide's, unchanged: Stealth against the highest passive Perception of the foes who
+  see it (at least 10); night and *Hidden in mist* give advantage; a natural 20 is a perfect hide
+  (his rule C3). A failed roll still lands it in the tree, seen. Inside, it counts as crouched: it
+  stays hidden from turn to turn without the bonus action.
+- **Who sees the jump**: *"si pasas la tirada te pierden de vista"*: a foe who sees the leap and
+  whose passive Perception is below the roll loses it. One whose Perception matches or beats it
+  followed it with its eyes (it is not hidden from that foe). In the stealth phase a guard who saw
+  the leap and beat the roll grows suspicious as if it saw the ninja that turn, and goes to look at
+  the tree.
+- **Leaving or attacking costs a bonus action, whatever it does** (his rule, from the water
+  puddle):
+  - *drop onto a foe*: bonus action + action: it lands beside a foe within 3 m of the trunk and
+    strikes it in melee;
+  - *throw or cast from the tree*: bonus action + action: a kunai, a shuriken or a jutsu from the
+    crown, then it drops to the foot of the tree;
+  - *climb down*: bonus action: it drops to the foot (no fall damage) and moves on with its
+    movement;
+  - *jump to another tree*: bonus action + action, a new roll.
+
+  Attacking from hiding is advantage and +1d6, as always; from a **tree** it also has the height
+  (+2 against a foe below, as from a hill). Afterwards it is seen. In the stealth phase dropping
+  onto a guard is a silent takedown as usual. Up in a tree, no blade reaches it (only throws,
+  jutsu and areas), and it makes no opportunity attacks.
+- **Found**: a foe whose passive Perception matches or beats the roll; the **Search** action
+  (Perception against the roll; any ninja, an action); a hit (an attack, a jutsu, an area that
+  covers the tree): it takes it with the tree's half cover and is found, and in a tree it **falls**
+  (1d6 and prone, a level's fall); **fire** burns the tree or the bush (*"fire burns bushes and
+  trees away at once"*): it jumps out for free, seen (a wet bush doesn't burn); the **wind** that
+  cuts bushes (Whirl, Whirlwind Tower) leaves it in the open. Trees aren't cut.
+- **The bush hides less** (his *"tus recomendaciones estan bien"*): no height, a guard within 1.5 m
+  sees it as before, the wind cuts it, and a hit only finds it (no fall). Up in a tree a guard
+  passing below doesn't see it just for being near.
+- **On screen**: a hidden ninja of the player's side isn't drawn: a few streaks flick on its tree
+  or bush. A hidden foe shows nothing, unless one of the party beat its roll.
+- **AI**: an enemy with a free tree (or bush) within 6 m and no foe within 1.5 m jumps in: with its
+  plan on a throw or a jutsu, to strike with advantage on its next turn; or hurt (half its HP or
+  less), to lie in wait (as the water puddle's AI). A foe that knows someone is in
+  a tree prefers fire, then an area; one that sees no foe at all Searches. Allies on the AI use it
+  only under the Defensive order.
+- **Art**: `tools/world-sprites/vfx-hide.ts` (`vfx_hide`: speed lines, take-off puff, leaf burst,
+  streaks for a tree and a bush), placeholders until his repaint; the export for it is
+  `arbol-para-repintar.zip` (frames at 1x and 4x, contact sheets, context).
+
 ## Water and elements
 
 - **Shallow water** doubles the movement cost, puts out fire and conducts

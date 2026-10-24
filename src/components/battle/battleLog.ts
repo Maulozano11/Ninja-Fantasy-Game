@@ -118,6 +118,10 @@ export function logLine(ev: BattleEvent, s: BattleState, lang: Lang, wallOf = (i
       return { text: t('l_deathSave', { t: nameOf(s, ev.unit, lang), ok: ev.ok, bad: ev.bad }), tone: 'text-amber-200' };
     case 'kawarimi':
       return { text: t('l_kawarimi', { t: nameOf(s, ev.unit, lang) }), tone: 'text-amber-200' };
+    case 'vanish':
+      return { text: t(ev.kind === 'tree' ? 'l_vanishTree' : 'l_vanishBush', { t: nameOf(s, ev.unit, lang) }), tone: 'text-slate-300' };
+    case 'leavePerch':
+      return { text: t(ev.fall ? 'l_perchFall' : 'l_leavePerch', { t: nameOf(s, ev.unit, lang) }), tone: ev.fall ? 'text-amber-300' : 'text-slate-300' };
     case 'evade': {
       // Good news when it is one of the party who steps aside. From a jutsu (a failed save), the
       // line names it: no attack roll was made.

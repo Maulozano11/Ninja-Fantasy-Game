@@ -13,7 +13,8 @@ import { current } from '../../battle/turns';
 import { AURA_RADIUS, attackPreview, sovereign } from '../../battle/combat';
 import { JUTSU, areaOf, enhanced as enhancedSpec, fanDice, fannedBy } from '../../battle/jutsu';
 import type { JutsuSpec } from '../../battle/jutsu';
-import { cellCenter, cellOf, dist, fullCoverBetween, getMap, gridFor, idx, lineOfSight, sameCell, steamAt, steamBetween, steamHides } from '../../battle/map';
+import { cellCenter, cellOf, dist, fullCoverBetween, getMap, gridFor, idx, lineOfSight, perchOf, sameCell, steamAt, steamBetween, steamHides } from '../../battle/map';
+import { perchBlocker, VANISH_RANGE } from '../../battle/perch';
 import { canStop, occupancy, pathCost, pathTo, reachable } from '../../battle/nav';
 import { foreseen } from '../../battle/intent';
 import { MAX_STRUCTURES, STRUCTURE_AC, breakable, jutsuWallAt, ownStructures, structureAt, structureAttack, structureBlocker, structureDist } from '../../battle/structures';
@@ -30,7 +31,7 @@ import { LangToggle } from '../../i18n/LangToggle';
 import { soundManager } from '../../utils/audio';
 import { MAP_ART } from './mapArt';
 import { Playback } from './playback';
-import { drawBattle, image, pickGround, pickStructure, pickUnit, project, screenToWorld } from './renderer';
+import { drawBattle, image, pickGround, pickPerch, pickStructure, pickUnit, project, screenToWorld } from './renderer';
 import type { Camera, Overlay, Rect } from './renderer';
 import { playSound, startAmbience } from './battleSound';
 import { drawDiceLayer } from './diceLayer';
@@ -58,6 +59,8 @@ type Mode =
   | { k: 'item'; item: 'bandage' | 'antidote' | 'tag' | 'tagTrap' }
   | { k: 'shove'; mode: 'push' | 'prone' }
   | { k: 'stone' }
+  /** Picking a tree or a bush for the Vanish Jump. */
+  | { k: 'vanish' }
   | { k: 'stabilize' }
   | { k: 'drag'; body: string };
 
@@ -114,7 +117,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
 
   const [mode, setMode] = useState<Mode>({ k: 'move' });
   const [selected, setSelected] = useState<string | undefined>();
-  const [hover, setHover] = useState<{ unit?: string; wall?: string; pt?: Pt; sx: number; sy: number } | null>(null);
+  const [hover, setHover] = useState<{ unit?: string; wall?: string; pt?: Pt; prop?: number; sx: number; sy: number } | null>(null);
   const [, setHoverBtn] = useState<ActionButton | null>(null);
   const [zoom, setZoom] = useState<number>(1);
   const zoomStep = useCallback((dir: 1 | -1) => {
@@ -615,6 +618,16 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
         o.area = { shape: { kind: 'circle', center: hover.pt, radius: TAG.radius }, tone: 'enemy' };
         label = ok ? (lineOfSight(s, actor.pos, hover.pt, { into: true }) ? T('aimTagTrap') : reasonLine(sightWhy(s, actor.pos, hover.pt, true))) : T('aimNoReach');
       }
+    } else if (mode.k === 'vanish') {
+      // The Vanish Jump: how far it leaps, and the tree or bush under the cursor (or why not).
+      o.range = { at: actor.pos, radius: VANISH_RANGE };
+      label = T('aimVanishPick');
+      if (hover?.prop !== undefined) {
+        const p = getMap(s.mapId).props[hover.prop];
+        const why = perchBlocker(s, actor, hover.prop) ?? (dist(actor.pos, p) > VANISH_RANGE + 0.1 ? 'outOfRange' : dist(actor.pos, p) > actor.turn.move + 0.1 ? 'noMovement' : null);
+        o.point = { at: { x: p.x, z: p.z }, ok: !why };
+        label = why ? reasonLine(why) : T('aimVanish');
+      }
     } else if (mode.k === 'stone') {
       o.range = { at: actor.pos, radius: STONE_RANGE };
       if (hover?.pt) o.point = { at: hover.pt, ok: dist(actor.pos, hover.pt) <= STONE_RANGE };
@@ -842,9 +855,11 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
     const unit = pickUnit({ state: stateRef.current, pb, map, now: performance.now() }, w.X, w.Y);
     const pt = pickGround(map, w.X, w.Y);
     const wall = unit ? undefined : structureUnder(w.X, w.Y, pt);
+    // The tree or bush under the cursor (picking one for the Vanish Jump).
+    const prop = pickPerch({ state: stateRef.current, map }, w.X, w.Y, pt);
     setHover((h) => {
-      const same = h && h.unit === unit && h.wall === wall && h.pt && pt && sameCell(cellOf(h.pt), cellOf(pt));
-      return same ? { ...h!, sx: w.cx, sy: w.cy } : { unit, wall, pt: pt ?? undefined, sx: w.cx, sy: w.cy };
+      const same = h && h.unit === unit && h.wall === wall && h.prop === prop && h.pt && pt && sameCell(cellOf(h.pt), cellOf(pt));
+      return same ? { ...h!, sx: w.cx, sy: w.cy } : { unit, wall, pt: pt ?? undefined, prop, sx: w.cx, sy: w.cy };
     });
   };
 
@@ -944,6 +959,11 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
       case 'stone':
         if (pt) act({ type: 'stone', unit: actor.id, at: pt });
         return;
+      case 'vanish': {
+        const prop = pickPerch({ state: s, map }, w.X, w.Y, pt);
+        if (prop !== undefined) act({ type: 'vanish', unit: actor.id, prop });
+        return;
+      }
       case 'stabilize':
         if (u) act({ type: 'stabilize', unit: actor.id, target: u.id });
         return;
@@ -962,7 +982,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
     const stealth = state.phase === 'stealth';
     const b: ActionButton[] = [];
     // A button that is off says why in its help line (hovering it still shows the help).
-    const add = (x: ActionButton & { why?: string | null }) => {
+    let add = (x: ActionButton & { why?: string | null }) => {
       const { why, ...btn } = x;
       // The pop-up over the slot: its own tip, or the button's name and help line.
       const tip: ButtonTip = btn.tip ?? { title: btn.label, text: btn.help };
@@ -970,6 +990,22 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
     };
     const can = { action: u.turn.action, bonus: u.turn.bonus };
     const noAction = can.action ? null : t('r_noAction');
+    // In a tree or a bush (the Vanish Jump): striking, casting, leaping on, climbing down and
+    // searching only, and leaving or striking costs the bonus action too.
+    const perched = perchOf(state, u) >= 0;
+    if (perched) {
+      const plain = add;
+      const fromPerch = (id: string) => id === 'attack' || id === 'throw' || id.startsWith('jutsu:') || id === 'vanish';
+      const ok = (id: string) => fromPerch(id) || id === 'climbDown' || id === 'search' || id === 'stone' || id === 'more' || id === 'end' || id.startsWith('passive:');
+      add = (x) =>
+        plain(
+          !ok(x.id)
+            ? { ...x, disabled: true, why: t('r_perched') }
+            : fromPerch(x.id) && !can.bonus && !x.disabled
+              ? { ...x, disabled: true, why: t('r_noBonus') }
+              : x,
+        );
+    }
     if (!more) {
       add({ id: 'attack', label: t('act_attack'), icon: ACTION_ICON.attack, disabled: !can.action, why: noAction, active: mode.k === 'attack' && !mode.ranged, help: t('help_attack') });
       add({ id: 'throw', label: t('act_throw'), icon: ACTION_ICON.throw, disabled: !can.action, why: noAction, active: mode.k === 'attack' && mode.ranged, help: t('help_throw') });
@@ -1047,6 +1083,8 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
       add({ id: 'dash', label: t('act_dash'), icon: ACTION_ICON.dash, disabled: !can.action, why: noAction, help: t('help_dash') });
       add({ id: 'dodge', label: t('act_dodge'), icon: ACTION_ICON.dodge, disabled: !can.action || stealth, why: noAction ?? t('r_combatOnly'), help: t('help_dodge') });
       add({ id: 'hide', label: t('act_hide'), icon: ACTION_ICON.hide, disabled: !can.action, why: noAction, help: t('help_hide') });
+      add({ id: 'vanish', label: t('act_vanish'), icon: ACTION_ICON.vanish, disabled: !can.action, why: noAction, active: mode.k === 'vanish', help: t('help_vanish') });
+      if (perched) add({ id: 'climbDown', label: t('act_climbDown'), icon: ACTION_ICON.climbDown, disabled: !can.bonus, why: t('r_noBonus'), help: t('help_climbDown') });
       if (u.weapon.held) add({ id: 'draw', label: t(u.armed ? 'act_stow' : 'act_draw'), iconId: u.armed ? 'weapon_stow' : 'weapon_draw', icon: ACTION_ICON.draw, disabled: !!u.turn.interacted && !can.bonus, why: t('r_noBonus'), help: t('help_draw') });
       add({ id: 'more', label: t('act_more'), icon: ACTION_ICON.items });
       add({ id: 'end', label: stealth ? t('done') : t('act_end'), icon: ACTION_ICON.end, tone: 'end', help: t('help_end') });
@@ -1068,6 +1106,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
       // The same tags, hidden on the ground: the explosive tag's old jutsu, now a use of the item.
       add({ id: 'tagTrap', label: t('act_tagTrap'), icon: ACTION_ICON.tagTrap, badge: s.supplies.explosiveTags, disabled: !can.action || s.supplies.explosiveTags < 1, active: mode.k === 'item' && mode.item === 'tagTrap', help: t('help_tagTrap') });
       if (downedAlly) add({ id: 'stabilize', label: t('act_stabilize'), icon: ACTION_ICON.stabilize, disabled: !can.action, active: mode.k === 'stabilize', help: t('help_stabilize') });
+      add({ id: 'search', label: t('act_search'), icon: ACTION_ICON.search, disabled: !can.action, why: noAction, help: t('help_search') });
       if (stealth) add({ id: 'stone', label: t('act_stone'), icon: ACTION_ICON.stone, disabled: !can.action, active: mode.k === 'stone', help: t('help_stone') });
       // Its id carries the body; its painted icon is the owner's drag (sheet 19).
       if (stealth && body) add({ id: `drag:${body.unit}`, label: t('act_drag'), iconId: 'drag', icon: ACTION_ICON.shove, active: mode.k === 'drag' });
@@ -1147,6 +1186,13 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
           return;
         case 'stone':
           setMode({ k: 'stone' });
+          return;
+        case 'vanish':
+          setMode((m) => (m.k === 'vanish' ? { k: 'move' } : { k: 'vanish' }));
+          return;
+        case 'climbDown':
+        case 'search':
+          act({ type: id, unit: u.id });
           return;
         case 'flee':
           act({ type: 'flee', unit: u.id });

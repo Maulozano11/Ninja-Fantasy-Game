@@ -14,7 +14,9 @@ import { COMBO_KICKS, COMBO_TURNED, POSE_FPS, TACKLE_IMPACT_FRAME } from '../../
 import { BLOW_MS, CONDUCT_MS, DOUSE_MS, FAN_MS, FAN_ROLL, GROUND_FADE, TOWER_MS, TOWER_RISE, WAVE_CREST, WAVE_HOLD, blastMs, impactMs, keyCenter, signatureMs, skySignature } from './vfxSprites';
 import { jutsuTint, unitTint } from './vfxTintPlan';
 import { DRIP_MS, SCREEN_MS, SPRAY_DELAY, SPRAY_LANDED, SPRAY_MS, bleedingStarts, isBleedTick } from './bloodPlan';
-import { cellOf, dist } from '../../battle/map';
+import { cellOf, dist, getMap, perchOf, propRules } from '../../battle/map';
+import { crownLift, DROP_MS, leafRow, VANISH_LEAP, VANISH_MS, VANISH_WIND, leapK } from './vanishArt';
+import type { HideFx } from './vanishArt';
 import { crackKey } from '../../battle/nav';
 import { closestPoint } from '../../battle/structures';
 import { midpoint } from '../../battle/combat';
@@ -74,6 +76,14 @@ export interface UnitView {
   imbue?: 'Fire' | 'Lightning' | 'Wind' | 'Water' | 'Earth';
   /** When the element went onto the weapon: its activation plays from `t0` to `end` (renderer.ts). */
   imbueAct?: { t0: number; end: number };
+  /** In a tree or a bush (the Vanish Jump): not drawn, its streaks are (vanishArt.ts). */
+  perch?: { prop: number; kind: 'tree' | 'bush' };
+  /** The Vanish Jump under way: the leap from `from` into the tree or bush `prop` (vanishArt.ts). */
+  vanish?: { from: Pt; to: Pt; t0: number; prop: number; kind: 'tree' | 'bush' };
+  /** Coming down out of a tree: it drops from `lift` px up to the ground from `t0`. */
+  drop?: { t0: number; lift: number };
+  /** Seen up in a tree's crown, `aloft` px above its foot (throwing or casting from it, before it drops). */
+  aloft?: number;
 }
 
 /**
@@ -447,6 +457,10 @@ export class Playback {
    * it out shows on the map ("el agua apaga el fuego"): unit → when it caught.
    */
   burns = new Map<string, { element: VfxElement; alpha: number; t0: number }>();
+  /** The Vanish Jump's take-off puffs and bursts of leaves still playing (vanishArt.ts). */
+  hideFx: HideFx[] = [];
+  /** Bushes shaking as a ninja goes in or out of them: prop index → when. */
+  rustles = new Map<number, number>();
   /** Flames put out (Burning ended): a puff of steam rises off the ninja (unit, when). */
   douses: { unit: string; t0: number }[] = [];
   /** What a staged jutsu does later in its own time (piece P5: the next blow of a combo). */
@@ -512,6 +526,7 @@ export class Playback {
         // A charged hand keeps its lightning (the activated Chidori).
         held: u.charged && !u.down ? (v?.held?.charged ? v.held : chargedHeld(u, now)) : undefined,
         imbue: u.imbued && !u.down ? u.imbued.element : undefined,
+        perch: perchOf(state, u) >= 0 ? { prop: u.cond.perch!, kind: propRules(getMap(state.mapId).props[u.cond.perch!]).perch ?? 'tree' } : undefined,
       };
       this.views.set(u.id, next);
       const mantle = JUTSU.wind_breeze_mantle;
@@ -735,6 +750,11 @@ export class Playback {
     if (v.warp) {
       const { from, to, t0, fly } = v.warp;
       const k = warpDash((now - t0) * this.speed, warpTimes(fly));
+      return { x: from.x + (to.x - from.x) * k, z: from.z + (to.z - from.z) * k };
+    }
+    if (v.vanish) {
+      const { from, to, t0 } = v.vanish;
+      const k = leapK((now - t0) * this.speed);
       return { x: from.x + (to.x - from.x) * k, z: from.z + (to.z - from.z) * k };
     }
     const w = v.walk;
@@ -1827,6 +1847,20 @@ export class Playback {
     return undefined;
   }
 
+  /**
+   * Striking or casting from a tree or a bush (the Vanish Jump): it shows itself, up in the crown
+   * (aloft) or out of the bush, with a rustle of leaves, before it comes down.
+   */
+  private outOfLeaves(id: string, state: BattleState, now: number): void {
+    const v = this.view(id);
+    if (!v?.perch) return;
+    const p = getMap(state.mapId).props[v.perch.prop];
+    if (v.perch.kind === 'tree') v.aloft = crownLift(p.name) - 60;
+    else this.rustles.set(v.perch.prop, now);
+    this.hideFx.push({ kind: 'leaves', at: { ...p }, lift: crownLift(p.name) - 52 + (v.perch.kind === 'bush' ? 18 : 0), row: leafRow(p.name), t0: now });
+    v.perch = undefined;
+  }
+
   /** Applies one event to the view; returns how long (ms) to wait before the next. */
   private apply(ev: BattleEvent, now: number, state: BattleState): number {
     const h = this.hooks;
@@ -1917,6 +1951,49 @@ export class Playback {
         v.walk = undefined;
         return together ? 0 : 320;
       }
+      case 'vanish': {
+        // The Vanish Jump: a crouch, the leap into the crown (or the bush), leaves bursting out.
+        const v = this.view(ev.unit);
+        if (!v) return 0;
+        const p = getMap(state.mapId).props[ev.prop];
+        v.walk = undefined;
+        v.lunge = undefined;
+        v.pos = { ...ev.to };
+        v.perch = { prop: ev.prop, kind: ev.kind };
+        v.vanish = { from: { ...ev.from }, to: { ...ev.to }, t0: now, prop: ev.prop, kind: ev.kind };
+        if (Math.abs(ev.to.x - ev.from.x) > 0.05) v.facing = ev.to.x > ev.from.x ? 1 : -1;
+        const leap = VANISH_WIND / this.speed;
+        this.hideFx.push({ kind: 'takeoff', at: { ...ev.from }, lift: 0, row: '', t0: now + leap });
+        this.hideFx.push({ kind: 'leaves', at: { ...p }, lift: crownLift(p.name) - 52 + (ev.kind === 'bush' ? 18 : 0), row: leafRow(p.name), t0: now + VANISH_MS / this.speed });
+        if (ev.kind === 'bush') this.later(now, VANISH_MS, (tn) => this.rustles.set(ev.prop, tn));
+        this.later(now, VANISH_MS + 40, () => {
+          if (v.vanish?.t0 === now) v.vanish = undefined;
+        });
+        this.later(now, VANISH_WIND, () => h.sound('kawarimi'));
+        if (ev.unit === this.turnUnit || state.phase === 'stealth') h.focus(ev.unit);
+        void VANISH_LEAP;
+        return VANISH_MS + 60;
+      }
+      case 'leavePerch': {
+        // Down from the tree (or out of the bush): it drops to the ground and steps where it lands.
+        const v = this.view(ev.unit);
+        if (!v) return 0;
+        const p = getMap(state.mapId).props[ev.prop];
+        const kind = v.perch?.kind ?? (p.group === 'trees' && p.name !== 'bamboo' ? 'tree' : 'bush');
+        v.perch = undefined;
+        v.vanish = undefined;
+        v.pos = { ...ev.from };
+        const d = dist(ev.from, ev.to);
+        v.walk = { path: [{ ...ev.to }], t0: now, speed: Math.max(4, (d / DROP_MS) * 1000), pose: ev.fall ? 'hurt' : 'run', lengths: [d], total: d };
+        v.pose = ev.fall ? 'hurt' : 'run';
+        v.poseT0 = now;
+        if (kind === 'tree') v.drop = { t0: now, lift: v.aloft ?? crownLift(p.name) - 60 };
+        else this.rustles.set(ev.prop, now);
+        v.aloft = undefined;
+        this.hideFx.push({ kind: 'leaves', at: { ...p }, lift: crownLift(p.name) - 52 + (kind === 'bush' ? 18 : 0), row: leafRow(p.name), t0: now });
+        if (ev.fall) h.shake(3);
+        return DROP_MS;
+      }
       case 'kawarimi': {
         const v = this.view(ev.unit);
         if (!v) return 0;
@@ -1973,6 +2050,7 @@ export class Playback {
         return ev.what ? 120 : 280;
       }
       case 'attack': {
+        this.outOfLeaves(ev.unit, state, now);
         const a = this.view(ev.unit);
         const target = ev.target.startsWith('prop:') || ev.target.startsWith('wall:') ? undefined : state.units[ev.target];
         const wall = ev.target.startsWith('wall:') ? this.wallOf(ev.target.slice(5), state) : undefined;
@@ -2010,6 +2088,7 @@ export class Playback {
         return ev.ranged ? 420 : 380;
       }
       case 'jutsu': {
+        this.outOfLeaves(ev.unit, state, now);
         // A fire through a gale (the Gale Curtain): the effects it pushes now burn brighter from where
         // they meet the wind, and the wind swirls round the fire there.
         const before = this.fx.length;

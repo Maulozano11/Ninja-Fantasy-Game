@@ -10,7 +10,7 @@ import { Rng, rngFor, rollDie } from '../rules/rng';
 import { SHINOBI_CLASSES } from '../data/shinobiData';
 import type { BattleEvent, BattleState, DamageType, Pt, RollInfo, Unit } from './types';
 import { homeTeam } from './types';
-import { coverBetween, dist, fullCoverBetween, hideSpotAt, levelAtPt, lineOfSight, steamAt } from './map';
+import { coverBetween, CROWN_LEVEL, dist, fullCoverBetween, hideSpotAt, inTree, levelAtPt, lineOfSight, perchOf, steamAt } from './map';
 import { KUNAI, KUNAI_LONG, wielded } from './units';
 
 /** The next dice stream of the battle. */
@@ -38,7 +38,8 @@ export const standing = (u: Unit): boolean => !u.down;
 
 /** The Stealth total of a perfect hide (a natural 20): no passive Perception reaches it. */
 export const PERFECT_HIDE = 99;
-export const unitLevel = (s: BattleState, u: Unit): number => levelAtPt(s, u.pos) + (u.kind === 'hydra_head' ? 1.5 : 0);
+// Up in a tree's crown (the Vanish Jump), a ninja is a level higher.
+export const unitLevel = (s: BattleState, u: Unit): number => levelAtPt(s, u.pos) + (u.kind === 'hydra_head' ? 1.5 : 0) + (inTree(s, u) ? CROWN_LEVEL : 0);
 
 const SKILL_ABILITY: Record<string, Ability> = {
   athletics: 'str',
@@ -67,9 +68,9 @@ export function reveal(u: Unit, ev: BattleEvent[]): void {
   ev.push({ t: 'condition', unit: u.id, cond: 'hidden', on: false });
 }
 
-/** Moved out of a hiding place (on foot or by a teleport): a hidden unit is seen. */
+/** Moved out of a hiding place (on foot or by a teleport): a hidden unit is seen (not one still up its tree). */
 export function revealOutOfHiding(s: BattleState, u: Unit, ev: BattleEvent[]): void {
-  if (!u.down && hideSpotAt(s, u.pos) < 0) reveal(u, ev);
+  if (!u.down && hideSpotAt(s, u.pos) < 0 && perchOf(s, u) < 0) reveal(u, ev);
 }
 
 export function saveMod(u: Unit, ab: Ability): number {
@@ -187,6 +188,11 @@ export function attackPreview(s: BattleState, a: Unit, t: Unit, kind: AttackKind
       advs.push('disadvantage');
       reasons.push('longRange');
     }
+  }
+  // Up in a tree's crown no blade reaches it: only throws, jutsu and areas (the Vanish Jump).
+  if (close && inTree(s, t)) {
+    inRange = false;
+    reasons.push('inTree');
   }
   const cover = close ? 0 : coverBetween(s, a.pos, t.pos, [a.id, t.id]);
   const dl = unitLevel(s, a) - unitLevel(s, t);

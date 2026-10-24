@@ -12,6 +12,8 @@ import {
   ShinobiCharacter,
   AbilityScores,
 } from '../types/shinobi';
+import { OUTFIT_IRIS } from '../sprite/outfitEyeArt';
+import { OUTFIT_SKIN } from '../sprite/outfitHeadArt';
 import type { ItemChoice, SpriteAppearance } from '../sprite/types';
 
 export const CLANS_DATA: Record<
@@ -1923,8 +1925,7 @@ export const LEGENDARY_PRESETS: { name: string; tag: string; nameEs?: string; ta
   // ── The owner's three new male outfits (begin) ───────────────────────────────────────────────────
   // His sheet of three outfits on one head (docs/reference/three-outfits-owner-reference.jpg, "nuevas
   // opciones para el creador de personajes son 3 diferentes copialas"), each preset wearing one outfit
-  // in his colours, on his head (the 'wanderer' face, eyes and hair: his tan skin #de9d77 and his blue
-  // #174d88). Ids, names and titles are provisional: the owner names them. Their numbers are the
+  // in his colours, on his head (the 'wanderer' face, eyes and hair, in his own skin and eye colour). Ids, names and titles are provisional: the owner names them. Their numbers are the
   // creator's formula for their sheets.
   {
     name: 'Warden, the Iron Guard',
@@ -1940,9 +1941,9 @@ export const LEGENDARY_PRESETS: { name: string; tag: string; nameEs?: string; ta
       shinobiClass: 'Bukijutsu Master',
       stats: { str: 16, dex: 14, con: 16, int: 12, wis: 14, cha: 12 },
       palette: {
-        skinTone: '#de9d77',
+        skinTone: OUTFIT_SKIN,
         hairColor: '#1b2232',
-        eyeColor: '#174d88',
+        eyeColor: OUTFIT_IRIS,
         armorPrimary: '#3b3c40',
         armorSecondary: '#322826',
         clothColor: '#2c2b31',
@@ -1974,10 +1975,10 @@ export const LEGENDARY_PRESETS: { name: string; tag: string; nameEs?: string; ta
       jutsuSaveDC: 14,
       jutsuAttackBonus: 6,
       appearance: spriteLook({
-        skin: '#de9d77',
+        skin: OUTFIT_SKIN,
         faceShape: 'wanderer',
         eyeShape: 'wanderer',
-        eyeColor: '#174d88',
+        eyeColor: OUTFIT_IRIS,
         slots: {
           hair: it('hair_wanderer'),
           armor: it('armor_warden_plate'),
@@ -2007,9 +2008,9 @@ export const LEGENDARY_PRESETS: { name: string; tag: string; nameEs?: string; ta
       shinobiClass: 'Taijutsu Master',
       stats: { str: 14, dex: 18, con: 14, int: 12, wis: 14, cha: 12 },
       palette: {
-        skinTone: '#de9d77',
+        skinTone: OUTFIT_SKIN,
         hairColor: '#1b2232',
-        eyeColor: '#174d88',
+        eyeColor: OUTFIT_IRIS,
         armorPrimary: '#322826',
         armorSecondary: '#2c2b31',
         clothColor: '#2c2b31',
@@ -2041,10 +2042,10 @@ export const LEGENDARY_PRESETS: { name: string; tag: string; nameEs?: string; ta
       jutsuSaveDC: 13,
       jutsuAttackBonus: 5,
       appearance: spriteLook({
-        skin: '#de9d77',
+        skin: OUTFIT_SKIN,
         faceShape: 'wanderer',
         eyeShape: 'wanderer',
-        eyeColor: '#174d88',
+        eyeColor: OUTFIT_IRIS,
         slots: {
           hair: it('hair_wanderer'),
           top: it('top_drifter_jacket'),
@@ -2071,9 +2072,9 @@ export const LEGENDARY_PRESETS: { name: string; tag: string; nameEs?: string; ta
       shinobiClass: 'Ninjutsu Specialist',
       stats: { str: 16, dex: 16, con: 16, int: 14, wis: 12, cha: 10 },
       palette: {
-        skinTone: '#de9d77',
+        skinTone: OUTFIT_SKIN,
         hairColor: '#1b2232',
-        eyeColor: '#174d88',
+        eyeColor: OUTFIT_IRIS,
         armorPrimary: '#2c2b31',
         armorSecondary: '#3b3c40',
         clothColor: '#2c2b31',
@@ -2105,10 +2106,10 @@ export const LEGENDARY_PRESETS: { name: string; tag: string; nameEs?: string; ta
       jutsuSaveDC: 13,
       jutsuAttackBonus: 5,
       appearance: spriteLook({
-        skin: '#de9d77',
+        skin: OUTFIT_SKIN,
         faceShape: 'wanderer',
         eyeShape: 'wanderer',
-        eyeColor: '#174d88',
+        eyeColor: OUTFIT_IRIS,
         slots: {
           hair: it('hair_wanderer'),
           armor: it('armor_vanguard_vest'),

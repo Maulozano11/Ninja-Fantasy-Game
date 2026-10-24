@@ -7,7 +7,7 @@ import type { PaintedPiece } from '../painted';
 export const WARDEN_GREAVES_STEEL = '#323338';
 
 /** What each of his colours is, as the script sorts them (tools/refs/outfits_ref.py kind). */
-export const WARDEN_GREAVES_KIND: Record<string, 'blue' | 'brown' | 'dark' | 'hair' | 'line' | 'steel' | 'white'> = {
+export const WARDEN_GREAVES_KIND: Record<string, 'blue' | 'brown' | 'dark' | 'hair' | 'line' | 'steel'> = {
   '#000116': 'line',
   '#00011f': 'line',
   '#132854': 'hair',
@@ -36,7 +36,6 @@ export const WARDEN_GREAVES_KIND: Record<string, 'blue' | 'brown' | 'dark' | 'ha
   '#b1edff': 'hair',
   '#b7ecf6': 'hair',
   '#bdf6ff': 'hair',
-  '#eeffff': 'white',
 };
 
 /** Where each piece lands in our male idle frame 0, unturned: the fine pixel of its first row's first cell. */
@@ -95,17 +94,17 @@ export const WARDEN_GREAVES_BOOT_F: PaintedPiece = {
   pivot: [9, 8],
   angle: 87.80,
   rows: [
-    '.ab........................',
+    'aab........................',
     'aaa..c.....................',
     '.adef......................',
     '..ahaaa.........aa.........',
     '..aiajda.........ka........',
     '...aajlja.........maa......',
-    '...alanjjpaa........qa.....',
-    '...aheajrpja........s......',
-    '....alatrpja...........a...',
-    '....alatruja........v......',
-    '...aaalnwaaa..............a',
+    '...alanjjpaa.........a.....',
+    '...aheajqpja........r......',
+    '....alasqpja...........a...',
+    '....alasqtja..a.....u......',
+    '...aaalnvaaa..............a',
     '.......a.........a........a',
     '...................a....m.a',
     '.......................aaa.',
@@ -125,13 +124,12 @@ export const WARDEN_GREAVES_BOOT_F: PaintedPiece = {
     m: '#b1edff',
     n: '#45484f',
     p: '#737c7f',
-    q: '#eeffff',
-    r: '#323338',
-    s: '#b7ecf6',
-    t: '#2c2b31',
-    u: '#7d8286',
-    v: '#8ab0ca',
-    w: '#63686e',
+    q: '#323338',
+    r: '#b7ecf6',
+    s: '#2c2b31',
+    t: '#7d8286',
+    u: '#8ab0ca',
+    v: '#63686e',
   },
 };
 

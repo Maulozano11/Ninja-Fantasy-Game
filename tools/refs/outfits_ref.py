@@ -323,12 +323,28 @@ OWN_REGIONS = {
 }
 
 
+def head_mask(f, a, fig):
+    """His head in a figure: f.head_poly, less the plain steel greys of the armour beside it (the gorget's
+    edge below his jaw's line, the shoulder plate's top beside his hair: his hair is blue-grey, his face's
+    glints are inside his face's columns, FACE_COLS)."""
+    H, W, _ = a.shape
+    head = fig & inside(f.head_poly, H, W)
+    yy = np.arange(H)[:, None] + np.zeros((1, W), int)
+    xx = np.arange(W)[None, :] + np.zeros((H, 1), int)
+    x0, x1 = f.chin[0] - FACE_COLS, f.chin[0] + FACE_COLS
+    return head & ~((kinds(a) == 'steel') & ((yy >= int(f.chin[1])) | (xx < x0) | (xx > x1)))
+
+
+# How far either side of his chin (his pixels) his face's glints can lie.
+FACE_COLS = 10
+
+
 def regions(f):
     """{region: mask of the figure's pixels}: 'head' (his hair, face and jaw above the collar), the
     regions reduced on their own (OWN_REGIONS) and 'body', the rest."""
     a, fig = figure_pixels(f)
     H, W, _ = a.shape
-    head = fig & inside(f.head_poly, H, W)
+    head = head_mask(f, a, fig)
     out = {'head': head}
     owned = head.copy()
     for n, pts in OWN_REGIONS.get(f.name, {}).items():
@@ -363,11 +379,12 @@ LINE_COVER = 0.5
 DETAIL_COVER = 0.25
 
 
-def read(a, K, m, scale, origin, rgb, label, parts):
+def read(a, K, m, scale, origin, rgb, label, parts, dots=None):
     """Region `m` of his picture shrunk by `scale` into our frame pixel by pixel: each fine pixel one of his
     colours under its footprint (none where less than half of it is his figure): his line where it covers
     LINE_COVER of it, else his gold, white, blue or skin where they cover DETAIL_COVER, else of the colours
-    under it the one nearest their mean (so his lit plates, folds and darks keep their share of the area)."""
+    under it the one nearest their mean (so his lit plates, folds and darks keep their share of the area).
+    A dot of `dots` (his laces) whose middle is in a fine pixel is that pixel, unless his line covers it."""
     ys, xs = np.nonzero(m)
     j0 = int(np.floor((ys.min() - origin[1]) / scale))
     j1 = int(np.ceil((ys.max() + 1 - origin[1]) / scale))
@@ -388,8 +405,11 @@ def read(a, K, m, scale, origin, rgb, label, parts):
             if fw < 0.5 * scale * scale:
                 continue
             cover = lambda k: sum(w for w, y, x in cells if K[y, x] == k) / fw
+            dot = [c for c in cells if dots is not None and dots[c[1], c[2]] and Y0 <= c[1] + 0.5 < Y1 and X0 <= c[2] + 0.5 < X1]
             if cover('line') >= LINE_COVER:
                 pick = [c for c in cells if K[c[1], c[2]] == 'line']
+            elif dot:
+                pick = dot
             else:
                 pick = [c for c in cells if K[c[1], c[2]] != 'line']
                 for k in ('white', 'gold', 'blue', 'skin'):
@@ -403,6 +423,24 @@ def read(a, K, m, scale, origin, rgb, label, parts):
             for cw, cy, cx in cells:
                 share[parts[cy, cx]] = share.get(parts[cy, cx], 0) + cw
             label[j, i] = max(sorted(share), key=lambda p: share[p])
+
+
+# His laces: the light dots he drew up the rogue's boots (a pixel lighter than its four neighbours by
+# LACE_STEP), kept as dots through the shrink and the cleaning.
+LACED = {'rogue': ('boot_n', 'boot_f')}
+LACE_STEP = 25
+
+
+def laces(name, a, P):
+    """His lace dots on the parts of LACED (his pixels)."""
+    H, W, _ = a.shape
+    out = np.zeros((H, W), bool)
+    L = luma(a).astype(float)
+    for y in range(1, H - 1):
+        for x in range(1, W - 1):
+            if P[y, x] in LACED.get(name, ()) and all(L[y, x] > L[q] + LACE_STEP for q in ((y - 1, x), (y + 1, x), (y, x - 1), (y, x + 1))):
+                out[y, x] = True
+    return out
 
 
 def part_map(f):
@@ -426,7 +464,7 @@ def reduce(name):
     P = part_map(f)
     rgb = np.full((GRID, GRID, 3), 255, np.int32)
     label = np.full((GRID, GRID), '', dtype='<U12')
-    read(a, K, R['body'], f.scale, f.origin, rgb, label, P)
+    read(a, K, R['body'], f.scale, f.origin, rgb, label, P, laces(name, a, P))
     for n in OWN_REGIONS.get(name, {}):
         shrink(a, K, R[n], f.scale, f.origin, rgb, label, P)
     hf = FIGURES[HEAD_FIG]
@@ -616,7 +654,7 @@ def clean(name, rgb, label):
     src = rgb.copy()
     for y in range(1, H - 1):
         for x in range(1, W - 1):
-            if not figm[y, x] or K[y, x] in keepk:
+            if not figm[y, x] or K[y, x] in keepk or label[y, x] in LACED.get(name, ()):
                 continue
             nb = [(y + dy, x + dx) for dy, dx in near if figm[y + dy, x + dx]]
             cols = [tuple(src[q]) for q in nb if K[q] != 'line']
@@ -738,7 +776,7 @@ def part_regions(f):
     the body is in no part."""
     a, fig = figure_pixels(f)
     H, W, _ = a.shape
-    head = fig & inside(f.head_poly, H, W)
+    head = head_mask(f, a, fig)
     out = {'head': head}
     owned = head.copy()
     K = kinds(a)
@@ -748,9 +786,11 @@ def part_regions(f):
             pts, takes = spec if isinstance(spec, tuple) else (spec, None)
             m = fig & inside(pts, H, W) & ~owned
             if takes:
-                # only his colours of these kinds, and his line round them
+                # his colours of these kinds, his line along them and the pale glints at their edge, not
+                # what lies further off
                 got = m & np.isin(K, takes)
-                m = got | (m & (K == 'line') & near8(got))
+                pale = (luma(a) > 100) & np.isin(K, ('steel', 'white'))
+                m = got | (m & (((K == 'line') & near4(got)) | (pale & near8(got))))
             out[n] |= m
             owned |= m
     return out
@@ -971,11 +1011,53 @@ def sword_angle(rgb, m):
     return float(np.degrees(np.arctan2(dy, dx)))
 
 
+def sword_grip(rgb, label, m, c):
+    """His sword's grip carried on through his fist, where he drew the fist over it: from the pommel to the
+    guard along the blade's line, his grip's blue between two of his line, only where his gauntlet hides it
+    at rest (so at rest it adds nothing; stowed on the back or dropped the sword is whole)."""
+    m = m.copy()
+    c = c.copy()
+    parts = [p for p in components(m, True)]
+    parts.sort(key=len)
+    pommel = parts[0]
+    blade = max(parts, key=len)
+    ang = np.radians(sword_angle(rgb, m))
+    d = np.array([np.cos(ang), np.sin(ang)])
+    along = lambda p: (p[1] + 0.5) * d[0] + (p[0] + 0.5) * d[1]
+    # the grip's line: through the pommel's middle, along the blade
+    py = np.mean([p[0] for p in pommel]) + 0.5
+    px = np.mean([p[1] for p in pommel]) + 0.5
+    t0 = max(along(p) for p in pommel)
+    t1 = min(along(p) for p in blade)
+    blue = [hexc(c[y, x]) for y, x in pommel if kind(c[y, x]) == 'blue']
+    mode = max(sorted(set(blue)), key=blue.count)
+    grip = np.array([int(mode[i:i + 2], 16) for i in (1, 3, 5)])
+    line = line_rgb()
+    hidden = np.isin(label, ('hand_n', 'fore_n'))
+    for y in range(GRID):
+        for x in range(GRID):
+            if m[y, x] or not hidden[y, x]:
+                continue
+            t = (x + 0.5) * d[0] + (y + 0.5) * d[1]
+            if not (t0 - 0.5 <= t <= t1 + 0.5):
+                continue
+            # distance across the grip's line
+            q = (x + 0.5 - px) * -d[1] + (y + 0.5 - py) * d[0]
+            if abs(q) <= 0.75:
+                c[y, x] = grip
+                m[y, x] = True
+            elif abs(q) <= 1.75:
+                c[y, x] = line
+                m[y, x] = True
+    return m, c
+
+
 def part_piece(name, part):
     """One part of figure `name` as a piece: (mask, colours, pivot in our frame, angle)."""
     rgb, label = game(name)
     m, c = cut(rgb, label, [part])
     if part == 'sword':
+        m, c = sword_grip(rgb, label, m, c)
         return m, c, joint(name, 'handN'), sword_angle(rgb, m)
     j, limb = RIDES[part]
     ang = angle(name, *limb) if limb else torso_angle()

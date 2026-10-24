@@ -7,7 +7,7 @@ import type { PaintedPiece } from '../painted';
 export const DRIFTER_BOOTS_LEATHER = '#322826';
 
 /** What each of his colours is, as the script sorts them (tools/refs/outfits_ref.py kind). */
-export const DRIFTER_BOOTS_KIND: Record<string, 'brown' | 'dark' | 'hair' | 'line'> = {
+export const DRIFTER_BOOTS_KIND: Record<string, 'brown' | 'dark' | 'hair' | 'line' | 'steel'> = {
   '#000116': 'line',
   '#0e101d': 'hair',
   '#181822': 'dark',
@@ -23,6 +23,8 @@ export const DRIFTER_BOOTS_KIND: Record<string, 'brown' | 'dark' | 'hair' | 'lin
   '#544a48': 'brown',
   '#5a534a': 'brown',
   '#635b54': 'brown',
+  '#888888': 'steel',
+  '#90959b': 'steel',
 };
 
 /** Where each piece lands in our male idle frame 0, unturned: the fine pixel of its first row's first cell. */
@@ -40,26 +42,27 @@ export const DRIFTER_BOOTS_BOOT_N: PaintedPiece = {
   rows: [
     '..a.....aaa',
     '..abaaaaaca',
-    '..adeaeaeaa',
-    '..afaaaeca.',
-    '..ahabaaha.',
-    '..ahaabba..',
-    '..acaeaca..',
-    '.aiijaca...',
-    'aaiaccea...',
-    'aacaaaea...',
+    '..adeafahaa',
+    '..ahaaaeba.',
+    '..ahaeaaia.',
+    '..aiaafha..',
+    '..ahaeaca..',
+    '.ajjkaha...',
+    'aajaccea...',
+    'aacaaaba...',
     '...a.a.a...',
   ],
   colors: {
     a: '#000116',
-    b: '#181822',
+    b: '#90959b',
     c: '#322826',
     d: '#282421',
     e: '#413833',
-    f: '#212227',
-    h: '#2a2524',
-    i: '#2c2b31',
-    j: '#493d3e',
+    f: '#181822',
+    h: '#888888',
+    i: '#2a2524',
+    j: '#2c2b31',
+    k: '#493d3e',
   },
 };
 
@@ -71,9 +74,9 @@ export const DRIFTER_BOOTS_BOOT_F: PaintedPiece = {
     '......a..',
     'aabccdaaa',
     '.abccddaa',
-    '.abcccaaa',
-    '.abdcccaa',
-    '.abddeaca',
+    '.abcceaaa',
+    '.abdcecaa',
+    '.abddfaca',
     '.abbddaaa',
     '.aa......',
   ],
@@ -82,7 +85,8 @@ export const DRIFTER_BOOTS_BOOT_F: PaintedPiece = {
     b: '#212227',
     c: '#322826',
     d: '#413833',
-    e: '#51473e',
+    e: '#90959b',
+    f: '#51473e',
   },
 };
 

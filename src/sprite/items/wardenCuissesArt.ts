@@ -32,14 +32,13 @@ export const WARDEN_CUISSES_KIND: Record<string, 'blue' | 'brown' | 'dark' | 'ha
   '#575c62': 'steel',
   '#585556': 'steel',
   '#5a534a': 'brown',
-  '#8eacb0': 'steel',
   '#8fbad2': 'hair',
 };
 
 /** Where each piece lands in our male idle frame 0, unturned: the fine pixel of its first row's first cell. */
 export const WARDEN_CUISSES_REST: Record<string, [number, number]> = {
   WARDEN_CUISSES_THIGH_N: [107, 182],
-  WARDEN_CUISSES_THIGH_F: [126, 183],
+  WARDEN_CUISSES_THIGH_F: [127, 183],
 };
 
 /** His near thigh plates and round knee plate. It rides the thigh about the hip. */
@@ -60,7 +59,7 @@ export const WARDEN_CUISSES_THIGH_N: PaintedPiece = {
     '....asatnmmkmauv...',
     '....asakpmmmwmaa...',
     '....aaaqtmmmeka....',
-    '...akaaxttttxaa...a',
+    '...akaaxttttxaa..aa',
     '...axtakktttpa.....',
     '..aeahhaeeepaa.....',
     '..a.aa..aaaaa......',
@@ -93,24 +92,24 @@ export const WARDEN_CUISSES_THIGH_N: PaintedPiece = {
 
 /** His far thigh plates and knee plate. It rides the thigh about the hip. */
 export const WARDEN_CUISSES_THIGH_F: PaintedPiece = {
-  pivot: [7, -7],
+  pivot: [6, -7],
   angle: 81.63,
   rows: [
-    '.a...a...a..a',
-    '.abbbaacdacea',
-    '.aaaafadeehea',
-    '.abbffaddeaea',
-    '.aabbaiahcjaa',
-    '.aakaeebaaaa.',
-    '.lakajbcicha.',
-    '.aaiimiicicna',
-    '...aiimciciha',
-    '....aaaccihha',
-    '....aaacphhha',
-    '.....qaapphha',
-    '........iippa',
-    '.....r...aada',
-    'a..........aa',
+    'a...a...a..a',
+    'abbbaacdacea',
+    'aaaafadeehea',
+    'abbffaddeaea',
+    'aabbaiahcjaa',
+    'aakaeebaaaa.',
+    'lakajbcicha.',
+    'aaiimiicicna',
+    '..aiimciciha',
+    '...aaaccihha',
+    '....aacphhha',
+    '.....aapphha',
+    '.......iippa',
+    '....q...aada',
+    '..........aa',
   ],
   colors: {
     a: '#000116',
@@ -127,7 +126,6 @@ export const WARDEN_CUISSES_THIGH_F: PaintedPiece = {
     m: '#0e101d',
     n: '#222b3c',
     p: '#323338',
-    q: '#8eacb0',
-    r: '#8fbad2',
+    q: '#8fbad2',
   },
 };

@@ -15,8 +15,8 @@ export const OUTFIT_EYE_COLORS: Record<string, string> = {
   j: '#1c70b5',
   k: '#141a2a',
   m: '#5080ab',
-  n: '#23467a',
-  p: '#174d88',
+  n: '#00011f',
+  p: '#23467a',
   q: '#110319',
 };
 
@@ -29,8 +29,8 @@ export const OUTFIT_EYES: Record<'open' | 'lowered' | 'closed', { near: PaintedE
       rows: ['acaa.', 'aeffa', '.ghj.'],
     },
     far: {
-      letters: ['bLL', 'LLi', 'ddL'],
-      rows: ['.ca', 'kkm', 'npq'],
+      letters: ['bLL', 'LiL', 'dLL'],
+      rows: ['.aa', 'kmn', 'pqq'],
     },
   },
   /** Reading: the lid down over the top of his iris. */
@@ -40,8 +40,8 @@ export const OUTFIT_EYES: Record<'open' | 'lowered' | 'closed', { near: PaintedE
       rows: ['acaa.', 'aaaaa', '.ghj.'],
     },
     far: {
-      letters: ['bLL', 'LLL', 'ddL'],
-      rows: ['.ca', 'kkc', 'npq'],
+      letters: ['bLL', 'LLL', 'dLL'],
+      rows: ['.aa', 'kan', 'pqq'],
     },
   },
   /** Knocked out: his lash line across the shut eye; round it the face's skin. */
@@ -52,10 +52,10 @@ export const OUTFIT_EYES: Record<'open' | 'lowered' | 'closed', { near: PaintedE
     },
     far: {
       letters: ['bbb', 'LLL', 'bbb'],
-      rows: ['...', 'ccc', '...'],
+      rows: ['...', 'aaa', '...'],
     },
   },
 };
 
 /** The colour his iris is drawn in: the player's eye colour moves it as far. */
-export const OUTFIT_IRIS = '#174d88';
+export const OUTFIT_IRIS = '#0c5c9e';

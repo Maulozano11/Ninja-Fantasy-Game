@@ -31,6 +31,11 @@ import noble_ref as N  # noqa: E402
 J = N.HIS_JOINTS
 
 
+# How far past the elbow (along the upper arm) the upper sleeve reaches: beyond it the cloth goes with the
+# forearm, so the bent arm shows no corner of the upper sleeve poking out past the elbow.
+SLEEVE_PAST = 1.0
+
+
 def kind_of(rgb, const):
     k = N.kind(rgb)
     return k if k in ('line', 'gold') else 'cloth'
@@ -42,7 +47,7 @@ def main():
     consts = [('NOBLE_COAT_BODY', *P['coat'], 'The torso: it rides the torso about the neck.', J['neck'], N.angle_of(J['pelvis'], J['neck']))]
     for s in ('N', 'F'):
         m, c = P['sleeve_' + s.lower()]
-        up, lo = N.split(m, J['shoulder' + s], J['elbow' + s], J['wrist' + s])
+        up, lo = N.split(m, J['shoulder' + s], J['elbow' + s], J['wrist' + s], SLEEVE_PAST)
         consts.append((f'NOBLE_SLEEVE_{s}_UPPER', up, c, 'The upper sleeve: it rides the upper arm about the shoulder.', J['shoulder' + s], N.angle_of(J['shoulder' + s], J['elbow' + s])))
         consts.append((f'NOBLE_SLEEVE_{s}_LOWER', lo, c, 'The forearm\'s sleeve (under the cuff): it rides the forearm about the elbow.', J['elbow' + s], N.angle_of(J['elbow' + s], J['wrist' + s])))
     consts.append(('NOBLE_TAILS', *P['tails'], "The coat's tails below the belt: they hang from the pelvis.", J['pelvis'], N.angle_of(J['pelvis'], J['neck'])))

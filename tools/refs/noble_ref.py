@@ -815,6 +815,61 @@ def tidy_parts(part, mask, GK):
             changed = True
         if not changed:
             break
+    # A thin strip of the tails apart from the rest of them (side by side: it may touch them corner to corner;
+    # at most 2 pixels across in every row) beside a
+    # trouser leg is that leg's outer line: it goes with the leg, so it moves with it and does not hang loose
+    # on the tail once the leg moves off.
+    for patch in patches(part == 'tails', four=True):
+        rows_ = {}
+        for y, x in patch:
+            rows_[y] = rows_.get(y, 0) + 1
+        if len(patch) < 3 or max(rows_.values()) > 2 or len(rows_) < 3:
+            continue
+        legs = [part[y + dy, x + dx] for y, x in patch for dy in (-1, 0, 1) for dx in (-1, 0, 1)
+                if 0 <= y + dy < H and 0 <= x + dx < W and part[y + dy, x + dx] in ('trousers_n', 'trousers_f')]
+        if legs:
+            to = max(sorted(set(legs)), key=legs.count)
+            for y, x in patch:
+                part[y, x] = to
+    # A bit of a mantle apart from the rest of it (his cape's edge beside the far cuff) is the cape's: it stays
+    # with the cape when the arm under the mantle moves.
+    for n in ('mantle_f', 'mantle_n'):
+        ps = sorted(patches(part == n), key=len)
+        for patch in ps[:-1]:
+            if len(patch) > MANTLE_BIT:
+                continue
+            nb = [part[y + dy, x + dx] for y, x in patch for dy in (-1, 0, 1) for dx in (-1, 0, 1)
+                  if 0 <= y + dy < H and 0 <= x + dx < W and mask[y + dy, x + dx] and part[y + dy, x + dx] not in (n, '')]
+            to = CAPE if CAPE in nb or not nb else max(sorted(set(nb)), key=nb.count)
+            for y, x in patch:
+                part[y, x] = to
+
+
+# The largest bit of a mantle apart from the rest of it that goes to the cape.
+MANTLE_BIT = 6
+
+
+def patches(m, four=False):
+    """The 8-connected patches of a mask (with `four`, 4-connected), each as a list of its (y, x) cells."""
+    H, W = m.shape
+    seen = np.zeros((H, W), bool)
+    out = []
+    for y, x in zip(*np.nonzero(m)):
+        if seen[y, x]:
+            continue
+        comp, stack = [], [(y, x)]
+        seen[y, x] = True
+        while stack:
+            q, p = stack.pop()
+            comp.append((q, p))
+            for dq in (-1, 0, 1):
+                for dp in (-1, 0, 1):
+                    u, w = q + dq, p + dp
+                    if (not four or not (dq and dp)) and 0 <= u < H and 0 <= w < W and m[u, w] and not seen[u, w]:
+                        seen[u, w] = True
+                        stack.append((u, w))
+        out.append(comp)
+    return out
 
 
 def part_study(path, k=8):
@@ -1340,9 +1395,18 @@ def _pieces():
     # hides it all the hem runs straight across)
     cols = [x for x in range(W) if m[:, x].any()]
     low = np.interp(np.arange(W), cols, [np.nonzero(m[:, x])[0].max() for x in cols])
+    # (where the sword or a fist hides its lower part, a column's lowest cape is above them: the hem there is
+    # as low as the deeper hems on both sides of it, the lower of the two, so the cape is whole behind them)
+    left = np.maximum.accumulate(low)
+    right = np.maximum.accumulate(low[::-1])[::-1]
+    low = np.maximum(low, np.minimum(left, right))
     shape &= rows <= np.floor(low)[None, :]
     hid = shape & ~m
     c = continue_along(g, m & ~isline & (GK == 'red'), hid, (0, 1), 1)
+    # (the continued cloth's hem ends on his line, as his hem does)
+    hem = shape.copy()
+    hem[:-1] &= ~shape[1:]
+    c[hid & hem] = line
     grow('cape', hid, c)
     return out
 
@@ -1363,16 +1427,22 @@ def compose(pcs, names=None):
 # ---------------------------------------------------------------------------------------------------
 # Writing the pieces as TypeScript.
 # ---------------------------------------------------------------------------------------------------
-def split(mask, a, j, b):
+def split(mask, a, j, b, past=None):
     """A limb piece cut at its joint j (between the bones a-j and j-b): the cells before the cut (toward a)
-    and after it. The cut runs across the limb through j, square to the line halfway between both bones."""
+    and after it. The cut runs across the limb through j, square to the line halfway between both bones. With
+    `past`, a cell more than that far beyond j along a-j goes after the cut too (the outside of the bend, which
+    would poke out past the bent joint)."""
     H, W = mask.shape
     u1 = np.array([j[0] - a[0], j[1] - a[1]], float)
     u2 = np.array([b[0] - j[0], b[1] - j[1]], float)
     nrm = u1 / np.hypot(*u1) + u2 / np.hypot(*u2)
     ys, xs = np.mgrid[0:H, 0:W]
     d = (xs + 0.5 - j[0]) * nrm[0] + (ys + 0.5 - j[1]) * nrm[1]
-    return mask & (d < 0), mask & (d >= 0)
+    after = d >= 0
+    if past is not None:
+        e = ((xs + 0.5 - j[0]) * u1[0] + (ys + 0.5 - j[1]) * u1[1]) / np.hypot(*u1)
+        after |= e > past
+    return mask & ~after, mask & after
 
 
 def angle_of(a, b):

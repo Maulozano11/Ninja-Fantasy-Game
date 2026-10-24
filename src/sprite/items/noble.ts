@@ -175,7 +175,81 @@ function capeBack(g: DrawCtx, color: (ch: string, hex: string) => string): void 
     const dy = -Math.round((lift + over) * k * k);
     for (let i = 0; i < row.length; i++) if (row[i] !== '.') L.set(ax + i + dx, ay + j + dy, pens[row[i]], 3, 'back', F_NO_TEXTURE | F_NO_OUTLINE);
   });
+  closeCapeHoles(g);
 }
+
+/** How near the figure (a leg, the sword) must be on each side of a hole in the cape for it to be his gap. */
+const LEG_GAP = 5;
+
+/**
+ * Between his legs at rest he drew the background, walled in by his cape behind them; once the legs move off
+ * it, that is a hole in the cape. When the whole figure is drawn, an empty cell the cape walls in (it cannot be
+ * reached from the frame's edge without crossing the cape) stays open only with the figure in front of the cape
+ * (a leg, the sword) within LEG_GAP on both sides of it in its row (his gap between them); else it takes the
+ * cape's cloth above it.
+ */
+function closeCapeHoles(g: DrawCtx): void {
+  const L = g.L('capeBack');
+  g.after((layers) => {
+    const N = GRID * GRID;
+    const out = new Uint8Array(N);
+    const stack: number[] = [];
+    const reach = (i: number) => {
+      if (out[i] || L.mat[i] >= 0) return;
+      out[i] = 1;
+      stack.push(i);
+    };
+    for (let k = 0; k < GRID; k++) [k, N - GRID + k, k * GRID, k * GRID + GRID - 1].forEach(reach);
+    while (stack.length) {
+      const i = stack.pop()!;
+      const x = i % GRID;
+      if (x > 0) reach(i - 1);
+      if (x < GRID - 1) reach(i + 1);
+      if (i >= GRID) reach(i - GRID);
+      if (i < N - GRID) reach(i + GRID);
+    }
+    const body = [...layers].filter(([d, l]) => l.used && d !== 'capeBack').map(([, l]) => l);
+    const leg = (x: number, y: number) => x >= 0 && x < GRID && body.some((l) => l.mat[y * GRID + x] >= 0);
+    const framed = (x: number, y: number, dx: number) => {
+      for (let k = 1; k <= LEG_GAP; k++) if (leg(x + dx * k, y)) return true;
+      return false;
+    };
+    const shown = (i: number) => [...layers].some(([, l]) => l.used && l.mat[i] >= 0);
+    for (let i = GRID; i < N; i++) {
+      if (out[i] || L.mat[i] >= 0 || shown(i)) continue;
+      const x = i % GRID;
+      const y = (i / GRID) | 0;
+      if (framed(x, y, -1) && framed(x, y, 1)) continue;
+      let j = i - GRID;
+      while (L.mat[j] < 0) j -= GRID;
+      L.set(x, y, L.mat[j], 3, 'back', F_NO_TEXTURE | F_NO_OUTLINE);
+    }
+    // a bit of the cape left apart from the figure (its top behind the neck, with the head bent away from it)
+    // is taken away: nothing hangs loose
+    const any = (i: number) => [...layers].some(([, l]) => l.used && l.mat[i] >= 0);
+    const seen = new Uint8Array(N);
+    for (let i = 0; i < N; i++) {
+      if (seen[i] || !any(i)) continue;
+      const bit = [i];
+      seen[i] = 1;
+      for (let k = 0; k < bit.length; k++) {
+        const j = bit[k];
+        const x = j % GRID;
+        for (let dy = -GRID; dy <= GRID; dy += GRID)
+          for (let dx = -1; dx <= 1; dx++) {
+            const q = j + dy + dx;
+            if (q < 0 || q >= N || x + dx < 0 || x + dx >= GRID || seen[q] || !any(q)) continue;
+            seen[q] = 1;
+            bit.push(q);
+          }
+      }
+      if (bit.length <= CAPE_BIT && bit.every((q) => L.mat[q] >= 0 && ![...layers].some(([d, l]) => d !== 'capeBack' && l.used && l.mat[q] >= 0))) for (const q of bit) L.clear(q % GRID, (q / GRID) | 0);
+    }
+  });
+}
+
+/** The largest bit of the cape apart from the figure that is taken away. */
+const CAPE_BIT = 8;
 
 /**
  * His coat on the body: the torso rides the torso about the neck, each sleeve its upper arm about the shoulder
@@ -194,7 +268,79 @@ function drawCoat(g: DrawCtx, main: string, gold: string): void {
   }
   const torso = segAngle(r.pelvis, r.neck);
   stampLeaning(g, 'torso.top', NOBLE_COAT_BODY, r.neck, torso, 'torso', tint);
-  stampLeaning(g, 'skirt', NOBLE_TAILS, r.pelvis, torso, 'pelvis', tint);
+  drawTails(g, torso, tint);
+}
+
+/**
+ * His coat's tails in three: the band under the belt across the hips, and the long tail beside each leg (the
+ * near one behind the near thigh, the far one in front of the far thigh). Cells of NOBLE_TAILS: columns
+ * x0..x1 from row y0 down.
+ */
+const TAIL_PANELS: { x0: number; x1: number; y0: number; on: Side }[] = [
+  { x0: 0, x1: 16, y0: 8, on: 'N' },
+  { x0: 26, x1: 37, y0: 8, on: 'F' },
+];
+/** How much a long tail follows its thigh swung forward (all of it: it lies along the thigh) and swung back. */
+const TAIL_FORWARD = 0.5;
+const TAIL_BACK = 0.5;
+
+let REST_LEGS: Set<number> | undefined;
+/** The cells his trousers' legs and his boots cover at rest (male idle, his joints), as pixel indices of the frame. */
+function restLegCells(): Set<number> {
+  if (REST_LEGS) return REST_LEGS;
+  const out = new Set<number>();
+  const add = (p: PaintedPiece, at: [number, number]) =>
+    p.rows.forEach((row, j) => {
+      for (let i = 0; i < row.length; i++) if (row[i] !== '.') out.add((Math.floor(at[1]) - p.pivot[1] + j) * GRID + Math.floor(at[0]) - p.pivot[0] + i);
+    });
+  for (const s of SIDES) {
+    add(arm(s, NOBLE_THIGH_N, NOBLE_THIGH_F), NOBLE_LEG_JOINTS['hip' + s]);
+    add(arm(s, NOBLE_SHIN_N, NOBLE_SHIN_F), NOBLE_LEG_JOINTS['knee' + s]);
+    add(arm(s, NOBLE_BOOT_SHIN_N, NOBLE_BOOT_SHIN_F), NOBLE_LEG_JOINTS['ankle' + s]);
+    add(arm(s, NOBLE_BOOT_FOOT_N, NOBLE_BOOT_FOOT_F), NOBLE_LEG_JOINTS['ankle' + s]);
+  }
+  return (REST_LEGS = out);
+}
+
+const TAIL_CUTS = new Map<string, PaintedPiece>();
+/** NOBLE_TAILS's cells that `keep` keeps, turned about `pivot`. */
+function tailCut(key: string, keep: (x: number, y: number) => boolean, pivot: [number, number]): PaintedPiece {
+  let p = TAIL_CUTS.get(key);
+  if (!p) {
+    const rows = NOBLE_TAILS.rows.map((row, y) => [...row].map((ch, x) => (keep(x, y) ? ch : '.')).join(''));
+    TAIL_CUTS.set(key, (p = { ...NOBLE_TAILS, rows, pivot }));
+  }
+  return p;
+}
+
+/**
+ * His tails: the band rides the pelvis, leaning with the torso; each long tail hangs from his hip (nobleLeg)
+ * and turns about it with his thigh, all the way as the thigh swings forward and part of the way as it swings
+ * back, so the tails go with the legs instead of standing still across them. At rest every pixel is his.
+ */
+function drawTails(g: DrawCtx, torso: number, tint: (ch: string, hex: string) => string): void {
+  const r = g.rig;
+  const P = NOBLE_TAILS;
+  const rest = MALE_IDLE();
+  // the piece's first cell at rest
+  const ox = Math.floor(rest.pelvis.x * RES) - P.pivot[0];
+  const oy = Math.floor(rest.pelvis.y * RES) - P.pivot[1];
+  const inPanel = (x: number, y: number) => TAIL_PANELS.some((t) => x >= t.x0 && x <= t.x1 && y >= t.y0);
+  stampLeaning(g, 'skirt', tailCut('band', (x, y) => !inPanel(x, y), P.pivot), r.pelvis, torso, 'pelvis', tint);
+  for (const t of TAIL_PANELS) {
+    const H = NOBLE_LEG_JOINTS['hip' + t.on];
+    const K = NOBLE_LEG_JOINTS['knee' + t.on];
+    const pivot: [number, number] = [Math.floor(H[0]) - ox, Math.floor(H[1]) - oy];
+    const leg = nobleLeg(g, t.on);
+    const w = ((((segAngle(leg.hip, leg.knee) - segAngle(fine(H), fine(K)) + 180) % 360) + 360) % 360) - 180;
+    const turn = w < 0 ? w * TAIL_FORWARD : w * TAIL_BACK;
+    // where he drew a tail over a leg it lies over the legs; the rest hangs behind them
+    const legs = restLegCells();
+    for (const over of [false, true]) {
+      const piece = tailCut(t.on + over, (x, y) => x >= t.x0 && x <= t.x1 && y >= t.y0 && legs.has((oy + y) * GRID + ox + x) === over, pivot);
+      stampPiece(g, over ? 'skirt' : 'farLeg.body', piece, leg.hip, P.angle + turn, 'pelvis', tint);
+    }
+  }
 }
 
 /** The default top (legacy.ts), worn in place of his coat without his cape. */

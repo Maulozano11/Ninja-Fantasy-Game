@@ -1,0 +1,226 @@
+// The sorceress's black shoulders and wide split purple bell sleeves: the owner's pixels from his sheet of Aurelia's outfits
+// (docs/reference/aurelia-outfits-owner-reference.jpg), brought down to our scale by
+// tools/refs/aurelia-sorceress-sleeves-from-ref.py (tools/refs/aurelia_outfits_ref.py). Generated: rerun the script to change it.
+
+import type { PaintedPiece } from '../painted';
+
+/** His black line (never recoloured). */
+export const NIGHT_SLEEVES_LINE = '#000008';
+/** The colours the slots recolour from: at these every pixel stays his. */
+export const NIGHT_SLEEVES_BASE: Record<string, string> = {
+  cloth: '#201a26',
+  trim: '#161220',
+  gold: '#eedab8',
+};
+/** The letters of each slot's colours. */
+export const NIGHT_SLEEVES_CHARS: Record<string, string> = {
+  cloth: 'ABCDEFGHIJKLabcdefhijlmnpqrstuvwxyz',
+  trim: 'MNOPQRSTUVWXY',
+  gold: '012345678Z',
+};
+
+/** The near sleeve to the elbow (pivot: the shoulder). */
+export const NIGHT_SLEEVES_UPPER_N: PaintedPiece = {
+  pivot: [7, 5],
+  angle: 107.10,
+  rows: [
+    '............k.',
+    '.........kkkBs',
+    '.......kkxVss.',
+    '......kxsYIsJ.',
+    '......kxssIsX.',
+    '.....kBxssxBV.',
+    '.....kBVsxBBv.',
+    '.....kxxxR8NB.',
+    '....kB5x3PXBQ.',
+    '....kB264BXBS.',
+    '...kT7BXBBkBk.',
+    '...kBBunBk.kW.',
+    '...kBnjwzk.kX.',
+    '..kznnjnk...k.',
+    '..knjdhuk...k.',
+    '.kukffltk.....',
+    'kwkkkkktk.....',
+    'kkcezlbk....k.',
+    '.....wb.......',
+  ],
+  colors: {
+    k: '#000008',
+    '2': '#c09656',
+    '3': '#bc9266',
+    '4': '#b6915e',
+    '5': '#ae8f50',
+    '6': '#b68a54',
+    '7': '#aa7c3f',
+    '8': '#866e4a',
+    B: '#201a26',
+    I: '#120c1a',
+    J: '#1a071a',
+    N: '#8e7e68',
+    P: '#725a4e',
+    Q: '#765846',
+    R: '#72552d',
+    S: '#68493e',
+    T: '#553428',
+    V: '#2a2c32',
+    W: '#1e131a',
+    X: '#161220',
+    Y: '#0e0a12',
+    b: '#6e3c6c',
+    c: '#633866',
+    d: '#543a60',
+    e: '#63335b',
+    f: '#5c3461',
+    h: '#4a3258',
+    j: '#46344e',
+    l: '#4e2c4f',
+    n: '#3c2e48',
+    s: '#322f3a',
+    t: '#3c2642',
+    u: '#33263f',
+    v: '#2e2230',
+    w: '#301e3a',
+    x: '#26202c',
+    z: '#2a1a32',
+  },
+};
+
+/** The near sleeve from the elbow (pivot: the elbow). */
+export const NIGHT_SLEEVES_FORE_N: PaintedPiece = {
+  pivot: [7, 3],
+  angle: 102.53,
+  rows: [
+    '.......k...',
+    '......kkkkk',
+    '.....k.....',
+    '...krbi....',
+    '..kKiaZZ.ra',
+    '...KkaZ00rr',
+    '.k.....00kr',
+    '.kt........',
+    'krr........',
+    'kii........',
+    'kKK........',
+    'kjj.....Dq.',
+    'kFF....kDqU',
+    'kFk...kDDyU',
+    '.F.....CCk.',
+    '.......Uk..',
+  ],
+  colors: {
+    k: '#000008',
+    '0': '#eedab8',
+    C: '#281425',
+    D: '#2c0d2a',
+    F: '#250c22',
+    K: '#0a041a',
+    U: '#35383d',
+    Z: '#f6d8ae',
+    a: '#7a3a70',
+    b: '#6e3c6c',
+    i: '#562b58',
+    j: '#46344e',
+    q: '#4c2640',
+    r: '#48244a',
+    t: '#3c2642',
+    y: '#341735',
+  },
+};
+
+/** What of our near arm the sleeve stands for: [from on the upper arm (0 shoulder, 1 elbow), to on the forearm (0 elbow, 1 wrist)]. */
+export const NIGHT_SLEEVES_SPAN_N: [number, number] = [-1.000, 0.000];
+
+/** The far sleeve to the elbow (pivot: the shoulder). */
+export const NIGHT_SLEEVES_UPPER_F: PaintedPiece = {
+  pivot: [1, 2],
+  angle: 72.90,
+  rows: [
+    '.k.....',
+    'BBk....',
+    'BBk....',
+    '11k....',
+    'ppOk...',
+    'ppFk...',
+    'mmGk...',
+    'yyAk...',
+    'EEEk...',
+    'LLKk...',
+    'IIBk...',
+    'BBBzk..',
+    'BBztk..',
+    'xxkkrk.',
+    'xkkrMik',
+    'zkkJ...',
+    'WW.....',
+  ],
+  colors: {
+    k: '#000008',
+    '1': '#d2b284',
+    A: '#34122d',
+    B: '#201a26',
+    E: '#20122c',
+    F: '#250c22',
+    G: '#23041e',
+    I: '#120c1a',
+    J: '#1a071a',
+    K: '#0a041a',
+    L: '#000518',
+    M: '#a5817e',
+    O: '#8e7560',
+    W: '#1e131a',
+    i: '#562b58',
+    m: '#5c2646',
+    p: '#542242',
+    r: '#48244a',
+    t: '#3c2642',
+    x: '#26202c',
+    y: '#341735',
+    z: '#2a1a32',
+  },
+};
+
+/** The far sleeve from the elbow (pivot: the elbow). */
+export const NIGHT_SLEEVES_FORE_F: PaintedPiece = {
+  pivot: [4, 2],
+  angle: 70.71,
+  rows: [
+    '.kk....',
+    'kk.....',
+    'kk..lk.',
+    '.tJ..fk',
+    'WtJ..fz',
+    '.......',
+    '.......',
+    '.......',
+    '.......',
+    '.......',
+    '...KK..',
+    '..KKII.',
+    '.GGHHH.',
+    '..GGYY.',
+    '.XXCCC.',
+    '.XXXC..',
+    '.XXDDD.',
+    '..X.D..',
+  ],
+  colors: {
+    k: '#000008',
+    C: '#281425',
+    D: '#2c0d2a',
+    G: '#23041e',
+    H: '#160826',
+    I: '#120c1a',
+    J: '#1a071a',
+    K: '#0a041a',
+    W: '#1e131a',
+    X: '#161220',
+    Y: '#0e0a12',
+    f: '#5c3461',
+    l: '#4e2c4f',
+    t: '#3c2642',
+    z: '#2a1a32',
+  },
+};
+
+/** What of our far arm the sleeve stands for: [from on the upper arm (0 shoulder, 1 elbow), to on the forearm (0 elbow, 1 wrist)]. */
+export const NIGHT_SLEEVES_SPAN_F: [number, number] = [-1.000, 0.000];

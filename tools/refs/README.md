@@ -200,6 +200,51 @@ folders.
       python3 -I tools/refs/roman-cuirass-from-ref.py src/sprite/items/bronzeCuirassArt.ts [studyDir]
       python3 -I tools/refs/roman-skirt-from-ref.py src/sprite/items/pterugesArt.ts [studyDir]
       python3 -I tools/refs/roman-bracers-sandals-from-ref.py src/sprite/items/bracersSandalsArt.ts [studyDir]
+- `navy_ref.py` + `navy-*-from-ref.py`: the owner's navy officer, his favourite (`docs/reference/navy-officer-*-owner-reference.jpg`,
+  2026-10-24): five pictures of one male character in one pose and grid (200x200 of his pixels at 10 picture pixels
+  each, phase 0, about twice our sprite), each with another chest (`PICS`: high collar, folded collar, open coat,
+  buttoned coat, dark coat). His choice for the sets drawn bigger than our sprite, "Reducir y limpiar yo" (the
+  method of `noble_ref.py` on the noble swordsman's branch): `navy_ref.py` shrinks the body evenly by 2.09
+  (`BODY_SCALE`, at `BODY_AT`: his soles, shoulders, chin and torso on our male idle frame 0's) and the head by 1.7
+  (`HEAD_SCALE`: our Roman head's size), raised 3 px (`HEAD_UP`), then cleans it with his palette only
+  (`reduce_region`): every fine pixel is one of his pixels of its block; his gold piping, frogging and trim as
+  continuous 1 px lines of his gold (`piping`: his gold thinned to its middle lines on his picture, mapped down,
+  his solid gold and his dense embroidery kept); his 1 px line round the figure; his thin details joined again
+  (`bridge`); his cloth without specks (`despeckle`); a few motifs read cell by cell from his pixels (`MOTIF_MAPS`,
+  `MOTIFS`: the frogging, the buckle, the hilt and its jewel, his far eye). His figure is cut into parts on his own
+  pictures (`BODY_PARTS`, `PIC_PARTS` for each picture's own chest, `head_labels`), carried down through the
+  reduction, and `pieces()` continues what each part hides from his own pixels (under his first coat's shoulder
+  pieces, his second picture's plain shoulders; the coat under the belt; the sleeves into the gloves; the tails
+  behind the scabbard, fists and hilt; the under-layers under the coat; the trousers under the tails; the scabbard
+  through the fist). `dressed(pic)` puts each picture's outfit together as the game does (that picture's chest on
+  his first picture's head, gloves, belt, boots, sabre and scabbard): at rest the game shows it pixel for pixel
+  (`src/sprite/navy.test.ts` against `src/sprite/navyRefPixels.ts`); for his first picture it is his cleaned
+  reduction itself. `python3 -I tools/refs/navy_ref.py <dir> [pic]` writes his picture, the even reduction and the
+  cleaned one; `--labels out.png [pic]` and `--parts out.png [pic]` show the parts. With `NAVY_CACHE=<dir>` (outside
+  the repository) the reductions are kept between runs (the same bytes either way).
+
+      python3 -I tools/refs/navy-head-from-ref.py src/sprite/navyHeadArt.ts [studyDir]
+      python3 -I tools/refs/navy-eyes-from-ref.py src/sprite/navyEyeArt.ts
+      python3 -I tools/refs/navy-hair-from-ref.py src/sprite/items/navyHairArt.ts [studyDir]
+      python3 -I tools/refs/navy-swept-hair-from-ref.py src/sprite/items/navySweptHairArt.ts [studyDir]
+      python3 -I tools/refs/navy-coat-from-ref.py high src/sprite/items/navyCoatHighArt.ts [studyDir]
+      python3 -I tools/refs/navy-coat-from-ref.py folded src/sprite/items/navyCoatFoldedArt.ts [studyDir]
+      python3 -I tools/refs/navy-coat-from-ref.py open src/sprite/items/navyCoatOpenArt.ts [studyDir]
+      python3 -I tools/refs/navy-coat-from-ref.py buttoned src/sprite/items/navyCoatButtonedArt.ts [studyDir]
+      python3 -I tools/refs/navy-coat-from-ref.py dark src/sprite/items/navyCoatDarkArt.ts [studyDir]
+      python3 -I tools/refs/navy-vest-from-ref.py open src/sprite/items/navyVestOpenArt.ts [studyDir]
+      python3 -I tools/refs/navy-vest-from-ref.py buttoned src/sprite/items/navyVestGreenArt.ts [studyDir]
+      python3 -I tools/refs/navy-vest-from-ref.py dark src/sprite/items/navyVestBrocadeArt.ts [studyDir]
+      python3 -I tools/refs/navy-epaulets-from-ref.py src/sprite/items/navyEpauletsArt.ts [studyDir]
+      python3 -I tools/refs/navy-belt-from-ref.py src/sprite/items/navyBeltArt.ts [studyDir]
+      python3 -I tools/refs/navy-sash-from-ref.py src/sprite/items/navySashArt.ts [studyDir]
+      python3 -I tools/refs/navy-trousers-from-ref.py src/sprite/items/navyTrousersArt.ts [studyDir]
+      python3 -I tools/refs/navy-boots-from-ref.py src/sprite/items/navyBootsArt.ts [studyDir]
+      python3 -I tools/refs/navy-gloves-from-ref.py src/sprite/items/navyGlovesArt.ts [studyDir]
+      python3 -I tools/refs/navy-sabre-from-ref.py src/sprite/items/navySabreArt.ts [studyDir]
+      python3 -I tools/refs/navy-scabbard-from-ref.py src/sprite/items/navyScabbardArt.ts [studyDir]
+      python3 -I tools/refs/navy-test-pixels-from-ref.py src/sprite/navyRefPixels.ts
+
 - `solen_ref.py` + `solen-*-from-ref.py`: the owner's Solen (`docs/reference/solen-owner-reference.jpg`, the new
   standard, 2026-10-21; pitch 20, our male idle frame 0 at offset (74, 120), the Roman picture's window). It is a
   repaint of his Roman picture. `solen_ref.pieces()` cuts his figure by region polygons (`REGIONS`) and colour kinds

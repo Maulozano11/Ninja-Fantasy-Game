@@ -11,7 +11,7 @@ import { GRID, opaqueBox, RES } from '../../sprite/raster';
 import { phaseBody, phaseFrame } from '../../sprite/phase';
 import { catchLook, releaseClear, renderThrown, thrownItem } from '../../sprite/thrown';
 import { throwRelease } from '../../sprite/grip';
-import { imbueLayers } from '../../sprite/imbue';
+import { imbueActivationLayers, imbueLayers } from '../../sprite/imbue';
 import type { ImbueFx } from '../../sprite/imbue';
 import type { ChakraColorId, SpriteAppearance, SpritePose } from '../../sprite/types';
 import type { Unit } from '../../battle/types';
@@ -133,6 +133,8 @@ export interface ImbueView {
   fx: ImbueFx;
   tick: number;
   tint?: string;
+  /** Its activation's frame while it goes onto the weapon (sprite/imbue.ts renderImbueActivation), else the loop. */
+  step?: number;
 }
 
 /**
@@ -156,7 +158,7 @@ export function unitFrame(
   const tint = aura?.burst ? aura.burst.tint : look.chakra.tint;
   const wantAura = aura && (!!aura.burst || (aura.mode === 'cast' && look.chakra.onCast) || (aura.mode === 'charge' && look.chakra.onCharge) || aura.mode === 'aura');
   const fxTick = wantAura ? aura!.tick % chakraLoop(color) : -1;
-  const key = `${idOf(look)}|${eye}|${pose}|${f}|${wantAura ? `${aura!.mode}${aura!.empowered ? '+' : ''}${fxTick}${aura!.burst ? `|${color}:${tint ?? ''}` : ''}` : ''}${imbue ? `|w:${imbue.fx}${imbue.tick}:${imbue.tint ?? ''}` : ''}`;
+  const key = `${idOf(look)}|${eye}|${pose}|${f}|${wantAura ? `${aura!.mode}${aura!.empowered ? '+' : ''}${fxTick}${aura!.burst ? `|${color}:${tint ?? ''}` : ''}` : ''}${imbue ? `|w:${imbue.fx}${imbue.step !== undefined ? `a${imbue.step}` : imbue.tick}:${imbue.tint ?? ''}` : ''}`;
   let c = frames.get(key);
   if (c) {
     frames.delete(key);
@@ -165,7 +167,7 @@ export function unitFrame(
   }
   const spr = renderSpriteCached(look, pose, f, eye);
   let fx = wantAura ? renderChakra(color, aura!.mode, fxTick, spr.rgba, spr.rig, tint, aura!.empowered) : null;
-  const w = imbue ? imbueLayers(look, pose, f, imbue.fx, imbue.tick, imbue.tint, eye) : null;
+  const w = !imbue ? null : imbue.step !== undefined ? imbueActivationLayers(look, pose, f, imbue.fx, imbue.step, imbue.tint, eye) : imbueLayers(look, pose, f, imbue.fx, imbue.tick, imbue.tint, eye);
   if (w) fx = fx ? { back: over(fx.back, w.back), front: over(fx.front, w.front) } : w;
   c = { ...toCanvas(spr.rgba, fx), rig: spr.rig };
   frames.set(key, c);

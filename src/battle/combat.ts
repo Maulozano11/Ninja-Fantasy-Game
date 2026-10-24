@@ -123,6 +123,12 @@ export interface AttackPreview {
   blocked?: 'noSight' | 'blocked';
 }
 
+/** The weapon in hand's attack bonus before effects (a blow's): proficiency, and strength or, with a finesse weapon, the better of strength and dexterity. */
+export function weaponAttackMod(a: Unit): number {
+  const w = wielded(a);
+  return a.prof + (w.finesse ? Math.max(abilityMod(a.stats.str), abilityMod(a.stats.dex)) : abilityMod(a.stats.str));
+}
+
 function flanked(s: BattleState, attacker: Unit, target: Unit): boolean {
   for (const ally of Object.values(s.units)) {
     if (ally.id === attacker.id || ally.team !== attacker.team || !standing(ally)) continue;
@@ -157,8 +163,10 @@ function hostileWithin(s: BattleState, u: Unit, r: number): boolean {
  * Everything about an attack before rolling: the % shown on the screen. `opts.melee`: a jutsu
  * struck in person (a sword art, a tackle) rolls with the caster's jutsu attack but is a blow like
  * any other: no cover, no penalty for a foe close by, advantage on a prone target, flanking.
+ * `opts.weapon`: a jutsu thrown off the weapon (the Elemental Slash) rolls with the weapon's attack,
+ * not the jutsu attack; at range, like any jutsu.
  */
-export function attackPreview(s: BattleState, a: Unit, t: Unit, kind: AttackKind, opts: { jutsuRange?: number; melee?: boolean } = {}): AttackPreview {
+export function attackPreview(s: BattleState, a: Unit, t: Unit, kind: AttackKind, opts: { jutsuRange?: number; melee?: boolean; weapon?: boolean } = {}): AttackPreview {
   const close = kind === 'melee' || !!opts.melee;
   const am = effectMods(a.effects);
   const tm = effectMods(t.effects);
@@ -168,7 +176,7 @@ export function attackPreview(s: BattleState, a: Unit, t: Unit, kind: AttackKind
   let mod: number;
   let inRange: boolean;
   if (kind === 'jutsu') {
-    mod = a.jutsuAttack + am.allRolls - 2 * (a.character?.exhaustion ?? 0);
+    mod = (opts.weapon ? weaponAttackMod(a) : a.jutsuAttack) + am.allRolls - 2 * (a.character?.exhaustion ?? 0);
     inRange = d <= (opts.jutsuRange ?? 9) + 0.1;
   } else {
     const w = kind === 'ranged' ? KUNAI : wielded(a);

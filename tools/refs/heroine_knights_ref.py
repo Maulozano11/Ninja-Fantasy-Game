@@ -661,6 +661,22 @@ def lay(rgb, lab, srgb, slab, shared, under=None):
         known = left & (under != '') & ~np.isin(under, shared)
         lab[known] = under[known]
         left &= ~known
+        # (but where it is her own sword's light, a pixel off the paladin's, the part's own nearest colour)
+        H, W = lab.shape
+        for y, x in zip(*np.nonzero(known)):
+            if kind(rgb[y, x]) not in ('cyan', 'white', 'blue'):
+                continue
+            best = None
+            for r in range(1, 6):
+                for dy in range(-r, r + 1):
+                    for dx in range(-r, r + 1):
+                        q = (y + dy, x + dx)
+                        if max(abs(dy), abs(dx)) == r and 0 <= q[0] < H and 0 <= q[1] < W and lab[q] == lab[y, x] and not known[q] and kind(rgb[q]) not in ('cyan', 'white', 'blue', 'line'):
+                            best = best or q
+                if best:
+                    break
+            if best:
+                rgb[y, x] = rgb[best]
     for _ in range(8):
         if not left.any():
             break

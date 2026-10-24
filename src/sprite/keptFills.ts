@@ -60,6 +60,12 @@ export const KEPT_FILLS: KeptFill[] = [
   ['trunks3@female', 'walk', 1, 117, 167],
   ['trunks3@female', 'walk', 6, 120, 191],
   ['trunks3@female', 'walk', 7, 117, 166],
+  // his Lyra: Arrojar 3 (the hair on the arm) and Estocada 1 (the skirt on the shin)
+  ['lyra@female', 'throw', 2, 129, 146],
+  ['lyra@female', 'pierce', 0, 106, 203],
+  // his Aurelia: Carga 1 (the arm at the elbow) and Agacharse 1
+  ['aurelia@female', 'charge', 0, 106, 162],
+  ['aurelia@female', 'crouch', 0, 143, 197],
 ];
 
 const BY_FRAME = new Map<string, number[]>();

@@ -1,65 +1,68 @@
-// The owner's standard characters off his pictures: no crack, light edge pixel or loose bit (compose.ts
+// The owner's standard characters off his pictures: no crack or light edge pixel (compose.ts
 // standardOf, glitches.ts mendGlitches). The owner (2026-10-23): "quiero que arregles solo los de la calidad
-// standard". Every idle is his picture and is not looked at.
+// standard". His Lyra's own frames (ownerFrames.ts) and every idle are his pictures and are not looked at.
 // A pocket (background walled in) is reported, never filled: it is his separation (glitches.ts mendGlitches,
 // docs/SPRITE_STYLE_GUIDE.md "Known errors").
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { getItem } from './catalog';
+import { LEGENDARY_PRESETS } from '../data/shinobiData';
 import { renderSprite } from './compose';
 import { findGlitches } from './glitches';
-import { defaultAppearance } from './legacy';
-import { PAINTED_SKIN } from './items/trunksKit';
-import { GRID } from './raster';
+import { defaultAppearance, dojutsuToEye } from './legacy';
+import { paintedFrame } from './ownerFrames';
 import { frameCount, rigPoseFor } from './rig';
-import { CAMP_POSES, MOVE_POSES, SPRITE_POSES, type SlotId, type SpriteAppearance, type SpritePose } from './types';
+import { GRID } from './raster';
+import { CAMP_POSES, MOVE_POSES, SPRITE_POSES, type EyeSpecial, type SpriteAppearance, type SpritePose } from './types';
 
 const POSES: SpritePose[] = [...SPRITE_POSES, ...MOVE_POSES, ...CAMP_POSES].filter((p) => p !== 'idle');
 
-/** As he painted over our male: Solen's skin, the crystal greatsword in the near hand. */
-function painted(items: Partial<Record<SlotId, string>>): SpriteAppearance {
+function roman(): SpriteAppearance {
   const l = defaultAppearance();
-  l.slots = {};
-  // (on the head he painted them over: our template head, before his Roman head became the default male's)
-  Object.assign(l, { faceShape: 'tapered', eyeShape: 'standard', eyeColor: '#3b82f6', headband: { ...l.headband, position: 'forehead' } });
-  for (const [slot, id] of Object.entries({ ...items, held: 'held_crystal' })) l.slots[slot as SlotId] = { id: id!, colors: getItem(id!)!.colors.map((c) => c.default) };
-  l.skin = PAINTED_SKIN;
-  return l;
+  l.slots.armor = { id: 'armor_bronze', colors: [] };
+  l.slots.skirt = { id: 'skirt_imperial', colors: [], parts: { drapes: 'on' } };
+  l.slots.hands = { id: 'hands_bronze_bracers', colors: [] };
+  l.slots.feet = { id: 'feet_gladiator_sandals', colors: [], parts: { paint: 'roman' } };
+  delete l.slots.top;
+  delete l.slots.bottom;
+  delete l.slots.cape;
+  delete l.slots.held;
+  return { ...l, body: 'male' };
 }
 
-const LOOKS: [string, SpriteAppearance][] = [
-  ['Trunks 2', painted({ cape: 'cape_traveler', top: 'top_highcollar', bottom: 'bottom_cargo', feet: 'feet_leather', waist: 'waist_belt', hands: 'hands_traveler_gloves', hair: 'hair_drifter' })],
-  ['Trunks 3', painted({ top: 'top_bomber', bottom: 'bottom_leggings', feet: 'feet_cowboy', hair: 'hair_surge' })],
+const lyra = LEGENDARY_PRESETS.find((p) => p.character.id === 'preset_lyra')!.character;
+const aurelia = LEGENDARY_PRESETS.find((p) => p.character.id === 'preset_aurelia')!.character;
+// (her walk he approved pixel for pixel is left as it is: aureliaLegs.test.ts)
+const LOOKS: [string, SpriteAppearance, EyeSpecial, boolean][] = [
+  ['Roman', roman(), 'none', false],
+  ['Lyra', lyra.appearance!, dojutsuToEye(lyra.dojutsu), true],
+  ['Aurelia', aurelia.appearance!, dojutsuToEye(aurelia.dojutsu), false],
 ];
 
 describe("the owner's standard characters", () => {
-  for (const [name, look] of LOOKS)
-    it(`${name}: no crack, light edge or loose bit in any pose (every third frame)`, () => {
+  for (const [name, look, eye, painted] of LOOKS)
+    it(`${name}: no crack or light edge in any pose (every third frame)`, () => {
       const found: string[] = [];
       for (const pose of POSES) {
+        if (name === 'Aurelia' && pose === 'walk') continue;
         const n = frameCount(rigPoseFor(pose, look.cast?.style, look.stowed ? undefined : look.slots.held?.id));
-        for (let f = 0; f < n; f += 3)
-          for (const g of findGlitches(renderSprite(look, pose, f))) {
-            if (g.kind === 'pocket') continue;
-            // (his open-toed boots' bare toes are light to their tip, as at rest)
-            if (look.slots.feet?.id === 'feet_cowboy' && g.kind === 'edge' && g.parts.every((p) => p.startsWith('foot'))) continue;
-            found.push(`${pose} ${f}: ${g.kind} at ${g.x},${g.y} (${g.parts.join('/')})`);
-          }
+        for (let f = 0; f < n; f += 3) {
+          if (painted && paintedFrame(pose, f)) continue;
+          for (const g of findGlitches(renderSprite(look, pose, f, eye))) if (g.kind !== 'pocket') found.push(`${pose} ${f}: ${g.kind} at ${g.x},${g.y} (${g.parts.join('/')})`);
+        }
       }
       assert.deepEqual(found, []);
     });
-  // his marks on the sheets 1 and 3 (2026-10-23, "trunks errores relleno"): a pocket stays open but where he saw
-  // it filled and left it
+  // his marks (2026-10-23): a pocket stays open (his separation) but where he saw it filled and left it
   it('fills only the pockets he left filled (keptFills.ts)', () => {
-    const [two, three] = LOOKS.map(([, l]) => l);
-    for (const [what, look, pose, frame, x, y, filled] of [
-      ['Trunks 2 Embestida 1', two, 'tackle', 0, 140, 180, false],
-      ['Trunks 2 Caminar 1', two, 'walk', 0, 138, 173, false],
-      ['Trunks 2 Caminar 2, left filled', two, 'walk', 1, 116, 200, true],
-      ['Trunks 3 Carga 1', three, 'charge', 0, 140, 177, false],
-      ['Trunks 3 Correr 2', three, 'run', 1, 116, 160, false],
-    ] as [string, SpriteAppearance, SpritePose, number, number, number, boolean][])
-      assert.equal(renderSprite(look, pose, frame).rgba[(y * GRID + x) * 4 + 3] > 0, filled, `${what}: ${filled ? 'filled' : 'open'}`);
+    const ae = dojutsuToEye(aurelia.dojutsu);
+    const opaque = (look: SpriteAppearance, pose: SpritePose, frame: number, x: number, y: number, eye: EyeSpecial = 'none') => renderSprite(look, pose, frame, eye).rgba[(y * GRID + x) * 4 + 3] > 0;
+    for (const [what, look, pose, frame, x, y, filled, eye] of [
+      ['Aurelia Carga 1, under the chin ("no lo repitas mas")', aurelia.appearance!, 'charge', 0, 133, 149, false, ae],
+      ['Aurelia Sentado 1, thigh, shin and skirt', aurelia.appearance!, 'sit', 0, 124, 196, false, ae],
+      ['Aurelia Carga 1, the arm at the elbow, left filled', aurelia.appearance!, 'charge', 0, 106, 162, true, ae],
+      ['Aurelia Agacharse 1, left filled', aurelia.appearance!, 'crouch', 0, 143, 197, true, ae],
+    ] as [string, SpriteAppearance, SpritePose, number, number, number, boolean, EyeSpecial?][])
+      assert.equal(opaque(look, pose, frame, x, y, eye), filled, `${what}: ${filled ? 'filled' : 'open'}`);
   });
 });

@@ -1666,7 +1666,7 @@ function jutsuEffect(sp: JutsuSpec, lang: ReturnType<typeof useLang>): string {
 /** The pop-up of a jutsu's slot: its full name, rank, how it is cast, what it does, its description, and enhanced. */
 /** The numbers a help line names (Weapon Element Enhancement's come from battle/imbue.ts). */
 function helpParams(id: string): Record<string, string | number> | undefined {
-  if (id === ELEMENTAL_SLASH) return { c: SLASH_COST, n: SLASH_RANGE, w: SLASH_RANGE + WATER_REACH, d: IMBUE_DICE, p: WIND_PUSH, k: EARTH_CRIT };
+  if (id === ELEMENTAL_SLASH) return { c: SLASH_COST, n: SLASH_RANGE, w: SLASH_RANGE + WATER_REACH, d: IMBUE_DICE, p: WIND_PUSH };
   if (id !== WEAPON_ELEMENT) return undefined;
   return { c: IMBUE_COST, r: IMBUE_ROUNDS, d: IMBUE_DICE, p: WIND_PUSH, m: WATER_REACH, k: EARTH_CRIT };
 }

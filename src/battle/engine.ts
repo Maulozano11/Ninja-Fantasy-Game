@@ -544,23 +544,25 @@ function weaponAttack(
  * are the builder's proposal, battle/imbue.ts): its die of the element's damage, and on a critical
  * hit fire sets the target burning and lightning leaves it numb; wind's critical blows it back;
  * water puts its flames out (water always does); obsidian's edge crits on 19 (weaponAttack).
+ * `always`: the effect on every hit, not only a critical (an Elemental Slash).
  */
-function imbuedHit(s: BattleState, a: Unit, h: Hit, element: NonNullable<ReturnType<typeof activeImbue>>): void {
+function imbuedHit(s: BattleState, a: Unit, h: Hit, element: NonNullable<ReturnType<typeof activeImbue>>, always = false): void {
   h.bonus = { amount: rollDiceExpr(s, IMBUE_DICE, h.crit), type: IMBUE_DAMAGE[element] };
-  if (element === 'Fire' && h.crit) h.effect = 'burning';
-  if (element === 'Lightning' && h.crit) h.effect = 'jolted';
-  if (element === 'Wind' && h.crit) h.push = { from: { ...a.pos }, m: WIND_PUSH };
+  const rider = h.crit || always;
+  if (element === 'Fire' && rider) h.effect = 'burning';
+  if (element === 'Lightning' && rider) h.effect = 'jolted';
+  if (element === 'Wind' && rider) h.push = { from: { ...a.pos }, m: WIND_PUSH };
   if (element === 'Water') h.douse = true;
 }
 
 /**
  * Elemental Slash (its chakra and the bonus action are paid): the element leaves the weapon in one
- * cut thrown at a foe (the owner: "el tajo sera un bonus action y elimina la mejora del arma"). The
- * rest is the builder's proposal: the weapon's attack roll, at range like a jutsu thrown at one
- * target (cover, a foe close by, the height), obsidian's edge critting on 19 as on the blade; a hit
- * deals the weapon's die and the element's, with the element's extra on a critical as on the blade
- * (imbuedHit), and no ability modifier (a bonus-action blow, like an off-hand one in 5e). Water also
- * wets the ground under the target (his rule; on every hit, as its dousing: our reading).
+ * cut thrown at a foe (the owner: "el tajo sera un bonus action y elimina la mejora del arma"), with
+ * the element's effect on every hit: fire burns, lightning numbs, wind blows back, water douses and
+ * wets the ground under the target, earth knocks it down (his rules). The rest is the builder's
+ * proposal: the weapon's attack roll, at range like a jutsu thrown at one target (cover, a foe close
+ * by, the height); a hit deals the weapon's die and the element's (imbuedHit), and no ability
+ * modifier (a bonus-action blow, like an off-hand one in 5e).
  */
 function elementalSlash(s: BattleState, u: Unit, t: Unit, ev: BattleEvent[]): void {
   const element = u.imbued!.element;
@@ -570,10 +572,6 @@ function elementalSlash(s: BattleState, u: Unit, t: Unit, ev: BattleEvent[]): vo
   endImbue(u, 'slashed', ev);
   const pv = attackPreview(s, u, t, 'jutsu', { jutsuRange: slashRange(element), weapon: true });
   const roll = check(s, 'attack', pv.mod, pv.ac, pv.adv, true);
-  if (element === 'Earth' && roll.d20 >= EARTH_CRIT && !roll.crit && !roll.fumble) {
-    roll.crit = true;
-    roll.success = true;
-  }
   ev.push({ t: 'attack', unit: u.id, target: t.id, what: ELEMENTAL_SLASH, roll, ranged: true, ...(pv.reasons.length ? { reasons: pv.reasons } : {}) });
   // A Ryusei's warp edge goes with its next attack roll, this one too.
   const edge = !!u.cond.warpEdge;
@@ -581,7 +579,10 @@ function elementalSlash(s: BattleState, u: Unit, t: Unit, ev: BattleEvent[]): vo
   const hits: Hit[] = [];
   if (roll.success) {
     const hit: Hit = { unit: t.id, amount: Math.max(1, rollDiceExpr(s, w.dice, roll.crit)), type: w.type, source: u.id, what: ELEMENTAL_SLASH, crit: roll.crit, aimed: true, unblockable: edge };
-    imbuedHit(s, u, hit, element);
+    // The element's effect on every hit, not only a critical (the owner: "y en este jutsu el efecto se
+    // aplica si o si no solo en critico"); earth's knocks the target down ("derribar").
+    imbuedHit(s, u, hit, element, true);
+    if (element === 'Earth') hit.prone = true;
     hits.push(hit);
     // Water puts out the flames and leaves the ground under the target wet (the owner: "el de agua
     // apaga las llamas y pone mojado abajo del objetivo"), as a water jutsu at one target soaks it.

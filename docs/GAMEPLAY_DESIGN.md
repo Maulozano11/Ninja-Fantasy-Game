@@ -380,7 +380,7 @@ genjutsu, solo elemental )"*.
   recorre el arma de Aki: +1.5 m de alcance", "Obsidiana filosa cubre el arma de Aki",
   and a line when it leaves the weapon. The class panel in the creator names it.
 
-**The activation (new art, waiting for his approval; on `vfx/weapon-imbue-activation`).** His words
+**The activation (approved 2026-10-24, *"apruevo animacion de activar y corte elemetal"*; in the game).** His words
 (2026-10-23): *"hazle una animacion para activar la mejora de elemento con la pose de victoria"*. When the
 element goes onto the weapon the ninja holds the victory pose (the weapon raised) for 1 s (`ACTIVATE_MS`,
 10 frames) while it plays: the element gathers into the hand (motes of its light drawn in from round it),
@@ -408,7 +408,7 @@ at its edge, no black line; the obsidian is solid and carries the characters' bl
 line. The energy takes the ninja's chakra colour like his jutsu; the obsidian keeps
 its own.
 
-### Elemental Slash (the owner, 2026-10-23; on `class/elemental-slash`, waiting for his yes)
+### Elemental Slash (the owner, 2026-10-23; approved 2026-10-24, *"apruevo animacion de activar y corte elemetal"*; in the game)
 
 The owner, verbatim: *"ahora pon en el juego una habilidad para maestro de armas que si tienes la mejora de
 arma que dura 3 turnos puedes tambien tener una opcion de lanzar la habilidad en un slash del elemento que
@@ -424,10 +424,17 @@ action y elimina la mejora del arma"*.
   flames **and leaves the ground under the target wet**: the same wet ground a water jutsu leaves (`soak` in
   `src/battle/ground.ts`: a 1 m circle round the target, as a water jutsu thrown at one target soaks, for
   WET_ROUNDS; its art, and what fire and lightning do on it, are the ones the game has), with its log line ("El
-  suelo queda mojado"). *Our assumption, to confirm with him:* on every water slash that hits, as the dousing,
-  not only on a critical hit; a miss leaves the ground dry.
+  suelo queda mojado"). On every water slash that hits, not only a critical hit (his *"si asi lo quiero"*,
+  2026-10-24); a miss leaves the ground dry.
+- *"y en este jutsu el efecto se aplica si o si no solo en critico"*: in the slash **the element's effect
+  applies on every hit**, not only on a critical hit (on the blade it stays a critical's): fire sets the foe
+  **burning**, lightning leaves it **Numb** (2 rounds), wind **blows it back 1.5 m**, water puts out its flames
+  and wets the ground under it.
+- Earth: *"derribar"*: an earth slash **knocks the target down** (prone) on every hit, the game's own knock-down
+  (a ninja; big creatures stand firm), with its log line ("… cae derribado"). It replaces the obsidian's 19–20
+  critical range in the slash; on the blade the obsidian keeps it.
 
-**The rest is the builder's proposal, waiting for his numbers** (constants in `src/battle/imbue.ts`):
+**The rest is the builder's proposal, approved with the slash** (constants in `src/battle/imbue.ts`):
 - Name *Corte elemental* (*Elemental Slash*), the same on the button. Id `elemental_slash`.
 - Who: whoever has Weapon Element Enhancement (it comes with it, `classAbilities`); usable only with an element
   on the weapon ("Solo con tu elemento en el arma"). It throws the element on the weapon now, whichever of its
@@ -442,11 +449,9 @@ action y elimina la mejora del arma"*.
   range like a jutsu thrown at one target: cover counts, a foe within 1.5 m gives disadvantage, the height
   (±2), steam, a prone target (disadvantage). A Ryusei's warp edge goes with it.
 - A hit deals **the weapon's die + 1d4 of the element** (the damage types of the table above), no ability
-  modifier (a bonus-action blow, like an off-hand one in 5e). A critical hit: the dice at their maximum, doubled
-  (his crit rule), and **the element's rider as on the blade**: fire sets the foe burning, lightning leaves it
-  Numb (2 rounds), wind blows it back 1.5 m, obsidian crits on a natural 19; water puts out the foe's flames and
-  wets the ground under it (his rule, above). The other elements do nothing to the ground (fire sets none
-  alight, lightning doesn't run through water).
+  modifier (a bonus-action blow, like an off-hand one in 5e), and the element's effect (his rules, above). A
+  critical hit: the dice at their maximum, doubled (his crit rule); it crits on a natural 20 only, earth too.
+  Only water does anything to the ground (fire sets none alight, lightning doesn't run through water).
 - The AI keeps the element on the blade while the blade can reach a foe this turn (walking there counted), and
   throws it at the foe it is likeliest to hit (the most wounded on a tie) when none can be reached, or, its blow
   struck, on the element's last turn, before it fades anyway (`slashAway` in `src/battle/ai.ts`).
@@ -457,7 +462,7 @@ action y elimina la mejora del arma"*.
   en un corte", "El rayo sale…", "El viento sale…", "El agua sale…", "La obsidiana sale…"), then the roll's miss
   or the damage.
 
-**How it looks (waiting for his approval; `elementSlash` in `src/components/battle/playback.ts`):** the attack
+**How it looks (approved; `elementSlash` in `src/components/battle/playback.ts`):** the attack
 pose's cut, the element still on the blade as it rises; on the strike frame the element leaves the blade (its
 loop is gone) as his crescent of that element (`vfx_<element>/slash`, the crescents of his element sheets) flying
 from the blade at blade height to the target, 75 ms a metre (300 ms at least), where his hit of that element

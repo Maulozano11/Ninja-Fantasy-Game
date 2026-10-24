@@ -63,11 +63,11 @@ function act(s: BattleState, a: Action): { state: BattleState; events: BattleEve
 }
 
 /** A's slash at the rogue (easy to hit, HP to spare) with `el` on the weapon, for the first seed whose roll matches `want`. */
-function thrown(el: ImbueElement, want: (d20: number, crit: boolean, ok: boolean) => boolean, gap = 6) {
+function thrown(el: ImbueElement, want: (d20: number, crit: boolean, ok: boolean) => boolean, gap = 6, ac = 1) {
   for (let seed = 1; seed < 800; seed++) {
     const s = setup(el, gap, seed);
     const foe = foeOf(s);
-    foe.ac = el === 'Earth' ? 30 : 1;
+    foe.ac = ac;
     foe.hp = foe.maxHp = 200;
     const out = act(s, slash(s));
     const atk = out.events.find((e) => e.t === 'attack');
@@ -170,22 +170,31 @@ describe('Elemental Slash: what a hit does', () => {
     assert.ok(blade.amount >= 1 && blade.amount <= maxOf(w.dice), `${blade.amount} within ${w.dice}`);
     assert.equal(el.dmgType, IMBUE_DAMAGE.Fire);
     assert.ok(el.amount >= 1 && el.amount <= 4);
-    assert.ok(!foe.effects.some((e) => e.id === 'burning'), 'no burn without a crit');
   });
 
-  it('a crit does what the blade does: fire burns, lightning numbs', () => {
-    assert.ok(thrown('Fire', (_d, crit) => crit).foe.effects.some((e) => e.id === 'burning'));
-    assert.ok(thrown('Lightning', (_d, crit) => crit).foe.effects.some((e) => e.id === 'jolted'));
+  // The owner: "y en este jutsu el efecto se aplica si o si no solo en critico".
+  it('the element\'s effect on every hit, not only a crit: fire burns, lightning numbs', () => {
+    assert.ok(thrown('Fire', (_d, crit, ok) => ok && !crit).foe.effects.some((e) => e.id === 'burning'));
+    assert.ok(thrown('Lightning', (_d, crit, ok) => ok && !crit).foe.effects.some((e) => e.id === 'jolted'));
   });
 
-  it('a wind crit blows the foe back', () => {
-    const { foe } = thrown('Wind', (_d, crit) => crit);
+  it('wind blows the foe back on every hit', () => {
+    const { foe } = thrown('Wind', (_d, crit, ok) => ok && !crit);
     assert.ok(foe.pos.x > 8 + 6, `pushed from 14 to ${foe.pos.x}`);
   });
 
-  it(`obsidian crits on ${EARTH_CRIT}`, () => {
-    const { atk } = thrown('Earth', (d) => d === EARTH_CRIT);
-    assert.ok(atk.roll.crit && atk.roll.success, 'a 19 hits and crits even against AC 30');
+  it('earth knocks the foe down on every hit ("derribar"), and crits on a 20 only', () => {
+    const { out, foe } = thrown('Earth', (_d, crit, ok) => ok && !crit);
+    assert.ok(foe.cond.prone, 'prone');
+    assert.ok(out.events.some((e) => e.t === 'note' && e.key === 'knockedDown'));
+    // Obsidian's 19 is the blade's, not the slash's: a 19 against AC 30 misses.
+    const { atk } = thrown('Earth', (d) => d === EARTH_CRIT, 6, 30);
+    assert.ok(!atk.roll.crit && !atk.roll.success);
+  });
+
+  it('a miss carries no effect', () => {
+    assert.ok(!thrown('Fire', (_d, _c, ok) => !ok, 6, 30).foe.effects.some((e) => e.id === 'burning'));
+    assert.ok(!thrown('Earth', (_d, _c, ok) => !ok, 6, 30).foe.cond.prone);
   });
 
   it('water puts out the flames and leaves the ground under the target wet, as a water jutsu does', () => {

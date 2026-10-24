@@ -1,4 +1,4 @@
-"""The owner's bronze warrior at our scale, whole, and his joints: what the game's idle frame is tested against.
+"""The owner's bronze warrior at our scale, whole (and in his second set), and his joints: what the game's idle frame is tested against.
 
 His figure brought down and cleaned as tools/refs/bronze_ref.py says, each piece continued under what hides it
 and drawn back to front as the game draws the pieces at rest (bronze_ref.GAME_ORDER): this is the cleaned
@@ -22,11 +22,28 @@ from PIL import Image  # noqa: E402
 import bronze_ref as R  # noqa: E402
 
 
-def main(out, png=None):
-    a, lab = R.load()
-    img, who = R.figure(a, lab)
+def figure_ts(name, doc, img):
     m = img[..., 3] > 0
     rows, origin, palette = R.pack(img[..., :3].astype(np.int32), m)
+    t = [f'/** {doc} */', f'export const {name}_AT: [number, number] = [{origin[0]}, {origin[1]}];']
+    t.append(f'export const {name}: {{ rows: string[]; colors: Record<string, string> }} = {{')
+    t.append('  rows: [')
+    t += [f"    '{r}'," for r in rows]
+    t += ['  ],', '  colors: {']
+    t += [f"    '{k}': '{v}'," for k, v in palette.items()]
+    t += ['  },', '};', '']
+    return t
+
+
+def main(out, png=None):
+    a, lab = R.load()
+    pieces = {n: R.piece(a, lab, n) for _, n in R.GAME_ORDER}
+    img, who = R.figure(a, lab, pieces)
+    # his second set (his second picture's chest, collar, iron pauldrons and sleeves) on the rest of him
+    a2, lab2 = R.load(R.REF_LEATHER)
+    for n in R.LEATHER_PIECES:
+        pieces[n] = R.piece(a2, lab2, n)
+    img2, _ = R.figure(a, lab, pieces, R.leather_order())
     t = [R.header('bronze-figure-from-ref.py', "The owner's bronze warrior at our scale, whole, and his joints.", f' {out}')]
     t.append('/** His joints at our scale, where his figure stands them at male idle frame 0 (fine pixels). */')
     t.append('export const HOPLITE_JOINTS = {')
@@ -34,14 +51,8 @@ def main(out, png=None):
         x, y = R.fine_joint(k)
         t.append(f'  {k}: [{x:.4f}, {y:.4f}],')
     t += ['} as const;', '']
-    t.append('/** His whole figure at male idle frame 0, as the game draws his preset: the first row\'s first cell at FIGURE_AT. */')
-    t.append(f'export const HOPLITE_FIGURE_AT: [number, number] = [{origin[0]}, {origin[1]}];')
-    t.append('export const HOPLITE_FIGURE: { rows: string[]; colors: Record<string, string> } = {')
-    t.append('  rows: [')
-    t += [f"    '{r}'," for r in rows]
-    t += ['  ],', '  colors: {']
-    t += [f"    '{k}': '{v}'," for k, v in palette.items()]
-    t += ['  },', '};', '']
+    t += figure_ts('HOPLITE_FIGURE', "His whole figure at male idle frame 0, as the game draws his preset: the first row's first cell at HOPLITE_FIGURE_AT.", img)
+    t += figure_ts('HOPLITE_LEATHER_FIGURE', "His figure in his second set (his leather chest, iron pauldrons and sleeves), as the game draws that preset.", img2)
     R.write(out, '\n'.join(t))
     if png:
         Image.fromarray(img).resize((256 * 4, 256 * 4), Image.NEAREST).save(png)

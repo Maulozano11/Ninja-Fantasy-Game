@@ -209,6 +209,7 @@ describe('clans', () => {
       preset_lyra: [44, 32, 18, 15, 7],
       // His bronze warrior (2026-10-24): the creator's formula for his sheet, as the heroines'.
       preset_bronze_warrior: [49, 33, 17, 15, 7],
+      preset_bronze_warrior_leather: [49, 33, 16, 15, 7],
     };
     assert.deepEqual(LEGENDARY_PRESETS.map((p) => p.character.id).sort(), Object.keys(owner).sort());
     for (const { character: c } of LEGENDARY_PRESETS) {

@@ -5,7 +5,7 @@ import { resolveParts, type ItemDef } from '../../sprite/ctx';
 import { CHAKRA_CHOICES, TINT_CHOICES, chakraChoice, chakraHex } from '../../sprite/chakraInfo';
 import { CHAKRA_TYPES, chakraNature, chakraType, withNature } from '../../sprite/chakraNature';
 import { CAST_STYLE_INFO, defaultCastStyle } from '../../sprite/castInfo';
-import { CAST_STYLES } from '../../sprite/types';
+import { CAST_STYLES, isFemaleBody } from '../../sprite/types';
 import { CLOTH_COLORS, CLOTH_FAMILIES, EYE_COLORS, HAIR_COLORS, SKIN_TONES } from '../../sprite/palettes';
 import type {
   ArmType,
@@ -127,6 +127,7 @@ const FACE_SHAPES: { id: FaceShape; label: string; sub: string }[] = [
   { id: 'founder', label: 'Founder', sub: "Solen's face" },
   { id: 'fine', label: 'Fine', sub: "Lyra's face" },
   { id: 'roman', label: 'Roman', sub: "The Roman's face" },
+  { id: 'hoplite', label: 'Bronze warrior', sub: "The bronze warrior's face" },
 ];
 
 const ARMS: { id: ArmType; label: string; sub: string }[] = [
@@ -145,6 +146,7 @@ const EYE_SHAPES: { id: EyeShape; label: string; sub?: string }[] = [
   { id: 'valiant', label: 'Valiant', sub: "Aiden's eyes" },
   { id: 'keen', label: 'Keen', sub: "Lyra's eyes" },
   { id: 'roman', label: 'Roman', sub: "The Roman's eyes" },
+  { id: 'hoplite', label: 'Bronze warrior', sub: "The bronze warrior's eyes" },
 ];
 
 const HEADBAND_POSITIONS: { id: HeadbandPosition; label: string }[] = [
@@ -367,7 +369,7 @@ export const AppearanceEditor: React.FC<{
           <div>
             <SectionLabel>Face Shape</SectionLabel>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              {FACE_SHAPES.map((f) => (
+              {FACE_SHAPES.filter((f) => f.id !== 'hoplite' || !isFemaleBody(look.body)).map((f) => (
                 <OptionCard
                   key={f.id}
                   selected={(look.faceShape || 'tapered') === f.id}
@@ -390,7 +392,7 @@ export const AppearanceEditor: React.FC<{
             <div>
               <SectionLabel>Eye Shape</SectionLabel>
               <div className="grid grid-cols-4 gap-2">
-                {EYE_SHAPES.map((e) => (
+                {EYE_SHAPES.filter((e) => e.id !== 'hoplite' || !isFemaleBody(look.body)).map((e) => (
                   <OptionCard
                     key={e.id}
                     selected={look.eyeShape === e.id}

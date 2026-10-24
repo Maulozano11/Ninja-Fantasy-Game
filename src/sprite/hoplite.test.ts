@@ -7,24 +7,35 @@ import { faceAnchor } from './body';
 import { getItem } from './catalog';
 import { renderSprite } from './compose';
 import type { DrawCtx } from './ctx';
-import { HOPLITE_FIGURE, HOPLITE_FIGURE_AT, HOPLITE_JOINTS } from './hopliteFigureArt';
+import { HOPLITE_FIGURE, HOPLITE_FIGURE_AT, HOPLITE_JOINTS, HOPLITE_LEATHER_FIGURE, HOPLITE_LEATHER_FIGURE_AT } from './hopliteFigureArt';
 import { hopliteRig } from './hopliteRig';
 import { GRID, RES } from './raster';
 import { drawRig } from './rig';
 import { CAMP_POSES, MOVE_POSES, SPRITE_POSES, type SpriteAppearance, type SpritePose } from './types';
 
-const preset = LEGENDARY_PRESETS.find((p) => p.character.id === 'preset_bronze_warrior')!.character;
-const look = (body: 'male' | 'bulky' = 'male'): SpriteAppearance => ({ ...structuredClone(preset.appearance!), body });
+const presetOf = (id: string) => LEGENDARY_PRESETS.find((p) => p.character.id === id)!.character;
+const look = (body: 'male' | 'bulky' = 'male', id = 'preset_bronze_warrior'): SpriteAppearance => ({ ...structuredClone(presetOf(id).appearance!), body });
 const hex = (rgba: Uint8ClampedArray, i: number) => '#' + [0, 1, 2].map((k) => rgba[i * 4 + k].toString(16).padStart(2, '0')).join('');
 
 /** His figure at our scale as the script wrote it: fine pixel index -> colour. */
-function figure(): Map<number, string> {
+function figure(fig = HOPLITE_FIGURE, at = HOPLITE_FIGURE_AT): Map<number, string> {
   const out = new Map<number, string>();
-  const [x0, y0] = HOPLITE_FIGURE_AT;
-  HOPLITE_FIGURE.rows.forEach((row, j) => {
-    for (let i = 0; i < row.length; i++) if (row[i] !== '.') out.set((y0 + j) * GRID + x0 + i, HOPLITE_FIGURE.colors[row[i]]);
+  const [x0, y0] = at;
+  fig.rows.forEach((row, j) => {
+    for (let i = 0; i < row.length; i++) if (row[i] !== '.') out.set((y0 + j) * GRID + x0 + i, fig.colors[row[i]]);
   });
   return out;
+}
+
+/** The pixels a render differs from his figure in. */
+function wrongPixels(rgba: Uint8ClampedArray, his: Map<number, string>): string[] {
+  const wrong: string[] = [];
+  for (let i = 0; i < GRID * GRID; i++) {
+    const want = his.get(i);
+    const shown = rgba[i * 4 + 3] > 0;
+    if (want === undefined ? shown : !shown || hex(rgba, i) !== want) wrong.push(`${i % GRID},${(i / GRID) | 0}: ${shown ? hex(rgba, i) : 'none'} (his ${want ?? 'none'})`);
+  }
+  return wrong;
 }
 
 describe("the owner's bronze warrior", () => {
@@ -43,19 +54,17 @@ describe("the owner's bronze warrior", () => {
   });
 
   it('is his cleaned reduction pixel for pixel at male idle frame 0, and nothing else', () => {
-    const f = renderSprite(look(), 'idle', 0);
-    const his = figure();
-    const wrong: string[] = [];
-    for (let i = 0; i < GRID * GRID; i++) {
-      const want = his.get(i);
-      const shown = f.rgba[i * 4 + 3] > 0;
-      if (want === undefined ? shown : !shown || hex(f.rgba, i) !== want) wrong.push(`${i % GRID},${(i / GRID) | 0}: ${shown ? hex(f.rgba, i) : 'none'} (his ${want ?? 'none'})`);
-    }
+    const wrong = wrongPixels(renderSprite(look(), 'idle', 0).rgba, figure());
+    assert.equal(wrong.length, 0, `${wrong.length} pixels differ: ${wrong.slice(0, 12).join('; ')}`);
+  });
+
+  it('in his second set (leather chest, iron pauldrons, sleeves) is that reduction pixel for pixel too', () => {
+    const wrong = wrongPixels(renderSprite(look('male', 'preset_bronze_warrior_leather'), 'idle', 0).rgba, figure(HOPLITE_LEATHER_FIGURE, HOPLITE_LEATHER_FIGURE_AT));
     assert.equal(wrong.length, 0, `${wrong.length} pixels differ: ${wrong.slice(0, 12).join('; ')}`);
   });
 
   it('is a male set: none of his pieces fits the female body', () => {
-    for (const id of ['hair_hoplite', 'acc_hoplite_diadem', 'armor_hoplite', 'acc_hoplite_pauldrons', 'cape_hoplite', 'skirt_hoplite', 'hands_hoplite_bracers', 'feet_hoplite_greaves']) {
+    for (const id of ['hair_hoplite', 'acc_hoplite_diadem', 'armor_hoplite', 'acc_hoplite_pauldrons', 'cape_hoplite', 'skirt_hoplite', 'hands_hoplite_bracers', 'feet_hoplite_greaves', 'armor_hoplite_leather', 'acc_hoplite_iron_pauldrons', 'top_hoplite_sleeves']) {
       const d = getItem(id);
       assert.ok(d, id);
       assert.deepEqual(d!.bodies, ['male', 'bulky'], id);

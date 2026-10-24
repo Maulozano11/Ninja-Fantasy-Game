@@ -55,6 +55,24 @@ import {
 import { HOPLITE_BRAID, HOPLITE_BRAID_KIND, HOPLITE_HAIR, HOPLITE_HAIR_BAND, HOPLITE_HAIR_BASE, HOPLITE_HAIR_KIND } from './hopliteHairArt';
 import { HOPLITE_PAULDRON_BRONZE, HOPLITE_PAULDRON_F, HOPLITE_PAULDRON_F_KIND, HOPLITE_PAULDRON_N, HOPLITE_PAULDRON_N_KIND } from './hoplitePauldronsArt';
 import { HOPLITE_SKIRT, HOPLITE_SKIRT_KIND, HOPLITE_SKIRT_LEATHER, HOPLITE_SKIRT_NAVY } from './hopliteSkirtArt';
+import {
+  HOPLITE_LCHEST,
+  HOPLITE_LCHEST_KIND,
+  HOPLITE_LCOLLAR,
+  HOPLITE_LCOLLAR_KIND,
+  HOPLITE_LEATHER_COLLAR,
+  HOPLITE_LEATHER_GOLD,
+  HOPLITE_LEATHER_IRON,
+  HOPLITE_LEATHER_MAIN,
+  HOPLITE_LPAULDRON_F,
+  HOPLITE_LPAULDRON_F_KIND,
+  HOPLITE_LPAULDRON_N,
+  HOPLITE_LPAULDRON_N_KIND,
+  HOPLITE_SLEEVE_F,
+  HOPLITE_SLEEVE_F_KIND,
+  HOPLITE_SLEEVE_N,
+  HOPLITE_SLEEVE_N_KIND,
+} from './hopliteLeatherArt';
 import { faceAnchor } from '../body';
 
 type Kind = 'cloth' | 'leather' | 'metal';
@@ -151,12 +169,8 @@ function pauldronAngle(g: DrawCtx, piece: PaintedPiece, s: Side): number {
   return piece.angle + t + 0.6 * (((arm + 540) % 360) - 180);
 }
 
-function drawPauldrons(g: DrawCtx, bronze: string): void {
-  const slots = { warm: [HOPLITE_PAULDRON_BRONZE, bronze] as [string, string] };
-  for (const [s, p, k] of [
-    ['F', HOPLITE_PAULDRON_F, HOPLITE_PAULDRON_F_KIND],
-    ['N', HOPLITE_PAULDRON_N, HOPLITE_PAULDRON_N_KIND],
-  ] as [Side, PaintedPiece, Record<string, string>][]) {
+function drawPauldrons(g: DrawCtx, slots: Record<string, [string, string]>, pieces: [Side, PaintedPiece, Record<string, string>][]): void {
+  for (const [s, p, k] of pieces) {
     const j = armJoints(g.rig, s);
     stampPiece(g, armDepth(s, 'armor'), p, j.shoulder, pauldronAngle(g, p, s), prt('upperArm', s), hopliteTint(g, k, slots), lineOf(k));
   }
@@ -215,7 +229,9 @@ function drawArm(g: DrawCtx, s: Side, bronze: string): void {
   const kind = handPose(g, s).kind;
   // his fist on every closed hand; a pointing hand or one cradling a book stays ours
   const fist = kind !== 'point' && kind !== 'cradle';
-  partsOff(g, [armDepth(s, 'body'), armDepth(s, 'cloth')], [prt('upperArm', s), prt('forearm', s), ...(fist ? [prt('hand', s)] : [])]);
+  // (his own sleeves, drawn before his arms, stay on the upper arm)
+  partsOff(g, [armDepth(s, 'body'), armDepth(s, 'cloth')], [...(g.has('top', 'top_hoplite_sleeves') ? [] : [prt('upperArm', s)]), prt('forearm', s), ...(fist ? [prt('hand', s)] : [])]);
+  partsOff(g, [armDepth(s, 'body')], [prt('upperArm', s)]);
   const upper = segAngle(j.shoulder, j.elbow);
   const fore = segAngle(j.elbow, j.wrist);
   const bend = armBends(g, s);
@@ -318,7 +334,61 @@ export const HOPLITE_ITEMS: ItemDef[] = [
     desc: 'Big spiral-engraved bronze pauldrons over hanging leather strips, painted by the owner for his bronze warrior.',
     colors: [col('bronze', 'Bronze', HOPLITE_PAULDRON_BRONZE, 'metal')],
     bodies: [...MEN],
-    draw: (g, [c]) => drawPauldrons(g, c),
+    draw: (g, [c]) =>
+      drawPauldrons(g, { warm: [HOPLITE_PAULDRON_BRONZE, c] }, [
+        ['F', HOPLITE_PAULDRON_F, HOPLITE_PAULDRON_F_KIND],
+        ['N', HOPLITE_PAULDRON_N, HOPLITE_PAULDRON_N_KIND],
+      ]),
+  },
+  // His second set (docs/reference/bronze-warrior-leather-chest-owner-reference.jpg, the owner: "si solo agrega
+  // ese conjunto (el pecho y hombreras y mangas)"): each its own option, so they also go with the bronze set.
+  {
+    id: 'armor_hoplite_leather',
+    slot: 'armor',
+    name: "Bronze Warrior's Leather Chest",
+    desc: 'A dark quilted leather cuirass laced up the front with bronze bars, spiral bronze edge panels, a belt with a square buckle and a high navy collar with gold trim, painted by the owner (+3 AC).',
+    colors: [col('leather', 'Leather', HOPLITE_LEATHER_MAIN, 'leather'), col('collar', 'Collar', HOPLITE_LEATHER_COLLAR)],
+    statsArmor: 'Mist Storm Vest',
+    bodies: [...MEN],
+    draw: (g, [l, c]) => {
+      torsoOff(g);
+      const r = g.rig;
+      const slots = { warm: [HOPLITE_LEATHER_MAIN, l] as [string, string], navy: [HOPLITE_LEATHER_COLLAR, c] as [string, string] };
+      stampLeaning(g, 'torso.armor', HOPLITE_LCHEST, r.neck, torsoAngle(g), 'torso', hopliteTint(g, HOPLITE_LCHEST_KIND, slots), lineOf(HOPLITE_LCHEST_KIND));
+      stampLeaning(g, 'capeFront', HOPLITE_LCOLLAR, r.neck, torsoAngle(g), 'torso', hopliteTint(g, HOPLITE_LCOLLAR_KIND, { navy: slots.navy }), lineOf(HOPLITE_LCOLLAR_KIND));
+    },
+  },
+  {
+    id: 'acc_hoplite_iron_pauldrons',
+    slot: 'accessory',
+    name: "Bronze Warrior's Iron Pauldrons",
+    desc: 'Dark iron pauldrons of layered plates edged in gold, painted by the owner for his bronze warrior.',
+    colors: [col('iron', 'Iron', HOPLITE_LEATHER_IRON, 'metal'), col('trim', 'Trim', HOPLITE_LEATHER_GOLD, 'metal')],
+    bodies: [...MEN],
+    draw: (g, [i, t]) =>
+      drawPauldrons(g, { grey: [HOPLITE_LEATHER_IRON, i], warm: [HOPLITE_LEATHER_GOLD, t] }, [
+        ['F', HOPLITE_LPAULDRON_F, HOPLITE_LPAULDRON_F_KIND],
+        ['N', HOPLITE_LPAULDRON_N, HOPLITE_LPAULDRON_N_KIND],
+      ]),
+  },
+  {
+    id: 'top_hoplite_sleeves',
+    slot: 'top',
+    name: "Bronze Warrior's Sleeves",
+    desc: 'Short navy sleeves with gold cuffs on the upper arms, painted by the owner for his bronze warrior.',
+    colors: [col('cloth', 'Cloth', HOPLITE_LEATHER_COLLAR), col('cuff', 'Cuffs', HOPLITE_LEATHER_GOLD, 'metal')],
+    bodies: [...MEN],
+    draw: (g, [c, cuff]) => {
+      const slots = { navy: [HOPLITE_LEATHER_COLLAR, c] as [string, string], warm: [HOPLITE_LEATHER_GOLD, cuff] as [string, string] };
+      for (const [s, p, k] of [
+        ['F', HOPLITE_SLEEVE_F, HOPLITE_SLEEVE_F_KIND],
+        ['N', HOPLITE_SLEEVE_N, HOPLITE_SLEEVE_N_KIND],
+      ] as [Side, PaintedPiece, Record<string, string>][]) {
+        const j = armJoints(g.rig, s);
+        const bend = armBends(g, s);
+        stampBent(g, armDepth(s, 'cloth'), p, j.shoulder, segAngle(j.shoulder, j.elbow), prt('upperArm', s), [{ about: j.shoulder, r: JOINT_R, bend: bend.shoulder }], lineOf(k), hopliteTint(g, k, slots));
+      }
+    },
   },
   {
     id: 'cape_hoplite',

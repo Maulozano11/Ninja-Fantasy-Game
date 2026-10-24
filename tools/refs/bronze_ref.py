@@ -340,15 +340,35 @@ CELLWISE = ('diadem',)
 FOREIGN = 8
 
 
-def labels(a):
+# His second picture's set (bronze-warrior-leather-chest-owner-reference.jpg; the owner, 2026-10-24: "si solo
+# agrega ese conjunto (el pecho y hombreras y mangas)"): the leather chest with its high navy collar and the
+# square clasp on it, the dark iron pauldrons, the short navy sleeves with gold cuffs. Cut from his second
+# picture before the rest of PARTS (which only give these their neighbours there).
+PARTS_LEATHER = [
+    ('lpauldron_n', [[(50, 51), (88, 51), (88, 72), (90, 84), (50, 84)]], METAL),
+    ('sleeve_n', [rect(46, 78, 84, 102)], ('navy', 'gold', 'leather', 'hair', 'steel', 'dark', 'line')),
+    ('lcollar', [rect(86, 44, 114, 71)], ('navy', 'gold', 'leather', 'hair', 'steel', 'dark', 'line')),
+    ('lpauldron_f', [[(122, 52), (138, 52), (138, 84), (127, 84), (127, 66), (122, 66)]], METAL),
+    ('sleeve_f', [rect(124, 78, 140, 101)], ('navy', 'gold', 'leather', 'hair', 'steel', 'dark', 'line')),
+    ('lchest', [[(78, 60), (127, 60), (127, 132), (78, 132)]], METAL),
+]
+LEATHER_PIECES = tuple(n for n, _, _ in PARTS_LEATHER)
+
+
+def all_parts():
+    return PARTS_LEATHER + PARTS
+
+
+def labels(a, parts=None):
     """Which piece each cell of his is (PARTS order): each patch inside his line goes whole to one piece, so
     the pieces part along his own line; his line goes to the piece in front of those it bounds (the first in
     PARTS), or inside one piece to that piece. '' for the white round him."""
+    parts = PARTS if parts is None else parts
     H, W, _ = a.shape
     K = kinds(a)
     bg = background(a)
     vote = np.full((H, W), '', object)
-    for name, regions, takes in PARTS:
+    for name, regions, takes in parts:
         reg = np.zeros((H, W), bool)
         for pts in regions:
             reg |= inside(pts, H, W)
@@ -357,7 +377,7 @@ def labels(a):
     comp, n = components(a, K)
     out = np.full((H, W), '', object)
     order = {}
-    for i, p in enumerate(PARTS):
+    for i, p in enumerate(parts):
         order.setdefault(p[0], i)
     for c in range(n):
         ys, xs = np.nonzero(comp == c)
@@ -381,7 +401,7 @@ def labels(a):
     # Cells of a kind their piece never takes (the scarf's purple in a patch of the pauldron's), in groups of
     # FOREIGN or more side by side: their own vote. (A lone cell of such a colour is a shade of the piece.)
     takes = {}
-    for name, _, t in PARTS:
+    for name, _, t in parts:
         takes.setdefault(name, set()).update(t)
     foreign = np.zeros((H, W), bool)
     for y, x in zip(*np.nonzero(out != '')):
@@ -450,6 +470,12 @@ BIG_PATCH = 200
 # The dark share a piece's pixel needs to be dark, where it is not DARK_WINS (his face: his red eyes and
 # lash are dark against his skin, and must stay).
 DARK_WINS_OF = {'face': 0.45}
+# Pieces whose every pixel is his commonest colour under it (his leather chest's dark leather, its fine quilting
+# and the laces' bars left to his marks).
+COMMONEST = ('lchest',)
+# The fine pixels his small marks were laid on in the last reduce(): the cleaning keeps them (they are his
+# highlights, not specks).
+MARKS = set()
 SMOOTH = 2
 # Pieces whose pixels are not smoothed with their neighbours' (his face's eyes and mouth are single pixels;
 # the skirt's meander and studs, the hair's strands are drawn fine).
@@ -590,7 +616,7 @@ def reduce(a, lab, names, M, K=None, own=None):
     line = K == 'line'
     black = his_line(a)
     order = {}
-    for i, p in enumerate(PARTS):
+    for i, p in enumerate(all_parts()):
         order.setdefault(p[0], i)
     sel = np.isin(lab, list(names))
     ramp = ramps(a, lab, K)
@@ -603,6 +629,7 @@ def reduce(a, lab, names, M, K=None, own=None):
     who = np.full((G, G), '', object)
     col = np.zeros((G, G, 3), np.int32)
     isl = np.zeros((G, G), bool)
+    MARKS.clear()
     frac = np.zeros((G, G))
     support = np.ones((G, G))
     patch = np.full((G, G), -1, int)
@@ -639,6 +666,12 @@ def reduce(a, lab, names, M, K=None, own=None):
             surf[(j, i)] = (sum(l * w for l, w, _ in lights) / sum(w for _, w, _ in lights), max(sorted(set(k for _, _, k in lights)), key=lambda k: sum(w for _, w, kk in lights if kk == k)))
             dfrac[j, i] = fd
             c = dk if fd > DARK_WINS_OF.get(n, DARK_WINS if DARK_WINS != 'balance' else 0.5) else lt
+            if n in COMMONEST:
+                tally = {}
+                for y, x, w in solid:
+                    t = tuple(int(v) for v in a[y, x])
+                    tally[t] = tally.get(t, 0) + w
+                c = max(sorted(tally), key=lambda t: tally[t])
             col[j, i] = c
             support[j, i] = sum(w for y, x, w in solid if max(abs(int(a[y, x][k]) - c[k]) for k in range(3)) <= 40) / cover[n]
             big = {}
@@ -655,7 +688,7 @@ def reduce(a, lab, names, M, K=None, own=None):
         sm = {}
         for (j, i), (dk, lt) in halves.items():
             n = who[j, i]
-            if n in NO_SMOOTH:
+            if n in NO_SMOOTH or n in COMMONEST:
                 continue
             tot, wsum = SMOOTH * dfrac[j, i], SMOOTH
             for dj in (-1, 0, 1):
@@ -704,7 +737,7 @@ def reduce(a, lab, names, M, K=None, own=None):
         motif_lines(a, lab, names, M, K, who, col, feet)
     # His small marks (a stud, a glint, a tassel's strand, a key of the meander: a patch of his between
     # FEATURE cells inside his line, standing out from what is round it by FEATURE_CONTRAST in lightness):
-    # each in its own commonest colour at the fine pixel its middle lands on, when it is the only mark there,
+    # each in its own commonest colour at the fine pixel its middle lands on (the biggest where several do),
     # so each reads as his mark and not as a blur.
     if FEATURE and (not MOTIF or FEATURE_ALSO):
         marks = {}
@@ -734,10 +767,13 @@ def reduce(a, lab, names, M, K=None, own=None):
                 tally[t] = tally.get(t, 0) + 1
             fx, fy = M.fine((cx.mean() + 0.5, cy.mean() + 0.5))
             q = (int(np.floor(fy)), int(np.floor(fx)))
-            marks.setdefault(q, []).append((max(sorted(tally), key=lambda t: tally[t]), n))
+            marks.setdefault(q, []).append((len(cy), max(sorted(tally), key=lambda t: tally[t]), n))
         for q, ms in marks.items():
-            if len(ms) == 1 and who[q] == ms[0][1]:
-                col[q] = ms[0][0]
+            # (where his marks crowd into one pixel, the biggest of them)
+            size_, c_, n_ = max(ms)
+            if who[q] == n_:
+                col[q] = c_
+                MARKS.add(q)
     # 1. his line through the pixel
     cand = fig & (frac >= LINE_IN)
     for j, i in zip(*np.nonzero(cand)):
@@ -873,12 +909,16 @@ FRONT = [
     ('thigh_n', 'skirt'), ('thigh_n', 'greave_n'), ('thigh_f', 'skirt'), ('thigh_f', 'greave_f'),
     ('shoe_n', 'greave_n'), ('shoe_f', 'greave_f'), ('greave_f', 'greave_n'), ('greave_f', 'skirt'), ('greave_n', 'skirt'),
     ('hair', 'diadem'), ('face', 'diadem'), ('face', 'hair'),
+    # his second picture's set
+    ('lchest', 'lcollar'), ('lchest', 'lpauldron_n'), ('lchest', 'sleeve_n'), ('lchest', 'arm_n'), ('lchest', 'bracer_n'), ('lchest', 'scarf'),
+    ('lpauldron_f', 'lcollar'), ('lpauldron_f', 'scarf'), ('lpauldron_f', 'lchest'), ('sleeve_f', 'lpauldron_f'), ('sleeve_f', 'lchest'),
+    ('sleeve_n', 'lpauldron_n'), ('arm_n', 'sleeve_n'), ('arm_f', 'sleeve_f'), ('scarf', 'lcollar'),
 ]
 UNDER = 6
 
 
 def fronts_of(name):
-    return {f for b, f in FRONT if b == name} | ({n for n, _, _ in PARTS} - {'cape'} if name == 'cape' else set())
+    return {f for b, f in FRONT if b == name} | ({n for n, _, _ in all_parts()} - {'cape'} if name == 'cape' else set())
 
 
 def continue_under(a, lab, name, reach=None, more=None):
@@ -935,6 +975,20 @@ def reduce_piece(a, lab, name, mask=None, colours=None, M=None):
     return m, col, isl
 
 
+# His figure in his second picture's set: the leather chest and its collar for the cuirass and its clasp,
+# the iron pauldrons for the bronze ones, and the sleeves on the upper arms, under the pauldrons.
+def leather_order():
+    swap = {'cuirass': 'lchest', 'clasp': 'lcollar', 'pauldron_n': 'lpauldron_n', 'pauldron_f': 'lpauldron_f'}
+    out = []
+    for d, n in GAME_ORDER:
+        out.append((d, swap.get(n, n)))
+        if n == 'arm_f':
+            out.append(('farArm.cloth', 'sleeve_f'))
+        if n == 'arm_n':
+            out.append(('nearArm.cloth', 'sleeve_n'))
+    return out
+
+
 # The game draws each piece at a depth (src/sprite/ctx.ts DEPTHS); at rest his figure is the pieces drawn
 # back to front in that order (GAME_ORDER: within one depth, as the items draw them).
 GAME_ORDER = [
@@ -965,13 +1019,13 @@ GAME_ORDER = [
 ]
 
 
-def figure(a, lab, pieces=None):
+def figure(a, lab, pieces=None, order=None):
     """His figure at our scale as the game draws it at rest: each piece alone (reduce_piece, or `pieces`:
     {name: (mask, colours, line)}), back to front in GAME_ORDER. (256, 256, 4) RGBA, and which piece each
     pixel is."""
     out = np.zeros((256, 256, 4), np.uint8)
     who = np.full((256, 256), '', object)
-    for _, name in GAME_ORDER:
+    for _, name in (order or GAME_ORDER):
         m, c, _ = pieces[name] if pieces and name in pieces else piece(a, lab, name)
         out[m, :3] = c[m]
         out[m, 3] = 255
@@ -997,11 +1051,15 @@ PIVOT = {
     'hair': ('anchor', None),
     'diadem': ('anchor', None),
     'face': ('anchor', None),
+    'lchest': ('neck', ('pelvis', 'neck')),
+    'lcollar': ('neck', ('pelvis', 'neck')),
 }
 for s in ('n', 'f'):
     S = s.upper()
     PIVOT.update({
         f'pauldron_{s}': (f'shoulder{S}', (f'shoulder{S}', f'elbow{S}')),
+        f'lpauldron_{s}': (f'shoulder{S}', (f'shoulder{S}', f'elbow{S}')),
+        f'sleeve_{s}': (f'shoulder{S}', (f'shoulder{S}', f'elbow{S}')),
         f'arm_{s}': (f'shoulder{S}', (f'shoulder{S}', f'elbow{S}')),
         f'bracer_{s}': (f'elbow{S}', (f'elbow{S}', f'wrist{S}')),
         f'fist_{s}': (f'wrist{S}', (f'wrist{S}', f'hand{S}')),
@@ -1041,9 +1099,26 @@ def ts_piece(name, doc, rows, origin, palette, pivot, ang):
 
 
 def pack(col, mask):
-    """roman_ref.pack: rows of palette characters, the origin (x0, y0) in our frame and the palette."""
-    from aiden_ref import pack as pack0
-    return pack0(col, mask, CHARS)
+    """A mask's pixels as rows of palette characters, one per colour exactly (his two pictures' colours can
+    lie within a few levels of each other, and each must stay his own), the origin (x0, y0) in our frame and
+    the palette."""
+    ys, xs = np.nonzero(mask)
+    x0, x1, y0, y1 = int(xs.min()), int(xs.max()) + 1, int(ys.min()), int(ys.max()) + 1
+    palette, chars = {}, {}
+    rows = []
+    for y in range(y0, y1):
+        r = ''
+        for x in range(x0, x1):
+            if not mask[y, x]:
+                r += '.'
+                continue
+            h = hexc(col[y, x])
+            if h not in chars:
+                chars[h] = CHARS[len(chars)]
+                palette[chars[h]] = h
+            r += chars[h]
+        rows.append(r)
+    return rows, (x0, y0), palette
 
 
 def module(header, consts, prefix, bases=None, painted='../painted'):
@@ -1108,8 +1183,8 @@ def material(rgb, name):
     return 'warm'
 
 
-def header(script, what, args=''):
-    return (f'// {what}\n// Lifted from the owner\'s bronze warrior (docs/reference/bronze-warrior-owner-reference.jpg) and\n'
+def header(script, what, args='', ref='bronze-warrior-owner-reference.jpg'):
+    return (f'// {what}\n// Lifted from the owner\'s bronze warrior (docs/reference/{ref}) and\n'
             f'// brought down to our scale by tools/refs/{script} (tools/refs/bronze_ref.py).\n'
             f'// Generated: rerun the script to change it:\n//   python3 -I tools/refs/{script}{args}\n')
 
@@ -1127,10 +1202,10 @@ def middle_colour(pieces, names, kinds_wanted, q=0.5):
     return found[int(len(found) * q)][1]
 
 
-def load():
-    """His picture snapped to his palette, and its pieces (labels)."""
-    a = snapped(native(REF))
-    return a, labels(a)
+def load(path=REF):
+    """His picture snapped to his palette, and its pieces (labels); his second picture cut for its set."""
+    a = snapped(native(path))
+    return a, labels(a, all_parts() if path == REF_LEATHER else PARTS)
 
 
 def capsule(a_pt, b_pt, r, H, W):
@@ -1165,7 +1240,7 @@ def more_of(name, H, W):
     if name.startswith('thigh_'):
         S = name[-1].upper()
         return capsule(J['hip' + S], J['knee' + S], 10, H, W)
-    if name == 'cuirass':
+    if name in ('cuirass', 'lchest'):
         return inside(rect(78, 58, 124, 70), H, W)
     if name == 'face':
         return ellipse_mask((102, 32), 17, 21, H, W) | inside(rect(94, 50, 116, 64), H, W)
@@ -1178,7 +1253,7 @@ def more_of(name, H, W):
 
 # How a piece is continued over more_of: 'up', each column going on upward as his rows below it are,
 # mirrored about its first own cell (his pattern runs on, not one colour smeared); else his nearest colour.
-MORE_MODE = {'cuirass': 'up', 'skirt': 'up', 'arm_n': 'up', 'arm_f': 'up', 'thigh_n': 'up', 'thigh_f': 'up'}
+MORE_MODE = {'cuirass': 'up', 'lchest': 'up', 'skirt': 'up', 'arm_n': 'up', 'arm_f': 'up', 'thigh_n': 'up', 'thigh_f': 'up'}
 
 
 def mirrored_up(a, lab, name, more):
@@ -1228,13 +1303,13 @@ def piece(a, lab, name, M=None):
     return reduce_piece(a, lab, name, mask, colours, M)
 
 
-def run(script, out, what, consts, prefix, bases=None, study=None):
+def run(script, out, what, consts, prefix, bases=None, study=None, path=REF):
     """A part script's work: its pieces (consts: (CONST, piece name, doc)) brought down and written to `out`
     as a TypeScript module, and with `study` a sheet of his crop beside them at 8x."""
-    a, lab = load()
+    a, lab = load(path)
     pieces = {name: piece(a, lab, name) for _, name, _ in consts}
     b = bases(pieces) if bases else None
-    text = module(header(script, what, f' {out}'), [(c, pieces[n], d, n) for c, n, d in consts], prefix, b)
+    text = module(header(script, what, f' {out}', os.path.basename(path)), [(c, pieces[n], d, n) for c, n, d in consts], prefix, b)
     write(out, text)
     if study:
         study_sheet(a, lab, pieces, study)
@@ -1474,6 +1549,11 @@ MOTIFS = [
     ('ring', 'greave_n', (74.0, 190.0), 6.5),
     ('ring', 'greave_f', (125.0, 189.0), 6.0),
     ('strap', 'cuirass', ((100.5, 75.5), (118.5, 95.5)), 1.5),
+    # his second picture: the spiral on the leather chest's near edge panel, the belt's square buckle
+    ('spiral', 'lchest', (92.5, 77.5), 4.5),
+    ('square', 'lchest', (111.5, 122.0), 4.5),
+    # its laced front: the lace down the middle, his bronze bars across it
+    ('laces', 'lchest', ((111.5, 78.5), (111.5, 87.5), (111.5, 95.5), (111.5, 103.5), (111.5, 112.5)), 2.0),
 ]
 # The spiral at our scale, by its size in fine pixels: L his line of the spiral, . his plate between.
 SPIRALS = {
@@ -1501,6 +1581,8 @@ def clean(a, lab, name, m, col, isl, M):
     Lg = luma(a.astype(float))
     mine = lab == name
     keep = isl.copy()
+    for q in MARKS:
+        keep[q] = True
     lum = lambda c: 0.299 * c[0] + 0.587 * c[1] + 0.114 * c[2]
     # 1. specks
     for _ in range(2):
@@ -1556,12 +1638,17 @@ def clean(a, lab, name, m, col, isl, M):
             keep[q] = True
             taken.add(q)
     # 3. his motifs
-    for what, piece, (cx, cy), R in MOTIFS:
+    for what, piece, at, R in MOTIFS:
         if piece != name:
             continue
+        if what == 'laces':
+            laces(a, name, m, col, isl, keep, M, list(at), R, K, mine)
+            continue
+        cx, cy = at
         if what == 'strap':
             strap(a, lab, name, m, col, isl, keep, M, (cx, cy), R, K, Lg, mine)
             continue
+
         disk = [(y, x) for y in range(int(cy - R), int(cy + R) + 1) for x in range(int(cx - R), int(cx + R) + 1)
                 if 0 <= y < H and 0 <= x < W and mine[y, x] and (x + 0.5 - cx) ** 2 + (y + 0.5 - cy) ** 2 <= R * R and K[y, x] != 'line']
         if not disk:
@@ -1572,13 +1659,13 @@ def clean(a, lab, name, m, col, isl, M):
         mid_ = commonest(ls[len(ls) // 3:-len(ls) // 3] or ls, a)
         fx, fy = M.fine((cx, cy))
         rf = R / M.k
-        if what in ('spiral', 'ring'):
+        if what in ('spiral', 'ring', 'square'):
             n = max(3, min(5, int(round(2 * rf))))
             x0, y0 = int(round(fx - n / 2)), int(round(fy - n / 2))
             # his spiral's line: gold on a dark plate, or dark on a gold one (whichever he drew more thinly)
             on_dark = sum(1 for q in disk if Lg[q] > Lg[ls[len(ls) // 2]]) < len(disk) / 2
             line_c, plate_c = (lite, dark) if on_dark else (dark, lite)
-            rows = SPIRALS[n] if what == 'spiral' else ['.' + 'L' * (n - 2) + '.'] + ['L' + '.' * (n - 2) + 'L'] * (n - 2) + ['.' + 'L' * (n - 2) + '.']
+            rows = SPIRALS[n] if what == 'spiral' else ['L' * n] + ['L' + '.' * (n - 2) + 'L'] * (n - 2) + ['L' * n] if what == 'square' else ['.' + 'L' * (n - 2) + '.'] + ['L' + '.' * (n - 2) + 'L'] * (n - 2) + ['.' + 'L' * (n - 2) + '.']
             for j, row in enumerate(rows):
                 for i, ch in enumerate(row):
                     q = (y0 + j, x0 + i)
@@ -1652,6 +1739,28 @@ def clean(a, lab, name, m, col, isl, M):
 
 
 LION_MARKS = 5
+
+
+def laces(a, name, m, col, isl, keep, M, pts, R, K, mine):
+    """His laced front: the lace a 1 px line of his line's colour from the first bar to the last, each of his
+    bars a pixel of his gold on it."""
+    H, W = mine.shape
+    gold = [(y, x) for y in range(H) for x in range(W) if mine[y, x] and K[y, x] == 'gold' and min(abs(x + 0.5 - px) + abs(y + 0.5 - py) for px, py in pts) <= 6]
+    # his bars' gold: the commonest of the lighter half of his gold there
+    gold.sort(key=lambda q: (float(luma(a[q].astype(float))), q))
+    g = commonest(gold[len(gold) // 2:], a)
+    black = his_line(a)
+    f = [M.fine(p) for p in pts]
+    x = int(np.floor(np.mean([q[0] for q in f])))
+    for j in range(int(np.floor(f[0][1])), int(np.floor(f[-1][1])) + 1):
+        if m[j, x] and not isl[j, x]:
+            col[j, x] = black
+            keep[j, x] = True
+    for fx, fy in f:
+        q = (int(np.floor(fy)), x)
+        if m[q] and g is not None:
+            col[q] = g
+            keep[q] = True
 
 
 def strap(a, lab, name, m, col, isl, keep, M, pts, R, K, Lg, mine):

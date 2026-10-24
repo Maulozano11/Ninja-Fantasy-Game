@@ -7,7 +7,8 @@ import { faceAnchor } from './body';
 import { getItem } from './catalog';
 import { renderSprite } from './compose';
 import type { DrawCtx } from './ctx';
-import { HOPLITE_FIGURE, HOPLITE_FIGURE_AT, HOPLITE_JOINTS, HOPLITE_LEATHER_FIGURE, HOPLITE_LEATHER_FIGURE_AT } from './hopliteFigureArt';
+import { HOPLITE_FIGURE, HOPLITE_FIGURE_AT, HOPLITE_JOINTS } from './hopliteFigureArt';
+import { HOPLITE_R_FIGURE, HOPLITE_R_FIGURE_AT } from './items/hopliteRepaintArt';
 import { hopliteRig } from './hopliteRig';
 import { GRID, RES } from './raster';
 import { drawRig } from './rig';
@@ -58,8 +59,8 @@ describe("the owner's bronze warrior", () => {
     assert.equal(wrong.length, 0, `${wrong.length} pixels differ: ${wrong.slice(0, 12).join('; ')}`);
   });
 
-  it('in his second set (leather chest, iron pauldrons, sleeves) is that reduction pixel for pixel too', () => {
-    const wrong = wrongPixels(renderSprite(look('male', 'preset_bronze_warrior_leather'), 'idle', 0).rgba, figure(HOPLITE_LEATHER_FIGURE, HOPLITE_LEATHER_FIGURE_AT));
+  it('in his second set (leather chest, iron pauldrons, sleeves) is his own repaint pixel for pixel', () => {
+    const wrong = wrongPixels(renderSprite(look('male', 'preset_bronze_warrior_leather'), 'idle', 0).rgba, figure(HOPLITE_R_FIGURE, HOPLITE_R_FIGURE_AT));
     assert.equal(wrong.length, 0, `${wrong.length} pixels differ: ${wrong.slice(0, 12).join('; ')}`);
   });
 

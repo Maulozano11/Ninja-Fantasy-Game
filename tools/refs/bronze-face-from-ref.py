@@ -51,12 +51,9 @@ def eyes(m, c):
 LETTER = {'line': 'L', 'red': 'i', 'white': 'w', 'skin': 's', 'dark': 'd'}
 
 
-def main(out, study=None):
-    a, lab = R.load()
-    m, c, isl = R.piece(a, lab, 'face')
-    text = R.module(R.header('bronze-face-from-ref.py', "The owner's bronze warrior's face and eyes (face and eye shape 'hoplite').", f' {out}'),
-                    [('HOPLITE_HEAD', (m, c, isl), "His head, skull to neck: stamped on the face anchor.", 'face')], 'HOPLITE_HEAD',
-                    {'HOPLITE_SKIN': R.middle_colour({'face': (m, c, isl)}, ['face'], ('skin',))}, painted='./painted')
+def eye_states(m, c):
+    """His eyes on a face piece (mask, colours) in the three lid states: (colours {hex: char}, states
+    {state: {side: (letters, rows)}}, where each eye starts from the anchor's column, his brightest red)."""
     E = eyes(m, c)
     reds = sorted({R.hexc(c[y, x]) for y, x in zip(*np.nonzero(m)) if R.material(c[y, x], 'face') == 'red'}, key=lambda h: -R.luma(np.array([int(h[k:k + 2], 16) for k in (1, 3, 5)], float)))
     colors = {}
@@ -110,17 +107,19 @@ def main(out, study=None):
                     cl_l[j][i] = 's'
                     cl_r[j][i] = ch(R.hexc(c[yy, x0 + i]))
         states['closed'][side] = ([''.join(r) for r in cl_l], [''.join(r) for r in cl_r])
-    lines = [text, "import type { PaintedEye } from './eyeArt';", '']
-    lines.insert(1, '')
-    text = text.replace("import type { PaintedPiece } from './painted';", "import type { PaintedEye } from './eyeArt';\nimport type { PaintedPiece } from './painted';")
-    t = [text]
+    return colors, states, at, reds[0]
+
+
+def eyes_ts(prefix, colors, states, at, iris):
+    """The eyes as TypeScript (<prefix>_EYE_COLORS, _EYES, _EYE_AT, _IRIS)."""
+    t = []
     t.append("/** His eyes' colours, one character each (his pixels on his face). */")
-    t.append('export const HOPLITE_EYE_COLORS: Record<string, string> = {')
+    t.append(f'export const {prefix}_EYE_COLORS: Record<string, string> = {{')
     for hexv, k in colors.items():
         t.append(f"  {k}: '{hexv}',")
     t += ['};', '']
     t.append("/** His eyes in each lid state, stamped on the template's eye cells from the anchor's row (body.ts drawFace). */")
-    t.append("export const HOPLITE_EYES: Record<'open' | 'lowered' | 'closed', { near: PaintedEye; far: PaintedEye }> = {")
+    t.append(f"export const {prefix}_EYES: Record<'open' | 'lowered' | 'closed', {{ near: PaintedEye; far: PaintedEye }}> = {{")
     for state, sides in states.items():
         t.append(f'  {state}: {{')
         for side in ('near', 'far'):
@@ -132,11 +131,23 @@ def main(out, study=None):
         t.append('  },')
     t += ['};', '']
     t.append("/** Where his eyes start, columns from the anchor (body.ts PaintedHead ex, fx). */")
-    t.append(f"export const HOPLITE_EYE_AT = {{ ex: {at['near']}, fx: {at['far']} }};")
+    t.append(f"export const {prefix}_EYE_AT = {{ ex: {at['near']}, fx: {at['far']} }};")
     t.append('')
     t.append("/** The eye colour his red iris is: the player's eye colour moves his reds as far. */")
-    t.append(f"export const HOPLITE_IRIS = '{reds[0]}';")
+    t.append(f"export const {prefix}_IRIS = '{iris}';")
     t.append('')
+    return t
+
+
+def main(out, study=None):
+    a, lab = R.load()
+    m, c, isl = R.piece(a, lab, 'face')
+    text = R.module(R.header('bronze-face-from-ref.py', "The owner's bronze warrior's face and eyes (face and eye shape 'hoplite').", f' {out}'),
+                    [('HOPLITE_HEAD', (m, c, isl), "His head, skull to neck: stamped on the face anchor.", 'face')], 'HOPLITE_HEAD',
+                    {'HOPLITE_SKIN': R.middle_colour({'face': (m, c, isl)}, ['face'], ('skin',))}, painted='./painted')
+    colors, states, at, iris = eye_states(m, c)
+    text = text.replace("import type { PaintedPiece } from './painted';", "import type { PaintedEye } from './eyeArt';\nimport type { PaintedPiece } from './painted';")
+    t = [text] + eyes_ts('HOPLITE', colors, states, at, iris)
     R.write(out, '\n'.join(t))
     if study:
         R.study_sheet(a, lab, {'face': (m, c, isl)}, study)

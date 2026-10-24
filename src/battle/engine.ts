@@ -63,7 +63,7 @@ import {
 } from './clans';
 import { reachTo, replanAgainst } from './intent';
 import { chargedFoe, chargeHolds, crackUnder, endCharge } from './charged';
-import { activeImbue, EARTH_CRIT, IMBUE_DAMAGE, IMBUE_DICE, imbueBlocker, imbueHolds, startImbue, unitImbueElement, WIND_PUSH, type ImbueElement } from './imbue';
+import { activeImbue, EARTH_CRIT, ELEMENTAL_SLASH, endImbue, IMBUE_DAMAGE, IMBUE_DICE, imbueBlocker, imbueHolds, slashBlocker, slashRange, startImbue, unitImbueElement, WIND_PUSH, type ImbueElement } from './imbue';
 
 // --- setup ---------------------------------------------------------------------------------
 
@@ -544,13 +544,52 @@ function weaponAttack(
  * are the builder's proposal, battle/imbue.ts): its die of the element's damage, and on a critical
  * hit fire sets the target burning and lightning leaves it numb; wind's critical blows it back;
  * water puts its flames out (water always does); obsidian's edge crits on 19 (weaponAttack).
+ * `always`: the effect on every hit, not only a critical (an Elemental Slash).
  */
-function imbuedHit(s: BattleState, a: Unit, h: Hit, element: NonNullable<ReturnType<typeof activeImbue>>): void {
+function imbuedHit(s: BattleState, a: Unit, h: Hit, element: NonNullable<ReturnType<typeof activeImbue>>, always = false): void {
   h.bonus = { amount: rollDiceExpr(s, IMBUE_DICE, h.crit), type: IMBUE_DAMAGE[element] };
-  if (element === 'Fire' && h.crit) h.effect = 'burning';
-  if (element === 'Lightning' && h.crit) h.effect = 'jolted';
-  if (element === 'Wind' && h.crit) h.push = { from: { ...a.pos }, m: WIND_PUSH };
+  const rider = h.crit || always;
+  if (element === 'Fire' && rider) h.effect = 'burning';
+  if (element === 'Lightning' && rider) h.effect = 'jolted';
+  if (element === 'Wind' && rider) h.push = { from: { ...a.pos }, m: WIND_PUSH };
   if (element === 'Water') h.douse = true;
+}
+
+/**
+ * Elemental Slash (its chakra and the bonus action are paid): the element leaves the weapon in one
+ * cut thrown at a foe (the owner: "el tajo sera un bonus action y elimina la mejora del arma"), with
+ * the element's effect on every hit: fire burns, lightning numbs, wind blows back, water douses and
+ * wets the ground under the target, earth knocks it down (his rules). The rest is the builder's
+ * proposal: the weapon's attack roll, at range like a jutsu thrown at one target (cover, a foe close
+ * by, the height); a hit deals the weapon's die and the element's (imbuedHit), and no ability
+ * modifier (a bonus-action blow, like an off-hand one in 5e).
+ */
+function elementalSlash(s: BattleState, u: Unit, t: Unit, ev: BattleEvent[]): void {
+  const element = u.imbued!.element;
+  const w = wielded(u);
+  if (t.pos.x !== u.pos.x) u.facing = t.pos.x > u.pos.x ? 1 : -1;
+  ev.push({ t: 'jutsu', unit: u.id, jutsu: ELEMENTAL_SLASH, at: { ...t.pos }, shape: null, enhanced: false, element });
+  endImbue(u, 'slashed', ev);
+  const pv = attackPreview(s, u, t, 'jutsu', { jutsuRange: slashRange(element), weapon: true });
+  const roll = check(s, 'attack', pv.mod, pv.ac, pv.adv, true);
+  ev.push({ t: 'attack', unit: u.id, target: t.id, what: ELEMENTAL_SLASH, roll, ranged: true, ...(pv.reasons.length ? { reasons: pv.reasons } : {}) });
+  // A Ryusei's warp edge goes with its next attack roll, this one too.
+  const edge = !!u.cond.warpEdge;
+  if (edge) u.cond.warpEdge = false;
+  const hits: Hit[] = [];
+  if (roll.success) {
+    const hit: Hit = { unit: t.id, amount: Math.max(1, rollDiceExpr(s, w.dice, roll.crit)), type: w.type, source: u.id, what: ELEMENTAL_SLASH, crit: roll.crit, aimed: true, unblockable: edge };
+    // The element's effect on every hit, not only a critical (the owner: "y en este jutsu el efecto se
+    // aplica si o si no solo en critico"); earth's knocks the target down ("derribar").
+    imbuedHit(s, u, hit, element, true);
+    if (element === 'Earth') hit.prone = true;
+    hits.push(hit);
+    // Water puts out the flames and leaves the ground under the target wet (the owner: "el de agua
+    // apaga las llamas y pone mojado abajo del objetivo"), as a water jutsu at one target soaks it.
+    if (element === 'Water') soak(s, { kind: 'circle', center: { ...t.pos }, radius: 1 }, u.id, ev);
+  }
+  if (s.phase === 'combat') scareAnimalsNear(s, t.pos, 6, ev);
+  applyHits(s, hits, loud(s, u), ev);
 }
 
 function opportunityAttack(s: BattleState, r: Unit, m: Unit, ev: BattleEvent[], resume: NonNullable<AfterHits['resumeWalk']>): boolean {
@@ -876,6 +915,11 @@ function doJutsu(s: BattleState, u: Unit, id: string, atIn: Pt, targetId: string
     const why = imbueBlocker(u, element);
     if (why) return why;
   }
+  // Elemental Slash: an element on the weapon to throw, and the weapon to throw it with.
+  if (base.special === 'slash') {
+    const why = slashBlocker(u);
+    if (why) return why;
+  }
   // Hand seals need both hands, and a tackle is thrown with empty ones: the weapon is stowed for
   // free (once a turn), or the jutsu waits. A sword art needs a blade, drawn for free.
   const stow = mustStow(u, base);
@@ -901,10 +945,13 @@ function doJutsu(s: BattleState, u: Unit, id: string, atIn: Pt, targetId: string
   }
   // Where a charge stops, beside its target (it needs a clear run there).
   let land: Pt | null = null;
+  // An Elemental Slash of water flies further (imbue.ts slashRange).
+  const range = spec.special === 'slash' ? slashRange(u.imbued?.element) : spec.range;
   switch (spec.shape) {
     case 'single':
       if (!target || !targetable(target)) return 'needTarget';
-      if (d > spec.range + 0.1 + (target.bulk ?? 0) + (target.kind === 'hydra_head' ? 2.5 : 0)) return 'outOfRange';
+      if (spec.special === 'slash' && target.team === u.team) return 'ally';
+      if (d > range + 0.1 + (target.bulk ?? 0) + (target.kind === 'hydra_head' ? 2.5 : 0)) return 'outOfRange';
       if (!spec.melee && !lineOfSight(s, u.pos, target.pos)) return 'noSight';
       if (spec.melee && fullCoverBetween(s, u.pos, target.pos)) return 'blocked';
       if (spec.charge && !(land = chargeLanding(s, u, target))) return 'blocked';
@@ -976,6 +1023,10 @@ function doJutsu(s: BattleState, u: Unit, id: string, atIn: Pt, targetId: string
   if (base.special === 'imbue') {
     // Its chakra type's element, or the other one it chose (its second element).
     startImbue(u, element ?? unitImbueElement(u)!, ev);
+    return null;
+  }
+  if (base.special === 'slash') {
+    elementalSlash(s, u, target!, ev);
     return null;
   }
   if (spec.melee && spec.shape === 'single' && target) {

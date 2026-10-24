@@ -8,7 +8,7 @@ import type { ClanType, JutsuDefinition } from '../types/shinobi';
 import type { Ability, Advantage } from '../rules/checks';
 import type { EffectId } from '../types/mission';
 import type { AreaShape, DamageType, Pt } from './types';
-import { IMBUE_COST, WEAPON_ELEMENT } from './imbue';
+import { ELEMENTAL_SLASH, IMBUE_COST, SLASH_COST, SLASH_RANGE, WEAPON_ELEMENT } from './imbue';
 
 export type VfxElement = 'fire' | 'water' | 'wind' | 'lightning' | 'earth' | 'genjutsu' | 'chakra' | 'poison';
 export type VfxRole = 'bolt' | 'beast' | 'stream' | 'breath' | 'sphere' | 'slash' | 'multi' | 'blast' | 'wall' | 'aura' | 'hit';
@@ -116,7 +116,7 @@ export interface JutsuSpec {
   save?: Ability;
   /** On a successful save: half damage, or nothing. */
   saveHalf: boolean;
-  special?: 'heal' | 'flicker' | 'clone' | 'kawarimi' | 'earthWall' | 'waterWall' | 'seal' | 'confuse' | 'evasion' | 'metalBlock' | 'metalWall' | 'warp' | 'swap' | 'command' | 'submission' | 'mantle' | 'galeZone' | 'imbue';
+  special?: 'heal' | 'flicker' | 'clone' | 'kawarimi' | 'earthWall' | 'waterWall' | 'seal' | 'confuse' | 'evasion' | 'metalBlock' | 'metalWall' | 'warp' | 'swap' | 'command' | 'submission' | 'mantle' | 'galeZone' | 'imbue' | 'slash';
   /** The projectile or effect the screen plays. */
   vfx: VfxRole;
   /** A signature effect of its own (vfx_<element>/<sig>, and <sig>_great or <sig>_enh enhanced). */
@@ -551,9 +551,10 @@ const CLAN_SPECS: JutsuSpec[] = [
 ];
 
 /**
- * The classes' own abilities, which come with the class (and, for this one, the nature), not a slot
+ * The classes' own abilities, which come with the class (and, for these, the nature), not a slot
  * (battle/imbue.ts). Weapon Element Enhancement: chakra worked into the weapon in hand, no hand
- * seals; its element is the ninja's own, so the screen reads it from the unit, not from here.
+ * seals; its element is the ninja's own, so the screen reads it from the unit, not from here. Elemental
+ * Slash throws that element off the weapon.
  */
 const CLASS_SPECS: JutsuSpec[] = [
   {
@@ -575,6 +576,28 @@ const CLASS_SPECS: JutsuSpec[] = [
     // A sword art's rule: the weapon is drawn for it (free, once a turn).
     weapon: 'draw',
     loud: false,
+  },
+  {
+    // Elemental Slash: the element on the weapon thrown off it in one cut, at one foe in sight. It
+    // rolls the weapon's attack and deals its die, and the element's (engine.ts elementalSlash), so
+    // there are no dice here; its range grows with water (imbue.ts slashRange).
+    id: ELEMENTAL_SLASH,
+    name: 'Elemental Slash',
+    nameEs: 'Corte elemental',
+    ability: true,
+    rank: '',
+    element: 'chakra',
+    cost: SLASH_COST,
+    enhCost: 0,
+    cast: 'bonus',
+    range: SLASH_RANGE,
+    shape: 'single',
+    saveHalf: false,
+    special: 'slash',
+    vfx: 'slash',
+    melee: false,
+    weapon: 'draw',
+    loud: true,
   },
 ];
 

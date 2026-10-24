@@ -1934,6 +1934,18 @@ So:
   feet and under the dragon churns while the ray lasts. His outline and shape
   stay. The dark wedge at her hand (his white flare had been read as dust) and
   the filled throat in the dragon's mouth are continued from his own pixels.
+- **The dust and the kanji, more dramatic** (his request, 2026-10-24: *"tienes
+  que hacer que las nubes de polvo alrededor de aurelia se muevan y ponlo mas
+  dramatico y el kanji tambien ponle efectos vfx de aire para que se vea mas
+  dramatico"*): his dust cloud at her feet heaves and rolls, and new clouds cut
+  from his own dust burst from the ground and peel off its back, swell, blow
+  back and up, curl, break apart and thin away, all through the ray; his pebbles
+  are kicked up and tumble; the dust under the dragon does the same, lighter.
+  Round his kanji (every pixel of it his): its glow pulses (a flash as it
+  appears, with a small shake), its flame licks higher and faster, a vortex ring
+  of air turns behind it, gust lines whip across behind it, and wind crescents
+  and specks orbit it and peel off, all in his teal steps and glow, so the
+  chakra colour turns them with the rest (yellow for Aurelia).
 
 ## Jutsu effects, round 1 (proposed 2026-10-21; the owner's answer the same day)
 

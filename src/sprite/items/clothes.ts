@@ -15,6 +15,7 @@ import { sealCloth } from '../seal';
 import { gripAngle, paintedGrip, type PaintedGrip } from '../grip';
 import type { Rig } from '../rig';
 import { crimsonKind, GAUNTLET_F, GAUNTLET_N, GLOVE_LEATHER, GLOVE_STEEL, GLOVE_TONES, GLOVE_TRIM } from './sabatonsGauntletsArt';
+import { WAIST_DAWN_SASH } from './aureliaLower';
 import { BRACER_BRONZE, BRACER_F, BRACER_N, ROMAN_KIT_KIND } from './bracersSandalsArt';
 import { NIGHT_GLOVE, NIGHT_GLOVE_F, NIGHT_GLOVE_N, NIGHT_GLOVE_PLATE, NIGHT_KIT_KIND } from './nightBootsGlovesArt';
 import { NIGHT_CAST_FIST_F, NIGHT_CAST_FIST_N, NIGHT_CAST_FORE_N, NIGHT_CAST_GRIP_N, NIGHT_CAST_KIND } from './nightCastArmsArt';
@@ -1955,6 +1956,8 @@ export const WAIST_ITEMS: ItemDef[] = liftMain([
       tseam(g, L, CX - 0.3, 3.6, CX - 0.3, 0.9, 1);
     },
   },
+  // Aurelia, the owner's fourth heroine (aureliaLower.ts)
+  WAIST_DAWN_SASH,
   POUCH_BELT,
 ]);
 

@@ -4,6 +4,7 @@
 
 import type { DrawCtx } from './ctx';
 import { FLAME_LONGSWORD } from './items/flameSwordArt';
+import { dawnStaffInFarHand } from './items/aureliaStaff';
 import { ICE_SWORD } from './items/iceSwordArt';
 import { KATANA_V2 } from './items/katanaV2Art';
 import { NIGHT_GLOVE_N } from './items/nightBootsGlovesArt';
@@ -214,6 +215,8 @@ export function gripAngle(g: DrawCtx): number | null {
   if (handsBusy(g) || handsLimp(g) || handsReleased(g)) return null;
   if (g.has('held', 'held_gilded_rapier')) return swordAngle(g);
   if (g.has('held', 'held_naginata')) return poleAngle(g);
+  // Aurelia's staff is in her far fist at rest (her near hand is empty), in the near one like a pole otherwise.
+  if (g.has('held', 'held_dawn_staff')) return dawnStaffInFarHand(g) ? null : poleAngle(g);
   if (g.has('held', 'held_katana') || g.has('held', 'held_katana_v2') || g.has('held', 'held_crystal') || g.has('held', 'held_ice_crystal') || g.has('held', 'held_flame_sword') || g.has('held', 'held_kunai')) return swordAngle(g);
   return null;
 }
@@ -257,7 +260,7 @@ export function throwRelease(body: BodyType, held?: string): ThrowRelease {
   const before = drawRig(body, 'throw', THROW_RELEASE_FRAME - 1);
   const fist = (r: typeof at): Vec => add(r.handN, scale(norm(sub(r.handN, r.wristN)), 0.9));
   const d = norm(sub(at.handN, at.wristN));
-  const pole = held === 'held_naginata';
+  const pole = held === 'held_naginata' || held === 'held_dawn_staff';
   // The owner's painted swords are held by their own grip at the hand joint (items/accessories.ts), the others at the fist's middle.
   const grip = heldAtHandJoint(held) ? before.handN : fist(before);
   return {

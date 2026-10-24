@@ -255,14 +255,16 @@ describe("the owner's skin on the male bodies", () => {
 
   it('leaves the female bodies exactly as they were', () => {
     // The default look on the female body, as the integration branch draws it (a7a6a10: the owner's fitted
-    // female body, his Lyra's sit), byte for byte. A later change to the female art updates these with it.
+    // female body, his Lyra's sit), byte for byte. A later change to the female art updates these with it:
+    // attack 1 and run 1 with heroine/aurelia-v2 (2 pixels of the hair's crown each, from its 1-pixel pass), and
+    // sit 0 (the free hand held from her own neck as his Lyra holds hers: rig.ts PoseAt.hisNeck).
     const was: Record<string, string> = {
       'female idle 0': '641b2a19d979cbfc',
-      'female attack 1': '4ae87971d3a8655c',
+      'female attack 1': '6e526b15efd42522',
       'female cast 0': '3757a84efd329e8a',
-      'female run 1': 'df049168dd1b42eb',
+      'female run 1': '0838c7d62e559cdb',
       'female downed 0': 'e932723e4d169982',
-      'female sit 0': '5c64abb6a5809bff',
+      'female sit 0': '950ba497337833c9',
     };
     for (const [key, sum] of Object.entries(was)) {
       const [body, pose, frame] = key.split(' ');

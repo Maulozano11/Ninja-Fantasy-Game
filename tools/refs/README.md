@@ -8,8 +8,8 @@ folders.
 
 - `female-base-body-from-ref.py` (with `female_base_ref.py`): **the female body**, his bare female
   body (`docs/reference/female-base-owner-reference.jpg`, 100x100 of his pixels at 20 picture pixels,
-  phase 0; his pixel (x, y) at our (x + 73, y + 120)) cut into pieces, one per bone: chest (neck,
-  shoulders, sports top), pelvis (belly, briefs), each upper arm, forearm, hand, thigh, shin and foot,
+  phase 0; his pixel (x, y) at our (x + 73, y + 120)) cut into pieces, one per bone: chest (the neck's
+  foot, shoulders, sports top), the neck above its foot (on the bone to the head), pelvis (belly, briefs), each upper arm, forearm, hand, thigh, shin and foot,
   every pixel his (the regions are written row by row in the script). It reads his joints off the
   picture (`JOINTS`; the female rig is fitted to them, `rig.ts` `BodyFit`), continues what he hides
   from his own pixels (the neck under the head, the chest's near side under the arm, the belly under

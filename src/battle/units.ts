@@ -26,6 +26,7 @@ export function weaponOf(c: ShinobiCharacter): Weapon {
   const held = c.appearance?.slots.held?.id;
   switch (held) {
     case 'held_katana':
+    case 'held_katana_v2':
       return W('Katana', '1d8', 'Slashing', 1.5, true, true);
     case 'held_crystal':
       return W('Crystal blade', '1d10', 'Slashing', 1.5, false, true, true);

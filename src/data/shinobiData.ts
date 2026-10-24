@@ -13,6 +13,8 @@ import {
   AbilityScores,
 } from '../types/shinobi';
 import type { ItemChoice, SpriteAppearance } from '../sprite/types';
+import { NIGHT_IRIS } from '../sprite/nightEyeArt';
+import { NIGHT_SKIN } from '../sprite/nightHeadArt';
 
 export const CLANS_DATA: Record<
   ClanType,
@@ -1704,9 +1706,9 @@ export const LEGENDARY_PRESETS: { name: string; tag: string; nameEs?: string; ta
   },
   {
     name: 'Ren, the Night Prince',
-    tag: 'Midnight Tousle · Warp Katana',
+    tag: 'Night Spikes · Katana v2',
     nameEs: 'Ren, el Príncipe de la Noche',
-    tagEs: 'Melena de medianoche · Katana de distorsión',
+    tagEs: 'Puntas de la noche · Katana estilo nuevo v2',
     character: {
       id: 'preset_night',
       name: 'Ren Kuroba',
@@ -1749,15 +1751,24 @@ export const LEGENDARY_PRESETS: { name: string; tag: string; nameEs?: string; ta
       speed: 7,
       jutsuSaveDC: 17,
       jutsuAttackBonus: 9,
+      // The owner's own Ren (docs/reference/ren-owner-reference.jpg, 2026-10-21, "el nuevo estandar"):
+      // his head, eyes, hair, jacket with his bare forearms, belt, studded skirt, trousers, boots,
+      // gloves and Katana v2, every one lifted from his pixels, in his own colours (the items'
+      // defaults; his skin and his blue eyes). The katana's nichirin blade takes his chakra blue.
       appearance: spriteLook({
-        eyeColor: '#38bdf8',
+        skin: NIGHT_SKIN,
+        faceShape: 'night',
+        eyeShape: 'night',
+        eyeColor: NIGHT_IRIS,
         slots: {
-          hair: it('hair_midnight', '#2a3448'),
-          top: it('top_royalcoat', '#17181f', '#9aa3b2', '#0d0e14'),
-          bottom: it('bottom_shinobi', '#17181f', '#17181f'),
-          feet: it('feet_leather', '#1b1b22', '#0d0d12'),
-          hands: it('hands_fingerless', '#1b1b22', '#9aa4b0'),
-          held: { ...it('held_katana'), parts: { steel: 'c', blade: 'a', guard: 'c', hilt: 'a' } },
+          hair: it('hair_night'),
+          top: it('top_night_jacket'),
+          waist: it('waist_night_belt'),
+          skirt: it('skirt_night_studded'),
+          bottom: it('bottom_night_trousers'),
+          feet: it('feet_night_boots'),
+          hands: it('hands_fingerless'),
+          held: { ...it('held_katana_v2'), parts: { steel: 'a' } },
         },
         chakra: { color: 'yellow', tint: 'blue', onCharge: true, onCast: true, onVictory: true }, // Lightning like his jutsu, in his blue
       }),

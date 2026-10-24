@@ -10,7 +10,7 @@ import type { DrawCtx } from './ctx';
 import { ROMAN_HAIR_BACK, ROMAN_HAIR_BASE, ROMAN_HAIR_FRONT, ROMAN_HAIR_LINE } from './items/romanHairArt';
 import { appearanceFromLegacy, defaultAppearance, getAppearance, withRomanHead } from './legacy';
 import { MALE_SKIN_BASE } from './maleSkinArt';
-import { GRID } from './raster';
+import { GRID, partIndex, type PartId } from './raster';
 import { buildRig, frameCount, rigPoseFor } from './rig';
 import { ROMAN_IRIS } from './romanEyeArt';
 import { ROMAN_HEAD_UP } from './romanHeadArt';
@@ -49,6 +49,29 @@ const romanLook = (body: BodyType = 'male'): SpriteAppearance => {
 const ourHead = (l: SpriteAppearance): SpriteAppearance => ({ ...l, faceShape: 'tapered', eyeShape: 'standard' });
 
 /** The open cells a frame closes all round (not reached from the frame's edge through open cells). */
+/** The background pockets of a frame an arm walls in (one of their border pixels is an arm's). */
+function armPockets(f: ReturnType<typeof renderSprite>): Set<number> {
+  const arms = new Set((['upperArmN', 'forearmN', 'handN', 'upperArmF', 'forearmF', 'handF'] as PartId[]).map((p) => partIndex(p)));
+  const all = holes(f.rgba);
+  const out = new Set<number>();
+  const seen = new Set<number>();
+  for (const s of all) {
+    if (seen.has(s)) continue;
+    const comp = [s];
+    seen.add(s);
+    let arm = false;
+    for (let k = 0; k < comp.length; k++) {
+      for (const q of [comp[k] - 1, comp[k] + 1, comp[k] - GRID, comp[k] + GRID]) {
+        if (all.has(q)) {
+          if (!seen.has(q)) seen.add(q), comp.push(q);
+        } else if (f.rgba[q * 4 + 3] && arms.has(f.part[q])) arm = true;
+      }
+    }
+    if (arm) for (const p of comp) out.add(p);
+  }
+  return out;
+}
+
 function holes(rgba: Uint8ClampedArray): Set<number> {
   const out = new Set<number>();
   const seen = new Uint8Array(GRID * GRID);
@@ -132,7 +155,11 @@ describe("the owner's Roman head on his neck", () => {
           // own head, drawn lower on our short neck, leaves closed (a gap between an arm and the chest
           // there is the pose's, with any head).
           const ours = holes(renderSprite(ourHead(l), pose, fr).rgba);
-          const inside = [...holes(f.rgba)].filter((p) => !ours.has(p) && Math.abs((p % GRID) - nx - 3) <= 10 && ((p / GRID) | 0) >= ny + 3 && ((p / GRID) | 0) <= ny + 16);
+          // (on the bulky body, his broad shoulders: a pocket the arm walls in beside the head is the pose's own
+          // separation of arm and body, and a pocket is never filled: the owner, "porfavor no lo repitas mas en
+          // ningun personaje")
+          const pocket = body === 'bulky' ? armPockets(f) : new Set<number>();
+          const inside = [...holes(f.rgba)].filter((p) => !ours.has(p) && !pocket.has(p) && Math.abs((p % GRID) - nx - 3) <= 10 && ((p / GRID) | 0) >= ny + 3 && ((p / GRID) | 0) <= ny + 16);
           assert.deepEqual(inside.map((p) => [p % GRID - nx, ((p / GRID) | 0) - ny]), [], key);
         }
       }

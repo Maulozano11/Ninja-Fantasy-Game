@@ -1817,8 +1817,9 @@ function drawPteruges(g: DrawCtx, tc: string, lc: string, sc: string, drapes: bo
   };
   const depth = g.L('torso.over').used ? 'torso.over' : 'skirt';
   // (the waist closed first, then any hole left in the skirt: drawDrape's)
-  // (on the bulky body: the Roman on the male body is approved as he is)
-  if (r.pose !== 'idle' && r.body === 'bulky') g.after((layers) => closeWaist(g.rig, g.L(depth), layers));
+  // (on the bulky body, at rest too, where his strips sit lower under the broad man's longer torso: the Roman on
+  // the male body is approved as he is)
+  if (r.body === 'bulky') g.after((layers) => closeWaist(g.rig, g.L(depth), layers));
   if (drapes) drawDrape(g, color);
   stampLeaning(g, depth, PTERUGES_FRONT, r.pelvis, torso, 'pelvis', color);
 }
@@ -1828,7 +1829,7 @@ function drawPteruges(g: DrawCtx, tc: string, lc: string, sc: string, drapes: bo
  * cuirass rides the neck and his strips hang from the pelvis, so a pose that bends the torso (the bulky
  * body's longer torso, a punch) can open a gap of a pixel or three between them. Up each line along the
  * torso through the waist, background between the skirt and the chest takes the skirt's pixel below it:
- * his strips go on up under the cuirass's edge. At rest nothing is open, and nothing is touched.
+ * his strips go on up under the cuirass's edge. On the male body at rest nothing is open; on the bulky body a pixel can be.
  */
 function closeWaist(r: Rig, L: Layer, layers: ReadonlyMap<Depth, Layer>): void {
   const covered = new Uint8Array(GRID * GRID);

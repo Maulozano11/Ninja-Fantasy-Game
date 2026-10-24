@@ -9,7 +9,8 @@
 // loose from the figure, a pocket of background walled in between parts of the body, a crack of
 // background between two parts that meet, a light pixel on the figure's edge.
 //
-// A new look must have none. Errors already on the looks of other branches, reported and not yet fixed
+// A new look must have none but pockets: a pocket is reported (STANDARD_LIST) and looked at, never filled
+// and never a failure (the owner, 2026-10-23). Errors already on the looks of other branches, reported and not yet fixed
 // there, are listed in REPORTED; ACCEPTED lists what the owner has accepted as drawn. To list what this
 // test finds (to fill REPORTED after a fix elsewhere): STANDARD_LIST=1 npx tsx --test src/sprite/standard.test.ts
 
@@ -120,7 +121,8 @@ const ACCEPTED: Record<string, Partial<Record<Glitch['kind'], SpritePose[] | '*'
  * Errors this test found on looks of other branches, reported and left to be fixed there (2026-10-23,
  * body/brawler-roman): look@body -> kind -> the poses it shows in. The male looks are the integration
  * branch's (the read pose body/male-skin-face's, the bare male body's too), the female ones the female
- * body's (body/female-v2). Remove an entry when its branch fixes it.
+ * body's (body/female-v2; since the integration branch at c0097dc, its frames byte for byte). Remove an
+ * entry when its branch fixes it.
  */
 const REPORTED: Record<string, Partial<Record<Glitch['kind'], SpritePose[]>>> = {
   'broad-bare@male': { pocket: ['idle', 'walk'] },
@@ -134,16 +136,16 @@ const REPORTED: Record<string, Partial<Record<Glitch['kind'], SpritePose[]>>> = 
   'rogue1@male': { pocket: ['throw', 'lean'], crack: ['victory'] },
   'roman@male': { pocket: ['walk'], edge: ['run', 'sit'] },
   'companion_hana@female': { pocket: ['charge', 'lean', 'train'] },
-  'default@female': { pocket: ['idle'] },
+  'default@female': { pocket: ['idle'], crack: ['crouch'] },
   'hunter1@female': { pocket: ['attack', 'tackle', 'lean'] },
   'preset_ember@female': { pocket: ['charge'], crack: ['crouch', 'read'] },
-  'preset_founder@female': { pocket: ['charge'] },
-  'preset_night@female': { pocket: ['idle', 'victory', 'walk', 'downed'] },
-  'preset_reference_aiden@female': { edge: ['attack', 'throw', 'combo', 'hurt', 'victory', 'run', 'crouch', 'downed'], pocket: ['pierce', 'train'] },
-  'preset_storm@female': { pocket: ['victory', 'charge', 'downed', 'train'] },
-  'preset_sunburst@female': { pocket: ['idle'] },
+  'preset_founder@female': { pocket: ['charge'], edge: ['handsigns'], crack: ['cast'] },
+  'preset_night@female': { pocket: ['idle', 'victory', 'walk', 'downed'], crack: ['crouch'] },
+  'preset_reference_aiden@female': { edge: ['idle', 'attack', 'throw', 'pierce', 'tackle', 'combo', 'cast', 'hurt', 'victory', 'charge', 'run', 'crouch', 'downed', 'lean', 'train'], pocket: ['pierce', 'train'], loose: ['throw', 'tackle', 'hurt'] },
+  'preset_storm@female': { pocket: ['victory', 'charge', 'downed', 'train'], crack: ['handsigns'] },
+  'preset_sunburst@female': { pocket: ['idle'], crack: ['throw'] },
   'preset_warlord@female': { pocket: ['idle', 'hurt', 'charge', 'crouch', 'lean'], crack: ['read'] },
-  'roman@female': { pocket: ['idle', 'walk'], edge: ['sit', 'read'] },
+  'roman@female': { pocket: ['idle', 'walk'], edge: ['idle', 'sit', 'read'] },
 };
 
 const allowed = (l: Look, pose: SpritePose, kind: Glitch['kind']) => {
@@ -160,7 +162,9 @@ describe('the sprite standard: the known errors on every character, body and pos
       const fr = renderSprite(l.look, pose, f, l.eye);
       for (const g of findGlitches(fr, pose === 'idle' && l.look.body === l.drawnOn)) {
         ((found[l.id] ??= {})[g.kind] ??= new Set()).add(pose);
-        if (!allowed(l, pose, g.kind)) failures.push(`${l.id} ${pose} ${f}: ${g.kind} of ${g.n} px at ${g.x},${g.y} (${g.parts.join('/')})`);
+        // A pocket is reported, never a failure: it is nearly always the separation he draws, and it is never
+        // filled (the owner, 2026-10-23: "porfavor no lo repitas mas en ningun personaje"; glitches.ts).
+        if (g.kind !== 'pocket' && !allowed(l, pose, g.kind)) failures.push(`${l.id} ${pose} ${f}: ${g.kind} of ${g.n} px at ${g.x},${g.y} (${g.parts.join('/')})`);
       }
     }
   }
@@ -174,12 +178,13 @@ describe('the sprite standard: the known errors on every character, body and pos
     for (const body of BODIES) assert.ok(LOOKS.some((l) => l.look.body === body), body);
   });
 
-  it('no piece loose, no white pocket or crack between parts, no light pixel on the edge (but what is reported or accepted)', () => {
+  it('no piece loose, no crack between parts, no light pixel on the edge (but what is reported or accepted; pockets are reported)', () => {
     assert.deepEqual(failures, []);
   });
 
-  it('the bulky body and the broad man have none at all (this branch fixed them)', () => {
+  it('the bulky body and the broad man have none at all but pockets (this branch fixed them)', () => {
     const ours = Object.entries(found).filter(([id]) => id.endsWith('@bulky') || id.startsWith('broad@'));
-    assert.deepEqual(ours.filter(([id, k]) => Object.keys(k).some((kind) => !ACCEPTED[id]?.[kind as Glitch['kind']])).map(([id, k]) => `${id}: ${Object.keys(k).join(', ')}`), []);
+    const bad = (id: string, kind: string) => kind !== 'pocket' && !ACCEPTED[id]?.[kind as Glitch['kind']];
+    assert.deepEqual(ours.filter(([id, k]) => Object.keys(k).some((kind) => bad(id, kind))).map(([id, k]) => `${id}: ${Object.keys(k).filter((kind) => bad(id, kind)).join(', ')}`), []);
   });
 });

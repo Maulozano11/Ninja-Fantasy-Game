@@ -60,9 +60,10 @@ const SETS = {
 /** The figure whose sleeves and scarf go with the cuirass worn (the spiral one's without his cuirass). */
 const setOf = (g: DrawCtx) => (g.has('armor', 'armor_general_muscle') ? SETS.muscle : SETS.spiral);
 
-function drawChest(g: DrawCtx, piece: PaintedPiece, kinds: Kinds, base: string, c: string): void {
+/** A chest piece of his: our torso below the neck taken away (his cuirass is the torso there), his cuirass leaning with ours. */
+export function drawChest(g: DrawCtx, piece: PaintedPiece, kinds: Kinds, slots: Record<string, [string, string]>, skin = GENERAL_SKIN): void {
   torsoOff(g);
-  stampLeaning(g, 'torso.armor', piece, g.rig.neck, torsoAngle(g), 'torso', tint(g, kinds, { warm: [base, c] }), lineOf(kinds));
+  stampLeaning(g, 'torso.armor', piece, g.rig.neck, torsoAngle(g), 'torso', hopliteTint(g, kinds, slots, skin), lineOf(kinds));
 }
 
 /** A pauldron rides the torso and follows the upper arm part of the way, so it never smears across the chest. */
@@ -72,21 +73,28 @@ function pauldronAngle(g: DrawCtx, piece: PaintedPiece, s: Side): number {
   return piece.angle + t + 0.6 * wrap(segAngle(j.shoulder, j.elbow) - piece.angle - t);
 }
 
-function drawPauldrons(g: DrawCtx, pieces: [Side, PaintedPiece, Kinds][], base: string, c: string): void {
+/** His pauldrons on our shoulders, far then near. */
+export function drawPauldrons(g: DrawCtx, pieces: [Side, PaintedPiece, Kinds][], slots: Record<string, [string, string]>): void {
   for (const [s, p, k] of pieces) {
     const j = armJoints(g.rig, s);
-    stampPiece(g, armDepth(s, 'armor'), p, j.shoulder, pauldronAngle(g, p, s), prt(s), tint(g, k, { warm: [base, c] }), lineOf(k));
+    stampPiece(g, armDepth(s, 'armor'), p, j.shoulder, pauldronAngle(g, p, s), prt(s), tint(g, k, slots), lineOf(k));
+  }
+}
+
+/** His sleeves on our upper arms, turning with them at the shoulder; below them our bare arm. */
+export function drawSleevePieces(g: DrawCtx, sleeves: Record<Side, [PaintedPiece, Kinds]>, slots: Record<string, [string, string]>): void {
+  for (const s of ['F', 'N'] as Side[]) {
+    const [p, k] = sleeves[s];
+    const j = armJoints(g.rig, s);
+    const upper = segAngle(j.shoulder, j.elbow);
+    const bend = wrap(p.angle + torsoTurn(g) - upper);
+    stampBent(g, armDepth(s, 'cloth'), p, j.shoulder, upper, prt(s), [{ about: j.shoulder, r: 4, bend }], lineOf(k), tint(g, k, slots));
   }
 }
 
 function drawSleeves(g: DrawCtx, cloth: string): void {
-  for (const s of ['F', 'N'] as Side[]) {
-    const [p, k] = setOf(g).sleeves[s];
-    const j = armJoints(g.rig, s);
-    const upper = segAngle(j.shoulder, j.elbow);
-    const bend = wrap(p.angle + torsoTurn(g) - upper);
-    stampBent(g, armDepth(s, 'cloth'), p, j.shoulder, upper, prt(s), [{ about: j.shoulder, r: 4, bend }], lineOf(k), tint(g, k, { navy: [CL.GENERAL_SLEEVE_NAVY, cloth], hair: [CL.GENERAL_SLEEVE_NAVY, cloth] }));
-  }
+  const navy = [CL.GENERAL_SLEEVE_NAVY, cloth] as [string, string];
+  drawSleevePieces(g, setOf(g).sleeves, { navy, hair: navy });
 }
 
 function drawScarf(g: DrawCtx, cloth: string, clasp: string): void {
@@ -103,7 +111,7 @@ export const GENERAL_ITEMS: ItemDef[] = [
     colors: [col('bronze', 'Bronze', CU.GENERAL_SPIRAL_BRONZE, 'metal')],
     statsArmor: 'Greek Hoplite Cuirass',
     bodies: [...MEN],
-    draw: (g, [c]) => drawChest(g, CU.GENERAL_SPIRAL_CHEST, CU.GENERAL_SPIRAL_CHEST_KIND, CU.GENERAL_SPIRAL_BRONZE, c),
+    draw: (g, [c]) => drawChest(g, CU.GENERAL_SPIRAL_CHEST, CU.GENERAL_SPIRAL_CHEST_KIND, { warm: [CU.GENERAL_SPIRAL_BRONZE, c] }),
   },
   {
     id: 'armor_general_muscle',
@@ -113,7 +121,7 @@ export const GENERAL_ITEMS: ItemDef[] = [
     colors: [col('gold', 'Gold', CU.GENERAL_MUSCLE_GOLD, 'metal')],
     statsArmor: 'Greek Hoplite Cuirass',
     bodies: [...MEN],
-    draw: (g, [c]) => drawChest(g, CU.GENERAL_MUSCLE_CHEST, CU.GENERAL_MUSCLE_CHEST_KIND, CU.GENERAL_MUSCLE_GOLD, c),
+    draw: (g, [c]) => drawChest(g, CU.GENERAL_MUSCLE_CHEST, CU.GENERAL_MUSCLE_CHEST_KIND, { warm: [CU.GENERAL_MUSCLE_GOLD, c] }),
   },
   {
     id: 'acc_general_pauldrons',
@@ -126,7 +134,7 @@ export const GENERAL_ITEMS: ItemDef[] = [
       drawPauldrons(g, [
         ['F', PA.GENERAL_PAULDRON_F, PA.GENERAL_PAULDRON_F_KIND],
         ['N', PA.GENERAL_PAULDRON_N, PA.GENERAL_PAULDRON_N_KIND],
-      ], PA.GENERAL_PAULDRON_BRONZE, c),
+      ], { warm: [PA.GENERAL_PAULDRON_BRONZE, c] }),
   },
   {
     id: 'acc_general_studded_pauldrons',
@@ -139,7 +147,7 @@ export const GENERAL_ITEMS: ItemDef[] = [
       drawPauldrons(g, [
         ['F', PA.GENERAL_STUDDED_F, PA.GENERAL_STUDDED_F_KIND],
         ['N', PA.GENERAL_STUDDED_N, PA.GENERAL_STUDDED_N_KIND],
-      ], PA.GENERAL_STUDDED_BRONZE, c),
+      ], { warm: [PA.GENERAL_STUDDED_BRONZE, c] }),
   },
   {
     id: 'top_general_sleeves',

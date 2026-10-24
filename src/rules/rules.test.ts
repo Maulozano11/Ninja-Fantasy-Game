@@ -214,6 +214,7 @@ describe('clans', () => {
       // His Roman general (2026-10-24): the bronze warrior's sheet in his two cuirasses.
       preset_bronze_general_spiral: [49, 33, 17, 15, 7],
       preset_bronze_general_muscle: [49, 33, 17, 15, 7],
+      preset_roman_legate: [49, 33, 17, 15, 7],
     };
     assert.deepEqual(LEGENDARY_PRESETS.map((p) => p.character.id).sort(), Object.keys(owner).sort());
     for (const { character: c } of LEGENDARY_PRESETS) {

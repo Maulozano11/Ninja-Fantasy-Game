@@ -10,6 +10,7 @@ import { FEET_ITEMS } from './items/feet';
 import { HAIR_ITEMS } from './items/hair';
 import { GENERAL_ITEMS } from './items/general';
 import { HOPLITE_ITEMS } from './items/hoplite';
+import { LEGATE_ITEMS } from './items/legate';
 import { NIGHT_ITEMS } from './items/night';
 import type { BodyType, SlotId } from './types';
 
@@ -30,6 +31,8 @@ export const ALL_ITEMS: ItemDef[] = [
   ...HOPLITE_ITEMS,
   // the owner's Roman general: his two chest sets, pauldrons, sleeves, scarf and hair
   ...GENERAL_ITEMS,
+  // the owner's Roman legate: his chest set (cuirass, pauldrons, sleeves)
+  ...LEGATE_ITEMS,
   // the owner's Ren, part by part (the jacket, belt, skirt, trousers and boots)
   ...NIGHT_ITEMS,
 ];

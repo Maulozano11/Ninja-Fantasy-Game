@@ -178,17 +178,17 @@
    }
   },
   "hit": {
-   "label": "Fire hit (starburst of flame spikes)",
+   "label": "Fire hit (the owner's: a burst, flames up the body, smoke)",
    "file": "hit.png",
-   "frameW": 96,
-   "frameH": 80,
+   "frameW": 116,
+   "frameH": 155,
    "anchor": [
-    45,
-    40
+    55,
+    89
    ],
    "meters": [
-    1.68,
-    1.4
+    2.04,
+    2.72
    ],
    "tags": [
     "vfx"

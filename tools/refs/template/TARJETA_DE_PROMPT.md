@@ -118,3 +118,32 @@ Al recibirlo lo cuantiza `scene_kit` a 960 × 420 y lo verás montado con Solen 
 | con sombras en el suelo | "Sin sombra proyectada; el objeto termina en su base." |
 | piezas que se salen de la celda | "Cada pieza entera dentro de su celda; si no cabe, hazla más chica, la escala la ajusto yo." |
 | JPG | "Descárgala en PNG." (o se descarga el PNG a mano desde la imagen) |
+
+---
+
+## 2b. Lote casino · segunda vuelta (2026-10-27): lo que faltó
+
+Dos generadores hicieron la hoja. Se toman mesa de juego, bacará, barra y biombo del segundo
+(más carácter), farol y cofre del primero (más limpios). Se repiten cinco piezas, y las mesas y la
+barra **más grandes: para cinco personas cada una** (el dueño). El spec ya lleva los metros nuevos
+(mesa de juego 2.6 m, bacará 3.2 m, barra 4 m).
+
+```
+SEGUNDA VUELTA · casino · 5 piezas · plantilla 3×3 (usa las celdas 1 a 5; las demás vacías)
+Sigue el preámbulo: vista 3/4 FRONTAL, línea negra de 1 px, colores planos a bandas, fondo
+magenta puro, SIN SOMBRA en el suelo, sin morados, sin personas, entrega en PNG (no JPG).
+IMPORTANTE: las mesas y la barra son GRANDES, para que quepan mínimo 5 personas en cada una:
+largas, con sitio de sobra; la figura de la celda 0 mide 94 px y a su lado una mesa debe verse
+de 2.5 a 3 veces su ancho.
+ 1  escalera al altillo, VISTA DE FRENTE: los escalones son barras horizontales una encima de
+    otra, cada una un poco más atrás, con un barandal a la derecha; nada de diagonal ni isométrico
+ 2  taburete de madera redondo, grueso: asiento ancho y patas gruesas, sin sombra
+ 3  mesa de juego larga para 5 personas: baja, de madera oscura con cabezas de león talladas en
+    los extremos, tapete rojo con dados y fichas; vista de frente a lo largo
+ 4  mesa de bacará larga para 5 personas: con cabezas de dragón talladas en los extremos, tapete
+    verde oscuro con un zapato de cartas, cartas y fichas; vista de frente a lo largo
+ 5  barra larga para 5 personas: mostrador de madera oscura visto de frente, con una repisa detrás
+    con jarras de sake, botellas (sin morados) y tazas; más larga que alta
+Cada pieza entera dentro de su celda, apoyada en el borde inferior; si no cabe, hazla más chica,
+la escala real la pongo yo.
+```

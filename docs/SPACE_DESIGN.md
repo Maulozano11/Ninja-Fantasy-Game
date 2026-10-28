@@ -144,8 +144,13 @@ es tres veces la altura del piloto); N14 *"c, pregúntame a detalle esto"* (las 
 abajo). N2 y N3 pedían una referencia visual y una explicación: `docs/mockups/naval-bands-concept.png`
 (las bandas lejos / media / cerca, la flota y las órdenes del comandante) y "rango" = el daño es un
 intervalo (12–18) que el RNG sembrado decide, visible antes de ordenar, en vez de un número fijo.
-Pendiente: la letra de N6 (a solo tú abordas, b también te abordan, c las dos; el "2" ya dice que
-la batalla naval sigue alternando turnos durante el abordaje).
+N6 = **c** (tú abordas y te abordan; la batalla naval sigue alternando turnos mientras dura el
+abordaje). N14 a detalle: **N14.1 c** (a quién, adónde y con qué habilidad), **N14.2 a** (en
+shinobi solo el Ojo del Mañana del Mirai, dibujado en el mapa), **N14.3 a** (en el espacial las
+Ópticas Tácticas; *"y los mechas en un módulo súper caro; naves espaciales no"*: un mecha lo tiene
+con un módulo de precio alto, las naves del combate naval nunca), **N14.4 b** (una acción
+adicional y chakra/energía por turno), **N14.5 c** (la insignia enemiga nunca muestra intenciones:
+niebla de guerra). Todas las preguntas de este documento están respondidas.
 
 **N14 a detalle (las intenciones visibles solo con una habilidad):**
 - N14.1 ¿Qué se ve? a) a quién atacará cada enemigo · b) eso y adónde se moverá · c) eso y con qué

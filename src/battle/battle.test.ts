@@ -1371,6 +1371,8 @@ describe('Ryusei: Weapon Nodes, Shooting-Star Thrust, Spatial Swap', () => {
     // A Ryusei rogue 8 m from Aki: its Fireball would reach, but with no Node of its own yet it throws.
     const { state } = createBattle(setup({ enemies: [{ kind: 'rogue', clan: 'Ryusei', pos: { x: 16, z: 10 } }] }));
     const s = turnOf(state, 'rogue_0');
+    // (Aki's reaction spent: a Bukijutsu Master would be asked to deflect the kunai, reactions.test.ts)
+    s.units.a.turn.reaction = false;
     const aki = { ...s.units.a.pos };
     assert.deepEqual([s.units.rogue_0.intent?.kind, s.units.rogue_0.intent?.target], ['ranged', 'a']);
     let t = s;

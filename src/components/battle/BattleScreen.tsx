@@ -1288,6 +1288,14 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
       const by = pending.hit.source ? unitRef(state.units[pending.hit.source], lang) : '';
       return { title: T('evadeTitle'), text: T('evadeAsk', { name: unitRef(reactor, lang), dmg: pending.hit.amount, by }) };
     }
+    if (pending.kind === 'deflect') {
+      const by = pending.hit.source ? unitRef(state.units[pending.hit.source], lang) : '';
+      return { title: T('deflectTitle'), text: T('deflectAsk', { name: unitRef(reactor, lang), dmg: pending.hit.amount, by }) };
+    }
+    if (pending.kind === 'interpose') {
+      const by = pending.hit.source ? unitRef(state.units[pending.hit.source], lang) : '';
+      return { title: T('interposeTitle'), text: T('interposeAsk', { name: unitRef(reactor, lang), victim: unitRef(state.units[pending.hit.unit], lang), dmg: pending.hit.amount, by }) };
+    }
     return { title: T('kawaTitle'), text: T('kawaAsk', { name: unitRef(reactor, lang), dmg: pending.hit.amount, c: JUTSU.substitution_kawarimi.cost }) };
   };
   const prompt = askPlayer ? promptText() : null;

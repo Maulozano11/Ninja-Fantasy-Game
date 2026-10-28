@@ -35,12 +35,13 @@ import type { AttackPreview } from './combat';
 import { attackPreview, check, damage, heal, hostileAura, passivePerception, PERFECT_HIDE, reveal, revealOutOfHiding, rollDiceExpr, skillMod } from './combat';
 import { JUTSU, MIN_AIM, areaOf, enhanced, fanDice, fanned, fannedBy } from './jutsu';
 import type { JutsuSpec } from './jutsu';
-import { KUNAI, enemyNameOf, enemyUnit, handsFree, unitFrom, wielded } from './units';
+import { KUNAI, KUNAI_LONG, enemyNameOf, enemyUnit, handsFree, unitFrom, wielded } from './units';
 import type { EnemyKind } from './units';
 import { hydraUnits } from './hydra';
 import { checkEnd, current, endTurn, startCombat } from './turns';
 import { afterStealthAttack, alarm, canTakedown, dragBody, guardsTurn, openFight, scareAnimalsNear, stealthMove, STONE_RANGE, throwStone } from './stealth';
 import { conduct, electrify, groundEffects, plantTag, saveHit, springTrap, TAG, throwTag, trapAt, unitsInArea } from './hazards';
+import { aiInterposes, canDeflect, deflect, interpose, interposers } from './reactions';
 import { blazeAt, blazeBurns, blowSteam, freeze, iceAt, mire, pathArea, slips, soak, spill } from './ground';
 import { breakable, damageStructure, faceToward, hitStructuresIn, jutsuWallAt, raiseStructure, STRUCTURE_AC, structureAt, structureAttack, structureBlocker } from './structures';
 import {
@@ -742,9 +743,56 @@ function applyHits(s: BattleState, hits: Hit[], after: AfterHits, ev: BattleEven
         continue;
       }
     }
+    // A kunai coming at a Bukijutsu Master: deflected (reactions.ts); the AI deflects what would hurt.
+    if (canDeflect(s, t, h)) {
+      if (t.controller === 'player') {
+        s.pending = { kind: 'deflect', reactor: t.id, hit: h, rest: queue, after };
+        ev.push({ t: 'reactionAsk', pending: s.pending });
+        return;
+      }
+      if (aiAvoids(t, h)) {
+        queue.unshift(deflected(s, t, h, ev));
+        continue;
+      }
+    }
+    // A comrade beside the target may take the blow instead: a player's is asked, an AI's steps in to protect.
+    const guard = blockable ? interposers(s, h) : [];
+    if (guard.length) {
+      const r = guard[0];
+      if (r.controller === 'player') {
+        s.pending = { kind: 'interpose', reactor: r.id, hit: h, rest: queue, after };
+        ev.push({ t: 'reactionAsk', pending: s.pending });
+        return;
+      }
+      if (aiInterposes(r, t, h)) {
+        ev.push({ t: 'interpose', unit: r.id, for: t.id });
+        queue.unshift(interpose(r, h));
+        continue;
+      }
+      queue.unshift({ ...h, interposeDeclined: [...(h.interposeDeclined ?? []), r.id] });
+      continue;
+    }
     landHit(s, t, h, ev);
   }
   finishAfter(s, after, ev, resumed);
+}
+
+/**
+ * The Bukijutsu Master deflects the kunai (reactions.ts): the blow loses damage; caught, it is thrown
+ * straight back at whoever threw it (a free kunai attack). Returns the blow as it lands.
+ */
+function deflected(s: BattleState, t: Unit, h: Hit, ev: BattleEvent[]): Hit {
+  const d = deflect(s, t, h);
+  ev.push({ t: 'chakra', unit: t.id, delta: -1, chakra: t.chakra, reason: 'deflect' });
+  ev.push({ t: 'deflect', unit: t.id, less: d.less, caught: d.caught });
+  if (d.caught) {
+    const thrower = h.source ? s.units[h.source] : undefined;
+    if (thrower && !thrower.down && dist(t.pos, thrower.pos) <= KUNAI_LONG + 0.1 && lineOfSight(s, t.pos, thrower.pos)) {
+      const pv = attackPreview(s, t, thrower, 'ranged');
+      weaponAttack(s, t, thrower, true, pv, {}, {}, ev);
+    }
+  }
+  return d.hit;
 }
 
 function landHit(s: BattleState, t: Unit, h: Hit, ev: BattleEvent[]): void {
@@ -955,6 +1003,20 @@ function react(s: BattleState, unitId: string, take: boolean, ev: BattleEvent[])
       evade(s, t, p.hit, ev);
       applyHits(s, p.rest, p.after, ev, true);
     } else applyHits(s, [{ ...p.hit, evadeDeclined: true }, ...p.rest], p.after, ev, true);
+    return null;
+  }
+  if (p.kind === 'deflect') {
+    // Taken or not, the blow goes back in the queue (lighter if deflected; a comrade may still step in).
+    const h = take && canDeflect(s, t, p.hit) ? deflected(s, t, p.hit, ev) : { ...p.hit, deflectDeclined: true };
+    applyHits(s, [h, ...p.rest], p.after, ev, true);
+    return null;
+  }
+  if (p.kind === 'interpose') {
+    const victim = s.units[p.hit.unit];
+    if (take && !t.down && t.turn.reaction && victim && !victim.down && dist(t.pos, victim.pos) <= 1.6) {
+      ev.push({ t: 'interpose', unit: t.id, for: victim.id });
+      applyHits(s, [interpose(t, p.hit), ...p.rest], p.after, ev, true);
+    } else applyHits(s, [{ ...p.hit, interposeDeclined: [...(p.hit.interposeDeclined ?? []), t.id] }, ...p.rest], p.after, ev, true);
     return null;
   }
   if (take && canKawarimi(s, t)) kawarimi(s, t, p.hit, ev);

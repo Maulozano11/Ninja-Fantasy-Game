@@ -1971,6 +1971,25 @@ export class Playback {
         if (label) this.float(label, '#c4b5fd', at, now, { rise: 120 });
         return 300;
       }
+      case 'deflect': {
+        // The blade meets the kunai: a spark at the ninja, and the catch holds a beat before the throw back.
+        const v = this.view(ev.unit);
+        if (v) {
+          this.fx.push({ kind: 'burst', element: 'chakra', from: v.pos, to: v.pos, t0: now, dur: 320, lift: [30, 30] });
+          this.setPose(v, 'attack', now, 260);
+        }
+        h.sound('hit');
+        return ev.caught ? 420 : 240;
+      }
+      case 'interpose': {
+        // The comrade braces in front of the one the blow was meant for (it stays where it stands).
+        const v = this.view(ev.unit);
+        if (v) {
+          this.setPose(v, 'guard', now, 500);
+          this.fx.push({ kind: 'burst', element: 'chakra', from: v.pos, to: v.pos, t0: now, dur: 300, lift: [24, 24] });
+        }
+        return 260;
+      }
       case 'pushed': {
         const v = this.view(ev.unit);
         if (!v) return 0;

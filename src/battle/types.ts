@@ -412,6 +412,11 @@ export interface Hit {
   unblockable?: boolean;
   /** The Mirai let Premonitory Evasion go for this hit (Kawarimi may still be offered). */
   evadeDeclined?: boolean;
+  /** The reactions already offered for this blow and let go (reactions.ts): not asked again. */
+  deflectDeclined?: boolean;
+  interposeDeclined?: string[];
+  /** Taken by a comrade who stepped in front (reactions.ts interpose): whose blow it was meant for. */
+  interposedFor?: string;
   /** Knocked down on a failed save (a ninja only: big creatures don't fall). */
   prone?: boolean;
   /**
@@ -444,7 +449,11 @@ export interface AfterHits {
 export type PendingReaction =
   | { kind: 'opportunity'; reactor: string; mover: string; path: Cell[]; stepIndex: number; skip: string[] }
   | { kind: 'kawarimi'; reactor: string; hit: Hit; rest: Hit[]; after: AfterHits }
-  | { kind: 'evasion'; reactor: string; hit: Hit; rest: Hit[]; after: AfterHits };
+  | { kind: 'evasion'; reactor: string; hit: Hit; rest: Hit[]; after: AfterHits }
+  /** A kunai coming at a Bukijutsu Master: deflect it (battle/reactions.ts). */
+  | { kind: 'deflect'; reactor: string; hit: Hit; rest: Hit[]; after: AfterHits }
+  /** A blow about to land on a comrade beside the reactor: take it instead. */
+  | { kind: 'interpose'; reactor: string; hit: Hit; rest: Hit[]; after: AfterHits };
 
 export interface BattleState {
   version: 1;
@@ -546,6 +555,9 @@ export type BattleEvent =
   | { t: 'pushed'; unit: string; from: Pt; to: Pt; fall: number; what?: string }
   /** A push cut short: the pushed one slams into a wall (a tree, a structure, the map's edge) or into another ninja, at this point. */
   | { t: 'slam'; unit: string; into: 'wall' | string; at: Pt }
+  /** A kunai deflected (the damage it loses; caught and thrown back when it loses it all) or a comrade stepping in front of a blow meant for `for`. */
+  | { t: 'deflect'; unit: string; less: number; caught: boolean }
+  | { t: 'interpose'; unit: string; for: string }
   | { t: 'weapon'; unit: string; armed: boolean; cost: 'free' | 'bonus' }
   | { t: 'act'; unit: string; act: 'dash' | 'disengage' | 'dodge' | 'focus' | 'crouch' | 'stand' | 'jump' | 'item' | 'stone' }
   /** `reasons`: why the roll had advantage or disadvantage (the preview's keys: 'aura', 'behind'…). */

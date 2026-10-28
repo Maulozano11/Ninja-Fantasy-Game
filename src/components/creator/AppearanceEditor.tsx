@@ -126,6 +126,7 @@ const FACE_SHAPES: { id: FaceShape; label: string; sub: string }[] = [
   { id: 'valiant', label: 'Valiant', sub: "Aiden's face" },
   { id: 'night', label: 'Night', sub: "Ren's face" },
   { id: 'founder', label: 'Founder', sub: "Solen's face" },
+  { id: 'base', label: 'Base', sub: "The owner's base woman's face" },
   { id: 'fine', label: 'Fine', sub: "Lyra's face" },
   { id: 'aurelia', label: 'Serene', sub: "Aurelia's face" },
   { id: 'roman', label: 'Roman', sub: "The Roman's face" },

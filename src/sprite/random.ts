@@ -30,7 +30,7 @@ function slotItem(slot: SlotId, body: BodyType, face?: FaceShape): ItemChoice | 
 export function randomAppearance(): SpriteAppearance {
   const body = pick<BodyType>(['male', 'female', 'bulky']);
   // the head is picked first so the hair can be one that sits on it (catalog.ts fitsHead)
-  const faceShape = pick<FaceShape>(body === 'female' ? ['fine', 'aurelia'] : ['valiant', 'night', 'founder', 'roman']);
+  const faceShape = pick<FaceShape>(body === 'female' ? ['fine', 'aurelia', 'base'] : ['valiant', 'night', 'founder', 'roman']);
   const slots: SpriteAppearance['slots'] = {};
   const put = (slot: SlotId, p: number) => {
     if (!chance(p)) return;

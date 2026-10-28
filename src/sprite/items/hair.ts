@@ -1916,7 +1916,7 @@ const ALL_HAIR_ITEMS: ItemDef[] = [
   {
     id: 'hair_messy_ponytail',
     slot: 'hair',
-    heads: ['fine', 'aurelia'],
+    heads: ['base'],
     name: 'Messy Ponytail',
     desc: 'Black hair in tufts over the crown, tied high in a messy tail at the back, a fringe swept over the far eye and a lock before the near cheek.',
     colors: hairColor(BASE_HAIR_BASE),

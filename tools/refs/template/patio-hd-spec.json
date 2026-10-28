@@ -1,0 +1,102 @@
+{
+ "group": "patio_hd",
+ "factor": 8,
+ "cell": 500,
+ "gutter": 0,
+ "cols": 4,
+ "rows": 2,
+ "colors": 0,
+ "pieces": [
+  {
+   "id": "mesa_baja",
+   "labelEs": "Mesa baja",
+   "cell": [
+    1,
+    0
+   ],
+   "meters": [
+    2.2,
+    0.9
+   ],
+   "kind": "prop"
+  },
+  {
+   "id": "cojines",
+   "labelEs": "Cojines",
+   "cell": [
+    2,
+    0
+   ],
+   "meters": [
+    1.2,
+    0.4
+   ],
+   "kind": "prop"
+  },
+  {
+   "id": "banco",
+   "labelEs": "Banco",
+   "cell": [
+    3,
+    0
+   ],
+   "meters": [
+    1.8,
+    1.0
+   ],
+   "kind": "prop"
+  },
+  {
+   "id": "tarima",
+   "labelEs": "Tarima",
+   "cell": [
+    0,
+    1
+   ],
+   "meters": [
+    2.8,
+    1.6
+   ],
+   "kind": "prop"
+  },
+  {
+   "id": "jarras",
+   "labelEs": "Jarras de sake",
+   "cell": [
+    1,
+    1
+   ],
+   "meters": [
+    0.7,
+    0.6
+   ],
+   "kind": "prop"
+  },
+  {
+   "id": "farol_de_pie",
+   "labelEs": "Farol de pie",
+   "cell": [
+    2,
+    1
+   ],
+   "meters": [
+    0.5,
+    1.4
+   ],
+   "kind": "prop"
+  },
+  {
+   "id": "sombrilla",
+   "labelEs": "Sombrilla",
+   "cell": [
+    3,
+    1
+   ],
+   "meters": [
+    1.7,
+    1.7
+   ],
+   "kind": "prop"
+  }
+ ]
+}

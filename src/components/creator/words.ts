@@ -229,6 +229,8 @@ const ES: Record<string, string> = {
   'No drapes': 'Sin paños',
   // The owner's Solen (2026-10-21)
   Founder: 'Fundador',
+  Base: 'Base',
+  "The owner's base woman's face": 'La cara de la mujer base del dueño',
   "Solen's face": 'La cara de Solen',
   Cowl: 'Embozo',
   'Shoulder stud': 'Tacha del hombro',

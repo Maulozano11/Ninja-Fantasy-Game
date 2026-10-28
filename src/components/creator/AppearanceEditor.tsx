@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight, Flame, Lock, Paintbrush, PersonStanding, ScanFace, Shield, Shirt, Sword } from 'lucide-react';
-import { fitsBody, itemsForSlot, getItem } from '../../sprite/catalog';
+import { fitsBody, fitsHead, itemsForSlot, getItem } from '../../sprite/catalog';
 import { resolveParts, type ItemDef } from '../../sprite/ctx';
 import { CHAKRA_CHOICES, TINT_CHOICES, chakraChoice, chakraHex } from '../../sprite/chakraInfo';
 import { CHAKRA_TYPES, chakraNature, chakraType, withNature } from '../../sprite/chakraNature';
@@ -120,13 +120,13 @@ const BODIES: { id: BodyType; label: string }[] = [
   { id: 'bulky', label: 'Bulky' },
 ];
 
+// The generic heads (tapered, soft, square) and generic eyes left the creator on 2026-10-28 (the owner,
+// from the review sheet: only his heads stay). The shapes still exist for saved looks.
 const FACE_SHAPES: { id: FaceShape; label: string; sub: string }[] = [
-  { id: 'tapered', label: 'Tapered', sub: 'V-line jaw' },
-  { id: 'soft', label: 'Soft', sub: 'Fuller cheeks' },
-  { id: 'square', label: 'Square', sub: 'Strong jaw' },
   { id: 'valiant', label: 'Valiant', sub: "Aiden's face" },
   { id: 'night', label: 'Night', sub: "Ren's face" },
   { id: 'founder', label: 'Founder', sub: "Solen's face" },
+  { id: 'base', label: 'Base', sub: "The owner's base woman's face" },
   { id: 'fine', label: 'Fine', sub: "Lyra's face" },
   { id: 'aurelia', label: 'Serene', sub: "Aurelia's face" },
   { id: 'roman', label: 'Roman', sub: "The Roman's face" },
@@ -143,13 +143,7 @@ const HANDS: { id: HandSize; label: string; sub: string }[] = [
 ];
 
 const EYE_SHAPES: { id: EyeShape; label: string; sub?: string }[] = [
-  { id: 'standard', label: 'Standard' },
-  { id: 'sharp', label: 'Sharp' },
-  { id: 'round', label: 'Round' },
-  { id: 'calm', label: 'Calm' },
-  { id: 'fierce', label: 'Fierce' },
-  { id: 'bright', label: 'Bright' },
-  { id: 'piercing', label: 'Piercing' },
+  { id: 'standard', label: 'Standard', sub: "Solen's eyes" },
   { id: 'valiant', label: 'Valiant', sub: "Aiden's eyes" },
   { id: 'night', label: 'Night', sub: "Ren's eyes" },
   { id: 'dawn', label: 'Dawn', sub: "Aurelia's eyes" },
@@ -406,7 +400,10 @@ export const AppearanceEditor: React.FC<{
                   sub={f.sub}
                   onClick={() => {
                     soundManager.playSelect();
-                    onChange({ ...look, faceShape: f.id });
+                    // a hair that does not sit on the new head comes off (catalog.ts fitsHead)
+                    const hair = look.slots.hair ? getItem(look.slots.hair.id) : undefined;
+                    const slots = hair && !fitsHead(hair, f.id) ? { ...look.slots, hair: undefined } : look.slots;
+                    onChange({ ...look, faceShape: f.id, slots });
                   }}
                 >
                   <SpriteThumb look={{ ...look, faceShape: f.id }} eye={eye} crop="head" />
@@ -736,7 +733,7 @@ const SlotPicker: React.FC<{
   crop: 'full' | 'head';
   setSlot: (s: SlotId, c: ItemChoice | null) => void;
 }> = ({ slot, look, eye, crop, setSlot }) => {
-  const items = useMemo(() => itemsForSlot(slot).filter((d) => !d.id.endsWith('_none') && fitsBody(d, look.body)), [slot, look.body]);
+  const items = useMemo(() => itemsForSlot(slot).filter((d) => !d.id.endsWith('_none') && fitsBody(d, look.body) && fitsHead(d, look.faceShape)), [slot, look.body, look.faceShape]);
   const current = look.slots[slot];
   const currentDef = current ? getItem(current.id) : undefined;
   const options: (ItemDef | null)[] = [null, ...items];

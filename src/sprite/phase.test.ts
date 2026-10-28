@@ -6,7 +6,7 @@ import { renderSpriteCached } from './compose';
 import { getAppearance } from './legacy';
 import { GLOW, PHASE_RAMP, phaseBody, phaseFrame, phaseOver } from './phase';
 import { GRID } from './raster';
-import { LEGENDARY_PRESETS } from '../data/shinobiData';
+import { ALL_PRESETS } from '../data/shinobiData';
 
 const px = (b: Uint8ClampedArray, w: number, x: number, y: number) => Array.from(b.subarray((y * w + x) * 4, (y * w + x) * 4 + 4));
 const BLACK = [0, 0, 0] as const;
@@ -50,7 +50,7 @@ describe('phase body', () => {
   });
 
   it('every preset ninja becomes mostly a strong electric blue with thin pale lines, like the owner\'s picture', () => {
-    for (const preset of LEGENDARY_PRESETS) {
+    for (const preset of ALL_PRESETS) {
       const spr = renderSpriteCached(getAppearance(preset.character), 'run', 2);
       const out = phaseFrame(spr);
       const shown = phaseOver(out, BLACK);
@@ -80,7 +80,7 @@ describe('phase body', () => {
   });
 
   it('a faint body (an after-image, a hidden ninja) stays blue over green grass', () => {
-    const look = getAppearance(LEGENDARY_PRESETS[0].character);
+    const look = getAppearance(ALL_PRESETS[0].character);
     const spr = renderSpriteCached(look, 'run', 2);
     assert.ok(spr.hair?.some((v) => v), 'the hair is marked');
     const out = phaseFrame(spr);

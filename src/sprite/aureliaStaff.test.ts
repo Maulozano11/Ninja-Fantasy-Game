@@ -5,7 +5,7 @@ import { describe, it } from 'node:test';
 import { getItem } from './catalog';
 import { renderSprite } from './compose';
 import { AURELIA_STAFF_GOLD, AURELIA_STAFF_ORB, DAWN_STAFF } from './items/aureliaStaffArt';
-import { DEFAULT_CHARACTER, LEGENDARY_PRESETS } from '../data/shinobiData';
+import { DEFAULT_CHARACTER, ALL_PRESETS } from '../data/shinobiData';
 import { weaponOf } from '../battle/units';
 import { GRID } from './raster';
 import { frameCount } from './rig';
@@ -50,7 +50,7 @@ describe('Aurelia dawn staff', () => {
 
   // His sparkles (a few pixels each) twinkle apart from it; the staff itself never does.
   it('stays with her: in her fist at rest on every body, beside her when she is downed', () => {
-    const aurelia = LEGENDARY_PRESETS.find((p) => p.character.id === 'preset_aurelia')!.character.appearance!;
+    const aurelia = ALL_PRESETS.find((p) => p.character.id === 'preset_aurelia')!.character.appearance!;
     for (const body of ['female', 'male', 'bulky'] as const)
       for (const pose of ['idle', 'downed'] as SpritePose[])
         for (let f = 0; f < frameCount(pose); f++) {

@@ -28,13 +28,14 @@ const hex = (rgba: Uint8ClampedArray, i: number) => '#' + [0, 1, 2].map((k) => r
 /**
  * A look with the default head it had before his Roman head became the default (2026-10-23): our face,
  * our standard eyes in blue, our blond spikes and the forehead headband. The hashes pinned before that are
- * of this head.
+ * of this head. The blond spikes were hair_sunburst until the hair cut of 2026-10-28 (items/hair.ts RETIRED_HAIR):
+ * the hashes were repinned with hair_surge on the same bodies (the integration branch gives the same ones).
  */
 export const oldHead = (l: SpriteAppearance): SpriteAppearance => {
   delete l.faceShape;
   l.eyeShape = 'standard';
   l.eyeColor = '#3b82f6';
-  l.slots = { ...l.slots, hair: { id: 'hair_sunburst', colors: [] } };
+  l.slots = { ...l.slots, hair: { id: 'hair_surge', colors: [] } };
   l.headband = { ...l.headband, position: 'forehead' };
   return l;
 };
@@ -259,12 +260,12 @@ describe("the owner's skin on the male bodies", () => {
     // attack 1 and run 1 with heroine/aurelia-v2 (2 pixels of the hair's crown each, from its 1-pixel pass), and
     // sit 0 (the free hand held from her own neck as his Lyra holds hers: rig.ts PoseAt.hisNeck).
     const was: Record<string, string> = {
-      'female idle 0': '641b2a19d979cbfc',
-      'female attack 1': '6e526b15efd42522',
-      'female cast 0': '3757a84efd329e8a',
-      'female run 1': '0838c7d62e559cdb',
-      'female downed 0': 'e932723e4d169982',
-      'female sit 0': '950ba497337833c9',
+      'female idle 0': 'b1de087781d24783',
+      'female attack 1': 'dc1155aa16258502',
+      'female cast 0': 'b4d0fb8d7fc4ea4e',
+      'female run 1': 'a08bce08682b7df6',
+      'female downed 0': 'f8a9db86fcba4484',
+      'female sit 0': '312ca0112843bab4',
     };
     for (const [key, sum] of Object.entries(was)) {
       const [body, pose, frame] = key.split(' ');
@@ -379,14 +380,14 @@ describe("the owner's Roman face", () => {
     // The other face and eye shapes on the female body (where the male skin does not reach), as the
     // integration branch draws them (a7a6a10); his Aiden head in the skin he painted it in.
     const was: Record<string, string> = {
-      'female tapered sharp': 'eef587834e77e63c',
-      'female tapered valiant': 'ace7e6b2f67c3e77',
-      'female soft sharp': 'd27bec90d98b0f2c',
-      'female soft valiant': '582856ab4b761dd3',
-      'female square sharp': 'fb6a6f29b4b8f1e6',
-      'female square valiant': '1a3c67266da9e86c',
-      'female valiant sharp': '93791a4df6d080f4',
-      'female valiant valiant': 'e73fc98be2f828fa',
+      'female tapered sharp': '62e6dc0d281b890f',
+      'female tapered valiant': '11a94e86b7ced661',
+      'female soft sharp': 'c643618465d6ad7a',
+      'female soft valiant': 'aba4d8a1c044b7d1',
+      'female square sharp': '6f88d59803e22806',
+      'female square valiant': 'ad206285a6e47254',
+      'female valiant sharp': '8bfb865297281cf0',
+      'female valiant valiant': 'bb0b95e313ca5506',
     };
     for (const [key, sum] of Object.entries(was)) {
       const [body, face, eye] = key.split(' ');

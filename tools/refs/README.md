@@ -481,3 +481,47 @@ folders.
   pelvis (`src/sprite/items/renSitArt.ts`, drawn by `src/sprite/renSit.ts` in place of our drawing on Ren's figure).
 
       python3 -I tools/refs/ren-sit-from-ref.py [src/sprite/items/renSitArt.ts] [studyDir]
+
+## The template and the one converter (docs/scene-art-plan.md, lote 0)
+
+New sheets (base props, casino, ship, scene pieces) are drawn on a fixed template so one script
+converts all of them; no converter per sheet.
+
+- `make-template.py <cols> <rows> <out.png> [--labels ... --spec out.json]`: the template PNG
+  (flat magenta background, cells of 1024 picture px = 128 game px at factor 8 with a dark
+  gutter, our default legend blown up in cell 0 as the scale figure, a label strip under each
+  row) and, with `--spec`, the piece list the converter reads. `template/plantilla_4x2.png` and
+  `template/example-spec.json` are the lote 0 test sheet's; `template/TARJETA_DE_PROMPT.md` is the
+  prompt card (Spanish) the owner pastes into his image generator.
+- `template/scale-figure.png` is rendered by `npx tsx tools/refs/template/scale-figure.ts` (Solen
+  at idle, 70x95); rerun it only if the default legend changes.
+- `sheet-from-template.py <sheet.png> <spec.json> --out <dir> [--review <png>]`: crops each piece
+  by the grid, keys out the background, finds the phase of the drawing against the 8x8 blocks,
+  shrinks by majority vote, quantises (`colors` in the spec, 0 keeps all), adds the 1 px line to
+  solid pieces (`kind: "prop"`; `"glow"` gets none) only where the edge is not already dark,
+  trims, anchors at the bottom centre, and writes `<dir>/<group>/<id>.png` + `manifest.json` in
+  `writeGroup`'s format plus the "Tu dibujo / En el juego" review sheet and a round-trip report
+  (mean colour distance per piece; REVISAR when far). `--out` is a staging dir, never `src/assets`.
+- `sheet-from-template.py ... --auto-grid`: for a sheet that came back from an image generator
+  (the owner's lote 0 test sheet, 2026-10-27: the grid redrawn at 1774x887 with thin lines, no
+  label strips, the scale figure redrawn, small things drawn far too big, 29 000 colours in one
+  cell). The cells are found in the sheet itself, each piece is cut to its drawing and resampled
+  to its `meters` from the spec (57 px/m, fitted inside), averaging the source pixels weighted by
+  how little key colour they carry (by distance and by hue, so magenta bleeding through gaps and
+  anti-aliased edges is left out) and dropping edge pixels that are still key tinted, then
+  quantised and outlined as usual. The round-trip report uses a looser bar there. Checked by eye
+  on that sheet: the seven props come out clean and at a consistent scale beside Solen.
+- `sheet-from-template.py --selftest <dir>`: builds a sheet from five approved camp sprites,
+  placed off the block grid on purpose, and checks they convert back pixel for pixel. Run it
+  after touching the script.
+
+- `base-head-from-ref.py [--study <dir>]`: the head of his bare female body
+  (`female-base-owner-reference.jpg`) as the **'base' face shape**, lifted whole like his Solen's
+  (face, eye, brow and mouth, his pixels), the skull under his hair continued in his base skin inside
+  our 'fine' head's skull (`base-head-skull.ts` → `base_head_skull.json`). Why (the owner, 2026-10-28):
+  the messy ponytail, cut from this picture, sat badly on the 'fine' and 'aurelia' heads; now it is
+  compatible with this head alone (`items/hair.ts` `heads`). The rule from here: **a hair lives on the
+  head it was painted over**; a hair wanted on two heads is two paintings.
+
+      npx tsx tools/refs/base-head-skull.ts
+      python3 -I tools/refs/base-head-from-ref.py --study <dir>

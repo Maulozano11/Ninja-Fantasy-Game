@@ -12,7 +12,8 @@ import { strings, useLang } from './i18n';
 import { soundManager } from './utils/audio';
 import { setAppNavigate } from './appNav';
 import type { AppView } from './appNav';
-import { loadHero, saveHero } from './game/saves';
+import { campaignFor, loadHero, saveCampaign, saveHero } from './game/saves';
+import type { CampaignState } from './campaign/state';
 import { getAppearance, withRomanHead } from './sprite/legacy';
 import { saveRun } from './game/missionRun';
 import { Menu } from 'lucide-react';
@@ -62,10 +63,17 @@ export default function App() {
   const [character, setCharacter] = useState<ShinobiCharacter>(() => saved ?? founderPreset);
   /** The creator was opened for a new game: finishing the ninja replaces the mission under way. */
   const [newGame, setNewGame] = useState(false);
+  // The world between missions: the saved hero's campaign (a hero without one gets one on arrival).
+  const [campaign, setCampaign] = useState<CampaignState | null>(() => (saved ? campaignFor(saved) : null));
   const keep = (c: ShinobiCharacter) => {
     setCharacter(c);
     setSaved(c);
     saveHero(c);
+    setCampaign(campaignFor(c));
+  };
+  const keepCampaign = (c: CampaignState) => {
+    setCampaign(c);
+    saveCampaign(c);
   };
   const [activeEncounter, setActiveEncounter] = useState<{
     title: string;
@@ -156,6 +164,8 @@ export default function App() {
           <MissionMode
             key={visit}
             hero={character}
+            campaign={campaign ?? campaignFor(character)}
+            onCampaign={keepCampaign}
             // Only what a mission leaves for good comes home; edits made in the creator meanwhile stay.
             onHeroReturn={(back) => back && character.id === back.id && keep({ ...character, scars: back.scars, traits: back.traits })}
           />

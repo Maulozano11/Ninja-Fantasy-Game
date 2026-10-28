@@ -4,7 +4,7 @@
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { LEGENDARY_PRESETS } from '../data/shinobiData';
+import { ALL_PRESETS } from '../data/shinobiData';
 import { renderSprite, type SpriteFrame } from './compose';
 import { legDepth, type DrawCtx, type Depth, type Side } from './ctx';
 import { footTurn } from './items/ankle';
@@ -14,7 +14,7 @@ import { GRID, partIndex, RES } from './raster';
 import { drawRig, frameCount, rigPoseFor } from './rig';
 import { CAMP_POSES, MOVE_POSES, SPRITE_POSES, type BodyType, type SpriteAppearance, type SpritePose } from './types';
 
-const REN = LEGENDARY_PRESETS.find((p) => p.character.id === 'preset_night')!.character;
+const REN = ALL_PRESETS.find((p) => p.character.id === 'preset_night')!.character;
 const look = (body: BodyType): SpriteAppearance => ({ ...structuredClone(getAppearance(REN)), body });
 const POSES = [...SPRITE_POSES, ...MOVE_POSES, ...CAMP_POSES] as SpritePose[];
 const SIDES: Side[] = ['N', 'F'];

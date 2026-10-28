@@ -29,7 +29,7 @@ import { gripAngle } from './grip';
 import { PixelTemplate, stampTemplate, TemplatePalette } from './rotsprite';
 import { FEMALE_HANDS } from './femaleBodyArt';
 import { ownerHand } from './ownerHands';
-import { isFemaleBody, type BodyType, type EyeSpecial, type SlotId, type SpriteAppearance } from './types';
+import { isFemaleBody, type BodyType, type EyeSpecial, type FaceShape, type SlotId, type SpriteAppearance } from './types';
 
 /**
  * Back-to-front draw order. Each item writes into whichever depths it needs
@@ -143,6 +143,12 @@ export interface ItemDef {
   hidesHair?: boolean;
   /** Body types that can wear it (all when missing): fitted pieces made for one figure. */
   bodies?: BodyType[];
+  /**
+   * Hair only: the face shapes it sits on (all when missing). A hair drawn on one head rides badly on
+   * another (the owner, 2026-10-28, on the messy ponytail over the Roman head: "no queda bien...
+   * bloquear ciertos pelos a cabezas no compatibles"); the creator hides it and random looks skip it.
+   */
+  heads?: FaceShape[];
 }
 
 /** An item's parts as chosen, every part filled in (unknown or missing versions take the default). */

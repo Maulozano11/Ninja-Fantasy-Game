@@ -5,7 +5,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { enemyCharacter, type EnemyKind } from '../battle/units';
-import { COMPANIONS } from '../data/missions';
+import { LEGACY_ROSTER } from '../data/missions';
 import { migrateCharacter } from '../rules/ninja';
 import type { ShinobiCharacter } from '../types/shinobi';
 import { renderSprite } from './compose';
@@ -20,8 +20,8 @@ const PLATE = '#ff00ff';
 const LEGACY_KEYS = ['slashed', 'emblem', 'plate'];
 
 const ENEMIES: ShinobiCharacter[] = (['rogue', 'hunter', 'jonin', 'raider'] as EnemyKind[]).flatMap((k) => [0, 1, 2, 3].map((n) => enemyCharacter(k, n)));
-// COMPANIONS holds Hana, Kenji and every legend preset
-const EVERYONE: ShinobiCharacter[] = [...COMPANIONS, ...ENEMIES];
+// LEGACY_ROSTER holds Hana, Kenji and every legend preset
+const EVERYONE: ShinobiCharacter[] = [...LEGACY_ROSTER, ...ENEMIES];
 
 const withBand = (hb: Partial<HeadbandChoice>, base = defaultAppearance()): SpriteAppearance => ({ ...base, headband: { ...base.headband, ...hb } });
 /** The same look with an old save's plate: slashed, an emblem and a magenta plate. */
@@ -74,7 +74,7 @@ describe('the headband is plain cloth', () => {
   });
 
   it('a saved hero with the old forehead plate loads as the cloth band', () => {
-    const preset = COMPANIONS.find((c) => c.id === 'preset_sunburst')!;
+    const preset = LEGACY_ROSTER.find((c) => c.id === 'preset_sunburst')!;
     const old = {
       ...preset,
       id: 'my_ninja',
@@ -99,7 +99,7 @@ describe('the headband is plain cloth', () => {
   });
 
   it('the old format (no look) keeps its headband as cloth, a rogue\'s scratched one on the forehead', () => {
-    const preset = COMPANIONS.find((c) => c.id === 'preset_storm')!;
+    const preset = LEGACY_ROSTER.find((c) => c.id === 'preset_storm')!;
     const old = { ...preset, appearance: undefined, headbandPosition: 'Rogue Scratched', ribbonStyle: 'Long Fluttering' } as unknown as ShinobiCharacter;
     const l = appearanceFromLegacy(old);
     assert.deepEqual(l.headband, { position: 'forehead', tails: true, cloth: preset.palette.headbandCloth });

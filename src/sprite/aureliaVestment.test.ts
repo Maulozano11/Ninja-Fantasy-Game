@@ -7,7 +7,7 @@ import { getItem } from './catalog';
 import { renderSprite } from './compose';
 import { FEMALE_BASE } from './femaleBaseArt';
 import type { PaintedPiece } from './painted';
-import { LEGENDARY_PRESETS } from '../data/shinobiData';
+import { ALL_PRESETS } from '../data/shinobiData';
 import { GRID, PARTS, partIndex, RES } from './raster';
 import { frameCount } from './rig';
 import {
@@ -138,7 +138,7 @@ describe("Aurelia's vestment", () => {
     // The owner's review: "unos pixeles de la espalda se ven cortados", "la mano en arrojada se ve
     // cortada". A pixel on the figure's edge is his line, never cloth or skin left open (her head, whose
     // hair has its own lit edge, and her staff's glow aside; the cast effect's runes sit over the hands).
-    const look0 = LEGENDARY_PRESETS.find((p) => p.character.id === 'preset_aurelia')!.character.appearance!;
+    const look0 = ALL_PRESETS.find((p) => p.character.id === 'preset_aurelia')!.character.appearance!;
     const skip = new Set(['head', 'held', 'none']);
     for (const pose of [...SPRITE_POSES, ...MOVE_POSES, ...CAMP_POSES] as SpritePose[]) {
       if (pose === 'cast') continue;
@@ -164,7 +164,7 @@ describe("Aurelia's vestment", () => {
     // turned bodice also left a dent at its front under the collar that her line closed round: a pixel of
     // background inside her dress. Near the neck the only enclosed empty pixels allowed are her hair's
     // own, which his picture has at rest too (carried with the head).
-    const look0 = LEGENDARY_PRESETS.find((p) => p.character.id === 'preset_aurelia')!.character.appearance!;
+    const look0 = ALL_PRESETS.find((p) => p.character.id === 'preset_aurelia')!.character.appearance!;
     const head = partIndex('head');
     /** The empty pixels a frame encloses (not reached from its border). */
     const pockets = (f: ReturnType<typeof renderSprite>): number[] => {

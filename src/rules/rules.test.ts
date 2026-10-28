@@ -2,7 +2,7 @@
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { DEFAULT_CHARACTER, LEGENDARY_PRESETS } from '../data/shinobiData';
+import { DEFAULT_CHARACTER, ALL_PRESETS } from '../data/shinobiData';
 import type { ShinobiCharacter } from '../types/shinobi';
 import type { SpriteAppearance } from '../sprite/types';
 import type { PartyState } from '../types/mission';
@@ -209,8 +209,8 @@ describe('clans', () => {
       preset_lyra: [44, 32, 18, 15, 7],
       preset_aurelia: [38, 41, 13, 15, 7],
     };
-    assert.deepEqual(LEGENDARY_PRESETS.map((p) => p.character.id).sort(), Object.keys(owner).sort());
-    for (const { character: c } of LEGENDARY_PRESETS) {
+    assert.deepEqual(ALL_PRESETS.map((p) => p.character.id).sort(), Object.keys(owner).sort());
+    for (const { character: c } of ALL_PRESETS) {
       const b = { level: c.level, stats: c.stats, clan: c.clan, shinobiClass: c.shinobiClass, armor: c.armorStyle, feats: c.selectedFeats };
       const add = (k: 'maxHp' | 'maxChakra' | 'armorClass' | 'jutsuSaveDC' | 'jutsuAttackBonus') => deriveStats(b)[k] - deriveStats(b, { clanBonus: false })[k];
       const keys = ['maxHp', 'maxChakra', 'armorClass', 'jutsuSaveDC', 'jutsuAttackBonus'] as const;
@@ -246,13 +246,13 @@ describe('clans', () => {
       appearance: {
         ...DEFAULT_CHARACTER.appearance!,
         body: 'female',
-        slots: { hair: { id: 'hair_long', colors: ['#1d1a2e'] }, top: { id: 'top_kimono', colors: ['#dcd6ee', '#3b3561'] }, held: { id: 'held_palm', colors: [] } },
+        slots: { hair: { id: 'hair_drifter', colors: ['#1d1a2e'] }, top: { id: 'top_kimono', colors: ['#dcd6ee', '#3b3561'] }, held: { id: 'held_palm', colors: [] } },
         // A save from before the headband was plain cloth still has the plate's fields.
         headband: { position: 'neck', tails: false, cloth: '#1e3a8a', plate: '#cbd5e1' } as SpriteAppearance['headband'],
         chakra: { color: 'blue', onCharge: true, onCast: true, onVictory: false },
       },
     };
-    assert.ok(!LEGENDARY_PRESETS.some((p) => p.character.id === 'preset_gentle'), 'she is gone');
+    assert.ok(!ALL_PRESETS.some((p) => p.character.id === 'preset_gentle'), 'she is gone');
     const now = migrateCharacter(saved);
     assert.equal(isLegend(now), false);
     const { appearance: lookNow, ...sheetNow } = now;

@@ -64,6 +64,9 @@ import { hashString } from '../../rules/rng';
 import { Bar, className, classShort, LogLines, PartyPanel, RecentEvents, SuppliesBar } from './PartyPanel';
 import { RestCamp } from './RestCamp';
 import { ShortStop } from './ShortStop';
+import { HomeScreen } from '../world/HomeScreen';
+import { applyMissionResult, passSeason, type CampaignState } from '../../campaign/state';
+import { MISSION_FACTION } from '../../settings/shinobi/factions';
 import { T, WEATHER_ES } from './missionText';
 
 // ---------------------------------------------------------------------------------------------
@@ -88,12 +91,17 @@ export interface MissionModeProps {
   hero: ShinobiCharacter;
   /** Your ninja back at the village after a mission, with its scars and traits (null if it died). */
   onHeroReturn: (hero: ShinobiCharacter | null) => void;
+  /** The world between missions, and how it changes (the app keeps and saves it). */
+  campaign: CampaignState;
+  onCampaign: (c: CampaignState) => void;
 }
 
-export function MissionMode({ hero, onHeroReturn }: MissionModeProps) {
+export function MissionMode({ hero, campaign, onCampaign, onHeroReturn }: MissionModeProps) {
   useLang();
   // A mission in progress picks up where it was left, even after leaving this screen.
   const [run, setRun] = useState<MissionRun | null>(() => loadRun());
+  // Between missions the hero is at home (Casa); the village board is where a mission is picked.
+  const [atVillage, setAtVillage] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
 
   useEffect(() => {
@@ -125,8 +133,24 @@ export function MissionMode({ hero, onHeroReturn }: MissionModeProps) {
     if (!run) return;
     const home = endMissionAtVillage(run.party);
     onHeroReturn(home.party.members.find((m) => m.id === run.heroId) ?? null);
+    // the mission's result goes into the campaign instead of being lost (docs/WORLD_DESIGN.md, section 2)
+    if (run.outcome === 'complete' || run.outcome === 'failed') {
+      const m = missionOf(run);
+      const done = run.outcome === 'complete';
+      onCampaign(
+        applyMissionResult(campaign, {
+          missionId: m.id,
+          rank: m.rank,
+          outcome: run.outcome,
+          factionId: MISSION_FACTION,
+          line: done ? `${m.name}: done.` : `${m.name}: failed.`,
+          lineEs: done ? `${m.nameEs ?? m.name}: cumplida.` : `${m.nameEs ?? m.name}: fallida.`,
+        }).state,
+      );
+    }
     saveRun(null);
     setRun(null);
+    setAtVillage(false);
   };
 
   const abandon = () => {
@@ -134,6 +158,7 @@ export function MissionMode({ hero, onHeroReturn }: MissionModeProps) {
     setRun(null);
   };
 
+  if (!run && !atVillage) return <HomeScreen hero={hero} campaign={campaign} onMission={() => setAtVillage(true)} onPassSeason={() => onCampaign(passSeason(campaign).state)} />;
   if (!run) return <Village hero={hero} onStart={start} />;
 
   const mission = missionOf(run);

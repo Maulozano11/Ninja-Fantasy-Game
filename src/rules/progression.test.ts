@@ -5,7 +5,7 @@
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { CLANS_DATA, DEFAULT_CHARACTER, JUTSUS_DATA, LEGENDARY_PRESETS, SHINOBI_CLASSES } from '../data/shinobiData';
+import { CLANS_DATA, DEFAULT_CHARACTER, JUTSUS_DATA, ALL_PRESETS, SHINOBI_CLASSES } from '../data/shinobiData';
 import { HANA, KENJI, RIVER_FOREST_PATROL } from '../data/missions';
 import { JUTSU } from '../battle/jutsu';
 import { unitFrom } from '../battle/units';
@@ -95,7 +95,7 @@ describe('a new ninja learns rank D and C jutsu, and its clan\'s ("d y c y los d
   });
 
   it('every legend made a new ninja of any type and class: only D, C and its clan\'s, of its nature and class, never twice', () => {
-    for (const { character: c } of LEGENDARY_PRESETS)
+    for (const { character: c } of ALL_PRESETS)
       for (const nature of NATURES)
         for (const cls of CLASSES) {
           const l = fitNewNinja(c.selectedJutsus, nature, c.clan, cls).loadout;
@@ -114,9 +114,9 @@ describe('a new ninja learns rank D and C jutsu, and its clan\'s ("d y c y los d
   });
 
   it('the legends keep their sheets: their jutsu above C stay, marked', () => {
-    const kaien = LEGENDARY_PRESETS.find((p) => p.character.id === 'preset_storm')!.character;
+    const kaien = ALL_PRESETS.find((p) => p.character.id === 'preset_storm')!.character;
     assert.deepEqual(aboveRank(kaien.selectedJutsus, kaien.clan).sort(), ['chidori_lightning_blade', 'kirin_thunder']);
-    for (const { character: c } of LEGENDARY_PRESETS) {
+    for (const { character: c } of ALL_PRESETS) {
       // Aurelia's S-rank slot is empty (Yasaka no Magatama removed; her sheet waits for the owner's jutsu).
       if (c.selectedJutsus.slot5Ultimate || c.id !== 'preset_aurelia')
         assert.ok(aboveRank(c.selectedJutsus, c.clan).includes(c.selectedJutsus.slot5Ultimate), `${c.id}: its S-rank stays`);
@@ -128,7 +128,7 @@ describe('a new ninja learns rank D and C jutsu, and its clan\'s ("d y c y los d
   it('only a new ninja is held to them: not a legend\'s own sheet, not a made ninja', () => {
     const fresh = { ...DEFAULT_CHARACTER, id: 'ninja_new' };
     assert.equal(learnsAsNew(fresh), true, 'a new game\'s sheet, a copy of a legend');
-    for (const { character: c } of LEGENDARY_PRESETS) {
+    for (const { character: c } of ALL_PRESETS) {
       assert.equal(isLegend(c), true, c.id);
       assert.equal(learnsAsNew(c), false, `${c.id}: keeps its sheet`);
     }
@@ -154,7 +154,7 @@ describe('a new ninja learns rank D and C jutsu, and its clan\'s ("d y c y los d
   });
 
   it('a legend picked as a starting point keeps its sheet on a type change: its S-rank becomes another of its class, empty only when none fits', () => {
-    for (const { character: c } of LEGENDARY_PRESETS)
+    for (const { character: c } of ALL_PRESETS)
       for (const nature of NATURES) {
         if (nature === natureOf(c)) continue;
         const r = fitToType(c, nature);
@@ -172,7 +172,7 @@ describe('a new ninja learns rank D and C jutsu, and its clan\'s ("d y c y los d
     // As Light: no Light S-rank, and the genjutsu and taijutsu ones are other classes'.
     assert.equal(fitToType(DEFAULT_CHARACTER, 'Light').loadout.slot5Ultimate, '');
     // Hiro (Taijutsu Master) with a taijutsu S-rank (once Shiori's, discarded by the owner on 2026-10-22).
-    const hiro = LEGENDARY_PRESETS.find((p) => p.character.id === 'preset_sunburst')!.character;
+    const hiro = ALL_PRESETS.find((p) => p.character.id === 'preset_sunburst')!.character;
     const taijutsuS = { ...hiro, selectedJutsus: { ...hiro.selectedJutsus, slot5Ultimate: 'night_guy_dragon' } };
     assert.equal(fitToType(taijutsuS, 'Fire').loadout.slot5Ultimate, 'night_guy_dragon', 'no element: it stays');
   });
@@ -284,7 +284,7 @@ describe('the explosive tag is an item, not a jutsu ("es un item o herramienta c
 describe('the chakra type is fixed once the ninja is made ("no se puede cambiar de tipo")', () => {
   it('a new ninja and the legends can change it; a made one cannot', () => {
     assert.equal(typeFixed(DEFAULT_CHARACTER), false);
-    for (const { character: c } of LEGENDARY_PRESETS) assert.equal(typeFixed(c), false, c.id);
+    for (const { character: c } of ALL_PRESETS) assert.equal(typeFixed(c), false, c.id);
     assert.equal(typeFixed(HANA), false);
     const made = asMade(DEFAULT_CHARACTER);
     assert.equal(typeFixed(made), true);

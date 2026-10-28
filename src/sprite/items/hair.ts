@@ -1,3 +1,4 @@
+import type { FaceShape } from '../types';
 // Hairstyles. Names are original ("inspired by") to keep the game clear of
 // third-party trademarks.
 //
@@ -1658,7 +1659,19 @@ const nightHairColor = (hair: string) => (ch: string, hex: string) => (NIGHT_HAI
 /** His Roman hair recoloured: his black line stays, his blues move the way his middle blue does. */
 const romanHairColor = (hair: string) => (ch: string, hex: string) => (ROMAN_HAIR_LINE.includes(ch) ? hex : retintHex(hex, ROMAN_HAIR_BASE, hair));
 
-export const HAIR_ITEMS: ItemDef[] = [
+/**
+ * Hair cut from the game on 2026-10-28 (the owner, from the review sheet docs/mockups/cabezas-propuesta.png:
+ * "valiant en adelante se quedan; todo lo de ribbon para atrás que no mencioné se va"; he kept tousled,
+ * drifter, surge, ascended and storm2 for a redesign). Their definitions stay below until the templates
+ * are cleaned out; the catalog, the pickers and random looks never see them, and a saved look wearing one
+ * is moved to hair_tousled by migrateAppearance (legacy.ts, RETIRED_HAIR).
+ */
+export const RETIRED_HAIR = new Set(['hair_sunburst', 'hair_raven', 'hair_warlord', 'hair_flash', 'hair_scholar', 'hair_gravity', 'hair_lowtail', 'hair_storm', 'hair_silver', 'hair_lion', 'hair_crest', 'hair_midnight', 'hair_founder', 'hair_helm', 'hair_long', 'hair_pony', 'hair_buns', 'hair_bob', 'hair_crop', 'hair_bristle', 'hair_windward', 'hair_bowl', 'hair_exile', 'hair_chosen', 'hair_youth', 'hair_gale', 'hair_crown', 'hair_charlotte', 'hair_ribbon']);
+
+/** Hair kept for a redesign up to the valiant standard (the owner, 2026-10-28). */
+export const HAIR_TO_REDESIGN = ['hair_tousled', 'hair_drifter', 'hair_surge', 'hair_ascended', 'hair_storm2', 'hair_messy_ponytail'];
+
+const ALL_HAIR_ITEMS: ItemDef[] = [
   {
     id: 'hair_none',
     slot: 'hair',
@@ -1821,6 +1834,7 @@ export const HAIR_ITEMS: ItemDef[] = [
   {
     id: 'hair_valiant',
     slot: 'hair',
+    heads: ['valiant', 'roman', 'founder', 'night'],
     name: 'Valiant Spikes',
     desc: 'Spiky brown hair: two spikes standing up from the crown, locks fanning out over the back of the head, a fringe of strands over the brow, a lock between the eyes and a sideburn before the ear.',
     colors: hairColor(VALIANT_HAIR_BASE),
@@ -1837,6 +1851,7 @@ export const HAIR_ITEMS: ItemDef[] = [
   {
     id: 'hair_night',
     slot: 'hair',
+    heads: ['night', 'roman', 'founder', 'valiant'],
     name: 'Night Spikes',
     desc: 'Spiky black-blue hair: spikes standing up from the crown and fanning out to both sides, a long fringe of strands between the eyes, a lock down the cheek over the ear.',
     colors: hairColor(NIGHT_HAIR_BASE),
@@ -1854,6 +1869,7 @@ export const HAIR_ITEMS: ItemDef[] = [
   {
     id: 'hair_dawn_bun',
     slot: 'hair',
+    heads: ['aurelia', 'fine'],
     name: 'Dawn Bun',
     desc: 'Golden hair gathered into a braided bun at the back of the head with a gold ornament, side-swept bangs and a long lock framing each side of the face.',
     colors: [
@@ -1881,6 +1897,7 @@ export const HAIR_ITEMS: ItemDef[] = [
   {
     id: 'hair_founder_spikes',
     slot: 'hair',
+    heads: ['founder', 'roman', 'valiant', 'night'],
     name: "Founder's Spikes",
     desc: 'Spiky dark slate hair: short spikes all round the crown, locks over the brow with a long one between the eyes, a sideburn before the ear and locks beside the far cheek. Painted by the owner for Solen.',
     colors: hairColor(FOUNDER_HAIR_BASE),
@@ -1899,6 +1916,7 @@ export const HAIR_ITEMS: ItemDef[] = [
   {
     id: 'hair_messy_ponytail',
     slot: 'hair',
+    heads: ['base'],
     name: 'Messy Ponytail',
     desc: 'Black hair in tufts over the crown, tied high in a messy tail at the back, a fringe swept over the far eye and a lock before the near cheek.',
     colors: hairColor(BASE_HAIR_BASE),
@@ -1913,6 +1931,7 @@ export const HAIR_ITEMS: ItemDef[] = [
   {
     id: 'hair_roman',
     slot: 'hair',
+    heads: ['roman', 'founder', 'valiant', 'night'],
     name: 'Roman Spikes',
     desc: 'Dark spiky hair: a crown of blue-black locks lit in grey, spikes over the back of the head and the far temple, strands over the brow, locks framing the ear and a tail down the nape.',
     colors: hairColor(ROMAN_HAIR_BASE),
@@ -1929,3 +1948,9 @@ export const HAIR_ITEMS: ItemDef[] = [
     },
   },
 ];
+
+// The generic hairs (drawn by hairStyle) sit on the generic and Roman heads; the owner's heads have their own.
+const GENERIC_HEADS: FaceShape[] = ['roman', 'founder', 'valiant', 'night'];
+for (const h of ALL_HAIR_ITEMS) if (!h.heads && h.id !== 'hair_none') h.heads = GENERIC_HEADS;
+
+export const HAIR_ITEMS: ItemDef[] = ALL_HAIR_ITEMS.filter((h) => !RETIRED_HAIR.has(h.id));

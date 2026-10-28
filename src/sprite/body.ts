@@ -17,6 +17,7 @@ import { type PaintedPiece, segAngle, skinTone, stampPiece } from './painted';
 import { DAWN_HAND_FIST, DAWN_HAND_LINE, DAWN_HAND_NEAR, DAWN_HAND_SKIN } from './aureliaHandsArt';
 import { DAWN_EYE_COLORS, DAWN_EYES, DAWN_IRIS } from './aureliaEyeArt';
 import { FOUNDER_FACE_KIND, FOUNDER_HEAD, FOUNDER_IRIS, FOUNDER_SKIN } from './founderFaceArt';
+import { BASE_FACE_KIND, BASE_HEAD, BASE_IRIS, BASE_SKIN } from './baseHeadArt';
 import { KEEN_BROW_HAIR, KEEN_BROWS, KEEN_EYE_COLORS, KEEN_EYES, KEEN_IRIS } from './lyraEyeArt';
 import { LONG_NAPE, LONG_NECK_BACK, LONG_NECK_W } from './neck';
 import { LYRA_FACE_FAR_LINE, lyraFaceCells, stampLyraFace } from './lyraFace';
@@ -608,7 +609,7 @@ function drawHead(g: DrawCtx): void {
     drawFace(g);
     return;
   }
-  if (g.look.faceShape === 'founder') {
+  if (g.look.faceShape === 'founder' || g.look.faceShape === 'base') {
     drawFounderHead(g);
     drawFace(g);
     return;
@@ -682,6 +683,13 @@ function drawPaintedHead(g: DrawCtx, ph: PaintedHead): void {
 function drawFounderHead(g: DrawCtx): void {
   const { nx, ny } = faceAnchor(g);
   const at = v((nx + 0.5) / RES, (ny + 0.5) / RES);
+  // His bare female body's head ('base', src/sprite/baseHeadArt.ts) is lifted whole the same way: the head
+  // his messy ponytail was drawn on (the owner, 2026-10-28: that hair sits on this head alone).
+  if (g.look.faceShape === 'base') {
+    const iris = g.look.eyeColor || BASE_IRIS;
+    stampPiece(g, 'head.body', BASE_HEAD, at, BASE_HEAD.angle, 'head', (_ch, hex) => (BASE_FACE_KIND[hex] === 'iris' ? retintHex(hex, BASE_IRIS, iris) : BASE_FACE_KIND[hex] === 'line' || BASE_FACE_KIND[hex] === 'white' ? hex : skinTone(hex, BASE_SKIN, g.look.skin)));
+    return;
+  }
   const iris = g.look.eyeColor || FOUNDER_IRIS;
   stampPiece(g, 'head.body', FOUNDER_HEAD, at, FOUNDER_HEAD.angle, 'head', (_ch, hex) => (FOUNDER_FACE_KIND[hex] === 'red' ? retintHex(hex, FOUNDER_IRIS, iris) : FOUNDER_FACE_KIND[hex] === 'line' || FOUNDER_FACE_KIND[hex] === 'white' ? hex : skinTone(hex, FOUNDER_SKIN, g.look.skin)));
 }
@@ -702,7 +710,7 @@ function drawFounderHead(g: DrawCtx): void {
  * square: the reference's original strong jaw, with a flat jaw line.
  * (valiant, night, roman and founder, the owner's heads, are his pixels whole: see drawPaintedHead, drawFounderHead.)
  */
-const FACE_LEFT: Record<Exclude<FaceShape, 'valiant' | 'night' | 'founder' | 'fine' | 'aurelia' | 'roman'>, string[]> = {
+const FACE_LEFT: Record<Exclude<FaceShape, 'valiant' | 'night' | 'founder' | 'fine' | 'aurelia' | 'roman' | 'base'>, string[]> = {
   tapered: ['osbbbbb', 'ossbbbb', '.osbbbb', '..osbbb', '...osbb', '....osb', '.....os', '......o', '.......', '.......'],
   soft: ['osbbbbb', 'ossbbbb', 'ossbbbb', '.osbbbb', '..osbbb', '...osbb', '....osb', '.....oo', '.......', '.......'],
   square: ['osbbbbb', 'ossbbbb', 'osDsbbb', 'ossbbbb', '.osbbbs', '..osbbs', '...osbs', '....ooo', '.......', '.......'],
@@ -711,7 +719,7 @@ const FACE_LEFT: Record<Exclude<FaceShape, 'valiant' | 'night' | 'founder' | 'fi
 const faceLeft = (g: DrawCtx): string[] => {
   const s = g.look.faceShape;
   // (Lyra's face, 'fine', has the default near cheek under her hair)
-  return (s && s !== 'valiant' && s !== 'night' && s !== 'founder' && s !== 'fine' && s !== 'aurelia' && s !== 'roman' && FACE_LEFT[s]) || FACE_LEFT.tapered;
+  return (s && s !== 'valiant' && s !== 'night' && s !== 'founder' && s !== 'fine' && s !== 'aurelia' && s !== 'roman' && s !== 'base' && FACE_LEFT[s]) || FACE_LEFT.tapered;
 };
 
 /** Aurelia's face (aureliaFaceArt.ts) in fine pixels, its pivot on the face anchor. */
@@ -836,7 +844,7 @@ export function faceCells(g: DrawCtx, skipBack = 0): Set<number> {
     if (x >= 0 && y >= 0 && x < GRID && y < GRID) out.add(y * GRID + x);
   };
   const ph = paintedHead(g);
-  const head = g.look.faceShape === 'founder' ? FOUNDER_HEAD : ph?.head;
+  const head = g.look.faceShape === 'founder' ? FOUNDER_HEAD : g.look.faceShape === 'base' ? BASE_HEAD : ph?.head;
   if (head) {
     // The owner's head from the lash row down, from the column the other shapes' near side starts at.
     const ox = nx - head.pivot[0];
@@ -934,8 +942,8 @@ function drawFace(g: DrawCtx): void {
     else if (ch in colors) L.set(x, y, colors[ch], 3, 'head', F_NO_OUTLINE);
   };
   const ph = paintedHead(g);
-  if (g.look.faceShape === 'founder') {
-    // His Solen's eyes and mouth are in his head's pixels. The template draws his eyes over only when
+  if (g.look.faceShape === 'founder' || g.look.faceShape === 'base') {
+    // His Solen's eyes and mouth are in his head's pixels (his base body's head too). The template draws his eyes over only when
     // his picture does not show them: shut or lowered lids, another eye shape, the clans' special eyes
     // (in full, its skin letters in the character's skin, so his open eye never shows under a lid).
     if (closed || lowered || shape !== 'standard' || (sp && sp !== 'none')) {
@@ -1085,7 +1093,7 @@ function drawFace(g: DrawCtx): void {
 
   // Brows (hair-colored), two rows above the lash; most bangs cover them. His eyes bring their own, and
   // his Solen's head has his brows in its pixels.
-  if (his || g.look.faceShape === 'founder') return;
+  if (his || g.look.faceShape === 'founder' || g.look.faceShape === 'base') return;
   if (lyra) {
     // Hers: her pixels, long and slanting down to the inner corner, in her hair's reds moved the way the
     // hair colour moves her hair's mid red.

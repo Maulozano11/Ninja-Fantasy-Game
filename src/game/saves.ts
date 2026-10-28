@@ -4,9 +4,14 @@
 import type { ShinobiCharacter } from '../types/shinobi';
 import { migrateCharacter } from '../rules/ninja';
 import { asMade } from '../rules/progression';
+import { migrateCampaign, newCampaign, NO_PAST, type CampaignState } from '../campaign/state';
+import { rivalOf, SHINOBI_FACTION_IDS } from '../settings/shinobi/factions';
+import { originDef } from '../settings/shinobi/origins';
+import { hashString } from '../rules/rng';
 
 const HERO_KEY = 'shinobi5e.hero.v1';
 const ROSTER_KEY = 'shinobi5e.roster.v1';
+const CAMPAIGN_KEY = 'shinobi5e.campaign.v1';
 /** The roster keeps the latest ninjas made, newest first. */
 export const ROSTER_MAX = 12;
 
@@ -63,4 +68,38 @@ export function loadRoster(): SavedNinja[] {
 
 export function forgetNinja(id: string): void {
   write(ROSTER_KEY, loadRoster().filter((s) => s.character.id !== id));
+}
+
+const isCampaign = (c: unknown): c is CampaignState =>
+  !!c && typeof c === 'object' && (c as CampaignState).version === 1 && typeof (c as CampaignState).heroId === 'string' && typeof (c as CampaignState).seed === 'number';
+
+/** The campaign saved on this device, if it is this hero's (one campaign per device for now). */
+export function loadCampaign(hero: ShinobiCharacter): CampaignState | null {
+  const c = read<unknown>(CAMPAIGN_KEY);
+  return isCampaign(c) && c.heroId === hero.id ? migrateCampaign(c) : null;
+}
+
+export function saveCampaign(c: CampaignState | null): void {
+  if (c) write(CAMPAIGN_KEY, c);
+  else {
+    try {
+      localStorage.removeItem(CAMPAIGN_KEY);
+    } catch {
+      // nothing to forget
+    }
+  }
+}
+
+/**
+ * The hero's campaign: the saved one, or a new one from the hero's origin. A hero saved before
+ * campaigns existed (no originId) gets the neutral "no past" the first time it comes home
+ * (docs/WORLD_DESIGN.md, section 2), as migrateCharacter does with old sheets.
+ */
+export function campaignFor(hero: ShinobiCharacter): CampaignState {
+  const saved = loadCampaign(hero);
+  if (saved) return saved;
+  const origin = originDef(hero.originId) ?? NO_PAST;
+  const c = newCampaign(hashString(`${hero.id}:${Date.now()}`), 'shinobi', origin, hero.id, hero.clan, SHINOBI_FACTION_IDS, rivalOf);
+  saveCampaign(c);
+  return c;
 }

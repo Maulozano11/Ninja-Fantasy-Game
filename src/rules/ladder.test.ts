@@ -4,7 +4,7 @@
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { CLANS_DATA, DEFAULT_CHARACTER, JUTSUS_DATA, LEGENDARY_PRESETS, SHINOBI_CLASSES, SHINOBI_FEATS } from '../data/shinobiData';
+import { CLANS_DATA, DEFAULT_CHARACTER, JUTSUS_DATA, ALL_PRESETS, SHINOBI_CLASSES, SHINOBI_FEATS } from '../data/shinobiData';
 import { HANA, KENJI, RIVER_FOREST_PATROL } from '../data/missions';
 import { enemyCharacter, enemyUnit, unitFrom } from '../battle/units';
 import { JUTSU } from '../battle/jutsu';
@@ -119,7 +119,7 @@ describe('the ladder: rank A at level 7, rank S at level 10, for every ninja ("a
   });
 
   it('jutsu already on a sheet stay, marked: the legends below level 10 keep their S-rank', () => {
-    for (const { character: c } of LEGENDARY_PRESETS) {
+    for (const { character: c } of ALL_PRESETS) {
       assert.ok(c.level < RANK_S_LEVEL, `${c.id} is below level 10`);
       const g = growthOf(c, natureOf(c));
       // Aurelia (a Light medic) lost Yasaka no Magatama with nothing of rank S to learn in its place (her
@@ -129,7 +129,7 @@ describe('the ladder: rank A at level 7, rank S at level 10, for every ninja ("a
       assert.ok(Object.values(c.selectedJutsus).includes(c.selectedJutsus.slot5Ultimate));
     }
     // At level 10 it is no longer above its rank; at 7 a rank A jutsu is not either.
-    const kaien = LEGENDARY_PRESETS.find((p) => p.character.id === 'preset_storm')!.character;
+    const kaien = ALL_PRESETS.find((p) => p.character.id === 'preset_storm')!.character;
     assert.deepEqual(aboveRank(kaien.selectedJutsus, kaien.clan, undefined, kaien.level).sort(), ['chidori_lightning_blade', 'kirin_thunder']);
     assert.deepEqual(aboveRank(kaien.selectedJutsus, kaien.clan, undefined, 7), ['kirin_thunder']);
     assert.deepEqual(aboveRank(kaien.selectedJutsus, kaien.clan, undefined, 10), []);
@@ -137,7 +137,7 @@ describe('the ladder: rank A at level 7, rank S at level 10, for every ninja ("a
 
   it('saves load as they are: no migration (the hero, the roster, a mission under way)', () => {
     const high = { ...ninja(10), created: true, natureGrowth: 'element' as const, extraNatures: ['Water', 'Wind'] as ChakraNature[], selectedFeats: ['iron_skin', THIRD_ELEMENT_FEAT] };
-    const legends = LEGENDARY_PRESETS.map((p) => roundTrip(p.character));
+    const legends = ALL_PRESETS.map((p) => roundTrip(p.character));
     storage({ 'shinobi5e.hero.v1': high, 'shinobi5e.roster.v1': [high, ...legends].map((character) => ({ character, savedAt: 1 })) });
     const hero = loadHero()!;
     assert.deepEqual(hero.selectedJutsus, high.selectedJutsus);
@@ -160,7 +160,7 @@ describe('the ladder: rank A at level 7, rank S at level 10, for every ninja ("a
       for (const id of Object.values(sheet.selectedJutsus).filter((id) => JUTSU[id])) assert.ok(u.jutsus.includes(id), `${kind}: ${id}`);
     }
     assert.ok(enemyUnit('jonin', 1, { x: 1, z: 1 }, 'normal').jutsus.includes('chidori_lightning_blade'), 'the jonin keeps its rank A');
-    for (const c of [HANA, KENJI, ...LEGENDARY_PRESETS.map((p) => p.character)]) {
+    for (const c of [HANA, KENJI, ...ALL_PRESETS.map((p) => p.character)]) {
       const u = unitFrom(c, { team: 'party', pos: { x: 1, z: 1 } });
       for (const id of Object.values(c.selectedJutsus).filter((id) => JUTSU[id])) assert.ok(u.jutsus.includes(id), `${c.id}: ${id}`);
     }
@@ -192,7 +192,7 @@ describe('Triple Nature ("feat del tercer elemento opcion a"): level 9 and a sec
     assert.deepEqual(featNeeds(TRIPLE, ninja(6)), ['level', 'secondElement']);
     assert.equal(featOpen(TRIPLE, ninja(10, second)), true);
     // A legend's own second element counts (Kaien's), though he is far below level 9.
-    const kaien = LEGENDARY_PRESETS.find((p) => p.character.id === 'preset_storm')!.character;
+    const kaien = ALL_PRESETS.find((p) => p.character.id === 'preset_storm')!.character;
     assert.equal(hasSecondElement(kaien), true);
     assert.deepEqual(featNeeds(TRIPLE, kaien), ['level']);
     for (const f of SHINOBI_FEATS) if (!f.requires) assert.equal(featOpen(f, ninja(1)), true, f.id);

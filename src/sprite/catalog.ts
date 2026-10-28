@@ -9,7 +9,7 @@ import { BOTTOM_ITEMS, HAND_ITEMS, TOP_ITEMS, WAIST_ITEMS } from './items/clothe
 import { FEET_ITEMS } from './items/feet';
 import { HAIR_ITEMS } from './items/hair';
 import { NIGHT_ITEMS } from './items/night';
-import type { BodyType, SlotId } from './types';
+import type { BodyType, FaceShape, SlotId } from './types';
 
 export const ALL_ITEMS: ItemDef[] = [
   ...HAIR_ITEMS,
@@ -36,6 +36,8 @@ export function getItem(id: string): ItemDef | undefined {
 
 /** Whether a body type can wear the item (see ItemDef.bodies). */
 export const fitsBody = (d: ItemDef, body: BodyType): boolean => !d.bodies || d.bodies.includes(body);
+/** Whether a hair sits on this face shape (ctx.ts ItemDef.heads); every other item fits every head. */
+export const fitsHead = (d: ItemDef, face: FaceShape | undefined): boolean => !d.heads || !face || d.heads.includes(face);
 
 export function itemsForSlot(slot: SlotId | 'accessory'): ItemDef[] {
   return ALL_ITEMS.filter((d) => d.slot === slot);

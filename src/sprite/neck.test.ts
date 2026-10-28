@@ -5,8 +5,8 @@
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { LEGENDARY_PRESETS } from '../data/shinobiData';
-import { COMPANIONS, HANA, RIVER_FOREST_PATROL } from '../data/missions';
+import { ALL_PRESETS } from '../data/shinobiData';
+import { LEGACY_ROSTER, HANA, RIVER_FOREST_PATROL } from '../data/missions';
 import { loadRun, saveRun, startRun } from '../game/missionRun';
 import { loadHero, loadRoster } from '../game/saves';
 import { migrateCharacter } from '../rules/ninja';
@@ -24,7 +24,7 @@ function storage(items: Record<string, unknown>): void {
   (globalThis as { localStorage?: unknown }).localStorage = { getItem: (k: string) => m.get(k) ?? null, setItem: (k: string, v: string) => m.set(k, v), removeItem: (k: string) => m.delete(k) };
 }
 
-const aiden = LEGENDARY_PRESETS.find((p) => p.character.id === 'preset_reference_aiden')!.character;
+const aiden = ALL_PRESETS.find((p) => p.character.id === 'preset_reference_aiden')!.character;
 /** A made ninja on Aiden's look: not a legend's copy, so only the look's migration applies. */
 const made = (look: SpriteAppearance): ShinobiCharacter => ({ ...aiden, id: 'ninja_neck', appearance: look });
 
@@ -75,15 +75,15 @@ describe('the neck option, removed', () => {
   });
 
   it("keeps his Lyra's long neck, the neck she has today (her preset's, not a creator option)", () => {
-    const lyra = LEGENDARY_PRESETS.find((p) => p.character.id === 'preset_lyra')!.character.appearance!;
+    const lyra = ALL_PRESETS.find((p) => p.character.id === 'preset_lyra')!.character.appearance!;
     assert.equal(lyra.neck, 'long');
     assert.equal(migrateAppearance(lyra), lyra);
     assert.equal(migrateCharacter(made(lyra)).appearance!.neck, 'long');
   });
 
   it("nobody else has one: no other legend, companion or random ninja", () => {
-    for (const p of LEGENDARY_PRESETS) if (p.character.id !== 'preset_lyra') assert.ok(!('neck' in p.character.appearance!), p.character.id);
-    for (const c of COMPANIONS) if (c.appearance && c.id !== 'preset_lyra') assert.ok(!('neck' in c.appearance), c.id);
+    for (const p of ALL_PRESETS) if (p.character.id !== 'preset_lyra') assert.ok(!('neck' in p.character.appearance!), p.character.id);
+    for (const c of LEGACY_ROSTER) if (c.appearance && c.id !== 'preset_lyra') assert.ok(!('neck' in c.appearance), c.id);
     for (let i = 0; i < 200; i++) assert.ok(!('neck' in randomAppearance()));
   });
 });

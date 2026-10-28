@@ -10,7 +10,7 @@
     "preview": "vite preview",
     "clean": "rm -rf dist server.js",
     "lint": "tsc --noEmit",
-    "test": "tsx --test src/rules/*.test.ts src/game/*.test.ts src/battle/*.test.ts src/sprite/*.test.ts src/components/battle/*.test.ts",
+    "test": "tsx --test src/rules/*.test.ts src/game/*.test.ts src/battle/*.test.ts src/sprite/*.test.ts src/components/battle/*.test.ts src/campaign/*.test.ts",
     "sprites": "tsx scripts/sprite-sheet.ts"
   },
   "dependencies": {

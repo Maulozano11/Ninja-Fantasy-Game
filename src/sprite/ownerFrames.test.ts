@@ -4,7 +4,7 @@
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { LEGENDARY_PRESETS } from '../data/shinobiData';
+import { ALL_PRESETS } from '../data/shinobiData';
 import { renderSprite, spriteLayers } from './compose';
 import { LYRA_READ } from './items/lyraReadArt';
 import { LYRA_SIT } from './items/lyraSitArt';
@@ -14,7 +14,7 @@ import { GRID } from './raster';
 import { frameCount, READ_KEYS, SIT_KEYS } from './rig';
 import type { BodyType, SpriteAppearance, SpritePose } from './types';
 
-const lyra = LEGENDARY_PRESETS.find((p) => p.character.id === 'preset_lyra')!.character.appearance!;
+const lyra = ALL_PRESETS.find((p) => p.character.id === 'preset_lyra')!.character.appearance!;
 
 /** His frame as he drew it: every piece at the fine pixel of its joint he drew it on (its `at`). */
 function his(pieces: OwnerPiece[]): Map<number, string> {
@@ -123,8 +123,8 @@ describe("the owner's own frames of Lyra", () => {
     assert.ok(wearsHisFigure(lyra));
     assert.ok(!wearsHisFigure({ ...lyra, body: 'male' }));
     assert.ok(!wearsHisFigure({ ...lyra, faceShape: 'tapered' }));
-    assert.ok(!wearsHisFigure({ ...lyra, slots: { ...lyra.slots, hair: { id: 'hair_long', colors: [] } } }));
-    const other = renderSprite({ ...lyra, slots: { ...lyra.slots, hair: { id: 'hair_long', colors: [] } } }, 'read', 0);
+    assert.ok(!wearsHisFigure({ ...lyra, slots: { ...lyra.slots, hair: { id: 'hair_drifter', colors: [] } } }));
+    const other = renderSprite({ ...lyra, slots: { ...lyra.slots, hair: { id: 'hair_drifter', colors: [] } } }, 'read', 0);
     assert.ok(differing(other.rgba, his(LYRA_READ[0])) > 100, 'drawn on the rig');
   });
 

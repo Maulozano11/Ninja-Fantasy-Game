@@ -5,7 +5,7 @@ import { describe, it } from 'node:test';
 import { getItem } from './catalog';
 import { renderSprite } from './compose';
 import { LYRA_RAPIER, LYRA_SWORD_BLADE, LYRA_SWORD_GUARD } from './items/lyraSwordArt';
-import { DEFAULT_CHARACTER, LEGENDARY_PRESETS } from '../data/shinobiData';
+import { DEFAULT_CHARACTER, ALL_PRESETS } from '../data/shinobiData';
 import { GRID } from './raster';
 import { frameCount, rigPoseFor } from './rig';
 import type { SpriteAppearance, SpritePose } from './types';
@@ -35,7 +35,7 @@ describe('Lyra gilded rapier', () => {
   });
 
   it("stows on Lyra's back with no bit of the blade showing past her far side", () => {
-    const lyra = LEGENDARY_PRESETS.find((p) => p.character.id === 'preset_lyra')!.character.appearance!;
+    const lyra = ALL_PRESETS.find((p) => p.character.id === 'preset_lyra')!.character.appearance!;
     const empty = { ...lyra, slots: { ...lyra.slots, held: undefined } };
     for (const [pose, stowed] of [['handsigns', false], ['read', false], ['idle', true], ['walk', true], ['run', true], ['cast', true]] as [SpritePose, boolean][]) {
       const n = frameCount(rigPoseFor(pose, undefined, stowed ? undefined : lyra.slots.held!.id));

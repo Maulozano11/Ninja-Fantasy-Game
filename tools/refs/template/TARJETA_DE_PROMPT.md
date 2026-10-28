@@ -288,3 +288,46 @@ margen entre cuadros. PNG.
 
 Si cambia la posición del cuerpo entre cuadros, la línea para repetir es: *"el cuerpo y la cabeza
 quedan exactamente iguales en los 5 cuadros; solo cambian los brazos"*.
+
+## 8. La pantalla Casa · el fondo pintado y las piezas de interfaz
+
+Su referencia: `docs/reference/casa-screen-owner-reference.png` (2026-10-28, su generador: la
+sala del clan de noche con la interfaz encima). Como en el bacará, el juego dibuja la interfaz y
+los datos: lo que hace falta es **la sala sin interfaz** y **las piezas** por separado.
+
+**A) El fondo** (clase "pintado completo", `docs/scene-art-plan.md` 9b), con su imagen adjunta:
+
+```
+MISMA SALA, misma luz y mismo encuadre que la imagen adjunta, pero VACÍA: quita todos los
+paneles, textos, barras, botones, retratos y el estandarte de la izquierda. Deja solo la sala del
+clan de noche: las columnas de madera, los faroles rojos y dorados encendidos, los estandartes
+rojos con el emblema dorado colgando de las vigas, el arce rojo y los bonsáis, la terraza al
+fondo con las montañas y la luna. El centro de la imagen con poco detalle y algo más oscuro (ahí
+van los paneles). Panorámico 16:9, 1920×1080, PNG, sin magenta ni morado.
+```
+
+**B) La hoja de piezas**, en la plantilla magenta (como `casino-ui-sheet`), fila por fila:
+
+```
+Hoja de piezas de interfaz sobre fondo magenta puro (#FF00FF), cada pieza separada, sin texto:
+Fila 1: un estandarte rojo colgante con borde dorado y remate en pico, vacío (sin letras), 420×900;
+el mismo estandarte en versión corta, 420×420.
+Fila 2: marco de panel negro translúcido con filete dorado fino y esquinas ornamentadas, en tres
+anchos (600×200, 900×300, 1200×900), el interior vacío.
+Fila 3: iconos dorados de 96×96: monedas apiladas (riqueza), flor de lis (reputación), pergamino
+(crónica), brújula (en casa), espadas cruzadas (salir de misión), sol/brújula (pasar la estación).
+Fila 4: emblemas de facción de 96×96, un color cada uno: clan Mirai (llama, rojo), clan Kōton
+(engranaje o yunque, gris acero), clan Ryusei (estrella fugaz, azul), clan Northstar (estrella
+polar, blanco azulado), la aldea (puerta torii, verde), los renegados (máscara rota, negro y
+rojo), el santuario del bosque (hoja de arce, naranja).
+Fila 5: marcas de nivel de 48×48: triángulo verde arriba, triángulo azul arriba, rombo gris,
+triángulo rojo abajo; una barra dorada vacía y una llena, 600×28 cada una.
+Fila 6: botón rojo con borde dorado 600×150 y botón negro con borde dorado 600×150, vacíos.
+PNG, 3200×2400, sin morado fuera del magenta de fondo.
+```
+
+**C) Las viñetas de la Crónica** (una por beat, 840×380, sin texto): la sala del clan de noche
+con siluetas (la que ya está en su referencia), el patio al atardecer, el camino del bosque, la
+puerta de la aldea. Se piden una a una con el preámbulo y "misma paleta que la sala del clan".
+
+La maqueta con nuestros datos en su disposición: `docs/mockups/casa-owner-style-mockup.png`.

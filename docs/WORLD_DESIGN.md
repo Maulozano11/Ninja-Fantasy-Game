@@ -1,9 +1,43 @@
-# Propuesta: el mundo entre misiones (campaña, sociedad, linaje, reputación y riqueza)
+# Propuesta: el mundo entre misiones (campaña, sociedad, linaje, reputación y riqueza) (respondida)
 
-> **Estado: propuesta, esperando las respuestas del dueño** (sección 14). Lo que él decidió el
-> 2026-10-27 en la conversación ya está escrito como decidido (sección 0). Nada de esto está
-> construido. Cuando responda, las reglas acordadas pasan a `GAMEPLAY_DESIGN.md` y
-> `MISSION_DESIGN.md` (en inglés), como se hizo con `rest-and-cinematics-proposal.md`.
+Respuestas del dueño, 2026-10-27: `W1b W2b W3b W4a W5a W6a W7a W8b W9a W10a W11a W12a`
+
+Difieren de la recomendación:
+
+- **W7a:** un hijo es jugable **a los 18 años** del mundo (no a los 14); lo que falte lo cubre el
+  salto de tiempo o el evento paranormal.
+
+Además de las letras, el dueño añadió (sus palabras resumidas; el detalle va en cada sección):
+
+- **Estatus** (sección 6b, nuevo): *"si tienes estatus, riqueza y posición de poder tienes mucha
+  ventaja con las mujeres en tiradas de cortejo, facilitando tanto el cortejo como la permisividad
+  de tus otras parejas (ejemplo: capitán de nave espacial millonario que ha salvado múltiples veces
+  la vida de su tripulación y pareja tiene permitido cortejar y tener otras parejas por méritos
+  increíbles como esos). Podría ser un rasgo en sí: 1 Don nadie hasta 10 World Leader, pudiendo
+  hasta poner dinámicas donde fans pueden salir en muchos lados. Muestra tu estatus en el mundo y
+  se refleja en tus relaciones de pareja."*
+- **Bendiciones y Maldiciones** (sección 10): el evento paranormal, *"relacionado con la historia
+  y sus decisiones, puede traer Bendiciones o Maldiciones (buffs y debuffs que tendrán de rasgo
+  aleatorio los personajes dependiendo de la trama en la que estén)"*.
+- **El Salón / Casino** (sección 5b, nuevo): otro lugar aparte de las carnes asadas: *"el bar /
+  casino donde puedes jugar y apostar fortunas contra otros personajes jugadores y NPC, socializar,
+  buscar información de misiones, reunirse con informantes, o hasta convertirse en un campo de
+  batalla (el sistema de combate con ciertos diálogos). Se puede jugar póker y bacará, tomar en la
+  barra diferentes bebidas según el universo, cortejar, conseguir parejas, aliados o enemigos como
+  en la carne asada."*
+- **Multijugador** (sección 13b): *"1 campaña single player o multijugador; la multijugador no
+  puede ser jugada sin los jugadores originales de la campaña, para mantener sus decisiones y
+  opciones al corriente con los demás (como una campaña de D&D con amigos: para seguir jugándola
+  tienen que estar todos)."*
+- **El nombre de los hijos lo pone el jugador.**
+- **Los compañeros con hoja envejecen y, si se separan del grupo por un tiempo, suben de nivel
+  solos.**
+
+Todavía no se ha construido nada. El siguiente paso es pasar las reglas acordadas a
+`GAMEPLAY_DESIGN.md` y `MISSION_DESIGN.md` (en inglés) y empezar por el paso 1 de la sección 13
+(`CampaignState` y el origen).
+
+---
 
 Este documento diseña la **capa de campaña**: todo lo que pasa con el personaje y el mundo
 *entre* misiones y batallas. Hoy el juego tiene un creador, una misión y un motor de batalla; al
@@ -241,6 +275,53 @@ de personaje se puede invitar a la misión), favores (una facción que te debe u
 
 ---
 
+## 5b. El Salón / Casino (el dueño, 2026-10-27)
+
+El segundo hub social, **público** donde la carne asada es **tuya**: el bar y casino de la
+ciudad (shinobi: la casa de té y apuestas del barrio del placer; espacial: la cantina del puerto
+estelar; superhéroes: el club nocturno). Se entra desde *Casa* en cualquier estación, cuesta la
+mitad de una estación (puedes ir y además hacer otra cosa) y no hace falta invitación ni salón.
+
+**Quién está:** gente que no vendría a tu carne asada: desconocidos de cualquier facción (hasta
+Frío; los Hostiles mandan a alguien a vigilarte), informantes, jugadores profesionales, un
+rival o dos, y **otros jugadores** en multijugador. La clientela sube con tu Estatus (6b): a
+Estatus 6+ hay fans en la barra; a 9+ el dueño del local te reserva mesa.
+
+**Qué se hace** (misma escena de rondas que la carne asada, sección 5, con **3 rondas** por
+visita y estas cartas en vez de las de casa):
+
+- **La barra.** Pedir una bebida del universo (el pack las nombra: sake caliente, licor de
+  cometa, un cóctel de la casa). Cada bebida es un efecto corto: *Coraje* (+2 a cortejo y
+  persuasión esta visita, −2 a SAB), *Lengua suelta* (desbloquea una carta de información, pero
+  una marca tuya se puede escapar), *Calma* (−1 Tensión). Tres bebidas: *Ebrio* (todas las
+  tiradas con desventaja hasta la siguiente estación, y la siguiente escena puede ser una pelea).
+- **Las mesas: póker y bacará.** Juegos de verdad con cartas tiradas por el RNG sembrado, no
+  tiradas de d20 disfrazadas. Se apuesta en **fichas** que valen fracciones de tu nivel de riqueza
+  (sección 8): la mesa baja mueve un cuarto de nivel por mano, la alta un nivel entero, y la
+  **mesa de fortunas** (solo con riqueza ≥ 4 y Estatus ≥ 5) juega propiedades y módulos de la base
+  contra otros jugadores y PNJ. Contra un PNJ, su estilo es su rasgo (un *orgulloso* no se
+  retira; una *ambiciosa* sube la apuesta). Hacer trampa es una carta con prueba (DES o
+  Engaño): sale, y ganas; falla, y la escena puede volverse batalla.
+- **Información y misiones.** Informantes con precio (una bebida, fichas, un favor, Lazo): dan
+  marcas que abren cartas de misión (la ruta del pasadizo, quién vendió tu ruta), y el **tablón**
+  del local ofrece misiones secundarias que el generador saca de los beats de mundo.
+- **Lo social.** Cortejar, conseguir parejas, aliados o enemigos **igual que en la carne asada**:
+  las mismas barras, los mismos umbrales. Las parejas conocidas aquí empiezan con *Lazo* 0 y
+  *afecto* según el Estatus; las de casa, con lo que ya tenías.
+- **La pelea.** Un reto, una trampa descubierta, un Hostil que te reconoce o una decisión de
+  historia convierten la escena en **batalla** en el mapa del casino (mesas como cobertura,
+  barra, escaleras a un segundo nivel, lámparas que caen): el sistema de combate de siempre con
+  diálogos entre turnos (`dice` dentro de `batalla`). Lo que pase en la pelea escribe en el
+  mundo: un local destrozado es riqueza −1 y reputación −2 con la facción dueña; ganarla delante
+  de todos es fama +1.
+
+**En multijugador** (13b), el casino es donde los jugadores de una campaña se enfrentan entre sí
+sin romper el grupo: apuestas de fortunas, un duelo amistoso, un cortejo que se cruza.
+
+Nuevas preguntas para el dueño, al final (W13–W15).
+
+---
+
 ## 6. El amor
 
 **Etapas:** conocido → amistad (`bond ≥ 3`) → cortejo (`affection ≥ 5` y una carta de cortejo que
@@ -275,6 +356,56 @@ pareja adicional; fallar es −3 afecto y un beat de reproche en la siguiente ca
 debajo de 5, la prueba es cada temporada para todas y la CD sube a 15. Así se cumple lo
 decidido: con cualquier rasgo se puede, mantenerlo depende de decisiones (cómo tratas a cada
 una), estado (Tensión, heridas, reputación) y riqueza.
+
+**Aprobado (W4a) con el añadido del dueño:** el **Estatus** (6b) entra en las dos partes. En el
+cortejo, cada tirada tiene **+Estatus/2** (redondeado abajo) y, a Estatus ≥ 7, **ventaja**. En la
+permisividad, la fórmula de estabilidad suma **+Estatus/2**, y la prueba de paciencia de una
+pareja tiene su CD **−Estatus/2**: a la pareja del capitán millonario que le ha salvado la vida
+diez veces no le cuesta lo mismo aceptar que al huérfano de la aldea. Y la propia pareja lo
+**dice** en escena: a Estatus alto, el reproche se vuelve orgullo ("todas saben quién eres; yo
+soy la que vuelve a casa contigo").
+
+---
+
+## 6b. El Estatus (el dueño, 2026-10-27)
+
+Un **rasgo del protagonista de 1 a 10** que resume cuánto pesas en el mundo. Se **recalcula al
+cambiar de estación** a partir de lo que ya existe, así que no es una barra más que subir: es el
+reflejo de todo lo demás.
+
+| Estatus | Nombre | De dónde sale (orientativo) |
+|---|---|---|
+| 1 | Don nadie | Riqueza 0–1, fama 0, sin títulos |
+| 2 | Conocido en el barrio | Fama 1–2 |
+| 3 | Con nombre | Fama 3 o riqueza 3 |
+| 4 | Respetado | Una facción Amigo y una hazaña |
+| 5 | Figura | Riqueza 4 o un título de Aliado |
+| 6 | Celebridad | Fama 6 y tres hazañas: aparecen **fans** |
+| 7 | Poder local | Una propiedad mayor y una facción Aliado |
+| 8 | Leyenda viva | Fama 8, dos facciones Aliado |
+| 9 | Señor de la región | Riqueza 6 o tres facciones Aliado |
+| 10 | Líder del mundo | Todo lo anterior y una marca de historia (el final de un acto lo da) |
+
+```
+estatus = clamp(1, 10, 1 + fama/2 + riqueza/2 + nº de facciones Aliado + hazañas/3 + títulos)
+```
+
+- **Hazañas** son marcas que las escenas escriben: *salvó la vida de la tripulación*, *venció al
+  rival delante del clan*, *ganó la mesa de fortunas*. El pack las nombra; el motor las cuenta. Es
+  la idea del dueño: los **méritos increíbles** son lo que te da permiso.
+- **Dónde se ve:** en la ficha de *Casa* con su nombre y sello; en cómo te hablan (el guion tiene
+  variantes por tramo de Estatus: el posadero te tutea o se inclina); en quién viene a la carne
+  asada y al casino; en los precios (Estatus ≥ 7 baja un nivel el precio de compra como si fueras
+  Aliado); y **en las parejas** (6).
+- **Fans** (Estatus ≥ 6): personas sin hoja que el generador saca **"en muchos lados"**, como pide
+  el dueño: en la barra del casino, en la carne asada como desconocidos, en una misión (un genin
+  que te pide consejo, un piloto que te copia la pintura del mecha), en la calle al volver.
+  Dan fama, cartas gratis (un fan paga la ronda, otro te da una pista) y problemas (un fan
+  celoso de tu pareja, uno que se mete en la pelea). A Estatus 10 hay beats propios: una facción
+  te pide que decidas por ella; alguien quiere tu puesto.
+- **Baja** igual que sube: una ruina, una traición pública, una misión fallida con testigos
+  (−1 fama cada una) lo arrastran a la estación siguiente. El Estatus **no se hereda** entero: el
+  hijo recibe la mitad por la vía de fama y reputación (11).
 
 **Perderlo.** Afecto ≤ 0 es ruptura; rencor ≥ 8 además es traición: la persona se va con la
 facción rival, se lleva una marca, y puede volver como enemiga (como Kaen en el anexo del
@@ -378,6 +509,30 @@ El año tiene **4 estaciones**. El tiempo avanza:
   de niño a adolescente, o de adolescente a adulto, en una noche. Tiene precio: una marca
   (`tocado_por_el_espiritu`), un rasgo raro, y quizá un don que no es de ninguno de los padres.
 
+**Bendiciones y Maldiciones** (el dueño, W9a y su añadido). Lo paranormal está **ligado a la
+historia y a sus decisiones**, y deja en los personajes **rasgos aleatorios con efecto**: una
+**Bendición** es un buff y una **Maldición** un debuff, y cuál toca depende **de la trama en la que
+estén**. Reglas:
+
+- Son `TraitId` con efecto en reglas (como las cicatrices de `MISSION_DESIGN.md`, "Scars", que ya
+  tienen un lado bueno y otro malo): van en `Person.traits` y, si la persona tiene hoja, su efecto
+  se aplica en batalla como un estado permanente.
+- **Quién las recibe:** el protagonista, un hijo acelerado, o cualquier persona presente en el
+  beat paranormal (una tripulación entera puede salir bendecida de una nebulosa).
+- **Cuál toca:** cada beat paranormal trae su **tabla** (el pack la escribe): una lista de
+  bendiciones y otra de maldiciones con pesos. Lo que **inclina la tabla** son las decisiones: la
+  marca `profanó_el_santuario` mueve el peso a las maldiciones; `honró_a_los_muertos`, a las
+  bendiciones; y el d20 decide dentro de la lista (natural 20: eliges; natural 1: la peor).
+- **Ejemplos** (shinobi; los nombres son del pack): *Bendición del río* (ventaja en salvaciones
+  contra agua, +1 chakra por descanso corto), *Ojos del espíritu* (ve a los disfrazados en el
+  campamento sin actividad), *Sangre antigua* (un don dormido despierta ya); *Maldición de la
+  torre* (la Tensión nunca baja de 1), *Marca del hambre* (come doble ración o −1 Agotamiento
+  por noche), *Sombra ajena* (los Hostiles te reconocen siempre: sin sigilo en su territorio).
+- **Se heredan** como los dones: una maldición de sangre pasa con 50 % y puede ser el beat de
+  una generación entera (romperla). Una bendición, con 25 %.
+- **Se quitan** solo por historia: otro beat paranormal, un sacrificio, un favor de una facción
+  Aliado. Nunca por tiempo.
+
 Las personas **envejecen**: joven (hasta 25), adulta (hasta 45), mayor (hasta 65), anciana. Un
 personaje mayor pierde 1 punto de FUE/DES al pasar de etapa (el pack puede cambiarlo), gana
 respeto en el mundo, y a los PNJ ancianos les llega el beat de despedida. El protagonista puede
@@ -411,9 +566,12 @@ hijos: al cambiar de año, cada unión tira d20; con ≥ 11 nace un hijo (con la
   que suma a sus `values` (las convicciones). Un hijo criado por tu pareja lejos de ti sale con
   los valores de ella y `bond` bajo contigo.
 - **Nivel 1 y sube solo:** cada estación, un hijo gana experiencia según su edad y los módulos
-  (Entrenamiento ×2); un adolescente llega a nivel 3 o 4 antes de ser jugable. Nunca hereda nivel,
-  jutsu ni objetos: aprende los suyos (su clase se elige al volverse jugable, con el creador, con
-  su cuerpo y dones ya puestos).
+  (Entrenamiento ×2); a los 18 llega a nivel 3 o 4. Nunca hereda nivel, jutsu ni objetos: aprende
+  los suyos (su clase se elige al volverse jugable, con el creador, con su cuerpo y dones ya
+  puestos). **Es jugable a los 18 años del mundo (W7a).** Antes, se le ve crecer: en la carne
+  asada, en las decisiones de crianza, y en el árbol.
+- **El nombre lo pone el jugador** (el dueño) al nacer, en una escena corta de nacimiento; el pack
+  sugiere nombres de la facción como ayuda, nada más.
 - **Lo que hereda del mundo al tomar el relevo:** la base y las propiedades enteras; la riqueza
   −1 (los gastos del relevo); la **reputación a la mitad** (la fama a la mitad también: te conocen
   por tu padre); las relaciones **no**: cada persona empieza con el hijo en `bond` 0 salvo la
@@ -537,11 +695,56 @@ script. `src/campaign` **no importa** nada de `src/battle`; solo tipos de `src/t
    sabe en qué género está. Lo que haya que tocar en `src/campaign` para que funcione es lo que
    quedó mal abstraído.
 
+El Salón / Casino (5b) y el Estatus (6b) entran en el paso 5 (el Estatus se calcula de lo que ese
+paso construye) y el casino con sus mesas en un paso **5b** propio, después de la carne asada y
+antes del tiempo: las mesas de póker y bacará son un módulo puro (`src/campaign/cards.ts`) con sus
+tests, y el mapa del casino es una batalla más (`encounters.ts`) que necesita arte del dueño.
+
+---
+
+## 13b. Una campaña, en solitario o con amigos (el dueño, 2026-10-27)
+
+- **Una campaña es una** (`CampaignState`), en solitario o multijugador. En multijugador, **la
+  campaña no se puede jugar sin los jugadores originales**: para seguirla tienen que estar todos,
+  como en una mesa de D&D, para que las decisiones y las opciones de cada uno sigan al corriente
+  con las de los demás. El estado guarda la lista de jugadores (`players: PlayerId[]`) y una
+  sesión solo continúa con todos presentes; con uno ausente, se puede **mirar** (Crónica, Linaje,
+  Casa) pero no avanzar el tiempo ni decidir.
+- Cada jugador tiene **su protagonista y su linaje** dentro de la misma campaña; la base, la
+  riqueza y la reputación son **del grupo** (como la aldea de un clan), y el Estatus es **de cada
+  uno**. Los hijos de dos jugadores son posibles si ambos quieren (una unión entre jugadores pide el
+  sí de los dos, como el veto de H3).
+- Las votaciones y la Balanza de `MISSION_DESIGN.md` ("Decisions in the three modes") valen igual
+  en casa: pasar la estación, comprar un módulo o invitar a una facción se vota si hay más de un
+  jugador.
+- **Los compañeros con hoja** (Hana, Kenji, las leyendas que se unen, los hijos que aún no juegas)
+  **envejecen como todos** y, **si se separan del grupo por un tiempo, suben de nivel solos**: una
+  estación fuera del grupo (en una misión propia, en su facción, criando) es experiencia según su
+  edad y la facción; vuelven con nivel, una marca de lo que hicieron y a veces una Bendición. Un
+  compañero que viaja siempre contigo sube con el grupo, como hoy.
+
 ---
 
 ## 14. Preguntas para el dueño
 
-Formato: "W1b W2a…". ★ marca mi recomendación. Lo que él ya decidió (sección 0) no se pregunta.
+Formato: "W1b W2a…". ★ marca mi recomendación. Las W1–W12 **ya están respondidas** (arriba);
+quedan las del casino.
+
+- **W13. Las mesas del casino, ¿juegos de verdad o tiradas?**
+  - a) Juegos de verdad: póker (cinco cartas, una ronda de cambio y apuestas) y bacará con cartas
+    del RNG sembrado; el jugador juega la mano. ★
+  - b) Tiradas de d20 + INT/CAR con el nombre del juego por encima (más rápido de construir, menos
+    juego).
+  - c) Las dos: las mesas bajas son tiradas, la mesa de fortunas es juego de verdad.
+- **W14. ¿Cuánto puede perderse en el casino?**
+  - a) Hasta un nivel de riqueza por visita en las mesas normales; propiedades y módulos solo en
+    la mesa de fortunas, y solo lo que pongas tú. ★
+  - b) Sin tope: todo está en juego si te sientas.
+- **W15. ¿Las bebidas tienen efecto en reglas o solo sabor?**
+  - a) Efecto corto por bebida (Coraje, Lengua suelta, Calma) y Ebrio a la tercera. ★
+  - b) Solo sabor y diálogo.
+  - c) Efecto, y además una bebida de la casa por universo con un efecto raro (una marca, una
+    visión).
 
 - **W1. ¿Cuántas barras de relación?**
   - a) Solo Lazo, como hoy (más simple; los PNJ son "amigo / no amigo").
@@ -591,7 +794,5 @@ Formato: "W1b W2a…". ★ marca mi recomendación. Lo que él ya decidió (secc
   - b) Superhéroes.
   - c) Un segundo pack de fantasía (caballeros) que reutiliza más arte.
 
-Dudas abiertas que no son preguntas todavía: cómo entra la campaña en el multijugador local y en
-línea (¿una campaña por anfitrión, cada jugador con su linaje?); si el nombre de los hijos lo
-pone el jugador o el pack; y qué pasa con los compañeros con hoja (Hana, Kenji) cuando pasan
-años: envejecen como todos, pero ¿suben de nivel solos?
+Las tres dudas abiertas de la primera versión (multijugador, el nombre de los hijos, los
+compañeros con los años) las respondió el dueño el mismo día: están en 13b y 11.

@@ -341,5 +341,5 @@ it.** A collaborator publishes his own preview builds as his own artifacts.
 | `docs/SPRITE_STYLE_GUIDE.md` | Character sprite standard and new-item checklist |
 | `docs/reference/README.md` | His pictures, his copy rule and what each picture is the bar for |
 | `docs/rest-and-cinematics-proposal.md` | The original Spanish proposal (answered; rules moved to MISSION_DESIGN) |
-| `docs/WORLD_DESIGN.md` | The Spanish proposal for the campaign layer between missions: origin, people, social events, love, reputation, wealth, base, time, lineage, campaign generator, setting packs (waiting for the owner's answers W1–W12) |
+| `docs/WORLD_DESIGN.md` | The Spanish proposal for the campaign layer between missions: origin, people, social events, love, reputation, wealth, base, time, lineage, campaign generator, setting packs; answered, W13–W15 open; rules not yet moved to the English docs |
 | `tools/refs/README.md`, `tools/world-sprites/README.md` | Converter and generator details |

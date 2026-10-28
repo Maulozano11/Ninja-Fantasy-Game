@@ -346,5 +346,6 @@ it.** A collaborator publishes his own preview builds as his own artifacts.
 | `docs/reference/README.md` | His pictures, his copy rule and what each picture is the bar for |
 | `docs/rest-and-cinematics-proposal.md` | The original Spanish proposal (answered; rules moved to MISSION_DESIGN) |
 | `docs/WORLD_DESIGN.md` | The Spanish proposal for the campaign layer between missions: origin, people, social events, love, reputation, wealth, base, time, lineage, campaign generator, setting packs; answered, W13–W15 open; rules not yet moved to the English docs |
+| `docs/SPACE_DESIGN.md` | The Spanish code-structure proposal for the space game (mechas, ships, cadets) from the owner's master design: a second, deterministic tactics engine `src/tactics/`, the ship as the space pack's base, questions S1–S8 open |
 | `docs/scene-art-plan.md` | The Spanish plan for producing scene, base and prop art: template, generic converter, prompt cards, inventory, batches (A1–A5 open) |
 | `tools/refs/README.md`, `tools/world-sprites/README.md` | Converter and generator details |

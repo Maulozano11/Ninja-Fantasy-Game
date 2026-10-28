@@ -449,7 +449,10 @@ crupier en medio; **nadie en las cabeceras ni en el borde cercano**, que queda l
 cartas y fichas. Los sprites van a **3×** (la escala del primer plano) y **el borde de la mesa se
 dibuja por encima de ellos** (una máscara del fondo pintado que cubre el regazo), así que las
 poses sentadas solo necesitan ser buenas de la cintura para arriba. Maqueta con esa regla:
-`docs/mockups/bacara-backdrop-party-mockup.png`.
+`docs/mockups/bacara-backdrop-party-mockup.png`. **El crupier es personal de la casa**, no uno
+de los cinco (el dueño, 2026-10-28: *"pon a la crupier de kimono y quita a Romano"*): una PNJ de
+kimono rojo con el pelo recogido, con sus dos cuadros de repartir; en otros packs, el crupier del
+local (un androide en la cantina espacial, un tipo de esmoquin en el club).
 
 Nuevas preguntas para el dueño, al final (W13–W15).
 

@@ -9,6 +9,7 @@ import { LEGACY_ROSTER } from '../data/missions';
 import type { ShinobiCharacter } from '../types/shinobi';
 import { renderSprite, type SpriteFrame } from './compose';
 import { airOf, closePinholes, findNicks, findPinholes, PINHOLE } from './holes';
+import { paintedFrame, wearsHisFigure } from './ownerFrames';
 import { frontOfBack } from './items/accessories';
 import { defaultAppearance, dojutsuToEye, getAppearance } from './legacy';
 import { GRID, partIndex } from './raster';
@@ -143,8 +144,9 @@ describe('the 1-pixel holes', () => {
         const where = `${L.id} ${body} ${pose} ${f}`;
         const specks = KNOWN_APART.has(`${L.id} ${body} ${pose}`) ? [] : loose(fr);
         if (specks.length) bad.push(`${where}: ${specks.join(', ')} px apart from the figure`);
-        // Idle is the owner's pictures, left exactly as drawn (sprite/compose.ts).
-        if (pose === 'idle') return;
+        // Idle is the owner's pictures, left exactly as drawn (sprite/compose.ts); so are the frames he painted
+        // whole (his Lyra reading, sitting and throwing, ownerFrames.ts), gaps between her hair strands included.
+        if (pose === 'idle' || (wearsHisFigure(l) && paintedFrame(pose, f))) return;
         const air = airOf(fr.rgba);
         const holes = findPinholes(fr.rgba, fx, air);
         const nicks = findNicks(fr.rgba, fx, air);

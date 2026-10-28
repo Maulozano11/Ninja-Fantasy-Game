@@ -301,7 +301,7 @@ export function addLegendNatures(c: ShinobiCharacter): ShinobiCharacter {
 
 /** The pieces Ren wore before the owner's new standard (2026-10-21), slot by slot. */
 const OLD_REN_PIECES: Record<string, string> = {
-  hair: 'hair_night',
+  hair: 'hair_midnight', // cut from the game on 2026-10-28; a save still names it, and this runs before migrateAppearance
   top: 'top_royalcoat',
   bottom: 'bottom_shinobi',
   feet: 'feet_leather',

@@ -61,7 +61,7 @@ const SHADOW_FROM: [number, number][] = [
 // face on purpose and are left as drawn). Their side locks may still cover
 // the jaw edge in front of the ear, like the reference, which keeps the face
 // from reading too wide.
-const FACE_CLEAR_HAIR = new Set(['hair_drifter']); // was scholar, long, crest, cut on 2026-10-28
+const FACE_CLEAR_HAIR = new Set<string>([]); // was scholar, long and crest, cut on 2026-10-28 (items/hair.ts RETIRED_HAIR)
 
 /**
  * For FACE_CLEAR_HAIR styles: from the lash row down (eyes, cheeks, jaw) no

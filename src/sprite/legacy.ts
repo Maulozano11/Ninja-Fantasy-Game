@@ -124,7 +124,7 @@ export function appearanceFromLegacy(c: ShinobiCharacter): SpriteAppearance {
   look.eyeShape = 'standard';
   look.skin = p.skinTone || look.skin;
   look.eyeColor = p.eyeColor || '#3b82f6';
-  look.slots.hair = choice(HAIR[c.hairstyle] || 'hair_tousled', p.hairColor);
+  look.slots.hair = choice(HAIR[c.hairstyle] || 'hair_surge', p.hairColor);
   look.slots.top = choice('top_highcollar', p.clothColor, p.armorSecondary);
   look.slots.bottom = choice('bottom_shinobi', p.clothColor);
   const armor = ARMOR[c.armorStyle];

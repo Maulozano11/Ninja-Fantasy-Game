@@ -300,3 +300,5 @@ archivo definitivo se pide al generador con esa línea. En superhéroes o espaci
 
 Maqueta con Lyra, Aiden y Aurelia renderizados por el motor sobre esta pintura, a 2×:
 `docs/mockups/casino-hd2d-party-mockup.png`.
+
+**Versión definitiva del casino:** `docs/reference/casino-backdrop-v3-owner-reference.png` (1920 × 840 exactos, sin tragamonedas, mesas con el lado abierto al frente, barra con taburetes, estanque al frente derecha). Sustituye a la v2 como el casino aprobado.

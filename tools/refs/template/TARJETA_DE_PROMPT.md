@@ -391,3 +391,70 @@ Con la hoja convertida (`sheet-from-template.py --hd`, piezas a `src/assets/ui_b
 `Prompt` y los botones se redibujan con sus piezas; la maqueta con nuestros datos en su
 disposición: `docs/mockups/last-stand-mockup.png` (la de antes, con el marco actual) y la que
 haremos con las suyas.
+
+## 10. El creador de personaje · su pantalla, adaptada a nuestro creador
+
+Su referencia: `docs/reference/creator-screen-owner-reference.png` (2026-10-28, su generador).
+De ella se queda la **disposición**: los pasos como rombos arriba, el menú de grupos a la
+izquierda con el activo sobre la gema roja, una columna de accesos rápidos, el ninja grande al
+centro sobre un círculo, el panel de partes a la derecha por secciones (miniaturas y muestras de
+color), la tira de poses abajo con flechas, el retrato con botones pequeños, Aleatorio y
+Siguiente. **Se adapta a lo que el juego tiene:** nuestros seis pasos (Origen, Clan, Clase,
+Apariencia, Habilidades, Jutsus), nuestros siete grupos (Cuerpo, Cabeza, Ropa, Equipo, Arma,
+Chakra, Pintura), las leyendas de acceso rápido (Solen, Romano, Aiden, Lyra, Aurelia), nuestras
+11 poses; las miniaturas y el ninja los dibuja el motor de sprites, nunca el generador.
+Maqueta con sus piezas de batalla de relleno: `docs/mockups/creator-owner-style-mockup.png`.
+
+Lo que ya sirve de su hoja de batalla (tarjeta 9): las ranuras (miniaturas), los botones gema
+(rojo = Siguiente, dorado = Aleatorio, azul = Volver), las chispas de los títulos, el marco del
+retrato. Lo que falta se pide aquí.
+
+**A) El fondo** (clase "pintado completo", 1920×1080), con su imagen adjunta:
+
+```
+MISMO LUGAR, misma luz y mismo estilo que la imagen adjunta, pero VACÍO: quita todos los
+paneles, textos, botones, iconos, miniaturas y al personaje. Deja solo el patio del santuario de
+noche: los arces rojos, los faroles encendidos, las pagodas y la puerta torii al fondo, la luna
+azul grande arriba a la derecha, el agua que refleja las luces. En el centro, un poco abajo, un
+círculo de piedra con un sello rojo tenue grabado (ahí se para el personaje), visto de frente y
+algo desde arriba. Los lados izquierdo y derecho con poco detalle y más oscuros (ahí van los
+paneles). Pixel art de 16 bits. Panorámico 16:9, 1920×1080, PNG, sin magenta ni morado.
+```
+
+**B) La hoja de piezas del creador** (plantilla magenta, como la de batalla), con su imagen
+adjunta como "misma paleta y mismo estilo":
+
+```
+Hoja de piezas de interfaz del creador de personaje sobre fondo magenta puro (#FF00FF), cada
+pieza separada, sin texto, sin personajes, misma paleta y mismo marco que la imagen adjunta
+(negro translúcido, filete dorado fino, esquinas ornamentadas, gemas rojas):
+Fila 1: el panel alto vacío 560×1100 con esquinas ornamentadas y una gema roja arriba y abajo al
+centro; el panel ancho vacío 1100×320 (la tira de poses); el panel pequeño vacío 560×480.
+Fila 2: el rombo de paso de 160×160 en tres estados: apagado (borde gris), disponible (borde
+dorado) y activo (rojo encendido con brillo); vacío por dentro, sin icono.
+Fila 3: la fila del menú de grupos, 520×90: normal (solo una línea dorada fina abajo), iluminada
+(dorado tenue) y activa (gema roja con borde dorado, como el botón rojo de la imagen).
+Fila 4: la cajita de muestra de color 120×56 vacía (borde oscuro) y seleccionada (borde dorado
+grueso con brillo); el botón cuadrado pequeño 80×80 negro y dorado en normal y activo; la cajita
+"ninguno" 120×120 con una X gris.
+Fila 5: dos flechas de carrusel doradas 60×120 (izquierda y derecha) en normal y encendida; un
+deslizador: la barra 400×24 negra con filete dorado y la perilla dorada 48×48.
+Fila 6: la cabecera de sección 600×40: una chispa dorada a la izquierda y una línea dorada fina
+que se desvanece a la derecha; el círculo del suelo 900×220 visto en perspectiva: anillo rojo
+brillante con un sello tenue, sin fondo.
+Fila 7: iconos dorados de 96×96 sobre círculo negro con filete dorado: figura de pie (cuerpo),
+cabeza de perfil (cabeza), camisa (ropa), escudo (equipo), espada (arma), llama (chakra),
+pincel (pintura), pergamino (origen), abanico o emblema de clan (clan), kunai cruzados (clase),
+puño (habilidades), mano haciendo un sello (jutsus), dado (aleatorio), lupa (zoom), flechas en
+círculo (girar), retrato (vista previa).
+PNG, 3200×3200, sin morado fuera del magenta de fondo.
+```
+
+**C) Si algo sale con texto o con figuras:** se repite esa fila sola con "sin texto, sin
+personajes, solo la pieza vacía". Si el fondo sale con el personaje, se repite A con "SIN
+NINGUNA PERSONA".
+
+Lo que de su imagen **no** hacemos todavía: *Expresión* (los sprites no tienen caras distintas;
+los retratos expresivos son para las escenas sociales) y *Rotar* (el sprite es de vista 3/4 fija;
+se puede girar a izquierda y derecha, no dar la vuelta). *Zoom* sí: ya existe el acercamiento a
+la cara al editar la cabeza.

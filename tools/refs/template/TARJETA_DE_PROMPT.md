@@ -177,3 +177,37 @@ PROHIBIDO: texto o letras, personas, muebles, magenta, rosa fuerte o morado en c
 Entrega: PNG a 1920×840. Si solo puedes 16:9, hazla a 1920×1080 con lo importante en el centro
 y yo la recorto.
 ```
+
+## 4. Fondo · el patio de la carne asada (casa media shinobi) · clase "vacío + props"
+
+Adjuntos: `casino-backdrop-v3-owner-reference.png` (el casino aprobado, como ejemplo de la
+calidad y de la vista) y `REFERENCIA_DE_ESTILO.png`. Mismos dos motores compitiendo.
+
+```
+FONDO · el patio trasero de una casa media de la aldea shinobi, al atardecer, preparado para una
+carne asada · PANORÁMICO 1920×840
+Misma calidad, misma vista y misma forma de pintar que la imagen del salón de apuestas que
+adjunto: pintura detallada de alta resolución, vista lateral de frente con profundidad hacia atrás
+(como un escenario), NO isométrico, para un juego con personajes de pixel art de 16 bits encima.
+El patio está VACÍO de muebles: SIN mesas, SIN brasero, SIN bancos, SIN faroles de pie, SIN
+sombrillas y SIN personas (esos objetos se colocan después, encima). Solo el lugar y la luz.
+Qué se ve, de abajo arriba:
+- el tercio inferior es el SUELO del patio: tierra apisonada y losas de piedra planas, con hierba
+  corta en los bordes, hasta el borde de abajo de la imagen; una zona central despejada y amplia;
+- al fondo, la CASA: una casa de madera de la aldea, de un piso con tejado de tejas oscuras, con
+  una terraza de madera (engawa) corrida a lo largo con puertas corredizas de papel abiertas e
+  iluminadas por dentro con luz cálida;
+- a la IZQUIERDA, el muro del patio de piedra y madera con una puerta de jardín, y un árbol grande
+  (un arce rojo o un cerezo) que cuelga sobre el patio;
+- a la DERECHA, un estanque pequeño con una linterna de piedra fija junto al muro y bambú;
+- detrás de la casa, las copas de los cedros del bosque y, al fondo, las montañas con el cielo
+  del atardecer (naranja bajando a azul); los primeros faroles de papel colgando de la terraza.
+Luz: atardecer cálido desde la izquierda, sombras largas y suaves; las puertas de la casa
+iluminan la terraza. Paleta: maderas cálidas, piedra gris, verdes del jardín, el rojo del arce,
+el cielo naranja-azul.
+PROHIBIDO: texto o letras, personas, muebles sueltos, magenta, rosa fuerte o morado.
+Entrega: PNG a 1920×840.
+```
+
+Con el fondo, el juego pone encima: mesa baja, brasero, tarima, banco, jarras y sombrilla del
+lote 0 (los props de píxel ya convertidos), más la gente. Es la primera escena de la carne asada.

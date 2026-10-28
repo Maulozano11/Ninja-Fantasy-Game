@@ -723,6 +723,17 @@ gente (los invitados, la seguridad) ← los sprites de personaje de siempre, en 
 primer plano (follaje, barandal) ← 1 por locación
 ```
 
+**Perspectiva en las escenas** (el dueño, 2026-10-27: *"que cuando un personaje se mueva al fondo,
+o sea en eje y, se haga más pequeño para que se entienda la perspectiva; solo sutilmente"*). Cada
+escena declara en su `scene.json` una **línea del frente** y una **línea del fondo** del suelo
+(`depth: { frontY, backY, backScale }`) y los sprites se dibujan a escala **1.0 en el frente y
+`backScale` en el fondo** (por defecto **0.85**), interpolando por su y de pies; también los props
+que el juego coloca. Es sutil a propósito: se nota que alguien camina hacia el fondo sin que el
+pixel art se rompa. Para que los píxeles no bailen al escalar a tamaños que no son enteros, el
+renderizador usa **tres escalas fijas** (1.0, 0.92, 0.85) con reducción limpia y elige la más
+cercana por bandas de profundidad, en vez de escalar libremente cada cuadro. Vale para la carne
+asada, el casino, la base y las cinemáticas; la batalla sigue con su propia cámara.
+
 Los **materiales** son rampas de color con una textura (como `scene_kit.py` ya hace con sus
 `Mat`): mármol, granito, troncos, metal, cobre y oro son seis rampas sobre la misma silueta, no
 seis dibujos. Los **colores** son `retintHex` sobre la rampa, como en los ítems. El plan de arte

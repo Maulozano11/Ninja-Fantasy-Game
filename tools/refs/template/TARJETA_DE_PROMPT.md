@@ -35,3 +35,24 @@ Cuando la tenga: me manda el PNG, yo corro
 
 y le enseño la hoja "Tu dibujo / En el juego". Si el generador cambió la rejilla o el fondo, el
 informe de ida y vuelta lo marca con REVISAR y vemos qué pasó antes de usar nada.
+
+---
+
+## Lo que enseñó la hoja de prueba (2026-10-27)
+
+Su generador **no respetó la plantilla al pie de la letra** (rehízo la rejilla a 1774×887, quitó
+las franjas de etiquetas, redibujó la figura de escala, y dibujó las jarras de sake de un metro),
+pero **el estilo salió muy bien**. Así que el convertidor se adaptó (`--auto-grid`: encuentra las
+celdas solo y ajusta cada pieza a sus metros), y a partir de ahora la tarjeta pide menos cosas,
+pero las que importan:
+
+1. **PNG con fondo magenta puro** y **nada de magenta ni morado en el dibujo** (lo que tire a ese
+   tono se trata como fondo).
+2. **Una pieza por celda**, sin salirse de ella. La rejilla la puede rehacer a su gusto.
+3. **La escala ya no la pedimos al generador**: cada pieza lleva sus metros en el spec y el
+   convertidor la deja a su tamaño. (La figura de la celda 0 se queda como guía de vista y luz.)
+4. **Vista 3/4 frontal, no isométrica**: como la caja y la tienda del campamento, el frente de
+   cara y la tapa vista un poco desde arriba. La hoja de prueba salió en isométrico (mesa, tarima,
+   banco a 30°); no es grave, pero chocará con el resto cuando haya muchos objetos.
+5. **Menos detalle fino y menos degradado**: al bajar de escala, el detalle de menos de un píxel
+   de juego se pierde (las brasas del brasero). Mejor formas grandes y bandas de color.

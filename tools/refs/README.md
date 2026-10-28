@@ -502,6 +502,15 @@ converts all of them; no converter per sheet.
   trims, anchors at the bottom centre, and writes `<dir>/<group>/<id>.png` + `manifest.json` in
   `writeGroup`'s format plus the "Tu dibujo / En el juego" review sheet and a round-trip report
   (mean colour distance per piece; REVISAR when far). `--out` is a staging dir, never `src/assets`.
+- `sheet-from-template.py ... --auto-grid`: for a sheet that came back from an image generator
+  (the owner's lote 0 test sheet, 2026-10-27: the grid redrawn at 1774x887 with thin lines, no
+  label strips, the scale figure redrawn, small things drawn far too big, 29 000 colours in one
+  cell). The cells are found in the sheet itself, each piece is cut to its drawing and resampled
+  to its `meters` from the spec (57 px/m, fitted inside), averaging the source pixels weighted by
+  how little key colour they carry (by distance and by hue, so magenta bleeding through gaps and
+  anti-aliased edges is left out) and dropping edge pixels that are still key tinted, then
+  quantised and outlined as usual. The round-trip report uses a looser bar there. Checked by eye
+  on that sheet: the seven props come out clean and at a consistent scale beside Solen.
 - `sheet-from-template.py --selftest <dir>`: builds a sheet from five approved camp sprites,
   placed off the block grid on purpose, and checks they convert back pixel for pixel. Run it
   after touching the script.

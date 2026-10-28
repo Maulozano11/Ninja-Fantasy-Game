@@ -336,14 +336,20 @@ def convert(sheet, spec, out_dir, review_path=None, quant=True, line=True, auto_
     reviews = []
     for p in spec['pieces']:
         sw, sh = p.get('span', [1, 1])
-        if grid:
+        if 'box' in p:
+            # a sheet laid out freely: the piece's box in picture pixels, written by hand
+            x0, y0, x1, y1 = p['box']
+        elif grid:
             cxs, cys = grid
             x0, x1 = cxs[p['cell'][0]][0] + 3, cxs[p['cell'][0] + sw - 1][1] - 3
             y0, y1 = cys[p['cell'][1]][0] + 3, cys[p['cell'][1] + sh - 1][1] - 3
         else:
             x0, y0, x1, y1 = cell_box(spec, p['cell'][0], p['cell'][1], sw, sh)
-        crop = img[y0:y1, x0:x1]
-        if grid:
+        crop = img[y0:y1, x0:x1].copy()
+        for ex0, ey0, ex1, ey1 in p.get('erase', []):
+            # something else's pixels inside the box (a stray piece) painted over with the key
+            crop[max(0, ey0 - y0):max(0, ey1 - y0), max(0, ex0 - x0):max(0, ex1 - x0)] = key
+        if grid or 'box' in p:
             # the drawn scale is not trusted: fit the piece to its metres, or to the figure's factor
             # a generator's anti-aliasing blends the key into the edge: key out more widely here
             alpha = key_out(crop, key, tol=KEY_TOL_SOFT)
@@ -397,7 +403,7 @@ def convert(sheet, spec, out_dir, review_path=None, quant=True, line=True, auto_
         both = back_a & his_a
         dist = float(np.sqrt(((back[both].astype(np.int32) - his[both].astype(np.int32)) ** 2).sum(-1)).mean()) if both.any() else 0.0
         cover = float(both.sum() / max(1, (back_a | his_a).sum()))
-        flag = dist > (FAR_OFF_SOFT if grid else FAR_OFF) or cover < 0.9
+        flag = dist > (FAR_OFF_SOFT if (grid or 'box' in p) else FAR_OFF) or cover < 0.9
         report.append((name, pw, ph, dist, cover, flag))
         reviews.append((p.get('labelEs', name), crop, piece, flag, f_piece))
     with open(os.path.join(gdir, 'manifest.json'), 'w') as fh:

@@ -317,6 +317,18 @@ de personaje se puede invitar a la misión), favores (una facción que te debe u
 - **El asador es fijo**: siempre forma parte de la carne asada; en la casa media está en el patio
   y no se elige (la casa media casi no se personaliza; la mansión sí, 9b).
 
+**Retratos expresivos en las escenas sociales** (el dueño, 2026-10-28, a partir de su hoja de
+poses sentadas con emociones; decidido el camino 3 de `scene-art-plan.md` 10): además del sprite
+de cuerpo entero a escala, cada persona con hoja tiene un **retrato grande** (busto, de la
+cintura para arriba, a unas 3 veces la escala del sprite) con un **juego de expresiones**:
+neutral, contenta, nerviosa, enfadada, triste, sorprendida, coqueta, borracha. Sale en el cuadro
+de diálogo (el hablante a un lado, tú al otro, como en una novela visual), en la ficha al pasar
+el cursor y en la mesa del casino cuando alguien reacciona a una carta. La expresión la elige el
+**humor** de la persona y el resultado de la interacción. El retrato se construye **por capas sobre
+nuestro busto** (cuerpo + cara, expresión, pelo, ropa de arriba), con el mismo flujo que las
+poses: así un personaje creado tiene retrato con su propio pelo y su ropa. Maqueta:
+`docs/mockups/dialogo-retratos-mockup.png`.
+
 **Cómo se interactúa: como en Los Sims** (el dueño, 2026-10-27: *"el sistema de socializar,
 cortejar y cómo te comportas es como el juego Sims 4"*). Las rondas se quedan como presupuesto de
 tiempo de la noche, pero **dentro de una ronda** acercarse a alguien abre un **menú por

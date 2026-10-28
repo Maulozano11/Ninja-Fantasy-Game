@@ -320,3 +320,32 @@ escenario pintado y lo único de píxel son los personajes.
   sea la de ese atardecer y no la del casino; una mesa para la mansión de Los Cabos se pide con
   la luz de ese fondo.
 - La **perspectiva** (WORLD_DESIGN 9c) se aplica igual a los props HD colocados por el juego.
+
+---
+
+## 10. Personajes: el estándar nuevo y cómo entra al creador (decidido 2026-10-28)
+
+El generador ya dibuja a los cinco **por encima del estándar actual** (sombreado por volumen,
+más tonos, caras con expresión, pelo con mechones: `docs/reference/poses/bacara-seated-sheet-owner-reference.png`).
+Las figuras de esas hojas son pinturas sin capas y no sirven tal cual para un personaje creado.
+El dueño eligió el **camino 3, híbrido por capas**:
+
+1. **Plantilla de pintura**: nuestro cuerpo desnudo (masculino y femenino) en la pose, a 8×, en
+   magenta, con la rejilla y las articulaciones marcadas.
+2. El generador **pinta encima, una capa por imagen**: (a) cuerpo y cara, (b) el pelo de cada
+   personaje, (c) la ropa / armadura / capa. Cada imagen vuelve con el convertidor en modo
+   "parte" (resta el cuerpo, recorta por hueso) y se vuelve `PaintedPiece` recolorable en el rig,
+   como las partes de Aiden.
+3. La calidad del generador entra así **al estándar del creador**: cualquier personaje creado se
+   sienta, habla y tiene retrato con su pelo y su ropa. La figura no será idéntica a la pintura
+   de la hoja (es su calidad sobre nuestro rig), y hay que fijar en `SPRITE_STYLE_GUIDE.md` el
+   **nuevo estándar de sombreado** (tonos por material, brillo del pelo) para que piezas viejas y
+   nuevas acaben iguales. Esa decisión es del dueño.
+4. **Primer lote de prueba**: cuerpo y cara de Solen y de Lyra en la pose `sit_table`. Si el flujo
+   rinde, el resto.
+
+**Solo cinco personajes.** El dueño (2026-10-28): borrar todo lo anterior al rediseño de Solen:
+Ren, Akira, Hana, Hiro, Kaien, Raiga, Kenji y sus piezas, para concentrarse en Solen, Romano,
+Aiden, Lyra y Aurelia. Se hace en su propia rama (`cleanup/five-only`) con su confirmación de la
+lista exacta (sección 11 de STATUS), porque borra arte aprobado y toca presets, compañeros de
+misión y tests.

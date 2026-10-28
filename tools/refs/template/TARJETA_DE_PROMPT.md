@@ -331,3 +331,63 @@ con siluetas (la que ya está en su referencia), el patio al atardecer, el camin
 puerta de la aldea. Se piden una a una con el preámbulo y "misma paleta que la sala del clan".
 
 La maqueta con nuestros datos en su disposición: `docs/mockups/casa-owner-style-mockup.png`.
+
+## 9. Los avisos de batalla (Último aliento, reacciones) y los botones · las piezas de interfaz
+
+Su referencia: `docs/reference/last-stand-owner-reference.png` (2026-10-28, su generador: la
+batalla en pausa con Lyra caída y el aviso "ÚLTIMO ALIENTO" con sus dos botones y las tres
+tarjetas de resultado; *"me encanta"*). Como en el bacará y en la Casa, **el juego pone los
+textos, los retratos (salen del motor de sprites) y las barras de vida**; lo que hace falta del
+generador son **las piezas vacías** del marco y los botones, a tamaño de pantalla (1920×1080) para
+reducirlas nosotros a 1x y 2x, como los iconos. Las figuras anime de su imagen no entran en el
+juego: nuestro estándar son los sprites.
+
+Dónde va cada pieza en el juego: el marco grande es el `Prompt` de `components/battle/hud.tsx`
+(Último aliento, Desviar el kunai, Interponerse, Evasión, Kawarimi, el ataque de oportunidad);
+los dos botones gema son el sí / no de esos avisos (rojo = la opción que cuesta, azul = la segura),
+y el botón negro-dorado el de la barra de acciones (`hudKit.tsx`); las tarjetas pequeñas son el
+resumen al cerrar la batalla y las fichas de resultado; las placas con retrato son las de la
+fiesta y los enemigos arriba (`PartyFrames`).
+
+**A) La hoja de piezas**, en la plantilla magenta (como la del casino), fila por fila. Se pega con
+el preámbulo y su imagen adjunta como "misma paleta y mismo estilo de marco":
+
+```
+Hoja de piezas de interfaz de batalla sobre fondo magenta puro (#FF00FF), cada pieza separada,
+sin texto, sin personajes, misma paleta y mismo estilo de marco que la imagen adjunta (negro
+translúcido con rojo oscuro, filete dorado fino, esquinas ornamentadas, gemas rojas en rombo):
+Fila 1: el marco grande del aviso, 1500×900, vacío por dentro: filete dorado doble, esquinas con
+ornamento, una gema roja en rombo arriba al centro y otra abajo al centro, dos chispas doradas
+(✦) sueltas de 64×64 para flanquear el título; y el mismo marco en versión estrecha, 900×600.
+Fila 2: el botón gema rojo, 680×190, vacío (sin letras ni icono), en cuatro estados en fila:
+normal, iluminado (borde dorado más brillante), pulsado (más oscuro, hundido), apagado (gris).
+Fila 3: el mismo botón gema en azul, 680×190, los cuatro estados; y en dorado, 680×190, normal.
+Fila 4: el botón negro con borde dorado de la barra de acciones, 150×150 cuadrado, cuatro
+estados; y una ranura vacía del mismo tamaño para un icono.
+Fila 5: iconos de 96×96 en dorado sobre fondo negro redondo con filete dorado: espadas cruzadas
+(sacrificio), figura corriendo (retirada), calavera (muere), escudo (interponerse), hoja que
+desvía (desviar el kunai), ojo abierto (ojo del mañana), tronco con hojas (kawarimi), rayo en
+zigzag (reacción), reloj de arena (turno), ancla o gancho (brazo de madera).
+Fila 6: la tarjeta de resultado, 900×560, vacía, en tres bordes: azul, rojo y rojo oscuro; la
+placa "RESULTADO" vacía 400×60 con filete dorado; el marco de retrato cuadrado 180×180 dorado.
+Fila 7: la placa de retrato con barra de vida, 520×120, vacía (el hueco del retrato a la
+izquierda, el espacio de la barra a la derecha), en dos tonos: dorado (fiesta) y rojo (enemigo);
+la insignia de turno 220×60 negra con borde dorado; el rombo de iniciativa 110×110 dorado vacío
+y el mismo en gris (ya actuó).
+Fila 8: una barra de vida vacía 400×28 y llena en rojo; una barra de chakra llena en azul; una
+barra de dados de muerte: tres puntos rojos y tres verdes de 32×32, apagados y encendidos.
+PNG, 3200×3200, sin morado fuera del magenta de fondo.
+```
+
+**B) Si una fila sale con texto o con figuras:** se repite solo esa fila con "sin texto, sin
+personajes, solo el marco vacío" en una línea, como en el casino (sección 3).
+
+**C) Los fondos del aviso:** el marco va sobre la batalla real, no hace falta fondo. Para la
+tarjeta de resultado al cerrar la batalla sí: dos viñetas 1500×600 sin texto, "el campo de batalla
+al amanecer, vacío" y "una lápida con una espada clavada bajo un arce rojo", misma paleta que la
+imagen adjunta, pedidas una a una con el preámbulo.
+
+Con la hoja convertida (`sheet-from-template.py --hd`, piezas a `src/assets/ui_battle/`), el
+`Prompt` y los botones se redibujan con sus piezas; la maqueta con nuestros datos en su
+disposición: `docs/mockups/last-stand-mockup.png` (la de antes, con el marco actual) y la que
+haremos con las suyas.

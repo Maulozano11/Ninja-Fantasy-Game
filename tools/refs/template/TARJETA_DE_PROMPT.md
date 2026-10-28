@@ -147,3 +147,33 @@ de 2.5 a 3 veces su ancho.
 Cada pieza entera dentro de su celda, apoyada en el borde inferior; si no cabe, hazla más chica,
 la escala real la pongo yo.
 ```
+
+**Nota del dueño (2026-10-27):** el tapete de la mesa de bacará debe decir **BANKER** y **PLAYER**
+en grande, las dos opciones, para que se entienda de un vistazo. Vale para la mesa en primer
+plano (`WORLD_DESIGN.md` 5b): se pide aparte, a doble resolución, cuando toque esa escena.
+
+## 2c. Lote casino · el fondo (tarjeta final, con lo aprendido)
+
+```
+FONDO · interior de la casa de té y apuestas de la aldea, de noche · PANORÁMICO 16:7 (1920×840)
+Pintura de fondo para un juego de pixel art de 16 bits de vista lateral (2.5D): como un escenario
+de teatro visto de frente, con profundidad hacia atrás, NO isométrico. Sigue la referencia de
+estilo adjunta para la luz y las bandas de color.
+El local está VACÍO: sin muebles sueltos, sin personas, sin mesas ni barra ni taburetes (los
+objetos se ponen después, encima). Solo la arquitectura y la luz.
+Qué se ve, de abajo arriba:
+- el tercio inferior es el SUELO de tablones de madera oscura, visto en perspectiva suave, que
+  llega hasta el borde de abajo de la imagen (ahí van a pisar los personajes);
+- al fondo, una PARED de paneles de papel (shoji) con marcos de madera oscura, iluminada por
+  dentro con luz cálida, con un rótulo de tela sin letras;
+- a la DERECHA, un ALTILLO de madera con barandal, al que sube una escalera recta pegada a la
+  pared (la escalera solo insinuada en la pared, sin volumen hacia adelante);
+- a la IZQUIERDA, la entrada con una cortina noren azul oscuro y un farol de pie;
+- arriba, VIGAS de madera y dos o tres faroles de papel rojos colgando, tenues.
+Luz: cálida y baja desde los faroles; sombras suaves hacia abajo; el techo oscuro.
+Paleta corta: maderas oscuras, rojo laca, crema del papel, azul noche; 3 o 4 tonos por material,
+en bandas planas; sin degradados finos, sin ruido, sin brillos suaves.
+PROHIBIDO: texto o letras, personas, muebles, magenta, rosa fuerte o morado en cualquier parte.
+Entrega: PNG a 1920×840. Si solo puedes 16:9, hazla a 1920×1080 con lo importante en el centro
+y yo la recorto.
+```

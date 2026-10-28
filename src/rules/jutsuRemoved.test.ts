@@ -7,8 +7,8 @@ import assert from 'node:assert/strict';
 import { readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, it } from 'node:test';
-import { CLANS_DATA, DEFAULT_CHARACTER, JUTSUS_DATA, LEGENDARY_PRESETS, SHINOBI_CLASSES } from '../data/shinobiData';
-import { COMPANIONS, HANA, MISSIONS, RIVER_FOREST_PATROL } from '../data/missions';
+import { CLANS_DATA, DEFAULT_CHARACTER, JUTSUS_DATA, ALL_PRESETS, SHINOBI_CLASSES } from '../data/shinobiData';
+import { LEGACY_ROSTER, HANA, MISSIONS, RIVER_FOREST_PATROL } from '../data/missions';
 import { enemyCharacter, unitFrom } from '../battle/units';
 import { JUTSU } from '../battle/jutsu';
 import { jutsuName } from '../components/battle/battleLog';
@@ -69,7 +69,7 @@ describe('Yasaka no Magatama is out of the game ("quitala del juego")', () => {
   it('no jutsu, battle spec, legend, companion, enemy, clan, class or mission names it', () => {
     assert.ok(!JUTSUS_DATA.some((j) => j.id === GONE));
     assert.ok(!Object.hasOwn(JUTSU, GONE));
-    const data = [LEGENDARY_PRESETS, COMPANIONS, MISSIONS, CLANS_DATA, SHINOBI_CLASSES, (['rogue', 'hunter', 'jonin', 'raider'] as const).map((k) => enemyCharacter(k, 1))];
+    const data = [ALL_PRESETS, LEGACY_ROSTER, MISSIONS, CLANS_DATA, SHINOBI_CLASSES, (['rogue', 'hunter', 'jonin', 'raider'] as const).map((k) => enemyCharacter(k, 1))];
     for (const d of data) assert.ok(!/yasaka|magatama/i.test(JSON.stringify(d)));
   });
 
@@ -110,7 +110,7 @@ describe('a sheet saved with Yasaka no Magatama loads without it', () => {
   });
 
   it('a sheet without it is not touched, and loading twice changes nothing more', () => {
-    for (const c of [DEFAULT_CHARACTER, HANA, ...LEGENDARY_PRESETS.map((p) => p.character)]) assert.deepEqual(refitRemoved(c, natureOf(c)).swaps, [], c.id);
+    for (const c of [DEFAULT_CHARACTER, HANA, ...ALL_PRESETS.map((p) => p.character)]) assert.deepEqual(refitRemoved(c, natureOf(c)).swaps, [], c.id);
     const once = migrateCharacter(saved('Genjutsu Adept', 'red', { slot5Ultimate: GONE }));
     assert.deepEqual(migrateCharacter(roundTrip(once)), once);
   });

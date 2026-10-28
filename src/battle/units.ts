@@ -211,7 +211,7 @@ const TEMPLATES: Record<EnemyKind, Template> = {
       look({
         skin: '#d9a982',
         slots: {
-          hair: it('hair_crop', '#5a3a22'),
+          hair: it('hair_tousled', '#5a3a22'),
           face: it('face_clothmask', '#4a2a2a'),
           top: it('top_sleeveless', '#5a3a2a', '#3a2a22'),
           bottom: it('bottom_cargo', '#3a3326', '#2a251c'),
@@ -237,7 +237,7 @@ const TEMPLATES: Record<EnemyKind, Template> = {
       look({
         eyeColor: '#1f2a4a',
         slots: {
-          hair: it('hair_lowtail', '#1a1a22'),
+          hair: it('hair_night', '#1a1a22'),
           face: it('face_foxmask', '#f2eee6', '#cf2a2a', '#1b1420'),
           top: it('top_highcollar', '#262833', '#1a1b22'),
           bottom: it('bottom_shinobi', '#1a1b22', '#262833'),
@@ -250,7 +250,7 @@ const TEMPLATES: Record<EnemyKind, Template> = {
         body: 'female',
         eyeColor: '#1f2a4a',
         slots: {
-          hair: it('hair_pony', '#3a2a44'),
+          hair: it('hair_tousled', '#3a2a44'),
           face: it('face_catmask', '#f2eee6', '#1f9e9a', '#1b1420'),
           top: it('top_highcollar', '#262833', '#1a1b22'),
           bottom: it('bottom_leggings', '#1a1b22', '#262833'),
@@ -275,7 +275,7 @@ const TEMPLATES: Record<EnemyKind, Template> = {
       look({
         eyeColor: '#b8202a',
         slots: {
-          hair: it('hair_storm', '#c9ced6'),
+          hair: it('hair_ascended', '#c9ced6'),
           top: it('top_highcollar', '#20232c', '#14161c'),
           bottom: it('bottom_shinobi', '#14161c', '#20232c'),
           armor: it('armor_flak', '#3d4a3a', '#33402f'),
@@ -302,7 +302,7 @@ const TEMPLATES: Record<EnemyKind, Template> = {
       look({
         skin: '#c99872',
         slots: {
-          hair: it('hair_bristle', '#1a1a1a'),
+          hair: it('hair_tousled', '#1a1a1a'),
           face: it('face_clothmask', '#1a1b22'),
           top: it('top_tee', '#22262e'),
           bottom: it('bottom_hakama', '#1a1d24', '#22262e'),

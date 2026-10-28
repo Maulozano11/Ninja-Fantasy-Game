@@ -124,6 +124,35 @@ def native(path, box, pitch):
     return out
 
 
+def enclosed(fg, box=None):
+    """`fg` plus every page-coloured pixel the figure walls in (inside `box` (x0, y0, x1, y1) when given):
+    his eye whites are as white as his page (his Lyra's sit lost them to the page key, and the game showed
+    the background through her eyes, 2026-10-28). Page is only what touches the picture's edge, side by
+    side. The gaps between his hair strands are page too, and stay air: hence the box."""
+    H, W = fg.shape
+    page = np.zeros((H, W), bool)
+    page[0] = page[-1] = True
+    page[:, 0] = page[:, -1] = True
+    page &= ~fg
+    while True:
+        grow = page.copy()
+        grow[1:] |= page[:-1]
+        grow[:-1] |= page[1:]
+        grow[:, 1:] |= page[:, :-1]
+        grow[:, :-1] |= page[:, 1:]
+        grow &= ~fg
+        if (grow == page).all():
+            break
+        page = grow
+    out = fg.copy()
+    if box is None:
+        out |= ~page
+    else:
+        x0, y0, x1, y1 = box
+        out[y0:y1, x0:x1] |= ~page[y0:y1, x0:x1]
+    return out
+
+
 def merge(a, mask, tol):
     """His colours: inside `mask`, colours within `tol` (per channel) of one he used more are that one
     (the picture is a JPEG, so a flat colour of his comes back a few steps either way). Returns a copy."""

@@ -4,7 +4,7 @@
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { DEFAULT_CHARACTER, LEGENDARY_PRESETS } from '../data/shinobiData';
+import { DEFAULT_CHARACTER, ALL_PRESETS } from '../data/shinobiData';
 import { DAWN_HAND_FIST, DAWN_HAND_LINE, DAWN_HAND_NEAR } from './aureliaHandsArt';
 import { renderSprite, spriteLayers } from './compose';
 import { GRID, partIndex, RES } from './raster';
@@ -55,7 +55,7 @@ describe('Small hands', () => {
   });
 
   it("are Aurelia's own, and drawn on both arms in every pose", () => {
-    const aurelia = LEGENDARY_PRESETS.find((p) => p.character.id === 'preset_aurelia')!.character.appearance!;
+    const aurelia = ALL_PRESETS.find((p) => p.character.id === 'preset_aurelia')!.character.appearance!;
     assert.equal(aurelia.hands, 'small');
     for (const pose of [...SPRITE_POSES, ...MOVE_POSES, ...CAMP_POSES] as SpritePose[])
       for (let fr = 0; fr < frameCount(pose); fr++) {

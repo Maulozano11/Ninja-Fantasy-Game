@@ -2,7 +2,7 @@
 // effects (docs/MISSION_DESIGN.md). Every function returns a new character plus the events.
 
 import type { ChakraNature, ClanType, ShinobiCharacter } from '../types/shinobi';
-import { CLANS_DATA, DEFAULT_CHARACTER, LEGENDARY_PRESETS, SHINOBI_CLASSES } from '../data/shinobiData';
+import { ALL_PRESETS, CLANS_DATA, DEFAULT_CHARACTER, LEGENDARY_PRESETS, SHINOBI_CLASSES } from '../data/shinobiData';
 import { chakraNature } from '../sprite/chakraNature';
 import { getAppearance, migrateAppearance } from '../sprite/legacy';
 import type { ChakraColorId } from '../sprite/types';
@@ -290,7 +290,7 @@ export function updateLegendChakra(c: ShinobiCharacter): ShinobiCharacter {
  */
 export function addLegendNatures(c: ShinobiCharacter): ShinobiCharacter {
   if (c.extraNatures !== undefined || c.natureGrowth !== undefined) return c;
-  const legend = LEGENDARY_PRESETS.find((p) => p.character.id === c.id)?.character;
+  const legend = ALL_PRESETS.find((p) => p.character.id === c.id)?.character;
   if (!legend?.extraNatures?.length || natureOf(c) !== natureOf(legend)) return c;
   return {
     ...c,
@@ -301,7 +301,7 @@ export function addLegendNatures(c: ShinobiCharacter): ShinobiCharacter {
 
 /** The pieces Ren wore before the owner's new standard (2026-10-21), slot by slot. */
 const OLD_REN_PIECES: Record<string, string> = {
-  hair: 'hair_midnight',
+  hair: 'hair_midnight', // cut from the game on 2026-10-28; a save still names it, and this runs before migrateAppearance
   top: 'top_royalcoat',
   bottom: 'bottom_shinobi',
   feet: 'feet_leather',

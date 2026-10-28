@@ -4,8 +4,8 @@
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { DEFAULT_CHARACTER, JUTSUS_DATA, LEGENDARY_PRESETS } from '../data/shinobiData';
-import { COMPANIONS, HANA, KENJI, RIVER_FOREST_PATROL } from '../data/missions';
+import { DEFAULT_CHARACTER, JUTSUS_DATA, ALL_PRESETS } from '../data/shinobiData';
+import { LEGACY_ROSTER, HANA, KENJI, RIVER_FOREST_PATROL } from '../data/missions';
 import { loadRun, saveRun, startRun } from '../game/missionRun';
 import { loadHero, loadRoster } from '../game/saves';
 import { CHAKRA_COLORS } from '../sprite/chakra';
@@ -146,8 +146,8 @@ describe('the legends', () => {
       preset_aurelia: ['Light', '#fac856'], // a heroine: Light, no element, in her staff's gold
       preset_lyra: ['Wind', '#40cccb'], // a heroine: wind in the cyan of her blade
     };
-    assert.deepEqual(LEGENDARY_PRESETS.map((p) => p.character.id).sort(), Object.keys(want).sort());
-    for (const { character: c } of LEGENDARY_PRESETS) {
+    assert.deepEqual(ALL_PRESETS.map((p) => p.character.id).sort(), Object.keys(want).sort());
+    for (const { character: c } of ALL_PRESETS) {
       assert.equal(natureOf(c), want[c.id][0], c.id);
       // A type that is no element (Aurelia's Light) has jutsu of no element.
       assert.equal(loadoutNature(c), (ELEMENTS as string[]).includes(natureOf(c)) ? natureOf(c) : '', `${c.id}: its jutsu`);
@@ -194,7 +194,7 @@ describe('the owner\'s answers on the chakra types (2026-10-21)', () => {
 
 describe('saved copies of the legends move to their new type (the owner, 2026-10-21: "actualiza")', () => {
   /** The legend or companion of today, by id. */
-  const legend = (id: string): ShinobiCharacter => COMPANIONS.find((c) => c.id === id)!;
+  const legend = (id: string): ShinobiCharacter => LEGACY_ROSTER.find((c) => c.id === id)!;
   /** A copy saved before the change: today's sheet with the burst it had then (and no colour of its own, as the presets had). */
   const savedOld = (id: string, tint?: string): ShinobiCharacter => {
     const c = legend(id);

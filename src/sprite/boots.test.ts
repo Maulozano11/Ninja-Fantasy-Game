@@ -4,7 +4,7 @@
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { LEGENDARY_PRESETS } from '../data/shinobiData';
+import { ALL_PRESETS } from '../data/shinobiData';
 import { renderSprite } from './compose';
 import { legDepth, type DrawCtx, type Side } from './ctx';
 import { footTurn, shinCarried, shinTurn } from './items/ankle';
@@ -14,7 +14,7 @@ import { renSitFrame } from './renSit';
 import { drawRig, frameCount, rigPoseFor } from './rig';
 import { CAMP_POSES, MOVE_POSES, SPRITE_POSES, type BodyType, type SpriteAppearance, type SpritePose } from './types';
 
-const aiden = LEGENDARY_PRESETS.find((p) => p.character.id === 'preset_reference_aiden')!.character;
+const aiden = ALL_PRESETS.find((p) => p.character.id === 'preset_reference_aiden')!.character;
 const look = (body: BodyType): SpriteAppearance => ({ ...structuredClone(getAppearance(aiden)), body });
 
 /** The owner's Roman set on our bodies (as src/sprite/holes.test.ts on fix/holes-stowed-sword wears it). */
@@ -160,7 +160,7 @@ describe('closed boots', () => {
   // The owner on Ren (2026-10-23): "verifica los pies de ren en todas sus poses porque se le esta saliendo
   // piel del zapato". Our bare foot, longer at the toe than the boot's own foot, poked out past its toe.
   it("show no skin on Ren's legs in any pose and frame, on the three bodies", () => {
-    const ren = LEGENDARY_PRESETS.find((p) => p.character.id === 'preset_night')!.character;
+    const ren = ALL_PRESETS.find((p) => p.character.id === 'preset_night')!.character;
     const bad: string[] = [];
     for (const body of BODIES) {
       const l: SpriteAppearance = { ...structuredClone(getAppearance(ren)), body };

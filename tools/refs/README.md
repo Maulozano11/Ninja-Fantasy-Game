@@ -514,3 +514,14 @@ converts all of them; no converter per sheet.
 - `sheet-from-template.py --selftest <dir>`: builds a sheet from five approved camp sprites,
   placed off the block grid on purpose, and checks they convert back pixel for pixel. Run it
   after touching the script.
+
+- `base-head-from-ref.py [--study <dir>]`: the head of his bare female body
+  (`female-base-owner-reference.jpg`) as the **'base' face shape**, lifted whole like his Solen's
+  (face, eye, brow and mouth, his pixels), the skull under his hair continued in his base skin inside
+  our 'fine' head's skull (`base-head-skull.ts` → `base_head_skull.json`). Why (the owner, 2026-10-28):
+  the messy ponytail, cut from this picture, sat badly on the 'fine' and 'aurelia' heads; now it is
+  compatible with this head alone (`items/hair.ts` `heads`). The rule from here: **a hair lives on the
+  head it was painted over**; a hair wanted on two heads is two paintings.
+
+      npx tsx tools/refs/base-head-skull.ts
+      python3 -I tools/refs/base-head-from-ref.py --study <dir>

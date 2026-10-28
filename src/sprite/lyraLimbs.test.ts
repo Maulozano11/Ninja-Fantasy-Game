@@ -5,7 +5,7 @@
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { LEGENDARY_PRESETS } from '../data/shinobiData';
+import { ALL_PRESETS } from '../data/shinobiData';
 import { renderSprite, spriteLayers } from './compose';
 import type { Depth } from './ctx';
 import { paintedFrame } from './ownerFrames';
@@ -13,7 +13,7 @@ import { GRID, type Layer, partIndex, type PartId, RES } from './raster';
 import { frameCount } from './rig';
 import { type BodyType, CAMP_POSES, MOVE_POSES, SPRITE_POSES, type SpriteAppearance, type SpritePose } from './types';
 
-const lyra = LEGENDARY_PRESETS.find((p) => p.character.id === 'preset_lyra')!.character.appearance!;
+const lyra = ALL_PRESETS.find((p) => p.character.id === 'preset_lyra')!.character.appearance!;
 const BODIES: BodyType[] = ['female'];
 const look = (body: BodyType): SpriteAppearance => ({ ...lyra, body });
 

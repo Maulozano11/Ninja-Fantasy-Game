@@ -3,7 +3,7 @@
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { COMPANIONS } from '../data/missions';
+import { LEGACY_ROSTER } from '../data/missions';
 import { migrateCharacter } from '../rules/ninja';
 import type { ShinobiCharacter } from '../types/shinobi';
 import { renderSprite } from './compose';
@@ -15,7 +15,7 @@ import type { SpriteAppearance } from './types';
 const onSlender = (l: SpriteAppearance): SpriteAppearance => ({ ...l, body: 'slender' } as unknown as SpriteAppearance);
 
 describe('the slender body, removed', () => {
-  const preset = COMPANIONS.find((c) => c.appearance?.body === 'female')!;
+  const preset = LEGACY_ROSTER.find((c) => c.appearance?.body === 'female')!;
 
   it('a saved look on it loads on the female body, the rest of the look unchanged', () => {
     const saved = onSlender(preset.appearance!);
@@ -36,7 +36,7 @@ describe('the slender body, removed', () => {
   });
 
   it('nobody is drawn on it: no companion, legend or random ninja', () => {
-    for (const c of COMPANIONS) assert.notEqual(c.appearance?.body as string, 'slender', c.id);
+    for (const c of LEGACY_ROSTER) assert.notEqual(c.appearance?.body as string, 'slender', c.id);
     for (let i = 0; i < 200; i++) assert.notEqual(randomAppearance().body as string, 'slender');
   });
 });

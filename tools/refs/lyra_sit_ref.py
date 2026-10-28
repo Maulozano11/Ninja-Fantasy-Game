@@ -52,6 +52,8 @@ OFFSET = (59, 120)
 # His white page, and how far from it a pixel is still page.
 PAGE = (255, 255, 255)
 PAGE_TOL = 14
+# Her eyes, his cells (x0, y0, x1, y1): the one place his page's white is hers (the eye whites).
+EYES = (50, 17, 60, 22)
 # Colours of his within this distance (per channel) are one colour of his; his black line, every channel
 # below LINE (as lyra_read_ref.py has them).
 TOL = R.TOL
@@ -151,7 +153,8 @@ def frame():
     if 'f' in _CACHE:
         return _CACHE['f']
     out = native()
-    fg = np.abs(out - np.array(PAGE)).max(2) > PAGE_TOL
+    # her eye whites are his page's white: inside EYES, page the figure walls in is hers
+    fg = P.enclosed(np.abs(out - np.array(PAGE)).max(2) > PAGE_TOL, EYES)
     m = P.merge(out, fg, TOL)
     line = fg & (m.max(2) < LINE)
     _CACHE['f'] = (m, fg, line)

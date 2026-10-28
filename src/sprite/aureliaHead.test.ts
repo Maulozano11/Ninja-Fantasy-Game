@@ -6,7 +6,7 @@
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { LEGENDARY_PRESETS } from '../data/shinobiData';
+import { ALL_PRESETS } from '../data/shinobiData';
 import { AURELIA_FACE, AURELIA_FACE_LINE, AURELIA_FACE_SKIN } from './aureliaFaceArt';
 import { DAWN_EYE_COLORS, DAWN_EYES } from './aureliaEyeArt';
 import { AURELIA_HEAD_AHEAD, AURELIA_HEAD_UP, bodyHead } from './aureliaHead';
@@ -19,7 +19,7 @@ import { GRID, RES } from './raster';
 import { frameCount } from './rig';
 import { CAMP_POSES, MOVE_POSES, SPRITE_POSES, type SpriteAppearance, type SpritePose } from './types';
 
-const aurelia = LEGENDARY_PRESETS.find((p) => p.character.id === 'preset_aurelia')!.character.appearance!;
+const aurelia = ALL_PRESETS.find((p) => p.character.id === 'preset_aurelia')!.character.appearance!;
 const noSkirt: SpriteAppearance = { ...aurelia, slots: Object.fromEntries(Object.entries(aurelia.slots).filter(([k]) => k !== 'skirt')) };
 const ALL: SpritePose[] = [...SPRITE_POSES, ...MOVE_POSES, ...CAMP_POSES];
 /** His lash's first cell, the face anchor, in his picture; and where his pixels lie in our frame. */

@@ -5,7 +5,7 @@
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { LEGENDARY_PRESETS } from '../data/shinobiData';
+import { ALL_PRESETS } from '../data/shinobiData';
 import { renderSprite } from './compose';
 import { armJoints, armRadius, armReaches, type Depth, type DrawCtx, FOREARM_RULE, FOREARM_TAPER, type Side } from './ctx';
 import { limbR } from './items/clothes';
@@ -70,7 +70,7 @@ function across(look: SpriteAppearance, pose: SpritePose, frame: number, s: Side
 }
 
 const presets = (): [string, SpriteAppearance, EyeSpecial][] => [
-  ...LEGENDARY_PRESETS.map((p) => [p.character.id, p.character.appearance!, dojutsuToEye(p.character.dojutsu)] as [string, SpriteAppearance, EyeSpecial]),
+  ...ALL_PRESETS.map((p) => [p.character.id, p.character.appearance!, dojutsuToEye(p.character.dojutsu)] as [string, SpriteAppearance, EyeSpecial]),
   [
     'roman',
     (() => {
@@ -149,7 +149,7 @@ describe('the extended forearm (the owner\'s rule)', () => {
         assert.ok(fore.length >= 1 && fore[0].piece === NIGHT_CAST_FORE_F, `${body} ${pose} ${f}: his far forearm`);
       }
       // and it reads as his: the combo's cross as thick as his cast
-      const ren = LEGENDARY_PRESETS.find((p) => p.character.id === 'preset_night')!.character;
+      const ren = ALL_PRESETS.find((p) => p.character.id === 'preset_night')!.character;
       const l = { ...ren.appearance!, body };
       const cross = across(l, 'combo', 2, 'F', [0.25, 0.4, 0.55], dojutsuToEye(ren.dojutsu));
       assert.ok(cross.every((n) => n >= HIS_ROWS - 1 && n <= HIS_ROWS + 1), `${body} combo 2: ${cross.join(', ')} rows across (his ${HIS_ROWS})`);

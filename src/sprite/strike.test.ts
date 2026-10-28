@@ -2,7 +2,7 @@
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { LEGENDARY_PRESETS } from '../data/shinobiData';
+import { ALL_PRESETS } from '../data/shinobiData';
 import { renderSprite } from './compose';
 import { throwRelease } from './grip';
 import { defaultAppearance } from './legacy';
@@ -113,7 +113,7 @@ describe('throw and pierce poses', () => {
   it('joins the head to the body with no gap in every throw frame', () => {
     // From the neck's foot to the head's centre every pixel is the figure (skin, collar or hair): the head
     // never floats off the shoulders. The default look, and the owner's Ren, Aiden and the Roman.
-    const looks: [string, SpriteAppearance][] = [['default', look('male')], ...['preset_night', 'preset_reference_aiden'].map((id) => [id, LEGENDARY_PRESETS.find((p) => p.character.id === id)!.character.appearance!] as [string, SpriteAppearance])];
+    const looks: [string, SpriteAppearance][] = [['default', look('male')], ...['preset_night', 'preset_reference_aiden'].map((id) => [id, ALL_PRESETS.find((p) => p.character.id === id)!.character.appearance!] as [string, SpriteAppearance])];
     const roman = look('male');
     roman.slots.armor = { id: 'armor_bronze', colors: [] };
     roman.slots.skirt = { id: 'skirt_imperial', colors: [], parts: { drapes: 'on' } };

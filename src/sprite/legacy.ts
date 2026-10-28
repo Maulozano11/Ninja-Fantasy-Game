@@ -2,24 +2,25 @@
 // to the layered sprite appearance, so saved characters and enemy clones
 // keep working.
 
+import { RETIRED_HAIR } from './items/hair';
 import { rgbToHsl, hexToRgb } from './color';
 import { ROMAN_IRIS } from './romanEyeArt';
 import type { ChakraColorId, EyeSpecial, ItemChoice, SpriteAppearance } from './types';
 import type { ShinobiCharacter } from '../types/shinobi';
 
 const HAIR: Record<string, string> = {
-  'Naruto Spike': 'hair_sunburst',
-  'Sasuke Rogue Fringe': 'hair_raven',
-  'Minato Winged Flare': 'hair_flash',
-  'Kakashi Tilt': 'hair_gravity',
-  'Madara Wild Cascade': 'hair_warlord',
-  'Itachi Low Ribbon': 'hair_lowtail',
-  'Cloud Chocobo Spikes': 'hair_storm',
-  'Sephiroth Parted Flow': 'hair_silver',
-  'Squall Modern Fringe': 'hair_lion',
-  'Knight Pointed Helm': 'hair_helm',
-  'Somnus Caelum': 'hair_founder',
-  'Noctis Caelum': 'hair_midnight',
+  'Naruto Spike': 'hair_surge',
+  'Sasuke Rogue Fringe': 'hair_night',
+  'Minato Winged Flare': 'hair_storm2',
+  'Kakashi Tilt': 'hair_tousled',
+  'Madara Wild Cascade': 'hair_drifter',
+  'Itachi Low Ribbon': 'hair_night',
+  'Cloud Chocobo Spikes': 'hair_ascended',
+  'Sephiroth Parted Flow': 'hair_drifter',
+  'Squall Modern Fringe': 'hair_tousled',
+  'Knight Pointed Helm': 'hair_valiant',
+  'Somnus Caelum': 'hair_founder_spikes',
+  'Noctis Caelum': 'hair_night',
 };
 
 const ARMOR: Record<string, string> = {
@@ -123,7 +124,7 @@ export function appearanceFromLegacy(c: ShinobiCharacter): SpriteAppearance {
   look.eyeShape = 'standard';
   look.skin = p.skinTone || look.skin;
   look.eyeColor = p.eyeColor || '#3b82f6';
-  look.slots.hair = choice(HAIR[c.hairstyle] || 'hair_sunburst', p.hairColor);
+  look.slots.hair = choice(HAIR[c.hairstyle] || 'hair_surge', p.hairColor);
   look.slots.top = choice('top_highcollar', p.clothColor, p.armorSecondary);
   look.slots.bottom = choice('bottom_shinobi', p.clothColor);
   const armor = ARMOR[c.armorStyle];
@@ -178,6 +179,8 @@ export function getAppearance(c: ShinobiCharacter): SpriteAppearance {
  */
 export function migrateAppearance(look: SpriteAppearance): SpriteAppearance {
   if ((look.body as string) === 'slender') look = { ...look, body: 'female' };
+  // a hair cut from the game (items/hair.ts RETIRED_HAIR, 2026-10-28) becomes the plain tousled crown
+  if (look.slots?.hair && RETIRED_HAIR.has(look.slots.hair.id)) look = { ...look, slots: { ...look.slots, hair: { ...look.slots.hair, id: 'hair_tousled' } } };
   if ('neck' in look && look.neck !== 'long') {
     const { neck: _neck, ...rest } = look as SpriteAppearance & { neck?: unknown };
     look = rest;

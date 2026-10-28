@@ -3,7 +3,7 @@
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { CLANS_DATA, DEFAULT_CHARACTER, JUTSUS_DATA, LEGENDARY_PRESETS } from '../data/shinobiData';
+import { CLANS_DATA, DEFAULT_CHARACTER, JUTSUS_DATA, ALL_PRESETS } from '../data/shinobiData';
 import { HANA, KENJI, RIVER_FOREST_PATROL } from '../data/missions';
 import { loadRun, migrateRun, type MissionRun, saveRun, startRun } from '../game/missionRun';
 import { loadHero, loadRoster } from '../game/saves';
@@ -32,7 +32,7 @@ const CLANS = Object.keys(CLANS_DATA) as ClanType[];
 const SLOTS = Object.keys(SLOT_CATEGORY) as JutsuSlot[];
 const byId = (id: string) => JUTSUS_DATA.find((j) => j.id === id)!;
 const ids = (xs: { id: string }[]) => xs.map((x) => x.id);
-const legend = (id: string) => LEGENDARY_PRESETS.find((p) => p.character.id === id)!.character;
+const legend = (id: string) => ALL_PRESETS.find((p) => p.character.id === id)!.character;
 const KAIEN = legend('preset_storm');
 const RAIGA = legend('preset_warlord');
 /** Solen's sheet (Fire, Bukijutsu, Ryusei, level 6) as a ninja of its own, at a level. */
@@ -213,7 +213,7 @@ describe('Kaien (Rayo + Fuego) and Raiga (Fuego + Tierra): "ok con kaien y raiga
     assert.deepEqual(naturesOf(RAIGA, natureOf(RAIGA)), ['Fire', 'Earth']);
     assert.equal(RAIGA.natureGrowth, 'element', 'Raiga is level 5: his choice');
     assert.equal(KAIEN.natureGrowth, undefined, 'Kaien is level 4: a legend\'s own, before level 5');
-    for (const { character: c } of LEGENDARY_PRESETS) {
+    for (const { character: c } of ALL_PRESETS) {
       const n = natureOf(c);
       assert.deepEqual(offNatureJutsus(c.selectedJutsus, n, growthOf(c, n).extra), [], `${c.id}: nothing "no es de tu naturaleza"`);
     }

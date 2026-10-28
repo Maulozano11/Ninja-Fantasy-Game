@@ -4,7 +4,7 @@
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { CLANS_DATA, DEFAULT_CHARACTER, JUTSUS_DATA, LEGENDARY_PRESETS, SHINOBI_CLASSES } from '../data/shinobiData';
+import { CLANS_DATA, DEFAULT_CHARACTER, JUTSUS_DATA, ALL_PRESETS, SHINOBI_CLASSES } from '../data/shinobiData';
 import { HANA, KENJI } from '../data/missions';
 import { OFFERED_TYPES } from '../sprite/chakraNature';
 import type { ClanType, ShinobiCharacter, ShinobiClassType } from '../types/shinobi';
@@ -19,7 +19,7 @@ const SLOTS = Object.keys(SLOT_CATEGORY) as JutsuSlot[];
 const NATURES = OFFERED_TYPES.map((t) => t.nature);
 const byId = (id: string) => JUTSUS_DATA.find((j) => j.id === id)!;
 const ids = (xs: { id: string }[]) => xs.map((j) => j.id);
-const legend = (id: string) => LEGENDARY_PRESETS.find((p) => p.character.id === id)!.character;
+const legend = (id: string) => ALL_PRESETS.find((p) => p.character.id === id)!.character;
 
 describe('the taijutsu, kenjutsu and genjutsu jutsu belong to their class', () => {
   it('the classes, mapped: taijutsu, kenjutsu (Bukijutsu) and genjutsu; Ninjutsu and Medical have none', () => {
@@ -101,7 +101,7 @@ describe('the sheets keep their jutsu, marked when another class\'s', () => {
   it('no legend breaks the rule: each one\'s taijutsu, kenjutsu or genjutsu jutsu is its class\'s', () => {
     // Aurelia's sheet is provisional (a Light medic, made before the class rule): it waits for the owner's
     // jutsu for her (docs/STATUS.md). Until then her two off-class jutsu stay, marked, as on any old sheet.
-    for (const { character: c } of LEGENDARY_PRESETS)
+    for (const { character: c } of ALL_PRESETS)
       assert.deepEqual(offClassJutsus(c.selectedJutsus, c.shinobiClass), c.id === 'preset_aurelia' ? ['temple_of_nirvana', 'leaf_hurricane_senpuu'] : [], c.id);
   });
 
@@ -135,7 +135,7 @@ describe('changing class in the creator swaps the jutsu of another class, as a t
   });
 
   it('every class change of every legend, made a new ninja: what is left fits the class and the ranks, the rest stays', () => {
-    for (const { character: c } of LEGENDARY_PRESETS)
+    for (const { character: c } of ALL_PRESETS)
       for (const cls of CLASSES) {
         const nu = { ...c, id: 'ninja_copy' };
         const r = fitToClass(nu, natureOf(c), cls);

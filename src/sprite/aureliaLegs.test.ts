@@ -6,7 +6,7 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { describe, it } from 'node:test';
-import { LEGENDARY_PRESETS } from '../data/shinobiData';
+import { ALL_PRESETS } from '../data/shinobiData';
 import { hexToRgb } from './color';
 import { renderSprite, spriteLayers } from './compose';
 import { DEPTHS, legDepth, type Side } from './ctx';
@@ -15,7 +15,7 @@ import { GRID, partIndex } from './raster';
 import { frameCount } from './rig';
 import { CAMP_POSES, MOVE_POSES, SPRITE_POSES, type SpriteAppearance, type SpritePose } from './types';
 
-const aurelia = LEGENDARY_PRESETS.find((p) => p.character.id === 'preset_aurelia')!.character.appearance!;
+const aurelia = ALL_PRESETS.find((p) => p.character.id === 'preset_aurelia')!.character.appearance!;
 const noSkirt: SpriteAppearance = { ...aurelia, slots: Object.fromEntries(Object.entries(aurelia.slots).filter(([k]) => k !== 'skirt')) };
 const LOOKS: [SpriteAppearance, string][] = [
   [noSkirt, 'without her skirt'],

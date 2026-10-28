@@ -415,6 +415,13 @@ visita y estas cartas en vez de las de casa):
     comisión redondea hacia abajo, nunca te deja a cero); **Empate paga 8:1**, y si hay empate las
     apuestas a Jugador y Banca se devuelven.
   - Las cartas salen del RNG sembrado; la Crónica guarda las manos grandes.
+  - **Apuestas de bonus** (el dueño, 2026-10-28; el cuarto botón, de amatista): **Blazing 7** (la banca
+    gana con un 7 de tres cartas, 40:1), **Panda 8** (el jugador gana con un 8 de tres cartas, 25:1; es
+    el nombre que usan los casinos para la de 8) y **Heavenly 9** (un 9 natural en cualquier mano,
+    8:1). Se apuestan aparte de la principal.
+  - El motor es `src/campaign/baccarat.ts` (zapato de 8 barajas con el RNG sembrado, reparto por la
+    tabla, pagos y bonus), con sus tests; la maqueta jugó tres manos reales con él
+    (`docs/mockups/bacara-three-hands.gif`).
   Para el **póker** se usa el de cinco cartas con descarte (una ronda de apuestas, un descarte de
   hasta tres, otra ronda): las reglas estándar, los PNJ con un estilo por rasgo (farol, pasivo,
   agresivo) y con una prueba de SAB puedes **leer** el farol de un PNJ una vez por mano.

@@ -134,6 +134,12 @@ export function logLine(ev: BattleEvent, s: BattleState, lang: Lang, wallOf = (i
       return { text: t(ev.caught ? 'l_deflectCaught' : 'l_deflect', { a: nameOf(s, ev.unit, lang), n: ev.less }), tone: 'text-cyan-300' };
     case 'eye':
       return ev.on ? { text: t('l_eyeOpen', { a: nameOf(s, ev.unit, lang) }), tone: 'text-rose-300' } : { text: t('l_eyeClose'), tone: 'text-slate-400' };
+    case 'lastStand': {
+      const a = nameOf(s, ev.unit, lang);
+      if (ev.choice === 'retreat') return { text: t('l_retreat', { a, m: ev.mutilation ? effectName(ev.mutilation, lang) : '' }), tone: 'text-amber-300 font-semibold' };
+      if (ev.lives === undefined) return { text: t('l_sacrifice', { a }), tone: 'text-rose-300 font-bold' };
+      return { text: t(ev.lives ? 'l_sacrificeLives' : 'l_sacrificeDies', { a }), tone: ev.lives ? 'text-emerald-300 font-bold' : 'text-rose-400 font-bold' };
+    }
     case 'interpose':
       return { text: t('l_interpose', { a: nameOf(s, ev.unit, lang), b: nameOf(s, ev.for, lang) }), tone: 'text-cyan-300' };
     case 'sever':
@@ -279,6 +285,8 @@ export function floatLabel(ev: BattleEvent, s: BattleState, lang: Lang): string 
       return t('f_deflect');
     case 'eye':
       return ev.on ? t('f_eye') : null;
+    case 'lastStand':
+      return ev.choice === 'sacrifice' && ev.lives === undefined ? t('f_sacrifice') : null;
     case 'interpose':
       return t('f_interpose');
     case 'sever':

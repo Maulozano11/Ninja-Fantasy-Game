@@ -29,6 +29,13 @@ export interface EffectMods {
   noJutsu: boolean;
   /** Held fast in ice: no movement, no action, no reaction. */
   frozen: boolean;
+  /** Mutilations and implants (the owner, 2026-10-28). */
+  noTwoHanded: boolean;
+  rangedReachM: number;
+  disadvPerception: boolean;
+  hook: boolean;
+  darkSightM: number;
+  freeJump: boolean;
   noRestHp: boolean;
   cannotBeSurprised: boolean;
   refusesAllyHealing: boolean;
@@ -84,6 +91,15 @@ export const EFFECTS: Record<EffectId, EffectDef> = {
   fall_aftermath: def({ id: 'fall_aftermath', name: 'Fall aftermath', nameEs: 'Secuelas de caída', kind: 'debuff', duration: 'mission', description: '−2 AC, death saves with disadvantage.', mods: { ac: -2 } }),
   shrine_curse: def({ id: 'shrine_curse', name: "Shrine's curse", nameEs: 'Maldición del santuario', kind: 'debuff', duration: 'mission', curedBy: ['seal_poison'], description: '−1 to all saves.', mods: { saves: -1 } }),
   breakdown: def({ id: 'breakdown', name: 'Breakdown', nameEs: 'Quiebre', kind: 'debuff', duration: 'mission', description: 'Panic, Paranoia, Blind rage or Despair until the village.' }),
+  // Mutilations (the owner, 2026-10-28, M1/M2: a retreat from the last stand leaves one, fixed by the blow:
+  // fire an arm, a cut an eye, a blow a leg) and the implants that replace them (bought at the sanctuary or
+  // the forge, price level 3: rules/implants.ts). Permanent: back at the village they stay.
+  missing_arm: def({ id: 'missing_arm', name: 'Missing arm', nameEs: 'Brazo perdido', kind: 'debuff', duration: 'permanent', description: '−1 melee damage; no two-handed weapons.', mods: { meleeDamage: -1, noTwoHanded: true } }),
+  missing_eye: def({ id: 'missing_eye', name: 'Missing eye', nameEs: 'Ojo perdido', kind: 'debuff', duration: 'permanent', description: '−3 m ranged reach; disadvantage on Perception.', mods: { rangedReachM: -3, disadvPerception: true } }),
+  missing_leg: def({ id: 'missing_leg', name: 'Missing leg', nameEs: 'Pierna perdida', kind: 'debuff', duration: 'permanent', description: '−3 m speed.', mods: { speedM: -3 } }),
+  implant_wood_arm: def({ id: 'implant_wood_arm', name: 'Wooden arm', nameEs: 'Brazo de madera', kind: 'buff', duration: 'permanent', description: 'A grapple hook: a bonus action pulls you to a spot within 6 m in sight.', mods: { hook: true } }),
+  implant_eye: def({ id: 'implant_eye', name: 'Transplanted eye', nameEs: 'Ojo trasplantado', kind: 'buff', duration: 'permanent', description: '+3 m sight in the dark.', mods: { darkSightM: 3 } }),
+  implant_steel_leg: def({ id: 'implant_steel_leg', name: 'Steel leg', nameEs: 'Pierna de acero', kind: 'buff', duration: 'permanent', description: 'The ninja jump costs no bonus action.', mods: { freeJump: true } }),
   grave_wound: def({ id: 'grave_wound', name: 'Grave wound', nameEs: 'Herida grave', kind: 'debuff', duration: 'mission', curedBy: ['field_surgery'], description: '−10 % max HP; badly treated, it leaves a scar.', mods: { maxHpPct: -10 } }),
 };
 
@@ -98,7 +114,7 @@ export const BREAKDOWN_MODS: Record<string, Partial<EffectMods>> = {
 const ZERO: EffectMods = {
   ac: 0, allRolls: 0, saves: 0, dexRolls: 0, speedM: 0, initiative: 0, meleeDamage: 0, firstJutsuDiscount: 0, tempHpAtBattleStart: 0, maxHpPct: 0,
   disadvAttacks: false, disadvChecks: false, disadvConSaves: false, disadvWisSaves: false, advAttacks: false, advStealth: false, advTensionSave: false,
-  noJutsu: false, frozen: false, noRestHp: false, cannotBeSurprised: false, refusesAllyHealing: false,
+  noJutsu: false, frozen: false, noTwoHanded: false, rangedReachM: 0, disadvPerception: false, hook: false, darkSightM: 0, freeJump: false, noRestHp: false, cannotBeSurprised: false, refusesAllyHealing: false,
 };
 
 function addMods(into: EffectMods, m: Partial<EffectMods>): void {

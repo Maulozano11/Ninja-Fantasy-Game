@@ -41,6 +41,9 @@ import type { LogLine } from './battleLog';
 import { DMG_ES, SAVE_EN, SAVE_ES, T } from './battleText';
 import type { TKey } from './battleText';
 import { ABILITY_ICON, ACTION_ICON, ELEMENT_ICON, LogPanel, PartyFrames, Prompt, RollToast, Tip } from './hud';
+import { HOOK_RANGE } from '../../battle/engine';
+import { effectMods } from '../../rules/effects';
+import { SACRIFICE_LIVES, SACRIFICE_POWER } from '../../battle/lastStand';
 import type { ActionButton, ButtonTip } from './hud';
 import { JUTSUS_DATA } from '../../data/shinobiData';
 import { ActionDock, MiniRing, PartyDock, TopPlaque, plaqueUnit } from './hudKit';
@@ -58,6 +61,8 @@ type Mode =
   | { k: 'item'; item: 'bandage' | 'antidote' | 'tag' | 'tagTrap' }
   | { k: 'shove'; mode: 'push' | 'prone' }
   | { k: 'stone' }
+  /** A wooden arm's grapple hook: where to pull to. */
+  | { k: 'hook' }
   | { k: 'stabilize' }
   | { k: 'drag'; body: string };
 
@@ -618,6 +623,13 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
     } else if (mode.k === 'stone') {
       o.range = { at: actor.pos, radius: STONE_RANGE };
       if (hover?.pt) o.point = { at: hover.pt, ok: dist(actor.pos, hover.pt) <= STONE_RANGE };
+    } else if (mode.k === 'hook') {
+      o.range = { at: actor.pos, radius: HOOK_RANGE };
+      if (hover?.pt) {
+        const ok = dist(actor.pos, hover.pt) <= HOOK_RANGE + 0.1 && lineOfSight(s, actor.pos, hover.pt);
+        o.point = { at: hover.pt, ok };
+        label = ok ? T('aimHook') : T('aimNoReach');
+      }
     } else if (mode.k === 'shove' || mode.k === 'stabilize' || (mode.k === 'item' && mode.item !== 'tag' && mode.item !== 'tagTrap')) {
       o.range = { at: actor.pos, radius: 1.5 };
       if (hu) o.targets = [hu.id];
@@ -944,6 +956,9 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
       case 'stone':
         if (pt) act({ type: 'stone', unit: actor.id, at: pt });
         return;
+      case 'hook':
+        if (pt) act({ type: 'hook', unit: actor.id, at: pt });
+        return;
       case 'stabilize':
         if (u) act({ type: 'stabilize', unit: actor.id, target: u.id });
         return;
@@ -1071,6 +1086,8 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
       add({ id: 'tagTrap', label: t('act_tagTrap'), icon: ACTION_ICON.tagTrap, badge: s.supplies.explosiveTags, disabled: !can.action || s.supplies.explosiveTags < 1, active: mode.k === 'item' && mode.item === 'tagTrap', help: t('help_tagTrap') });
       if (downedAlly) add({ id: 'stabilize', label: t('act_stabilize'), icon: ACTION_ICON.stabilize, disabled: !can.action, active: mode.k === 'stabilize', help: t('help_stabilize') });
       if (stealth) add({ id: 'stone', label: t('act_stone'), icon: ACTION_ICON.stone, disabled: !can.action, active: mode.k === 'stone', help: t('help_stone') });
+      // A wooden arm's grapple hook (the owner's M2, 2026-10-28: an implant's ability).
+      if (effectMods(u.effects).hook) add({ id: 'hook', label: t('act_hook'), icon: ACTION_ICON.hook, disabled: !can.bonus || !!u.cond.prone, why: t('r_noBonus'), active: mode.k === 'hook', help: t('help_hook') });
       // Its id carries the body; its painted icon is the owner's drag (sheet 19).
       if (stealth && body) add({ id: `drag:${body.unit}`, label: t('act_drag'), iconId: 'drag', icon: ACTION_ICON.shove, active: mode.k === 'drag' });
       if (edge) add({ id: 'flee', label: t('act_flee'), icon: ACTION_ICON.flee, disabled: s.phase === 'combat' && !can.action, help: t('help_flee') });
@@ -1150,6 +1167,9 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
           return;
         case 'stone':
           setMode({ k: 'stone' });
+          return;
+        case 'hook':
+          setMode((m) => (m.k === 'hook' ? { k: 'move' } : { k: 'hook' }));
           return;
         case 'flee':
           act({ type: 'flee', unit: u.id });
@@ -1290,6 +1310,9 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
     if (pending.kind === 'evasion') {
       const by = pending.hit.source ? unitRef(state.units[pending.hit.source], lang) : '';
       return { title: T('evadeTitle'), text: T('evadeAsk', { name: unitRef(reactor, lang), dmg: pending.hit.amount, by }) };
+    }
+    if (pending.kind === 'lastStand') {
+      return { title: T('lastStandTitle'), text: T('lastStandAsk', { name: unitRef(reactor, lang), p: Math.round(SACRIFICE_LIVES * 100), x: SACRIFICE_POWER * 100 }) };
     }
     if (pending.kind === 'deflect') {
       const by = pending.hit.source ? unitRef(state.units[pending.hit.source], lang) : '';
@@ -1576,7 +1599,16 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
       })}
 
       {prompt && reactor && (
-        <Prompt title={prompt.title} text={prompt.text} yes={T('yes')} no={T('no')} yesKey={lang === 'es' ? 'S' : 'Y'} onYes={() => act({ type: 'react', unit: reactor.id, take: true })} onNo={() => act({ type: 'react', unit: reactor.id, take: false })} />
+        <Prompt
+          title={prompt.title}
+          text={prompt.text}
+          yes={pending?.kind === 'lastStand' ? T('sacrifice') : T('yes')}
+          no={pending?.kind === 'lastStand' ? T('retreatChoice') : T('no')}
+          yesKey={lang === 'es' ? 'S' : 'Y'}
+          noKey={pending?.kind === 'lastStand' ? 'R' : 'N'}
+          onYes={() => act({ type: 'react', unit: reactor.id, take: true })}
+          onNo={() => act({ type: 'react', unit: reactor.id, take: false })}
+        />
       )}
 
       {ended && (

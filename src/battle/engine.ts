@@ -21,6 +21,7 @@ import type {
   Cell,
   GaleZone,
   Hit,
+  Intent,
   Outcome,
   Pt,
   Rank,
@@ -64,7 +65,7 @@ import {
   warpStrike,
   openEye,
 } from './clans';
-import { planIntent, reachTo, replanAgainst } from './intent';
+import { goalOf, ninjaOptions, reachTo, replanAgainst } from './intent';
 import { chargedFoe, chargeHolds, crackUnder, endCharge } from './charged';
 import { activeImbue, EARTH_CRIT, ELEMENTAL_SLASH, endImbue, IMBUE_DAMAGE, IMBUE_DICE, imbueBlocker, imbueHolds, slashBlocker, slashRange, startImbue, unitImbueElement, WIND_PUSH, type ImbueElement } from './imbue';
 
@@ -1051,7 +1052,11 @@ function sacrifice(s: BattleState, u: Unit, ev: BattleEvent[]): void {
   u.cond = {};
   u.turn = { move: 0, action: true, bonus: true, reaction: false, moved: 0 };
   u.lastStand = true;
-  const plan = planIntent(s, u);
+  // Its strongest blow at a foe it can reach from where it lies (it rises, it does not walk): the
+  // AI's options, but only the strikes (at 1 HP the AI would rather dodge or heal, and a last stand
+  // is neither).
+  const strike = (o: { intent: Intent }) => ['jutsu', 'melee', 'ranged'].includes(o.intent.kind) && !!o.intent.target && s.units[o.intent.target]?.team !== u.team && !!goalOf(s, u, o.intent)?.ready;
+  const plan = ninjaOptions(s, u).find(strike)?.intent;
   if (plan?.target && s.units[plan.target]) {
     const at = plan.at ?? { ...s.units[plan.target].pos };
     if (plan.kind === 'jutsu') doJutsu(s, u, plan.what, at, plan.target, false, ev);

@@ -128,6 +128,21 @@ describe('the last stand (the third death save lost)', () => {
     assert.equal(SACRIFICE_POWER, 3);
   });
 
+  it('the sacrifice strikes a foe in reach from where the ninja lies, never dodges or heals (it is at 1 HP)', () => {
+    let struck = 0;
+    for (let seed = 1; seed <= 20; seed++) {
+      const { s } = thirdSave('Slashing', seed);
+      // the rogue a few steps off: her blade would need a walk she cannot take; her kunai reaches
+      place(s, 'rogue_0', { x: s.units.a.pos.x + 4, z: s.units.a.pos.z });
+      const out = ok(applyAction(s, { type: 'react', unit: 'a', take: true }));
+      assert.ok(out.events.some((e) => e.t === 'attack' && e.unit === 'a' && e.target === 'rogue_0'), `seed ${seed}: she struck`);
+      assert.ok(!out.events.some((e) => e.t === 'move' && e.unit === 'a'), 'she does not walk');
+      assert.ok(!out.events.some((e) => e.t === 'act' && e.unit === 'a' && e.act === 'dodge'));
+      struck++;
+    }
+    assert.equal(struck, 20);
+  });
+
   it('the retreat: out of the battle alive at 1 HP, with the mutilation the last blow fixed', () => {
     const { s } = thirdSave('Slashing');
     const out = ok(applyAction(s, { type: 'react', unit: 'a', take: false }));

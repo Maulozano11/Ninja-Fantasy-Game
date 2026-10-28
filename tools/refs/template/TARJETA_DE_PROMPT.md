@@ -259,3 +259,32 @@ Y aparte, en plantilla magenta, **las piezas móviles** (fichas de cuatro colore
 las mueva. Las **poses** (sentado a la mesa con las manos en el tapete, contar fichas, taparse la
 boca, echarse atrás; el crupier repartiendo en 2 cuadros; el chaleco rojo del crupier como atuendo
 social) son una hoja de pintura sobre nuestro render, no una lámina de props.
+
+## 7. La crupier repartiendo: hoja de animación (5 cuadros)
+
+Adjunta la hoja de poses sentadas (la crupier es la del medio) y el fondo vacío del bacará, para
+que vea dónde está el zapato de cartas (a SU derecha, nuestra izquierda).
+
+```
+De la hoja adjunta, toma SOLO a la crupier: mujer de pelo negro recogido con adorno rojo y
+kimono rojo con flores doradas. Dibújala en UNA SOLA IMAGEN como una tira de 5 cuadros en fila,
+todos del mismo tamaño y en la misma posición (misma cabeza, mismo torso, misma altura; solo se
+mueven los brazos), separados por espacio magenta, sin silla, sentada tras una mesa que NO se
+dibuja. Misma ropa, mismo pelo, mismos colores, mismo estilo de pixel art que la hoja adjunta.
+Los 5 cuadros, de izquierda a derecha, son la acción de sacar una carta del zapato de cartas que
+tiene a SU DERECHA y ponerla sobre la mesa frente a ella:
+ 1  reposo: las dos manos apoyadas al frente a la altura del regazo
+ 2  el brazo derecho se extiende hacia su derecha y abajo, la mano toca el zapato (el zapato no
+    se dibuja)
+ 3  la mano derecha vuelve hacia el centro con una carta bocabajo entre los dedos, a la altura
+    del pecho
+ 4  el brazo derecho estirado hacia adelante, la carta ya sobre la mesa frente a ella, aún bajo
+    los dedos
+ 5  reposo otra vez, las dos manos apoyadas, la carta ya soltada (no se dibuja)
+Fondo MAGENTA puro (#FF00FF). Sin sombra, sin texto, sin mesa, sin silla, sin zapato. Nada
+magenta, rosa fuerte ni morado en el dibujo. Cada cuadro de unos 450 píxeles de alto, con
+margen entre cuadros. PNG.
+```
+
+Si cambia la posición del cuerpo entre cuadros, la línea para repetir es: *"el cuerpo y la cabeza
+quedan exactamente iguales en los 5 cuadros; solo cambian los brazos"*.

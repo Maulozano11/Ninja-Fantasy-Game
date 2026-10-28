@@ -1,11 +1,26 @@
 # Propuesta: el mundo entre misiones (campaña, sociedad, linaje, reputación y riqueza) (respondida)
 
-Respuestas del dueño, 2026-10-27: `W1b W2b W3b W4a W5a W6a W7a W8b W9a W10a W11a W12a`
+Respuestas del dueño, 2026-10-27 (primera ronda): `W1b W2b W3b W4a W5a W6a W7a W8b W9a W10a W11a
+W12a`. **Segunda ronda, la misma noche, que manda donde cambia:** `W1b W2b W3b W4a+ W5a+ W6a W7a+
+W8b W9c W10a W11a W12a W13a+ W14a W15a`. Lo que lleva **+** trae un añadido suyo:
+
+- **W4a+:** la fórmula de estabilidad se queda, y además **cada pareja adicional baja la riqueza un
+  nivel al empezar**, salvo que sea una **relación de una noche**: una relación amorosa **se
+  convierte en "de una noche" cuando ya no se interactúa con esa persona** (sección 6).
+- **W5a+:** 7 niveles y nunca un precio, pero el juego **muestra cifras aleatorias con los 000 que
+  correspondan al nivel** para que el jugador sienta la dimensión de su riqueza, sin ponerle precio
+  a nada (sección 8).
+- **W7a+:** la edad jugable **la decide el jugador al crear la campaña**, según lo larga que la
+  quiera y si es multigeneracional (sección 11).
+- **W9c** (cambia su W9a de la primera ronda): el evento paranormal **solo en la historia, cuando el
+  guion lo pida**; con las Bendiciones y Maldiciones de la primera ronda (sección 10).
+- **W13a+:** mesas de verdad, y **ganar o perder ayuda en muchas tiradas sociales del casino**
+  (sección 5b).
 
 Difieren de la recomendación:
 
-- **W7a:** un hijo es jugable **a los 18 años** del mundo (no a los 14); lo que falte lo cubre el
-  salto de tiempo o el evento paranormal.
+- **W7:** jugable a los 18 por defecto, pero es **el jugador quien lo fija** al crear la campaña.
+- **W9c:** lo paranormal no es un beat de mundo sorteado: lo trae el guion.
 
 Además de las letras, el dueño añadió (sus palabras resumidas; el detalle va en cada sección):
 
@@ -180,6 +195,15 @@ Seis orígenes de ejemplo para el pack shinobi (nombres provisionales):
 El origen **no toca las reglas de batalla** (ni atributos ni jutsu): toca el mundo. El "Hijo de
 dos clanes" es el único que roza las reglas: tiene dos `giftBias`, que importa para sus hijos.
 
+**Límite del dueño (2026-10-27)** sobre el Hijo de dos clanes: *"solo se puede hasta jugar una
+campaña y tener hijos combinados con otro clan/raza"*. Lo leemos así (si no es esto, que lo
+corrija): ese origen **no se elige en el creador**; la sangre mezclada **se consigue jugando**: en
+una campaña, un protagonista de un clan tiene hijos con una pareja de otro clan o raza, y **esos
+hijos** son los que llevan dos `giftBias`. Así la mezcla es un logro del linaje, no un punto de
+partida. La fila de la tabla se queda como ejemplo de lo que un hijo mezclado tiene al tomar el
+relevo (riqueza y reputación según lo que herede, sección 11), no como origen elegible. En el pack
+espacial, "clan" es raza o planeta; en superhéroes, linaje de poder.
+
 ---
 
 ## 4. Las personas
@@ -301,7 +325,33 @@ visita y estas cartas en vez de las de casa):
   **mesa de fortunas** (solo con riqueza ≥ 4 y Estatus ≥ 5) juega propiedades y módulos de la base
   contra otros jugadores y PNJ. Contra un PNJ, su estilo es su rasgo (un *orgulloso* no se
   retira; una *ambiciosa* sube la apuesta). Hacer trampa es una carta con prueba (DES o
-  Engaño): sale, y ganas; falla, y la escena puede volverse batalla.
+  Engaño): sale, y ganas; falla, y la escena puede volverse batalla. **Ganar o perder en las
+  mesas pesa en las tiradas sociales del casino** (el dueño, W13a): ganar una mano da +1 a
+  cortejo, persuasión e intimidación hasta salir del local (+2 si ganas la mesa de fortunas);
+  perder, −1; y la gente lo comenta ("el que desplumó al capitán anoche").
+
+  **El bacará se juega exactamente como el bacará** (el dueño: *"estudia las reglas"*; estas son
+  las de punto banca, la variante de casino):
+  - Seis u ocho barajas, las figuras y los dieces valen 0, el as 1, el resto su número; una mano
+    vale la **última cifra** de la suma (7 + 8 = 15 → 5).
+  - Antes de repartir, cada apostante elige **Jugador**, **Banca** o **Empate**. El dueño: *"puedes
+    poner jugador o banquero; los demás personajes pueden ganar o perder dependiendo de qué
+    elijan: si son jugadores, eligen ellos; si son NPC, eligen solos"* (su rasgo decide: los
+    *prudentes* van a Banca, los *ambiciosos* al Empate de vez en cuando, los *orgullosos* siempre
+    contra lo que tú elegiste).
+  - Dos cartas a Jugador y dos a Banca. Un **8 o 9 natural** en cualquiera de las dos manos
+    termina la jugada.
+  - Si no hay natural: el **Jugador** pide tercera carta con 0–5 y se planta con 6–7. La **Banca**
+    sigue la tabla: si el Jugador se plantó, la Banca pide con 0–5 y se planta con 6–7; si el
+    Jugador pidió, la Banca pide con 0–2 siempre; con 3 salvo que la tercera del Jugador fuera 8;
+    con 4 si fue 2–7; con 5 si fue 4–7; con 6 si fue 6–7; con 7 se planta.
+  - Gana la mano más alta. **Jugador paga 1:1; Banca 1:1 menos el 5 % de comisión** (en fichas: la
+    comisión redondea hacia abajo, nunca te deja a cero); **Empate paga 8:1**, y si hay empate las
+    apuestas a Jugador y Banca se devuelven.
+  - Las cartas salen del RNG sembrado; la Crónica guarda las manos grandes.
+  Para el **póker** se usa el de cinco cartas con descarte (una ronda de apuestas, un descarte de
+  hasta tres, otra ronda): las reglas estándar, los PNJ con un estilo por rasgo (farol, pasivo,
+  agresivo) y con una prueba de SAB puedes **leer** el farol de un PNJ una vez por mano.
 - **Información y misiones.** Informantes con precio (una bebida, fichas, un favor, Lazo): dan
   marcas que abren cartas de misión (la ruta del pasadizo, quién vendió tu ruta), y el **tablón**
   del local ofrece misiones secundarias que el generador saca de los beats de mundo.
@@ -365,6 +415,15 @@ diez veces no le cuesta lo mismo aceptar que al huérfano de la aldea. Y la prop
 **dice** en escena: a Estatus alto, el reproche se vuelve orgullo ("todas saben quién eres; yo
 soy la que vuelve a casa contigo").
 
+**W4a+, el coste de cada pareja más:** empezar una **pareja adicional** (la segunda en adelante)
+**baja la riqueza un nivel** en ese momento: la casa que le pones, los regalos, lo que cuesta
+sostener dos vidas. No baja si la relación es **de una noche**. Una relación amorosa **se vuelve de
+una noche** cuando dejas de interactuar con esa persona (ninguna carta con ella en dos estaciones
+seguidas): deja de contar como pareja (ni estabilidad, ni paciencia, ni coste), su afecto se
+congela donde estaba y queda la marca `una_noche_con_X`; si más adelante la retomas, vuelve a ser
+pareja (y entonces sí cuesta el nivel). Un hijo de una noche es posible (11): la persona vuelve con
+él en un beat de familia, y ahí decides.
+
 ---
 
 ## 6b. El Estatus (el dueño, 2026-10-27)
@@ -406,6 +465,27 @@ estatus = clamp(1, 10, 1 + fama/2 + riqueza/2 + nº de facciones Aliado + hazañ
 - **Baja** igual que sube: una ruina, una traición pública, una misión fallida con testigos
   (−1 fama cada una) lo arrastran a la estación siguiente. El Estatus **no se hereda** entero: el
   hijo recibe la mitad por la vía de fama y reputación (11).
+
+**Las escenas de hazaña** (el dueño, 2026-10-27: *"necesitamos escenas donde se consiga la
+felicitación de una hazaña: te felicita el presidente, una ciudad completa, los noticieros, la
+federación espacial, te ascienden a comandante en el ejército; solo en mechas y superhéroes, no en
+ninjas"*). Cuando una hazaña sube el Estatus de tramo, el generador mete **un beat de
+felicitación** antes de la siguiente estación, y el pack decide quién felicita por tramo:
+
+| Tramo | Espacial (mechas) | Superhéroes | Shinobi |
+|---|---|---|---|
+| 4 Respetado | La tripulación brinda en el hangar | El barrio te hace una pancarta | *(sin escena: el clan no felicita; a lo sumo una línea del maestro)* |
+| 6 Celebridad | **Los noticieros** de la colonia | **Los noticieros** de la ciudad | — |
+| 7 Poder local | **Ascenso a comandante** en la flota | **Una ciudad completa** en la plaza | — |
+| 8 Leyenda viva | **La federación espacial** en sesión | El alcalde y la liga | — |
+| 10 Líder del mundo | El consejo de los planetas | **El presidente** | — |
+
+Son cinemáticas cortas (el escenario de `MISSION_DESIGN.md`: marcas, cámara, una pintura fija en la
+del presidente y la de la federación), con una decisión al final que escribe marcas (aceptar el
+ascenso o rechazarlo; dedicar la hazaña a alguien: +3 afecto; o presumir: +1 fama, −1 respeto
+con los *leales*). El ascenso da un **título** (6b) y acceso a misiones del ejército. En shinobi no
+hay felicitación pública por decisión del dueño: el reconocimiento ninja es callado (el título de
+Aliado, un asiento en el banquete, una línea del anciano del clan).
 
 **Perderlo.** Afecto ≤ 0 es ruptura; rencor ≥ 8 además es traición: la persona se va con la
 facción rival, se lleva una marca, y puede volver como enemiga (como Kaen en el anexo del
@@ -465,15 +545,23 @@ monedas**. Hay **7 niveles de riqueza**:
   bajas un nivel. Dos niveles menos: no puedes. Un módulo pequeño es precio 3, uno grande 4, una
   propiedad mayor 5, subir la base de nivel 5. La reputación Frío sube el precio un nivel; Aliado
   lo baja uno.
-- **Nunca se ve una cifra.** En pantalla, el nivel con su nombre y un sello; en la Crónica, "tu
-  fortuna creció" / "menguó".
+- **Nunca se ve un precio, pero sí una cifra de fortuna (W5a+).** El dueño: *"que te dé cifras
+  aleatorias con los 000 correspondientes dependiendo de la riqueza, para representar una dimensión
+  de riqueza al jugador, pero sin ponerle precio a nada"*. En la ficha de *Casa*, junto al sello
+  del nivel, una **fortuna estimada** en la moneda del pack, sorteada con el RNG sembrado dentro de
+  la banda del nivel y redondeada a ceros: nivel 0 → 0–900; 1 → 2 000–9 000; 2 → 20 000–90 000;
+  3 → 200 000–900 000; 4 → 2–9 millones; 5 → 20–90 millones; 6 → 200–900 millones. Cambia un poco
+  cada estación (±10 % dentro de la banda) para que respire, salta de banda al cambiar de nivel, y
+  **nada en el juego tiene precio en esa moneda**: las compras siguen siendo niveles. En la
+  Crónica, "tu fortuna creció a unos 3 millones de ryō".
 
 ---
 
 ## 9. La base
 
 Una base por campaña, con **nivel** (1 a 4) y **módulos**. El pack pone los nombres; el motor
-sabe qué abre cada módulo.
+sabe qué abre cada módulo. **Y se personaliza como un personaje** (9b): el juego no se mete en
+construcción, pero la base tiene creador propio.
 
 | Módulo (motor) | Shinobi | Qué abre |
 |---|---|---|
@@ -495,6 +583,107 @@ año (una cosecha, un ataque, una petición de sus habitantes) y reputación con
 
 ---
 
+## 9b. El creador de la base (el dueño, 2026-10-27)
+
+Sus palabras: *"no quiero que se meta mucho en construcción el juego, pero que tengas diferentes
+opciones para materiales de la casa, colores, estilo y locación"*, *"todo esto personalizable como
+tipo el creador de personaje, para hacerlo más simple, que solo se adapte al estilo del jugador"*.
+
+Así que la base **no se construye: se elige**, con una pantalla como el creador de personaje
+(lista a la izquierda, vista previa a la derecha, cada opción un sello). Lo elegido se guarda en
+`base.look` y la escena de la carne asada, el casino propio y la pantalla *Casa* se componen de
+ello por capas, como los sprites de los personajes. Lo que abre cada opción depende de la
+**riqueza** (8) y del **nivel** de la base; el resto es gusto.
+
+**Las opciones del motor** (el pack pone nombres y arte; el nivel de riqueza mínimo entre
+paréntesis):
+
+| Grupo | Opciones (motor) | Shinobi | Superhéroes | Ejemplos del dueño |
+|---|---|---|---|---|
+| **Locación** | bosque con ríos y montañas (0), ciudad en altura (3), costa de lujo (4), finca tradicional en lugar privilegiado (3), estudio pobre (0) | claro del bosque, barrio alto de la aldea, acantilado del mar, casa principal del clan, cuarto en el barracón | bosque, **el penthouse más alto de Nueva York**, **mansión multimillonaria playboy en Los Cabos (el Arco al fondo)**, mansión tradicional, estudio pequeño | sus cinco |
+| **Estilo** | simplista, elegante, lujo extremo | | | *"elegante, simplista, extremo lujo en el patio"* |
+| **Paredes** | regulares (0), troncos de madera (1), piedra (2), metal (2), mármol (4), granito (4) | troncos, piedra, metal | regulares, mármol, granito | *"paredes regulares o de piedra como mármol y granito; de troncos, de metal (fantasía, ninja)"* |
+| **Techo** | teja/lámina (0), madera (1), pizarra (2), **cobre** (4), **oro** (6) | | | *"lámina de cobre o de oro (riqueza máxima)"* |
+| **Colores** | 3 ranuras (muros, techo, detalles), como las ranuras de color de los ítems | | | |
+| **Patio de la carne asada** | mesas (0), asador (0), **alberca** (3), **área para bailar** (3), jardín (2), pérgola (3) | mesas bajas, brasero, estanque, tarima | mesas, asador, alberca infinita, pista | *"las mesas, el asador, si tiene alberca o área para bailar"* |
+| **Juguetes** | ninguno (0), montura/vehículo (3), **carros deportivos** (4), **helicóptero** (5), **yate** (5) | caballos, carruaje, barco | deportivos, helicóptero, yate | *"en tu base millonaria playboy eliges entre carros deportivos, helicóptero o yate"* |
+| **Seguridad** | ninguna (0), normal (2), **exuberante** (4) | ninguna, guardias del clan, escolta armada | ninguna, guardias, **guarruras estilo narco** | *"no existente, normal, exuberante guarruras estilo narcotraficante"* |
+
+Cada grupo es una capa del sprite de la escena (sección 9c), como un ítem del personaje: una
+locación es el fondo, las paredes y el techo son la casa, el patio son props, los juguetes son
+props grandes a un lado, la seguridad son personas sin hoja en sus marcas.
+
+**La seguridad juega** (el dueño): los guardias **están en la carne asada y en el salón** según tu
+estilo, y **afectan las tiradas sociales**: *normal* da +1 a intimidar y persuadir a desconocidos
+y −1 a cortejar (nadie se acerca igual con un guardia detrás); *exuberante* da +2 a intimidar, −2
+a cortejar a personas de rasgo *libre* o *abierto* (+1 a las *orgullosas*), y **controla a los
+fans** (6b): con seguridad normal los fans molestan la mitad de rondas; con exuberante, solo
+llegan los que tú dejas pasar (una carta "déjalo pasar" por ronda). Sin seguridad, a Estatus ≥ 6,
+un fan te roba una ronda entera cada carne asada. Y la seguridad exuberante **tiene un precio en
+reputación**: −1 por estación con la facción de la ley del pack (la aldea; la policía; la
+federación) salvo que seas Aliado suyo.
+
+**Qué se asa** (el dueño: *"la opción de decidir qué asar: ribeye, corte de alienígena de lujo,
+venado, dependiendo de universo y riqueza"*): al abrir la carne asada eliges el menú de una lista
+del pack con nivel de riqueza mínimo; es una carta más de la escena. Un menú por encima de lo que
+tus invitados esperan da +1 afecto a todos los presentes esa noche; uno por debajo de tu Estatus,
+−1 respeto ("¿esto es lo que sirve el señor de la región?"). Shinobi: pescado del río (0), jabalí
+(1), venado (2), buey del valle (4), el pez del emperador (6). Superhéroes: salchichas (0),
+arrachera (1), ribeye (3), wagyu (5). Espacial: ración de la nave (0), carne sintética (1), venado
+de colonia (2), **corte alienígena de lujo** (5).
+
+**La nave espacial** (pack de mechas; el dueño: *"mucha más personalización, porque sería solo tu
+nave y después tu base, pero seguirías usando la nave"*). La nave es la base del pack espacial
+**y además un vehículo**, así que tiene dos creadores:
+
+- **Por fuera**, como un personaje: casco (tipo: corbeta, fragata, crucero, **nave insignia**; cada
+  uno un tamaño), **colores** (3 ranuras), **armamento** (torretas, cañón de proa, misiles; cada
+  pieza un ítem con ranura), **escudo** (tipo y color del brillo), alas y motores. Es el sprite que
+  se ve en el espacio y en el fondo de la parrillada del hangar.
+- **Por dentro**, como la base: **el tamaño del casco fija los módulos** (corbeta 3, fragata 5,
+  crucero 8, insignia 12). Módulos propios del pack: **área social** (el hangar de las carnes
+  asadas: el Salón del motor), **área de entrenamiento**, puente, camarotes (**cuartos más grandes**
+  suben el afecto de quien vive a bordo), hangar de mechas (uno por mecha), enfermería, **prisión**
+  (los enemigos capturados en misión, con sus beats), **bodega de objetos cósmicos** (los objetos
+  únicos de misión se guardan aquí y dan beats paranormales), jardín hidropónico, cantina (el
+  casino a bordo, 5b).
+- **Mejorar la nave** es subir de casco (precio 5, como subir la base) y conserva los módulos; la
+  anterior pasa a ser **nave de combate** de la flota. Desde crucero puedes tener **naves de
+  combate más pequeñas** y **tu mecha con mejoras para combate espacial** (un ítem del mecha, como
+  el armamento de la nave). Cuando compras una base en un planeta (propiedad mayor), la nave sigue
+  siendo tuya: la base en tierra usa el creador de la base de arriba, y la nave se queda aparcada
+  al lado en la escena.
+
+**Dónde se profundiza**: el dueño lo fijó: *"donde más nos adentraremos en la personalización de
+la base será en el de mechas, y de ahí agarra el sistema el de superhéroes para tener también
+naves terrenales y espaciales, considerando que la del espacio sería más customizable, como la de
+mechas"*. En shinobi, la base tiene el creador de la tabla y nada más; en superhéroes, lo mismo
+más los juguetes y, cuando llegue, el creador de nave del pack espacial para sus naves.
+
+---
+
+## 9c. La escena de la base, por capas
+
+Para que las combinaciones no exploten (5 locaciones × 3 estilos × 6 paredes × 5 techos × … ×
+3 universos), la escena **no se pinta entera por combinación**: se compone en el juego, como un
+sprite de personaje, de capas que se dibujan una vez cada una:
+
+```
+fondo (locación × hora)          ← 1 pintura por locación y universo; día/tarde/noche por paleta
+casa (nivel × paredes × techo)   ← la silueta por nivel; paredes y techo son materiales (textura + rampa)
+patio (props sueltos)            ← mesas, asador, alberca, pista, pérgola: un sprite por prop y estilo
+juguetes (props grandes)         ← deportivos, helicóptero, yate, caballos: un sprite cada uno
+gente (los invitados, la seguridad) ← los sprites de personaje de siempre, en sus marcas
+primer plano (follaje, barandal) ← 1 por locación
+```
+
+Los **materiales** son rampas de color con una textura (como `scene_kit.py` ya hace con sus
+`Mat`): mármol, granito, troncos, metal, cobre y oro son seis rampas sobre la misma silueta, no
+seis dibujos. Los **colores** son `retintHex` sobre la rampa, como en los ítems. El plan de arte
+(`docs/scene-art-plan.md`) cuenta exactamente cuántas piezas son y en qué orden se hacen.
+
+---
+
 ## 10. El tiempo
 
 El año tiene **4 estaciones**. El tiempo avanza:
@@ -504,12 +693,13 @@ El año tiene **4 estaciones**. El tiempo avanza:
   cortejar) en vez de salir de misión. Cada estación en casa da una actividad de base y un
   evento social si hay salón; también corre la paciencia de las parejas y la edad de los hijos.
 - **Por muerte** del protagonista: el relevo (sección 11) salta hasta que el heredero tiene edad.
-- **Por evento paranormal** (decidido): un beat raro, ligado al Santuario o a un lugar de misión
+- **Por evento paranormal** (decidido; **W9c**: lo trae **solo el guion de la historia**, nunca el
+  sorteo de beats de mundo): una escena de la trama ligada al Santuario o a un lugar de misión
   (un sello antiguo, un espíritu, una grieta), que **acelera el crecimiento de un hijo**: salta
   de niño a adolescente, o de adolescente a adulto, en una noche. Tiene precio: una marca
   (`tocado_por_el_espiritu`), un rasgo raro, y quizá un don que no es de ninguno de los padres.
 
-**Bendiciones y Maldiciones** (el dueño, W9a y su añadido). Lo paranormal está **ligado a la
+**Bendiciones y Maldiciones** (el dueño, W9c y su añadido). Lo paranormal está **ligado a la
 historia y a sus decisiones**, y deja en los personajes **rasgos aleatorios con efecto**: una
 **Bendición** es un buff y una **Maldición** un debuff, y cuál toca depende **de la trama en la que
 estén**. Reglas:
@@ -568,8 +758,11 @@ hijos: al cambiar de año, cada unión tira d20; con ≥ 11 nace un hijo (con la
 - **Nivel 1 y sube solo:** cada estación, un hijo gana experiencia según su edad y los módulos
   (Entrenamiento ×2); a los 18 llega a nivel 3 o 4. Nunca hereda nivel, jutsu ni objetos: aprende
   los suyos (su clase se elige al volverse jugable, con el creador, con su cuerpo y dones ya
-  puestos). **Es jugable a los 18 años del mundo (W7a).** Antes, se le ve crecer: en la carne
-  asada, en las decisiones de crianza, y en el árbol.
+  puestos). **La edad jugable la fija el jugador al crear la campaña (W7a+)**, junto con lo larga
+  que la quiere: *Campaña corta* (un protagonista; los hijos crecen pero no se juegan), *Normal*
+  (jugable a los 18, el valor por defecto), *Saga* (jugable a los 16 y las estaciones corren
+  más rápido: dos por misión). Antes de esa edad se le ve crecer: en la carne asada, en las
+  decisiones de crianza, y en el árbol.
 - **El nombre lo pone el jugador** (el dueño) al nacer, en una escena corta de nacimiento; el pack
   sugiere nombres de la facción como ayuda, nada más.
 - **Lo que hereda del mundo al tomar el relevo:** la base y las propiedades enteras; la riqueza
@@ -695,7 +888,9 @@ script. `src/campaign` **no importa** nada de `src/battle`; solo tipos de `src/t
    sabe en qué género está. Lo que haya que tocar en `src/campaign` para que funcione es lo que
    quedó mal abstraído.
 
-El Salón / Casino (5b) y el Estatus (6b) entran en el paso 5 (el Estatus se calcula de lo que ese
+El creador de la base (9b) entra en el paso 5 con la base, empezando por locación, estilo,
+paredes, techo y patio (los juguetes y la seguridad cuando haya Estatus y fans); la nave del pack
+espacial es del paso 9. El Salón / Casino (5b) y el Estatus (6b) entran en el paso 5 (el Estatus se calcula de lo que ese
 paso construye) y el casino con sus mesas en un paso **5b** propio, después de la carne asada y
 antes del tiempo: las mesas de póker y bacará son un módulo puro (`src/campaign/cards.ts`) con sus
 tests, y el mapa del casino es una batalla más (`encounters.ts`) que necesita arte del dueño.
@@ -727,8 +922,8 @@ tests, y el mapa del casino es una batalla más (`encounters.ts`) que necesita a
 
 ## 14. Preguntas para el dueño
 
-Formato: "W1b W2a…". ★ marca mi recomendación. Las W1–W12 **ya están respondidas** (arriba);
-quedan las del casino.
+Formato: "W1b W2a…". ★ marca mi recomendación. **Todas respondidas** (arriba, las dos rondas);
+se dejan escritas para que se vea qué se eligió. Queda una duda nueva al final.
 
 - **W13. Las mesas del casino, ¿juegos de verdad o tiradas?**
   - a) Juegos de verdad: póker (cinco cartas, una ronda de cambio y apuestas) y bacará con cartas
@@ -796,3 +991,8 @@ quedan las del casino.
 
 Las tres dudas abiertas de la primera versión (multijugador, el nombre de los hijos, los
 compañeros con los años) las respondió el dueño el mismo día: están en 13b y 11.
+
+**Duda nueva (W16), para cuando toque:** el límite del Hijo de dos clanes (sección 3) está leído
+como "la sangre mezclada se consigue jugando, no se elige al crear". Si quiso decir otra cosa
+(por ejemplo, que sí se elige pero esa campaña no puede pasar a una segunda generación mezclada),
+que lo diga y se corrige.

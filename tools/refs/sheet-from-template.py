@@ -63,6 +63,7 @@ OUTLINE = (7, 6, 11)  # the characters' line colour
 DARK_LUM = 60         # an edge pixel at most this bright is "already a line"
 FAR_OFF = 18.0        # mean round-trip distance (0..255) above which a piece is flagged
 FAR_OFF_SOFT = 60.0   # the same for --auto-grid sheets (averaged and quantised, never exact)
+HD_PX = 2             # picture px per game px for HD props and backdrops
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.abspath(os.path.join(HERE, '..', '..'))
 
@@ -315,7 +316,7 @@ def cell_box(spec, cx, cy, sw, sh):
     return x0, y0, x0 + sw * c + (sw - 1) * g, y0 + sh * c + (sh - 1) * (g + strip)
 
 
-def convert(sheet, spec, out_dir, review_path=None, quant=True, line=True, auto_grid=False):
+def convert(sheet, spec, out_dir, review_path=None, quant=True, line=True, auto_grid=False, hd=False):
     img = np.asarray(Image.open(sheet).convert('RGB'))
     key = tuple(spec.get('key', KEY_DEFAULT))
     f = spec['factor']
@@ -363,9 +364,21 @@ def convert(sheet, spec, out_dir, review_path=None, quant=True, line=True, auto_
                 sc = min(mw * 57 / bw, mh * 57 / bh)
             else:
                 sc = 1.0 / (fig_factor or f)
-            W, H = max(1, round(bw * sc)), max(1, round(bh * sc))
-            small = despill(resample_average(crop, key_weight(crop, key), W, H), key)
-            f_piece = bw / W
+            if hd:
+                # an HD prop (docs/scene-art-plan.md 9c): kept painted, at HD_PX picture px per game
+                # px like the backdrops; only the key goes (alpha from the key weight), no
+                # quantising, no line
+                W, H = max(1, round(bw * sc * HD_PX)), max(1, round(bh * sc * HD_PX))
+                wgt = key_weight(crop, key)
+                rgba = np.dstack([crop.astype(np.uint8), np.round(wgt * 255).astype(np.uint8)])
+                im = Image.fromarray(rgba, 'RGBA').resize((W, H), Image.LANCZOS)
+                small = np.asarray(im).copy()
+                small[small[..., 3] < 24] = 0
+                f_piece = bw / W
+            else:
+                W, H = max(1, round(bw * sc)), max(1, round(bh * sc))
+                small = despill(resample_average(crop, key_weight(crop, key), W, H), key)
+                f_piece = bw / W
         else:
             # keep whole blocks only: the gutter inside a span is dropped from the shrink by cropping
             # the piece to the cells' union (the gutter is key colour, so it shrinks to nothing)
@@ -375,9 +388,9 @@ def convert(sheet, spec, out_dir, review_path=None, quant=True, line=True, auto_
             hh, ww = (crop.shape[0] // f) * f, (crop.shape[1] // f) * f
             small = shrink_majority(crop[:hh, :ww], alpha[:hh, :ww], f)
             f_piece = f
-        if quant:
+        if quant and not hd:
             small = quantize(small, spec.get('colors', 32))
-        if line and p.get('kind', 'prop') == 'prop':
+        if line and not hd and p.get('kind', 'prop') == 'prop':
             small = outline(small)
         piece, (tx, ty) = trim(small)
         ph, pw = piece.shape[:2]
@@ -385,7 +398,7 @@ def convert(sheet, spec, out_dir, review_path=None, quant=True, line=True, auto_
         to_image(piece).save(os.path.join(gdir, f'{name}.png'))
         manifest['sprites'][name] = {
             'label': p.get('label', name), 'labelEs': p.get('labelEs', p.get('label', name)),
-            'file': f'{name}.png', 'frameW': pw, 'frameH': ph,
+            'file': f'{name}.png', 'frameW': pw, 'frameH': ph, **({'pxPerGamePx': HD_PX} if hd else {}),
             'anchor': [pw // 2, ph - 1], 'meters': p.get('meters', [round(pw / 57, 2), round(ph / 57, 2)]),
             'tags': p.get('tags', []), 'anims': {'idle': {'row': 0, 'frames': 1, 'fps': 0, 'loop': True}},
         }
@@ -505,6 +518,7 @@ def main():
     ap.add_argument('--no-quantize', action='store_true')
     ap.add_argument('--no-outline', action='store_true')
     ap.add_argument('--auto-grid', action='store_true', help='find the cells in the sheet itself and fit pieces to their metres (sheets from an image generator)')
+    ap.add_argument('--hd', action='store_true', help='HD props: keep the painting at 2 picture px per game px, no quantising, no line (implies --auto-grid)')
     ap.add_argument('--selftest', metavar='DIR')
     a = ap.parse_args()
     if a.selftest:
@@ -513,7 +527,7 @@ def main():
         ap.error('sheet, spec and --out are required (or --selftest DIR)')
     with open(a.spec) as fh:
         spec = json.load(fh)
-    rep = convert(a.sheet, spec, a.out, a.review, quant=not a.no_quantize, line=not a.no_outline, auto_grid=a.auto_grid)
+    rep = convert(a.sheet, spec, a.out, a.review, quant=not a.no_quantize, line=not a.no_outline, auto_grid=a.auto_grid or a.hd, hd=a.hd)
     for name, pw, ph, dist, cover, flag in rep:
         print(f'{name:16s} {pw:4d}x{ph:<4d} round trip {dist:5.1f}  cover {cover:4.2f}{"  REVISAR: lejos de su dibujo" if flag else ""}')
 

@@ -137,6 +137,31 @@ Nuevo módulo `src/fleet/` (puro, como los demás), **sin dados de 5e**: cada ac
 
 ## 6. Preguntas para el dueño (elegir una letra por pregunta)
 
+**Respondidas el 2026-10-28:** `N1c N2c N3c N4a N5c N6(2) N7a N8 las dos N9c N10a N11b N12b N13a N14c N15a`.
+Sus palabras: N8 *"las dos, hay las dos: nave espacial y después base o estación espacial, pero
+sigues usando la nave espacial"*; N9 *"c, pero yo recomiendo ×3 del piloto"* (el cuerpo `mecha`
+es tres veces la altura del piloto); N14 *"c, pregúntame a detalle esto"* (las preguntas N14.1–N14.5
+abajo). N2 y N3 pedían una referencia visual y una explicación: `docs/mockups/naval-bands-concept.png`
+(las bandas lejos / media / cerca, la flota y las órdenes del comandante) y "rango" = el daño es un
+intervalo (12–18) que el RNG sembrado decide, visible antes de ordenar, en vez de un número fijo.
+Pendiente: la letra de N6 (a solo tú abordas, b también te abordan, c las dos; el "2" ya dice que
+la batalla naval sigue alternando turnos durante el abordaje).
+
+**N14 a detalle (las intenciones visibles solo con una habilidad):**
+- N14.1 ¿Qué se ve? a) a quién atacará cada enemigo · b) eso y adónde se moverá · c) eso y con qué
+  habilidad (el icono).
+- N14.2 ¿Quién lo tiene en shinobi? a) solo el Ojo del Mañana del Mirai (ya "ve el próximo
+  movimiento" a 18 m; sería dibujarlo en el mapa) · b) también un jutsu de Spirit/Light que cualquiera
+  pueda aprender · c) a + un objeto (un pergamino de un uso).
+- N14.3 ¿Quién lo tiene en el espacial? a) las Ópticas Tácticas (implante de ojos) · b) un módulo
+  de la nave (escáner/puente) que lo da a toda la tripulación en el abordaje · c) las dos.
+- N14.4 ¿Cuánto dura y cuánto cuesta? a) pasivo, siempre, para los enemigos a la vista y en
+  alcance · b) una acción adicional y chakra/energía por turno · c) pasivo en el espacio (escáner),
+  con coste en tierra.
+- N14.5 ¿La insignia enemiga en el combate naval muestra sus intenciones? a) sí, siempre (eres el
+  comandante y tienes escáner) · b) solo si tu puente está intacto · c) nunca: es la niebla de guerra.
+
+
 **N1. Escala del combate naval.**
 a) Nodriza contra nodriza (como FTL). b) Flota: tu nodriza + naves pequeñas (cazas, corbetas, mechas) contra naves pequeñas y una insignia; tú eres el comandante. c) Las dos, según la misión (una patrulla es a, una batalla grande es b).
 

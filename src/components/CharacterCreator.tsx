@@ -1676,21 +1676,11 @@ export const CharacterCreator: React.FC<CharacterCreatorProps> = ({
           <div className="absolute left-1/2 -translate-x-1/2" style={{ top: 132 }}>
             {nameplate}
           </div>
-          {/* The pose bar stays between the side panels (it wraps when they leave too little room): it
-              must not cover the panel's options. The widths mirror the panels' classes above. */}
-          <div
-            className="absolute left-1/2 -translate-x-1/2"
-            style={{
-              top: Math.min(ground + 18, view.h - 140),
-              maxWidth:
-                2 *
-                  Math.min(
-                    view.w / 2 - 24 - (step === 'appearance' ? Math.min(view.w * 0.34, 560) : Math.min(view.w * 0.26, 400)),
-                    view.w / 2 - 24 - Math.min(view.w * 0.27, 420)
-                  ) -
-                24,
-            }}
-          >
+          {/* The pose bar sits in the strip under the side panels (they end at bottom-[96px]), between
+              the two corner buttons, so it never covers the ninja (the owner, 2026-10-28: on short
+              screens the old bar, 18 px under the feet or raised to fit, sat over the boots) nor the
+              panels' options; there it has the width for one row. */}
+          <div className="absolute left-1/2 -translate-x-1/2" style={{ bottom: 8, maxWidth: view.w - 2 * (24 + 230) }}>
             {stances}
           </div>
 

@@ -49,6 +49,9 @@ import type { ChakraNature, NatureGrowth } from '../types/shinobi';
 import { Dice5, Download, Shield, Zap, Eye, Swords, BookOpen, UserCheck, Sparkles, Lock, Bomb } from 'lucide-react';
 import { ForestScene, forestGround } from './scene/ForestScene';
 import { BigButton, Chip, Frame, Heading, IronButton, Parchment, Row, StepTabs, serif } from './creator/stage';
+import { originDef, SHINOBI_ORIGINS, LEGEND_ORIGINS, DEFAULT_ORIGIN } from '../settings/shinobi/origins';
+import { factionDef } from '../settings/shinobi/factions';
+import { WEALTH_NAMES } from '../settings/shinobi/words';
 import { iconUrl } from './battle/kit';
 import { L } from './creator/words';
 import { pick, strings, useLang } from '../i18n';
@@ -133,6 +136,15 @@ const T = strings({
   pickAbilities: { en: 'Ability scores', es: 'Puntuaciones de atributo' },
   pickJutsus: { en: 'Jutsu loadout', es: 'Jutsus equipados' },
   stepHint_origin: { en: 'Your own ninja, or one of the legends', es: 'Tu propio ninja, o una de las leyendas' },
+  yourOrigin: { en: 'Where you come from', es: 'De dónde vienes' },
+  legendOrigin: { en: 'The legend\'s origin', es: 'El origen de la leyenda' },
+  originWealth: { en: 'Wealth', es: 'Riqueza' },
+  originReputation: { en: 'Reputation', es: 'Reputación' },
+  originFamily: { en: 'At home', es: 'En casa' },
+  originNobody: { en: 'Nobody waits for you', es: 'Nadie te espera' },
+  originHook: { en: 'How it starts', es: 'Cómo empieza' },
+  ownClan: { en: 'your clan', es: 'tu clan' },
+  rivalClan: { en: 'its rival of the cycle', es: 'su rival del ciclo' },
   stepHint_clan: { en: 'Your bloodline: its bonus and its secrets', es: 'Tu linaje: su bonificación y sus secretos' },
   stepHint_class: { en: 'How you fight and what you cast with', es: 'Cómo peleas y con qué lanzas' },
   stepHint_appearance: { en: 'Body, face, hair, clothes and chakra', es: 'Cuerpo, cara, pelo, ropa y chakra' },
@@ -376,6 +388,8 @@ type SlotKey = keyof ShinobiCharacter['selectedJutsus'];
 type Hover =
   | { kind: 'custom' }
   | { kind: 'preset'; i: number }
+  /** A narrative origin (src/settings/shinobi/origins.ts). */
+  | { kind: 'origin'; id: string }
   | { kind: 'clan'; id: ClanType }
   | { kind: 'dojutsu'; id: string }
   | { kind: 'class'; id: ShinobiClassType }
@@ -891,7 +905,9 @@ export const CharacterCreator: React.FC<CharacterCreatorProps> = ({
     if (stepIdx < STEPS.length - 1) return go(STEPS[stepIdx + 1]);
     soundManager.playCriticalHit();
     // Accepting makes the ninja: from now on its chakra type is fixed.
-    onSave(asMade(character));
+    // its origin goes with it: a legend brings its own, a new ninja the one chosen (or the default)
+    const originId = presetOf >= 0 ? LEGEND_ORIGINS[character.id] ?? character.originId : character.originId ?? DEFAULT_ORIGIN;
+    onSave(asMade({ ...character, originId }));
   };
   const shown: Hover =
     hover ??
@@ -931,7 +947,7 @@ export const CharacterCreator: React.FC<CharacterCreatorProps> = ({
               // A copy of a legend is a new ninja of its own: not made yet, at a new ninja's ranks.
               if (presetOf >= 0) {
                 const { created: _made, ...copy } = character;
-                setCharacter(asNewNinja({ ...copy, id: `ninja_${Date.now().toString(36)}` }));
+                setCharacter(asNewNinja({ ...copy, id: `ninja_${Date.now().toString(36)}`, originId: LEGEND_ORIGINS[character.id] ?? copy.originId }));
               }
               setNatureSwaps(null);
               setClassSwaps(null);
@@ -942,6 +958,37 @@ export const CharacterCreator: React.FC<CharacterCreatorProps> = ({
             title={T('custom')}
             sub={T('customSub')}
           />
+          {/* Where the ninja starts in the world (docs/WORLD_DESIGN.md, section 3): a legend brings its own. */}
+          {presetOf < 0 ? (
+            <>
+              <Heading>{T('yourOrigin')}</Heading>
+              {SHINOBI_ORIGINS.map((o) => (
+                <Row
+                  key={o.id}
+                  indent
+                  selected={(character.originId ?? DEFAULT_ORIGIN) === o.id}
+                  onClick={() => {
+                    soundManager.playSelect();
+                    setCharacter({ ...character, originId: o.id });
+                  }}
+                  onHover={hoverOn({ kind: 'origin', id: o.id })}
+                  icon={<Seal letter={String(o.wealth)} color="#c99a4b" />}
+                  title={pick(o.name, o.nameEs)}
+                  sub={pick(WEALTH_NAMES[o.wealth].en, WEALTH_NAMES[o.wealth].es)}
+                />
+              ))}
+            </>
+          ) : (
+            (() => {
+              const o = originDef(LEGEND_ORIGINS[character.id]);
+              return o ? (
+                <>
+                  <Heading>{T('legendOrigin')}</Heading>
+                  <Row indent selected onHover={hoverOn({ kind: 'origin', id: o.id })} icon={<Seal letter={String(o.wealth)} color="#c99a4b" />} title={pick(o.name, o.nameEs)} sub={pick(WEALTH_NAMES[o.wealth].en, WEALTH_NAMES[o.wealth].es)} />
+                </>
+              ) : null;
+            })()
+          )}
           <Heading>{T('legends')}</Heading>
           {LEGENDARY_PRESETS.map((p, i) => (
             <Row
@@ -1366,6 +1413,37 @@ export const CharacterCreator: React.FC<CharacterCreatorProps> = ({
               ))}
             </ul>
           </>
+        ),
+      };
+    }
+    if (h.kind === 'origin') {
+      const o = originDef(h.id)!;
+      const factionName = (key: string) => {
+        if (key === 'own') return T('ownClan');
+        if (key === 'rival') return T('rivalClan');
+        const f = factionDef(key);
+        return f ? pick(f.name, f.nameEs) : key;
+      };
+      const reps = Object.entries(o.reputation).map(([k, n]) => `${n! > 0 ? '+' : ''}${n} ${factionName(k)}`);
+      return {
+        title: pick(o.name, o.nameEs),
+        sub: pick(WEALTH_NAMES[o.wealth].en, WEALTH_NAMES[o.wealth].es),
+        body: (
+          <Parchment>
+            <p>{pick(o.blurb, o.blurbEs)}</p>
+            <p className="mt-1">
+              <b>{T('originWealth')}:</b> {pick(WEALTH_NAMES[o.wealth].en, WEALTH_NAMES[o.wealth].es)} ({o.wealth}/6)
+            </p>
+            <p>
+              <b>{T('originReputation')}:</b> {reps.length ? reps.join(' · ') : '0'}
+            </p>
+            <p>
+              <b>{T('originFamily')}:</b> {o.family.length ? o.family.map((f) => `${pick(f.name, f.nameEs)} (${pick(f.role, f.roleEs)})`).join(' · ') : T('originNobody')}
+            </p>
+            <p className="mt-1">
+              <b>{T('originHook')}:</b> {pick(o.hook.line, o.hook.lineEs)}
+            </p>
+          </Parchment>
         ),
       };
     }

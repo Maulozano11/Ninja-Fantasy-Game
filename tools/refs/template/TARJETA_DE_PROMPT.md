@@ -236,3 +236,26 @@ SIN personas, SIN texto. Nada magenta, rosa fuerte ni morado dentro de los objet
  7  sombrilla de papel roja grande, abierta, clavada en el suelo
 Entrega: PNG al tamaño de la plantilla o mayor.
 ```
+
+## 6. La mesa de bacará en primer plano · el fondo pintado completo
+
+Su imagen objetivo: `bacara-scene-target-owner-reference.png`. Para el juego hace falta **la misma
+imagen sin la gente y sin la interfaz** (los personajes son sprites y la interfaz la dibuja el
+juego). Se pide al mismo generador, con esa imagen adjunta:
+
+```
+MISMA ESCENA, misma mesa, misma sala, misma luz y mismo encuadre que la imagen adjunta, pero
+VACÍA: quita a las cinco personas (los cuatro jugadores y el crupier), quita todas las fichas, las
+cartas y el zapato de cartas de la mesa, y quita todos los textos y paneles de interfaz (los
+rótulos de arriba, las cartas grandes, los cuadros con nombres, el menú de acciones).
+Deja: la mesa de bacará completa con su tapete rojo y los rótulos PLAYER · TIE · BANKER pintados
+en el tapete, las cabezas de dragón talladas, las cinco sillas vacías (cuatro de jugador y la del
+crupier en medio), la sala al fondo con sus faroles y la gente lejana borrosa.
+Panorámico 16:9, 1920×1080, PNG, sin magenta ni morado.
+```
+
+Y aparte, en plantilla magenta, **las piezas móviles** (fichas de cuatro colores en pilas de 1,
+3 y 6; las cartas de la baraja; el zapato de cartas) como props HD, para que el juego las ponga y
+las mueva. Las **poses** (sentado a la mesa con las manos en el tapete, contar fichas, taparse la
+boca, echarse atrás; el crupier repartiendo en 2 cuadros; el chaleco rojo del crupier como atuendo
+social) son una hoja de pintura sobre nuestro render, no una lámina de props.

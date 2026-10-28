@@ -240,3 +240,41 @@ Formato: "A1a A2b…". ★ marca mi recomendación.
     piezas, más carácter)
   - b) En el color: un sprite por prop y tres paletas (un tercio de piezas, se parecen entre sí).
   - c) Mezcla: props grandes (alberca, pista, pérgola) en el dibujo, pequeños en el color.
+
+---
+
+## 9. Decisión del dueño (2026-10-27): los fondos son HD-2D
+
+Su fondo del casino (generador 1, `docs/reference/casino-backdrop-owner-reference.png`) le gustó
+más que cualquier cosa cuantizada, y lo decidió: *"que en el juego de ahora en adelante los fondos
+se vean así de calidad muy alta: cuartos, patio para carne asada, bases, fondo de batalla de
+batallas importantes, incluso en el mapa, como en el Final Fantasy nuevo que son personajes de 16
+bits y ponen fondos casi reales; por ejemplo la base/mansión de lujo en la playa de Los Cabos se
+vea súper alta calidad con mis sprites de 16 bits"*.
+
+Eso es el estilo **HD-2D**: fondos pintados a alta resolución, sprites de píxel encima. Lo que
+cambia respecto a la sección 5 y a la respuesta A3:
+
+- **Los fondos no se cuantizan ni se bajan a 960 × 420.** Se guardan a **2 px de imagen por px de
+  juego** (su casino: 1895 × 830 ≈ 948 × 415 px de juego, justo la escena) y el juego los dibuja
+  **suavizados** a la resolución de la pantalla, mientras los sprites y los props se dibujan
+  **vecino más cercano** como siempre. A zoom 2× el fondo se ve a su resolución real; a 1× se
+  reduce con filtro. Es exactamente lo que hace el mock `docs/mockups/casino-hd2d-mockup.png`.
+- **La tarjeta de fondos cambia**: ya no se piden bandas ni paleta corta; se pide **pintura
+  completa, luz real, profundidad**, y se mantienen las prohibiciones útiles: **sin personas, sin
+  muebles sueltos, sin texto, sin magenta/morado** (por si hay que recortar algo), y el **tercio
+  inferior es suelo libre** donde pisan los personajes. Ratio 16:7 (el generador 1 da ~2.3:1
+  solo: perfecto).
+- **El campamento y el bosque del creador** (pintados por código y cuantizados) se quedan como
+  están hasta que él decida rehacerlos con este estilo: son dos fondos más de la lista.
+- **Props**: siguen siendo pixel art con el convertidor (el contraste pixel-sobre-pintura es el
+  look HD-2D). Lo único que importa es que la **luz** del prop case con la del fondo (luz
+  cálida arriba-izquierda; la tarjeta ya lo pide).
+- **Mapas de batalla pintados** ("incluso en el mapa"): se puede, con una condición: el mapa es
+  además **datos** (agua, cobertura, elevación, lo que arde). Un mapa HD lleva dos capas: la
+  pintura, y una **máscara de juego** dibujada por código o a mano sobre ella (`tools/maps/`), que
+  es lo que hoy produce el generador del Bosque del Río. Las "batallas importantes" (jefes, el
+  casino cuando se vuelve pelea) son las candidatas; los mapas de misión corrientes pueden seguir
+  por código.
+- **Lo que gana el plan de arte**: los fondos son la parte donde el generador rinde mejor, y ahora
+  no hay conversión que pierda nada. Los 16 fondos de la sección 5 son 16 tarjetas.

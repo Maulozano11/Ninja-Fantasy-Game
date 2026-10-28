@@ -2,7 +2,7 @@
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { LEGENDARY_PRESETS } from '../data/shinobiData';
+import { ALL_PRESETS } from '../data/shinobiData';
 import { migrateCharacter } from '../rules/ninja';
 import { getItem } from './catalog';
 import { renderSprite } from './compose';
@@ -25,7 +25,7 @@ import { founderArmAtRest, founderFarOut, founderFarReach, founderLegOut } from 
 import { buildRig, frameCount, rigPoseFor } from './rig';
 import { CAMP_POSES, MOVE_POSES, SPRITE_POSES, type BodyType, type SpriteAppearance, type SpritePose } from './types';
 
-const solen = LEGENDARY_PRESETS.find((p) => p.character.id === 'preset_founder')!.character;
+const solen = ALL_PRESETS.find((p) => p.character.id === 'preset_founder')!.character;
 const look = (body: BodyType = 'male'): SpriteAppearance => ({ ...structuredClone(getAppearance(solen)), body });
 const render = (l: SpriteAppearance, pose: SpritePose, f: number) => renderSprite(l, pose, f, dojutsuToEye(solen.dojutsu));
 

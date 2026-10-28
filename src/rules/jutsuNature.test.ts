@@ -4,7 +4,7 @@
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { CLANS_DATA, DEFAULT_CHARACTER, JUTSUS_DATA, LEGENDARY_PRESETS } from '../data/shinobiData';
+import { CLANS_DATA, DEFAULT_CHARACTER, JUTSUS_DATA, ALL_PRESETS } from '../data/shinobiData';
 import { HANA, KENJI } from '../data/missions';
 import { CHAKRA_TYPES, OFFERED_TYPES } from '../sprite/chakraNature';
 import type { ChakraNature, ClanType } from '../types/shinobi';
@@ -119,7 +119,7 @@ describe('changing the chakra type in the creator', () => {
   });
 
   it('for every type and every legend, the fitted loadout is all of the new type', () => {
-    for (const { character: c } of LEGENDARY_PRESETS)
+    for (const { character: c } of ALL_PRESETS)
       for (const n of ALL_NATURES) {
         const r = fitLoadout(c.selectedJutsus, n, c.clan).loadout;
         assert.deepEqual(offNatureJutsus(r, n), [], `${c.id} to ${n}`);
@@ -132,7 +132,7 @@ describe('changing the chakra type in the creator', () => {
 describe('the legends keep their sheets', () => {
   it('a legend with a jutsu of a second element is a preset, not a creator pick: Kaien\'s Fireball and Raiga\'s Earth Wall', () => {
     const second: Record<string, string[]> = {};
-    for (const c of [...LEGENDARY_PRESETS.map((p) => p.character), HANA, KENJI]) {
+    for (const c of [...ALL_PRESETS.map((p) => p.character), HANA, KENJI]) {
       const off = offNatureJutsus(c.selectedJutsus, natureOf(c));
       if (off.length) second[c.id] = off;
     }

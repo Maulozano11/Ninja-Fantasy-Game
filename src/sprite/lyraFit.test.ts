@@ -8,14 +8,14 @@ import { faceAnchor } from './body';
 import { fitsBody, getItem } from './catalog';
 import { renderSprite } from './compose';
 import type { DrawCtx } from './ctx';
-import { LEGENDARY_PRESETS } from '../data/shinobiData';
+import { ALL_PRESETS } from '../data/shinobiData';
 import { LYRA_FACE } from './lyraFaceArt';
 import { carryHead } from './neck';
 import { GRID, partIndex } from './raster';
 import { drawRig, frameCount, rigPoseFor } from './rig';
 import type { SpriteAppearance, SpritePose } from './types';
 
-const lyra = (): SpriteAppearance => LEGENDARY_PRESETS.find((p) => p.character.id === 'preset_lyra')!.character.appearance!;
+const lyra = (): SpriteAppearance => ALL_PRESETS.find((p) => p.character.id === 'preset_lyra')!.character.appearance!;
 
 const hexAt = (rgba: Uint8ClampedArray, x: number, y: number) => {
   const i = (y * GRID + x) * 4;

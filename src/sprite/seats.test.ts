@@ -6,7 +6,7 @@
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { LEGENDARY_PRESETS } from '../data/shinobiData';
+import { ALL_PRESETS } from '../data/shinobiData';
 import { renderSprite } from './compose';
 import { defaultAppearance } from './legacy';
 import { LYRA_READ } from './items/lyraReadArt';
@@ -22,7 +22,7 @@ import { SEAT_ROCK_TOP } from './seatRockArt';
 import { SEAT_ROCK_SIT_TOP } from './seatRockSitArt';
 import { CAMP_POSES, MOVE_POSES, SPRITE_POSES, type BodyType, type SpriteAppearance, type SpritePose } from './types';
 
-const lyra = LEGENDARY_PRESETS.find((p) => p.character.id === 'preset_lyra')!.character.appearance!;
+const lyra = ALL_PRESETS.find((p) => p.character.id === 'preset_lyra')!.character.appearance!;
 const opaque = (rgba: Uint8ClampedArray) => {
   let n = 0;
   for (let i = 0; i < GRID * GRID; i++) if (rgba[i * 4 + 3]) n++;

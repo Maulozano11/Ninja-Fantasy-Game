@@ -7,7 +7,7 @@ import type { CampSite } from '../rules/rest';
 import type { SpriteAppearance } from '../sprite/types';
 import { getItem } from '../sprite/catalog';
 import { deriveStats, SHEET_VERSION } from '../rules/derived';
-import { LEGENDARY_PRESETS } from './shinobiData';
+import { ALL_PRESETS, LEGENDARY_PRESETS } from './shinobiData';
 import type { EncounterId } from '../battle/encounters';
 
 export interface MissionBattle {
@@ -202,7 +202,7 @@ function companion(base: Partial<ShinobiCharacter> & Pick<ShinobiCharacter, 'pal
   return { ...base, ...c, dojutsu: 'None', armorStyle, ...d, sheetVersion: SHEET_VERSION, currentHp: d.maxHp, currentChakra: d.maxChakra };
 }
 
-const presetById = (id: string): ShinobiCharacter => (LEGENDARY_PRESETS.find((p) => p.character.id === id) ?? LEGENDARY_PRESETS[0]).character;
+const presetById = (id: string): ShinobiCharacter => (ALL_PRESETS.find((p) => p.character.id === id) ?? LEGENDARY_PRESETS[0]).character;
 
 /**
  * Hana's legacy look fields, from her sprite look (read only by a sheet without one). She was built on
@@ -296,5 +296,14 @@ export const KENJI: ShinobiCharacter = companion(presetById('preset_storm'), {
   }),
 });
 
-/** Who can join a mission: the two prototype companions, then the legendary presets. */
-export const COMPANIONS: ShinobiCharacter[] = [HANA, KENJI, ...LEGENDARY_PRESETS.map((p) => p.character)];
+/**
+ * Who can join a mission: the playable legends (the owner's five, 2026-10-28: "borra Hana y Kenji,
+ * sustituye"). Aiden and Lyra are the prototype companions the River Forest Patrol offers first.
+ */
+export const COMPANIONS: ShinobiCharacter[] = LEGENDARY_PRESETS.map((p) => p.character);
+
+/**
+ * The retired prototype companions (Hana, Kenji) and every preset ever shipped: for the tests that
+ * are pinned to their numbers and for loading old saves. Not offered in the game.
+ */
+export const LEGACY_ROSTER: ShinobiCharacter[] = [HANA, KENJI, ...ALL_PRESETS.map((p) => p.character)];

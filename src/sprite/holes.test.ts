@@ -5,7 +5,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { enemyCharacter, type EnemyKind } from '../battle/units';
-import { COMPANIONS } from '../data/missions';
+import { LEGACY_ROSTER } from '../data/missions';
 import type { ShinobiCharacter } from '../types/shinobi';
 import { renderSprite, type SpriteFrame } from './compose';
 import { airOf, closePinholes, findNicks, findPinholes, PINHOLE } from './holes';
@@ -40,7 +40,7 @@ type Look = { id: string; look: SpriteAppearance; eye: EyeSpecial };
 const of = (c: ShinobiCharacter): Look => ({ id: c.id, look: getAppearance(c), eye: dojutsuToEye(c.dojutsu) });
 // Hana, Kenji, every legend preset, one of each enemy and the Roman set.
 const LOOKS: Look[] = [
-  ...COMPANIONS.map(of),
+  ...LEGACY_ROSTER.map(of),
   ...(['rogue', 'hunter', 'jonin', 'raider'] as EnemyKind[]).flatMap((k) => [0, 1].map((n) => of({ ...enemyCharacter(k, n), id: `${k}${n}` }))),
   { id: 'roman', look: roman(), eye: 'none' },
 ];

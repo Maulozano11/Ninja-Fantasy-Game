@@ -4,7 +4,7 @@
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { LEGENDARY_PRESETS } from '../data/shinobiData';
+import { ALL_PRESETS } from '../data/shinobiData';
 import { renderSprite, spriteLayers } from './compose';
 import type { Depth } from './ctx';
 import { GRID, type Layer, partIndex, type PartId, RES } from './raster';
@@ -12,7 +12,7 @@ import { DAWN_FOOT_F, DAWN_FOOT_N, DAWN_SHIN_F, DAWN_SHIN_N, DAWN_SLIT_F, DAWN_S
 import { drawRig, frameCount } from './rig';
 import { CAMP_POSES, MOVE_POSES, SPRITE_POSES, type SpritePose } from './types';
 
-const look = LEGENDARY_PRESETS.find((p) => p.character.id === 'preset_aurelia')!.character.appearance!;
+const look = ALL_PRESETS.find((p) => p.character.id === 'preset_aurelia')!.character.appearance!;
 
 function* frames(): Generator<[SpritePose, number]> {
   for (const pose of [...SPRITE_POSES, ...MOVE_POSES, ...CAMP_POSES] as SpritePose[]) for (let f = 0; f < frameCount(pose); f++) yield [pose, f];

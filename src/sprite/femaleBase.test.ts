@@ -6,7 +6,7 @@ import { renderSprite, spriteLayers } from './compose';
 import type { Depth } from './ctx';
 import { type BasePiece, FEMALE_BASE, FEMALE_BASE_JOINTS, FEMALE_BASE_SKIN } from './femaleBaseArt';
 import { GRID, type Layer, partIndex, type PartId, RES } from './raster';
-import { LEGENDARY_PRESETS } from '../data/shinobiData';
+import { ALL_PRESETS } from '../data/shinobiData';
 import { getAppearance } from './legacy';
 import { drawRig, frameCount } from './rig';
 import { CAMP_POSES, MOVE_POSES, SPRITE_POSES, type BodyType, type SpriteAppearance, type SpritePose } from './types';
@@ -269,7 +269,7 @@ describe('the neck, shoulders and back in every pose (the throw\'s "hombro espal
   // pose that hangs the head far ahead of the chest).
   const looks: [string, SpriteAppearance, SpritePose[]][] = [
     ...(['female', 'male', 'bulky'] as BodyType[]).map((b): [string, SpriteAppearance, SpritePose[]] => [`bare ${b}`, bare(b), POSES]),
-    ...LEGENDARY_PRESETS.map((p): [string, SpriteAppearance, SpritePose[]] => {
+    ...ALL_PRESETS.map((p): [string, SpriteAppearance, SpritePose[]] => {
       const look = getAppearance(p.character);
       return [p.character.id, look, BODIES.includes(look.body) ? POSES : ['throw']];
     }),

@@ -18,7 +18,7 @@ import { onRomanNeck, romanRig } from './romanNeck';
 import { ROMAN_HEAD_PIXELS, ROMAN_OFFSET } from './romanRefPixels';
 import { CAMP_POSES, MOVE_POSES, SPRITE_POSES, type BodyType, type SpriteAppearance, type SpritePose } from './types';
 import type { ShinobiCharacter } from '../types/shinobi';
-import { LEGENDARY_PRESETS } from '../data/shinobiData';
+import { ALL_PRESETS } from '../data/shinobiData';
 
 const POSES = [...new Set([...SPRITE_POSES, ...MOVE_POSES, ...CAMP_POSES])] as SpritePose[];
 const hex = (rgba: Uint8ClampedArray, i: number) => '#' + [0, 1, 2].map((k) => rgba[i * 4 + k].toString(16).padStart(2, '0')).join('');
@@ -182,7 +182,7 @@ describe("the owner's Roman head on his neck", () => {
   });
 
   it('is the new game hero\'s head on Solen\'s sheet ("1 si"); no legend takes it ("2 no")', () => {
-    const solen = LEGENDARY_PRESETS.find((p) => p.character.id === 'preset_founder')!.character;
+    const solen = ALL_PRESETS.find((p) => p.character.id === 'preset_founder')!.character;
     const before = JSON.stringify(solen);
     const look = getAppearance(solen);
     const hero = withRomanHead(look);
@@ -196,6 +196,6 @@ describe("the owner's Roman head on his neck", () => {
     const { faceShape: _f2, eyeShape: _e2, eyeColor: _c2, slots: { hair: _h2, ...slots2 }, ...rest2 } = look;
     assert.deepEqual([slots, rest], [slots2, rest2]);
     assert.equal(JSON.stringify(solen), before, 'the preset itself unchanged');
-    for (const p of LEGENDARY_PRESETS) assert.notEqual(getAppearance(p.character).faceShape, 'roman', p.character.id);
+    for (const p of ALL_PRESETS) assert.notEqual(getAppearance(p.character).faceShape, 'roman', p.character.id);
   });
 });

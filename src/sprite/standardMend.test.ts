@@ -6,7 +6,7 @@
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { LEGENDARY_PRESETS } from '../data/shinobiData';
+import { ALL_PRESETS } from '../data/shinobiData';
 import { renderSprite } from './compose';
 import { findGlitches } from './glitches';
 import { defaultAppearance, dojutsuToEye } from './legacy';
@@ -30,8 +30,8 @@ function roman(): SpriteAppearance {
   return { ...l, body: 'male' };
 }
 
-const lyra = LEGENDARY_PRESETS.find((p) => p.character.id === 'preset_lyra')!.character;
-const aurelia = LEGENDARY_PRESETS.find((p) => p.character.id === 'preset_aurelia')!.character;
+const lyra = ALL_PRESETS.find((p) => p.character.id === 'preset_lyra')!.character;
+const aurelia = ALL_PRESETS.find((p) => p.character.id === 'preset_aurelia')!.character;
 // (her walk he approved pixel for pixel is left as it is: aureliaLegs.test.ts)
 const LOOKS: [string, SpriteAppearance, EyeSpecial, boolean][] = [
   ['Roman', roman(), 'none', false],

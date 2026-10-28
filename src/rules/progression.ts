@@ -18,7 +18,7 @@
 //   class in the creator swaps the ones of another class, as a new type does.
 // Pure data, no React.
 
-import { JUTSUS_DATA, LEGENDARY_PRESETS } from '../data/shinobiData';
+import { ALL_PRESETS, JUTSUS_DATA } from '../data/shinobiData';
 import type { ChakraNature, ClanType, JutsuDefinition, JutsuRank, ShinobiCharacter, ShinobiClassType } from '../types/shinobi';
 import { jutsuFitsClass } from './jutsuClass';
 import { byRankDown, fitLoadout, jutsuChoices, jutsuFitsNature, type JutsuSlot, type JutsuSwap, type Loadout, natureGated, rankAtMost, refitSlots, REMOVED_JUTSUS, SLOT_CATEGORY } from './jutsuNature';
@@ -134,7 +134,7 @@ export const typeFixed = (c: Pick<ShinobiCharacter, 'created'>): boolean => c.cr
 export const asMade = (c: ShinobiCharacter): ShinobiCharacter => (c.created === true ? c : { ...c, created: true });
 
 /** A legend's own sheet (picked in the creator as a starting point): it keeps its jutsu, whatever their rank. */
-export const isLegend = (c: Pick<ShinobiCharacter, 'id'>): boolean => LEGENDARY_PRESETS.some((p) => p.character.id === c.id);
+export const isLegend = (c: Pick<ShinobiCharacter, 'id'>): boolean => ALL_PRESETS.some((p) => p.character.id === c.id);
 
 /**
  * The sheet is a new ninja's: not made yet and not a legend's own sheet (a new game's sheet, a copy

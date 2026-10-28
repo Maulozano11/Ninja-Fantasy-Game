@@ -4,7 +4,7 @@
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { LEGENDARY_PRESETS } from '../data/shinobiData';
+import { ALL_PRESETS } from '../data/shinobiData';
 import { migrateCharacter } from '../rules/ninja';
 import type { ShinobiCharacter } from '../types/shinobi';
 import { getItem } from './catalog';
@@ -35,7 +35,7 @@ import { renderSeat, seatFor } from './seats';
 import { rotateTemplate } from './rotsprite';
 import { CAMP_POSES, MOVE_POSES, SPRITE_POSES, type BodyType, type SpriteAppearance, type SpritePose } from './types';
 
-const REN = LEGENDARY_PRESETS.find((p) => p.character.id === 'preset_night')!.character;
+const REN = ALL_PRESETS.find((p) => p.character.id === 'preset_night')!.character;
 const look = (): SpriteAppearance => structuredClone(getAppearance(REN));
 const hex = (rgba: Uint8ClampedArray, i: number) => '#' + [0, 1, 2].map((k) => rgba[i * 4 + k].toString(16).padStart(2, '0')).join('');
 const opaque = (rgba: Uint8ClampedArray, i: number) => rgba[i * 4 + 3] > 0;

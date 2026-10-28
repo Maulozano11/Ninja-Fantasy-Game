@@ -3,7 +3,7 @@
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { LEGENDARY_PRESETS } from '../data/shinobiData';
+import { ALL_PRESETS } from '../data/shinobiData';
 import { renderSprite } from './compose';
 import { defaultAppearance, dojutsuToEye, getAppearance } from './legacy';
 import { GRID, partIndex, RES } from './raster';
@@ -11,7 +11,7 @@ import { frameCount, rigPoseFor } from './rig';
 import { CAMP_POSES, MOVE_POSES, SPRITE_POSES, type BodyType, type SpriteAppearance, type SpritePose } from './types';
 
 const POSES = [...new Set([...SPRITE_POSES, ...MOVE_POSES, ...CAMP_POSES])] as SpritePose[];
-const aiden = LEGENDARY_PRESETS.find((p) => p.character.id === 'preset_reference_aiden')!.character;
+const aiden = ALL_PRESETS.find((p) => p.character.id === 'preset_reference_aiden')!.character;
 /** A look in the Shadow Half-Cloak, its clasps pure green so its studs are found by colour. */
 const cloaked = (l: SpriteAppearance): SpriteAppearance => ({ ...structuredClone(l), slots: { ...structuredClone(l.slots), cape: { id: 'cape_shadow', colors: ['#1c1b22', '#00ff00', '#e5e4e2'] } } });
 

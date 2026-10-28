@@ -10,8 +10,7 @@ import { createBattle } from '../../battle/engine';
 import { encounterSetup } from '../../battle/encounters';
 import type { EncounterId } from '../../battle/encounters';
 import type { PartyBattleResult } from '../../battle/result';
-import { HANA, KENJI } from '../../data/missions';
-import { LEGENDARY_PRESETS } from '../../data/shinobiData';
+import { COMPANIONS } from '../../data/missions';
 import { strings, useLang } from '../../i18n';
 import { BattleScreen } from './BattleScreen';
 import { Portrait } from './hud';
@@ -66,7 +65,7 @@ export const BattleDemo: React.FC<BattleDemoProps> = ({ character, start }) => {
 
   // The player's ninja and three companions (fresh: full HP and chakra).
   const party = useMemo(() => {
-    const others = [HANA, KENJI, ...LEGENDARY_PRESETS.map((p) => p.character)].filter((c) => c.id !== character.id);
+    const others = COMPANIONS.filter((c) => c.id !== character.id);
     const fresh = (c: ShinobiCharacter): ShinobiCharacter => ({ ...c, currentHp: c.maxHp, currentChakra: c.maxChakra, effects: [] });
     return [fresh(character), ...others.slice(0, 3).map(fresh)];
   }, [character]);

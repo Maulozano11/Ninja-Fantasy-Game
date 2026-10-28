@@ -302,3 +302,21 @@ Maqueta con Lyra, Aiden y Aurelia renderizados por el motor sobre esta pintura, 
 `docs/mockups/casino-hd2d-party-mockup.png`.
 
 **Versión definitiva del casino:** `docs/reference/casino-backdrop-v3-owner-reference.png` (1920 × 840 exactos, sin tragamonedas, mesas con el lado abierto al frente, barra con taburetes, estanque al frente derecha). Sustituye a la v2 como el casino aprobado.
+
+### 9c. Props pintados a la calidad del fondo (el dueño, 2026-10-27)
+
+Su maqueta de la carne asada trajo el brasero y los troncos **pintados por el generador con la
+misma calidad que el patio**, y le gustó: *"me gusta que podría fondos generados los props para
+que se vean a la calidad del casino"*. Decisión: para las escenas HD-2D hay una **tercera clase
+de pieza, el prop HD**: se pide al mismo generador, en lámina de fondo magenta, **con la misma luz
+y el mismo pincel que el fondo** al que va, y se guarda **a 2 px de imagen por px de juego, sin
+cuantizar ni bajar a píxel** (el convertidor en modo `--hd`: quita el fondo, recorta, ancla,
+escribe el grupo; nada más). Es coherente con el estilo: en HD-2D los muebles son parte del
+escenario pintado y lo único de píxel son los personajes.
+
+- Los **props de píxel** del convertidor normal se quedan para lo que el jugador **manipula en
+  batalla** (cajas, barriles, cobertura destruible) y para el campamento mientras no se rehaga.
+- Un prop HD lleva en el spec a qué fondo pertenece (`for: "patio_casa_media"`) para que su luz
+  sea la de ese atardecer y no la del casino; una mesa para la mansión de Los Cabos se pide con
+  la luz de ese fondo.
+- La **perspectiva** (WORLD_DESIGN 9c) se aplica igual a los props HD colocados por el juego.

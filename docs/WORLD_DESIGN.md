@@ -297,6 +297,26 @@ y la escena de presión de "Countdown scenes"):
 de personaje se puede invitar a la misión), favores (una facción que te debe una), información
 (marcas que desbloquean cartas en misiones), y el **lugar donde empieza casi todo lo social**.
 
+**La pantalla de la carne asada** (el dueño, 2026-10-27, sobre su maqueta
+`docs/reference/carne-asada-ui-owner-reference.png`, generada a partir de la nuestra):
+- **Marcos ornamentados con el emblema de la casa** como icono (el estilo de su maqueta: bronce
+  oscuro, esquinas doradas, borlas rojas), en la línea del kit de batalla aprobado.
+- **Arriba a la izquierda**, el evento (nombre, estación y año, las fichas de ronda, invitados).
+- **Un menú vertical de acciones de la noche a la izquierda, con icono**: *Asar*, *Conversar*,
+  *Beber*, *Descansar*, *Salir*. Sin *Jugar*: las cartas y los dados son del casino, no de la
+  casa. *Conversar* es lo que abre el menú por categorías sobre una persona; *Asar* es la carta
+  del menú de la noche y da la vuelta al brasero; *Beber* es la carta de bebidas (5b); *Descansar*
+  pasa la ronda.
+- **Arriba a la derecha**, *Estatus*: riqueza con la cifra de fortuna y fama, y **cuatro barras de
+  la noche**: *Ambiente*, *Comida*, *Bebida*, *Compañía*. Suben con lo que haces (un buen menú sube
+  Comida; música y la tarima, Ambiente; invitados contentos, Compañía) y la media de las cuatro
+  es el **modificador de la noche** a todas las tiradas sociales (−2 a +2).
+- **Sin barra de retratos abajo**: la ficha de una persona (retrato, Lazo, afecto, etiqueta,
+  humor) sale **junto al personaje al pasar el cursor o al seleccionarlo**, y desaparece. El suelo
+  es de la escena.
+- **El asador es fijo**: siempre forma parte de la carne asada; en la casa media está en el patio
+  y no se elige (la casa media casi no se personaliza; la mansión sí, 9b).
+
 **Cómo se interactúa: como en Los Sims** (el dueño, 2026-10-27: *"el sistema de socializar,
 cortejar y cómo te comportas es como el juego Sims 4"*). Las rondas se quedan como presupuesto de
 tiempo de la noche, pero **dentro de una ronda** acercarse a alguien abre un **menú por

@@ -211,3 +211,28 @@ Entrega: PNG a 1920×840.
 
 Con el fondo, el juego pone encima: mesa baja, brasero, tarima, banco, jarras y sombrilla del
 lote 0 (los props de píxel ya convertidos), más la gente. Es la primera escena de la carne asada.
+
+## 5. Props HD del patio (casa media) · misma calidad que el fondo
+
+Adjuntos: `patio-backdrop-owner-reference.png` (el patio aprobado: su luz y su pincel son los
+de estas piezas) y `plantilla_4x2.png` (solo por la rejilla; la escala la pongo yo).
+
+```
+PROPS DEL PATIO · 7 piezas · misma pintura y misma luz que el patio al atardecer que adjunto
+Pinta cada objeto EXACTAMENTE con el estilo, el detalle y la luz del patio adjunto (atardecer
+cálido desde la izquierda), como si lo hubieras recortado de ese cuadro: alta resolución, no
+pixel art. Vista 3/4 FRONTAL como los objetos del patio (el frente de cara, la tapa un poco desde
+arriba), NO isométrico.
+Cada objeto sobre FONDO MAGENTA PURO (#FF00FF), uno por celda de la rejilla adjunta, entero
+dentro de su celda, apoyado en el borde inferior de su celda. SIN sombra proyectada en el suelo,
+SIN personas, SIN texto. Nada magenta, rosa fuerte ni morado dentro de los objetos.
+ 1  mesa baja de madera para sentarse en el suelo, larga para 5 personas, con tazas y una tetera
+ 2  dos cojines de suelo rojos con un bordado sencillo, uno junto al otro
+ 3  banco de madera largo, para 3 personas
+ 4  tarima de madera baja para bailar, rectangular, con un farol de papel en cada esquina,
+    larga para 5 personas
+ 5  dos jarras de sake de cerámica y tres tazas
+ 6  farol de pie de madera y papel, encendido, con luz cálida
+ 7  sombrilla de papel roja grande, abierta, clavada en el suelo
+Entrega: PNG al tamaño de la plantilla o mayor.
+```

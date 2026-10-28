@@ -1,10 +1,16 @@
 # Plan de arte: escenas, bases y props (y cómo producirlos sin ahogarnos)
 
-> **Propuesta para el dueño, 2026-10-27.** Responde a su pregunta de cómo hacer de forma
-> eficiente todos los sprites que piden `WORLD_DESIGN.md` 5, 5b, 9b y 9c (fondos de escena,
+> **Propuesta para el dueño, 2026-10-27 (respondida).** Responde a su pregunta de cómo hacer de
+> forma eficiente todos los sprites que piden `WORLD_DESIGN.md` 5, 5b, 9b y 9c (fondos de escena,
 > objetos, la carne asada en estudio / casa media / lujo en sus tres estilos, por universo), si
 > puedo conectarme a su generador de imágenes, y si el sistema actual de sprites de personajes
-> es eficiente o puede mejorar. Preguntas al final (A1–A5).
+> es eficiente o puede mejorar.
+>
+> Respuestas del dueño, la misma noche: `A1a A2a A3a A4a+ A5a`. Todas con la recomendación. El
+> **+** de A4 es su añadido: además de pintar las partes sobre nuestro render, **atuendos por
+> contexto** (combate, sigilo, disfraz de civil con armadura escondida, traje de piloto de mecha,
+> ropa para eventos sociales, ropa de casa) elegibles como hoy se elige la ropa; está en
+> `WORLD_DESIGN.md` 9d. El siguiente paso es el **lote 0**: la plantilla y el convertidor.
 
 ---
 

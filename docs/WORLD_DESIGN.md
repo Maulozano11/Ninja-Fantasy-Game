@@ -684,6 +684,41 @@ seis dibujos. Los **colores** son `retintHex` sobre la rampa, como en los ítems
 
 ---
 
+## 9d. Atuendos por contexto (el dueño, 2026-10-27)
+
+Sus palabras: *"tener la opción de elegir tu atuendo con armadura para combate; en el de mechas
+puedes tener diferentes versiones de armadura igual que el de héroes (combate, sigilo, disfraz de
+civil para misiones encubiertas con armadura escondida, traje de piloto de mecha), y poder
+elegir, como ya se puede en el juego actualmente, tu ropa para eventos sociales y para cuando
+estás en casa o base"*.
+
+Hoy un personaje tiene **una** apariencia (`SpriteAppearance`) y el creador ya deja elegir toda
+la ropa; la rama `hero/three-outfits` ensayó tres conjuntos para un héroe. Esto lo hace regla:
+
+- Cada Persona con hoja tiene **atuendos** (`outfits: Record<OutfitSlot, SpriteAppearance>`), todos
+  sobre el **mismo cuerpo, cara, pelo y ojos** (eso es la persona; el atuendo solo cambia ropa,
+  armadura, capa, accesorios y lo que lleva en la mano). Ranuras del motor: **combate**, **sigilo**,
+  **civil** (el disfraz para misiones encubiertas: ropa de calle **con la armadura escondida**, que
+  en reglas cuenta la mitad de su CA y no se ve), **social** (la carne asada y el casino), **casa**
+  (la base). El pack añade las suyas: **piloto** (el traje de mecha, obligatorio para subir al
+  mecha) en el espacial; en superhéroes, el traje de héroe es el de combate y el civil es la
+  identidad secreta.
+- **Dónde se elige:** en el creador, con una pestaña por atuendo, igual que hoy se elige la ropa
+  (la primera vez, el de combate; los demás se copian de él y se cambian si se quiere). En *Casa*,
+  antes de salir de misión, la carta "¿Con qué atuendo?" elige entre combate, sigilo y civil para
+  esa misión (la misión puede exigir uno: una encubierta pide civil). La escena social y la base
+  usan el suyo solos.
+- **Lo que hace en reglas:** combate, lo de siempre; **sigilo** da +2 a Sigilo y −1 CA (sin
+  armadura pesada); **civil** esconde la armadura (la mitad de CA, +2 a Engaño para pasar por
+  civil, y los enemigos no te reconocen hasta que atacas); **piloto** es el único que permite
+  pilotar; **social** y **casa** no tocan reglas, pero la gente los nota: un atuendo social por
+  encima de tu Estatus da +1 a cortejo esa noche; uno por debajo, −1 respeto con las *orgullosas*.
+- **Arte:** ninguna pieza nueva del motor: cada atuendo es ropa que ya existe o que se pinta como
+  cualquier ítem (`scene-art-plan.md` 6). Lo único nuevo es la ropa de civil y el traje de
+  piloto por universo (en el inventario del plan de arte, lotes 4 y 6).
+
+---
+
 ## 10. El tiempo
 
 El año tiene **4 estaciones**. El tiempo avanza:

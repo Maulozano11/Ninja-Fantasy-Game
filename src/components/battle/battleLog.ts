@@ -199,6 +199,11 @@ export function logLine(ev: BattleEvent, s: BattleState, lang: Lang, wallOf = (i
     case 'ground':
       // Steam rising has its own note (n_steamRises); the wet that turned to steam says nothing.
       if (ev.kind === 'wet') return ev.on ? { text: t('l_wet'), tone: 'text-sky-300' } : ev.by ? null : { text: t('l_dry'), tone: 'text-slate-400' };
+      if (ev.kind === 'ice') return ev.on ? { text: t('l_ice'), tone: 'text-cyan-200' } : { text: t('l_thaw'), tone: 'text-slate-400' };
+      if (ev.kind === 'oil') return ev.on ? { text: t('l_oil'), tone: 'text-amber-700' } : ev.by ? null : { text: t('l_oilGone'), tone: 'text-slate-400' };
+      // the blaze itself is said by its note (n_oilBlazes)
+      if (ev.kind === 'blaze') return ev.on ? null : { text: t(ev.by ? 'l_blazeDoused' : 'l_blazeEnd'), tone: 'text-slate-400' };
+      if (ev.kind === 'mud') return ev.on ? { text: t('l_mud'), tone: 'text-yellow-700' } : { text: t('l_mudGone'), tone: 'text-slate-400' };
       return ev.on || ev.by !== undefined ? null : { text: t('l_steamEnd'), tone: 'text-slate-400' };
     case 'conduct':
       return { text: t('l_conduct'), tone: 'text-sky-300' };

@@ -170,6 +170,8 @@ export interface JutsuSpec {
   douse?: boolean;
   /** How long the ground it soaks stays wet, in rounds (a water jutsu; WET_ROUNDS when unset). */
   wetRounds?: number;
+  /** What it leaves on the ground on purpose (ground.ts): ice (slippery, conducting), oil (blazes with fire) or quicksand mud. */
+  ground?: 'ice' | 'oil' | 'mud';
   /**
    * Activated, not thrown (the owner, 2026-10-21: the Chidori, and the Rasengan when it is built): the
    * cast charges the near hand with it for up to `rounds` of the caster's turns (shape 'self'), and
@@ -284,6 +286,11 @@ const OVERRIDE: Record<string, Partial<JutsuSpec>> = {
   wind_gale_curtain: { special: 'galeZone', vfx: 'wall', loud: false },
   // A straight bolt along the line, a spark on each one it runs through.
   lightning_thunder_beam: { vfx: 'stream', width: 1.2, seq: { hitEach: { stagger: 80 } } },
+  // The ground the elements leave (the owner, 2026-10-28; ground.ts): frost freezes the cone and whoever
+  // fails; oil pools; quicksand pulls down whoever fails.
+  water_frost_ground: { vfx: 'breath', effect: 'frozen', ground: 'ice', seq: { castAura: 560, breathMs: 1400, hitEach: { stagger: 80 } } },
+  earth_black_oil: { vfx: 'blast', ground: 'oil', seq: { fromGround: { warn: 300 } } },
+  earth_quicksand: { vfx: 'blast', prone: true, ground: 'mud', seq: { fromGround: { warn: 300 }, shake: 2 } },
   // Dust and stones along the cone: whoever fails ends up on the ground.
   earth_rubble_gust: { vfx: 'breath', prone: true, seq: { castAura: 560, breathMs: 1400, hitEach: { stagger: 80 } } },
 };

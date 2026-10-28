@@ -41,7 +41,7 @@ import { hydraUnits } from './hydra';
 import { checkEnd, current, endTurn, startCombat } from './turns';
 import { afterStealthAttack, alarm, canTakedown, dragBody, guardsTurn, openFight, scareAnimalsNear, stealthMove, STONE_RANGE, throwStone } from './stealth';
 import { conduct, electrify, groundEffects, plantTag, saveHit, springTrap, TAG, throwTag, trapAt, unitsInArea } from './hazards';
-import { blowSteam, pathArea, soak } from './ground';
+import { blazeAt, blazeBurns, blowSteam, freeze, iceAt, mire, pathArea, slips, soak, spill } from './ground';
 import { breakable, damageStructure, faceToward, hitStructuresIn, jutsuWallAt, raiseStructure, STRUCTURE_AC, structureAt, structureAttack, structureBlocker } from './structures';
 import {
   addNode,
@@ -392,6 +392,8 @@ function walk(s: BattleState, u: Unit, path: Cell[], from: number, ev: BattleEve
   };
   const rules = { waterWalk: !!u.cond.waterWalk, ninjaJump: !!u.cond.ninjaJump };
   const g = gridFor(s.mapId);
+  // One footing save per walk on the ice (ground.ts slips): kept once passed.
+  let surefooted = false;
   // Who else stands or lies where (nobody else moves while this walk goes on).
   const others = occupancy({ ...s, units: Object.fromEntries(Object.entries(s.units).filter(([id]) => id !== u.id)) });
   const taken = (c: Cell) => others.has(idx(g, c));
@@ -436,6 +438,23 @@ function walk(s: BattleState, u: Unit, path: Cell[], from: number, ev: BattleEve
       flush();
       stepHazards(s, u, next, ev);
       break;
+    }
+    // Ice underfoot (ground.ts): a DEX save or the walker slips, goes down and the walk ends here.
+    if (iceAt(s, next) && !surefooted && !taken(c)) {
+      flush();
+      if (slips(s, u, ev)) {
+        u.cond.prone = true;
+        ev.push({ t: 'condition', unit: u.id, cond: 'prone', on: true });
+        u.turn.move = 0;
+        break;
+      }
+      surefooted = true;
+    }
+    // Walking into blazing oil burns (ground.ts), and the walk goes on if the walker can.
+    if (blazeAt(s, next) && !taken(c)) {
+      flush();
+      blazeBurns(s, u, ev);
+      if (u.down) break;
     }
     // A charged hand within reach of a foe: the blow goes off, and the walk stops there (on a cell
     // the ninja can stand on: never mid-hop).
@@ -724,6 +743,12 @@ function applyHits(s: BattleState, hits: Hit[], after: AfterHits, ev: BattleEven
 function landHit(s: BattleState, t: Unit, h: Hit, ev: BattleEvent[]): void {
   if (h.amount > 0 || t.head?.severed) {
     damage(s, t, h.amount, h.type, { crit: h.crit, source: h.source, knockout: h.knockout, melee: h.melee, explosion: h.explosion }, ev);
+  }
+  // Fire thaws a frozen ninja (rules/effects.ts 'frozen').
+  if (h.type === 'Fire' && h.amount > 0 && hasEffect(t.effects, 'frozen')) {
+    t.effects = removeEffect(t.effects, 'frozen');
+    ev.push({ t: 'effect', unit: t.id, effect: 'frozen', on: false });
+    ev.push({ t: 'note', key: 'thawed', params: { name: t.name } });
   }
   // The element on the weapon, after the blow: not on a ninja the blow dropped, but a fire or
   // lightning blade seals the hydra's stump it has just cut.
@@ -1190,7 +1215,11 @@ function jutsuHits(s: BattleState, u: Unit, spec: JutsuSpec, target: Unit | unde
   const ground = area ?? { kind: 'circle' as const, center: at, radius: 1 };
   if (spec.dmgType) hits.push(...groundEffects(s, ground, spec.env === 'clearFoliage' ? 'Wind' : type, ev, new Set(), spec.env === 'clearFoliage', u.id));
   // Water soaks the ground it passes over, wind blows steam away (the owner, 2026-10-21; ground.ts).
-  if (spec.elemental && spec.element === 'water' && spec.dmgType) soak(s, ground, u.id, ev, spec.wetRounds);
+  if (spec.elemental && spec.element === 'water' && spec.dmgType && spec.ground !== 'ice') soak(s, ground, u.id, ev, spec.wetRounds);
+  // What a jutsu leaves on the ground on purpose (the owner, 2026-10-28): ice, oil or quicksand mud.
+  if (spec.ground === 'ice') freeze(s, ground, u.id, ev);
+  else if (spec.ground === 'oil') spill(s, ground, u.id, ev);
+  else if (spec.ground === 'mud') mire(s, ground, u.id, ev);
   // Every wind attack does (his "puede ser eliminada con ataques elementales de aire"): over its area,
   // and from the caster's own cell for a cone or a line; a single-target one along its path, hit or miss.
   if (spec.elemental && spec.element === 'wind' && spec.dmgType) {

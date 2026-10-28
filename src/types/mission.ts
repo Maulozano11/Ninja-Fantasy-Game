@@ -24,6 +24,7 @@ export type EffectId =
   // debuffs
   | 'bleeding'
   | 'burning'
+  | 'frozen'
   | 'chakra_sealed'
   | 'confused'
   | 'marked'

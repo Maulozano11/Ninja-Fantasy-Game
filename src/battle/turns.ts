@@ -2,13 +2,13 @@
 // (death saves, bleeding, the hydra growing heads back), rounds, and the end.
 
 import { abilityMod, cannotBeSurprised } from '../rules/checks';
-import { effectMods, removeEffect, tickRound } from '../rules/effects';
+import { effectMods, hasEffect, removeEffect, tickRound } from '../rules/effects';
 import { rollDie } from '../rules/rng';
 import type { BattleEvent, BattleState, Unit } from './types';
 import { homeTeam } from './types';
 import { check, damage, deathSave, nextRng, releaseCommand, rollDiceExpr } from './combat';
 import { dampAt } from './map';
-import { steamBurns, tickGround } from './ground';
+import { blazeBurns, iceAt, steamBurns, tickGround } from './ground';
 import { planEnemy, replanAgainst } from './intent';
 import { chargeHolds, mendCracks, tickCharge } from './charged';
 import { imbueHolds, tickImbue } from './imbue';
@@ -63,6 +63,16 @@ export function beginTurn(s: BattleState, ev: BattleEvent[]): void {
     }
     u.turn = { move: u.speed, action: true, bonus: true, reaction: true, moved: 0 };
     u.cond.dodging = false;
+    // Starting a turn on ice: half speed (ground.ts, the owner's H1).
+    if (iceAt(s, u.pos)) u.turn.move = u.speed / 2;
+    // Frozen fast (an ice jutsu's save failed): this turn is lost; the ice breaks as it ends.
+    if (hasEffect(u.effects, 'frozen')) {
+      u.turn.move = 0;
+      u.turn.action = false;
+      u.turn.bonus = false;
+      u.turn.reaction = false;
+      ev.push({ t: 'note', key: 'frozenHolds', params: { name: u.name } });
+    }
     // The Breeze Mantle lasts until the start of its next turn: the screen hears it end.
     if (u.cond.mantle) {
       u.cond.mantle = false;
@@ -113,6 +123,7 @@ export function beginTurn(s: BattleState, ev: BattleEvent[]): void {
     if (u.effects.some((e) => e.id === 'bleeding')) damage(s, u, rollDie(nextRng(s), 4), 'Slashing', {}, ev);
     if (u.effects.some((e) => e.id === 'burning')) damage(s, u, rollDie(nextRng(s), 6), 'Fire', {}, ev);
     steamBurns(s, u, ev);
+    blazeBurns(s, u, ev);
     chargeHolds(u, false, ev);
     imbueHolds(u, false, ev);
     if (u.down) {

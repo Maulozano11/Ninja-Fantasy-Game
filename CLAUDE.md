@@ -35,6 +35,10 @@ to localStorage.
   sheet or effect: use his pixels and his exact colours. Never redraw, reinterpret or approximate
   what is visible. Fill hidden parts by continuing his pixels. Keep his black outline. Always show
   his crop and our result side by side at the same scale.
+- **Mocks and examples use only his five: Solen, Romano, Aiden, Lyra and Aurelia** (the owner,
+  2026-10-28: "no uses nunca más a nadie que no sea Solen, Romano, Aiden, Lyra y Aurelia para los
+  ejemplos"). Romano is the default Roman look with `armor_legion`, `skirt_imperial`,
+  `hands_bronze_bracers` and `feet_sandals`.
 - **His characters are the standard.** Aiden (`docs/reference/aiden-owner-reference.jpg`) was
   copied part by part (head shape, eyes, hair, armour, cape, sword, boots, gloves), each part its
   own creator option. Build new characters the same way.
@@ -341,4 +345,6 @@ it.** A collaborator publishes his own preview builds as his own artifacts.
 | `docs/SPRITE_STYLE_GUIDE.md` | Character sprite standard and new-item checklist |
 | `docs/reference/README.md` | His pictures, his copy rule and what each picture is the bar for |
 | `docs/rest-and-cinematics-proposal.md` | The original Spanish proposal (answered; rules moved to MISSION_DESIGN) |
+| `docs/WORLD_DESIGN.md` | The Spanish proposal for the campaign layer between missions: origin, people, social events, love, reputation, wealth, base, time, lineage, campaign generator, setting packs; answered, W13–W15 open; rules not yet moved to the English docs |
+| `docs/scene-art-plan.md` | The Spanish plan for producing scene, base and prop art: template, generic converter, prompt cards, inventory, batches (A1–A5 open) |
 | `tools/refs/README.md`, `tools/world-sprites/README.md` | Converter and generator details |

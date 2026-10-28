@@ -2402,6 +2402,16 @@ export class Playback {
         if (label) this.float(label, '#e2e8f0', this.posOf(ev.unit, now), now, { rise: 124 });
         return 180;
       }
+      case 'eye': {
+        // The Eye opens: a red gleam at the Mirai; the marks on the enemies follow from the state.
+        if (ev.on) {
+          const v = this.view(ev.unit);
+          if (v) this.fx.push({ kind: 'aura', element: 'fire', from: v.pos, to: v.pos, t0: now, dur: 700, unit: ev.unit });
+          if (label) this.float(label, '#fda4af', this.posOf(ev.unit, now), now, { rise: 124 });
+          return 300;
+        }
+        return 0;
+      }
       case 'intent':
         return 0;
     }

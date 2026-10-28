@@ -61,6 +61,7 @@ import {
   warpBlocker,
   warpLanding,
   warpStrike,
+  openEye,
 } from './clans';
 import { reachTo, replanAgainst } from './intent';
 import { chargedFoe, chargeHolds, crackUnder, endCharge } from './charged';
@@ -270,6 +271,8 @@ function dispatch(s: BattleState, a: Action, ev: BattleEvent[]): string | null {
       return doHide(s, u, ev);
     case 'crouch':
       return doCrouch(s, u, ev);
+    case 'eye':
+      return openEye(s, u, ev);
     case 'jump':
       return doJump(u, ev);
     case 'draw':

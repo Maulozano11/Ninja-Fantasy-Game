@@ -1057,6 +1057,8 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
       const edge = (map.exits.left && u.pos.x <= 1.5) || (map.exits.right && u.pos.x >= map.widthM - 1.5);
       add({ id: 'disengage', label: t('act_disengage'), icon: ACTION_ICON.disengage, disabled: !can.action || stealth, help: t('help_disengage') });
       add({ id: 'crouch', label: t(u.cond.crouched ? 'act_stand' : 'act_crouch'), icon: ACTION_ICON.crouch, disabled: !u.cond.crouched && !can.bonus, help: t('help_crouch') });
+      // A Mirai's Eye of Tomorrow (the owner, 2026-10-28, N14 "c"): a bonus action and 1 chakra, open until its next turn.
+      if (u.character?.clan === 'Mirai') add({ id: 'eye', label: t(u.eyeOpen ? 'act_eyeOpen' : 'act_eye'), icon: ACTION_ICON.eye, disabled: !!u.eyeOpen || !can.bonus || stealth || u.chakra < 1, active: !!u.eyeOpen, why: u.eyeOpen ? t('r_eyeOpen') : stealth ? t('r_combatOnly') : t('r_noBonus'), help: t('help_eye') });
       add({ id: 'jump', label: t('act_jump'), icon: ACTION_ICON.jump, disabled: !can.bonus, help: t('help_jump') });
       add({ id: 'shove', label: t('act_shove'), icon: ACTION_ICON.shove, disabled: !can.action, active: mode.k === 'shove' && mode.mode === 'push', help: t('help_shove') });
       add({ id: 'trip', label: t('act_trip'), icon: ACTION_ICON.trip, disabled: !can.action, active: mode.k === 'shove' && mode.mode === 'prone', help: t('help_trip') });
@@ -1125,6 +1127,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
         case 'jump':
         case 'focus':
         case 'draw':
+        case 'eye':
           act({ type: id, unit: u.id });
           return;
         case 'pill':

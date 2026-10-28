@@ -26,8 +26,40 @@ const STEP_WALK = 2.2;
  * The Mirai saw the blow coming: the attacker is a foe within the Eye's reach, in sight and not
  * hidden from it. (A blow struck from hiding is marked on the hit itself: `unseen`.)
  */
+/** What opening the Eye of Tomorrow costs (a bonus action too). */
+export const EYE_COST = 1;
+
+/** The Eye of Tomorrow is open: the Mirai reads the enemies' plans and sees their blows coming (N14 "c", 2026-10-28). */
+export const eyeOpen = (m: Unit): boolean => !!m.eyeOpen && !m.down;
+
+/**
+ * A Mirai opens the Eye (bonus action, EYE_COST chakra) until its next turn begins: in the fighting,
+ * with its bonus action and chakra, not sealed, not already open.
+ */
+export function openEye(s: BattleState, m: Unit, ev: BattleEvent[]): string | null {
+  if (s.phase !== 'combat') return 'combatOnly';
+  if (m.character?.clan !== 'Mirai') return 'notMirai';
+  if (m.eyeOpen) return 'eyeOpen';
+  if (!m.turn.bonus) return 'noBonus';
+  if (effectMods(m.effects).noJutsu) return 'sealed';
+  if (m.chakra < EYE_COST) return 'noChakra';
+  m.turn.bonus = false;
+  m.chakra -= EYE_COST;
+  m.eyeOpen = true;
+  ev.push({ t: 'chakra', unit: m.id, delta: -EYE_COST, chakra: m.chakra, reason: 'eye' });
+  ev.push({ t: 'eye', unit: m.id, on: true });
+  return null;
+}
+
+/** The Mirai's next turn begins: the Eye closes (turns.ts beginTurn). */
+export function closeEye(m: Unit, ev: BattleEvent[]): void {
+  if (!m.eyeOpen) return;
+  m.eyeOpen = false;
+  ev.push({ t: 'eye', unit: m.id, on: false });
+}
+
 export function sawComing(s: BattleState, m: Unit, attacker: Unit | undefined): boolean {
-  if (!attacker || attacker.team === m.team) return false;
+  if (!attacker || attacker.team === m.team || !eyeOpen(m)) return false;
   if (attacker.cond.hidden !== undefined && passivePerception(m) < attacker.cond.hidden) return false;
   return dist(m.pos, attacker.pos) <= FORESIGHT_RANGE && lineOfSight(s, m.pos, attacker.pos);
 }

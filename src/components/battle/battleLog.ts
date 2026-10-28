@@ -132,6 +132,8 @@ export function logLine(ev: BattleEvent, s: BattleState, lang: Lang, wallOf = (i
       return ev.on ? null : { text: t('l_clone') };
     case 'deflect':
       return { text: t(ev.caught ? 'l_deflectCaught' : 'l_deflect', { a: nameOf(s, ev.unit, lang), n: ev.less }), tone: 'text-cyan-300' };
+    case 'eye':
+      return ev.on ? { text: t('l_eyeOpen', { a: nameOf(s, ev.unit, lang) }), tone: 'text-rose-300' } : { text: t('l_eyeClose'), tone: 'text-slate-400' };
     case 'interpose':
       return { text: t('l_interpose', { a: nameOf(s, ev.unit, lang), b: nameOf(s, ev.for, lang) }), tone: 'text-cyan-300' };
     case 'sever':
@@ -275,6 +277,8 @@ export function floatLabel(ev: BattleEvent, s: BattleState, lang: Lang): string 
       return ev.on ? null : lang === 'es' ? '¡Clon!' : 'Clone!';
     case 'deflect':
       return t('f_deflect');
+    case 'eye':
+      return ev.on ? t('f_eye') : null;
     case 'interpose':
       return t('f_interpose');
     case 'sever':

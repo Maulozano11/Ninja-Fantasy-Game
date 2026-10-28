@@ -92,6 +92,7 @@ export const ACTION_ICON: Record<string, React.FC<{ size?: number; className?: s
   shove: Hand,
   trip: Hand,
   focus: Sparkles,
+  eye: Eye,
   draw: Swords,
   pill: Pill,
   bandage: Bandage,

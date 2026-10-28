@@ -177,6 +177,12 @@ export interface Unit {
   turn: TurnBudget;
   controller: 'player' | 'ai';
   aiOrder: AiOrder;
+  /**
+   * The Eye of Tomorrow is open (the owner, 2026-10-28, N14 "c": off by default, a bonus action and
+   * EYE_COST chakra open it until the Mirai's next turn begins; battle/clans.ts). Kept out of `cond`,
+   * which a fall wipes. Missing: closed.
+   */
+  eyeOpen?: boolean;
   /** Damage and HP scale for enemies in Story difficulty (1 = normal). */
   power: number;
   guard?: Guard;
@@ -516,6 +522,8 @@ export type Action =
   | { type: 'attack'; unit: string; target: string; ranged?: boolean; knockout?: boolean }
   | { type: 'jutsu'; unit: string; jutsu: string; at: Pt; target?: string; enhanced?: boolean; target2?: string; element?: 'Fire' | 'Lightning' | 'Wind' | 'Water' | 'Earth' }
   | { type: 'dash' | 'disengage' | 'dodge' | 'hide' | 'focus' | 'crouch' | 'jump' | 'draw'; unit: string }
+  /** A Mirai opens the Eye of Tomorrow (bonus action, EYE_COST chakra) until its next turn begins. */
+  | { type: 'eye'; unit: string }
   | { type: 'shove'; unit: string; target: string; mode: 'prone' | 'push' }
   /** `tag` throws an explosive tag at a point; `tagTrap` hides one on the ground there. */
   | { type: 'item'; unit: string; item: 'pill' | 'bandage' | 'antidote' | 'tag' | 'tagTrap'; target?: string; at?: Pt }
@@ -560,6 +568,8 @@ export type BattleEvent =
   | { t: 'interpose'; unit: string; for: string }
   | { t: 'weapon'; unit: string; armed: boolean; cost: 'free' | 'bonus' }
   | { t: 'act'; unit: string; act: 'dash' | 'disengage' | 'dodge' | 'focus' | 'crouch' | 'stand' | 'jump' | 'item' | 'stone' }
+  /** The Eye of Tomorrow opens (on) or closes as the Mirai's next turn begins (off). */
+  | { t: 'eye'; unit: string; on: boolean }
   /** `reasons`: why the roll had advantage or disadvantage (the preview's keys: 'aura', 'behind'…). */
   | { t: 'attack'; unit: string; target: string; what: string; roll: RollInfo; ranged: boolean; reasons?: string[] }
   /** `ab`: the ability the save is made with (dex, wis…). */

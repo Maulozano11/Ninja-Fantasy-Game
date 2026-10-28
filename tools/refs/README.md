@@ -481,3 +481,27 @@ folders.
   pelvis (`src/sprite/items/renSitArt.ts`, drawn by `src/sprite/renSit.ts` in place of our drawing on Ren's figure).
 
       python3 -I tools/refs/ren-sit-from-ref.py [src/sprite/items/renSitArt.ts] [studyDir]
+
+## The template and the one converter (docs/scene-art-plan.md, lote 0)
+
+New sheets (base props, casino, ship, scene pieces) are drawn on a fixed template so one script
+converts all of them; no converter per sheet.
+
+- `make-template.py <cols> <rows> <out.png> [--labels ... --spec out.json]`: the template PNG
+  (flat magenta background, cells of 1024 picture px = 128 game px at factor 8 with a dark
+  gutter, our default legend blown up in cell 0 as the scale figure, a label strip under each
+  row) and, with `--spec`, the piece list the converter reads. `template/plantilla_4x2.png` and
+  `template/example-spec.json` are the lote 0 test sheet's; `template/TARJETA_DE_PROMPT.md` is the
+  prompt card (Spanish) the owner pastes into his image generator.
+- `template/scale-figure.png` is rendered by `npx tsx tools/refs/template/scale-figure.ts` (Solen
+  at idle, 70x95); rerun it only if the default legend changes.
+- `sheet-from-template.py <sheet.png> <spec.json> --out <dir> [--review <png>]`: crops each piece
+  by the grid, keys out the background, finds the phase of the drawing against the 8x8 blocks,
+  shrinks by majority vote, quantises (`colors` in the spec, 0 keeps all), adds the 1 px line to
+  solid pieces (`kind: "prop"`; `"glow"` gets none) only where the edge is not already dark,
+  trims, anchors at the bottom centre, and writes `<dir>/<group>/<id>.png` + `manifest.json` in
+  `writeGroup`'s format plus the "Tu dibujo / En el juego" review sheet and a round-trip report
+  (mean colour distance per piece; REVISAR when far). `--out` is a staging dir, never `src/assets`.
+- `sheet-from-template.py --selftest <dir>`: builds a sheet from five approved camp sprites,
+  placed off the block grid on purpose, and checks they convert back pixel for pixel. Run it
+  after touching the script.

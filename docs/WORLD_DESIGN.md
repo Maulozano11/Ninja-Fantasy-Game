@@ -297,6 +297,40 @@ y la escena de presión de "Countdown scenes"):
 de personaje se puede invitar a la misión), favores (una facción que te debe una), información
 (marcas que desbloquean cartas en misiones), y el **lugar donde empieza casi todo lo social**.
 
+**Cómo se interactúa: como en Los Sims** (el dueño, 2026-10-27: *"el sistema de socializar,
+cortejar y cómo te comportas es como el juego Sims 4"*). Las rondas se quedan como presupuesto de
+tiempo de la noche, pero **dentro de una ronda** acercarse a alguien abre un **menú por
+categorías** en vez de 2–4 cartas fijas:
+
+| Categoría | Interacciones (ejemplos del motor; el pack las nombra) | Toca |
+|---|---|---|
+| **Amistoso** | charlar, preguntar por su familia, brindar, contar la misión, dar un regalo | Lazo, confianza |
+| **Romántico** | halagar, coquetear, bailar, regalar algo íntimo, besar, proponer | afecto (solo si está desbloqueado), y la pareja presente lo ve |
+| **Gracioso** | broma, imitación, anécdota | Lazo, y respeto si sale bien; rencor si es a su costa |
+| **Serio / Negocios** | pedir un favor, ofrecer alianza, hablar de la facción, pedir información | respeto, confianza; marcas |
+| **Malicioso** | provocar, insultar, amenazar, humillar delante de todos | rencor, respeto (en los que admiran la fuerza), miedo |
+| **Jugar** | retar a fuerza, a dados, a una mano de cartas | respeto, fama |
+
+- Cada interacción tiene **un requisito** (Lazo o afecto mínimo, Estatus, una marca, estar a
+  solas o no), **una tirada** cuando hay riesgo (CAR, SAB, INT, FUE; la CD por rasgo de la
+  persona, como ya está escrito) y **un resultado visible al momento**: el globo de emoción
+  (`MISSION_DESIGN.md`, emotes: corazón, nube gris, !, ?, vena de enfado) y un aviso corto
+  ("+2 afecto", "Kaen lo recordará"). Las categorías se **desbloquean** con la relación: a
+  Lazo 0 solo hay Amistoso y Serio; Romántico aparece con afecto ≥ 3; las interacciones fuertes
+  (besar, proponer, humillar) piden más.
+- **Las personas tienen humor** esa noche (contento, aburrido, enfadado, triste, borracho; por lo
+  que les pasó en la campaña, por las bebidas y por lo que hiciste hace un rato) y el humor cambia
+  las CD y abre o cierra interacciones (nadie coquetea triste; un borracho acepta un reto). El
+  humor se ve en el retrato y en la pose del sprite.
+- **Las personas actúan solas** entre rondas (la **autonomía** de los Sims): se buscan, se
+  cortejan entre ellas, discuten, se sientan a jugar, se van. Son los eventos cruzados de arriba,
+  pero visibles en el patio: ves a tu pareja hablar con el rival y decides si te metes.
+- **Tu comportamiento se nota**: cada interacción escribe también en tu **reputación de
+  carácter** (marcas acumuladas: generoso, cruel, mujeriego, serio), que la gente nueva ya conoce
+  al llegar (a Estatus alto, lo sabe todo el mundo) y que decide qué categorías te abren a ti
+  ("con fama de cruel, nadie te deja usar Gracioso a la primera").
+- El **casino** usa el mismo menú con sus categorías propias (Jugar, Apostar, Informantes).
+
 ---
 
 ## 5b. El Salón / Casino (el dueño, 2026-10-27)
@@ -367,6 +401,18 @@ visita y estas cartas en vez de las de casa):
 
 **En multijugador** (13b), el casino es donde los jugadores de una campaña se enfrentan entre sí
 sin romper el grupo: apuestas de fortunas, un duelo amistoso, un cortejo que se cruza.
+
+**La mesa en primer plano** (el dueño, 2026-10-27: *"cuando juegues bacará o póker se vea en una
+escena con más zoom y más detalle al sprite"*). Sentarse a una mesa abre **una escena propia**:
+la cámara se acerca a la mesa (el 2× de las batallas, y 4× en los primeros planos de cartas), con
+la mesa dibujada **a doble resolución** para ese plano (la misma lámina del generador convertida a
+factor 2 en vez de 4: sin dibujar nada nuevo, el detalle que a escala normal se pierde aquí se
+ve), los **retratos** de los jugadores sentados (los de diálogo, ×4) alrededor con su pila de
+fichas y su gesto (tranquilo, nervioso, farol), las cartas y fichas como piezas de interfaz
+grandes, y la barra del casino al fondo desenfocada por paleta. Las acciones (apostar, pedir,
+plantarse, cambiar cartas, leer el farol, hacer trampa) son cartas de decisión como las demás,
+con su tirada cuando la hay. Al levantarse, la cámara vuelve al salón y lo ganado o perdido se
+ve en la Crónica y en las caras.
 
 Nuevas preguntas para el dueño, al final (W13–W15).
 

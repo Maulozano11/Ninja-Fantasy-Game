@@ -454,6 +454,15 @@ de los cinco (el dueño, 2026-10-28: *"pon a la crupier de kimono y quita a Roma
 kimono rojo con el pelo recogido, con sus dos cuadros de repartir; en otros packs, el crupier del
 local (un androide en la cantina espacial, un tipo de esmoquin en el club).
 
+**Los controles van abajo, como botones grandes** (el dueño, 2026-10-28: *"cambia el interfaz por
+botones elegantes y satisfactorios en la parte de abajo"*): una barra inferior con **tres botones
+de apuesta** del color de su zona del tapete (JUGADOR rojo, EMPATE verde, BANCA azul; el pago
+debajo), el **selector de fichas** a la izquierda (−/+, cuántas quedan de la noche) y, a la
+derecha, los **movimientos sociales** (leer el farol, hacer trampa) y *levantarse*. Cada botón
+responde con satisfacción: se hunde al pulsar, suena una ficha al apostar, el elegido queda
+iluminado hasta que sale la mano. Sin menú de lista a la derecha. Las cartas grandes se quedan
+arriba. Maqueta: `docs/mockups/bacara-backdrop-party-mockup.png`.
+
 Nuevas preguntas para el dueño, al final (W13–W15).
 
 ---

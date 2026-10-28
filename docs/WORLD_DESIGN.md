@@ -7,6 +7,7 @@ W8b W9c W10a W11a W12a W13a+ W14a W15a`. Lo que lleva **+** trae un añadido suy
 - **W4a+:** la fórmula de estabilidad se queda, y además **cada pareja adicional baja la riqueza un
   nivel al empezar**, salvo que sea una **relación de una noche**: una relación amorosa **se
   convierte en "de una noche" cuando ya no se interactúa con esa persona** (sección 6).
+- **Añadido del dueño (2026-10-28): máximo 3 parejas por jugador** (sección 6).
 - **W5a+:** 7 niveles y nunca un precio, pero el juego **muestra cifras aleatorias con los 000 que
   correspondan al nivel** para que el jugador sienta la dimensión de su riqueza, sin ponerle precio
   a nada (sección 8).
@@ -504,9 +505,11 @@ etapa es una marca en la relación; cada subida pide una decisión o una tirada,
 | **Abierta/o** | Otras parejas no le restan; le resta que le mientas (confianza) |
 | **Libre** | No quiere unión; si la pides, −3; sigue contigo mientras la relación sea buena |
 
-**Varias parejas a la vez.** No hay un número máximo. Cada pareja **adicional** exige, al
-empezarla y en cada cambio de temporada, que **todas** tus relaciones de pareja estén "en muy
-buen lugar" y tu vida también:
+**Varias parejas a la vez.** **Máximo 3 parejas por jugador** (regla del dueño, 2026-10-28:
+*"máximo 3 parejas por jugador"*; las relaciones de una noche no cuentan, porque ya no son
+pareja). Con tres, el juego no ofrece "proponer" a nadie más: cortejar sigue abierto, con sus
+celos. Dentro de ese tope, cada pareja **adicional** exige, al empezarla y en cada cambio de
+temporada, que **todas** tus relaciones de pareja estén "en muy buen lugar" y tu vida también:
 
 ```
 estabilidad = riqueza (0..6)

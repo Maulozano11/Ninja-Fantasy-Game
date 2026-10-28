@@ -441,6 +441,16 @@ medio **repartiendo con su animación** (la carta sale de su mano y cae en el ta
 medio. Maqueta: `docs/mockups/bacara-close-up-mockup.png`. Regla del dueño para toda maqueta y
 ejemplo del juego: **solo Solen, Romano, Aiden, Lyra y Aurelia**; nadie más.
 
+**La perspectiva de la mesa** (el dueño, 2026-10-28, con su imagen
+`docs/reference/bacara-scene-target-v2-owner-reference.png`: *"tu perspectiva no está correcta,
+debería ser así"*): la cámara está **cerca**; **todos los jugadores se sientan a lo largo del
+borde lejano** del tapete, de cara al espectador, con el cuerpo por encima de la mesa, y el
+crupier en medio; **nadie en las cabeceras ni en el borde cercano**, que queda libre para las
+cartas y fichas. Los sprites van a **3×** (la escala del primer plano) y **el borde de la mesa se
+dibuja por encima de ellos** (una máscara del fondo pintado que cubre el regazo), así que las
+poses sentadas solo necesitan ser buenas de la cintura para arriba. Maqueta con esa regla:
+`docs/mockups/bacara-backdrop-party-mockup.png`.
+
 Nuevas preguntas para el dueño, al final (W13–W15).
 
 ---

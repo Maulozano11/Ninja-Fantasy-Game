@@ -434,6 +434,13 @@ plantarse, cambiar cartas, leer el farol, hacer trampa) son cartas de decisión 
 con su tirada cuando la hay. Al levantarse, la cámara vuelve al salón y lo ganado o perdido se
 ve en la Crónica y en las caras.
 
+Su corrección (2026-10-28): **los personajes se ven jugando**: sentados a la mesa, de la cintura
+para arriba tras el borde del tapete, en la parte baja de la pantalla, con el **crupier** de pie en
+medio **repartiendo con su animación** (la carta sale de su mano y cae en el tapete); las
+**cartas en grande arriba**, con PLAYER y BANKER; las acciones a un lado y la línea del narrador en
+medio. Maqueta: `docs/mockups/bacara-close-up-mockup.png`. Regla del dueño para toda maqueta y
+ejemplo del juego: **solo Solen, Romano, Aiden, Lyra y Aurelia**; nadie más.
+
 Nuevas preguntas para el dueño, al final (W13–W15).
 
 ---

@@ -35,6 +35,10 @@ to localStorage.
   sheet or effect: use his pixels and his exact colours. Never redraw, reinterpret or approximate
   what is visible. Fill hidden parts by continuing his pixels. Keep his black outline. Always show
   his crop and our result side by side at the same scale.
+- **Mocks and examples use only his five: Solen, Romano, Aiden, Lyra and Aurelia** (the owner,
+  2026-10-28: "no uses nunca más a nadie que no sea Solen, Romano, Aiden, Lyra y Aurelia para los
+  ejemplos"). Romano is the default Roman look with `armor_legion`, `skirt_imperial`,
+  `hands_bronze_bracers` and `feet_sandals`.
 - **His characters are the standard.** Aiden (`docs/reference/aiden-owner-reference.jpg`) was
   copied part by part (head shape, eyes, hair, armour, cape, sword, boots, gloves), each part its
   own creator option. Build new characters the same way.

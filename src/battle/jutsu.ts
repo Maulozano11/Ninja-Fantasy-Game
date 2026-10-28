@@ -266,7 +266,8 @@ const OVERRIDE: Record<string, Partial<JutsuSpec>> = {
   // blood it draws thrown the way the cut goes.
   kenjutsu_bleeding_cut: { vfx: 'slash', vfxSet: 'neutral', melee: true, effect: 'bleeding', loud: false, seq: { blood: true } },
   // A shoulder tackle with the weapon put away (the owner): a straight run in, then the blow.
-  taijutsu_rush: { vfx: 'hit', melee: true, charge: true, weapon: 'stow', pose: 'tackle', seq: { launchFlash: true, fastRun: 2 } },
+  // The charge knocks its target 1.5 m back (the owner, 2026-10-28: "embestida y choca contra objeto o muro"): engine.ts slam.
+  taijutsu_rush: { vfx: 'hit', melee: true, charge: true, weapon: 'stow', pose: 'tackle', push: { m: 1.5 }, seq: { launchFlash: true, fastRun: 2 } },
   // The gaps in the elements (the owner's answers of 2026-10-21; docs/GAMEPLAY_DESIGN.md, "Jutsu for
   // the gaps"). Water's rank A (the owner's second round: "ola devoradora es rango a"): a 9 m cone
   // that sweeps the ones who fail 3 m away, knocks them down and puts their fire out.

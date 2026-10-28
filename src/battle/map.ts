@@ -33,9 +33,9 @@ const R = (radius: number, cover: 0 | 2 | 5, o: Partial<PropRules> = {}): PropRu
 
 /** What each kind of prop does in battle (the sprite manifests' tags, made concrete). */
 export const PROP_RULES: Record<string, PropRules & { halfLen?: number }> = {
-  'trees/oak': R(0.45, 2, { blocksSight: true, flammable: true }),
-  'trees/maple': R(0.4, 2, { blocksSight: true, flammable: true }),
-  'trees/pine': R(0.35, 2, { blocksSight: true, flammable: true }),
+  'trees/oak': R(0.45, 2, { blocksSight: true, flammable: true, tags: ['wood'] }),
+  'trees/maple': R(0.4, 2, { blocksSight: true, flammable: true, tags: ['wood'] }),
+  'trees/pine': R(0.35, 2, { blocksSight: true, flammable: true, tags: ['wood'] }),
   'trees/bamboo': R(0.7, 2, { blocksSight: true, hideSpot: true, passable: true, flammable: true }),
   'trees/stump': R(0.35, 2),
   'plants/bush_round': R(0.65, 2, { hideSpot: true, passable: true, flammable: true }),
@@ -47,9 +47,9 @@ export const PROP_RULES: Record<string, PropRules & { halfLen?: number }> = {
   'plants/flowers': R(0, 0, { passable: true }),
   'plants/lily_pads': R(0, 0, { passable: true }),
   'plants/mushroom_log': R(0.85, 2, { flammable: true }),
-  'landmarks/stone_lantern': R(0.3, 2),
+  'landmarks/stone_lantern': R(0.3, 2, { tags: ['metal'] }),
   'landmarks/signpost': R(0.15, 0),
-  'landmarks/fence': { ...R(0.25, 2, { hp: 12 }), halfLen: 1.1 },
+  'landmarks/fence': { ...R(0.25, 2, { hp: 12, tags: ['wood'] }), halfLen: 1.1 },
   'landmarks/fence_bamboo': { ...R(0.25, 2, { blocksSight: true, hp: 12 }), halfLen: 1.1 },
   'landmarks/boulder': R(0.95, 5),
   'landmarks/rock': R(0.45, 2),
@@ -59,10 +59,11 @@ export const PROP_RULES: Record<string, PropRules & { halfLen?: number }> = {
   'camp/campfire': R(0.5, 0),
   'camp/smoke': R(0, 0, { passable: true }),
   'camp/tent': R(1.35, 5, { blocksSight: true, flammable: true, hp: 30 }),
-  'camp/barrel': R(0.32, 2, { hp: 10 }),
-  'camp/barrel_explosive': R(0.32, 2, { hp: 6, explosive: true }),
-  'camp/crate': R(0.42, 2, { hp: 12 }),
-  'camp/crate_stack': R(0.6, 5, { blocksSight: true, hp: 25 }),
+  // The plain barrel holds oil (the owner, 2026-10-28: the barrels are [Combustible]): broken, it spills; under fire it burns and its oil blazes.
+  'camp/barrel': R(0.32, 2, { hp: 10, tags: ['wood', 'fuel'] }),
+  'camp/barrel_explosive': R(0.32, 2, { hp: 6, explosive: true, tags: ['wood', 'fuel'] }),
+  'camp/crate': R(0.42, 2, { hp: 12, tags: ['wood'] }),
+  'camp/crate_stack': R(0.6, 5, { blocksSight: true, hp: 25, tags: ['wood'] }),
   'camp/sacks': R(0.6, 2),
   'camp/weapon_rack': R(0.4, 0, { hp: 10 }),
 };

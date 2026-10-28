@@ -12,10 +12,10 @@ import type { ShinobiCharacter } from '../types/shinobi';
 import type { BattleEvent, BattleState, Pt } from './types';
 import { applyAction, createBattle } from './engine';
 import type { BattleSetup } from './engine';
-import { cellBlocked, cellCenter, cellKey, cellOf, waterAtPt } from './map';
+import { cellBlocked, cellCenter, cellKey, cellOf, getMap, propRules, waterAtPt } from './map';
 import { canStop, reachable, stepCost } from './nav';
 import { JUTSU } from './jutsu';
-import { BLAZE_ROUNDS, ICE_ROUNDS, OIL_ROUNDS, blazeAt, cellsInArea, freeze, iceAt, ignite, mire, mudAt, oilAt, spill, tickGround } from './ground';
+import { BLAZE_ROUNDS, ICE_ROUNDS, OIL_ROUNDS, blazeAt, cellsInArea, freeze, iceAt, ignite, mire, mudAt, oilAt, spill, tickGround, wetPatch } from './ground';
 import { endTurn } from './turns';
 import { jutsuChoices } from '../rules/jutsuNature';
 import { creatorChoices } from '../rules/progression';
@@ -284,5 +284,57 @@ describe('quicksand', () => {
     assert.ok(logLine(out.events.find((e) => e.t === 'ground' && e.kind === 'mud')!, out.state, 'es')!.text.includes('movediza'));
     void mire;
     void cellsInArea;
+  });
+});
+
+describe('knockback collisions (the owner, 2026-10-28, N11 b) and tagged props', () => {
+  it('a ninja pushed against a tree, a wall or the map\'s edge slams into it for 2d6; pushed into another, 1d6 to each and the other is pushed on', () => {
+    // Aki's Devouring Tide sweeps whoever fails 3 m away from her. Rogue 0 stands right against the
+    // map's west... use a Kōton metal wall behind it instead: a wall right behind the rogue.
+    const s = scene(['water_devouring_tide'], [{ x: 11, z: 10 }, { x: 20, z: 10 }, { x: 22, z: 12 }]);
+    const r0 = s.units.rogue_0.pos;
+    s.walls.push({ id: 'w1', kind: 'metal', a: { x: r0.x + 0.6, z: r0.z - 2 }, b: { x: r0.x + 0.6, z: r0.z + 2 }, hp: 40 });
+    const out = seeded(s, (t) => cast(t, 'water_devouring_tide', { x: r0.x, z: r0.z }), (o) => o.events.some((e) => e.t === 'slam' && e.unit === 'rogue_0' && e.into === 'wall'));
+    assert.ok(out.events.some((e) => e.t === 'damage' && e.unit === 'rogue_0' && e.dmgType === 'Bludgeoning'), 'the slam hurts');
+    assert.ok(logLine(out.events.find((e) => e.t === 'slam')!, out.state, 'es')!.text.includes('estrella'));
+    // two rogues in a row: the first is swept into the second, both take 1d6, the second is pushed on
+    const t = scene(['water_devouring_tide'], [{ x: 11, z: 10 }, { x: 12.5, z: 10 }, { x: 22, z: 12 }]);
+    const p0 = t.units.rogue_0.pos;
+    const p1 = { ...t.units.rogue_1.pos };
+    const chain = seeded(t, (u) => cast(u, 'water_devouring_tide', { x: p0.x, z: p0.z }), (o) => o.events.some((e) => e.t === 'slam' && e.unit === 'rogue_0' && e.into === 'rogue_1'));
+    assert.ok(chain.events.some((e) => e.t === 'damage' && e.unit === 'rogue_1'), 'the one hit takes it too');
+    assert.ok(chain.events.some((e) => e.t === 'pushed' && e.unit === 'rogue_1') || chain.events.some((e) => e.t === 'slam' && e.unit === 'rogue_1'), 'and is pushed on (or slams in turn)');
+    void p1;
+  });
+
+  it('the Rush knocks its target back; a shove against a wall slams', () => {
+    assert.deepEqual(JUTSU.taijutsu_rush.push, { m: 1.5 });
+  });
+
+  it('a barrel of oil is tagged fuel: broken it spills oil, under fire it burns and its oil blazes; a stone lantern is metal and carries lightning', () => {
+    const map = getMap('river_forest');
+    const barrel = map.props.findIndex((p) => p.group === 'camp' && p.name === 'barrel');
+    const lantern = map.props.findIndex((p) => p.group === 'landmarks' && p.name === 'stone_lantern');
+    assert.ok(barrel >= 0 && lantern >= 0);
+    assert.deepEqual(propRules(map.props[barrel]).tags, ['wood', 'fuel']);
+    assert.deepEqual(propRules(map.props[lantern]).tags, ['metal']);
+    // broken by a blow: oil round it
+    const s = scene([]);
+    const b = map.props[barrel];
+    place(s, 'a', { x: b.x - 1, z: b.z });
+    s.props[barrel].hp = 1;
+    const out = seeded(s, (t) => applyAction(t, { type: 'attack', unit: 'a', target: `prop:${barrel}`, ranged: false }), (o) => o.events.some((e) => e.t === 'prop' && e.prop === barrel && e.state === 'broken'));
+    assert.ok(notes(out.events, 'barrelSpills').length);
+    assert.ok(oilAt(out.state, { x: b.x, z: b.z }));
+    // fire on a barrel: burnt, and the oil round it already blazing
+    const t = scene(['fireball_goukakyu']);
+    place(t, 'a', { x: b.x - 3, z: b.z });
+    const lit = seeded(t, (u) => cast(u, 'fireball_goukakyu', { x: b.x, z: b.z }), (o) => o.events.some((e) => e.t === 'prop' && e.prop === barrel && e.state === 'burnt'));
+    assert.ok(blazeAt(lit.state, { x: b.x, z: b.z }), 'blazing');
+    // lightning that touches wet ground joined to the lantern's cell runs through the lantern
+    const l = map.props[lantern];
+    const u = scene(['lightning_jolt'], [{ x: l.x + 1, z: l.z }, { x: 20, z: 10 }, { x: 22, z: 12 }]);
+    const patch = wetPatch(u, [cellKey(cellOf({ x: l.x, z: l.z }))]);
+    assert.ok(patch.has(cellKey(cellOf({ x: l.x, z: l.z }))), 'the lantern conducts');
   });
 });

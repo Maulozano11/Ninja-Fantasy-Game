@@ -1981,6 +1981,13 @@ export class Playback {
         // Swept by a jutsu: the fall follows at once, while it still slides.
         return ev.what ? 120 : 280;
       }
+      case 'slam': {
+        // Slammed into a wall or into someone: a jolt, a burst of dust where it hit.
+        this.fx.push({ kind: 'burst', element: 'earth', from: ev.at, to: ev.at, t0: now, dur: 380, lift: [20, 20] });
+        h.sound('hit');
+        h.shake(ev.into === 'wall' ? 5 : 3);
+        return 260;
+      }
       case 'attack': {
         const a = this.view(ev.unit);
         const target = ev.target.startsWith('prop:') || ev.target.startsWith('wall:') ? undefined : state.units[ev.target];

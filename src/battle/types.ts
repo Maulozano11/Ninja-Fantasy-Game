@@ -277,7 +277,14 @@ export interface PropRules {
   explosive?: boolean;
   flammable?: boolean;
   animal?: boolean;
+  /**
+   * What it is made of (the owner's tags, 2026-10-28: "[Madera] [Metal] [Combustible]"): fuel spills
+   * oil when broken and blazes under fire; metal carries lightning (battle/ground.ts conducts).
+   */
+  tags?: PropTag[];
 }
+
+export type PropTag = 'wood' | 'metal' | 'fuel';
 
 export interface PropState {
   def: PropDef;
@@ -535,6 +542,8 @@ export type BattleEvent =
   | { t: 'teleport'; unit: string; from: Pt; to: Pt; log?: boolean; how?: 'phase' }
   /** `what`: the jutsu that swept or dragged it (a shove has none). */
   | { t: 'pushed'; unit: string; from: Pt; to: Pt; fall: number; what?: string }
+  /** A push cut short: the pushed one slams into a wall (a tree, a structure, the map's edge) or into another ninja, at this point. */
+  | { t: 'slam'; unit: string; into: 'wall' | string; at: Pt }
   | { t: 'weapon'; unit: string; armed: boolean; cost: 'free' | 'bonus' }
   | { t: 'act'; unit: string; act: 'dash' | 'disengage' | 'dodge' | 'focus' | 'crouch' | 'stand' | 'jump' | 'item' | 'stone' }
   /** `reasons`: why the roll had advantage or disadvantage (the preview's keys: 'aura', 'behind'…). */

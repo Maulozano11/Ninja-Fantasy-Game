@@ -173,6 +173,8 @@ export function logLine(ev: BattleEvent, s: BattleState, lang: Lang, wallOf = (i
       return { text: t(ev.on ? 'l_effect' : 'l_effectOff', { t: nameOf(s, ev.unit, lang), e: effectName(ev.effect, lang) }), tone: 'text-fuchsia-300' };
     case 'weapon':
       return { text: t(ev.armed ? 'l_weaponOn' : 'l_weaponOff', { t: nameOf(s, ev.unit, lang) }), tone: 'text-slate-400' };
+    case 'slam':
+      return ev.into === 'wall' ? { text: t('l_slamWall', { a: nameOf(s, ev.unit, lang) }), tone: 'text-orange-300' } : { text: t('l_slamUnit', { a: nameOf(s, ev.unit, lang), b: nameOf(s, ev.into, lang) }), tone: 'text-orange-300' };
     case 'pushed':
       // Swept away by a jutsu (the Devouring Tide), dragged in by one (the Whirlwind Tower), or shoved.
       if (ev.what && JUTSU[ev.what]) return { text: t(JUTSU[ev.what].push?.toward ? 'l_dragged' : 'l_swept', { t: nameOf(s, ev.unit, lang), o: genderO(s.units[ev.unit]), j: jutsuName(ev.what, lang) }) };

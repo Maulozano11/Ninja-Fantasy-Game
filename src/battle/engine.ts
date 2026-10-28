@@ -651,7 +651,14 @@ function attackProp(s: BattleState, u: Unit, i: number, ranged: boolean, ev: Bat
     // A barrel's blast is the same as a tag's (and sets off what is around it).
     ev.push({ t: 'prop', prop: i, state: 'exploded' });
     applyHits(s, throwTag(s, u, { x: p.x, z: p.z }, ev), loud(s, u), ev);
-  } else ev.push({ t: 'prop', prop: i, state: 'broken' });
+  } else {
+    ev.push({ t: 'prop', prop: i, state: 'broken' });
+    // A broken barrel of oil (tagged fuel, map.ts) spills its oil round it (ground.ts).
+    if (rules.tags?.includes('fuel')) {
+      ev.push({ t: 'note', key: 'barrelSpills', params: {} });
+      spill(s, { kind: 'circle', center: { x: p.x, z: p.z }, radius: 1 }, u.id, ev);
+    }
+  }
   return null;
 }
 
@@ -818,8 +825,12 @@ function sweep(s: BattleState, t: Unit, h: Hit, ev: BattleEvent[]): void {
     if (moved < full) break;
     left -= full;
   }
+  const stopped = left > 0.05;
   if (sameCell(cellOf(from), cellOf(t.pos))) {
     t.pos = from;
+    // Pushed against what it already stood by: it still slams into it (a drag toward a tornado's middle
+    // bumps and stops, as before: the slam is the knockback's, "empujón... contra objeto o muro").
+    if (stopped && !p.toward) slam(s, t, p, left, h.source, ev);
     return;
   }
   const drop = levelAtPt(s, from) - levelAtPt(s, t.pos);
@@ -832,6 +843,55 @@ function sweep(s: BattleState, t: Unit, h: Hit, ev: BattleEvent[]): void {
   if (dampAt(s, t.pos) && hasEffect(t.effects, 'burning')) {
     t.effects = removeEffect(t.effects, 'burning');
     ev.push({ t: 'effect', unit: t.id, effect: 'burning', on: false });
+  }
+  // What cut the push short takes the blow (and gives it back).
+  if (stopped && !p.toward && !t.down) slam(s, t, p, left, h.source, ev);
+}
+
+/** Knockback collisions (the owner, 2026-10-28, N11 b): against a wall, a tree, a structure or the map's edge; against another ninja, who is pushed on with what was left. */
+export const SLAM_WALL_DICE = '2d6';
+export const SLAM_UNIT_DICE = '1d6';
+
+/** The cell `m` metres on from `at`, the way a push from `origin` goes (toward it or away from it). */
+function pushNext(at: Pt, origin: Pt, toward: boolean | undefined, m = 0.5): Cell {
+  const d = Math.max(0.05, dist(at, origin));
+  const k = (toward ? m : -m) / d;
+  return cellOf({ x: at.x + (origin.x - at.x) * k, z: at.z + (origin.z - at.z) * k });
+}
+
+/**
+ * A push that something stopped slams the pushed one into it (his design brought home: "empujón
+ * con habilidades y embestida y choca contra objeto o muro"): a wall, a tree, a structure or the
+ * edge of the map, SLAM_WALL_DICE bludgeoning; another ninja, SLAM_UNIT_DICE to each, and the
+ * other is pushed on the same way with the force that was left (a chain). Nothing happens when the
+ * push was stopped by nothing solid (a hydra, the pushed one's own bulk).
+ */
+function slam(s: BattleState, t: Unit, p: NonNullable<Hit['push']>, left: number, source: string | undefined, ev: BattleEvent[]): void {
+  const g = gridFor(s.mapId);
+  const occ = occupancy(s);
+  // The ninja it was pushed up against: the sweep stops SWEEP_GAP short of one, so look that far on.
+  let other: Unit | undefined;
+  for (const m of [0.5, 1, 1.5]) {
+    const o = occ.get(idx(g, pushNext(t.pos, p.from, p.toward, m)));
+    if (o && o.id !== t.id) {
+      other = o;
+      break;
+    }
+  }
+  const next = pushNext(t.pos, p.from, p.toward);
+  if (other && other.kind === 'ninja' && !other.down) {
+    ev.push({ t: 'slam', unit: t.id, into: other.id, at: { ...other.pos } });
+    const a = rollDiceExpr(s, SLAM_UNIT_DICE);
+    const b = rollDiceExpr(s, SLAM_UNIT_DICE);
+    landHit(s, t, { unit: t.id, amount: a, type: 'Bludgeoning', source, what: 'slam' }, ev);
+    // the one hit is pushed on with the force that was left, from where it was hit
+    const chain: Hit = { unit: other.id, amount: b, type: 'Bludgeoning', source, what: 'slam', push: { from: { ...t.pos }, m: left, toward: p.toward } };
+    landHit(s, other, chain, ev);
+    return;
+  }
+  if (!inGrid(g, next) || cellBlocked(s, next) || !pushClear(s, t.pos, cellCenter(next))) {
+    ev.push({ t: 'slam', unit: t.id, into: 'wall', at: cellCenter(next) });
+    landHit(s, t, { unit: t.id, amount: rollDiceExpr(s, SLAM_WALL_DICE), type: 'Bludgeoning', source, what: 'slam' }, ev);
   }
 }
 
@@ -1478,8 +1538,12 @@ function doShove(s: BattleState, u: Unit, targetId: string, mode: 'prone' | 'pus
     const cellAt = (m: number) => cellOf({ x: t.pos.x + ((t.pos.x - u.pos.x) / d) * m, z: t.pos.z + ((t.pos.z - u.pos.z) / d) * m });
     const fits = (m: number) => pushClear(s, t.pos, cellCenter(cellAt(m))) && canStop(s, t, cellAt(m));
     const c = atk.crit && mode === 'push' && fits(3) ? cellAt(3) : cellAt(1.5);
-    if (!pushClear(s, t.pos, cellCenter(c)) || !canStop(s, t, c)) ev.push({ t: 'note', key: 'shoveBlocked', params: { name: t.name } });
-    else {
+    if (!pushClear(s, t.pos, cellCenter(c)) || !canStop(s, t, c)) {
+      // Shoved against what it stands by: it slams into it (N11 b), or doesn't budge if nothing solid is there.
+      const before = ev.length;
+      slam(s, t, { from: { ...u.pos }, m: 1.5 }, 1.5, u.id, ev);
+      if (ev.length === before) ev.push({ t: 'note', key: 'shoveBlocked', params: { name: t.name } });
+    } else {
       const from = { ...t.pos };
       const to = cellCenter(c);
       const drop = levelAtPt(s, from) - levelAtPt(s, to);

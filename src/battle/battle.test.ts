@@ -763,7 +763,9 @@ describe('clans: phase 1 foundation', () => {
         }
         assert.ok(out, 'some seed wins the shove');
         assert.deepEqual(out.state.units.rogue_0.pos, { x: 9.25, z: 10.25 }, kind);
-        assert.ok(out.events.some((e) => e.t === 'note' && e.key === 'shoveBlocked'));
+        // Shoved against the wall it slams into it (the owner, 2026-10-28, N11 b: 2d6) instead of just not budging.
+        assert.ok(out.events.some((e) => e.t === 'slam' && e.unit === 'rogue_0' && e.into === 'wall'));
+        assert.ok(out.events.some((e) => e.t === 'damage' && e.unit === 'rogue_0' && e.dmgType === 'Bludgeoning'));
         // With no wall, the same shove pushes it 1.5 m.
         const open = structuredClone(s);
         open.walls = [];

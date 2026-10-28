@@ -1812,10 +1812,34 @@ In the engine: `src/battle/ground.ts` (`ice`, `oil`, `mud` by navigation cell, l
 - **Quicksand.** The Earth jutsu **Quicksand** (`earth_quicksand`, rank C, a 3 m round at 9 m, 1d6
   bludgeoning, STR for half, whoever fails is pulled down prone) turns the ground to mud for **3
   rounds** (`MUD_ROUNDS`): **difficult terrain**.
-- Still to come from his list: tagged props as conduits (`[Madera] [Metal] [Combustible]`; the
-  rayo running from a `[Metal]` console), knockbacks and charges with collision damage
-  (`docs/SPACE_DESIGN.md` N11: dice by obstacle), verticality, the death decision with mutilation
-  and implants (N12 b).
+- **The frost scroll is Lyra's** (his "1 Lyra"): her preset holds `scrolls: ['frost']` (a saved
+  copy of her gets it on loading, `rules/ninja.ts` `addLegendScrolls`), and **a scroll's jutsu is
+  not gated by nature**: the scroll teaches it to whoever holds it (she is Wind), so the Frost
+  Ground sits in her Element slots in the creator.
+
+### Knockbacks and tagged props (the owner, 2026-10-28; N11 b of `docs/SPACE_DESIGN.md`)
+
+His design brought home: *"empujón con habilidades y embestida y choca contra objeto o muro"*,
+the props' tags *"[Madera] [Metal] [Combustible]"*. In the engine: `src/battle/engine.ts`
+`slam`, `src/battle/map.ts` `PROP_RULES` tags.
+
+- **A push cut short slams** (`sweep`, and the Shove's push): the pushed ninja stopped by **a
+  wall, a tree, a structure or the map's edge** takes **2d6 bludgeoning** (`SLAM_WALL_DICE`);
+  stopped by **another ninja**, **1d6 to each** (`SLAM_UNIT_DICE`) and **the other is pushed on
+  the same way with the force that was left** (a chain: it may slam in turn). A push against
+  what the ninja already stood by slams too. A drag toward a tornado's middle (the Whirlwind
+  Tower) bumps and stops as before: the slam is the knockback's. Falls off a ledge stay 1d6 a
+  level.
+- **The Rush is a charge that knocks back**: its blow pushes the target 1.5 m (`taijutsu_rush`
+  `push`), so a tackle into a wall or into a comrade slams.
+- **Tags** (`PropRules.tags`): trees, fences and crates are `wood`; the **plain barrel is
+  `fuel`** (and `wood`): broken by a blow it **spills a 1 m pool of oil**; **under fire it burns
+  and its oil spills already blazing**; the explosive barrel keeps its blast. The **stone
+  lantern is `metal`**: lightning that reaches a wet or icy patch joined to it, or strikes by it,
+  **runs through it** (its cell conducts, `ground.ts` `conducts`). No `[Metal]` console yet: the
+  space pack brings them.
+- The log: "{a} se estrella contra el muro", "{a} choca contra {b}", "El barril se rompe y su
+  aceite se derrama"; the screen jolts and bursts dust where it hit.
 - On the screen (`components/battle/vfxSprites.ts`): ice is a pale blue-white sheen with hard
   glints, oil a black pool with an oily shimmer, mud a matte brown round, the blaze tongues of
   flame on every other burning cell with a glow under them; the log says "El suelo se congela",

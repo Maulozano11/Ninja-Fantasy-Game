@@ -288,6 +288,13 @@ export function updateLegendChakra(c: ShinobiCharacter): ShinobiCharacter {
  * level-5 choice or had elements of its own (both fields missing) and still has the legend's type: a
  * copy whose player changed the type keeps what it has. Written once: the next load finds the fields.
  */
+/** A legend's copy saved before it held its scrolls gets them (the owner gave Lyra the frost scroll, 2026-10-28). */
+export function addLegendScrolls(c: ShinobiCharacter): ShinobiCharacter {
+  if (c.scrolls !== undefined) return c;
+  const legend = LEGENDARY_PRESETS.find((p) => p.character.id === c.id)?.character;
+  return legend?.scrolls?.length ? { ...c, scrolls: [...legend.scrolls] } : c;
+}
+
 export function addLegendNatures(c: ShinobiCharacter): ShinobiCharacter {
   if (c.extraNatures !== undefined || c.natureGrowth !== undefined) return c;
   const legend = LEGENDARY_PRESETS.find((p) => p.character.id === c.id)?.character;
@@ -376,7 +383,7 @@ export function dropRemovedJutsus(c: ShinobiCharacter): ShinobiCharacter {
  * the look only that old burst, the old Ren, the headband plate, the slender body and the neck change. A sheet that is already today's comes back as it is.
  */
 export function migrateCharacter(saved: ShinobiCharacter): ShinobiCharacter {
-  const c = dropRemovedJutsus(tideToElement(addLegendNatures(updateLegendChakra(tagJutsuToItem(withTodaysLook(withRensNewLook(saved)))))));
+  const c = dropRemovedJutsus(tideToElement(addLegendScrolls(addLegendNatures(updateLegendChakra(tagJutsuToItem(withTodaysLook(withRensNewLook(saved))))))));
   const clan = migrateClan(c.clan) ?? DEFAULT_CHARACTER.clan;
   const before = (c.sheetVersion ?? 1) < SHEET_VERSION;
   if (clan === c.clan && !before) return c;

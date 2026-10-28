@@ -14,7 +14,7 @@
 // blaze ends; mud (quicksand), difficult terrain that an earth jutsu leaves.
 
 import type { AreaShape, BattleEvent, BattleState, Cell, OilCell, Pt, Unit } from './types';
-import { CELL, cellBlocked, cellCenter, cellKey, cellOf, gridFor, idx, inGrid, keyCell, steamAt, waterAtPt } from './map';
+import { CELL, cellBlocked, cellCenter, cellKey, cellOf, getMap, gridFor, idx, inGrid, keyCell, propRules, steamAt, waterAtPt } from './map';
 import { inArea } from './jutsu';
 import { damage, rollDiceExpr, savingThrow } from './combat';
 
@@ -48,8 +48,19 @@ export const iceAt = (s: BattleState, p: Pt): boolean => !!s.ice && cellKey(cell
 export const oilAt = (s: BattleState, p: Pt): boolean => !!s.oil && cellKey(cellOf(p)) in s.oil;
 export const blazeAt = (s: BattleState, p: Pt): boolean => !!s.oil?.[cellKey(cellOf(p))]?.blazing;
 export const mudAt = (s: BattleState, p: Pt): boolean => !!s.mud && cellKey(cellOf(p)) in s.mud;
-/** Lightning runs across wet ground and ice alike. */
-const conducts = (s: BattleState, k: string): boolean => (!!s.wet && k in s.wet) || (!!s.ice && k in s.ice);
+/** The cells of the map's standing metal props (a stone lantern's iron): lightning runs through them. */
+const metalCells = (s: BattleState): Set<string> => {
+  const out = new Set<string>();
+  getMap(s.mapId).props.forEach((p, i) => {
+    const st = s.props[i];
+    if (!st || st.destroyed || !propRules(p).tags?.includes('metal')) return;
+    out.add(cellKey(cellOf(p)));
+  });
+  return out;
+};
+
+/** Lightning runs across wet ground, ice and metal props alike. */
+const conducts = (s: BattleState, k: string): boolean => (!!s.wet && k in s.wet) || (!!s.ice && k in s.ice) || metalCells(s).has(k);
 
 /** The cells (inside the map) whose middle lies in an area. */
 export function cellsInArea(s: BattleState, area: AreaShape): Cell[] {
@@ -287,7 +298,7 @@ export function pathArea(from: Pt, to: Pt): AreaShape {
 /** The wet and icy cells joined to `seeds` (8 ways round: a diagonal touch carries it too). */
 export function wetPatch(s: BattleState, seeds: string[]): Set<string> {
   const out = new Set<string>();
-  if (!s.wet && !s.ice) return out;
+  if (!s.wet && !s.ice && !metalCells(s).size) return out;
   const g = gridFor(s.mapId);
   const todo = seeds.filter((k) => conducts(s, k));
   for (const k of todo) out.add(k);
@@ -310,7 +321,7 @@ export function wetPatch(s: BattleState, seeds: string[]): Set<string> {
  * reaches, where a circle bursts). Only the wet ones count.
  */
 export function lightningSeeds(s: BattleState, area: AreaShape | null, points: Pt[]): string[] {
-  if (!s.wet && !s.ice) return [];
+  if (!s.wet && !s.ice && !metalCells(s).size) return [];
   const keys = new Set<string>();
   if (area) for (const c of cellsInArea(s, area)) keys.add(cellKey(c));
   for (const p of points) keys.add(cellKey(cellOf(p)));

@@ -6,7 +6,7 @@
 import type { Advantage } from '../rules/checks';
 import type { AreaShape, BattleEvent, BattleState, DamageType, Hit, Pt, Trap, Unit } from './types';
 import { cellCenter, cellKey, cellOf, dampAt, keyCell, dist, fullCoverBetween, getMap, propRules, waterAtPt } from './map';
-import { BLAZE_DC, BLAZE_DICE, ignite, lightningSeeds, melt, steamUp, unitsOnPatch, wetPatch } from './ground';
+import { BLAZE_DC, BLAZE_DICE, ignite, lightningSeeds, melt, spill, steamUp, unitsOnPatch, wetPatch } from './ground';
 import { inArea } from './jutsu';
 import { rollDiceExpr, savingThrow } from './combat';
 import { maxCritDamage } from '../rules/dice';
@@ -140,6 +140,18 @@ export function groundEffects(s: BattleState, area: AreaShape, type: DamageType 
     } else if (rules.flammable && type === 'Fire' && !dampAt(s, p) && !soaked?.has(cellKey(cellOf(p)))) {
       st.destroyed = true;
       ev.push({ t: 'prop', prop: i, state: 'burnt' });
+    } else if (rules.tags?.includes('fuel') && type === 'Fire') {
+      // A barrel of oil under fire: it burns, and its oil spills round it already blazing.
+      st.destroyed = true;
+      ev.push({ t: 'prop', prop: i, state: 'burnt' });
+      ev.push({ t: 'note', key: 'barrelSpills', params: {} });
+      const pool = { kind: 'circle' as const, center: { x: p.x, z: p.z }, radius: 1 };
+      spill(s, pool, by, ev);
+      const lit = ignite(s, pool, by, ev);
+      if (lit.length) {
+        const amount = rollDiceExpr(s, BLAZE_DICE);
+        for (const u of unitsOnPatch(s, new Set(lit))) hits.push(saveHit(s, u, 'dex', BLAZE_DC, amount, 'Fire', true, by || 'blaze', 'blaze', {}, ev, 'none', maxCritDamage(BLAZE_DICE)));
+      }
     } else if (clearFoliage && rules.hideSpot) {
       st.destroyed = true;
       ev.push({ t: 'prop', prop: i, state: 'cut' });

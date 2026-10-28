@@ -1,425 +1,183 @@
-# Estructura de código para el juego espacial (mechas, naves y cadetes)
+# El juego espacial sobre el motor de hoy: naves, mechas y abordajes
 
-Propuesta (2026-10-28) a partir del *Documento de Diseño Maestro: RPG Táctico Sci-Fi* del dueño.
-Dice cómo encaja su diseño en el código que ya existe y qué se construye nuevo, con los tipos y
-los módulos ya nombrados para que el día que se programe no haya que inventarlos. Es una
-propuesta: lo que él corrija manda. Las preguntas abiertas van al final (S1–S8).
+Propuesta (2026-10-28) a partir de los dos documentos del dueño (*Documento de Diseño Maestro*
+y *Pilares Mecánicos Acumulados*: Divinity, Wildermyth, Solasta, Tactical Breach Wizards,
+Seablip, FTL) y de su corrección del mismo día:
 
-Lo que su documento pide que sea modular (la economía: `GameCurrencyManager`, `CostValue`) ya
-tiene casa: la riqueza por niveles de `docs/WORLD_DESIGN.md` 8 (`src/campaign/state.ts`:
-`canBuy`, `buy`, `priceFor`). Aquí no se hardcodea moneda alguna: cada compra es un **nivel de
-precio** y el pack espacial le pone el nombre (créditos, chatarra).
+> *"lo que te está pasando son cosas para aplicar en nuestro juego, no crear otro … deberíamos
+> poder usar el motor que ya tenemos y mejorarlo … refrigerante se refiere a hielo, que también
+> lo añadiremos al de shinobi; plasma es fuego; combustible es como gasolina o aceite inflamable;
+> EMP es ataques de electricidad … la pelea terrestre de abordaje en la nave sigue siendo como en
+> el sistema original de combate que tenemos, con dados … [el combate de naves] será más de
+> probabilidad … tu rol sería ser como el comandante de la pelea".*
+
+La primera versión de este documento proponía un segundo motor sin dados. **Queda descartada.**
+Esto es lo que entendí; las preguntas N1–N15 del final son para que elija.
 
 ---
 
-## 0. En una página
+## 0. Lo que entendí (verificar)
 
-| Lo que pide su diseño | Dónde vive | Nuevo o reutilizado |
+1. **Un solo motor de batalla terrestre**, `src/battle` (5e, con dados), que **crece** con las
+   ideas de sus documentos: empujones y embestidas con choque contra muros, objetos y otras
+   unidades; hielo, aceite y una tabla de superficies más completa; verticalidad; reacciones con
+   pregunta en el turno enemigo; intenciones visibles; mutilación e implantes. Todo eso sirve
+   **también al shinobi** (el hielo y el aceite entran al juego de hoy) y, con otros nombres, al
+   espacial: plasma = fuego, refrigerante = hielo/agua, combustible = aceite, EMP = rayo,
+   nanobots = veneno/ácido. El motor no cambia de reglas; cambian los nombres y el arte (el pack).
+2. **El combate de naves es nuevo** y es otra cosa: no dados de 5e sino **probabilidad**
+   (porcentajes visibles), y el jugador es el **comandante**: manda a la nave nodriza y a naves
+   pequeñas, contra naves pequeñas y una insignia enemiga. Es una capa **encima** del motor: un
+   abordaje abre una batalla terrestre normal (`src/battle`, con dados) dentro de la nave enemiga.
+3. **La nave nodriza** está hecha de módulos (puente, reactor, artillería, bahía de cápsulas,
+   escudos…), la tripulación está dentro durante el combate (operar estaciones, control de daños)
+   y disparar a la nave enemiga es disparar a **sus** módulos.
+
+Si algo de esto no es lo que quiso decir, se corrige antes de tocar código.
+
+---
+
+## 1. Qué tiene ya el motor de hoy (y por eso se mejora en vez de rehacerse)
+
+| Idea de sus documentos | Lo que `src/battle` ya hace | Lo que falta |
 |---|---|---|
-| Cero azar, intenciones visibles, empujones, eje Z, reacciones | Un **segundo motor de batalla**, `src/tactics/`, determinista sin RNG | Nuevo (mismo contrato que `src/battle`: `create` + `apply(state, action)` → `{ state, events }`) |
-| Superficies y matriz de elementos con etiquetas | `src/tactics/surfaces.ts` | Nuevo, pero copia la idea ya hecha de `src/battle/ground.ts` (agua, vapor, rayo en cadena) |
-| Cadetes, decisión de muerte, mutilación, prótesis | `src/tactics/death.ts`, `src/tactics/cyber.ts` + la capa de campaña (`Person.traits`) | Nuevo en reglas; las etiquetas son **rasgos** como las Bendiciones/Maldiciones y cicatrices ya diseñadas |
-| Nave nodriza en grid de módulos, MACRO y MICRO, abordaje | `src/tactics/ship.ts`, `src/tactics/boarding.ts` | Nuevo; la nave **es la base** del pack espacial (`WORLD_DESIGN` 9/9b: "nave → nave nodriza → estación") |
-| Economía modular | `src/campaign/state.ts` (niveles de riqueza, compra como prueba) | Reutilizado tal cual |
-| Campaña, personas, carne asada en el hangar, linaje, estatus | `src/campaign/` + pack `src/settings/space/` | Reutilizado: el motor de campaña no sabe de género (`WORLD_DESIGN` 1) |
-| Pantallas: mapa táctico, nave, Casa | `src/components/tactics/`, `src/components/ship/`, `src/components/world/` | Mapa nuevo; reproducción de eventos (`playback.ts`), HUD y renderer **se extraen** de `components/battle` a algo común |
-| Sprites de cadetes, mechas, naves | `src/sprite/` (cuerpos nuevos), `tools/` (sus dibujos) | Como siempre: sus píxeles, un script por pieza |
-
-**La regla de oro sigue siendo una**: `src/tactics`, como `src/battle` y `src/campaign`, es
-TypeScript puro, sin React, sin imágenes y aquí además **sin `rngFor`**: el motor táctico
-espacial no importa `src/rules/rng.ts`. Un test lo vigila.
+| Superficies que reaccionan | `ground.ts`: el agua moja el suelo, lo mojado apaga el fuego y conduce el rayo a todos los que pisan, fuego sobre mojado hace vapor que ciega y quema, el viento lo despeja | Hielo (congela el agua: resbalar, inmovilizar), aceite (terreno difícil, anula saltos, arde con fuego), ácido/veneno en el suelo (degrada armadura), la tabla completa (sección 2) |
+| Objetos del mapa como armas | `hazards.ts`: barriles que explotan (3d6, radio 1.5 m, CD 13), trampas, sellos explosivos | Objetos **con etiqueta** (`[Metal]`, `[Madera]`, `[Combustible]`) que un jutsu usa como conducto y consume (consolas, drones, barriles de aceite) |
+| Reacciones en el turno enemigo | `engine.ts` ya **pausa y pregunta** (`reactionAsk`, `pending`: Evasión, Kawarimi) | Más disparadores (proyectil entrante, enemigo que entra a la vista) y más respuestas (escudo, devolver proyectil) |
+| Intenciones del enemigo | `intent.ts` calcula lo que la IA quiere hacer | **Mostrarlo** al jugador antes del turno enemigo (N14) |
+| Choques y empujones | `knockout` (dejar inconsciente) y las estructuras que bloquean (`structures.ts`) | **Empujón**: un jutsu o una embestida mueve al objetivo N casillas; si choca con muro, estructura u otra unidad, daño de colisión (N11) |
+| Eje Z | El mapa es 2.5D lateral: x y profundidad z, sin alturas | Pisos/plataformas y saltos (N13) |
+| Mutilación | Cicatrices con lado bueno y malo (`MISSION_DESIGN`), estados permanentes | Decisión a 0 HP (sacrificio / retirada mutilado), etiquetas de miembro, implantes que reescriben habilidades (N12) |
+| Mechas | Cuerpo `bulky` y la hidra como unidad grande | Un cuerpo `mecha` o el mecha como "montura/compañero de combate" (`WORLD_DESIGN` 1; N9) |
 
 ---
 
-## 1. Por qué un segundo motor y no una variante del de hoy
+## 2. La tabla de superficies, una para los dos juegos
 
-`src/battle` es un motor 5e: dados, CD, tiradas de salvación, ventaja. Su diseño espacial pide lo
-contrario (daño fijo, intenciones visibles, empujones geométricos, eje Z, reacciones con AP). Se
-podría poner un interruptor "sin dados" al motor de hoy, pero cada regla (jutsu, armas, estados)
-está escrita alrededor de la tirada: saldría un motor con dos mitades que no se entienden.
+El motor conoce la **superficie**; el pack pone el nombre y el dibujo.
 
-Lo que **sí** comparten los dos motores, y por eso se saca a un sitio común:
+| Motor (shinobi) | Pack espacial | Efecto en el suelo | Combina con |
+|---|---|---|---|
+| Agua (ya) | Refrigerante | Mojado: apaga fuego, conduce rayo | + rayo: electrifica a todos encima (ya) · + fuego: vapor (ya) · + hielo: se congela |
+| **Hielo** (nuevo, también shinobi) | Nitrógeno líquido | Terreno resbaladizo: moverse pide salvación de DES o cae (pierde el resto del movimiento); los que empiezan el turno encima, velocidad a la mitad; en mechas: actuadores inmovilizados un turno | + fuego: se derrite a agua · + rayo: conduce como el agua |
+| Fuego (ya) | Plasma | Quema por turno; revela a los ocultos (sigilo/camuflaje) | + aceite: ignición de todo el charco · + agua/hielo: se apaga · + veneno: explosión |
+| Rayo (ya) | EMP / arco | Daño; en cadena por agua, hielo y objetos `[Metal]`; a sistemas (mechas, escudos): aturde ("reiniciando") | + agua/hielo/metal: encadena (ya para el agua) |
+| **Aceite** (nuevo, también shinobi) | Combustible / gel | Terreno difícil (×2 movimiento), anula saltos y el desplazamiento del Ryusei | + fuego o chispa: arde y se expande |
+| **Veneno / ácido en el suelo** (nuevo) | Nube de nanobots | Cada turno: a personas daño de veneno; a mechas −armadura (CA) | + fuego: sobrecalienta y explota · + viento: se despeja |
+| Vapor (ya) | Vapor denso | Ciega y quema; bloquea escáneres | + viento: se va (ya) |
+| Viento (ya) | Gravedad / ventilación | Despeja vapor, nubes y gases | — |
 
-- El **contrato**: `create(setup) → { state, events }`, `apply(state, action) → { state, events }`,
-  estado plano serializable, eventos que una pantalla reproduce. `src/components/battle/playback.ts`
-  (ritmo de eventos) y el patrón del renderer sirven para los dos.
-- La **IA**: una función `aiAction(state) → action` por motor; el bucle de la pantalla es el mismo.
-- El **resultado** hacia la campaña: `applyMissionResult` (`src/campaign/state.ts`) no sabe qué
-  motor jugó la misión.
-- El **mapa como grid con etiquetas**: `src/battle/structures.ts` (estructuras que bloquean) y
-  `ground.ts` (lo que los elementos dejan en el suelo) son el antecedente directo de las
-  superficies sci-fi; el eje Z es lo único que el mapa de hoy no tiene.
-
-Propuesta de carpetas (lo nuevo en negrita):
-
-```
-src/
-  campaign/            el mundo entre misiones (ya empezado, paso 1)
-  settings/
-    shinobi/           el pack de hoy
-    **space/**         el pack espacial: facciones (flotas, corporaciones, colonias), orígenes,
-                       módulos de la nave, implantes, palabras (créditos), beats
-  battle/              el motor 5e (shinobi)
-  **tactics/**         el motor táctico sci-fi, determinista
-  **engine/**          lo común a los dos motores: el contrato, la cola de eventos, el grid base
-  components/
-    battle/            la pantalla del motor 5e (de aquí se extraen playback y HUD a components/engine)
-    **tactics/**       la pantalla del mapa táctico espacial (Z, intenciones, reacciones)
-    **ship/**          la nave: grid de módulos, combate MACRO, control de daños, bahía de cápsulas
-    world/             Casa (ya existe); la nave es la Casa del pack espacial
-```
+Los **objetos con etiqueta** (`props` de `hazards.ts` con `tags`): un jutsu de fuego sobre un
+barril `[Combustible]` lo convierte en la bomba; un rayo sobre una consola `[Metal]` encadena
+desde ahí; una técnica de un Kōton o un hacker "interfusiona" un dron inactivo y lo lanza. El
+objeto se consume. Es la misma regla que ya tienen los barriles, generalizada.
 
 ---
 
-## 2. Los tipos (el vocabulario)
+## 3. Lo que crece en el motor terrestre (para los dos juegos)
 
-```ts
-// src/tactics/types.ts — todo es data plana: se guarda, se manda por red, se repite.
-
-/** Una celda del mapa táctico: columna, fila y altura (eje Z en "pisos" de 1 unidad). */
-export interface Cell3 { c: number; r: number; z: number }
-
-/** Etiquetas de superficie y de objeto (su sistema de etiquetas): el pack añade las suyas. */
-export type SurfaceTag = 'metal' | 'wood' | 'fuel' | 'glass' | 'void' | 'coolant' | 'plasma' | 'nanobots' | 'emp' | 'steam';
-
-export interface Tile {
-  cell: Cell3;
-  /** Cobertura baja (se ignora desde arriba) o alta; `none` abierto; `wall` bloquea. */
-  cover: 'none' | 'low' | 'high' | 'wall';
-  /** Ventana o borde al vacío: un empujón por aquí es muerte o caída. */
-  edge?: 'window' | 'drop';
-  tags: SurfaceTag[];
-  /** Lo que hay en la celda ahora (refrigerante, plasma…), con cuántos turnos le quedan. */
-  surface?: { kind: SurfaceTag; turns: number; charged?: boolean };
-  /** Un objeto del entorno (barril, consola, dron): conducto para los cadetes; se consume. */
-  prop?: { id: string; tags: SurfaceTag[]; hp: number };
-}
-
-export type UnitKind = 'cadet' | 'mecha' | 'drone' | 'turret' | 'boss';
-
-export interface TacticsUnit {
-  id: string;
-  team: 'party' | 'enemy';
-  kind: UnitKind;
-  /** Quién es en la campaña (un cadete es una Person con hoja; un mecha tiene piloto). */
-  personId?: string;
-  pilotId?: string;
-  cell: Cell3;
-  facing: 0 | 1 | 2 | 3;
-  hp: number; maxHp: number;
-  /** Los mechas llevan armadura que los nanobots degradan; los cadetes no. */
-  armor?: number;
-  shield?: number;
-  /** Puntos de acción: mover, actuar, reaccionar. Se gastan también en el turno enemigo. */
-  ap: number; maxAp: number;
-  /** Masa: cuántas celdas lo mueve un empujón de fuerza F (F / mass, redondeado abajo). */
-  mass: number;
-  /** Vuelo o Zero-G: ignora caídas y pisos. */
-  flight?: boolean;
-  /** Etiquetas anatómicas permanentes y sus prótesis (sección 5). */
-  body: BodyTag[];
-  abilities: string[];                   // ids de AbilitySpec del pack
-  statuses: Status[];                    // stun (reinicio), slow, burning, corroded, blind…
-  /** Lo que hará en su turno, visible al jugador: cero azar. */
-  intent?: Intent;
-}
-
-export interface Intent { abilityId: string; target: Cell3 | string; order: number }
-
-/** Una acción del jugador o de la IA. Siempre determinista: la misma acción, el mismo resultado. */
-export type TacticsAction =
-  | { kind: 'move'; unit: string; path: Cell3[] }
-  | { kind: 'ability'; unit: string; abilityId: string; target: Cell3 | string }
-  | { kind: 'use_prop'; unit: string; abilityId: string; prop: Cell3 }
-  | { kind: 'react'; unit: string; reactionId: string; triggerId: string }   // dentro de una ventana de reacción
-  | { kind: 'pass_reaction'; triggerId: string }
-  | { kind: 'end_turn'; unit: string }
-  | { kind: 'death_choice'; unit: string; choice: 'sacrifice' | 'retreat' };
-
-export interface TacticsState {
-  version: 1;
-  map: { w: number; h: number; floors: number; tiles: Tile[] };
-  units: TacticsUnit[];
-  round: number;
-  turn: string;                          // id de la unidad activa
-  /** Una reacción pendiente para el jugador: el juego está en pausa hasta que decida. */
-  pendingReaction?: { triggerId: string; trigger: TacticsEvent; who: string[]; options: string[] };
-  /** Una decisión de muerte pendiente. */
-  pendingDeath?: { unit: string };
-  outcome: 'ongoing' | 'victory' | 'defeat';
-  log: TacticsEvent[];
-}
-
-export type TacticsEvent =
-  | { kind: 'moved'; unit: string; path: Cell3[] }
-  | { kind: 'knockback'; unit: string; from: Cell3; to: Cell3; hit?: 'wall' | 'unit' | 'window' | 'drop'; damage: number }
-  | { kind: 'damage'; unit: string; amount: number; type: DamageKind; cause: string }
-  | { kind: 'surface'; cell: Cell3; kind2: SurfaceTag; reaction?: 'electrified' | 'steam' | 'detonation' | 'overheat' | 'chain' }
-  | { kind: 'prop_consumed'; cell: Cell3; prop: string }
-  | { kind: 'reaction_window'; triggerId: string; who: string[] }
-  | { kind: 'intent'; unit: string; intent: Intent }
-  | { kind: 'death_choice'; unit: string }
-  | { kind: 'sacrifice'; unit: string; abilityId: string }
-  | { kind: 'retreat'; unit: string; mutilation: BodyTag }
-  | { kind: 'turn'; unit: string; round: number }
-  | { kind: 'end'; outcome: 'victory' | 'defeat' };
-
-export type DamageKind = 'kinetic' | 'plasma' | 'corrosive' | 'emp' | 'collision' | 'cold';
-```
-
-Las **habilidades** son data del pack, no código por habilidad (como `JUTSUS_DATA` pero sin
-dados):
-
-```ts
-// src/settings/space/abilities.ts
-export interface AbilitySpec {
-  id: string; name: string; nameEs: string;
-  apCost: number;
-  range: { min: number; max: number; needsLos: boolean; ignoresLowCoverFromAbove?: boolean };
-  /** Daño fijo. Cero azar: lo que dice es lo que hace. */
-  damage?: { amount: number; type: DamageKind };
-  /** Empujón: fuerza en "unidades de masa"; dirección desde el atacante o fija. */
-  push?: { force: number; dir: 'away' | 'toward' | 'facing' };
-  /** Lo que deja en el suelo (o conduce por un objeto etiquetado). */
-  surface?: { kind: SurfaceTag; radius: number; turns: number; viaPropTags?: SurfaceTag[] };
-  /** Salto orbital, vuelo: cambia el Z. */
-  vertical?: { jumpZ: number } | { flightTurns: number };
-  /** Puede usarse como reacción a estos disparadores (misil entrante, movimiento a la vista…). */
-  reactionTo?: TriggerKind[];
-  statuses?: Status[];
-  /** Prótesis que la otorga o la bloquea (sección 5). */
-  requiresBody?: BodyTag[]; blockedByBody?: BodyTag[];
-}
-```
+- **Empujón y embestida** (`push.ts`): una habilidad con `push: { cells, dir }` o una embestida
+  (moverse en línea hacia el enemigo y golpear) desplaza al objetivo; el choque contra muro,
+  estructura, otra unidad o el borde del mapa hace **daño de colisión** (N11 decide los números),
+  y chocar con otra unidad la empuja a ella también (cadena). Contra una ventana o borde al vacío
+  (espacio) o un precipicio (shinobi): fuera de combate. Sigue habiendo tirada para **impactar**
+  (5e); el empujón es el efecto del impacto.
+- **Reacciones con más disparadores** (`engine.ts`): el mecanismo de pausa ya existe; se añaden
+  `projectileIncoming` (devolver o bloquear), `enemyEntersSight` (ataque de oportunidad a
+  distancia), `allyHit` (interponerse). Cada reacción cuesta la reacción del turno, como en 5e.
+- **Intenciones visibles** (`intent.ts` → la pantalla): antes del turno enemigo se dibuja a quién
+  y con qué va a atacar cada enemigo, y la celda a la que se moverá (N14).
+- **Verticalidad** (N13): plataformas con altura en el mapa; desde arriba se ignora la cobertura
+  baja; saltar cuesta movimiento; caer hace daño; el vuelo lo ignora.
+- **Decisión a 0 HP, mutilación e implantes** (N12): con la regla de caída de `MISSION_DESIGN`.
 
 ---
 
-## 3. Los pilares de combate, módulo por módulo
+## 4. El combate de naves: el comandante
 
-| Pilar | Módulo | Qué hace, en una línea |
-|---|---|---|
-| Cero azar | todo `src/tactics` | Ningún módulo importa `rng`; `engine.test.ts` falla si alguno lo hace. El "azar" del enemigo es su **intención**, calculada al empezar su turno y mostrada (`intent.ts`) |
-| Intenciones visibles | `intent.ts` | Al terminar el turno del jugador, cada enemigo decide (IA determinista) y emite `intent`; la pantalla dibuja el objetivo y la celda. En su turno ejecuta exactamente eso, salvo que ya no pueda (muerto, aturdido, sin línea): entonces recalcula y se ve |
-| Empujones | `physics.ts` | `knockback(state, unit, dir, force)`: celdas = `floor(force / mass)`; avanza celda a celda; al chocar: contra **muro** daño = celdas que faltaban × `WALL_K`; contra **otra unidad** reparte el daño y empuja a la segunda con la fuerza restante (cadena); por **ventana** al vacío: fuera de combate (cadete: decisión de muerte; mecha: destruido); por **borde** cae pisos: daño por piso. Todo geométrico, sin tirada |
-| Eje Z | `grid3.ts` | Pathfinding A* con coste de subir (escaleras, rampas, salto) y caída libre; `los(from, to)` con alturas: desde más alto, la cobertura baja no cuenta; una unidad en vuelo ignora pisos y minas. Reutiliza la idea de la rejilla oculta de `src/battle/nav.ts`, con Z |
-| Reacciones | `reactions.ts` | Disparadores (`TriggerKind`: `missile_incoming`, `enemy_moves_in_sight`, `ally_hit`, `surface_spreading`): cuando uno ocurre en el turno enemigo y alguien del jugador tiene AP y una habilidad con `reactionTo`, el motor emite `reaction_window` y deja `pendingReaction`; **no avanza** hasta `react` o `pass_reaction`. La IA enemiga también reacciona, sin pausa |
+Nuevo módulo `src/fleet/` (puro, como los demás), **sin dados de 5e**: cada acción muestra su
+**probabilidad** y se resuelve con el RNG sembrado (N3 decide si hay azar o es fijo).
 
-El bucle (`engine.ts`): `applyAction` valida la acción contra `pendingReaction` / `pendingDeath`
-(si hay algo pendiente, solo se aceptan las acciones que lo resuelven), la ejecuta, resuelve
-superficies y cadenas, comprueba muertes (→ decisión), pasa turno, calcula intenciones.
-
----
-
-## 4. Superficies y control ambiental
-
-`surfaces.ts` lleva la **matriz** como una tabla, no como `if`s repartidos:
-
-```ts
-/** Qué pasa cuando `incoming` cae sobre una celda con `present` (o con esa etiqueta de objeto). */
-export const REACTIONS: Record<`${SurfaceTag}+${SurfaceTag}`, Reaction> = {
-  'coolant+emp':     { result: 'coolant', charged: true, spread: 'surface' },   // electrifica la zona
-  'coolant+plasma':  { result: 'steam', turns: 2 },                            // vapor: bloquea visión y escáneres
-  'plasma+fuel':     { result: 'detonation', radius: 2, damage: 12 },
-  'nanobots+plasma': { result: 'overheat', radius: 1, damage: 8 },
-  'emp+metal':       { result: 'emp', spread: 'tags', stun: true },            // en cadena por el metal
-  'emp+coolant':     { result: 'emp', spread: 'surface', stun: true },
-  'plasma+stealth':  { result: 'reveal' },                                     // anula camuflaje óptico
-};
-```
-
-- **Refrigerante** ralentiza (coste de movimiento ×2); **plasma** quema por turno y revela;
-  **nanobots** quitan armadura al mecha y vida al cadete cada turno; **EMP** rompe escudos y
-  aturde (reinicio: pierde su próximo turno), y se **propaga** por celdas contiguas con etiqueta
-  `metal` o superficie `coolant` (`spread`), igual que hoy el rayo corre por el suelo mojado.
-- **Objetos como conductos**: `use_prop` toma un objeto con etiqueta compatible
-  (`viaPropTags`), lo consume (`prop_consumed`) y aplica la superficie desde la celda del objeto,
-  no desde el cadete: así un barril de combustible lejano es una bomba a distancia.
-- La clase **Cadete Espacial** es la que tiene habilidades `surface` con `viaPropTags`; un mecha
-  no manipula objetos, los aplasta (empujón).
+- **Escala** (N1): la nave nodriza del jugador más sus **naves pequeñas** (cazas, corbetas, los
+  mechas en el espacio) contra naves pequeñas y una **insignia** enemiga. El jugador es el
+  comandante: da órdenes a cada nave por turno (mover, disparar, abordar, proteger a otra).
+- **Mapa** (N2): un tablero espacial con las naves como unidades.
+- **Anatomía de la nodriza**: módulos en cuadrícula. Puente (evasión de la nave), Reactor (la
+  energía = los puntos de acción de la nave; sin él caen los escudos), Artillería (cañones,
+  láseres, misiles), Escudos, Bahía de cápsulas / mechas (de aquí salen los abordajes), Motor (sin
+  él no escapa), Enfermería, Taller. **La nave es la base del pack espacial** (`WORLD_DESIGN` 9:
+  nave → nodriza → estación), así el creador de la base y el tablero de módulos son la misma
+  cosa (N8).
+- **Tripulación dentro** (N5): operar una estación mejora ese módulo (un artillero baja el tiempo
+  de recarga; un hacker en escudos recarga más); un impacto abre **brecha, incendio de plasma o
+  avería**, y hay que mover a alguien a esa sala a repararlo, dejando su estación.
+- **Disparar a sistemas**: se apunta a un módulo enemigo (cañones para desarmar, motor para que no
+  escape, escudos para abrirle paso al abordaje). Nada de barra de vida general.
+- **Abordaje** (N6): una cápsula con el escuadrón hacia la nave enemiga; la cámara entra a los
+  pasillos y empieza una **batalla terrestre normal** (`src/battle`, con dados, empujones, fuego,
+  katanas, hackeos) en un mapa que es el interior de esa nave, con lo que los cañones ya
+  rompieron (una sala sin oxígeno, otra electrificada). Ganar el puente o el reactor termina el
+  combate naval. Mientras tanto la batalla naval sigue por turnos alternos (N6).
 
 ---
 
-## 5. Cadetes: decisión de muerte, mutilación y prótesis
+## 5. Orden de construcción (propuesta)
 
-```ts
-export type BodyTag =
-  | 'missing_arm_l' | 'missing_arm_r' | 'missing_eye' | 'missing_leg'
-  | 'optics_tactical' | 'optics_designator'
-  | 'arm_grapple' | 'arm_magshield' | 'arm_repulsor'
-  | 'legs_zero_g' | 'legs_hover' | 'legs_quantum';
-```
-
-- **Decisión de muerte** (`death.ts`): a 0 HP un cadete no muere; el motor emite `death_choice`
-  y deja `pendingDeath`. `sacrifice`: muere para siempre y ejecuta su habilidad definitiva
-  (`AbilitySpec` marcada `ultimate`) desde su celda; `retreat`: sale del mapa y recibe una
-  etiqueta de mutilación **elegida por una tabla fija según la causa** (sin dado: daño
-  `corrosive` → ojo; `collision` → pierna; `plasma` → brazo; `kinetic` → el primero libre). Un mecha
-  a 0 HP se destruye; su piloto, si lo tiene, pasa por la decisión de muerte.
-- **Las etiquetas viven en la campaña**: `Person.traits` (`WORLD_DESIGN` 4) con efecto en reglas,
-  como las cicatrices y las Maldiciones ya diseñadas. `missing_arm_*` bloquea armas a dos manos
-  y baja un punto de daño; `missing_eye` quita alcance; `missing_leg` quita movimiento. Se
-  **heredan** como un rasgo cualquiera: no (las prótesis tampoco).
-- **Prótesis** (`cyber.ts` + evento de base): en la nave, en el módulo **Laboratorio** (el
-  "Taller" del motor de campaña, `WORLD_DESIGN` 9), un cadete mutilado se instala un implante.
-  Es una **compra como prueba**: cada implante tiene un `price: 3 | 4 | 5` (nivel de riqueza) y
-  sale por `buy(campaign, priceFor(price, reputación del vendedor))`. Instalarlo **reemplaza** la
-  etiqueta de falta y **sobrescribe** habilidades: `abilitiesFor(unit)` filtra por
-  `requiresBody` / `blockedByBody`, así un brazo modificado quita las armas a dos manos y da el
-  gancho, el escudo magnético o el repulsor; las ópticas dan evasión al primer disparo
-  (`reactionTo: ['first_shot']`, coste 0 AP) o el designador para pedir el **bombardeo orbital**
-  de la nave (una habilidad que la MACRO resuelve: sección 6); las piernas Zero-G ignoran
-  terreno y minas (`flight` parcial) o dan el salto cuántico (teletransporte a celda vista).
-
-```ts
-// src/settings/space/implants.ts
-export interface ImplantSpec {
-  id: BodyTag; name: string; nameEs: string;
-  replaces: BodyTag;                 // la etiqueta de falta que cubre
-  price: 3 | 4 | 5;                  // nivel de riqueza (WORLD_DESIGN 8): nunca una cifra
-  grants: string[];                  // ids de AbilitySpec
-  blocks?: 'two_handed'[];
-  passive?: Partial<Pick<TacticsUnit, 'flight'>> & { evadeFirstShot?: boolean; ignoreTerrain?: boolean };
-}
-```
+1. **Hielo y aceite en shinobi** (tabla de la sección 2, `ground.ts`): se juega ya, con sus
+   tests y jutsu de hielo para el Agua.
+2. **Empujón y embestida** con daño de colisión; objetos con etiqueta.
+3. **Intenciones visibles** y más reacciones.
+4. **Verticalidad** (si N13 = a).
+5. **Decisión a 0 HP, mutilación e implantes** (donde N12 diga).
+6. **El pack espacial** sobre la campaña (`WORLD_DESIGN` 13, paso 9) + la nave como base.
+7. **`src/fleet/`**: el combate de naves y el abordaje hacia `src/battle`.
+8. **Arte**: naves, mechas, interiores, con sus tarjetas de prompt.
 
 ---
 
-## 6. Combate naval: MACRO y MICRO
+## 6. Preguntas para el dueño (elegir una letra por pregunta)
 
-**La nave es la base del pack espacial.** Hoy `CampaignState.base = { tier, modules }`; para
-la nave el pack necesita **dónde** está cada módulo, porque el grid de módulos es a la vez el
-creador de la base (`WORLD_DESIGN` 9b, el interior de la nave) y el tablero del combate naval.
-Propuesta: el motor de campaña gana un campo opcional, genérico, que el pack shinobi no usa:
+**N1. Escala del combate naval.**
+a) Nodriza contra nodriza (como FTL). b) Flota: tu nodriza + naves pequeñas (cazas, corbetas, mechas) contra naves pequeñas y una insignia; tú eres el comandante. c) Las dos, según la misión (una patrulla es a, una batalla grande es b).
 
-```ts
-// src/campaign/state.ts (ampliación)
-base: { tier: number; modules: string[]; layout?: ModuleCell[] };
-export interface ModuleCell { moduleId: string; c: number; r: number; w: number; h: number }
-```
+**N2. El tablero espacial.**
+a) Visto desde arriba, en cuadrícula, cada nave una unidad con alcance y arco de disparo. b) Lateral 2.5D como nuestras batallas de hoy (mismo renderer, las naves como sprites grandes). c) Sin tablero: distancia por bandas (lejos / media / cerca) y las naves en fila, como FTL.
 
-```ts
-// src/tactics/ship.ts — una nave en combate (la del jugador y la enemiga, misma estructura)
-export interface ShipModuleState {
-  moduleId: string;                 // reactor, bridge, shields, artillery, catapult_bay, hydroponics, lab, hangar…
-  cells: ModuleCell;
-  hp: number; maxHp: number;
-  online: boolean;                  // deshabilitado a 0 HP o por EMP
-  /** Daño interno abierto: alguien tiene que ir a repararlo (MICRO). */
-  breach?: { kind: 'plasma_fire' | 'vacuum' | 'electrified'; turns: number };
-}
+**N3. El azar en el combate naval.**
+a) Cero azar: daño y efectos fijos, intenciones visibles. b) Probabilidades visibles (impacto 72 %, crítico 10 %) resueltas con el RNG sembrado; el daño sí es fijo. c) Como b pero también el daño en rangos.
 
-export interface ShipState {
-  id: string; name: string;
-  modules: ShipModuleState[];
-  reactor: { energy: number; maxEnergy: number; perTurn: number };
-  weapons: ShipWeapon[];            // cinéticas, plasma, EMP: coste de energía, daño fijo, qué módulos pueden apuntar
-}
+**N4. El turno naval.**
+a) Por turnos: la nave gasta la energía del reactor como puntos de acción; cada nave pequeña tiene su turno. b) Tiempo real con pausa (FTL). (Recomiendo a: todo el juego es por turnos.)
 
-export interface NavalState {
-  version: 1;
-  player: ShipState; enemy: ShipState;
-  /** Los cadetes dentro de la nave: el mapa MICRO es el interior (layout → Tile[] con etiquetas). */
-  crew: TacticsState;
-  /** Un abordaje en curso: el interior de la nave enemiga como mapa táctico. */
-  boarding?: TacticsState;
-  turn: 'player' | 'enemy';
-  round: number;
-}
+**N5. La tripulación durante el combate naval.**
+a) Órdenes por turno: mover a un tripulante a una sala cuesta una acción de la nave. b) Asignación: pones a cada uno en su estación al empezar y van solos a reparar (tú eliges a quién mandar cuando hay brecha). c) a+b: asignación inicial y órdenes puntuales.
 
-export type NavalAction =
-  | { kind: 'fire'; weaponId: string; targetModule: string }                     // MACRO: gasta energía del reactor
-  | { kind: 'crew'; action: TacticsAction }                                      // MICRO: moverse, reparar, apagar fuegos
-  | { kind: 'repair'; unit: string; moduleId: string }
-  | { kind: 'launch_capsule'; units: string[]; targetModule: string }           // desde la bahía de catapultas
-  | { kind: 'board'; action: TacticsAction }                                     // dentro de la nave enemiga
-  | { kind: 'orbital_strike'; cell: Cell3 }                                      // pedido por un designador láser desde tierra
-  | { kind: 'end_turn' };
-```
+**N6. El abordaje.**
+a) Solo tú abordas: la cápsula abre la batalla terrestre en la nave enemiga. b) También te abordan a ti: la batalla terrestre es defender tu nodriza. c) Las dos. Y mientras dura el abordaje, ¿la batalla naval se pausa (1) o sigue alternando turnos (2)?
 
-- **MACRO** (`ship.ts`): `fire` resta energía, aplica daño fijo al módulo apuntado (los
-  **escudos** absorben primero si están `online`; el **EMP** los salta y pone `online: false` un
-  turno). Un módulo a 0 HP queda deshabilitado: sin reactor no hay disparos; sin bahía no hay
-  cápsulas; sin puente la IA enemiga pierde sus intenciones (dispara al azar fijo: al primer
-  módulo). Un impacto que perfora abre una **brecha** en el módulo (plasma, vacío o
-  electrificado según el arma), y esa brecha es una **superficie** en el mapa MICRO: las celdas
-  del módulo reciben `plasma` / `void` / `emp` con la misma matriz de la sección 4.
-- **MICRO** (`crew` dentro de `NavalState.crew`): es el motor táctico corriendo sobre el interior
-  de la nave (`layoutToTiles(layout)`); `repair` pide estar en el módulo, cuesta AP y cierra la
-  brecha; una brecha sin cerrar sigue haciendo daño al módulo cada turno (`breach.turns` cuenta
-  hacia la pérdida del módulo).
-- **Abordaje** (`boarding.ts`): `launch_capsule` toma cadetes de la bahía de catapultas y crea
-  `boarding` = un `TacticsState` con el interior de la **nave enemiga** (`layoutToTiles` de su
-  layout) y las superficies que **los disparos MACRO ya dejaron** allí (una sala sin oxígeno es
-  `void` en sus celdas: sin casco, daño por turno; una electrificada, `emp` en cadena por el
-  metal). Ganar el abordaje del puente o del reactor termina el combate naval.
-- Las dos escalas en el **mismo turno**: el jugador reparte energía (MACRO) y AP (MICRO) como
-  quiera; `end_turn` pasa a la nave enemiga, que dispara según sus intenciones visibles y mueve a
-  su tripulación.
+**N7. El interior de la nave como mapa de batalla.**
+a) Lateral por cubiertas (nuestro 2.5D, los pisos como verticalidad). b) Desde arriba.
 
----
+**N8. La nave del jugador es la base del pack espacial** (su cuadrícula de módulos es a la vez el creador de la base de `WORLD_DESIGN` 9b y el tablero de combate).
+a) Sí. b) No, la base es la estación y la nave es aparte.
 
-## 7. La campaña espacial (lo que ya existe, con nombres nuevos)
+**N9. Los mechas.**
+a) Unidades grandes en la batalla terrestre (un cuerpo `mecha`, ~2× la altura, con piloto). b) Solo en el espacio, como naves pequeñas. c) Las dos.
 
-Nada de esto es código nuevo: es el pack `src/settings/space/` llenando el vocabulario de
-`WORLD_DESIGN` 1.
+**N10. Hielo y aceite en shinobi.**
+a) Ahora, al motor de hoy, con jutsu de hielo en el Agua (como el vapor). b) Después, junto con el pack espacial.
 
-| Motor | Pack espacial |
-|---|---|
-| Facción | Flota (la armada), corporación, colonia, piratas, el gremio de ingenieros |
-| Origen | Cadete de academia, hijo de la corporación, superviviente de colonia, pirata amnistiado, aprendiz del ingeniero jefe (el "hijo de dos razas" se gana jugando, como en shinobi) |
-| Don | Afinidad de pilotaje, implante de nacimiento, resistencia al vacío |
-| Base | Nave → nave nodriza → estación; módulos = los del grid (reactor, puente, escudos, artillería, bahía de catapultas, hangar, hidropónico, laboratorio, ala de tripulación) |
-| Compañero de combate | El mecha personal (una `TacticsUnit` kind `mecha` con `pilotId`) |
-| Evento social | Parrillada en el hangar (la carne asada, mismas reglas) |
-| Moneda narrativa | Créditos / chatarra: solo nombre; la riqueza son los 7 niveles |
-| Estatus | De don nadie a comandante de la flota; fans en la estación |
-| Evento paranormal | Anomalía temporal, nebulosa: Bendiciones/Maldiciones con la misma tabla de pesos |
+**N11. El daño del empujón al chocar.**
+a) Fijo por casilla que faltaba por recorrer (p. ej. 3 por casilla). b) Dados según el obstáculo (muro 2d6, unidad 1d6 a cada uno, caída 1d6 por piso), fiel al 5e. c) Fijo por obstáculo (muro 6, unidad 4, precipicio: fuera).
 
-Un cadete es una **Persona con hoja**; la hoja espacial no es `ShinobiCharacter`. Para el paso 3
-de la campaña (`WORLD_DESIGN` 13) conviene desde ya tipar `Person.sheet` por pack:
-`sheet?: { kind: 'shinobi'; sheet: ShinobiCharacter } | { kind: 'space'; sheet: CadetSheet }`,
-y que el creador reciba un `Person` semilla, como está diseñado para los hijos.
+**N12. Decisión a 0 HP, mutilación e implantes.**
+a) Solo en el pack espacial (cibernética). b) También en shinobi: retirarse mutilado y un "implante" del santuario o de la forja (brazo de madera, ojo de clan trasplantado). c) En shinobi solo la retirada con cicatriz, sin implantes.
 
----
+**N13. Verticalidad.**
+a) Plataformas y pisos en el mapa de hoy (saltos, caídas, desde arriba se ignora la cobertura baja; vuelo). b) No por ahora.
 
-## 8. Orden de construcción
+**N14. Intenciones visibles del enemigo.**
+a) En todas las batallas (se ve a quién atacará cada enemigo y adónde se moverá). b) Solo en el combate naval. c) Solo con una habilidad u objeto (el Ojo del Mañana del Mirai ya "ve el próximo movimiento": sería ampliarlo).
 
-Después del paso 9 de `WORLD_DESIGN` 13 (el pack espacial mínimo sin batalla), que es la prueba
-de que el motor de campaña no sabe en qué género está:
-
-1. **`src/engine/`**: sacar el contrato y `playback` de `components/battle` a común, sin cambiar
-   el juego shinobi (sus tests siguen verdes).
-2. **`src/tactics/` mínimo**: grid 3D, movimiento, una habilidad de daño fijo, intenciones
-   visibles, fin de combate. Un mapa de prueba, `#tactics` para abrirlo. Sin arte: cajas.
-3. **Empujones y superficies**: `physics.ts`, `surfaces.ts` con la matriz y los objetos conducto.
-4. **Reacciones** y la pausa en turno enemigo.
-5. **Cadetes**: decisión de muerte, mutilación, prótesis en el Laboratorio con la compra como
-   prueba.
-6. **Nave**: `layout` en la base, `ship.ts` MACRO, MICRO sobre el interior, abordaje.
-7. **Arte**: sus cadetes, mechas y naves como siempre (un script por pieza); la nave por dentro
-   y por fuera como en `WORLD_DESIGN` 9b.
-
-Cada paso con sus tests, en `src/tactics/*.test.ts` (añadir a `npm test`).
-
----
-
-## 9. Preguntas para el dueño
-
-- **S1.** ¿Confirmas **dos motores** (5e para shinobi, determinista para el espacial) con el
-  contrato común, en vez de un interruptor "sin dados" en el de hoy? (Mi recomendación: sí.)
-- **S2.** Cero azar en batalla: ¿también en la **campaña** espacial? Hoy la carne asada, la
-  fortuna, el d20 de suerte y los dones de los hijos se tiran con el RNG sembrado. Propongo que la
-  campaña siga tirando (es narrativa, no táctica) y solo el combate sea determinista.
-- **S3.** El daño por empujón: ¿fijo por celda que faltaba (como propongo) o fijo por tipo de
-  obstáculo (muro 5, unidad 3, ventana = fuera)? Dame tus números cuando los tengas.
-- **S4.** La mutilación al retirarse: ¿la decide la **causa del daño** (tabla fija, sin dado) o
-  la elige el jugador entre dos?
-- **S5.** Los implantes: ¿se pueden **quitar y cambiar** (precio otra vez) o son permanentes?
-- **S6.** El grid de módulos de la nave: ¿cuántas celdas (propongo 6×4 para la nodriza, 4×3 para
-  una corbeta enemiga) y la nave del jugador **crece** con el nivel de la base (nave → nodriza →
-  estación) añadiendo filas?
-- **S7.** El bombardeo orbital pedido desde tierra: ¿gasta energía del reactor de la nave (así la
-  MACRO y la tierra comparten recurso) o tiene usos por misión?
-- **S8.** Sprites: ¿los cadetes se dibujan con el cuerpo de hoy (male / female / bulky) con
-  trajes como ítems, y los mechas son un cuerpo nuevo (`mecha`, ~2× la altura)? Así la cabeza
-  `base`, los pelos y las caras de tus cinco sirven tal cual para los cadetes.
+**N15. Reacciones en el turno enemigo.**
+a) Pausa y pregunta con cada disparador nuevo (proyectil entrante, enemigo a la vista, aliado golpeado), como hoy con Evasión y Kawarimi. b) Reacciones preconfiguradas en la ficha ("siempre bloquear misiles"), sin pausa.

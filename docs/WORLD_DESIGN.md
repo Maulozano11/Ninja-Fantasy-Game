@@ -463,6 +463,15 @@ responde con satisfacción: se hunde al pulsar, suena una ficha al apostar, el e
 iluminado hasta que sale la mano. Sin menú de lista a la derecha. Las cartas grandes se quedan
 arriba. Maqueta: `docs/mockups/bacara-backdrop-party-mockup.png`.
 
+**Composición de la mesa, regla fija** (del dueño con su otra IA, 2026-10-28): orden de capas
+fondo → sillas → **personajes enteros** (nunca recortados) → **máscara de oclusión de la mesa**
+(el borde posterior y el tapete, del propio fondo, por encima de piernas y bajo del torso) →
+manos, cartas y fichas sobre el tapete → interfaz. Los cinco a la **misma escala** (misma altura de
+cabeza y torso); hombros hacia la mesa, caras un poco hacia el centro; las manos siempre visibles,
+nunca atravesando la madera. En 1920 × 1080: centros de asiento x = 220, 560, 960, 1375, 1750;
+cabezas en y ≈ 520–560; borde posterior de la mesa en y ≈ 670–700 (guías, no posiciones rígidas).
+La hoja de poses sentadas de los cinco: `docs/reference/poses/bacara-seated-sheet-owner-reference.png`.
+
 Nuevas preguntas para el dueño, al final (W13–W15).
 
 ---

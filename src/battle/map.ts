@@ -33,10 +33,10 @@ const R = (radius: number, cover: 0 | 2 | 5, o: Partial<PropRules> = {}): PropRu
 
 /** What each kind of prop does in battle (the sprite manifests' tags, made concrete). */
 export const PROP_RULES: Record<string, PropRules & { halfLen?: number }> = {
-  'trees/oak': R(0.45, 2, { blocksSight: true, flammable: true, tags: ['wood'] }),
-  'trees/maple': R(0.4, 2, { blocksSight: true, flammable: true, tags: ['wood'] }),
-  'trees/pine': R(0.35, 2, { blocksSight: true, flammable: true, tags: ['wood'] }),
-  'trees/bamboo': R(0.7, 2, { blocksSight: true, hideSpot: true, passable: true, flammable: true }),
+  'trees/oak': R(0.45, 2, { blocksSight: true, flammable: true, tags: ['wood'], tall: true }),
+  'trees/maple': R(0.4, 2, { blocksSight: true, flammable: true, tags: ['wood'], tall: true }),
+  'trees/pine': R(0.35, 2, { blocksSight: true, flammable: true, tags: ['wood'], tall: true }),
+  'trees/bamboo': R(0.7, 2, { blocksSight: true, hideSpot: true, passable: true, flammable: true, tall: true }),
   'trees/stump': R(0.35, 2),
   'plants/bush_round': R(0.65, 2, { hideSpot: true, passable: true, flammable: true }),
   'plants/bush_wide': R(0.95, 2, { hideSpot: true, passable: true, flammable: true }),
@@ -51,19 +51,19 @@ export const PROP_RULES: Record<string, PropRules & { halfLen?: number }> = {
   'landmarks/signpost': R(0.15, 0),
   'landmarks/fence': { ...R(0.25, 2, { hp: 12, tags: ['wood'] }), halfLen: 1.1 },
   'landmarks/fence_bamboo': { ...R(0.25, 2, { blocksSight: true, hp: 12 }), halfLen: 1.1 },
-  'landmarks/boulder': R(0.95, 5),
+  'landmarks/boulder': R(0.95, 5, { tall: true }),
   'landmarks/rock': R(0.45, 2),
   'landmarks/rocks_small': R(0, 0, { passable: true }),
   'landmarks/river_stones': R(0, 0, { passable: true }),
   'landmarks/hokora': R(0.4, 2),
   'camp/campfire': R(0.5, 0),
   'camp/smoke': R(0, 0, { passable: true }),
-  'camp/tent': R(1.35, 5, { blocksSight: true, flammable: true, hp: 30 }),
+  'camp/tent': R(1.35, 5, { blocksSight: true, flammable: true, hp: 30, tall: true }),
   // The plain barrel holds oil (the owner, 2026-10-28: the barrels are [Combustible]): broken, it spills; under fire it burns and its oil blazes.
   'camp/barrel': R(0.32, 2, { hp: 10, tags: ['wood', 'fuel'] }),
   'camp/barrel_explosive': R(0.32, 2, { hp: 6, explosive: true, tags: ['wood', 'fuel'] }),
   'camp/crate': R(0.42, 2, { hp: 12, tags: ['wood'] }),
-  'camp/crate_stack': R(0.6, 5, { blocksSight: true, hp: 25, tags: ['wood'] }),
+  'camp/crate_stack': R(0.6, 5, { blocksSight: true, hp: 25, tags: ['wood'], tall: true }),
   'camp/sacks': R(0.6, 2),
   'camp/weapon_rack': R(0.4, 0, { hp: 10 }),
 };
@@ -365,10 +365,22 @@ function segmentHitsSquare(a: Pt, b: Pt, c: Pt, half: number): boolean {
  * and other creatures between them, judged from the attacker's line (cover the attacker stands
  * behind doesn't count).
  */
-export function coverBetween(s: BattleState, from: Pt, to: Pt, ignore: string[] = []): 0 | 2 | 5 {
+/**
+ * The cover `to` has from `from` (docs/GAMEPLAY_DESIGN.md "Cover"): the best of the props, walls
+ * and bodies on the line. **Height counts** (the owner, 2026-10-28, from his sci-fi design: "estar
+ * elevado ignora coberturas bajas"): from a level or more above, a low prop (a bush, a barrel, a
+ * crate, a rock, a fence, a lantern, a block), or someone in the way, covers nothing, and a tall one
+ * (a tree, a tent, stacked crates, a boulder) a step less; a tall wall covers as ever. From a level
+ * or more below, any cover is three-quarters: the ledge hides the rest.
+ */
+export function coverBetween(s: BattleState, from: Pt, to: Pt, ignore: string[] = [], flat = false): 0 | 2 | 5 {
   const map = getMap(s.mapId);
   let cover: 0 | 2 | 5 = 0;
   const near = (p: Pt) => dist(p, from) < 0.9;
+  const dl = flat ? 0 : levelAtPt(s, from) - levelAtPt(s, to);
+  const above = dl >= 0.9;
+  const below = dl <= -0.9;
+  const less = (c: 0 | 2 | 5): 0 | 2 | 5 => (c === 5 ? 2 : 0);
   for (let i = 0; i < map.props.length; i++) {
     const p = map.props[i];
     const rules = propRules(p);
@@ -376,15 +388,18 @@ export function coverBetween(s: BattleState, from: Pt, to: Pt, ignore: string[] 
     const hit = rules.halfLen
       ? segmentsCross(from, to, { x: p.x - rules.halfLen, z: p.z }, { x: p.x + rules.halfLen, z: p.z }) || segDist(to, { x: p.x - rules.halfLen, z: p.z }, { x: p.x + rules.halfLen, z: p.z }) < 0.6
       : circleHitsSegment(p, rules.radius + 0.15, from, to);
-    if (hit && rules.cover > cover) cover = rules.cover;
+    if (!hit) continue;
+    const c = above ? (rules.tall ? less(rules.cover) : 0) : rules.cover;
+    if (c > cover) cover = c;
   }
   for (const w of s.walls) {
     if (w.kind === 'metalBlock') {
-      // Half cover, unless the attacker stands right behind the block itself.
-      if (dist(w.a, from) >= 1.2 && segmentHitsSquare(from, to, w.a, BLOCK_HALF)) cover = Math.max(cover, 2) as 0 | 2 | 5;
+      // Half cover, unless the attacker stands right behind the block itself (or looks down on it).
+      if (!above && dist(w.a, from) >= 1.2 && segmentHitsSquare(from, to, w.a, BLOCK_HALF)) cover = Math.max(cover, 2) as 0 | 2 | 5;
     } else if (segmentsCross(from, to, w.a, w.b)) cover = Math.max(cover, w.kind === 'earth' || w.kind === 'metal' ? 5 : 2) as 0 | 2 | 5;
   }
-  if (cover < 2) {
+  if (below && cover >= 2) return 5;
+  if (cover < 2 && !above) {
     for (const u of Object.values(s.units)) {
       if (ignore.includes(u.id) || u.down === 'fled' || u.down === 'dead' || (u.down && u.down !== 'downed')) continue;
       if (dist(u.pos, from) < 0.6 || dist(u.pos, to) < 0.6) continue;

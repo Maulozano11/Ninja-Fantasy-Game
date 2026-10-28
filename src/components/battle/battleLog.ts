@@ -103,7 +103,7 @@ export function logLine(ev: BattleEvent, s: BattleState, lang: Lang, wallOf = (i
       return { text: t('l_heal', { t: nameOf(s, ev.unit, lang), n: ev.amount }), tone: 'text-emerald-300' };
     case 'save': {
       const k: TKey = ev.roll.crit ? 'l_saveCrit' : ev.roll.fumble ? 'l_saveFumble' : ev.roll.success ? 'l_saveOk' : 'l_saveFail';
-      return { text: t(k, { t: nameOf(s, ev.unit, lang), roll: rollText(ev.roll, lang), dc: ev.roll.dc }), tone: ev.roll.crit || ev.roll.fumble ? 'text-yellow-300' : 'text-indigo-300' };
+      return { text: t(k, { t: nameOf(s, ev.unit, lang), roll: rollText(ev.roll, lang), dc: ev.roll.dc }) + (ev.cover ? t('l_saveCover', { n: ev.cover }) : ''), tone: ev.roll.crit || ev.roll.fumble ? 'text-yellow-300' : 'text-indigo-300' };
     }
     case 'jutsu':
       // A charged hand's blow going off by itself (the activated Chidori).

@@ -1710,7 +1710,8 @@ function reasonsText(pv: ReturnType<typeof attackPreview>, lang: ReturnType<type
   const parts: string[] = [];
   if (pv.adv !== 'none') parts.push(T(pv.adv === 'advantage' ? 'adv' : 'disadv', undefined, lang));
   // Reasons on both sides with no edge left: say they cancel ("por la espalda · aura de soberanía").
-  else if (pv.reasons.length > 1) parts.push(T('advCancel', undefined, lang));
+  // (the cover-and-height notes are no edge: they say what the height did to the cover)
+  else if (pv.reasons.filter((r) => r !== 'overCover' && r !== 'ledgeCover').length > 1) parts.push(T('advCancel', undefined, lang));
   for (const r of pv.reasons) {
     const k = `reason_${r}` as TKey;
     if (T.has(k)) parts.push(T(k, undefined, lang));

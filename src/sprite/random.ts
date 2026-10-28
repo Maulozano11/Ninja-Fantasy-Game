@@ -1,6 +1,6 @@
 // Random appearance for the creator's Randomize button.
 
-import { fitsBody, itemsForSlot } from './catalog';
+import { fitsBody, fitsHead, itemsForSlot } from './catalog';
 import { TINT_CHOICES } from './chakraInfo';
 import { OFFERED_TYPES } from './chakraNature';
 import type { ItemDef } from './ctx';
@@ -22,17 +22,19 @@ function randomChoice(def: ItemDef): ItemChoice {
   return choice;
 }
 
-function slotItem(slot: SlotId, body: BodyType): ItemChoice | undefined {
-  const items = itemsForSlot(slot).filter((d) => !d.id.endsWith('_none') && fitsBody(d, body));
+function slotItem(slot: SlotId, body: BodyType, face?: FaceShape): ItemChoice | undefined {
+  const items = itemsForSlot(slot).filter((d) => !d.id.endsWith('_none') && fitsBody(d, body) && fitsHead(d, face));
   return items.length ? randomChoice(pick(items)) : undefined;
 }
 
 export function randomAppearance(): SpriteAppearance {
   const body = pick<BodyType>(['male', 'female', 'bulky']);
+  // the head is picked first so the hair can be one that sits on it (catalog.ts fitsHead)
+  const faceShape = pick<FaceShape>(body === 'female' ? ['fine', 'aurelia'] : ['valiant', 'night', 'founder', 'roman']);
   const slots: SpriteAppearance['slots'] = {};
   const put = (slot: SlotId, p: number) => {
     if (!chance(p)) return;
-    const c = slotItem(slot, body);
+    const c = slotItem(slot, body, slot === 'hair' ? faceShape : undefined);
     if (c) slots[slot] = c;
   };
   put('hair', 0.97);
@@ -55,8 +57,8 @@ export function randomAppearance(): SpriteAppearance {
     version: 1,
     body,
     skin: pick(SKIN_TONES.slice(0, 9)),
-    eyeShape: pick<EyeShape>(['standard', 'sharp', 'round', 'calm', 'fierce', 'bright', 'piercing', 'valiant', 'night', 'dawn', 'keen', 'roman']),
-    faceShape: pick<FaceShape>(['tapered', 'tapered', 'soft', 'square', 'valiant', 'night', 'founder', 'fine', 'aurelia', 'roman']),
+    eyeShape: pick<EyeShape>(['standard', 'valiant', 'night', 'dawn', 'keen', 'roman']),
+    faceShape,
     cast: { style: pick(CAST_STYLES) },
     eyeColor: pick(EYE_COLORS),
     slots,

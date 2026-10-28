@@ -246,7 +246,7 @@ describe('clans', () => {
       appearance: {
         ...DEFAULT_CHARACTER.appearance!,
         body: 'female',
-        slots: { hair: { id: 'hair_long', colors: ['#1d1a2e'] }, top: { id: 'top_kimono', colors: ['#dcd6ee', '#3b3561'] }, held: { id: 'held_palm', colors: [] } },
+        slots: { hair: { id: 'hair_drifter', colors: ['#1d1a2e'] }, top: { id: 'top_kimono', colors: ['#dcd6ee', '#3b3561'] }, held: { id: 'held_palm', colors: [] } },
         // A save from before the headband was plain cloth still has the plate's fields.
         headband: { position: 'neck', tails: false, cloth: '#1e3a8a', plate: '#cbd5e1' } as SpriteAppearance['headband'],
         chakra: { color: 'blue', onCharge: true, onCast: true, onVictory: false },

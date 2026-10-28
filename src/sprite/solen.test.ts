@@ -165,7 +165,7 @@ describe("the owner's Solen", () => {
     // A Solen saved before his repaint (his old items, the crystal greatsword) still loads and draws.
     const saved = JSON.parse(JSON.stringify(solen));
     saved.appearance.slots.held = { id: 'held_crystal', colors: [] };
-    saved.appearance.slots.hair = { id: 'hair_midnight', colors: ['#2f3c54'] };
+    saved.appearance.slots.hair = { id: 'hair_night', colors: ['#2f3c54'] };
     const back = migrateCharacter(saved);
     assert.equal(back.id, 'preset_founder');
     const f = renderSprite(getAppearance(back), 'idle', 0);

@@ -178,7 +178,7 @@ describe("the owner's Roman head on his neck", () => {
     assert.equal(d.slots.hair?.id, 'hair_roman');
     assert.equal(d.headband.position, 'none');
     const old = appearanceFromLegacy({ palette: {}, hairstyle: '', armorStyle: '' } as unknown as ShinobiCharacter);
-    assert.equal(old.slots.hair?.id, 'hair_sunburst');
+    assert.equal(old.slots.hair?.id, 'hair_surge');
   });
 
   it('is the new game hero\'s head on Solen\'s sheet ("1 si"); no legend takes it ("2 no")', () => {

@@ -707,7 +707,7 @@ describe("the owner's Ren", () => {
         eyeShape: 'standard',
         eyeColor: '#38bdf8',
         slots: {
-          hair: { id: 'hair_midnight', colors: ['#2a3448'] },
+          hair: { id: 'hair_night', colors: ['#2a3448'] },
           top: { id: 'top_royalcoat', colors: ['#17181f', '#9aa3b2', '#0d0e14'] },
           bottom: { id: 'bottom_shinobi', colors: ['#17181f', '#17181f'] },
           feet: { id: 'feet_leather', colors: ['#1b1b22', '#0d0d12'] },
@@ -732,7 +732,7 @@ describe("the owner's Ren", () => {
     assert.deepEqual(getAppearance(migrateCharacter(recoloured)).slots, REN.appearance!.slots);
     // a Ren whose player changed a piece, and another hero in the old Ren's pieces, keep their looks
     const changed = structuredClone(before);
-    changed.appearance!.slots.hair = { id: 'hair_raven', colors: ['#2a3448'] };
+    changed.appearance!.slots.hair = { id: 'hair_night', colors: ['#2a3448'] };
     const other = { ...structuredClone(before), id: 'hero_ren_fan', name: 'Kuro' } as ShinobiCharacter;
     for (const c of [changed, other]) assert.deepEqual(migrateCharacter(structuredClone(c)).appearance, c.appearance, c.id);
   });

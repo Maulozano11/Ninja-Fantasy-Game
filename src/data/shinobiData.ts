@@ -1730,7 +1730,7 @@ export const RETIRED_PRESETS: typeof LEGENDARY_PRESETS = [
         skin: '#f0c4a0',
         eyeShape: 'sharp',
         slots: {
-          hair: it('hair_lion', '#16141d'),
+          hair: it('hair_tousled', '#16141d'),
           top: it('top_longsleeve', '#2b2420', '#1b1512'),
           bottom: it('bottom_shinobi', '#2b2420', '#3a2c22'),
           armor: it('armor_leather', '#4d3528', '#a2a7ae', '#c0502c'),
@@ -1795,7 +1795,7 @@ export const RETIRED_PRESETS: typeof LEGENDARY_PRESETS = [
       jutsuAttackBonus: 7,
       appearance: spriteLook({
         slots: {
-          hair: it('hair_raven', '#1a1d33'),
+          hair: it('hair_night', '#1a1d33'),
           top: it('top_kimono', '#e9e5da', '#2b3557'),
           bottom: it('bottom_hakama', '#2c3043', '#cfc8b6'),
           skirt: it('skirt_apron', '#27365c', '#1a2340'),
@@ -1860,7 +1860,7 @@ export const RETIRED_PRESETS: typeof LEGENDARY_PRESETS = [
         eyeShape: 'round',
         eyeColor: '#38bdf8',
         slots: {
-          hair: it('hair_sunburst', '#f5c518'),
+          hair: it('hair_surge', '#f5c518'),
           top: it('top_jacket', '#ec7a24', '#24252d', '#c9ced6'),
           bottom: it('bottom_shinobi', '#ec7a24', '#e7e1d1'),
           feet: it('feet_shinobi', '#2f5fa8', '#1d2433'),
@@ -1926,7 +1926,7 @@ export const RETIRED_PRESETS: typeof LEGENDARY_PRESETS = [
       appearance: spriteLook({
         eyeShape: 'sharp',
         slots: {
-          hair: it('hair_warlord', '#16141d'),
+          hair: it('hair_drifter', '#16141d'),
           top: it('top_longsleeve', '#262038', '#18142a'),
           bottom: it('bottom_hakama', '#262038', '#cfc8b6'),
           armor: it('armor_lamellar', '#9b1c24', '#1d1c26', '#d0a63c'),

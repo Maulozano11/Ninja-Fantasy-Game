@@ -34,7 +34,7 @@ export const oldHead = (l: SpriteAppearance): SpriteAppearance => {
   delete l.faceShape;
   l.eyeShape = 'standard';
   l.eyeColor = '#3b82f6';
-  l.slots = { ...l.slots, hair: { id: 'hair_sunburst', colors: [] } };
+  l.slots = { ...l.slots, hair: { id: 'hair_surge', colors: [] } };
   l.headband = { ...l.headband, position: 'forehead' };
   return l;
 };

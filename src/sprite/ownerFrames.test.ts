@@ -123,8 +123,8 @@ describe("the owner's own frames of Lyra", () => {
     assert.ok(wearsHisFigure(lyra));
     assert.ok(!wearsHisFigure({ ...lyra, body: 'male' }));
     assert.ok(!wearsHisFigure({ ...lyra, faceShape: 'tapered' }));
-    assert.ok(!wearsHisFigure({ ...lyra, slots: { ...lyra.slots, hair: { id: 'hair_long', colors: [] } } }));
-    const other = renderSprite({ ...lyra, slots: { ...lyra.slots, hair: { id: 'hair_long', colors: [] } } }, 'read', 0);
+    assert.ok(!wearsHisFigure({ ...lyra, slots: { ...lyra.slots, hair: { id: 'hair_drifter', colors: [] } } }));
+    const other = renderSprite({ ...lyra, slots: { ...lyra.slots, hair: { id: 'hair_drifter', colors: [] } } }, 'read', 0);
     assert.ok(differing(other.rgba, his(LYRA_READ[0])) > 100, 'drawn on the rig');
   });
 

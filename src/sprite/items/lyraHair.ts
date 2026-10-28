@@ -109,6 +109,7 @@ const swingBack = (r: Rig, long: boolean): number => (r.lay ? 0 : Math.min(HEAD_
 export const HAIR_COPPER_BRAID: ItemDef = {
   id: 'hair_copper_braid',
   slot: 'hair',
+  heads: ['fine', 'aurelia'],
   name: 'Copper Braid',
   desc: 'Waist-long wavy auburn hair with a thick braid over the near shoulder, a fringe swept over the brow, a gold pin and a black bow at the back.',
   colors: [

@@ -249,7 +249,7 @@ export const HANA: ShinobiCharacter = companion(HANA_LEGACY, {
     eyeShape: 'calm',
     eyeColor: '#2f8f6a',
     slots: {
-      hair: item('hair_pony', '#4a2f22'),
+      hair: item('hair_tousled', '#4a2f22'),
       top: item('top_kimono', '#e8eee8', '#2f7d5b'),
       bottom: item('bottom_leggings', '#26323a', '#2f7d5b'),
       waist: item('waist_pouches', '#6b4f2e', '#3b2c1c', '#c9a46c'),
@@ -284,7 +284,7 @@ export const KENJI: ShinobiCharacter = companion(presetById('preset_storm'), {
     eyeShape: 'piercing',
     eyeColor: '#8b5cf6',
     slots: {
-      hair: item('hair_lowtail', '#1c1830'),
+      hair: item('hair_night', '#1c1830'),
       top: item('top_highcollar', '#3b2f5c', '#1c1830'),
       bottom: item('bottom_hakama', '#1c1830', '#3b2f5c'),
       waist: item('waist_rope', '#c9a46c', '#8a6a3a'),

@@ -278,3 +278,25 @@ cambia respecto a la sección 5 y a la respuesta A3:
   por código.
 - **Lo que gana el plan de arte**: los fondos son la parte donde el generador rinde mejor, y ahora
   no hay conversión que pierda nada. Los 16 fondos de la sección 5 son 16 tarjetas.
+
+### 9b. Dos clases de fondo (el dueño, 2026-10-27)
+
+Su segundo casino (`docs/reference/casino-backdrop-v2-owner-reference.png`, generador 2 compitiendo
+con el 1: *"estoy usando los dos motores y poniendo a que compitan entre ellos para superarse"*)
+trae el mobiliario **pintado dentro del fondo** (mesas, barra, taburetes, biombo) y lo dio por
+bueno. De ahí la regla:
+
+| Clase | Qué es | Cómo lo usa el juego | Para qué lugares |
+|---|---|---|---|
+| **Escenario pintado completo** | El local con su mobiliario en la pintura | **Puntos calientes** sobre la pintura (la mesa de bacará es un rectángulo clicable; sentarse dibuja al personaje en el taburete pintado); la gente son sprites | Lugares **únicos** que no se personalizan: el casino, el salón del consejo, la federación, el palacio del presidente |
+| **Fondo vacío + props de píxel** | Solo arquitectura y luz; los objetos son sprites del convertidor | Los props se colocan y se cambian | **La base** (9b de WORLD_DESIGN): mesas, asador, alberca, juguetes, seguridad son elección del jugador |
+
+Reglas para el escenario pintado: la **franja inferior libre** donde caminan los personajes; las
+mesas con **un lado abierto al frente** para ver a los sentados; **sin personas** (las pone el
+juego); y la lista de **puntos calientes** se escribe en su `scene.json` (`hotspots: [{id, box,
+seat: [x, y], ...}]`). Las **tragamonedas** que trajo esta versión no van en el casino shinobi (el
+dueño: *"quita las máquinas tragamonedas"*): en la maqueta se taparon con la pared de al lado; el
+archivo definitivo se pide al generador con esa línea. En superhéroes o espacial sí tienen sitio.
+
+Maqueta con Lyra, Aiden y Aurelia renderizados por el motor sobre esta pintura, a 2×:
+`docs/mockups/casino-hd2d-party-mockup.png`.

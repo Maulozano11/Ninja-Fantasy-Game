@@ -221,6 +221,12 @@ export interface ShinobiCharacter {
    */
   created?: boolean;
   /**
+   * The narrative origin chosen in the creator (src/settings/<pack>/origins.ts): where the ninja
+   * starts in the world (docs/WORLD_DESIGN.md, section 3). It never touches the battle rules. Missing
+   * on sheets saved before campaigns: they come home to the neutral "no past" (campaign/state.ts).
+   */
+  originId?: string;
+  /**
    * The tools the ninja carries in its own pouch: they join the party's backpack at the start of
    * every mission and practice battle (rules/pouch.ts). Today only explosive tags, given to a sheet
    * that had the explosive tag as its Utility jutsu (it is a consumable item now). Missing: empty.

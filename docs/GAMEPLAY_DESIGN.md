@@ -529,9 +529,13 @@ Shinobi 5e" (claude.ai artifact MBtMFvHCwgtdfwNU9vgsZa). His answers:
   gems, and blessing or curse sigils**. That is how equipment is improved. In the game they show
   as **pixels laid over the equipment**, like the pixels you edit in the creator. (To design:
   what each piece gives, where they come from, how many fit on one item, the scene's art.)
-- **A meter of its own per clan**: kept as an idea for later, not dropped.
-- **Hate as a resource** (ToME's Hate, which halves out of combat): kept for another dynamic,
-  for example a kind of awakening (see Tension's Awakening in `MISSION_DESIGN.md`). Not designed.
+- **A meter of its own per clan**: dropped (the owner, 2026-10-28: *"lo del medidor de cada clan
+  no me gustó... lo de los clanes lo puedes descartar"*).
+- **Hate as a resource** (ToME's Hate, which halves out of combat): he likes it; kept for another
+  dynamic, for example a kind of awakening (see Tension's Awakening in `MISSION_DESIGN.md`). Not
+  designed.
+- **How many rounds of cooldown**: copied from Baldur's Gate 3 (his answer); the numbers are to be
+  proposed from it.
 
 ## Controls
 

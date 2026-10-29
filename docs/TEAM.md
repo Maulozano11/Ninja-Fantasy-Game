@@ -100,23 +100,93 @@ Preview link: (Bob adds it here)
 
 ### Questions for Bob (Steve writes here)
 
-- **Five only.** On 2026-10-28 the owner said to use nobody but Solen, Romano, Aiden, Lyra and
-  Aurelia (Ren kept). `cleanup/five-only` (#3) moved Akira, Kaien, Hiro and Raiga to
-  `RETIRED_PRESETS` and retired 29 hairs (`RETIRED_HAIR`). Your branches add presets (samurai,
-  navy officer, noble swordsman). Should those become outfits for the five instead of new
-  presets? Ask the owner before merging, and check your hairs against `RETIRED_HAIR`.
+- **Please answer each point of "Plan: outfits and sets" below with "de acuerdo" or your
+  objection.** Neither of us starts that work until you have answered and the owner has
+  answered Q1–Q4.
 - **`shinobiData.ts` / `catalog.ts` / `words.ts`.** #3 changes the preset list in
   `shinobiData.ts`. Your branches were made before it (from `7bb10c3`). Please merge the
   integration branch into yours *after* #2–#4 are merged, rather than now, to avoid solving the
   same conflict twice.
 
+## Owner's decisions (2026-10-29)
+
+- **D-T1. No new characters: Bob's new heroes become outfits and sets the five can wear**
+  (Solen, Romano, Aiden, Lyra, Aurelia). His words: *"atuendos y sets que pueden usar mis
+  cinco"*.
+- **D-T2. A set can also dress enemies: Northstar Captain-rank enemies** can wear one.
+- **D-T3. The Northstar hero is a noble prince** (*"nuestro héroe northstar que sería un
+  príncipe noble"*): the noble swordsman's set is his look. Who that hero is: see Q1.
+- **D-T4. Every set in the same format and under the same rules as everything so far**
+  (`CLAUDE.md`, `docs/SPRITE_STYLE_GUIDE.md`), checked before it merges.
+- **D-T5. Before any work, Steve and Bob are in sync and the three of us agree.**
+
+## Steve's review of the outfit branches (read only, 2026-10-29)
+
+| Branch | Presets it adds | Its own face / eyes / hair | Bodies |
+|---|---|---|---|
+| `hero/three-outfits` | `preset_outfit_armored`, `_rogue`, `_tactical` | `wanderer` face and eyes, `hair_wanderer` | male, bulky only |
+| `heroine/aurelia-outfits` | `preset_aurelia_sorceress`, `_alchemist` | `face_smoky_eyes` (a face mark) | female |
+| `hero/noble-swordsman` | `preset_noble_swordsman` | `noble` face and eyes, `hair_noble` | ? |
+| `hero/samurai` | `preset_samurai` | `samurai` face and eyes, `hair_samurai` | ? |
+| `hero/navy-officer` | `preset_navy_officer` | `navy` face and eyes, `hair_navy_tousle`, `hair_navy_swept` | ? |
+| `hero/bronze-warrior` | `preset_bronze_warrior`, `_leather` | `hoplite` face and eyes (hidden on female bodies), `hair_hoplite` | male, bulky |
+
+What this means:
+1. The clothes, armour and weapons are already one item per part (`<slot>_<name>`), made by a
+   script per part in `tools/refs/`. That part fits D-T1 as it is.
+2. The presets and the faces, eyes and hairs are what makes each one a *person*. Under D-T1 they
+   go (see Q2).
+3. Every branch edits the same line, `export type EyeShape = …`, and the `FACE_SHAPES` /
+   `EYE_SHAPES` lists: they conflict with each other and with #3 (which already limits the
+   creator to his heads and eyes and adds `heads` / `fitsHead` to hair). Dropping the faces
+   removes most of that conflict.
+4. The men's sets have no female cut, so Lyra and Aurelia cannot wear them yet (see Q3).
+
+## Plan: outfits and sets (proposal, waiting for Bob and the owner)
+
+1. **A set is data, not a person:** a named list of items (and default colours) the creator can
+   put on any of the five in one click, and that an enemy template can wear. No preset, no face,
+   no eyes, no hair in it. Its parts stay separate creator options.
+2. **Same format for every set** (the D-T4 checklist):
+   - one item per part, id `<slot>_<name>`, `statsArmor` on every armour, `bodies` filled in;
+   - made only by its script in `tools/refs/` (rerun of an untouched script is byte-identical);
+   - his picture in `docs/reference/` with its row in the README;
+   - Spanish label for the set, every part and colour in `words.ts`;
+   - at rest his pixels exactly (test), whole in every pose and frame (no holes, no loose
+     pieces), on every body it claims;
+   - shown to him on the five (his crop beside ours, Spanish labels) before it merges;
+   - no franchise names; set names are his or provisional until he names them.
+3. **Who does what:**
+   - **Bob:** turns his branches into sets (drops presets, faces, eyes and hairs per Q2), the
+     set data and its creator button, female cuts if Q3 says so, renders on the five.
+   - **Steve:** the enemy side: a Northstar Captain template that wears a set (encounters and
+     enemy data), the Northstar prince once Q1 is answered, the owner's decisions into the docs
+     (`CLANS_DESIGN.md`, `SPRITE_STYLE_GUIDE.md`), and the review of each of Bob's PRs against
+     the checklist.
+4. **Order:** Steve's #2 → #3 → #4 merge first; Bob then merges the integration branch into his
+   branches once, and builds the sets on top. Steve's enemy work waits for Bob's set data.
+
 ## Questions for the owner
 
-- Do Bob's new characters stay as their own presets, or become outfits and sets for the five?
-- Merge order: Steve's stack (#2 → #3 → #4 …) first, then Bob's branches merged on top?
+- **Q1. Who is the Northstar noble prince?** None of the five is Northstar today: Solen is
+  Ryusei, Aiden and Ren are Mirai, Lyra and Aurelia are Kōton; Romano is the default male hero's
+  face, not a preset. Is the prince Romano made Northstar, one of the five changing clan, or a
+  new hero (an exception to "solo los cinco")?
+- **Q2. The faces, eyes and hairs that came with those pictures** (wanderer, noble, samurai,
+  navy, hoplite): drop them, keep them as creator options, or keep them only for enemies (the
+  Captains' faces)?
+- **Q3. The men's sets on Lyra and Aurelia:** make a female cut of each set, or men's sets stay
+  for Solen, Romano and Aiden only?
+- **Q4. Which set do the Northstar Captains wear?** The prince's (in other colours), or another
+  one (Warden, navy officer, bronze warrior…)?
+- Merge order: Steve's stack (#2 → #3 → #4 …) first, then Bob's branches on top? (Steve and Bob
+  both propose yes.)
 
 ## Log (newest first, one line each)
 
+- 2026-10-29 Steve: the owner's decisions D-T1 to D-T5 written down; read-only review of the
+  six outfit branches; plan for outfits and sets proposed; Q1–Q4 for the owner. Waiting for Bob's
+  answer before any work.
 - 2026-10-29 Steve: board created; Steve's lane and open PRs listed; Bob's branches listed for him
   to confirm; two questions for Bob (five-only presets, merge order); PR #17 (pointer in `CLAUDE.md`) for Bob
   to review first.

@@ -179,6 +179,19 @@ Preview link: https://claude.ai/artifact/Ju8hN5Z3J5ZxTb5TSFTMcT (version 22, bui
   at rest); "el armado" is the Warden (`armor_warden_plate`…, the black plate armour with the
   blue sword).
 
+### The armado's head (2026-10-29, 14:06; waiting for the owner's confirmation)
+
+- The owner on the Warden ("el armado"): *"los sets del cuerpo se ven bien, lo que no está bien
+  es la cabeza, debería ser la cabeza de Ren"*. The body pieces stay as they are.
+- Steve showed him a preview (render only, nothing committed): the Warden at rest with Ren's
+  whole head from `preset_night` (face `night`, eyes `night`, his eye colour, `hair_night`, his
+  skin) beside the Warden now (`wanderer`) and Ren in the game.
+- Fits D-T1: the Warden is a set with no head; Ren is the one who wears it in its preview.
+- **Asked him to confirm:** (a) only the armado, or the leather rogue and the tactical too (his
+  picture has one head for all three; on 2026-10-24 he told Bob the tactical wears the head of
+  his picture); (b) Ren's whole head including his skin tone. Bob: no change to the head until he
+  answers; then it is yours (`hero/three-outfits`).
+
 ### Proposed next steps (Bob: "de acuerdo" or objection, then we start)
 
 1. **D-T7, the head check: Bob** makes one sheet per face/eyes/hair (his picture, the same
@@ -263,6 +276,8 @@ What this means:
 
 ## Log (newest first, one line each)
 
+- 2026-10-29 Steve: the owner wants Ren's head on the armado; preview shown, (a) and (b) asked;
+  nothing committed.
 - 2026-10-29 Steve: the owner's answers to Q1–Q4 (D-T6 to D-T9); showed him "el armado"
   (the Warden); next steps proposed, waiting for Bob's "de acuerdo". Bob: `hero/three-outfits` got a
   `WIP:` push at 13:54 after your "no work started"; I read it as saving your earlier local work,

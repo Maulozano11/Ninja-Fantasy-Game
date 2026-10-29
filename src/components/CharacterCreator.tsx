@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ShinobiCharacter, ClanType, ArmorStyleType, ShinobiClassType, AbilityScores } from '../types/shinobi';
 import {
   CLANS_DATA,
@@ -47,7 +47,9 @@ import { pouchTags } from '../rules/pouch';
 import { chakraNature, chakraType } from '../sprite/chakraNature';
 import type { ChakraNature, NatureGrowth } from '../types/shinobi';
 import { Dice5, Download, Shield, Zap, Eye, Swords, BookOpen, UserCheck, Sparkles, Lock, Bomb } from 'lucide-react';
-import { ForestScene, forestGround } from './scene/ForestScene';
+import { ShrineScene, shrineGround } from './scene/ShrineScene';
+import { SpriteThumb } from './creator/SpriteThumb';
+import { UiArrow, UiIcon, sliced } from './creator/ornate';
 import { BigButton, Chip, Frame, Heading, IronButton, Parchment, Row, StepTabs, serif } from './creator/stage';
 import { originDef, SHINOBI_ORIGINS, LEGEND_ORIGINS, DEFAULT_ORIGIN } from '../settings/shinobi/origins';
 import { factionDef } from '../settings/shinobi/factions';
@@ -371,13 +373,14 @@ type TK = Parameters<typeof T>[0];
 
 const STEPS = ['origin', 'clan', 'class', 'appearance', 'abilities', 'jutsus'] as const;
 type Step = (typeof STEPS)[number];
+// His icons for the steps (the owner's creator sheet, 2026-10-28; src/components/creator/ornate.tsx).
 const STEP_ICON: Record<Step, React.ReactNode> = {
-  origin: <UserCheck className="w-4 h-4" />,
-  clan: <Eye className="w-4 h-4" />,
-  class: <Swords className="w-4 h-4" />,
-  appearance: <Shield className="w-4 h-4" />,
-  abilities: <BookOpen className="w-4 h-4" />,
-  jutsus: <Zap className="w-4 h-4" />,
+  origin: <UiIcon name="icon_origin" size={30} />,
+  clan: <UiIcon name="icon_clan" size={30} />,
+  class: <UiIcon name="icon_class" size={30} />,
+  appearance: <UiIcon name="icon_portrait" size={30} />,
+  abilities: <UiIcon name="icon_abilities" size={30} />,
+  jutsus: <UiIcon name="icon_jutsus" size={30} />,
 };
 const STATS: (keyof AbilityScores)[] = ['str', 'dex', 'con', 'int', 'wis', 'cha'];
 const statLong = (s: keyof AbilityScores) => T(`stat_${s}` as TK);
@@ -890,7 +893,7 @@ export const CharacterCreator: React.FC<CharacterCreatorProps> = ({
     const r = renderSpriteCached(look, 'idle', 0, eye).rig.head;
     return { x: r.x * RES, y: r.y * RES };
   }, [look, eye]);
-  const ground = forestGround(view.w, view.h);
+  const ground = shrineGround(view.w, view.h);
   /** The ninja's scale: whole steps, as big as fits between the step tabs and the ground. */
   const k = wide ? Math.max(2, Math.min(5, Math.floor((ground - 170) / 110))) : 3;
   const stepIdx = STEPS.indexOf(step);
@@ -1675,22 +1678,42 @@ export const CharacterCreator: React.FC<CharacterCreatorProps> = ({
     </label>
   );
 
+  // The poses strip (the owner, 2026-10-28: "las poses de abajo son las poses que ya tenemos"): every
+  // creator pose as a small picture of this ninja in it, with its name, in his slots; his arrows
+  // scroll it when the screen is too narrow for all of them.
+  const poseStrip = useRef<HTMLDivElement | null>(null);
+  const scrollPoses = (dir: number) => poseStrip.current?.scrollBy({ left: dir * 240, behavior: 'smooth' });
   const stances = (
-    <div className="flex flex-wrap justify-center gap-1 border border-[#6b5434] bg-[rgba(20,17,13,0.85)] p-1 shadow-[0_6px_24px_rgba(0,0,0,0.7)]">
-      {SPRITE_POSES.map((s) => (
-        <button
-          key={s}
-          type="button"
-          onClick={() => {
-            soundManager.playSelect();
-            setPreviewStance(s);
-            setPreviewCast(null);
-          }}
-          className={`px-2.5 py-1 text-[11px] font-semibold border ${previewStance === s ? 'border-[#f2c46d] text-[#1c1206] bg-[linear-gradient(180deg,#f6d58e,#c99a4b)]' : 'border-[#3d3122] text-[#d9caa6] bg-[#1d1812] hover:border-[#8a6a3a]'}`}
-        >
-          {T(`pose_${s}` as TK)}
-        </button>
-      ))}
+    <div className="flex items-center gap-1 px-1 py-1" style={sliced('panel_wide', 40, 14)}>
+      <UiArrow dir="left" onClick={() => scrollPoses(-1)} />
+      <div ref={poseStrip} className="flex gap-1 overflow-x-auto [scrollbar-width:none]">
+        {SPRITE_POSES.map((s) => {
+          const on = previewStance === s;
+          return (
+            <button
+              key={s}
+              type="button"
+              title={T(`pose_${s}` as TK)}
+              onClick={() => {
+                soundManager.playSelect();
+                setPreviewStance(s);
+                setPreviewCast(null);
+              }}
+              className="shrink-0 flex flex-col items-center gap-0.5 group"
+            >
+              <span className="relative block w-[62px] h-[62px] transition group-hover:brightness-125" style={sliced(on ? 'square_active' : 'square', 24, 6)}>
+                <span className="absolute inset-0 overflow-hidden">
+                  <span className="absolute left-[5px] top-[1px] origin-top-left" style={{ transform: 'scale(0.42)' }}>
+                    <SpriteThumb look={look} eye={eye} pose={s} />
+                  </span>
+                </span>
+              </span>
+              <span className={`text-[10px] font-semibold leading-none ${on ? 'text-[#f2c46d]' : 'text-[#d9caa6] group-hover:text-[#efe3c4]'}`}>{T(`pose_${s}` as TK)}</span>
+            </button>
+          );
+        })}
+      </div>
+      <UiArrow dir="right" onClick={() => scrollPoses(1)} />
     </div>
   );
 
@@ -1712,7 +1735,7 @@ export const CharacterCreator: React.FC<CharacterCreatorProps> = ({
 
   return (
     <div className="creator-bg3 fixed inset-0 z-30 overflow-hidden bg-black text-[#efe3c4]">
-      <ForestScene className="absolute inset-0" />
+      <ShrineScene className="absolute inset-0" />
       <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_at_50%_55%,rgba(0,0,0,0)_40%,rgba(0,0,0,0.6)_100%)]" />
       {wide ? (
         <>
@@ -1744,17 +1767,17 @@ export const CharacterCreator: React.FC<CharacterCreatorProps> = ({
           >
             {figure(true)}
           </div>
-          <Frame className={`absolute left-6 top-[112px] bottom-[96px] ${step === 'appearance' ? 'w-[min(34vw,560px)]' : 'w-[min(26vw,400px)]'}`} title={leftTitle} sub={T(`stepHint_${step}` as TK)}>
+          <Frame className={`absolute left-6 top-[112px] bottom-[124px] ${step === 'appearance' ? 'w-[min(34vw,560px)]' : 'w-[min(26vw,400px)]'}`} title={leftTitle} sub={T(`stepHint_${step}` as TK)}>
             {list}
           </Frame>
-          <Frame className="absolute right-6 top-[112px] bottom-[96px] w-[min(27vw,420px)]" title={detail.title} sub={detail.sub}>
+          <Frame className="absolute right-6 top-[112px] bottom-[124px] w-[min(27vw,420px)]" title={detail.title} sub={detail.sub}>
             <div className="pb-3">{detail.body}</div>
           </Frame>
 
           <div className="absolute left-1/2 -translate-x-1/2" style={{ top: 132 }}>
             {nameplate}
           </div>
-          {/* The pose bar sits in the strip under the side panels (they end at bottom-[96px]), between
+          {/* The pose bar sits in the strip under the side panels (they end at bottom-[124px]), between
               the two corner buttons, so it never covers the ninja (the owner, 2026-10-28: on short
               screens the old bar, 18 px under the feet or raised to fit, sat over the boots) nor the
               panels' options; there it has the width for one row. */}

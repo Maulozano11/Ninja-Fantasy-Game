@@ -1,8 +1,10 @@
 import React from 'react';
+import { OrnatePanel, sliced, ui } from './ornate';
 
-// The creator's pieces in the look of the owner's mockup (docs/reference/creator-scene-owner-reference.jpg)
-// laid out the way Baldur's Gate 3 lays out its character creation: dark iron panels with bronze
-// edges and gold corners, parchment for the details, carved gold headings.
+// The creator's pieces. Since 2026-10-28 the panels, rows, step diamonds and big buttons are the
+// owner's own (his creator and battle UI sheets, ./ornate.tsx); the layout is still the one of his
+// first mockup (docs/reference/creator-scene-owner-reference.jpg): panels at the sides, the ninja
+// in the middle, parchment for the details, carved gold headings.
 
 export const serif: React.CSSProperties = { fontFamily: "'Cinzel', 'Trajan Pro', Georgia, 'Times New Roman', serif" };
 
@@ -28,7 +30,7 @@ function Corner({ at }: { at: 'tl' | 'tr' | 'bl' | 'br' }) {
   );
 }
 
-/** An iron panel with a bronze edge, gold corners and an engraved title bar. */
+/** His black panel with the gold filigree, corners and gems, a gold title and his section line. */
 export function Frame({
   title,
   sub,
@@ -45,27 +47,23 @@ export function Frame({
   bodyClass?: string;
 }) {
   return (
-    <section
-      className={`${/\b(absolute|fixed)\b/.test(className) ? '' : 'relative'} flex flex-col min-h-0 border border-[#6b5434] bg-[linear-gradient(180deg,rgba(30,27,24,0.94),rgba(14,12,10,0.94))] shadow-[0_10px_40px_rgba(0,0,0,0.7)] ${className}`}
-    >
-      <div className="absolute inset-[3px] border border-[#2e251a] pointer-events-none" />
-      <Corner at="tl" />
-      <Corner at="tr" />
-      <Corner at="bl" />
-      <Corner at="br" />
-      {title && (
-        <header className="relative flex items-center justify-between gap-3 mx-[3px] mt-[3px] px-4 py-2.5 border-b border-[#3d3122] bg-[linear-gradient(180deg,#34373d,#202226)]">
-          <div className="min-w-0">
-            <h2 style={serif} className="truncate text-[1.05rem] font-bold tracking-wider text-[#f2c46d] [text-shadow:0_2px_0_#000]">
-              {title}
-            </h2>
-            {sub && <div className="truncate text-[11px] text-[#b9a98a]">{sub}</div>}
-          </div>
-          {actions}
-        </header>
-      )}
-      <div className={`relative flex-1 min-h-0 overflow-y-auto ${bodyClass}`}>{children}</div>
-    </section>
+    <OrnatePanel c={28} className={`flex flex-col min-h-0 shadow-[0_10px_40px_rgba(0,0,0,0.7)] ${className}`}>
+      <div className="relative flex flex-col flex-1 min-h-0 px-4 pt-5 pb-5">
+        {title && (
+          <header className="relative flex items-start justify-between gap-3 px-1 pb-1">
+            <div className="min-w-0">
+              <h2 style={serif} className="truncate text-[1.05rem] font-bold uppercase tracking-wider text-[#f2c46d] [text-shadow:0_2px_0_#000]">
+                {title}
+              </h2>
+              {sub && <div className="truncate text-[11px] text-[#b9a98a]">{sub}</div>}
+              <img src={ui('section_header')} alt="" aria-hidden draggable={false} className="mt-1 h-3 w-auto max-w-full" />
+            </div>
+            {actions}
+          </header>
+        )}
+        <div className={`relative flex-1 min-h-0 overflow-y-auto ${bodyClass}`}>{children}</div>
+      </div>
+    </OrnatePanel>
   );
 }
 
@@ -91,25 +89,27 @@ export function Row({
   disabled?: boolean;
   indent?: boolean;
 }) {
+  // His group row: the red gem row when chosen, the lit one on hover, the plain dark one otherwise.
+  const [hot, setHot] = React.useState(false);
+  const hover = (on: boolean) => {
+    setHot(on);
+    onHover?.(on);
+  };
   return (
     <button
       type="button"
       disabled={disabled}
       onClick={onClick}
-      onMouseEnter={() => onHover?.(true)}
-      onMouseLeave={() => onHover?.(false)}
-      onFocus={() => onHover?.(true)}
-      onBlur={() => onHover?.(false)}
-      className={`group relative w-full flex items-center gap-3 text-left px-3 py-2 border transition ${indent ? 'pl-8' : ''} ${
-        selected
-          ? 'border-[#c99a4b] bg-[linear-gradient(90deg,rgba(242,196,109,0.18),rgba(242,196,109,0.04))]'
-          : 'border-transparent hover:border-[#5b4426] hover:bg-white/[0.03]'
-      } ${disabled ? 'opacity-60 cursor-default' : 'cursor-pointer'}`}
+      onMouseEnter={() => hover(true)}
+      onMouseLeave={() => hover(false)}
+      onFocus={() => hover(true)}
+      onBlur={() => hover(false)}
+      style={sliced(selected ? 'row_active_plain' : hot && !disabled ? 'row_hover' : 'row', '20 34', '7px 12px')}
+      className={`group relative w-full flex items-center gap-3 text-left px-2 py-1.5 my-0.5 transition ${indent ? 'pl-6' : ''} ${disabled ? 'opacity-60 cursor-default' : 'cursor-pointer'}`}
     >
-      {selected && <span className="absolute left-0 top-1/2 -translate-y-1/2 h-[70%] w-[3px] bg-[#f2c46d]" />}
       {icon && <span className="shrink-0">{icon}</span>}
       <span className="min-w-0 flex-1">
-        <span style={serif} className={`block truncate font-semibold tracking-wide ${selected ? 'text-[#f2c46d]' : 'text-[#efe3c4] group-hover:text-[#f6d58e]'}`}>
+        <span style={serif} className={`block truncate font-semibold tracking-wide ${selected ? 'text-[#fff1d6]' : 'text-[#efe3c4] group-hover:text-[#f6d58e]'}`}>
           {title}
         </span>
         {sub && <span className="block truncate text-[11px] text-[#b9a98a]">{sub}</span>}
@@ -178,18 +178,12 @@ export function StepTabs<S extends string>({
         const on = s === active;
         return (
           <React.Fragment key={s}>
-            {i > 0 && <span className={`mb-[22px] hidden sm:block h-px w-6 ${i <= at ? 'bg-[#c99a4b]' : 'bg-[#4a3a26]'}`} />}
+            {i > 0 && <span className={`mb-[30px] hidden sm:block h-px w-6 ${i <= at ? 'bg-[#c99a4b]' : 'bg-[#4a3a26]'}`} />}
             <button type="button" onClick={() => onPick(s)} className="group flex flex-col items-center gap-1 px-1 outline-none">
-              <span
-                className={`grid place-items-center w-11 h-11 rotate-45 border-2 transition ${
-                  on
-                    ? 'border-[#f2c46d] bg-[#3a2a12] shadow-[0_0_18px_rgba(242,196,109,0.45)]'
-                    : i < at
-                      ? 'border-[#8a6a3a] bg-[#1d1812]'
-                      : 'border-[#4a3a26] bg-[#14110d] group-hover:border-[#8a6a3a]'
-                }`}
-              >
-                <span className={`-rotate-45 ${on ? 'text-[#f2c46d]' : 'text-[#b9a98a] group-hover:text-[#efe3c4]'}`}>{icon(s)}</span>
+              {/* his step diamond: red and lit for this step, gold for the ones done, grey ahead */}
+              <span className="relative grid place-items-center w-14 h-14 transition group-hover:brightness-125">
+                <img src={ui(on ? 'step_active' : i < at ? 'step_on' : 'step_off')} alt="" aria-hidden draggable={false} className="absolute inset-0 w-full h-full" />
+                <span className="relative">{icon(s)}</span>
               </span>
               <span
                 style={serif}
@@ -205,7 +199,7 @@ export function StepTabs<S extends string>({
   );
 }
 
-/** A big button of the bottom bar: gold for the way on, iron for the way back. */
+/** A big button of the bottom bar: his red gem for the way on, his blue gem for the way back. */
 export function BigButton({
   children,
   onClick,
@@ -215,16 +209,16 @@ export function BigButton({
   onClick: () => void;
   tone?: 'gold' | 'iron';
 }) {
+  const [hot, setHot] = React.useState(false);
+  const gem = tone === 'gold' ? 'btn_red' : 'btn_blue';
   return (
     <button
       type="button"
       onClick={onClick}
-      style={serif}
-      className={`relative inline-flex items-center gap-2 px-6 py-2.5 text-[15px] font-bold uppercase tracking-[0.16em] border-2 transition [text-shadow:0_1px_0_#000] ${
-        tone === 'gold'
-          ? 'border-[#f2c46d] text-[#1c1206] bg-[linear-gradient(180deg,#f6d58e,#c99a4b)] hover:bg-[linear-gradient(180deg,#ffe3a6,#d9a95a)] [text-shadow:none] shadow-[0_0_24px_rgba(242,196,109,0.35)]'
-          : 'border-[#8a6a3a] text-[#efe3c4] bg-[linear-gradient(180deg,#34373d,#1c1d21)] hover:border-[#c99a4b] hover:text-[#f2c46d]'
-      }`}
+      onMouseEnter={() => setHot(true)}
+      onMouseLeave={() => setHot(false)}
+      style={{ ...serif, ...sliced(hot ? `${gem}_hover` : gem, '60 90', '14px 26px') }}
+      className="relative inline-flex items-center gap-2 px-4 py-1.5 text-[15px] font-bold uppercase tracking-[0.16em] text-[#fff4dc] transition [text-shadow:0_2px_0_#000] drop-shadow-[0_6px_16px_rgba(0,0,0,0.6)]"
     >
       {children}
     </button>
@@ -238,7 +232,7 @@ export function IronButton({ children, onClick, title }: { children: React.React
       type="button"
       onClick={onClick}
       title={title}
-      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold border border-[#6b5434] text-[#efe3c4] bg-[linear-gradient(180deg,#2c2f35,#1a1b1f)] hover:border-[#c99a4b] hover:text-[#f2c46d] transition"
+      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold border border-[#d9b46a] text-[#efe3c4] bg-[#0e0b09]/90 shadow-[0_0_8px_rgba(242,196,109,0.25)] hover:shadow-[0_0_12px_rgba(242,196,109,0.6)] hover:text-[#f2c46d] transition"
     >
       {children}
     </button>

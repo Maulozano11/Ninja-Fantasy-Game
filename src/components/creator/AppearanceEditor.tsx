@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight, Flame, Lock, Paintbrush, PersonStanding, ScanFace, Shield, Shirt, Sword } from 'lucide-react';
+import { CustomColor, UiIcon } from './ornate';
 import { fitsBody, fitsHead, itemsForSlot, getItem } from '../../sprite/catalog';
 import { resolveParts, type ItemDef } from '../../sprite/ctx';
 import { CHAKRA_CHOICES, TINT_CHOICES, chakraChoice, chakraHex } from '../../sprite/chakraInfo';
@@ -58,11 +59,11 @@ type Part =
   | 'paint';
 
 const GROUPS: { id: AppearanceGroup; label: string; icon: React.ReactNode; parts: { id: Part; label: string }[] }[] = [
-  { id: 'body', label: 'Body', icon: <PersonStanding className="w-5 h-5" />, parts: [{ id: 'build', label: 'Build' }] },
+  { id: 'body', label: 'Body', icon: <UiIcon name="icon_body" />, parts: [{ id: 'build', label: 'Build' }] },
   {
     id: 'head',
     label: 'Head',
-    icon: <ScanFace className="w-5 h-5" />,
+    icon: <UiIcon name="icon_head" />,
     parts: [
       { id: 'shape', label: 'Face Shape' },
       { id: 'eyes', label: 'Eyes' },
@@ -74,7 +75,7 @@ const GROUPS: { id: AppearanceGroup; label: string; icon: React.ReactNode; parts
   {
     id: 'clothes',
     label: 'Clothes',
-    icon: <Shirt className="w-5 h-5" />,
+    icon: <UiIcon name="icon_clothes" />,
     parts: [
       { id: 'top', label: 'Tops' },
       { id: 'bottom', label: 'Pants' },
@@ -86,7 +87,7 @@ const GROUPS: { id: AppearanceGroup; label: string; icon: React.ReactNode; parts
   {
     id: 'gear',
     label: 'Gear',
-    icon: <Shield className="w-5 h-5" />,
+    icon: <UiIcon name="icon_gear" />,
     parts: [
       { id: 'armor', label: 'Armor' },
       { id: 'hands', label: 'Gloves' },
@@ -94,9 +95,9 @@ const GROUPS: { id: AppearanceGroup; label: string; icon: React.ReactNode; parts
       { id: 'gear', label: 'Accessories' },
     ],
   },
-  { id: 'weapon', label: 'Weapon', icon: <Sword className="w-5 h-5" />, parts: [{ id: 'held', label: 'Weapon' }] },
-  { id: 'chakra', label: 'Chakra', icon: <Flame className="w-5 h-5" />, parts: [{ id: 'chakra', label: 'Chakra' }] },
-  { id: 'paint', label: 'Pixel Paint', icon: <Paintbrush className="w-5 h-5" />, parts: [{ id: 'paint', label: 'Pixel Paint' }] },
+  { id: 'weapon', label: 'Weapon', icon: <UiIcon name="icon_weapon" />, parts: [{ id: 'held', label: 'Weapon' }] },
+  { id: 'chakra', label: 'Chakra', icon: <UiIcon name="icon_chakra" />, parts: [{ id: 'chakra', label: 'Chakra' }] },
+  { id: 'paint', label: 'Pixel Paint', icon: <UiIcon name="icon_paint" />, parts: [{ id: 'paint', label: 'Pixel Paint' }] },
 ];
 
 /** Parts that are one equipment slot, and how their thumbnails are cropped. */
@@ -171,17 +172,8 @@ export const ColorRow: React.FC<{
   families?: { name: string; colors: string[] }[];
   onChange: (hex: string) => void;
 }> = ({ label, value, swatches, families, onChange }) => {
-  const picker = (
-    <label className="relative w-7 h-7 rounded-full border-2 border-dashed border-slate-500 overflow-hidden cursor-pointer" title={L('Custom color')}>
-      <input
-        type="color"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="absolute inset-0 opacity-0 cursor-pointer"
-      />
-      <span className="absolute inset-1 rounded-full" style={{ backgroundColor: value }} />
-    </label>
-  );
+  // the custom colour button on every colour (the owner, 2026-10-28; ./ornate.tsx)
+  const picker = <CustomColor value={value} onChange={onChange} title={L('Custom color')} />;
   const selected = (c: string) => value.toLowerCase() === c.toLowerCase();
   return (
     <div>
@@ -587,18 +579,14 @@ export const AppearanceEditor: React.FC<{
                     title={L(c.name)}
                   />
                 ))}
-                <label className="relative w-7 h-7 rounded-full border-2 border-dashed border-slate-500 overflow-hidden cursor-pointer" title={L('Custom color')}>
-                  <input
-                    type="color"
-                    value={/^#[0-9a-f]{6}$/i.test(look.chakra.tint ?? '') ? look.chakra.tint : chakraHex(look.chakra)}
-                    onChange={(e) => {
-                      onChange({ ...look, chakra: { ...look.chakra, tint: e.target.value } });
-                      onPreviewStance('charge');
-                    }}
-                    className="absolute inset-0 opacity-0 cursor-pointer"
-                  />
-                  <span className="absolute inset-1 rounded-full" style={{ backgroundColor: chakraHex(look.chakra) }} />
-                </label>
+                <CustomColor
+                  title={L('Custom color')}
+                  value={/^#[0-9a-f]{6}$/i.test(look.chakra.tint ?? '') ? look.chakra.tint! : chakraHex(look.chakra)}
+                  onChange={(hex) => {
+                    onChange({ ...look, chakra: { ...look.chakra, tint: hex } });
+                    onPreviewStance('charge');
+                  }}
+                />
               </div>
               <p className="text-[11px] text-slate-500 mt-1.5">
                 {L('Only a look: the color never changes the nature. Green fire is still Fire; black lightning is still Lightning.')}

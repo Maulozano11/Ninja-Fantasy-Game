@@ -269,6 +269,14 @@ await page.waitForFunction(() => typeof window.__battle === 'object');
 await page.screenshot({ path: '<scratch>/battle.png' });
 ```
 
+**In a cloud sandbox with no `node_modules`** (the npm registry unreachable): `scripts/sandbox/build.mjs`
+bundles the game with the machine's esbuild and compiles its CSS with the machine's tailwind 4
+(lucide icons become plain square stubs, `import.meta.glob` is expanded at build time):
+`node scripts/sandbox/build.mjs "$PWD" <scratch>/dist`, then serve `<scratch>/dist` with
+`python3 -m http.server <port>` and screenshot with
+`node scripts/sandbox/shot.mjs 'http://127.0.0.1:<port>/#creator' out.png 1920 1080 'click:Apariencia'`.
+It is a preview, not the real build: the owner checks with `npm run dev`.
+
 `window.__battle` (dev only, `BattleScreen.tsx`) exposes `state`, `act`, `busy`, `centerOn`,
 `screenOf` and more, to drive a battle. Stop the dev server when done.
 

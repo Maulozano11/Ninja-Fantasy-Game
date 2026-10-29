@@ -2135,6 +2135,12 @@ and no body along the back wall; only the body on the right).
   own neck and the long necks bent and shimmered from frame to frame: the owner, *"¿por qué se ven
   tan raros los cuellos?"*.) The narrowing came from the owner (2026-10-28: the top three were thicker
   than the body's necks). The strip overlaps the painted neck up to there, sits on its middle and fades out over about 34 px, tinted toward his
-  darker scales (`docs/mockups/colossal-hydra-neck-joins.png`). His first two
+  darker scales (`docs/mockups/colossal-hydra-neck-joins.png`).
+- **Nothing stands still** (the owner, 2026-10-28: *"ponle animación a todo el cuerpo de la hidra
+  para que no se vea estático"*). The painted body breathes: a smooth warp inside its outline lifts
+  it up to about 9 px and sways it about 4 px over a 2 s cycle, growing with the height over its
+  base, while the floor and the part under the game necks stay still. Each long neck carries a slow
+  wave from the body to the head (up to 6 px, nothing at the join so it still meets the painted
+  neck), each head a little out of step with the others, and the head rides the wave. His first two
   backdrops and the bite strip v2 (seven heads) stay as references.
 

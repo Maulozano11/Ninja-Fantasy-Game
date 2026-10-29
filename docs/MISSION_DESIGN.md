@@ -473,6 +473,25 @@ alchemical sigil on the floor** and the boss summon animation plays; the battle 
 hydra, the party fights its way in through several enemies to the commander's office, and may
 also find the storeroom with the loot.
 
+**The villain: Barrabás** (the owner, 2026-10-29). A Kōton, and the Kōton are allied with the
+Northstar. Most Kōton wear heavy armour like Aiden's; the good ones wear respectable knight's
+armour, the corrupt ones a darker, more gothic version: that is his. Dark green hair. (Our own
+design; no franchise look.)
+
+**His welcome (draft, the owner's lines refined; his words to approve):**
+- The party walks in; Barrabás stands in the middle of the courtyard. *"¡Ja! Sabía que vendrían.
+  Solo alguien tan orgulloso como tú entraría por la puerta grande... Insolente."*
+- **The gates slam shut** behind the party.
+- **A choice.** The colour of the gem says the kind of answer, from here on: **red = pride**
+  (most proud answers), **blue = the clever, wise one** (almost always).
+  - Red: laugh it off, *he is one and we are N* (N = the party's size: up to 5 playable
+    characters per player, more with reinforcements, allies, summons or clones).
+  - Blue, the Mirai answer: see that something is wrong; the party gets priority in the
+    battle's initiative.
+  - Two more answers, each with three versions for him to pick: proposed in the chat 2026-10-29.
+- Then, whatever was answered: *a beast nobody can control, only the Northstar king could*; the
+  alchemical sigil, the summon, the battle.
+
 **Through the drain (stealth, XCOM 2 style).**
 - **A narrow map.** In the tunnels **rank S jutsu and summons can't be used** (nothing large:
   summoned beasts, mechas, the giant spirit-armour form when active counts as a mecha; they don't
@@ -496,7 +515,7 @@ are hand-made).
 alchemical sigil); ordinary summons get a simpler one inside the battle (the mechas too).
 **Mecha size:** a mecha is as big as the river battle's hydra (the medium hydra we have now).
 
-Open: who the villain is (name, look; clan probably Kōton), the drain's and the castle's maps, the
+Open: the villain's portrait, the welcome's final lines and its other two answers, the drain's and the castle's maps, the
 sword's numbers and name.
 
 ## Story notes (for the story session)

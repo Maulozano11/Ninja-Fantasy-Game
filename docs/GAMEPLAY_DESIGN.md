@@ -2084,10 +2084,11 @@ and no body along the back wall; only the body on the right).
   body on the right and five long necks painted in, cut horizontally at five heights, and his head
   poses `docs/reference/colossal-hydra-head-poses-owner-reference.png`. The body and the painted
   necks are never a target.
-- Each head is **3.3 m** long (first 4.4 m, his "2.5x del personaje"; he lowered it on
-  2026-10-28: *"las cabezas las bajamos a 3.3"*), facing left toward the gate. Open question: at
-  3.3 m his heads' necks come out about 40 % thicker than the necks painted in his third backdrop;
-  at 2.4 m they match (`docs/mockups/colossal-hydra-five-heads-3.3m.png` and `-2.4m.png`).
+- Each head is **2.4 m** long, facing left toward the gate (the owner, 2026-10-28: *"a 2.4 m"*).
+  At 2.4 m his heads' necks match the necks painted in his third backdrop
+  (`docs/mockups/colossal-hydra-five-heads-2.4m.png`); at 3.3 m they came out about 40 % thicker
+  (`-3.3m.png`). Before: 4.4 m (his first "2.5x del personaje"), then 3.3 m (*"las cabezas las
+  bajamos a 3.3"*).
 - Each head is a unit in its own lane, as far from the others as the backdrop allows: with five
   heads in his third backdrop the nearest two are about 7 m apart, so a Fireball (1.5 m) only
   ever catches one. (The game's biggest area, 4.5 m enhanced, could catch two heads less than 9 m

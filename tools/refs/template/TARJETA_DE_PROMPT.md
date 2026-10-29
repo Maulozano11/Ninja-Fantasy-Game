@@ -515,7 +515,8 @@ PNG, 3200×2400, sin morado fuera del magenta de fondo.
 
 Aprobada por el dueño el 2026-10-28 en su versión básica (`docs/mockups/colossal-hydra-concept.png`):
 el cuerpo **solo a la derecha** (nada a lo largo del fondo ni hacia el frente), siete cabezas (ahora **cinco**, su diseño nuevo; ver la tercera vuelta) de
-**3.3 m** (eran 4.4 m; él las bajó el 2026-10-28: *"las cabezas las bajamos a 3.3"*) en cuellos
+**2.4 m** (eran 4.4 m, luego 3.3 m; con su tercer fondo eligió 2.4 m el 2026-10-28, donde su
+cuello coincide con los cuellos pintados) en cuellos
 largos **horizontales**, **mirando a la izquierda** hacia la
 puerta, cada una en su carril y a 8 m o más de las otras (una Bola de fuego solo da a una).
 **Mismo estilo y calidad que el casino** (sus palabras: *"que haga el mismo estilo y calidad que
@@ -552,7 +553,7 @@ abarque todo el mapa"*), y sus cinco poses de cabeza (`docs/reference/colossal-h
 gruñido, rugido hacia arriba, calma con la boca cerrada, siseo con la lengua fuera y rugido. En el
 juego son la **quieta** (gruñido, calma y siseo alternados) y el **rugido** de antes de atacar. Todas
 cortan el cuello al mismo grueso y a la misma altura, así que **ellas son la referencia de C**.
-Montado: `docs/mockups/colossal-hydra-five-heads-3.3m.png` y `-2.4m.png`.
+Montado: `docs/mockups/colossal-hydra-five-heads-2.4m.png` (su elección: cabezas de 2.4 m).
 
 **A) El fondo con el cuerpo** (adjunta su primer fondo como estilo):
 

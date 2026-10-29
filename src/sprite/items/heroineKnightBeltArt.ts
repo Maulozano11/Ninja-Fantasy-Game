@@ -288,7 +288,7 @@ export const HK_ROGUE_BELT: PaintedPiece = {
   angle: -89.01,
   rows: [
     '...aa.............a...aaa',
-    '.bbcdaaaeafhijhhheaaiakl.',
+    '.bbcdaaaeafhijhhheaa.akl.',
     '.bbbmnpqaaaarshiaataaeee.',
     '.babuhvdwxxaaaaaaxhyazkk.',
     '.bAabpndddhhqqdapadaakkB.',

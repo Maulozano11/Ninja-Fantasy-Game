@@ -547,9 +547,9 @@ def components(mask, conn8=False):
 # continued (complete()). The tones are his hair's own (HAIR_LIGHT) and its shadows (HAIR_DARK, which his
 # capes share: inside the zones they are hair, outside the cape's; hair_front()).
 HAIR_FRONT = {
-    'paladin': [[(9, 24), (31, 24), (31, 34), (28, 46), (24, 60), (9, 60)], [(36, 27), (45, 27), (45, 43), (36, 43)]],
-    'rogue': [[(10, 24), (31, 24), (31, 36), (26, 60), (10, 60)], [(36, 27), (45, 27), (45, 43), (36, 43)]],
-    'dragon': [[(9, 24), (31, 24), (31, 34), (27, 62), (9, 62)], [(36, 27), (45, 27), (45, 43), (36, 43)]],
+    'paladin': [[(6, 24), (31, 24), (31, 34), (28, 46), (24, 60), (6, 60)], [(36, 27), (45, 27), (45, 43), (36, 43)], [(52, 28), (61, 28), (61, 42), (52, 42)]],
+    'rogue': [[(6, 24), (31, 24), (31, 36), (26, 60), (6, 60)], [(36, 27), (45, 27), (45, 43), (36, 43)], [(52, 28), (61, 28), (61, 42), (52, 42)]],
+    'dragon': [[(6, 24), (31, 24), (31, 34), (27, 62), (6, 62)], [(36, 27), (45, 27), (45, 43), (36, 43)], [(52, 28), (61, 28), (61, 42), (52, 42)]],
 }
 HAIR_LIGHT = np.array([(161, 61, 38), (156, 57, 36), (158, 58, 34), (108, 33, 38), (99, 29, 37), (98, 28, 36)])
 HAIR_DARK = np.array([(56, 13, 36), (60, 14, 36), (48, 12, 26), (58, 10, 28), (49, 13, 27), (46, 14, 37)])
@@ -566,7 +566,9 @@ def hair_front(fig):
     a = figure_native(fig)
     m = figure_mask(fig)
     H, W = m.shape
-    zones = [inside(pts, H, W) & m & ~inside(HEAD, H, W) for pts in HAIR_FRONT[fig]]
+    lab0 = labels(fig, skip=('hairFront',))
+    # (his head's own cells stay the head's; the hood's or the pauldron's top under his hair is in the zone)
+    zones = [inside(pts, H, W) & m & (lab0 != 'head') for pts in HAIR_FRONT[fig]]
     poly = np.zeros((H, W), bool)
     for z in zones:
         poly |= z
@@ -580,7 +582,6 @@ def hair_front(fig):
     # kinds stays: its shadows are the strand's (the owner, 2026-10-29, his red circles), and the gorget, the
     # collar and the hood are continued under it from their own pixels
     mane = zones[0]
-    lab0 = labels(fig, skip=('hairFront',))
     for part in sorted(set(lab0[mane].tolist()) - {'', 'hairBack', 'head'}):
         shown = (lab0 == part) & ~poly & ~line
         if not shown.any():
@@ -641,6 +642,10 @@ def labels(fig, skip=()):
     out = raw.copy()
     line = is_line(a) & m
     for c in components(m & ~line):
+        # (his hair in front keeps its pixels: a strand crossing a cell of the hood stays hair)
+        c = [(y, x) for y, x in c if raw[y, x] != 'hairFront']
+        if not c:
+            continue
         names = [raw[y, x] for y, x in c]
         best = max(sorted(set(names)), key=names.count)
         if len(c) <= CELL_MAX and names.count(best) >= CELL_MAJORITY * len(c):
@@ -1361,10 +1366,17 @@ def complete(lab, name, mask, col, axis, fig=SHARED_FROM):
         med = np.median([luma(c) for c in cl])
         dark = [c for c in cl if luma(c) <= med]
         flat = np.array(max(sorted(set(dark)), key=dark.count))
+    top = int(np.nonzero(mask.any(1))[0].min())
     for y, x in zip(*np.nonzero(add)):
         if flat is not None:
             c[y, x] = flat
             continue
+        # above the piece's own top (the collar under his chin): the column below continues up
+        if y < top and axis == 'rows':
+            below = [yy for yy in np.nonzero(solid[:, x])[0] if yy > y]
+            if below:
+                c[y, x] = col[below[0], x]
+                continue
         if axis == 'cols':
             cand = [(abs(yy - y), yy, x) for yy in np.nonzero(solid[:, x])[0]]
         else:
@@ -1377,6 +1389,8 @@ def complete(lab, name, mask, col, axis, fig=SHARED_FROM):
         c[y, x] = col[qy, qx]
     m = mask | add
     edge = add & ~(np.roll(hm, 1, 0) & np.roll(hm, -1, 0) & np.roll(hm, 1, 1) & np.roll(hm, -1, 1))
+    # (not above the piece's own top: the collar's cells beside the neck stay plate, no black seam there)
+    edge[:top] = False
     c[edge] = his_line()
     return m, c
 

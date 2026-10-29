@@ -306,6 +306,11 @@ Preview link: https://claude.ai/artifact/Ju8hN5Z3J5ZxTb5TSFTMcT (version 22, bui
      izanagi kind: **time goes back two turns and the damage dealt to the enemy stays**
      (D-T19's example). Meant to make Baldur's Gate-style decisions interesting, on top of the
      combat complexity.
+- **D-T21. The generic faces `soft` and `square` are removed** ("son iguales que genérica
+  tapered; ya no gastes recursos en ellas"). Steve's #3 already drops them from the creator
+  picker (`FACE_SHAPES` keeps valiant, night, founder, base, fine, aurelia); the `FaceShape`
+  type and `migrateCharacter` still need the ids removed with a migration to `tapered`, in #3
+  or right after (Steve's call, his branch).
 - **D-T16. The women's sets have two sample heads, Lyra's and Aurelia's, and must work with
   both** (*"pon las dos cabezas para que funcionen en las dos, Lyra y Aurelia"*). This answers
   Steve's open point 3 (women's sample head).
@@ -417,6 +422,7 @@ What this means:
 
 ## Log (newest first, one line each)
 
+- 2026-10-29 Bob: D-T21, generic faces soft and square removed (owner); matrix dropped them.
 - 2026-10-29 15:25 Steve (hydra chat): `docs/colossal-hydra` #15: his hurt v2, cut and regrow sheets mounted; card 11 burnt stump; card 12 (fortress choice screen, empty courtyard, summon sigil); the fortress mission in `MISSION_DESIGN.md` (front gate or drain, XCOM-style stealth, mecha size = the river hydra). No hot files.
 - 2026-10-29 Bob: D-T20, the three settings (ninja/fantasy, space/mechas, superheroes+space) and the three Mirai subclasses with their ultimates, for Steve's docs (CLANS_DESIGN.md).
 - 2026-10-29 Bob: D-T17 (bronze = Solen: mane as his hair variant, diadem as accessory), D-T18 lore and D-T19 space-time/gravity abilities written for Steve; Q6 for the owner.

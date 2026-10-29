@@ -4,7 +4,7 @@
 import type { PaintedPiece } from '../painted';
 
 /** His colours the colour slots recolour from (at these, every pixel is his). */
-export const DRIFTER_BELT_LEATHER = '#323338';
+export const DRIFTER_BELT_LEATHER = '#2c2b31';
 
 /** What each of his colours is, as the script sorts them (tools/refs/outfits_ref.py kind). */
 export const DRIFTER_BELT_KIND: Record<string, 'brown' | 'dark' | 'hair' | 'line' | 'steel'> = {
@@ -31,41 +31,42 @@ export const DRIFTER_BELT_KIND: Record<string, 'brown' | 'dark' | 'hair' | 'line
 
 /** Where each piece lands in our male idle frame 0, unturned: the fine pixel of its first row's first cell. */
 export const DRIFTER_BELT_REST: Record<string, [number, number]> = {
-  DRIFTER_BELT_BELT: [115, 167],
+  DRIFTER_BELT_BELT: [115, 166],
 };
 
 /** His belt with its pouches and buckle. It rides the pelvis. */
 export const DRIFTER_BELT_BELT: PaintedPiece = {
-  pivot: [12, 9],
+  pivot: [12, 10],
   angle: -89.65,
   rows: [
-    '..aaaa....a.a....a.a',
-    '.aabcaaadeeeaaaaaada',
-    'afhcahhijaaaakkllaaa',
-    'aibbamimannnkkpqqlba',
-    'aaibamimammmmkiiqlra',
-    'asmbaaatammmikiitura',
+    '.......a...a........',
+    '..aaaa..b.acab...a.a',
+    '.aadeaaabfffaaaaaaba',
+    'ahieaiijkaaaallmmaaa',
+    'ajddanjnapppllqrrmda',
+    'aajdanjnannnnljjrmsa',
+    'at.daaauannn.ljjucsa',
     'a...a...a..........a',
   ],
   colors: {
     a: '#000116',
-    b: '#181822',
-    c: '#1e1e2a',
-    d: '#2c2b31',
-    e: '#323338',
-    f: '#5a534a',
-    h: '#544a48',
-    i: '#413833',
-    j: '#00011f',
-    k: '#575c62',
-    l: '#45484f',
-    m: '#322826',
-    n: '#51473e',
-    p: '#151116',
-    q: '#221c1e',
-    r: '#0e101d',
-    s: '#282421',
-    t: '#212227',
-    u: '#3b3c40',
+    b: '#2c2b31',
+    c: '#3b3c40',
+    d: '#181822',
+    e: '#1e1e2a',
+    f: '#323338',
+    h: '#5a534a',
+    i: '#544a48',
+    j: '#413833',
+    k: '#00011f',
+    l: '#575c62',
+    m: '#45484f',
+    n: '#322826',
+    p: '#51473e',
+    q: '#151116',
+    r: '#221c1e',
+    s: '#0e101d',
+    t: '#282421',
+    u: '#212227',
   },
 };

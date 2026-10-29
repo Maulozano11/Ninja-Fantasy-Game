@@ -4,7 +4,7 @@
 import type { PaintedPiece } from '../painted';
 
 /** His colours the colour slots recolour from (at these, every pixel is his). */
-export const VANGUARD_CARGO_CLOTH = '#2c2b31';
+export const VANGUARD_CARGO_CLOTH = '#322826';
 
 /** What each of his colours is, as the script sorts them (tools/refs/outfits_ref.py kind). */
 export const VANGUARD_CARGO_KIND: Record<string, 'brown' | 'dark' | 'hair' | 'line' | 'steel'> = {
@@ -32,9 +32,9 @@ export const VANGUARD_CARGO_KIND: Record<string, 'brown' | 'dark' | 'hair' | 'li
 /** Where each piece lands in our male idle frame 0, unturned: the fine pixel of its first row's first cell. */
 export const VANGUARD_CARGO_REST: Record<string, [number, number]> = {
   VANGUARD_CARGO_THIGH_N: [108, 174],
-  VANGUARD_CARGO_THIGH_F: [124, 174],
+  VANGUARD_CARGO_THIGH_F: [124, 173],
   VANGUARD_CARGO_SHIN_N: [107, 198],
-  VANGUARD_CARGO_SHIN_F: [129, 199],
+  VANGUARD_CARGO_SHIN_F: [132, 198],
 };
 
 /** His near cargo trouser leg with the knee pad. It rides the thigh about the hip. */
@@ -42,16 +42,16 @@ export const VANGUARD_CARGO_THIGH_N: PaintedPiece = {
   pivot: [10, 6],
   angle: 108.43,
   rows: [
-    '.........a...a....',
+    '.........aaaaa....',
     '.....aabbaaaacccd.',
     '.....aaaadceacbbc.',
-    '........cbeacdeee.',
-    '.......aaaacdedcb.',
-    '........acbeeeeda.',
-    '........aabeeeccc.',
-    '........eadeeeebca',
-    '........aabeeecbca',
-    '.....a..eabeecccaa',
+    '.....abbcbeacdeee.',
+    '.....abaaaacdedcb.',
+    '....abbcacbeeeeda.',
+    '....adbcaabeeeccc.',
+    '....adceeadeeeebca',
+    '....adeeaabeeecbca',
+    '....daeeeabeecccaa',
     '....aaeeabeeeebca.',
     '...adaecabeeefba..',
     '...adcddadeebbba..',
@@ -67,7 +67,8 @@ export const VANGUARD_CARGO_THIGH_N: PaintedPiece = {
     '.affaddccdda......',
     'afbfjaheedaa......',
     'andfjjaaaafa......',
-    '.aa........a......',
+    '.aafjjheaa.a......',
+    '...aaaaa..........',
   ],
   colors: {
     a: '#000116',
@@ -89,41 +90,43 @@ export const VANGUARD_CARGO_THIGH_N: PaintedPiece = {
 
 /** His far cargo trouser leg with the knee pad. It rides the thigh about the hip. */
 export const VANGUARD_CARGO_THIGH_F: PaintedPiece = {
-  pivot: [10, 5],
+  pivot: [10, 6],
   angle: 75.07,
   rows: [
-    '..aaa...a..a....',
-    '.bababbccaca....',
-    '.cabaddbbeaa....',
-    '.bacabbbeeeaf...',
-    '.daeeheecchea...',
-    'aeaeaahccbbhaa..',
-    '.ihaaeeeddbcea..',
-    '.aaaaaedbbbbea..',
-    '.aaeiicbbbbbea..',
-    '..aeehicbbbcea..',
-    '..ajadddcbbbdea.',
-    '...aaidbebbbbda.',
-    '...aeaedbbbbbea.',
-    '...aaeaddbbbbea.',
-    '....aeaeedbbcca.',
+    '.....aaaaa......',
+    '..aaabcdae......',
+    '.bababbdda.a....',
+    '.dabaccbbeaa....',
+    '.badabbbeeeaf...',
+    '.caeeheeddhea...',
+    'aeaeaahddbbhaa..',
+    '.ihaaeeeccbdea..',
+    '.aaaaaecbbbbea..',
+    '.aaeiidbbbbbea..',
+    '.aaeehidbbbdea..',
+    '..ajacccdbbbcea.',
+    '...aaicbebbbbca.',
+    '...aeaecbbbbbea.',
+    '...aaeaccbbbbea.',
+    '....aeaeecbbdda.',
     '....aeaeeekaaaa.',
-    '....aaeahhalmkda',
-    '.....aaaaallcmca',
-    '.....adnnaacmmba',
-    '.....aeepabecmma',
-    '.....aapqaccccca',
-    '....ahaaaacceeaa',
-    '....ahahdhabcca.',
+    '....aaeahhalmkca',
+    '.....aaaaalldmda',
+    '.....acnnaadmmba',
+    '.....aeepabedmma',
+    '.....aapqaddddda',
+    '....ahaaaaddeeaa',
+    '....ahahchabdda.',
     '....ahahbbeaaaaa',
-    '....ahahhcbbbbha',
-    '.....aa.......a.',
+    '....ahahabbbbbha',
+    '.....aa..aabbba.',
+    '...........aaaa.',
   ],
   colors: {
     a: '#000116',
     b: '#323338',
-    c: '#2c2b31',
-    d: '#212227',
+    c: '#212227',
+    d: '#2c2b31',
     e: '#181822',
     f: '#01010d',
     h: '#141a2a',
@@ -161,12 +164,16 @@ export const VANGUARD_CARGO_SHIN_N: PaintedPiece = {
 
 /** His far trouser leg below the knee pad. It rides the shin about the knee. */
 export const VANGUARD_CARGO_SHIN_F: PaintedPiece = {
-  pivot: [9, -5],
+  pivot: [6, -4],
   angle: 94.40,
   rows: [
-    'a',
+    'ab..',
+    '..b.',
+    '.ccc',
   ],
   colors: {
-    a: '#000116',
+    a: '#141a2a',
+    b: '#2c2b31',
+    c: '#000116',
   },
 };

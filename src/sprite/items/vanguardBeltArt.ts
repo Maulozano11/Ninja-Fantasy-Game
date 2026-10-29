@@ -40,7 +40,7 @@ export const VANGUARD_BELT_BELT: PaintedPiece = {
     'akedaccdaebbaajjjjakea',
     'aaadakcdadekaajljjaaaa',
     'amdnabekaaaaajjaaaaaka',
-    'akddakekappppaaakdkab.',
+    'akddakekappppaaak.kab.',
     'aa..aaaa.....a.a....a.',
   ],
   colors: {

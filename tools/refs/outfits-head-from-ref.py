@@ -24,7 +24,7 @@ import outfits_ref as O  # noqa: E402
 SKULL = ((126.5, 134.5), (8.0, 9.5))
 
 
-def build():
+def build(prefix='OUTFIT', script='outfits-head-from-ref.py', shape='wanderer', what="The owner's face from his three outfits"):
     P = O.head_pieces()
     face, col = P['face']
     hair = P['hair'][0]
@@ -56,9 +56,11 @@ def build():
     col[skull] = forehead
     col[edge] = line
     face = face | skull
-    consts = [('OUTFIT_HEAD', face, col, "The owner's face from his three outfits (the 'wanderer' face shape): his skin, nose, mouth and jaw; his forehead continued to a skull under his hair; the skin under his eyes.", O.FACE_ANCHOR, 0.0)]
-    text = O.module(O.header('outfits-head-from-ref.py', "The owner's face from his three outfits"), consts, {'OUTFIT_SKIN': O.skin_base()}, 'OUTFIT_HEAD', "import type { PaintedPiece } from './painted';")
-    return text + f"\n/** Where his eyes start from the face anchor's column: the near eye, the far eye. */\nexport const OUTFIT_EYE_COLS: [number, number] = [{O.EYE_COLS[0]}, {O.EYE_COLS[1]}];\n"
+    consts = [(f'{prefix}_HEAD', face, col, f"{what} (the '{shape}' face shape): his skin, nose, mouth and jaw; his forehead continued to a skull under his hair; the skin under his eyes.", O.FACE_ANCHOR, 0.0)]
+    # (his one skin tone, the armoured face's, is the base every piece of his skin recolours from)
+    bases = {f'{prefix}_SKIN': O.skin_base()}
+    text = O.module(O.header(script, what), consts, bases, f'{prefix}_HEAD', "import type { PaintedPiece } from './painted';")
+    return text + f"\n/** Where his eyes start from the face anchor's column: the near eye, the far eye. */\nexport const {prefix}_EYE_COLS: [number, number] = [{O.EYE_COLS[0]}, {O.EYE_COLS[1]}];\n"
 
 
 if __name__ == '__main__':

@@ -14,6 +14,7 @@ import {
 } from '../types/shinobi';
 import { OUTFIT_IRIS } from '../sprite/outfitEyeArt';
 import { OUTFIT_SKIN } from '../sprite/outfitHeadArt';
+import { VANGUARD_IRIS } from '../sprite/vanguardEyeArt';
 import type { ItemChoice, SpriteAppearance } from '../sprite/types';
 import { NIGHT_IRIS } from '../sprite/nightEyeArt';
 import { NIGHT_SKIN } from '../sprite/nightHeadArt';
@@ -2085,7 +2086,7 @@ export const LEGENDARY_PRESETS: { name: string; tag: string; nameEs?: string; ta
       palette: {
         skinTone: OUTFIT_SKIN,
         hairColor: '#1b2232',
-        eyeColor: OUTFIT_IRIS,
+        eyeColor: VANGUARD_IRIS,
         armorPrimary: '#2c2b31',
         armorSecondary: '#3b3c40',
         clothColor: '#2c2b31',
@@ -2118,11 +2119,11 @@ export const LEGENDARY_PRESETS: { name: string; tag: string; nameEs?: string; ta
       jutsuAttackBonus: 5,
       appearance: spriteLook({
         skin: OUTFIT_SKIN,
-        faceShape: 'wanderer',
-        eyeShape: 'wanderer',
-        eyeColor: OUTFIT_IRIS,
+        faceShape: 'vanguard',
+        eyeShape: 'vanguard',
+        eyeColor: VANGUARD_IRIS,
         slots: {
-          hair: it('hair_wanderer'),
+          hair: it('hair_vanguard_spikes'),
           armor: it('armor_vanguard_vest'),
           top: it('top_vanguard_sleeves'),
           hands: it('hands_vanguard_wraps'),

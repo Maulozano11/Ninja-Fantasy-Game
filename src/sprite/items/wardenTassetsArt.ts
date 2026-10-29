@@ -38,8 +38,8 @@ export const WARDEN_TASSETS_SKIRT: PaintedPiece = {
   angle: -89.65,
   rows: [
     '...aaaaa......a.....a......',
-    '...abcddaaaaaaceffcca......',
-    '..aahhheecccacaaacaaa..aa..',
+    '...abcddaaaaaaceffccaaa....',
+    '..aahhheecccacaaacaaa.caa..',
     'a.aihhceejkacacacacacjcca..',
     '..cihcfebcjcacacacacaacca..',
     '....hcbfbblacacacacaaacca..',

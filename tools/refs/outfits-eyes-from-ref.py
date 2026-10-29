@@ -16,8 +16,8 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import outfits_ref as O  # noqa: E402
 
 
-def build():
-    rgb, label = O.game(O.HEAD_FIG)
+def build(prefix='OUTFIT', script='outfits-eyes-from-ref.py', what="The owner's eyes from his three outfits"):
+    rgb, label = O.game(O.HEAD_NOW)
     ax, ay = O.FACE_ANCHOR
     colors = {}
     chars = iter('acefghjkmnpqrstuvxyz')
@@ -66,29 +66,35 @@ def build():
     blues.sort()
     iris = blues[len(blues) // 2][1]
 
+    li = O.LASH_ROW - ay
+
     def lowered(e):
         # reading: the lid comes down over his iris's top row, his line there
-        letters, rows = e
-        lid = next(r for r in rows[0] if r != '.')
-        l2 = [letters[0], ''.join('L' if c in 'wdi' else c for c in letters[1]), letters[2]]
-        r2 = [rows[0], ''.join(lid if letters[1][i] in 'wdi' else rows[1][i] for i in range(len(rows[1]))), rows[2]]
-        return l2, r2
+        letters, rows = [list(r) for r in e[0]], [list(r) for r in e[1]]
+        lid = next(r for r in rows[li] if r != '.')
+        for i, c in enumerate(letters[li + 1]):
+            if c in 'wdi':
+                letters[li + 1][i] = 'L'
+                rows[li + 1][i] = lid
+        return [''.join(r) for r in letters], [''.join(r) for r in rows]
 
     def shut(e):
-        # knocked out: his lash line across the middle row, skin above and below
+        # knocked out: his lash line across his iris's top row, skin above and below
         letters, rows = e
-        lid = next(r for r in rows[0] if r != '.')
+        lid = next(r for r in rows[li] if r != '.')
         w = len(letters[0])
-        mid = ''.join('L' if (letters[0][i] != 'b' or letters[1][i] != 'b') else 'b' for i in range(w))
-        l2 = ['b' * w, mid, 'b' * w]
-        r2 = ['.' * w, ''.join(lid if mid[i] == 'L' else '.' for i in range(w)), '.' * w]
+        mid = ''.join('L' if (letters[li][i] != 'b' or letters[li + 1][i] != 'b') else 'b' for i in range(w))
+        l2 = ['b' * w for _ in letters]
+        r2 = ['.' * w for _ in rows]
+        l2[li + 1] = mid
+        r2[li + 1] = ''.join(lid if mid[i] == 'L' else '.' for i in range(w))
         return l2, r2
 
-    out = [O.header('outfits-eyes-from-ref.py', "The owner's eyes from his three outfits"), '', "import type { PaintedEye } from './eyeArt';", '',
-           '/** His colours, one character each. */', 'export const OUTFIT_EYE_COLORS: Record<string, string> = {']
+    out = [O.header(script, what), '', "import type { PaintedEye } from './eyeArt';", '',
+           '/** His colours, one character each. */', f'export const {prefix}_EYE_COLORS: Record<string, string> = {{']
     out += [f"  {k}: '{v}'," for k, v in colors.items()]
     out += ['};', '', '/** His eyes in each lid state: open, lowered (reading) and closed (knocked out). */',
-            "export const OUTFIT_EYES: Record<'open' | 'lowered' | 'closed', { near: PaintedEye; far: PaintedEye }> = {"]
+            f"export const {prefix}_EYES: Record<'open' | 'lowered' | 'closed', {{ near: PaintedEye; far: PaintedEye }}> = {{"]
     for state, doc in (('open', 'His eyes as he drew them: the lash, his blue iris and its white glint.'),
                        ('lowered', 'Reading: the lid down over the top of his iris.'),
                        ('closed', 'Knocked out: his lash line across the shut eye; round it the face\'s skin.')):
@@ -102,7 +108,7 @@ def build():
             out.append('      rows: [' + ', '.join(f"'{r}'" for r in rows) + '],')
             out.append('    },')
         out.append('  },')
-    out += ['};', '', "/** The colour his iris is drawn in: the player's eye colour moves it as far. */", f"export const OUTFIT_IRIS = '{iris}';", '']
+    out += ['};', '', "/** The colour his iris is drawn in: the player's eye colour moves it as far. */", f"export const {prefix}_IRIS = '{iris}';", '']
     return '\n'.join(out)
 
 

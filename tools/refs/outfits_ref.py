@@ -68,6 +68,10 @@ CHIN_AT = (127.0, 148.0)
 # His head: the armoured figure's, shrunk HEAD_SCALE of his pixels to one fine pixel about his chin.
 HEAD_SCALE = 1.5
 HEAD_FIG = 'armored'
+# Whose head each figure wears: the rogue the armoured figure's (his two heads are one, pixel for pixel but
+# the JPEG's noise), the tactical one his own (the owner: "usa la cabeza y cara y pelo que tiene mi
+# referencia": its spikes stand up and back, its bangs, face, jaw and eyes are its own).
+HEAD_OF = {'armored': 'armored', 'rogue': 'armored', 'tactical': 'tactical'}
 
 # Our rigs at idle frame 0 (src/sprite/rig.ts drawRig, fine pixels of our frame).
 OUR_JOINTS = {
@@ -299,7 +303,7 @@ def plain(name):
             if 0 <= sy < H and 0 <= sx < W and body[sy, sx]:
                 rgb[y, x] = a[sy, sx]
                 mask[y, x] = True
-    hf = FIGURES[HEAD_FIG]
+    hf = FIGURES[HEAD_OF[name]]
     ha, hfig = figure_pixels(hf)
     head = regions(hf)['head']
     for y in range(GRID):
@@ -433,10 +437,8 @@ def read(a, K, m, scale, origin, rgb, label, parts, dots=None, lit=False):
             mean = sum(w * a[y, x] for w, y, x in pick) / sum(w for w, y, x in pick)
             w, y, x = min(pick, key=lambda c: (int(np.abs(a[c[1], c[2]] - mean).sum()), -c[0], c[1], c[2]))
             rgb[j, i] = a[y, x]
-            share = {}
-            for cw, cy, cx in cells:
-                share[parts[cy, cx]] = share.get(parts[cy, cx], 0) + cw
-            label[j, i] = max(sorted(share), key=lambda p: share[p])
+            # the part of the pixel of his it shows (so a pixel of the blade is the sword's, wherever it lies)
+            label[j, i] = parts[y, x]
 
 
 # His laces: the light dots he drew up the rogue's boots (a pixel lighter than its four neighbours by
@@ -481,7 +483,7 @@ def reduce(name):
     read(a, K, R['body'], f.scale, f.origin, rgb, label, P, laces(name, a, P), name in LIT_FIGS)
     for n in OWN_REGIONS.get(name, {}):
         shrink(a, K, R[n], f.scale, f.origin, rgb, label, P)
-    hf = FIGURES[HEAD_FIG]
+    hf = FIGURES[HEAD_OF[name]]
     ha, _ = figure_pixels(hf)
     hm = regions(hf)['head']
     origin = (hf.chin[0] - CHIN_AT[0] * HEAD_SCALE, hf.chin[1] - CHIN_AT[1] * HEAD_SCALE)
@@ -707,12 +709,11 @@ _GAME = {}
 
 def game(name):
     """His figure at our scale, cleaned: (rgb, part label), the picture every part is cut from. On the
-    rogue and the tactical figure his head is the armoured figure's head as it is cleaned there, pixel for
-    pixel (the three share it)."""
+    rogue his head is the armoured figure's head as it is cleaned there, pixel for pixel (HEAD_OF)."""
     if name not in _GAME:
         rgb, label = clean(name, *reduce(name))
-        if name != HEAD_FIG:
-            hrgb, hlabel = game(HEAD_FIG)
+        if HEAD_OF[name] != name:
+            hrgb, hlabel = game(HEAD_OF[name])
             head = hlabel == 'head'
             gone = (label == 'head') & ~head
             label[gone] = ''
@@ -808,7 +809,7 @@ def part_regions(f):
                 # his colours of these kinds, his line along them and the pale glints at their edge, not
                 # what lies further off
                 got = m & np.isin(K, takes)
-                pale = m & (luma(a) > 100) & np.isin(K, ('steel', 'white'))
+                pale = m & (luma(a) > 90) & (np.isin(K, ('steel', 'white')) | (a[..., 2] - a[..., 0] > 20))
                 # (the glints run on along the edge: every pale pixel reached from them through pale ones)
                 while True:
                     more = got | (pale & near8(got))
@@ -887,20 +888,30 @@ def cut(rgb, label, names):
 # are the face; the rest of his head is his hair.
 FACE_BOX = (119, 137, 135, 151)
 # His face on our male head where our face template stands (body.ts faceAnchor at idle frame 0): his near
-# eye EYE_COLS[0] columns right of the anchor and his far eye EYE_COLS[1], his lash on the anchor's row
-# (LASH_ROW).
-FACE_ANCHOR = (123, 139)
-EYE_COLS = (0, 7)
-LASH_ROW = 139
-# His eyes: his lash and the two rows of his iris under it, the near eye 5 cells wide, the far 3.
-EYE_W = (5, 3)
-EYE_ROWS = 3
+# eye EYE_COLS[0] columns right of the anchor and his far eye EYE_COLS[1], his lash on LASH_ROW; his eyes
+# from the anchor's row to EYE_ROWS rows down (above his lash, the face's own), EYE_W cells wide. One set
+# for each head of his (HEAD_OF), chosen by use_head().
+HEADS = {
+    'armored': dict(FACE_ANCHOR=(123, 139), EYE_COLS=(0, 7), LASH_ROW=139, EYE_W=(5, 3), EYE_ROWS=3, FACE_BOX=(119, 137, 135, 151)),
+    'tactical': dict(FACE_ANCHOR=(123, 139), EYE_COLS=(1, 7), LASH_ROW=140, EYE_W=(4, 3), EYE_ROWS=4, FACE_BOX=(119, 137, 135, 151)),
+}
+HEAD_NOW = 'armored'
+
+
+def use_head(name):
+    """Make the head of figure `name` the one head_pieces() and the head scripts work on."""
+    global HEAD_NOW
+    HEAD_NOW = name
+    globals().update(HEADS[name])
+
+
+use_head('armored')
 
 
 def head_pieces():
-    """His head (the armoured figure's, on every figure) cut into the face (FACE_BOX: skin, glints, his blue
-    and the line in and round them) and the hair (the rest of it): {name: (mask, colours)}."""
-    rgb, label = game(HEAD_FIG)
+    """His head (use_head()'s) cut into the face (FACE_BOX: skin, glints, his blue and the line in and round
+    them) and the hair (the rest of it): {name: (mask, colours)}."""
+    rgb, label = game(HEAD_NOW)
     head = label == 'head'
     K = np.array([[kind(rgb[y, x]) if head[y, x] else '' for x in range(GRID)] for y in range(GRID)])
     x0, y0, x1, y1 = FACE_BOX
@@ -995,7 +1006,10 @@ def middle(col, mask, kinds_, q=0.5):
 def skin_base():
     """His skin's commonest tone on his face: the one base every piece of his skin recolours from (and the
     presets' skin), so in his own skin every pixel of it is his."""
+    use = HEAD_NOW
+    use_head('armored')
     face, col = head_pieces()['face']
+    use_head(use)
     tones = [hexc(col[y, x]) for y, x in zip(*np.nonzero(face)) if kind(col[y, x]) == 'skin']
     return max(sorted(set(tones)), key=tones.count)
 
@@ -1081,13 +1095,129 @@ def sword_grip(rgb, label, m, c):
     return m, c
 
 
+# What is drawn in front of each part at rest (the game's layers, ctx.ts DEPTHS: the far arm, the far leg,
+# the near leg, the torso and the waist, the head, the near arm with the sword): where a part is hidden at
+# rest and may be continued (complete()), so at rest nothing it adds shows.
+_TORSO = ('cuirass', 'jacket', 'vest', 'belt', 'skirt', 'head')
+_NEAR_ARM = ('upper_n', 'fore_n', 'hand_n', 'pauldron_n', 'sword')
+_NEAR_LEG = ('thigh_n', 'shin_n', 'boot_n', 'foot_n')
+_FAR_LEG = ('thigh_f', 'shin_f', 'boot_f', 'foot_f')
+FRONT = {
+    'thigh_n': _TORSO + _NEAR_ARM + ('shin_n', 'boot_n', 'foot_n'),
+    'shin_n': _TORSO + _NEAR_ARM + ('boot_n', 'foot_n'),
+    'boot_n': _TORSO + _NEAR_ARM,
+    'foot_n': _TORSO + _NEAR_ARM + ('boot_n',),
+    'thigh_f': _TORSO + _NEAR_ARM + _NEAR_LEG + ('shin_f', 'boot_f', 'foot_f'),
+    'shin_f': _TORSO + _NEAR_ARM + _NEAR_LEG + ('boot_f', 'foot_f'),
+    'boot_f': _TORSO + _NEAR_ARM + _NEAR_LEG,
+    'foot_f': _TORSO + _NEAR_ARM + _NEAR_LEG + ('boot_f',),
+    'upper_n': ('pauldron_n', 'fore_n', 'hand_n'),
+    'upper_f': _TORSO + _NEAR_ARM + _NEAR_LEG + _FAR_LEG + ('pauldron_f', 'fore_f', 'hand_f'),
+    'cuirass': ('belt', 'head') + _NEAR_ARM,
+    'jacket': ('belt', 'head') + _NEAR_ARM,
+    'vest': ('belt', 'head') + _NEAR_ARM,
+}
+# The limbs continued where something hides them at rest: each its whole shape between its two joints
+# (the convex hull of its pixels and a disk at each joint as wide as the limb), his nearest pixel in each
+# cell he left hidden, his line on the hull's edge.
+LIMBS = {
+    'thigh_n': ('hipN', 'kneeN'), 'thigh_f': ('hipF', 'kneeF'),
+    'boot_n': ('kneeN', 'ankleN'), 'boot_f': ('kneeF', 'ankleF'),
+    'upper_n': ('shoulderN', 'elbowN'), 'upper_f': ('shoulderF', 'elbowF'),
+}
+
+
+def hull(points, H, W):
+    """The cells whose middles lie inside the convex hull of these (y, x) cells' middles, as a mask."""
+    pts = sorted(set((x + 0.5, y + 0.5) for y, x in points))
+    cross = lambda o, a, b: (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0])
+
+    def half(ps):
+        h = []
+        for p in ps:
+            while len(h) >= 2 and cross(h[-2], h[-1], p) <= 0:
+                h.pop()
+            h.append(p)
+        return h[:-1]
+
+    hl = half(pts) + half(pts[::-1])
+    m = np.zeros((H, W), bool)
+    ys = [p[1] for p in hl]
+    xs = [p[0] for p in hl]
+    for y in range(max(0, int(min(ys)) - 1), min(H, int(max(ys)) + 2)):
+        for x in range(max(0, int(min(xs)) - 1), min(W, int(max(xs)) + 2)):
+            p = (x + 0.5, y + 0.5)
+            m[y, x] = all(cross(hl[k], hl[(k + 1) % len(hl)], p) >= -1e-9 for k in range(len(hl)))
+    return m
+
+
+def complete(name, part, m, c, label):
+    """A limb continued where pieces in front hide it at rest (LIMBS, FRONT): in the hull of its pixels and
+    of a disk at each of its joints (as wide as the limb is at its middle), every cell hidden at rest that
+    it lacks takes his nearest pixel of it that is not his line; a filled cell on the hull's edge is his
+    line. At rest every cell it adds is under a piece in front of it."""
+    a, b = LIMBS[part]
+    (ax, ay), (bx, by) = joint(name, a), joint(name, b)
+    H, W = m.shape
+    line = line_rgb()
+    K = np.array([[kind(c[y, x]) if m[y, x] else '' for x in range(W)] for y in range(H)])
+    # the limb's half width: its pixels' distance across the bone, at their middle
+    L = np.hypot(bx - ax, by - ay)
+    ux, uy = (bx - ax) / L, (by - ay) / L
+    ys, xs = np.nonzero(m)
+    t = ((xs + 0.5 - ax) * ux + (ys + 0.5 - ay) * uy) / L
+    q = np.abs((xs + 0.5 - ax) * -uy + (ys + 0.5 - ay) * ux)
+    mid = (t > 0.25) & (t < 0.75)
+    r = float(np.percentile(q[mid], 85)) if mid.sum() > 4 else 2.5
+    pts = list(zip(ys, xs))
+    for jx, jy in ((ax, ay), (bx, by)):
+        for dy in range(-int(r) - 1, int(r) + 2):
+            for dx in range(-int(r) - 1, int(r) + 2):
+                if dx * dx + dy * dy <= r * r:
+                    pts.append((int(np.floor(jy)) + dy, int(np.floor(jx)) + dx))
+    hm = hull(pts, H, W)
+    # (only along the bone: within the limb's width of the segment between its joints, so nothing he drew
+    # beside it, a blade or a tasset, widens it)
+    yy, xx = np.mgrid[0:H, 0:W]
+    tt = np.clip(((xx + 0.5 - ax) * ux + (yy + 0.5 - ay) * uy) / L, 0, 1)
+    dist = np.hypot(xx + 0.5 - (ax + tt * L * ux), yy + 0.5 - (ay + tt * L * uy))
+    hm &= dist <= r + 1.0
+    allowed = np.isin(label, FRONT[part])
+    add = hm & allowed & ~m
+    if not add.any():
+        return m, c
+    # his pixels continued along the limb: each cell takes the pixel of his at the same distance across the
+    # bone, nearest along it (his folds, seams and plate bands run on), of the limb's own colours (not the
+    # blade's or the gold's that lie over it)
+    own = [(y, x) for y, x in zip(*np.nonzero(m)) if K[y, x] not in ('line', 'blue', 'white', 'gold') and not (luma(c[y, x]) > 90 and c[y, x][2] - c[y, x][0] > 20)]
+    ot = np.array([((x + 0.5 - ax) * ux + (y + 0.5 - ay) * uy) for y, x in own])
+    oq = np.array([((x + 0.5 - ax) * -uy + (y + 0.5 - ay) * ux) for y, x in own])
+    c = c.copy()
+    for y, x in zip(*np.nonzero(add)):
+        tt = (x + 0.5 - ax) * ux + (y + 0.5 - ay) * uy
+        qq = (x + 0.5 - ax) * -uy + (y + 0.5 - ay) * ux
+        near = np.abs(oq - qq) < 0.75
+        if near.any():
+            k = int(np.flatnonzero(near)[np.argmin(np.abs(ot[near] - tt))])
+        else:
+            k = int(np.argmin((ot - tt) ** 2 + (oq - qq) ** 2))
+        c[y, x] = c[own[k]]
+    out = m | add
+    inner = hm & np.roll(hm, 1, 0) & np.roll(hm, -1, 0) & np.roll(hm, 1, 1) & np.roll(hm, -1, 1)
+    c[add & ~inner] = line
+    return out, c
+
+
 def part_piece(name, part):
-    """One part of figure `name` as a piece: (mask, colours, pivot in our frame, angle)."""
+    """One part of figure `name` as a piece: (mask, colours, pivot in our frame, angle). A limb hidden in part
+    at rest is continued there (complete())."""
     rgb, label = game(name)
     m, c = cut(rgb, label, [part])
     if part == 'sword':
         m, c = sword_grip(rgb, label, m, c)
         return m, c, joint(name, 'handN'), sword_angle(rgb, m)
+    if part in LIMBS:
+        m, c = complete(name, part, m, c, label)
     j, limb = RIDES[part]
     ang = angle(name, *limb) if limb else torso_angle()
     return m, c, joint(name, j), ang

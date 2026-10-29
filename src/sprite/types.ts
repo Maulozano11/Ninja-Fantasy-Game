@@ -54,7 +54,7 @@ export interface CastChoice {
 }
 
 /** The eye options; valiant, night and roman are the owner's own eyes from his Aiden, Ren and Roman pictures, in his pixels; dawn is his Aurelia's, in her pixels at our scale; keen is his Lyra's, in her colours at our scale. */
-export type EyeShape = 'standard' | 'sharp' | 'round' | 'calm' | 'fierce' | 'bright' | 'piercing' | 'valiant' | 'night' | 'dawn' | 'keen' | 'roman' | 'wanderer';
+export type EyeShape = 'standard' | 'sharp' | 'round' | 'calm' | 'fierce' | 'bright' | 'piercing' | 'valiant' | 'night' | 'dawn' | 'keen' | 'roman' | 'wanderer' | 'vanguard';
 
 /**
  * The owner's heroines' long neck (neck.ts): his Lyra carries the head further forward on a slimmer neck.
@@ -81,9 +81,10 @@ export type HandSize = 'normal' | 'small';
  * cheeks, mouth, jaw and chin in his pixels from his game-scale picture, under our skull; on a female body
  * her head stands where he drew it, src/sprite/aureliaHead.ts).
  * Or roman, from his Roman paint-over (his whole face with his nose and mouth, in his pixels); or wanderer,
- * the head of his three new outfits (his face shrunk to our Roman head's size).
+ * the head of his three new outfits (his face shrunk to our Roman head's size), or vanguard, his tactical
+ * figure's own face there.
  */
-export type FaceShape = 'tapered' | 'soft' | 'square' | 'valiant' | 'night' | 'founder' | 'fine' | 'aurelia' | 'roman' | 'wanderer';
+export type FaceShape = 'tapered' | 'soft' | 'square' | 'valiant' | 'night' | 'founder' | 'fine' | 'aurelia' | 'roman' | 'wanderer' | 'vanguard';
 
 /** Single-choice equipment slots, drawn back-to-front by depth (see compose.ts). */
 export type SlotId =

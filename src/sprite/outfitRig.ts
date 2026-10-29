@@ -93,7 +93,7 @@ type Joint = 'shoulderN' | 'shoulderF' | 'elbowN' | 'elbowF' | 'wristN' | 'wrist
 export function outfitRig(rig: Rig, look: SpriteAppearance): Rig {
   const arms = outfitArms(look);
   const legs = outfitLegs(look);
-  const face = OUTFIT_BODIES.includes(look.body) && look.faceShape === 'wanderer';
+  const face = OUTFIT_BODIES.includes(look.body) && (look.faceShape === 'wanderer' || look.faceShape === 'vanguard');
   if (!arms && !legs && !face) return rig;
   const idle = idleRig(rig.body);
   const t = segAngle(rig.pelvis, rig.neck) - segAngle(idle.pelvis, idle.neck);

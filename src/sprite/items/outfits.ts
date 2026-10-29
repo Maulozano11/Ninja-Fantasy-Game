@@ -38,6 +38,7 @@ import { DRIFTER_GLOVES_HAND_F, DRIFTER_GLOVES_HAND_N, DRIFTER_GLOVES_KIND, DRIF
 import { DRIFTER_JACKET_FORE_F, DRIFTER_JACKET_FORE_N, DRIFTER_JACKET_KIND, DRIFTER_JACKET_LEATHER, DRIFTER_JACKET_REST, DRIFTER_JACKET_TORSO, DRIFTER_JACKET_UPPER_F, DRIFTER_JACKET_UPPER_N } from './drifterJacketArt';
 import { DRIFTER_TROUSERS_CLOTH, DRIFTER_TROUSERS_KIND, DRIFTER_TROUSERS_SHIN_F, DRIFTER_TROUSERS_SHIN_N, DRIFTER_TROUSERS_THIGH_F, DRIFTER_TROUSERS_THIGH_N } from './drifterTrousersArt';
 import { OUTFIT_HAIR, OUTFIT_HAIR_BASE, OUTFIT_HAIR_KIND } from './outfitHairArt';
+import { VANGUARD_HAIR, VANGUARD_HAIR_BASE, VANGUARD_HAIR_KIND } from './vanguardHairArt';
 import { VANGUARD_BELT_BELT, VANGUARD_BELT_CLOTH, VANGUARD_BELT_KIND, VANGUARD_BELT_REST } from './vanguardBeltArt';
 import { VANGUARD_BOOTS_BOOT_F, VANGUARD_BOOTS_BOOT_N, VANGUARD_BOOTS_CLOTH, VANGUARD_BOOTS_FOOT_F, VANGUARD_BOOTS_FOOT_N, VANGUARD_BOOTS_KIND } from './vanguardBootsArt';
 import { VANGUARD_CARGO_CLOTH, VANGUARD_CARGO_KIND, VANGUARD_CARGO_SHIN_F, VANGUARD_CARGO_SHIN_N, VANGUARD_CARGO_THIGH_F, VANGUARD_CARGO_THIGH_N } from './vanguardCargoArt';
@@ -263,11 +264,11 @@ function drawBoots(g: DrawCtx, shinN: PaintedPiece, shinF: PaintedPiece, footN: 
 // The hair and the sword
 // ---------------------------------------------------------------------------
 
-function drawHair(g: DrawCtx, hair: string): void {
+function drawHair(g: DrawCtx, piece: PaintedPiece, kinds: Record<string, string>, base: string, hair: string): void {
   const { nx, ny } = faceAnchor(g);
   // his locks as he drew them: no fraying of the hair layer's edge
   g.L('hairFront').noFray = true;
-  stampPiece(g, 'hairFront', OUTFIT_HAIR, v((nx + 0.5) / RES, (ny + 0.5) / RES), OUTFIT_HAIR.angle, 'head', tint(g, OUTFIT_HAIR_KIND, [[null, OUTFIT_HAIR_BASE, hair]]));
+  stampPiece(g, 'hairFront', piece, v((nx + 0.5) / RES, (ny + 0.5) / RES), piece.angle, 'head', tint(g, kinds, [[null, base, hair]]));
 }
 
 const SWORD_LINE = lineOf(WARDEN_SWORD_KIND);
@@ -289,7 +290,15 @@ export const OUTFIT_ITEMS: ItemDef[] = [
     name: 'Wanderer Spikes',
     desc: 'Spiky blue-black hair, messy over the brow and the ears.',
     colors: [{ key: 'hair', label: 'Hair', default: OUTFIT_HAIR_BASE, kind: 'hair' as const }],
-    draw: (g, [hair]) => drawHair(g, hair),
+    draw: (g, [hair]) => drawHair(g, OUTFIT_HAIR, OUTFIT_HAIR_KIND, OUTFIT_HAIR_BASE, hair),
+  },
+  {
+    id: 'hair_vanguard_spikes',
+    slot: 'hair',
+    name: 'Vanguard Spikes',
+    desc: 'Blue-black hair in spikes standing up and back, with bangs over the brow.',
+    colors: [{ key: 'hair', label: 'Hair', default: VANGUARD_HAIR_BASE, kind: 'hair' as const }],
+    draw: (g, [hair]) => drawHair(g, VANGUARD_HAIR, VANGUARD_HAIR_KIND, VANGUARD_HAIR_BASE, hair),
   },
   // --- the Warden (his armoured figure) ---
   {

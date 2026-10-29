@@ -14,11 +14,11 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import outfits_ref as O  # noqa: E402
 
 
-def build():
+def build(prefix='OUTFIT', script='outfits-hair-from-ref.py', what="The owner's hair from his three outfits", doc='His hair: spiky blue-black locks lit in blue-grey, over the brow and the ears.'):
     m, c = O.head_pieces()['hair']
-    consts = [('OUTFIT_HAIR', m, c, 'His hair: spiky blue-black locks lit in blue-grey, over the brow and the ears.', O.FACE_ANCHOR, 0.0)]
-    bases = {'OUTFIT_HAIR_BASE': O.middle(c, m, ('hair', 'dark', 'steel'))}
-    return O.module(O.header('outfits-hair-from-ref.py', "The owner's hair from his three outfits"), consts, bases, 'OUTFIT_HAIR')
+    consts = [(f'{prefix}_HAIR', m, c, doc, O.FACE_ANCHOR, 0.0)]
+    bases = {f'{prefix}_HAIR_BASE': O.middle(c, m, ('hair', 'dark', 'steel'))}
+    return O.module(O.header(script, what), consts, bases, f'{prefix}_HAIR')
 
 
 if __name__ == '__main__':

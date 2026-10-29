@@ -29,6 +29,8 @@ import { ROMAN_EYE_COLORS, ROMAN_EYES, ROMAN_IRIS } from './romanEyeArt';
 import { ROMAN_HEAD, ROMAN_SKIN } from './romanHeadArt';
 import { OUTFIT_EYE_COLORS, OUTFIT_EYES, OUTFIT_IRIS } from './outfitEyeArt';
 import { OUTFIT_EYE_COLS, OUTFIT_HEAD, OUTFIT_SKIN } from './outfitHeadArt';
+import { VANGUARD_EYE_COLORS, VANGUARD_EYES, VANGUARD_IRIS } from './vanguardEyeArt';
+import { VANGUARD_EYE_COLS, VANGUARD_HEAD, VANGUARD_SKIN } from './vanguardHeadArt';
 import { drawRomanNeck } from './romanNeck';
 import { ballShade, capsule, ellipse, F_NO_OUTLINE, F_NO_TEXTURE, GRID, Layer, PartId, Pen, poly, RES, seam, v, Vec } from './raster';
 import { type EyeShape, isFemaleBody, type FaceShape } from './types';
@@ -584,6 +586,8 @@ const PAINTED_HEADS: Partial<Record<FaceShape, PaintedHead>> = {
   night: { head: NIGHT_HEAD, skin: NIGHT_SKIN, ex: 1, fx: 9, mouth: false, neckRows: 1, tint: skinTone },
   // His face from his three outfits (src/sprite/outfitHeadArt.ts): his eyes where he drew them, his own mouth.
   wanderer: { head: OUTFIT_HEAD, skin: OUTFIT_SKIN, ex: OUTFIT_EYE_COLS[0], fx: OUTFIT_EYE_COLS[1], mouth: false, tint: retintSkinLifted },
+  // His tactical figure's own face (src/sprite/vanguardHeadArt.ts), as the wanderer's.
+  vanguard: { head: VANGUARD_HEAD, skin: VANGUARD_SKIN, ex: VANGUARD_EYE_COLS[0], fx: VANGUARD_EYE_COLS[1], mouth: false, tint: retintSkinLifted },
 };
 const paintedHead = (g: DrawCtx): PaintedHead | undefined => (g.look.faceShape ? PAINTED_HEADS[g.look.faceShape] : undefined);
 
@@ -601,6 +605,7 @@ const PAINTED_EYES: Partial<Record<EyeShape, PaintedEyes>> = {
   night: { eyes: NIGHT_EYES, colors: NIGHT_EYE_COLORS, iris: NIGHT_IRIS },
   roman: { eyes: ROMAN_EYES, colors: ROMAN_EYE_COLORS, iris: ROMAN_IRIS },
   wanderer: { eyes: OUTFIT_EYES, colors: OUTFIT_EYE_COLORS, iris: OUTFIT_IRIS },
+  vanguard: { eyes: VANGUARD_EYES, colors: VANGUARD_EYE_COLORS, iris: VANGUARD_IRIS },
 };
 
 function drawHead(g: DrawCtx): void {
@@ -707,7 +712,7 @@ function drawFounderHead(g: DrawCtx): void {
  * square: the reference's original strong jaw, with a flat jaw line.
  * (valiant, night, roman and founder, the owner's heads, are his pixels whole: see drawPaintedHead, drawFounderHead.)
  */
-const FACE_LEFT: Record<Exclude<FaceShape, 'valiant' | 'night' | 'founder' | 'fine' | 'aurelia' | 'roman' | 'wanderer'>, string[]> = {
+const FACE_LEFT: Record<Exclude<FaceShape, 'valiant' | 'night' | 'founder' | 'fine' | 'aurelia' | 'roman' | 'wanderer' | 'vanguard'>, string[]> = {
   tapered: ['osbbbbb', 'ossbbbb', '.osbbbb', '..osbbb', '...osbb', '....osb', '.....os', '......o', '.......', '.......'],
   soft: ['osbbbbb', 'ossbbbb', 'ossbbbb', '.osbbbb', '..osbbb', '...osbb', '....osb', '.....oo', '.......', '.......'],
   square: ['osbbbbb', 'ossbbbb', 'osDsbbb', 'ossbbbb', '.osbbbs', '..osbbs', '...osbs', '....ooo', '.......', '.......'],
@@ -716,7 +721,7 @@ const FACE_LEFT: Record<Exclude<FaceShape, 'valiant' | 'night' | 'founder' | 'fi
 const faceLeft = (g: DrawCtx): string[] => {
   const s = g.look.faceShape;
   // (Lyra's face, 'fine', has the default near cheek under her hair)
-  return (s && s !== 'valiant' && s !== 'night' && s !== 'founder' && s !== 'fine' && s !== 'aurelia' && s !== 'roman' && s !== 'wanderer' && FACE_LEFT[s]) || FACE_LEFT.tapered;
+  return (s && s !== 'valiant' && s !== 'night' && s !== 'founder' && s !== 'fine' && s !== 'aurelia' && s !== 'roman' && s !== 'wanderer' && s !== 'vanguard' && FACE_LEFT[s]) || FACE_LEFT.tapered;
 };
 
 /** Aurelia's face (aureliaFaceArt.ts) in fine pixels, its pivot on the face anchor. */
@@ -801,6 +806,7 @@ const EYE_ROWS: Record<string, { near: string[]; far: string[] }> = {
   // His eyes from his three outfits (src/sprite/outfitEyeArt.ts): his lash, his blue iris and its glint.
   // Drawn in his pixels.
   wanderer: { near: OUTFIT_EYES.open.near.letters, far: OUTFIT_EYES.open.far.letters },
+  vanguard: { near: VANGUARD_EYES.open.near.letters, far: VANGUARD_EYES.open.far.letters },
 };
 
 /** Closed eyes (knocked out): each eye a dark lid line across its middle row. */

@@ -365,6 +365,7 @@ What this means:
 
 ## Log (newest first, one line each)
 
+- 2026-10-29 15:25 Steve (hydra chat): `docs/colossal-hydra` #15: his hurt v2, cut and regrow sheets mounted; card 11 burnt stump; card 12 (fortress choice screen, empty courtyard, summon sigil); the fortress mission in `MISSION_DESIGN.md` (front gate or drain, XCOM-style stealth, mecha size = the river hydra). No hot files.
 - 2026-10-29 Bob: (b): the tactical wears the `vanguard` head, all pushed; the lock hair the owner meant is `hair_long_lock` + the tight shirt on `body/brawler-roman`.
 - 2026-10-29 Bob: D-T16, the women's sets work with both Lyra's and Aurelia's heads (the owner); the women's checklist runs with both.
 - 2026-10-29 Steve: the lock hair is `hair_long_lock` on `body/brawler-roman`; the tactical on

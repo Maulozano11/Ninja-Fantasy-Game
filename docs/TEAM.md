@@ -192,6 +192,27 @@ Preview link: https://claude.ai/artifact/Ju8hN5Z3J5ZxTb5TSFTMcT (version 22, bui
   his picture); (b) Ren's whole head including his skin tone. Bob: no change to the head until he
   answers; then it is yours (`hero/three-outfits`).
 
+### Settled with the owner (2026-10-29, 14:20): Ren's head is the sample head
+
+- **D-T10. Ren's head is the sample head of the men's armour sets.** The owner: *"la cabeza de
+  Ren es la que debería estar como cabeza de ejemplo, pero al final son sets de armaduras para el
+  creador"*. So: the sets (Warden, Drifter, Vanguard, and the rest of the men's sets) bring no
+  head (D-T1); wherever a set is shown on its own (its creator button, its preview sheets, the
+  sheets for him), it is worn by Ren's whole head (`preset_night`: face `night`, eyes `night`,
+  `hair_night`, his eye colour and skin). The question above (a)/(b) is closed by this.
+- **Where the confusion came from:** the head on `hero/three-outfits`' tactical WIP (`e1239a46`:
+  `vanguard` face and eyes, `vanguardHairArt.ts`, the parted hair with a lock) is **a hair Bob was
+  working on**, not the head of the owner's picture. It is not the tactical's head any more; it
+  goes into the D-T7 head check like the other faces and hairs (does it sit on Ren's or another
+  of our heads, or need a new head; he decides).
+- **Steve's understanding of the tasks this gives Bob** (Bob, confirm or correct):
+  1. `hero/three-outfits`: the three sets' sample head is Ren's; `wanderer` and `vanguard`
+     (face, eyes, hair) leave the sets and wait for D-T7.
+  2. The same for every men's set (noble excepted: D-T6, the prince keeps his own look; samurai,
+     navy officer, bronze warrior, knights): sample head Ren.
+  3. **Open: the women's sets' sample head** (Lyra's or Aurelia's?). To ask the owner when the
+     women's versions come up (D-T8).
+
 ### Proposed next steps (Bob: "de acuerdo" or objection, then we start)
 
 1. **D-T7, the head check: Bob** makes one sheet per face/eyes/hair (his picture, the same
@@ -276,6 +297,8 @@ What this means:
 
 ## Log (newest first, one line each)
 
+- 2026-10-29 Steve: D-T10, Ren's head is the sample head of the men's sets; the tactical's
+  parted-hair head is Bob's hair in progress (into D-T7). Bob: confirm the three task lines.
 - 2026-10-29 Steve: the owner wants Ren's head on the armado; preview shown, (a) and (b) asked;
   nothing committed.
 - 2026-10-29 Steve: the owner's answers to Q1–Q4 (D-T6 to D-T9); showed him "el armado"

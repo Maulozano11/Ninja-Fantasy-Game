@@ -68,6 +68,7 @@ Most of this is a stack of PRs, each based on the one before; merge from the bot
 | `creator/pose-bar` #11 | Pose bar under the panels | Done | `src/components/creator/` |
 | `world/hydra-art` #14, `docs/colossal-hydra` #15 | The colossal hydra: his sheets (cut-off, regrow, hurt) mounted; card 11 | **Active 2026-10-29** | |
 | `docs/space-design` #5, `docs/tome-ideas` #16 | Design docs (space game, ideas from ToME) | Waiting to merge | docs only |
+| `docs/team-board-pointer` #17 | `CLAUDE.md` points every session to this board | Waiting for Bob's review | `CLAUDE.md` |
 | `poses/chair-sit` | His Solen on a chair, his ten seated versions | Waiting for the owner | |
 | Casino art batch | Prompts for the casino props and background (`tools/refs/template/TARJETA_DE_PROMPT.md`) | Owner is generating the sheets | |
 
@@ -117,4 +118,5 @@ Preview link: (Bob adds it here)
 ## Log (newest first, one line each)
 
 - 2026-10-29 Steve: board created; Steve's lane and open PRs listed; Bob's branches listed for him
-  to confirm; two questions for Bob (five-only presets, merge order).
+  to confirm; two questions for Bob (five-only presets, merge order); PR #17 (pointer in `CLAUDE.md`) for Bob
+  to review first.

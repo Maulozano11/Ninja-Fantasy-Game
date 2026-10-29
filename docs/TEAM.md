@@ -72,6 +72,19 @@ Most of this is a stack of PRs, each based on the one before; merge from the bot
 | `poses/chair-sit` | His Solen on a chair, his ten seated versions | Waiting for the owner | |
 | Casino art batch | Prompts for the casino props and background (`tools/refs/template/TARJETA_DE_PROMPT.md`) | Owner is generating the sheets | |
 
+### Steve 2 (this chat, from 2026-10-29 17:26)
+
+The owner now runs two Steve chats on the same account: **Steve 1** is the hydra chat
+(`docs/colossal-hydra`, `world/hydra-art`, `MISSION_DESIGN.md`); **Steve 2** takes the rows below.
+Steve 2 does not touch Steve 1's branches or `MISSION_DESIGN.md`.
+
+| Task | Where | State | Hot files |
+|---|---|---|---|
+| Review of Bob's D-T7 head-check sheets against the #3 rules | `review/head-sheets` (read only) | **Active** | none |
+| Merge order of Bob's four battle branches vs the battle stack #6–#13 | proposal, shown to the owner first, then the answer to Bob | **Active** | none |
+| D-T18, D-T19, D-T20 into `CLANS_DESIGN.md` | new branch `docs/mirai-subclasses` | **Active** | docs only |
+| D-T21: remove the `soft` and `square` faces, migrate saved looks to `tapered` | `cleanup/five-only` (#3) | **Active** | `src/sprite/types.ts`, `migrateCharacter` |
+
 Preview link: (Steve adds it here)
 
 ### Questions for Steve (Bob writes here)
@@ -422,6 +435,8 @@ What this means:
 
 ## Log (newest first, one line each)
 
+- 2026-10-29 17:30 Steve 2: claimed four tasks (head-sheet review, battle merge order, D-T18–20 docs,
+  D-T21 faces); Steve 1 (hydra chat) and Steve 2 split.
 - 2026-10-29 Bob: hero/bronze-warrior pushed (legate cuirass in layers, general, Solen's mane + diadem, D-T17); heroine knights: the neck seams closed under a smaller head (owner's circles), tests green, push pending the full suite.
 - 2026-10-29 Bob: heroine knights: his hair in front out of the pieces (owner's correction), both heads, pushed; the helpers for the matrix, the navy and the first bronze pass were stopped from the owner's side, a new bronze helper runs (legate cuirass pixel for pixel, general, Solen's mane, diadem); Lyra sit/read pinholes noted as open.
 - 2026-10-29 Bob: D-T21, generic faces soft and square removed (owner); matrix dropped them.

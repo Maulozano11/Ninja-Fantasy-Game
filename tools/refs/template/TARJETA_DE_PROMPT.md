@@ -642,3 +642,58 @@ Con A–D: el fondo se usa como el del casino (pintado completo); B y C pasan po
 `sheet-from-template.py --hd` a una hoja de la hidra colosal como la de `world/creatures/`
 (`hydra_neck_*`), una sola cabeza repetida en los siete carriles; el motor necesita cabezas con
 `bulk` (su tamaño) y carriles fijos (diseño en `docs/GAMEPLAY_DESIGN.md`, "The colossal hydra").
+
+## 12. La fortaleza de la hidra: la elección, el patio vacío y la invocación (2026-10-29)
+
+La misión entera está en `docs/MISSION_DESIGN.md`, "The hydra's fortress". Lo que pide al generador:
+
+**A) La pantalla de elección** (3 imágenes, 1920×1080, mismo estilo HD-2D que el casino y el patio de la
+hidra; adjunta el fondo de la hidra v3 como estilo). Primero la base:
+
+```
+FONDO · la fortaleza de piedra vista desde afuera, de noche, al llegar por el camino · 1920×1080
+MISMO estilo, pincel, paleta y luz que la imagen adjunta (pixel art HD-2D). Vista de frente y un poco
+desde arriba. Al CENTRO-IZQUIERDA el gran portón de madera reforzada ABIERTO de par en par, con
+antorchas encendidas a los lados y NINGÚN guardia: inquietante, demasiado fácil. A la DERECHA, al pie
+de la muralla y medio escondida entre rocas y matorrales, la boca de un DESAGÜE de piedra con una reja
+oxidada, por donde sale un hilo de agua sucia hacia un foso. Abajo, el camino de tierra que llega hasta
+nosotros. Luna, nubes, banderas rojas en las almenas. Dejar el tercio de abajo con poco detalle (ahí
+van los botones). PROHIBIDO: texto, personas, magenta, rosa fuerte o morado.
+```
+
+Luego, adjuntando esa base, las dos variantes (lo que cambia al seleccionar cada opción):
+
+```
+La MISMA imagen adjunta, idéntica píxel por píxel, cambiando SOLO esto: el portón abierto y el camino
+hacia él brillan con una luz cálida dorada, las antorchas más fuertes; el resto un poco más oscuro.
+```
+```
+La MISMA imagen adjunta, idéntica píxel por píxel, cambiando SOLO esto: la boca del desagüe y su
+camino entre las rocas brillan con una luz fría azul verdosa, con un poco de niebla; el resto un poco
+más oscuro.
+```
+
+**B) El patio vacío** (adjunta su fondo de la hidra v3, `docs/reference/colossal-hydra-backdrop-v3-owner-reference.png`):
+
+```
+La MISMA imagen adjunta, idéntica en todo (muro, portón, antorchas, suelo, luz, encuadre), pero SIN
+la hidra: ni cuerpo, ni cuellos, ni púas, ni garras. Donde estaba, el patio sigue: el suelo de losas y
+el muro del fondo, con la misma luz. Agrega en el suelo, donde estaba el cuerpo, un gran círculo
+alquímico APAGADO grabado en la piedra (líneas finas, apenas visibles). Sin texto, sin personas.
+```
+
+**C) La invocación del jefe y la invocación simple** (hoja de efectos sobre magenta, como los props):
+
+```
+Hoja de efectos de invocación sobre FONDO MAGENTA PURO (#FF00FF), cada cuadro separado, sin texto,
+sin personas, alta resolución, colores brillantes. El círculo va visto desde arriba y ACHATADO
+(como pintado en el suelo, el doble de ancho que de alto).
+Fila 1 · INVOCACIÓN DEL JEFE, 6 cuadros de 900×450: un gran círculo alquímico en el suelo (círculos
+concéntricos, un triángulo y un cuadrado inscritos, runas en el borde) que 1 aparece como una chispa
+en el centro; 2 se dibuja la primera línea de luz; 3 el círculo completo brilla dorado-anaranjado;
+4 brilla al máximo y sube una columna de luz y relámpagos; 5 la columna se vuelve humo y polvo
+denso; 6 el humo se abre y el círculo se apaga.
+Fila 2 · INVOCACIÓN SIMPLE, 4 cuadros de 450×225: un círculo pequeño y sencillo que brilla, una
+nube de humo blanco que hace "puf", el humo se disipa, nada.
+Luz dorada, naranja y blanca; humo gris; nada morado ni rosa.
+```

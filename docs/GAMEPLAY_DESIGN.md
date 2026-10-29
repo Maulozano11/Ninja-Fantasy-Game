@@ -219,7 +219,8 @@ elements.
   and reaches further: circles grow by half (Kirin), cones reach a quarter
   further and open a third wider (the Great Fire Annihilation), lines reach a
   quarter further and run half as wide again, and walls are half as long again.
-- **Ultimate (rank S) jutsu** have no use limit: only their chakra cost.
+- **Ultimate (rank S) jutsu** have no use limit: only their chakra cost. (Every jutsu now also
+  gets a cooldown: "Ideas from Tales of Maj'Eyal" below.)
 - **The elemental beasts are summons, not attacks** (the owner, 2026-10-21:
   *"todos los elementales seran invocaciones que te ayudaran en el combate no
   ataques"*): the water dragon, the stone drake, the wind crane, the lightning
@@ -505,6 +506,32 @@ lands as the crescent arrives. In the ninja's chakra colour, as on the weapon; e
   or the head grows back after 2 of the hydra's turns. Cutting a head with fire
   is not enough: the stump needs its own hit. The hydra dies when every head is
   cut at once or its body falls.
+
+## Ideas from Tales of Maj'Eyal (the owner's decisions, 2026-10-28; not built)
+
+He asked what we could take from *Tales of Maj'Eyal* (ToME) to make the game deeper, and what its
+players liked. The report, with its sources, is his doc "Mecánicas de Tales of Maj'Eyal para
+Shinobi 5e" (claude.ai artifact MBtMFvHCwgtdfwNU9vgsZa). His answers:
+
+- **Jutsu get a cooldown** besides their chakra cost: after casting, a jutsu rests some rounds
+  before it can be cast again, so the same big jutsu is not thrown every turn. Rank S jutsu too.
+  The rounds per rank are ours to propose and his to approve.
+- **Death stays as it is**: no Adventure mode with lives. Retreat and the Last Stand stay as they
+  are. New: **rare resurrection items** (found, not bought in bulk).
+- **Level-up closer to 5e, like Baldur's Gate 3** (feats, ability increases, class features), not
+  ToME's talent schools. Besides that, **masteries and unique abilities discovered through the
+  story**, his examples ice and poison: an element or an art that no level gives, learned from a
+  place, a person or an event of the campaign.
+- **Loot**: random loot turns into **gold**. Weapons are **hand-made objects and relics**, each
+  designed one by one.
+- **Forging (his new system)**: a welding scene where **your 16-bit hand** appears on screen
+  (like Surgeon Simulator, in 16 bits) and you weld onto your weapon or armour **runes, magic
+  gems, and blessing or curse sigils**. That is how equipment is improved. In the game they show
+  as **pixels laid over the equipment**, like the pixels you edit in the creator. (To design:
+  what each piece gives, where they come from, how many fit on one item, the scene's art.)
+- **A meter of its own per clan**: kept as an idea for later, not dropped.
+- **Hate as a resource** (ToME's Hate, which halves out of combat): kept for another dynamic,
+  for example a kind of awakening (see Tension's Awakening in `MISSION_DESIGN.md`). Not designed.
 
 ## Controls
 

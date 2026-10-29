@@ -534,8 +534,9 @@ remove the AI Studio leftovers (`README.md`, `metadata.json`, package name, unus
 - His labels on sheets 20–21 are now our names: "Desvanecer" (Body Flicker), "Patada huracán" (Leaf
   Hurricane), "Estrella Huracán" (Rasenshuriken); "Mind Twist" is the Espejismo.
 - Clan Paths of Mastery; clan reference pictures (CLANS_DESIGN: mechanics first, art after).
-- World sprites are paused (`tools/world-sprites/README.md`); the hydra art (`world/creatures/`)
-  is not in the repo yet.
+- World sprites are paused (`tools/world-sprites/README.md`). The hydra art (`world/creatures/`,
+  from `creatures.ts`) went into the game on 2026-10-28 at the owner's word (branch
+  `world/hydra-art`; before/after `docs/mockups/hydra-before-after.png`).
 - Doc gaps: `docs/reference/README.md` has no row for `aiden-owner-reference.jpg`;
   `tools/refs/README.md` covers only the VFX converters (Aiden, sword, cape and icon scripts are
   documented in their own headers).

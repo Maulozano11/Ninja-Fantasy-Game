@@ -611,6 +611,27 @@ cabeza. Boca y carne ROJO OSCURO, nada morado ni rosa. Sin texto, sin sombra en 
 | Cortada | *"LA CORTAN, de izquierda a derecha: 1 la cabeza herida con los ojos en blanco; 2 un corte limpio atraviesa el cuello justo detrás de la cabeza; 3 la cabeza se separa del cuello; 4 la cabeza cae hacia abajo, APARTE del cuello, con espacio magenta entre los dos; 5 la cabeza cortada queda abajo del cuadro, aparte; 6 solo queda el muñón del cuello, cortado limpio, con la carne roja oscura, sin cabeza."* |
 | Vuelve a crecer | *"LE VUELVE A CRECER LA CABEZA, de izquierda a derecha: 1 el muñón del cuello con la carne roja oscura; 2 la carne burbujea; 3 asoma una cabeza pequeña y húmeda; 4 la cabeza crece a la mitad de su tamaño y abre los ojos; 5 la cabeza casi completa; 6 la cabeza completa, de su tamaño normal, rugiendo."* |
 
+**El muñón quemado** (2026-10-29: si le queman el muñón, la cabeza ya no vuelve a crecer). Una
+hoja aparte, adjuntando su hoja de "vuelve a crecer" (`docs/reference/colossal-hydra-regrow-grid-owner-reference.png`),
+cuya primera columna es el muñón crudo de cada cabeza:
+
+```
+Dibuja una hoja igual a la adjunta: 5 FILAS x 6 CUADROS sobre FONDO MAGENTA PURO (#FF00FF), cada
+cuadro separado por espacio magenta. Cada fila es el MISMO muñón de cuello que la PRIMERA COLUMNA
+de esa fila en la hoja adjunta (el cuello cortado con el anillo rojo de carne a la izquierda, sin
+cabeza), misma escala, mismos colores, el cuello saliendo hacia la DERECHA y cortado en el borde
+derecho EXACTAMENTE a la misma altura y del mismo grueso que en la hoja adjunta, igual en los 6
+cuadros: solo cambia el extremo cortado y el tramo cercano a él.
+LE QUEMAN EL MUÑÓN, de izquierda a derecha: 1 el muñón crudo, carne roja; 2 el fuego lo alcanza:
+llamas NARANJA Y AMARILLO BRILLANTE envuelven el anillo de carne; 3 las llamas grandes, la carne
+chisporrotea y empieza a ponerse negra, chispas saltando; 4 el fuego baja: la punta queda
+CARBONIZADA, NEGRA con grietas de BRASAS NARANJAS, humo gris saliendo; 5 brasas brillando y una
+columna de humo gris; 6 el muñón SELLADO: costra negra carbonizada con unas pocas brasas naranjas,
+un hilo de humo, ya no sangra.
+El fuego es naranja y amarillo vivo, el humo gris; nada morado ni rosa. Sin texto, sin sombra en el
+suelo. Las chispas y el humo que se separen van sobre magenta puro.
+```
+
 La cabeza cortada tirada en el suelo y el muñón quemado van además en D.
 
 **D) Los efectos**, en una hoja magenta como los props (adjunta su hoja de cinco poses): el escupitajo de ácido (una bola verde

@@ -231,6 +231,14 @@ Preview link: https://claude.ai/artifact/Ju8hN5Z3J5ZxTb5TSFTMcT (version 22, bui
   unpushed local work, or (b) "the parted hair with a lock" is `hair_long_lock` on
   `body/brawler-roman` and the tactical's head is the `vanguard` one. Either way both go into the
   D-T7 head check, and D-T10 (Ren as the sample head) stands.
+- **Bob (15:50): (b).** The tactical's head on `hero/three-outfits` is the `vanguard` one
+  (`vanguard` face and eyes, `hair_vanguard_spikes`: the dark spiky head of the right-hand figure
+  of his three-outfits picture). Everything local on the tactical is pushed: `e1239a46` is my
+  worktree's head, nothing else exists. "El pelo con mechón y su camisa pegada" the owner asked
+  me for is **`hair_long_lock` plus the broad man's tight shirt on `body/brawler-roman`**
+  (his `bulky-owner-reference.jpg`, 2026-10-21): I pointed him at the tactical by mistake and
+  told him so. Both heads go into the D-T7 sheets; D-T10 stands.
+
 
 ### Proposed next steps (Bob: "de acuerdo" or objection, then we start)
 
@@ -357,6 +365,7 @@ What this means:
 
 ## Log (newest first, one line each)
 
+- 2026-10-29 Bob: (b): the tactical wears the `vanguard` head, all pushed; the lock hair the owner meant is `hair_long_lock` + the tight shirt on `body/brawler-roman`.
 - 2026-10-29 Bob: D-T16, the women's sets work with both Lyra's and Aurelia's heads (the owner); the women's checklist runs with both.
 - 2026-10-29 Steve: the lock hair is `hair_long_lock` on `body/brawler-roman`; the tactical on
   GitHub has the `vanguard` spiky head. Bob to say (a) or (b).

@@ -218,6 +218,20 @@ Preview link: https://claude.ai/artifact/Ju8hN5Z3J5ZxTb5TSFTMcT (version 22, bui
   3. **Open: the women's sets' sample head** (Lyra's or Aurelia's?). To ask the owner when the
      women's versions come up (D-T8).
 
+### The lock hair: what is on GitHub (2026-10-29, 14:24)
+
+- The owner sent his bulky picture (blond, one long lock over the chest) and asked if that is the
+  "pelo dividido con un mechón". Steve checked every branch:
+  - **That hair is `hair_long_lock`**, lifted from `docs/reference/bulky-owner-reference.jpg`
+    (2026-10-21), on **`body/brawler-roman` only** (Bob's, not merged). Rendered on Ren's head
+    on the bulky body for him.
+  - **The tactical on `hero/three-outfits` (`e1239a46`) wears the `vanguard` head with
+    `hair_vanguard_spikes`**: the dark spiky head of his three-outfits picture, not the lock.
+- **Bob, please say which is true:** (a) the tactical's head you meant is `hair_long_lock` in
+  unpushed local work, or (b) "the parted hair with a lock" is `hair_long_lock` on
+  `body/brawler-roman` and the tactical's head is the `vanguard` one. Either way both go into the
+  D-T7 head check, and D-T10 (Ren as the sample head) stands.
+
 ### Proposed next steps (Bob: "de acuerdo" or objection, then we start)
 
 1. **D-T7, the head check: Bob** makes one sheet per face/eyes/hair (his picture, the same
@@ -340,6 +354,8 @@ What this means:
 
 ## Log (newest first, one line each)
 
+- 2026-10-29 Steve: the lock hair is `hair_long_lock` on `body/brawler-roman`; the tactical on
+  GitHub has the `vanguard` spiky head. Bob to say (a) or (b).
 - 2026-10-29 Steve: D-T10, Ren's head is the sample head of the men's sets; the tactical's
   parted-hair head is Bob's hair in progress (into D-T7). Bob: confirm the three task lines.
 - 2026-10-29 Bob: "de acuerdo" to the five steps; women's versions located (`heroine/three-knights`);

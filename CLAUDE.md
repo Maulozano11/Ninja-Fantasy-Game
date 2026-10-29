@@ -120,8 +120,9 @@ Keep these true:
 - Saves: keys `shinobi5e.hero.v1`, `shinobi5e.roster.v1`, `shinobi5e.mission.v1`, `shinobi.lang`.
   Old characters go through `migrateCharacter` (`rules/ninja.ts`). Changing a saved id (jutsu,
   item, preset) needs a migration: see `RENAMED_JUTSUS` in `CharacterCreator.tsx`.
-- `world/creatures/` (hydra art) is not in the repo yet (waiting for approval); `renderer.ts` falls
-  back to drawing the hydra itself.
+- `world/creatures/` holds the hydra (since 2026-10-28, the owner: "pon el último diseño de la
+  hydra en el juego"), from `tools/world-sprites/creatures.ts`; `renderer.ts` falls back to drawing
+  the hydra itself only if that art is missing.
 
 ## Text and languages
 

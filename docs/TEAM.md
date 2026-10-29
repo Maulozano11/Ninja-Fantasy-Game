@@ -81,8 +81,8 @@ Steve 2 does not touch Steve 1's branches or `MISSION_DESIGN.md`.
 | Task | Where | State | Hot files |
 |---|---|---|---|
 | Review of Bob's D-T7 head-check sheets against the #3 rules | `review/head-sheets` (read only) | **Done** (see "Steve 2's review"), shown to the owner | none |
-| Merge order of Bob's four battle branches vs the battle stack #6–#13 | proposal, shown to the owner first, then the answer to Bob | **Active** | none |
-| D-T18, D-T19, D-T20 into `CLANS_DESIGN.md` | new branch `docs/mirai-subclasses` | **Active** | docs only |
+| Merge order of Bob's four battle branches vs the battle stack #6–#13 | proposal (trial merges done), **with the owner for approval**; Bob gets the answer after he approves | Waiting for the owner | none |
+| D-T18, D-T19, D-T20 into `CLANS_DESIGN.md` | `docs/mirai-subclasses`, **PR #19** (stacked on #13, the battle stack also edits that doc) | Done, waiting to merge after #13 | docs only |
 | D-T21: remove the `soft` and `square` faces, migrate saved looks to `tapered` | `cleanup/five-only` (#3) | **Active** | `src/sprite/types.ts`, `migrateCharacter` |
 
 Preview link: (Steve adds it here)

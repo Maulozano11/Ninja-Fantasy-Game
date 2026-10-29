@@ -239,21 +239,21 @@ export function warpStrike(s: BattleState, u: Unit, to: Pt, ev: BattleEvent[]): 
 
 /**
  * Why a Spatial Swap with this unit can't be made, or null: it needs the fighting started, another
- * ninja (the hydra is too big) standing on one of the Ryusei's Nodes, and that Node within 18 m and
- * in sight (walls don't count, as for the warp).
+ * ninja (the hydra is too big) within 18 m and in sight (walls don't count, as for the warp). Since
+ * 2026-10-28 it needs no Node under them.
  */
 export function swapBlocker(s: BattleState, u: Unit, t: Unit | undefined): string | null {
   if (s.phase !== 'combat') return 'combatOnly';
   if (!t || t.id === u.id || t.down === 'dead' || t.down === 'fled' || t.down === 'ko') return 'needTarget';
   if (t.kind !== 'ninja') return 'tooBig';
-  const n = nodeUnder(s, u, t);
-  if (!n) return 'notOnNode';
-  if (dist(u.pos, n.pos) > JUTSU[SWAP].range + 0.1) return 'outOfRange';
-  return nodeInSight(s, u, n) ? null : 'noSight';
+  // Anyone in reach and in sight, Node or not (the owner, 2026-10-28: "quita ese requisito, que
+  // cambie con libertad"); walls still don't hide them from it, as for the thrust.
+  if (dist(u.pos, t.pos) > JUTSU[SWAP].range + 0.1) return 'outOfRange';
+  return lineOfSight(s, u.pos, t.pos, { structures: false }) ? null : 'noSight';
 }
 
 /**
- * Spatial Swap: the Ryusei and whoever stands on its Node trade places, with no opportunity
+ * Spatial Swap: the Ryusei and the ninja it picks trade places, with no opportunity
  * attacks. An enemy resists with a STR save; then nothing moves, but the chakra and the action are
  * spent all the same.
  */

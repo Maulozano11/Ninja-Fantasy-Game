@@ -110,12 +110,14 @@ through Nodes.
   hacer el ataque o teletransportarse a donde se indique sin los nodos"*): it
   also goes to a foe aimed at (landing beside it, D15's landing rules) or to
   any spot aimed at, within 18 m and in sight. Nodes still work as before (a
-  spot with a Node is the Node), and Spatial Swap still needs them. If the Ryusei lands next to an enemy,
+  spot with a Node is the Node); Spatial Swap needs none either (below). If the Ryusei lands next to an enemy,
   their next attack this turn counts as from behind: advantage, and it can't
   be blocked.
-- **Spatial Swap** (*Intercambio Espacial*, action, 3 chakra). Swaps places
-  with any unit, ally or enemy, standing on a Node. An enemy can resist with a
-  STR save.
+- **Spatial Swap** (*Intercambio Espacial*, action, 3 chakra, 18 m). Swaps
+  places with any ninja, ally or enemy, in reach and in sight (walls don't
+  hide them). **The owner, 2026-10-28: no Node needed** (*"quita ese
+  requisito, que cambie con libertad"*; it asked for one standing on a Node
+  before). An enemy can resist with a STR save.
 - **Weapon Throw** (*Lanzar arma*, id `ryusei_weapon_throw`; action, 2 chakra,
   12 m; the owner, 2026-10-28: *"una nueva habilidad que sea lanzar arma y que
   se teletransporte a su arma"*; the numbers are ours). The Ryusei throws the

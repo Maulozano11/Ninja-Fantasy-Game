@@ -1283,7 +1283,7 @@ describe('Ryusei: Weapon Nodes, Shooting-Star Thrust, Spatial Swap', () => {
     }
   });
 
-  it('Spatial Swap: action, 3 chakra, trades places with anyone on its Node; an enemy resists with STR', () => {
+  it('Spatial Swap: action, 3 chakra, trades places with anyone in reach, Node or not (owner, 2026-10-28); an enemy resists with STR', () => {
     // An ally: no save.
     const pair = ryuseiTurn({ party: [
       { character: ryusei(), pos: { x: 8, z: 10 } },
@@ -1315,9 +1315,13 @@ describe('Ryusei: Weapon Nodes, Shooting-Star Thrust, Spatial Swap', () => {
     assert.ok(!resisted.events.some((e) => e.t === 'note' && e.key === 'swapped'));
     const save = failed.events.find((e) => e.t === 'save');
     assert.ok(save?.t === 'save' && save.what === 'ryusei_swap' && save.roll.dc === s.units.r.saveDC && save.ab === 'str');
-    // Refused: nobody on a Node, itself, the hydra, or before the fighting.
+    // No Node needed (the owner, 2026-10-28: "que cambie con libertad"). Refused: itself, the hydra,
+    // out of reach, or before the fighting.
     const bare = ryuseiTurn();
-    assert.equal(swap(bare, 'rogue_0').reason, 'notOnNode');
+    assert.ok(swap(bare, 'rogue_0').ok);
+    const away = ryuseiTurn();
+    away.units.rogue_0.pos = { x: away.units.r.pos.x + 19, z: away.units.r.pos.z };
+    assert.equal(swap(away, 'rogue_0').reason, 'outOfRange');
     assert.equal(swap(s, 'r').reason, 'needTarget');
     const lair = turnOf(createBattle(setup({ party: [{ character: ryusei(), pos: { x: 10, z: 14 } }], enemies: [{ kind: 'hydra', pos: { x: 16, z: 8 } }] })).state, 'r');
     const head = Object.values(lair.units).find((u) => u.kind === 'hydra_head')!;

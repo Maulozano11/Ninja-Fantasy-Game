@@ -207,9 +207,10 @@ const TABLE = strings({
   },
   aimWarpAny: { en: 'Pick a foe or a spot within 18 m', es: 'Elige un enemigo o un punto a 18 m' },
   help_ryusei_swap: {
-    en: 'Action, 3 chakra, 18 m: swap places with anyone standing on one of your Nodes. An enemy can resist with a STR save.',
-    es: 'Acción, 3 chakra, 18 m: intercambia el lugar con quien esté sobre uno de tus Nodos. Un enemigo puede resistirse con una salvación de FUE.',
+    en: 'Action, 3 chakra, 18 m: swap places with any ninja in sight, ally or enemy, even through walls. An enemy can resist with a STR save.',
+    es: 'Acción, 3 chakra, 18 m: intercambia el lugar con cualquier ninja a la vista, aliado o enemigo, incluso a través de muros. Un enemigo puede resistirse con una salvación de FUE.',
   },
+
   help_northstar_command: {
     en: 'Action, 4 chakra, 9 m: a Minion (a Captain too from level 5) that fails a WIS save fights for you for 1 round (from level 9: two targets, 2 rounds). Mirai are immune; bosses can’t be controlled.',
     es: 'Acción, 4 chakra, 9 m: un esbirro (también un capitán desde el nivel 5) que falla una salvación de SAB lucha para ti durante 1 ronda (desde el nivel 9: dos objetivos, 2 rondas). Los Mirai son inmunes; los jefes no se pueden controlar.',
@@ -325,7 +326,7 @@ const TABLE = strings({
   r_blocked: { en: 'Blocked.', es: 'Bloqueado.' },
   r_noNode: { en: 'Pick one of your Nodes.', es: 'Elige uno de tus Nodos.' },
   r_notOnNode: { en: 'Not standing on one of your Nodes.', es: 'No está sobre uno de tus Nodos.' },
-  r_noneOnNode: { en: 'Nobody stands on one of your Nodes.', es: 'Nadie está sobre uno de tus Nodos.' },
+  r_noneOnNode: { en: 'Nobody in reach to swap with.', es: 'No hay nadie a tu alcance para intercambiar.' },
   r_offMap: { en: 'It would stand off the map.', es: 'Se saldría del mapa.' },
   r_noUnit: { en: 'Nobody takes its reins: it fights on its own.', es: 'Nadie toma sus riendas: lucha por su cuenta.' },
   why_noNodes: { en: 'No Nodes yet: a kunai, or a blow that misses, leaves one.', es: 'Aún no hay Nodos: un kunai, o un golpe que falla, deja uno.' },

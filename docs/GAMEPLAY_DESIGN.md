@@ -152,6 +152,28 @@ elements.
 - Climbing: ramps, stairs and vines, plus ninja jumps and wall runs paid with
   movement or chakra.
 
+## The jump attack (the owner, 2026-10-28; not built)
+
+Made for the colossal hydra's heads in the air, but for anyone: a ninja leaps, strikes in the air
+and lands back with the squad (the owner: *"saltar y atacar me parece mejor, así como en el salto de
+esconderte en el árbol y aparecer en el aire atacando y regresar a tu cuadrilla"*). Storyboard:
+`docs/mockups/jump-attack-storyboard.png`. Climbing onto something high to strike (a pillar, the
+wall walk) was offered too; he said no to it as a mechanic of its own.
+
+- **Cost:** the action and 1 chakra, plus the jutsu cooldown (numbers from Baldur's Gate 3, to
+  propose).
+- **Reach:** a target up to 6 m away and up to 4.5 m high (three levels).
+- **The strike:** a melee weapon attack with +2, as from higher ground. Leaping from hiding
+  (behind a pillar, crates, or up a tree on other maps) gives advantage and the surprise damage,
+  as any attack from hiding.
+- **The return:** the ninja lands where it leapt from, or up to 3 m from there, with no
+  opportunity attacks.
+- **The risk, 20 %** (his number: *"no lo pongas tan riesgoso, ponle un porcentaje de 20% que
+  falles"*): a 20 % roll, shown before leaping like every other %, that the landing goes wrong:
+  the ninja doesn't return, falls under the target, takes 1d6 from the fall and lies prone in its
+  reach. The strike itself is rolled as usual. (First proposed: no return whenever the strike
+  missed; he found it too risky.)
+
 ## Cover
 
 - Half cover (+2 AC) and three-quarters cover (+5 AC), judged from the

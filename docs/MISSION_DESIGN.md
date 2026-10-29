@@ -192,8 +192,11 @@ gusta la tensión pero puede ser algo más como 5 niveles de enfoque"*. Decided 
 - Buffs like **Encouraged** (Envalentonado) stay.
 - Everything below about Tension (its gains and losses, the save at 10, Breakdown) is the old
   design and is void; the numbers of Focus are being proposed.
-- **Exhaustion stays**, but how it applies is to be designed, and whether it is worth keeping in
-  the other settings (space and mechas, superheroes).
+- **Exhaustion stays** (*"sí vale la pena el cansancio"*): HP and chakra carry from one scene to
+  the next; Exhaustion is the wear a short stop doesn't fix (no food, pills, opening the Gates),
+  cleared only at camp or the village. In space the pilot carries it and the mecha has its own
+  wear (heat, structure) fixed in the hangar; for superheroes, overusing powers gives it. (Our
+  proposal, 2026-10-29; the per-level numbers are still to propose, and so are Focus's.)
 
 - 0–10 per ninja, always visible.
 - **+1:** taking a critical hit, an ally falling, an unseen trap, a night with no
@@ -432,6 +435,42 @@ reputation) or text, for the scene, the mission or the campaign. The
 **Chronicle** screen lists each mission's decisions: what was chosen, who voted
 what and each AI ally's stance, the consequences already seen and the pending
 ones. Online it can later show the % of players who chose the same.
+
+## Personalities, the karma meter and how dialogue is written (the owner, 2026-10-29)
+
+**The four personalities are the four convictions** (*"como lo tenemos me gusta"*), each with its
+gem colour in every answer card:
+
+| Personality | Gem | |
+|---|---|---|
+| Pride: the clan's honour (the race's or the people's, by setting) | red | most proud answers |
+| The mission first | **amethyst** (*"que sea amatista, no plata"*) | |
+| Protect the weak | green | |
+| Loyalty to the village (one's own, the team) | gold | |
+| The smart answer (not a personality) | blue | anyone can pick it |
+
+**Two more are unlocked by what the player does**, in the spirit of an anti-hero: a chaotic
+*good* one and a chaotic *evil* one (names proposed in the chat, waiting for his pick).
+
+**A karma meter, good to evil** (like the morality of *Fable*): every decision moves it, and it
+changes how people treat you. His examples: a companion who jokes and chats with a good hero
+only takes orders, silently, from an evil one; teammates fear a cruel, merciless leader; at
+maximum reputation an evil hero is feared by the public, a popular superhero is loved. It ties
+into Reputation and Status (`WORLD_DESIGN.md`).
+
+**Dialogue rules (approved):**
+1. **Natural, eloquent, even roguish.** Lines sound like people talk, never like machine text
+   ("conveniente", "sin embargo", "cabe destacar"). Villains have wit: they mock, boast, answer
+   fast.
+2. **Every answer carries its personality's colour.** Answering with your ninja's own
+   personality fills Focus.
+3. **Whenever the situation allows, there is "the couch option"**: what a viewer on the couch
+   would shout at the screen, *"why don't they just…?"*. It is blue, it really works and it is
+   rewarded, never punished for being clever. Sometimes something unlocks it: a Mirai sees the
+   trap, a clue found earlier, a skill. There should be many of these in the game.
+4. **Every answer has a consequence**, in play or in the story. Nothing is decoration.
+5. **The other character reacts to your tone**: the villain doesn't answer the proud one the
+   way he answers the serious one.
 
 ## Decisions in the three modes
 

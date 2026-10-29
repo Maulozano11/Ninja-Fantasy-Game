@@ -485,8 +485,8 @@ lands as the crescent arrives. In the ninja's chakra colour, as on the weapon; e
   revive them. Back on their feet they carry **Fall aftermath** (−2 AC, death
   saves with disadvantage) until the mission ends; dropped by a critical hit,
   also a **Grave wound** (−10 % max HP).
-- **Tension: removed by the owner on 2026-10-29** (HP and chakra are enough to show a ninja is
-  worn out; `MISSION_DESIGN.md`, "Tension (removed)"). What it was:
+- **Tension becomes Focus (the owner, 2026-10-29):** 5 levels, only positive, the Awakening at 5, no
+  Breakdown (`MISSION_DESIGN.md`, "Tension becomes Focus"). What Tension was:
   (stress, 0–10): +1 for taking a critical hit or an ally falling,
   −1 for a critical of one's own or a victory. At 10, a WIS save: Breakdown or
   Awakening. Details in `MISSION_DESIGN.md`.

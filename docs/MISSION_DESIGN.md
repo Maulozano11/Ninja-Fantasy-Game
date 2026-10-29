@@ -179,16 +179,21 @@ From 5, the pair has Comrades' bond in every mission.
   of whoever set it (also the DC of the tag's DEX save). Bells deal no damage;
   they only wake the party in time. Unused material is picked up in the morning.
 
-## Tension (removed)
+## Tension becomes Focus (the owner, 2026-10-29; design in progress)
 
-**Removed (the owner, 2026-10-29):** *"elimina los efectos que agarramos de Darkest Dungeon de
-tensión; tener poca vida y chakra es suficiente para representar que estás cansado"*. Tension is
-gone: the meter, its gains and losses (food, fire, shrines, talks, traps, criticals, falls,
-votes), the WIS save at 10, Breakdown and Awakening (Will of Fire), Shrine's blessing, Encouraged
-and the small traits they left after a mission. Every mention of them in this doc is void; HP and
-chakra carry the fatigue. Still in the code until it is taken out (`rules/ninja.ts`,
-`rules/rest.ts`, `rules/mission.ts`, the camp and party screens, the battle's Tension events).
-(Hate as a resource, kept from the ToME ideas for "some kind of awakening", is a separate idea.)
+First he asked to remove the Darkest Dungeon effects of Tension (*"tener poca vida y chakra es
+suficiente para representar que estás cansado"*), then kept the idea in a positive form: *"me
+gusta la tensión pero puede ser algo más como 5 niveles de enfoque"*. Decided so far:
+- **Focus, 5 levels, only positive.** No Breakdown any more (*"el quiebre ya no, solo cosas
+  positivas"*); it is hard to fill.
+- **It fills with deeds:** defeating a Captain, a choice with a good outcome, a choice true to
+  your character's personality (for example the proud answer of a proud ninja).
+- **At 5: the Awakening**, which stays (*"el despertar se tiene que hacer"*).
+- Buffs like **Encouraged** (Envalentonado) stay.
+- Everything below about Tension (its gains and losses, the save at 10, Breakdown) is the old
+  design and is void; the numbers of Focus are being proposed.
+- **Exhaustion stays**, but how it applies is to be designed, and whether it is worth keeping in
+  the other settings (space and mechas, superheroes).
 
 - 0–10 per ninja, always visible.
 - **+1:** taking a critical hit, an ally falling, an unseen trap, a night with no

@@ -344,6 +344,22 @@ El dueño eligió el **camino 3, híbrido por capas**:
 4. **Primer lote de prueba**: cuerpo y cara de Solen y de Lyra en la pose `sit_table`. Si el flujo
    rinde, el resto.
 
+**La silla y las versiones (el dueño, 2026-10-28: "1 b 2 a").** Su Solen sentado en la silla roja y
+dorada (`docs/reference/poses/solen-chair-sit-owner-reference.png`) es para las **escenas de novela**
+(retratos y escenas sentadas, a la calidad del generador; los sprites de batalla y mapa se quedan a
+su escala). **1b**: se parte en capas desde ya, para que cualquier personaje creado se siente igual
+cambiando pelo, ropa y colores. **2a**: su hoja de diez versiones
+(`poses/chair-seated-variants-owner-reference.png`) es la guía de cómo cambian. Medido: el
+generador **repinta la figura entera** en cada versión y conserva la pose (siluetas 85–95 %, solo
+13 % de píxeles idénticos), así que las variantes las pone nuestro motor por capas.
+Hecho: `tools/refs/chair_sit/` lee su Solen a su densidad (5.6 px de imagen por píxel suyo,
+145 × 156) y lo parte en 13 capas (piel, cara, pelo, bufanda, capa, armadura, banda, faldón,
+cinturón, pantalón, sandalias, ropa, silla: `docs/mockups/chair-sit-solen-layers.png`);
+recoloreadas con su sombreado, dan tres de sus versiones (`docs/mockups/chair-sit-solen-recolor.png`).
+Lo que el recoloreado no da (lo azul del análisis: otro peinado, otra capa, otra ropa) son
+**piezas nuevas** que el generador pinta sobre esta misma pose, una por imagen (paso 2 del camino 3),
+y lo que tapa la ropa (el cuerpo debajo) también se le pide pintado.
+
 **Solo cinco personajes.** El dueño (2026-10-28): borrar todo lo anterior al rediseño de Solen:
 Ren, Akira, Hana, Hiro, Kaien, Raiga, Kenji y sus piezas, para concentrarse en Solen, Romano,
 Aiden, Lyra y Aurelia. Se hace en su propia rama (`cleanup/five-only`) con su confirmación de la

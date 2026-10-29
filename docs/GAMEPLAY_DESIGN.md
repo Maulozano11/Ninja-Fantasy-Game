@@ -2125,8 +2125,11 @@ and no body along the back wall; only the body on the right).
   (about 14 m of depth) and the top two necks run along the wall, so those heads are in the air
   (about 4 m and 2.3 m or more over the floor): reaching them in melee needs a jump or height. The
   long neck: the head frame, then a straight stretch of his long neck (his zip's fixed part) scaled
-  to the same thickness and repeated with soft overlaps, into the painted neck. It overlaps the
-  painted neck up to where both are equally thick, sits on its middle there and fades out over
-  about 34 px, tinted toward his darker scales (`docs/mockups/colossal-hydra-neck-joins.png`). His first two
+  to the same thickness and repeated with soft overlaps, into the painted neck. His backdrop has
+  depth, so the back necks are painted thinner (about 55, 61, 59, 65 and 68 px from back to
+  front, measured 190 px past each ring): each game neck narrows along its stretch to its painted
+  neck's thickness (the owner, 2026-10-28: the top three were thicker than the body's necks),
+  overlaps it up to there, sits on its middle and fades out over about 34 px, tinted toward his
+  darker scales (`docs/mockups/colossal-hydra-neck-joins.png`). His first two
   backdrops and the bite strip v2 (seven heads) stay as references.
 

@@ -179,7 +179,16 @@ From 5, the pair has Comrades' bond in every mission.
   of whoever set it (also the DC of the tag's DEX save). Bells deal no damage;
   they only wake the party in time. Unused material is picked up in the morning.
 
-## Tension
+## Tension (removed)
+
+**Removed (the owner, 2026-10-29):** *"elimina los efectos que agarramos de Darkest Dungeon de
+tensión; tener poca vida y chakra es suficiente para representar que estás cansado"*. Tension is
+gone: the meter, its gains and losses (food, fire, shrines, talks, traps, criticals, falls,
+votes), the WIS save at 10, Breakdown and Awakening (Will of Fire), Shrine's blessing, Encouraged
+and the small traits they left after a mission. Every mention of them in this doc is void; HP and
+chakra carry the fatigue. Still in the code until it is taken out (`rules/ninja.ts`,
+`rules/rest.ts`, `rules/mission.ts`, the camp and party screens, the battle's Tension events).
+(Hate as a resource, kept from the ToME ideas for "some kind of awakening", is a separate idea.)
 
 - 0–10 per ninja, always visible.
 - **+1:** taking a critical hit, an ally falling, an unseen trap, a night with no

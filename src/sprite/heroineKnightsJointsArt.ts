@@ -5,6 +5,8 @@
 /** His joints at rest in our female idle frame 0 (fine pixels): where she turns as he drew her. */
 export const HK_HIS: Record<string, [number, number]> = {
   neck: [127.260, 146.010],
+  collarN: [117.260, 142.010],
+  collarF: [132.010, 142.010],
   shoulderN: [112.010, 152.010],
   elbowN: [107.010, 164.760],
   wristN: [105.760, 173.260],

@@ -545,7 +545,7 @@ def components(mask, conn8=False):
 # on her right. Inside these polygons (his pixels) every pixel of his hair's tones is hair, 'hairFront': the
 # frontmost part, shared and never a piece, so the sets wear any head's hair and the armour under it is
 # continued (complete()). The tones are his hair's own (HAIR_LIGHT) and its shadows (HAIR_DARK, which his
-# capes share: a dark pixel is hair only within two pixels of a light one).
+# capes share: inside the zones they are hair, outside the cape's; hair_front()).
 HAIR_FRONT = {
     'paladin': [[(9, 24), (31, 24), (31, 34), (28, 46), (24, 60), (9, 60)], [(36, 27), (45, 27), (45, 43), (36, 43)]],
     'rogue': [[(10, 24), (31, 24), (31, 36), (26, 60), (10, 60)], [(36, 27), (45, 27), (45, 43), (36, 43)]],
@@ -554,33 +554,54 @@ HAIR_FRONT = {
 HAIR_LIGHT = np.array([(161, 61, 38), (156, 57, 36), (158, 58, 34), (108, 33, 38), (99, 29, 37), (98, 28, 36)])
 HAIR_DARK = np.array([(56, 13, 36), (60, 14, 36), (48, 12, 26), (58, 10, 28), (49, 13, 27), (46, 14, 37)])
 HAIR_TOL = 6
+ARMOUR_KINDS = ('gold', 'ivory', 'steel', 'blue', 'white', 'cyan', 'green', 'skin')
 
 
 def hair_front(fig):
-    """The pixels of a figure that are his hair in front of the set (HAIR_FRONT), as a mask."""
+    """The pixels of a figure that are his hair in front of the set (HAIR_FRONT), as a mask: inside the zones
+    every pixel is hair but his line, the armour's own kinds (ARMOUR_KINDS) and a pixel in one of the exact
+    colours its part shows outside the zones (the cape's crimson, the hood, the dragon's scales), unless it is
+    one of his hair's own tones (HAIR_LIGHT). The hair's shadows, which the capes' shadows resemble, are
+    hair here: outside the zones they are the cape's."""
     a = figure_native(fig)
     m = figure_mask(fig)
     H, W = m.shape
+    zones = [inside(pts, H, W) & m & ~inside(HEAD, H, W) for pts in HAIR_FRONT[fig]]
     poly = np.zeros((H, W), bool)
-    for pts in HAIR_FRONT[fig]:
-        poly |= inside(pts, H, W)
-    poly &= m & ~inside(HEAD, H, W)
-    near = lambda pal: np.abs(a[:, :, None, :] - pal[None, None, :, :]).max(-1).min(-1) <= HAIR_TOL
-    light = near(HAIR_LIGHT) & poly
-    dark = near(HAIR_DARK) & poly
-    hair = light.copy()
-    for _ in range(2):
-        ring = np.zeros_like(hair)
-        for dy in (-1, 0, 1):
-            for dx in (-1, 0, 1):
-                if dy or dx:
-                    ring |= np.roll(np.roll(hair, dy, 0), dx, 1)
-        hair |= ring & dark
-    # his line walled in by hair on both sides of a row or a column is the hair's
-    line = is_line(a) & poly
-    for y, x in zip(*np.nonzero(line)):
+    for z in zones:
+        poly |= z
+    near = lambda pal, tol: np.abs(a[:, :, None, :] - pal[None, None, :, :]).max(-1).min(-1) <= tol
+    K = kinds(a)
+    line = is_line(a)
+    light = near(HAIR_LIGHT, HAIR_TOL)
+    hair = poly & ~line & ~np.isin(K, ARMOUR_KINDS)
+    # in the mane's zone (the first) a part keeps the exact colours it shows outside the zones (the cape's
+    # crimson, the hood, the scales); in the strand's zone by the neck (the second) nothing but the armour's
+    # kinds stays: its shadows are the strand's (the owner, 2026-10-29, his red circles), and the gorget, the
+    # collar and the hood are continued under it from their own pixels
+    mane = zones[0]
+    lab0 = labels(fig, skip=('hairFront',))
+    for part in sorted(set(lab0[mane].tolist()) - {'', 'hairBack', 'head'}):
+        shown = (lab0 == part) & ~poly & ~line
+        if not shown.any():
+            continue
+        pal = np.unique(a[shown].reshape(-1, 3), axis=0)
+        hair &= ~(mane & (lab0 == part) & near(pal, 3) & ~light)
+    # his line walled in by hair on both sides of a row or a column is the hair's, and so is a pixel of the
+    # zone in a scrap of the set of at most four pixels on its own (a line or a speck between strands: it would be a loose piece)
+    for y, x in zip(*np.nonzero(line & poly)):
         if (0 < x < W - 1 and hair[y, x - 1] and hair[y, x + 1]) or (0 < y < H - 1 and hair[y - 1, x] and hair[y + 1, x]):
             hair[y, x] = True
+    for _ in range(3):
+        rest = m & ~hair
+        lone = np.zeros((H, W), bool)
+        for c in components(rest, True):
+            if len(c) <= 4 and all(poly[y, x] for y, x in c):
+                for y, x in c:
+                    lone[y, x] = True
+        if not lone.any():
+            break
+        hair |= lone
     return hair
 
 
@@ -761,7 +782,7 @@ DRAWN = ['cape', 'hairBack', 'upperF', 'pauldF', 'foreF', 'handF', 'thighF', 'fo
 # (the rogue's hood and collar are her cape's: the collar over her corset, the hood over her near arm)
 DRAWN_OF = {'rogue': [n for n in DRAWN if n not in ('pauldF', 'pauldN')]}
 DRAWN_OF['rogue'].insert(DRAWN_OF['rogue'].index('torso') + 1, 'pauldF')
-DRAWN_OF['rogue'].append('pauldN')
+DRAWN_OF['rogue'].insert(DRAWN_OF['rogue'].index('hairFront'), 'pauldN')  # (her hood under her hair in front)
 
 
 def composed(fig):
@@ -1026,6 +1047,20 @@ def game(fig):
     the shared pieces' pixels (shared()), the same in all three."""
     if fig not in _GAME:
         rgb, lab = clean(fig, *composed(fig))
+        # a scrap of a set's part of at most four pixels left on its own beside his hair in front (the shrink
+        # can part it from its piece) is the hair's: it would be a loose piece under any other head
+        own = (lab != '') & ~np.isin(lab, SHARED_PARTS)
+        for c in components(own, True):
+            if len(c) <= 4 and any(lab[y + dy, x + dx] == 'hairFront' for y, x in c for dy in (-1, 0, 1) for dx in (-1, 0, 1)):
+                for y, x in c:
+                    lab[y, x] = 'hairFront'
+        # and a gap of his picture walled in by the figure on all four sides, beside his hair in front (the
+        # ground between two strands over the hood's corner), is the hair's too: under another head it would show
+        fig_cells = lab != ''
+        for y, x in zip(*np.nonzero(~fig_cells)):
+            if 0 < y < GRID - 1 and 0 < x < GRID - 1 and fig_cells[y - 1, x] and fig_cells[y + 1, x] and fig_cells[y, x - 1] and fig_cells[y, x + 1] \
+                    and any(lab[y + dy, x + dx] == 'hairFront' for dy in (-1, 0, 1) for dx in (-1, 0, 1)):
+                lab[y, x] = 'hairFront'
         if fig != SHARED_FROM:
             srgb, slab = shared()
             m = np.isin(lab, SHARED_PARTS) & (slab != '')
@@ -1081,6 +1116,9 @@ def plain_frame(fig):
 # she wears his sets (src/sprite/heroineKnightsRig.ts).
 HIS_NATIVE = {
     'neck': (50.0, 32.0),
+    # the collar's corners under his chin (not joints: where the torso's neckline reaches, REACH)
+    'collarN': (37.0, 28.0),
+    'collarF': (55.0, 28.0),
     'shoulderN': (29.0, 41.0),
     'elbowN': (23.0, 57.0),
     'wristN': (21.0, 68.0),
@@ -1284,7 +1322,7 @@ FILL_FROM = {'thighF': 'thighN', 'thighN': 'thighF'}
 # to the joints at its ends, the cape up to the shoulders. A thigh reaches the pelvis as well as its hip, so
 # its top is a wedge under the skirt, not a line: the paladin's far thigh (narrow under her tabard) came apart
 # from her when the leg kicked back.
-REACH = {'torso': ('shoulderN', 'shoulderF', 'neck'), 'upperN': ('shoulderN', 'elbowN'), 'upperF': ('shoulderF', 'elbowF'),
+REACH = {'torso': ('shoulderN', 'shoulderF', 'neck', 'collarN', 'collarF'), 'upperN': ('shoulderN', 'elbowN'), 'upperF': ('shoulderF', 'elbowF'),
          'foreN': ('elbowN', 'wristN'), 'foreF': ('elbowF', 'wristF'), 'thighN': ('hipN', 'pelvis', 'kneeN'), 'thighF': ('hipF', 'pelvis', 'kneeF'),
          'shinN': ('kneeN', 'ankleN'), 'shinF': ('kneeF', 'ankleF'), 'cape': ('shoulderN', 'shoulderF')}
 # The cape behind her body is its lining in shade: one colour of his (the commonest of its darker half), not
@@ -1355,6 +1393,62 @@ def set_pieces(fig):
         if n in FILL_AXIS and m.any():
             m, c = complete(lab, n, m, c, FILL_AXIS[n], fig)
         out[n] = (m, c)
+    # a cell of his head or his hair that no piece covers but that lies between the set's pixels (a seam
+    # between the hood and the torso under the strand: the ground would show through under a smaller head)
+    # goes to the nearest piece, in its nearest colour (the owner, 2026-10-29: "veo el fondo")
+    shared_cells = np.isin(lab, ('head', 'hairFront', 'hairBack'))
+    for _ in range(4):
+        covered = np.zeros((GRID, GRID), bool)
+        for m, _c in out.values():
+            covered |= m
+        grew = False
+        for y, x in zip(*np.nonzero(shared_cells & ~covered)):
+            left = covered[y, max(0, x - 3):x].any()
+            right = covered[y, x + 1:x + 4].any()
+            up = covered[max(0, y - 3):y, x].any()
+            down = covered[y + 1:y + 4, x].any()
+            if not ((left and right) or (up and down)):
+                continue
+            best = None
+            for r in range(1, 5):
+                for dy in range(-r, r + 1):
+                    for dx in range(-r, r + 1):
+                        if max(abs(dy), abs(dx)) != r:
+                            continue
+                        q = (y + dy, x + dx)
+                        if not (0 <= q[0] < GRID and 0 <= q[1] < GRID) or not covered[q]:
+                            continue
+                        for n, (m, c) in out.items():
+                            if m[q] and not is_line(c[q]):
+                                best = (n, q)
+                                break
+                        if best:
+                            break
+                    if best:
+                        break
+                if best:
+                    break
+            if best:
+                n, q = best
+                out[n][0][y, x] = True
+                out[n][1][y, x] = out[n][1][q]
+                grew = True
+        if not grew:
+            break
+    # and a cell of his head or hair right above a piece, with another pixel of a piece beside it (the hood's
+    # corner under her hair), is that piece's top, in its colour below: one pass, so nothing grows
+    covered = np.zeros((GRID, GRID), bool)
+    for m, _c in out.values():
+        covered |= m
+    for y, x in zip(*np.nonzero(shared_cells & ~covered)):
+        if y + 1 >= GRID or not covered[y + 1, x] or covered[max(0, y - 1):y + 2, max(0, x - 1):x + 2].sum() < 2:
+            continue
+        for n, (m, c) in out.items():
+            if m[y + 1, x]:
+                src = (y + 2, x) if y + 2 < GRID and m[y + 2, x] and not is_line(c[y + 2, x]) else (y + 1, x)
+                m[y, x] = True
+                c[y, x] = c[src]
+                break
     return out
 
 

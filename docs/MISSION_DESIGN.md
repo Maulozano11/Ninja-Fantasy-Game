@@ -489,7 +489,11 @@ design; no franchise look.)
     *"¿Solo? ¿Y quién te dijo que estoy solo?"* (the owner asked for natural words).
   - Blue, the Mirai answer: see that something is wrong; the party gets priority in the
     battle's initiative.
-  - Two more answers, each with three versions for him to pick: proposed in the chat 2026-10-29.
+  - Provoke him about the Northstar (his pick 3b): *a Kōton playing the Northstar's dog*. He
+    loses his temper and sends the hydra first at whoever said it: that ninja draws its attacks.
+  - Attack mid-sentence (his pick 4a): a kunai before he finishes. The summon is broken: the
+    hydra comes out with 3 of its 5 heads the first round; Barrabás gets away swearing revenge
+    (he will remember it).
 - Then, whatever was answered: *a beast nobody can control, only the Northstar king could*; the
   alchemical sigil, the summon, the battle.
 

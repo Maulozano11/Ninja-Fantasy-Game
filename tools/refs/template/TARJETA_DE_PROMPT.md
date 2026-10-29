@@ -510,3 +510,92 @@ Fila 5: el panel de sección 1000×300 con la cabecera: esquinas ornamentadas, u
 icono a la izquierda del título y una línea dorada; vacío; y el mismo en 1000×600.
 PNG, 3200×2400, sin morado fuera del magenta de fondo.
 ```
+
+## 11. La hidra colosal, guardiana de la fortaleza · el fondo con el cuerpo, las cabezas, los efectos
+
+Aprobada por el dueño el 2026-10-28 en su versión básica (`docs/mockups/colossal-hydra-concept.png`):
+el cuerpo **solo a la derecha** (nada a lo largo del fondo ni hacia el frente), siete cabezas de
+**2.5 personajes** (4.4 m) en cuellos largos **horizontales**, **mirando a la izquierda** hacia la
+puerta, cada una en su carril y a 8 m o más de las otras (una Bola de fuego solo da a una).
+**Mismo estilo y calidad que el casino** (sus palabras: *"que haga el mismo estilo y calidad que
+el casino"*): fondo pintado HD-2D como el casino v3, piezas HD como los props del patio
+(`sheet-from-template.py --hd`).
+
+Cómo se reparte: el **cuerpo va pintado dentro del fondo** (no se ataca ni se mueve: así tiene la
+calidad de la pintura), con siete hombros de donde salen los cuellos. Lo que se mueve, se corta y
+recibe daño son las **cabezas con su cuello**: una sola pieza, la misma para las siete (el juego
+la pone en cada carril).
+
+**Ojo con el magenta:** la boca de la hidra pequeña es morada-rosa; aquí va **rojo oscuro**,
+porque el morado se borra con el fondo magenta.
+
+**A) El fondo con el cuerpo** (adjunta la versión básica y el fondo del casino v3 como estilo):
+
+```
+FONDO · el patio interior de una fortaleza de piedra, de noche, con una hidra colosal dormida a la
+derecha · PANORÁMICO 16:9 (1920×1080)
+Pintura de fondo para un juego de pixel art de 16 bits de vista lateral (2.5D), con la MISMA
+calidad, pincel y luz que el fondo del casino adjunto: un escenario visto de frente, con
+profundidad hacia atrás, NO isométrico.
+Qué se ve:
+- el SUELO del patio, losas de piedra grandes y gastadas, en perspectiva suave, desde el borde de
+  abajo hasta la mitad de la imagen (ahí pisan los personajes);
+- al fondo, el MURO de la fortaleza: sillares grises, almenas, dos torres con ventanas encendidas
+  de luz naranja, antorchas en el muro;
+- a la IZQUIERDA, el portón de entrada de madera reforzada, abierto, por donde entran los héroes;
+- a la DERECHA, ocupando un tercio del ancho y toda la altura del patio, el CUERPO de una hidra
+  colosal: escamas verde azulado profundo, placas del vientre doradas-ocre, púas doradas en el
+  lomo, apoyado en el suelo; de su costado izquierdo salen SIETE muñones de cuello (hombros
+  gruesos, cortados limpio, sin cabezas), escalonados a distintas alturas y profundidades, que
+  apuntan a la izquierda. Del cuerpo NO sale nada hacia el frente ni a lo largo del muro: ni cola
+  ni patas al frente.
+Luz: de noche, fría y azul desde arriba, cálida desde antorchas y ventanas; sombras suaves.
+Paleta corta: piedra gris, verde azulado de escamas, oro ocre, naranja de las luces, azul noche;
+3 o 4 tonos por material, en bandas planas; sin degradados finos, sin ruido.
+PROHIBIDO: texto, personas, cabezas de la hidra, magenta, rosa fuerte o morado.
+Entrega: PNG a 1920×1080.
+```
+
+**B) La cabeza con su cuello, quieta** (adjunta A cuando esté hecho, para la misma escama y luz):
+
+```
+UNA cabeza de la hidra del fondo adjunto, con su cuello largo, sobre FONDO MAGENTA PURO (#FF00FF):
+cabeza de dragón mirando a la IZQUIERDA, mandíbula abierta, filas de dientes blancos, boca ROJO
+OSCURO (nada morado ni rosa), ojos verdes brillantes bajo una ceja enojada, cuernos dorados
+barridos hacia atrás y una corona de púas. El cuello sale de la cabeza hacia la DERECHA en
+horizontal, largo como cuatro veces la cabeza, con escamas verde azulado, placas doradas debajo y
+púas doradas encima, y termina cortado limpio en el borde derecho (ahí lo tapa el hombro del
+cuerpo). Misma escama, mismos dorados y misma luz nocturna que el fondo adjunto, alta
+resolución, NO pixel art.
+Sin sombra en el suelo, sin texto, nada magenta, rosa fuerte ni morado en el dibujo.
+Entrega: PNG de unos 2400×700, la pieza entera con margen.
+```
+
+**C) Sus animaciones**, una tira por prompt, como la de la crupier (adjunta B):
+
+```
+De la pieza adjunta (cabeza con cuello), dibuja UNA tira de N cuadros en fila, todos del mismo
+tamaño, separados por espacio magenta, con el cuello SIEMPRE en el mismo lugar en el borde
+derecho (solo se mueven la cabeza y la parte del cuello cercana a ella). Misma pintura y colores.
+```
+
+| Tira | Cuadros | Qué hace |
+|---|---|---|
+| Quieta | 4 | respira: la cabeza sube y baja un poco, la boca se abre y se cierra apenas |
+| Mordida | 5 | se echa atrás, se lanza a la izquierda con la boca bien abierta, cierra de golpe, vuelve |
+| Ácido | 5 | se echa atrás, abre la boca, escupe un chorro verde brillante a la izquierda, cierra, vuelve |
+| Herida | 3 | se sacude hacia atrás con los ojos cerrados, vuelve |
+| Cortada | 5 | la cabeza se separa del cuello y cae; queda el muñón del cuello sangrando oscuro |
+| Vuelve a crecer | 4 | del muñón brota la cabeza nueva, pequeña, y crece hasta su tamaño |
+
+La línea para repetir si se mueve el cuello: *"el cuello queda exactamente igual en todos los
+cuadros en su borde derecho; solo se mueven la cabeza y el tramo cercano a ella"*.
+
+**D) Los efectos**, en una hoja magenta como los props: el escupitajo de ácido (una bola verde
+brillante con estela), el charco de ácido en el suelo (visto desde arriba, achatado), el muñón
+quemado (negro con brasas), el muñón crudo; cada uno en su celda, sin sombra, sin texto.
+
+Con A–D: el fondo se usa como el del casino (pintado completo); B y C pasan por
+`sheet-from-template.py --hd` a una hoja de la hidra colosal como la de `world/creatures/`
+(`hydra_neck_*`), una sola cabeza repetida en los siete carriles; el motor necesita cabezas con
+`bulk` (su tamaño) y carriles fijos (diseño en `docs/GAMEPLAY_DESIGN.md`, "The colossal hydra").

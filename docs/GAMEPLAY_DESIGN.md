@@ -2067,3 +2067,27 @@ for now; its S-rank slot offers its element's (and nothing for Light or Void).
   change leaves it. Its projectile sheet (`vfx_chakra/multi`) stays in the
   repo: it is one sheet of the generated chakra set (every element's set has a
   `multi`), no other jutsu flies it today, and deleting art is his call.
+
+### The colossal hydra, guardian of the fortress (the owner, 2026-10-28; not built)
+
+His: *"una hydra colosal que esté adentro de una fortaleza, va a ser el guardia de la fortaleza...
+cada cabeza estaría separada para que incluso si le pegas con una bola de fuego solo le des a una
+cabeza... mide 2.5x del personaje... cada cabeza está saliendo del cuerpo con su cuello largo en
+horizontal volteando a la izquierda, ataca haciendo mordidas y lanza ácido, misma dinámica que este
+pequeño; el pequeño sería como la versión introductoria"*. Approved basic version:
+`docs/mockups/colossal-hydra-concept.png` (after his two cuts: nothing of the body comes forward,
+and no body along the back wall; only the body on the right).
+
+- The fortress courtyard is the view's size (about 34 m by 19 m of depth). The body stands on the
+  right, painted into the backdrop: it is never a target.
+- Seven heads, each 4.4 m long (2.5 characters), on long horizontal necks out of the body's left
+  side, facing left toward the gate the party comes in by. Each head is a unit in its own lane,
+  at least 8 m from every other head's point, so a Fireball (1.5 m) or the game's biggest area
+  (4.5 m enhanced) only ever catches one. The necks take no damage.
+- The small hydra's rules (`battle/hydra.ts`): each head has its own HP, bites and spits (acid
+  instead of venom), is cut at 0 HP and grows back unless the stump is burnt, electrified or
+  blown up; the hydra dies when every head is down at once. Ours until he says otherwise: a bite
+  reaches about 6 m in front of the head (the neck stretches), the acid about 12 m.
+- The art: card 11 of `tools/refs/template/TARJETA_DE_PROMPT.md`, the casino's style and quality
+  (his words).
+

@@ -485,7 +485,8 @@ design; no franchise look.)
 - **A choice.** The colour of the gem says the kind of answer, from here on: **red = pride**
   (most proud answers), **blue = the clever, wise one** (almost always).
   - Red: laugh it off, *he is one and we are N* (N = the party's size: up to 5 playable
-    characters per player, more with reinforcements, allies, summons or clones).
+    characters per player, more with reinforcements, allies, summons or clones). His reply:
+    *"¿Solo? ¿Y quién te dijo que estoy solo?"* (the owner asked for natural words).
   - Blue, the Mirai answer: see that something is wrong; the party gets priority in the
     battle's initiative.
   - Two more answers, each with three versions for him to pick: proposed in the chat 2026-10-29.

@@ -6,6 +6,10 @@ Vite + React 19 + TypeScript + Tailwind 4. No server: the whole game runs in the
 to localStorage.
 
 **At the start of every session:**
+0. Read the team board: `git fetch origin team/board && git show origin/team/board:docs/TEAM.md`.
+   The owner runs two Claude accounts at once, **Steve** and **Bob**; the board says who works on
+   what, so the two never do the same work or touch the same files. If you don't know whether you
+   are Steve or Bob, ask the owner.
 1. Read `docs/STATUS.md`: what is done, what is waiting for the owner, which branch holds what,
    and who works on which area.
 2. Fetch, then work on your own feature branch made from the latest integration branch (see
@@ -298,8 +302,10 @@ await page.screenshot({ path: '<scratch>/battle.png' });
 
 ## Working in parallel (owner's sessions and the collaborator's)
 
-- **Claim an area** before you start: check the split in `docs/STATUS.md` and the open branches
-  (`git fetch && git branch -r`). If someone already works there, ask first.
+- **Claim an area** before you start: check the split in `docs/STATUS.md`, the team board
+  (`team/board`, `docs/TEAM.md`) and the open branches (`git fetch && git branch -r`). If someone
+  already works there, ask first. Steve and Bob follow the board's rules: claim there, edit only
+  their own sections, review each other's PRs.
 - **Pull and merge often**: `git fetch` and `git merge origin/claude/eloquent-noether-ix51z1` into
   your branch at the start of each session and before opening a PR.
 - **Keep PRs small** so they merge quickly and conflict little.

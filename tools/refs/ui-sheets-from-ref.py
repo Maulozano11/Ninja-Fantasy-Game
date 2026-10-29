@@ -1,7 +1,10 @@
-"""Cut the owner's battle UI sheet (docs/reference/battle-ui-sheet-owner-reference.png, card 9 of
-tools/refs/template/TARJETA_DE_PROMPT.md) into named pieces with alpha, his pixels as they are.
+"""Cut the owner's UI sheets into named pieces with alpha, his pixels as they are:
+  battle   docs/reference/battle-ui-sheet-owner-reference.png (card 9 of
+           tools/refs/template/TARJETA_DE_PROMPT.md): the battle prompts, gem buttons, plates
+  creator  docs/reference/creator-ui-sheet-owner-reference.png (card 10): the creator's panels,
+           step diamonds, group rows, swatches, arrows, slider, stage ring, icons
 
-  python3 -I tools/refs/battle-ui-from-ref.py <out_dir>
+  python3 -I tools/refs/ui-sheets-from-ref.py <battle|creator> <out_dir>
 
 Magenta is keyed out (with the pink spill on soft edges pulled back to the piece's own colour);
 each piece is found as a connected blob and named by its place on the sheet (row by row, as the
@@ -12,9 +15,8 @@ import numpy as np
 from PIL import Image
 from scipy import ndimage
 
-SRC = 'docs/reference/battle-ui-sheet-owner-reference.png'
-
-NAMES = [
+SHEETS = {}
+SHEETS['battle'] = ('docs/reference/battle-ui-sheet-owner-reference.png', [
     'frame_big', 'frame_narrow', 'spark_a', 'spark_b',
     'gem_red', 'gem_red_hover', 'gem_red_pressed', 'gem_off',
     'gem_blue', 'gem_blue_hover', 'gem_blue_pressed', 'gem_off_2',
@@ -26,10 +28,21 @@ NAMES = [
     'plate_party', 'plate_enemy', 'badge_turn', 'diamond_init', 'diamond_done',
     'bar_empty', 'save_off_1', 'save_off_2', 'save_off_3', 'save_off_g1', 'save_off_g2', 'save_off_g3',
     'bar_chakra', 'bar_hp', 'save_red_1', 'save_red_2', 'save_red_3', 'save_green_1', 'save_green_2', 'save_green_3',
-]
+])
+SHEETS['creator'] = ('docs/reference/creator-ui-sheet-owner-reference.png', [
+    'panel_tall', 'panel_wide', 'panel_small',
+    'step_off', 'step_on', 'step_active',
+    'row', 'row_hover', 'row_active',
+    'swatch', 'swatch_sel', 'square', 'square_active', 'none',
+    'arrow_left', 'arrow_left_lit', 'arrow_right', 'arrow_right_lit', 'slider_bar', 'slider_knob',
+    'stage_ring', 'section_header',
+    'icon_body', 'icon_head', 'icon_clothes', 'icon_gear', 'icon_weapon', 'icon_chakra', 'icon_paint', 'icon_origin',
+    'icon_clan', 'icon_class', 'icon_abilities', 'icon_jutsus', 'icon_random', 'icon_zoom', 'icon_rotate', 'icon_portrait',
+])
 
 
-def main(out):
+def main(sheet, out):
+    SRC, NAMES = SHEETS[sheet]
     os.makedirs(out, exist_ok=True)
     im = np.array(Image.open(SRC).convert('RGB')).astype(np.int32)
     r, g, b = im[..., 0], im[..., 1], im[..., 2]
@@ -65,4 +78,4 @@ def main(out):
 
 
 if __name__ == '__main__':
-    main(sys.argv[1])
+    main(sys.argv[1], sys.argv[2])

@@ -1,9 +1,10 @@
-"""The owner's heroine knights: her joints at rest, her face anchor and her grip, from
+"""The owner's heroine knights: her joints at rest and her skin, from
 docs/reference/heroine-knights-owner-reference.jpg shrunk to our scale (tools/refs/heroine_knights_ref.py).
 
 His three women stand alike (one body in one pose): his joints, read off his paladin, in our frame. While
 she wears his sets the game stands the rig's joints on them at rest (src/sprite/heroineKnightsRig.ts), so
-every piece of hers turns about the joint he drew it round.
+every piece of hers turns about the joint he drew it round. Her skin is the base the character's skin is
+retinted from where a set shows it (the rogue's bare thigh).
 
   python3 -I tools/refs/hk-joints-from-ref.py src/sprite/heroineKnightsJointsArt.ts
 """
@@ -24,10 +25,8 @@ def build():
         x, y = R.his_joint(j)
         out.append(f'  {j}: [{x:.3f}, {y:.3f}],')
     out += ['};', '',
-            '/** Her face anchor in our frame: her near eye\'s lash row and first column. */',
-            f'export const HK_FACE_ANCHOR: [number, number] = [{R.FACE_ANCHOR[0]}, {R.FACE_ANCHOR[1]}];', '',
-            '/** Where her eyes start from the face anchor\'s column: the near eye, the far eye. */',
-            f'export const HK_EYE_COLS: [number, number] = [0, {R.FAR_EYE}];', '']
+            "/** Her skin as he drew it: where a set shows her skin (the rogue's bare thigh), the character's skin is retinted from this. */",
+            f"export const HK_SKIN = '{R.his_skin()}';", '']
     return '\n'.join(out)
 
 

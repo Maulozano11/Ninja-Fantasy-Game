@@ -1934,9 +1934,11 @@ export const LEGENDARY_PRESETS: { name: string; tag: string; nameEs?: string; ta
   // ── Heroines: the knights (begin) ──────────────────────────────────────────────────────────────
   // The owner's three women's sets (2026-10-24, "nuevos conjuntos de mujer"), from his picture
   // docs/reference/heroine-knights-owner-reference.jpg shrunk and cleaned to our scale (his rule for big
-  // pictures, "Reducir y limpiar yo"): her shared hair, face, eyes and longsword, and each set's armour,
-  // arms, belt, skirt, thighs, lower legs and cape, each its own creator item (items/heroineKnights.ts). Ids,
-  // names and titles are provisional (the owner will rename them). Their numbers are Lyra's (the same
+  // pictures, "Reducir y limpiar yo"): her longsword, and each set's armour, arms, belt, skirt, thighs, lower
+  // legs and cape, each its own creator item (items/heroineKnights.ts). The sets bring no head of their own
+  // (the owner, D-T8 and D-T16: they are worn with Lyra's or Aurelia's whole head, and must sit on both; he has
+  // not chosen), so these presets wear Lyra's head and exist only as a convenience for rendering the sets.
+  // Ids, names and titles are provisional (the owner will rename them). Their numbers are Lyra's (the same
   // class, clan and jutsu: the creator's formula); Wind chakra, each in a colour of her set.
   {
     name: 'Paladin, the Gilded Knight',
@@ -1988,12 +1990,13 @@ export const LEGENDARY_PRESETS: { name: string; tag: string; nameEs?: string; ta
       jutsuAttackBonus: 7,
       appearance: spriteLook({
         body: 'female',
-        skin: '#febf9c',
-        eyeShape: 'gallant',
-        eyeColor: '#30ab7b',
-        faceShape: 'gallant',
+        // Lyra's whole head (preset_lyra): her skin, eyes, long neck, face and braid
+        skin: '#fbc9aa',
+        eyeShape: 'keen',
+        eyeColor: '#45b476',
+        faceShape: 'fine',
         slots: {
-          hair: it('hair_heroine_auburn'),
+          hair: it('hair_copper_braid'),
           armor: it('armor_heroine_paladin'),
           hands: it('hands_heroine_paladin'),
           waist: it('waist_heroine_paladin'),
@@ -2057,12 +2060,13 @@ export const LEGENDARY_PRESETS: { name: string; tag: string; nameEs?: string; ta
       jutsuAttackBonus: 7,
       appearance: spriteLook({
         body: 'female',
-        skin: '#febf9c',
-        eyeShape: 'gallant',
-        eyeColor: '#30ab7b',
-        faceShape: 'gallant',
+        // Lyra's whole head (preset_lyra): her skin, eyes, long neck, face and braid
+        skin: '#fbc9aa',
+        eyeShape: 'keen',
+        eyeColor: '#45b476',
+        faceShape: 'fine',
         slots: {
-          hair: it('hair_heroine_auburn'),
+          hair: it('hair_copper_braid'),
           armor: it('armor_heroine_rogue'),
           hands: it('hands_heroine_rogue'),
           waist: it('waist_heroine_rogue'),
@@ -2126,12 +2130,13 @@ export const LEGENDARY_PRESETS: { name: string; tag: string; nameEs?: string; ta
       jutsuAttackBonus: 7,
       appearance: spriteLook({
         body: 'female',
-        skin: '#febf9c',
-        eyeShape: 'gallant',
-        eyeColor: '#30ab7b',
-        faceShape: 'gallant',
+        // Lyra's whole head (preset_lyra): her skin, eyes, long neck, face and braid
+        skin: '#fbc9aa',
+        eyeShape: 'keen',
+        eyeColor: '#45b476',
+        faceShape: 'fine',
         slots: {
-          hair: it('hair_heroine_auburn'),
+          hair: it('hair_copper_braid'),
           armor: it('armor_heroine_dragon'),
           hands: it('hands_heroine_dragon'),
           waist: it('waist_heroine_dragon'),

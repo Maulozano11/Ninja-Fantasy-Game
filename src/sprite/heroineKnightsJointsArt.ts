@@ -22,8 +22,5 @@ export const HK_HIS: Record<string, [number, number]> = {
   ankleF: [132.010, 212.677],
 };
 
-/** Her face anchor in our frame: her near eye's lash row and first column. */
-export const HK_FACE_ANCHOR: [number, number] = [122, 139];
-
-/** Where her eyes start from the face anchor's column: the near eye, the far eye. */
-export const HK_EYE_COLS: [number, number] = [0, 6];
+/** Her skin as he drew it: where a set shows her skin (the rogue's bare thigh), the character's skin is retinted from this. */
+export const HK_SKIN = '#febf9c';

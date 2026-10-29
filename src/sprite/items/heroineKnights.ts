@@ -3,14 +3,15 @@
 // knight, shrunk to our scale and cleaned with his palette by tools/refs/heroine_knights_ref.py (the owner's
 // "Reducir y limpiar yo": the body at the scale that fits our fitted female rig, the head at our Lyra's size),
 // lifted part by part by tools/refs/hk-*-from-ref.py, each part its own creator option: per set the armour,
-// the arms, the belt, the skirt or tabard, the thighs, the lower legs and feet and the cape; and her shared
-// hair (long wavy auburn with a gold clip). (Her face and eyes are the 'gallant' face and eye shapes in
-// body.ts; her longsword is heroineKnightSword.ts.) While she wears them the rig stands where he drew her
-// (heroineKnightsRig.ts), so in our female idle frame 0 every pixel is his picture's; in other poses each
-// piece turns whole with its limb. His black line stays whatever the colours; her skin follows the
-// character's skin; the rest follows the colour slots, his own colours when they are kept. Only the fitted
-// female body wears them (the owner: women are never shown on the men's bodies). Names are placeholders for
-// the owner to rename.
+// the arms, the belt, the skirt or tabard, the thighs, the lower legs and feet and the cape (her longsword is
+// heroineKnightSword.ts). The sets bring no head of their own: the owner (D-T8, D-T16) wears them with Lyra's
+// or Aurelia's whole head, and they must sit on both; his head and hair in the picture only say what they hide
+// at rest (each piece is continued whole under them). While she wears them the rig stands where he drew her
+// (heroineKnightsRig.ts), so in our female idle frame 0 every pixel of the sets is his picture's; in other
+// poses each piece turns whole with its limb. His black line stays whatever the colours; her skin (the rogue's
+// bare thigh) follows the character's skin; the rest follows the colour slots, his own colours when they are
+// kept. Only the fitted female body wears them (the owner: women are never shown on the men's bodies). Names
+// are placeholders for the owner to rename.
 
 import { retintHex } from '../color';
 import { armDepth, armJoints, type Depth, DrawCtx, ItemDef, legDepth, legJoints, Side } from '../ctx';
@@ -18,8 +19,7 @@ import { type PaintedPiece, segAngle, skinTone, stampBent, stampLeaning, stampPi
 import { F_NO_OUTLINE, F_NO_TEXTURE, GRID, partIndex, PartId, RES, v, Vec } from '../raster';
 import { drawRig, GROUND, type Rig } from '../rig';
 import { HK_BODIES, hkRestRig, type HkSet } from '../heroineKnightsRig';
-import { HK_FACE_SKIN } from '../heroineKnightFaceArt';
-import { faceAnchor } from '../body';
+import { HK_SKIN } from '../heroineKnightsJointsArt';
 import type { BodyType } from '../types';
 import { closeAnkle, footTurn } from './ankle';
 import { capeWind } from './capes';
@@ -30,7 +30,6 @@ import * as CAPE from './heroineKnightCapeArt';
 import * as FEET from './heroineKnightFeetArt';
 import * as LEGS from './heroineKnightLegsArt';
 import * as SKIRT from './heroineKnightSkirtArt';
-import { HK_HAIR, HK_HAIR_BACK, HK_HAIR_BASE, HK_HAIR_CLIP, HK_HAIR_KIND } from './heroineKnightHairArt';
 
 type Kind = 'cloth' | 'leather' | 'metal';
 const col = (key: string, label: string, def: string, kind: Kind = 'cloth') => ({ key, label, default: def, kind });
@@ -78,7 +77,7 @@ function tint(g: DrawCtx, kinds: Record<string, string>, slots: Slot[]) {
   return (_ch: string, hex: string): string => {
     const k = kinds[hex];
     if (k === 'line' || k === 'white') return hex;
-    if (k === 'skin') return skinTone(hex, HK_FACE_SKIN, g.look.skin);
+    if (k === 'skin') return skinTone(hex, HK_SKIN, g.look.skin);
     const s = slots.find(([ks]) => ks.includes(k));
     return s ? retintHex(hex, s[1], s[2]) : hex;
   };
@@ -405,24 +404,6 @@ function drawCape(g: DrawCtx, set: HkSet, c: string[]): void {
 }
 
 // ---------------------------------------------------------------------------
-// The hair
-// ---------------------------------------------------------------------------
-
-function drawHair(g: DrawCtx, hair: string, clip: string): void {
-  const { nx, ny } = faceAnchor(g);
-  const color = tint(g, HK_HAIR_KIND, [
-    [['red', 'warm', 'plum', 'skin'], HK_HAIR_BASE, hair],
-    [['gold'], HK_HAIR_CLIP, clip],
-  ]);
-  const at = v((nx + 0.5) / RES, (ny + 0.5) / RES);
-  // her waves as he drew them: no fraying of the hair layers' edge
-  g.L('hairFront').noFray = true;
-  g.L('hairBack').noFray = true;
-  stampPiece(g, 'hairBack', HK_HAIR_BACK, at, HK_HAIR_BACK.angle, 'head', color);
-  stampPiece(g, 'hairFront', HK_HAIR, at, HK_HAIR.angle, 'head', color);
-}
-
-// ---------------------------------------------------------------------------
 // The items
 // ---------------------------------------------------------------------------
 
@@ -515,15 +496,6 @@ function setItems(set: HkSet): ItemDef[] {
 }
 
 export const HEROINE_KNIGHT_ITEMS: ItemDef[] = [
-  {
-    id: 'hair_heroine_auburn',
-    slot: 'hair',
-    name: 'Auburn Waves',
-    desc: 'Long wavy auburn hair falling down the back, a gold clip in it.',
-    colors: [{ key: 'hair', label: 'Hair', default: HK_HAIR_BASE, kind: 'hair' as const }, col('clip', 'Clip', HK_HAIR_CLIP, 'metal')],
-    bodies: [...WOMEN],
-    draw: (g, [hair, clip]) => drawHair(g, hair, clip),
-  },
   ...setItems('paladin'),
   ...setItems('rogue'),
   ...setItems('dragon'),

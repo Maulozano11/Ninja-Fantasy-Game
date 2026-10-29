@@ -216,6 +216,19 @@ folders.
       python3 -I tools/refs/roman-cuirass-from-ref.py src/sprite/items/bronzeCuirassArt.ts [studyDir]
       python3 -I tools/refs/roman-skirt-from-ref.py src/sprite/items/pterugesArt.ts [studyDir]
       python3 -I tools/refs/roman-bracers-sandals-from-ref.py src/sprite/items/bracersSandalsArt.ts [studyDir]
+- `heroine_knights_ref.py` + `hk-armor-from-ref.py`, `hk-arms-from-ref.py`, `hk-belt-from-ref.py`,
+  `hk-skirt-from-ref.py`, `hk-legs-from-ref.py`, `hk-feet-from-ref.py`, `hk-cape-from-ref.py`,
+  `hk-sword-from-ref.py`, `hk-joints-from-ref.py`, `hk-test-pixels-from-ref.py`: the owner's three women's
+  sets (`docs/reference/heroine-knights-owner-reference.jpg`: a golden paladin, a dark rogue and a
+  dragon-armoured knight), drawn bigger than our sprite and shrunk to our fitted female body by his rule
+  "Reducir y limpiar yo" (`heroine_knights_ref.py`: the body shrunk evenly onto our rig as a choice of his rows
+  and columns, cleaned with his palette only; `game(fig)` is the figure at our scale every part is cut from).
+  Each part is a piece his pixels (`set_pieces()`), continued whole where the parts in front hide it at rest
+  (`complete()`), riding the joint he drew it round (`RIDES`, `HIS_NATIVE`) →
+  `src/sprite/items/heroineKnight*Art.ts`, `src/sprite/heroineKnightsJointsArt.ts`,
+  `src/sprite/heroineKnightsRefPixels.ts` (the at-rest test's picture). The sets bring no head of their own
+  (the owner, D-T8 and D-T16: worn with Lyra's or Aurelia's whole head); his head is laid only to know what
+  it hides. Command lines in each script's docstring.
 - `ren_ref.py` + `ren-face-from-ref.py`, `ren-eyes-from-ref.py`, `ren-hair-from-ref.py`, `ren-jacket-from-ref.py`,
   `ren-belt-skirt-from-ref.py`, `ren-trousers-from-ref.py`, `ren-boots-gloves-from-ref.py`, `ren-katana-from-ref.py`: the
   owner's Ren paint-over (`docs/reference/ren-owner-reference.jpg`, "el nuevo estandar"; pitch 20, our male idle frame 0 at

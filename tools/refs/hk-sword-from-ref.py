@@ -41,7 +41,7 @@ def blade_angle(m, col):
 
 
 def build():
-    m, col = R.head_pieces()['sword']
+    m, col = R.sword_piece()
     yy, xx = np.mgrid[0:R.GRID, 0:R.GRID]
     guard = m & (xx + yy <= GUARD_CUT)
     blade = m & ~guard

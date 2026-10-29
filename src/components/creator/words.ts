@@ -328,12 +328,6 @@ const ES: Record<string, string> = {
   'A short gold staff with winged arms round a glowing pearl orb that sheds golden sparkles: the owner drew it for Aurelia.': 'Un báculo corto de oro con brazos alados alrededor de un orbe de perla luminoso que suelta destellos dorados: el dueño lo dibujó para Aurelia.',
   'Orb': 'Orbe',
   // the owner's heroine knights (items/heroineKnights.ts, heroineKnightSword.ts; names are placeholders for him)
-  "Gallant": "Gallarda",
-  "The heroine knights' face": "La cara de las caballeras",
-  "The heroine knights' eyes": "Los ojos de las caballeras",
-  "Auburn Waves": "Ondas cobrizas",
-  "Long wavy auburn hair falling down the back, a gold clip in it.": "Cabello largo cobrizo y ondulado que cae por la espalda, con un broche de oro.",
-  "Clip": "Broche",
   "Gems": "Gemas",
   "Scales": "Escamas",
   "Mail": "Malla",

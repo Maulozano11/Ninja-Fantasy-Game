@@ -284,6 +284,9 @@ function stowKatanaAtHip(g: DrawCtx, hilt: string, guard: string): void {
 /** The angle Lyra's rapier rides at on the back (see held_gilded_rapier). */
 const LYRA_STOW_DEG = 70;
 
+/** How far down its blade (design units) the heroine knights' longsword is slid on the back, so its long grip's pommel stays behind the shoulder. */
+const HK_STOW_SLIDE = 4;
+
 /** Big blades and polearms ride diagonally across the back, the hilt or blade over the near shoulder. */
 function backGrip(g: DrawCtx, deg: number): Vec {
   const b = g.bp;
@@ -566,7 +569,13 @@ export const HELD_ITEMS: ItemDef[] = [
     parts: HK_SWORD_PARTS,
     partsPreview: (_look, parts) => heroineSwordPreview(parts),
     draw: (g, colors, parts) => {
-      if (handsBusy(g)) drawHeroineSword(g, 'backGear', backGrip(g, 48), backAngle(g, 48), colors, parts);
+      // Stowed on the back as steep as Lyra's rapier (70 degrees) and slid down the blade by her long grip
+      // (HK_STOW_SLIDE): held by the grip point, her pommel stood up past the far shoulder apart from the
+      // figure (the sample heads' hair does not reach it as his did).
+      if (handsBusy(g)) {
+        const a = (backAngle(g, LYRA_STOW_DEG) * Math.PI) / 180;
+        drawHeroineSword(g, 'backGear', add(backGrip(g, LYRA_STOW_DEG), scale(v(Math.cos(a), Math.sin(a)), HK_STOW_SLIDE)), backAngle(g, LYRA_STOW_DEG), colors, parts);
+      }
       else if (handsLimp(g)) drawHeroineSword(g, 'nearArm.held', droppedGrip(g, 0.7), -86, colors, parts);
       else if (!handsReleased(g)) drawHeroineSword(g, 'nearArm.held', gripPoint(g), swordAngle(g), colors, parts);
     },

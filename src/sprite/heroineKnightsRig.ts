@@ -8,14 +8,15 @@
 //     the arm hangs about as at rest his elbow, wrist and hand are where he drew them, and as it reaches out
 //     (45 degrees from rest) back to our arm moved, so a hand meets a weapon or a jutsu where ours does;
 //   - each leg is moved as far as his leg stands from ours on average (hip, knee and ankle: the whole leg),
-//     and while both legs stand as at rest each joint is his;
-//   - with her face ('gallant') the head stands where he drew it: its face anchor on his.
+//     and while both legs stand as at rest each joint is his.
+// Her head is not his: the sets bring no head of their own (the owner, D-T8 and D-T16: they are worn with
+// Lyra's or Aurelia's head, and must sit on both), so the head stands where that head's own rules put it.
 // Only the fitted female body wears them (the owner: the women's sets are never shown on the men's bodies).
 
 import { segAngle } from './painted';
 import { add, RES, sub, v, type Vec } from './raster';
 import { drawRig, type Rig } from './rig';
-import { HK_FACE_ANCHOR, HK_HIS } from './heroineKnightsJointsArt';
+import { HK_HIS } from './heroineKnightsJointsArt';
 import type { BodyType, SpriteAppearance } from './types';
 
 const IDLE = new Map<BodyType, Rig>();
@@ -52,9 +53,6 @@ export const hkArms = (look: SpriteAppearance): boolean => HK_BODIES.includes(lo
 /** Whether this look wears his legs (any set's thighs and lower legs together), which stand the legs where he drew them. */
 export const hkLegs = (look: SpriteAppearance): boolean => HK_BODIES.includes(look.body) && !!hkSetOf(look.slots.bottom?.id) && !!hkSetOf(look.slots.feet?.id);
 
-/** Whether this look has her face on the female body (the head stands where he drew it). */
-export const hkFace = (look: SpriteAppearance): boolean => HK_BODIES.includes(look.body) && look.faceShape === 'gallant';
-
 /**
  * How much an arm hangs as at rest: 1 while its upper arm and forearm are within 30 degrees of their idle
  * angles (the torso's turn taken off), down to 0 at 45 degrees (founderArmStill's rule).
@@ -87,8 +85,7 @@ type Joint = 'shoulderN' | 'shoulderF' | 'elbowN' | 'elbowF' | 'wristN' | 'wrist
 export function heroineKnightsRig(rig: Rig, look: SpriteAppearance): Rig {
   const arms = hkArms(look);
   const legs = hkLegs(look);
-  const face = hkFace(look);
-  if (!arms && !legs && !face) return rig;
+  if (!arms && !legs) return rig;
   const idle = idleRig(rig.body);
   const t = segAngle(rig.pelvis, rig.neck) - segAngle(idle.pelvis, idle.neck);
   const out: Rig = { ...rig };
@@ -115,15 +112,6 @@ export function heroineKnightsRig(rig: Rig, look: SpriteAppearance): Rig {
       }
     }
   }
-  if (face) {
-    // the head moved so that its face anchor (body.ts faceAnchor) lands on his: the anchor is a whole fine
-    // pixel, so the head moves by whole pixels and keeps its place on the neck in every pose
-    const k = rig.bp.headScale;
-    const nx = Math.floor((idle.head.x - 1.9 * k) * RES);
-    const ny = Math.floor((idle.head.y + 1.0 * k) * RES);
-    // (a hundredth of a pixel on, so that no sum lands the anchor on the pixel before)
-    out.head = add(rig.head, v((HK_FACE_ANCHOR[0] - nx + 0.01) / RES, (HK_FACE_ANCHOR[1] - ny + 0.01) / RES));
-  }
   return out;
 }
 
@@ -131,7 +119,7 @@ const REST = new Map<string, Rig>();
 
 /** The rig this look stands in at rest (idle frame 0, moved under his pieces where she wears them). */
 export function hkRestRig(look: SpriteAppearance): Rig {
-  const key = `${look.body}|${hkArms(look)}|${hkLegs(look)}|${hkFace(look)}`;
+  const key = `${look.body}|${hkArms(look)}|${hkLegs(look)}`;
   let r = REST.get(key);
   if (!r) REST.set(key, (r = heroineKnightsRig(idleRig(look.body), look)));
   return r;

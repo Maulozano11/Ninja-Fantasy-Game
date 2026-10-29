@@ -11,7 +11,10 @@ them tall (row 5, the hair's top line, to row 131, the near sole), where our fem
   - the body is shrunk evenly onto our fitted female rig: SCALE of his pixels to one fine pixel of ours (his
     hair top to his sole, 128, on our 92). At that scale his head is our Lyra's (hair top to chin 20 fine
     pixels; his 28), so the head is shrunk evenly at the same scale, with its own choice of his rows and
-    columns that keeps his eyes, brow, nose and mouth first (HEAD_WEIGHT);
+    columns that keeps his eyes, brow, nose and mouth first (HEAD_WEIGHT). The head is not copied into the
+    game (the owner, D-T8 and D-T16: the sets bring no head of their own and are worn with Lyra's or Aurelia's
+    whole head, on both): the shrunk head is laid only to know what it and his long hair hide at rest, so
+    that every part is continued whole under them (complete()) and shows whole under a smaller head;
   - then the shrink is cleaned with his palette only (clean()), as a structural choice of his pixels: fine
     row k of a figure shows one of his rows, chosen with his rows left out where they are most like their
     neighbours (keep()), so his 1 px line, his trim and his plate bands stay whole lines; the columns the
@@ -432,7 +435,7 @@ def blade_mask(fig, H, W, half=BLADE_HALF):
 
 
 HEAD = [(28, 2), (61, 2), (61, 31), (55, 33), (42, 33), (36, 29), (28, 29)]
-PARTS = ['blade', 'handN', 'foreN', 'upperN', 'pauldN', 'head', 'belt', 'skirt', 'torso', 'pauldF', 'upperF', 'foreF', 'handF',
+PARTS = ['hairFront', 'blade', 'handN', 'foreN', 'upperN', 'pauldN', 'head', 'belt', 'skirt', 'torso', 'pauldF', 'upperF', 'foreF', 'handF',
          'thighN', 'shinN', 'footN', 'thighF', 'shinF', 'footF', 'hairBack', 'cape']
 POLYS = {
     'paladin': {
@@ -500,7 +503,7 @@ POLYS = {
 SWORD_KINDS = ('cyan', 'steel', 'blue', 'white', 'gold', 'ivory', 'line')
 # Where a figure's parts overlap otherwise than PARTS has them: the rogue's legs stand in front of her torn
 # skirt's tatters.
-ORDER = {'rogue': PARTS[:7] + ['thighN', 'shinN', 'footN', 'thighF', 'shinF', 'footF', 'skirt', 'torso', 'pauldF', 'upperF', 'foreF', 'handF', 'hairBack', 'cape']}
+ORDER = {'rogue': PARTS[:8] + ['thighN', 'shinN', 'footN', 'thighF', 'shinF', 'footF', 'skirt', 'torso', 'pauldF', 'upperF', 'foreF', 'handF', 'hairBack', 'cape']}
 for _f in POLYS:
     POLYS[_f]['blade'] = SWORD
     POLYS[_f]['head'] = [HEAD]
@@ -537,6 +540,50 @@ def components(mask, conn8=False):
     return out
 
 
+# His long hair where it falls in front of the sets (the owner, 2026-10-29: "estás confundiendo píxeles por
+# culpa del pelo de Lyra"): over the near pauldron and the cape on her left, and the strand over the gorget
+# on her right. Inside these polygons (his pixels) every pixel of his hair's tones is hair, 'hairFront': the
+# frontmost part, shared and never a piece, so the sets wear any head's hair and the armour under it is
+# continued (complete()). The tones are his hair's own (HAIR_LIGHT) and its shadows (HAIR_DARK, which his
+# capes share: a dark pixel is hair only within two pixels of a light one).
+HAIR_FRONT = {
+    'paladin': [[(9, 24), (31, 24), (31, 34), (28, 46), (24, 60), (9, 60)], [(36, 27), (45, 27), (45, 43), (36, 43)]],
+    'rogue': [[(10, 24), (31, 24), (31, 36), (26, 60), (10, 60)], [(36, 27), (45, 27), (45, 43), (36, 43)]],
+    'dragon': [[(9, 24), (31, 24), (31, 34), (27, 62), (9, 62)], [(36, 27), (45, 27), (45, 43), (36, 43)]],
+}
+HAIR_LIGHT = np.array([(161, 61, 38), (156, 57, 36), (158, 58, 34), (108, 33, 38), (99, 29, 37), (98, 28, 36)])
+HAIR_DARK = np.array([(56, 13, 36), (60, 14, 36), (48, 12, 26), (58, 10, 28), (49, 13, 27), (46, 14, 37)])
+HAIR_TOL = 6
+
+
+def hair_front(fig):
+    """The pixels of a figure that are his hair in front of the set (HAIR_FRONT), as a mask."""
+    a = figure_native(fig)
+    m = figure_mask(fig)
+    H, W = m.shape
+    poly = np.zeros((H, W), bool)
+    for pts in HAIR_FRONT[fig]:
+        poly |= inside(pts, H, W)
+    poly &= m & ~inside(HEAD, H, W)
+    near = lambda pal: np.abs(a[:, :, None, :] - pal[None, None, :, :]).max(-1).min(-1) <= HAIR_TOL
+    light = near(HAIR_LIGHT) & poly
+    dark = near(HAIR_DARK) & poly
+    hair = light.copy()
+    for _ in range(2):
+        ring = np.zeros_like(hair)
+        for dy in (-1, 0, 1):
+            for dx in (-1, 0, 1):
+                if dy or dx:
+                    ring |= np.roll(np.roll(hair, dy, 0), dx, 1)
+        hair |= ring & dark
+    # his line walled in by hair on both sides of a row or a column is the hair's
+    line = is_line(a) & poly
+    for y, x in zip(*np.nonzero(line)):
+        if (0 < x < W - 1 and hair[y, x - 1] and hair[y, x + 1]) or (0 < y < H - 1 and hair[y - 1, x] and hair[y + 1, x]):
+            hair[y, x] = True
+    return hair
+
+
 _LABELS = {}
 
 
@@ -554,7 +601,11 @@ def labels(fig, skip=()):
     raw = np.full((H, W), '', dtype='<U10')
     free = m.copy()
     polys = POLYS[fig]
-    for name in [n for n in ORDER.get(fig, PARTS) if n not in skip]:
+    if 'hairFront' not in skip:
+        hf = hair_front(fig)
+        raw[hf] = 'hairFront'
+        free &= ~hf
+    for name in [n for n in ORDER.get(fig, PARTS) if n not in skip and n != 'hairFront']:
         if name == 'cape':
             raw[free] = 'cape'
             break
@@ -590,7 +641,7 @@ FRAME_TOP = 127
 ANCHOR = (50, 127)
 # The parts every set shares, lifted once from the paladin (the hair, face and sword he drew the same three
 # times, within a pixel): in the rogue's and the dragon's game() they are the paladin's, where hers are.
-SHARED_PARTS = ('head', 'hairBack', 'blade')
+SHARED_PARTS = ('head', 'hairBack', 'hairFront', 'blade')
 SHARED_FROM = 'paladin'
 
 
@@ -706,7 +757,7 @@ def lay(rgb, lab, srgb, slab, shared, under=None):
 # compose.ts SLOT_ORDER, each item its pieces in turn): the cape, the long hair, the far
 # arm, the legs, the skirt, the torso, the belt, the head, the sword, the near arm.
 DRAWN = ['cape', 'hairBack', 'upperF', 'pauldF', 'foreF', 'handF', 'thighF', 'footF', 'shinF', 'thighN', 'footN', 'shinN', 'skirt',
-         'torso', 'belt', 'head', 'blade', 'upperN', 'pauldN', 'foreN', 'handN']
+         'torso', 'belt', 'head', 'blade', 'upperN', 'pauldN', 'foreN', 'handN', 'hairFront']
 # (the rogue's hood and collar are her cape's: the collar over her corset, the hood over her near arm)
 DRAWN_OF = {'rogue': [n for n in DRAWN if n not in ('pauldF', 'pauldN')]}
 DRAWN_OF['rogue'].insert(DRAWN_OF['rogue'].index('torso') + 1, 'pauldF')
@@ -1046,10 +1097,6 @@ HIS_NATIVE = {
     'ankleN': (29.0, 121.0),
     'ankleF': (55.0, 121.0),
 }
-# Her face in our frame: her near eye's lash row and first column (the face anchor: the near eye is the five
-# columns from there, the far eye the three from FAR_EYE further on), as his paladin's head lands.
-FACE_ANCHOR = (122, 139)
-FAR_EYE = 6
 
 
 def his_joint(name):
@@ -1086,9 +1133,16 @@ def cut(rgb, lab, names, line_from_others=True):
     return own, rgb.copy()
 
 
-# Which part's colours may be skin: her face, and the rogue's thighs through her torn skirt. Anywhere else a
-# skin-like colour of his is the cloth's or the copper's own light (kind 'warm').
-SKIN_PARTS = ('head', 'thighN', 'thighF')
+# Which part's colours may be skin: the rogue's thighs through her torn skirt. Anywhere else a skin-like colour
+# of his is the cloth's or the copper's own light (kind 'warm').
+SKIN_PARTS = ('thighN', 'thighF')
+
+
+def his_skin():
+    """Her skin as he drew it: his skin colour of middle lightness on her face (the shared head, shared()). The
+    base the character's skin is retinted from where a set shows her skin (the rogue's bare thigh)."""
+    rgb, lab = shared()
+    return middle(rgb, lab == 'head', ('skin',), skin_ok=True)
 
 
 def piece_kind(c, skin_ok):
@@ -1182,12 +1236,6 @@ def run(argv, build):
 SETS = ('paladin', 'rogue', 'dragon')
 
 
-# Her face (our frame: x0, y0, x1, y1, inclusive): from her brows (FACE_BROW) down everything of her head there
-# (brows, eyes, nose, mouth, cheeks, chin and his line round them), above them only her forehead's skin; the
-# rest of the head is her hair.
-FACE_BOX = (121, 134, 132, 146)
-FACE_BROW = 138
-
 
 # How each part is continued where the parts in front of it hide it at rest (complete()): along its columns
 # (an arm, a leg, a tabard's stripes, long hair) or its rows (the torso, the belt, the cape behind her).
@@ -1223,14 +1271,21 @@ def hull(mask):
 
 # What a continued part copies (complete()): his cloth's own body, not its trim, gems, embers or the blade's light.
 FILL_NOT = {'cape': ('gold', 'blue', 'cyan', 'ember', 'steel', 'ivory', 'white', 'green'), 'skirt': ('blue', 'cyan', 'white'),
-            # (the rogue's bare thigh shows only where her skirt is torn: under it, her leggings)
             'thighN': ('blue', 'cyan', 'skin'), 'thighF': ('blue', 'cyan', 'skin')}
+# The same for one set: the rogue's bare thigh (his skin, and his skin in shadow, kind 'warm') shows only where
+# her skirt is torn; under it, her leggings.
+FILL_NOT_OF = {'rogue': {'thighN': ('blue', 'cyan', 'skin', 'warm'), 'thighF': ('blue', 'cyan', 'skin', 'warm')}}
+# A part with nothing of its own left to copy continues in the colours of this part of the same set (the
+# rogue's far thigh shows only skin: under her skirt it is her leggings, the near thigh's).
+FILL_FROM = {'thighF': 'thighN', 'thighN': 'thighF'}
 
 
 # The joints a part reaches to under what hides it (its hull takes them in): the torso to the shoulders, a limb
-# to the joints at its ends, the cape up to the shoulders.
+# to the joints at its ends, the cape up to the shoulders. A thigh reaches the pelvis as well as its hip, so
+# its top is a wedge under the skirt, not a line: the paladin's far thigh (narrow under her tabard) came apart
+# from her when the leg kicked back.
 REACH = {'torso': ('shoulderN', 'shoulderF', 'neck'), 'upperN': ('shoulderN', 'elbowN'), 'upperF': ('shoulderF', 'elbowF'),
-         'foreN': ('elbowN', 'wristN'), 'foreF': ('elbowF', 'wristF'), 'thighN': ('hipN', 'kneeN'), 'thighF': ('hipF', 'kneeF'),
+         'foreN': ('elbowN', 'wristN'), 'foreF': ('elbowF', 'wristF'), 'thighN': ('hipN', 'pelvis', 'kneeN'), 'thighF': ('hipF', 'pelvis', 'kneeF'),
          'shinN': ('kneeN', 'ankleN'), 'shinF': ('kneeF', 'ankleF'), 'cape': ('shoulderN', 'shoulderF')}
 # The cape behind her body is its lining in shade: one colour of his (the commonest of its darker half), not
 # streaks of its edges carried across.
@@ -1254,9 +1309,11 @@ def complete(lab, name, mask, col, axis, fig=SHARED_FROM):
     if not add.any():
         return mask, col
     c = col.copy()
-    solid = mask & ~is_line(col)
-    bad = FILL_NOT.get(name, ('blue', 'cyan'))
-    solid &= ~np.array([[solid[y, x] and kind(col[y, x]) in bad for x in range(GRID)] for y in range(GRID)])
+    bad = FILL_NOT_OF.get(fig, {}).get(name, FILL_NOT.get(name, ('blue', 'cyan')))
+    sources = lambda m: m & ~is_line(col) & ~np.array([[m[y, x] and kind(col[y, x]) in bad for x in range(GRID)] for y in range(GRID)])
+    solid = sources(mask)
+    if not solid.any() and name in FILL_FROM:
+        solid = sources(lab == FILL_FROM[name])
     sy, sx = np.nonzero(solid)
     if not len(sy):
         return mask, col
@@ -1301,24 +1358,10 @@ def set_pieces(fig):
     return out
 
 
-def head_pieces():
-    """The shared parts (shared()) cut into the face, the hair over it and the long hair behind:
-    {name: (mask, colours)} in our frame."""
+def sword_piece():
+    """Her longsword (the shared one, shared()): (mask, colours) in our frame."""
     rgb, lab = shared()
-    head = lab == 'head'
-    K = np.array([[kind(rgb[y, x]) if head[y, x] else '' for x in range(GRID)] for y in range(GRID)])
-    x0, y0, x1, y1 = FACE_BOX
-    box = np.zeros_like(head)
-    box[y0:y1 + 1, x0:x1 + 1] = True
-    yy = np.arange(GRID)[:, None]
-    face = head & box & ((yy >= FACE_BROW) | (K == 'skin'))
-    hair = head & ~face
-    # his line round the face goes with it too
-    ln = is_line(rgb) & head
-    face_l = face | (ln & near4(face & ~ln))
-    glab = game(SHARED_FROM)[1]
-    return {'face': (face_l, rgb.copy()), 'hair': (hair, rgb.copy()), 'hairBack': complete(glab, 'hairBack', *cut(rgb, lab, ['hairBack']), 'cols'),
-            'sword': cut(rgb, lab, ['blade'], False)}
+    return cut(rgb, lab, ['blade'], False)
 
 
 # How each part of a set rides the rig: (joint it turns about, the limb's angle from joint to joint at rest).

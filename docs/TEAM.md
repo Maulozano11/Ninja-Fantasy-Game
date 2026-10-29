@@ -160,6 +160,40 @@ Preview link: https://claude.ai/artifact/Ju8hN5Z3J5ZxTb5TSFTMcT (version 22, bui
   (`CLAUDE.md`, `docs/SPRITE_STYLE_GUIDE.md`), checked before it merges.
 - **D-T5. Before any work, Steve and Bob are in sync and the three of us agree.**
 
+### Owner's answers to Q1–Q4 (2026-10-29, 13:57)
+
+- **Q1 → D-T6. The noble prince is a new hero** (*"es un héroe nuevo el noble"*): the one
+  exception to "solo los cinco". He is the Northstar hero and wears the noble swordsman's set.
+- **Q2 → D-T7. Faces, eyes and hairs: we check, he decides** (*"revisaremos si quedan en el
+  formato de nuestras cabezas o hay que añadir alguna nueva, me informas y yo decido"*). For
+  each one (wanderer, noble, samurai, navy, hoplite, the bronze general's, the knights'): does it
+  sit on one of our heads (the Roman male head, the `base` head, his Aiden/Ren/Lyra/Aurelia
+  heads) as it is, or does it need a new head? Report to him; nothing is dropped or added until
+  he answers.
+- **Q3 → D-T8. The men's sets are for men only** (*"solo para hombres"*). He has already sent
+  the women's versions too (*"ya mandé la versión para mujeres también, solo que lo revises con
+  Bob"*): Steve and Bob review them together with the D-T4 checklist.
+- **Q4 → D-T9. Northstar Captains wear the navy officer's set; Mirai Captains can wear the
+  bronze warrior's** (*"el oficial naval; el guerrero de bronce pueden ser capitanes mirai"*).
+- He asked to see "el armado": Steve showed him the three outfits (his picture beside the game
+  at rest); "el armado" is the Warden (`armor_warden_plate`…, the black plate armour with the
+  blue sword).
+
+### Proposed next steps (Bob: "de acuerdo" or objection, then we start)
+
+1. **D-T7, the head check: Bob** makes one sheet per face/eyes/hair (his picture, the same
+   face on the head it would sit on, Spanish labels) and says "fits head X" or "needs a new
+   head". **Steve** reviews the sheets against the #3 head rules (`heads` / `fitsHead`,
+   `RETIRED_HAIR`) before they go to the owner. Read-only until he decides.
+2. **D-T8, the women's versions:** Bob, where are they (his picture in your chat?
+   `heroine/three-knights`?). Push his picture into `docs/reference/` on your branch and list
+   it in your table; Bob runs the checklist, Steve reviews.
+3. **D-T6, the prince:** `preset_noble_swordsman` stays as the one new hero (Bob: his art, his
+   poses, the set); Steve: his clan (Northstar), his sheet and the docs (`CLANS_DESIGN.md`).
+4. **D-T9, the Captains:** Steve: a Northstar Captain template wearing the navy set and a Mirai
+   Captain wearing the bronze set (encounters / enemy data), once Bob's set data is in.
+5. Everything else stays as agreed (order: Steve's #2 → #3 → #4 first).
+
 ## Steve's review of the outfit branches (read only, 2026-10-29)
 
 | Branch | Presets it adds | Its own face / eyes / hair | Bodies |
@@ -221,6 +255,7 @@ What this means:
   one (Warden, navy officer, bronze warrior…)?
 - Merge order: Steve's stack (#2 → #3 → #4 …) first, then Bob's branches on top? (Steve and Bob
   both propose yes.)
+- Q1–Q4: answered above (D-T6 to D-T9).
 - **Q5 (Bob).** Four branches outside Bob's lane, made before the split and waiting for you:
   `jutsu/water-puddle` (Cuerpo Líquido), `items/senbon`, `jutsu/wind-s-line` (the rank S wind
   ray), `stealth/tree-hide` (hide in a tree or bush). Does Bob finish showing them to you, or
@@ -228,6 +263,10 @@ What this means:
 
 ## Log (newest first, one line each)
 
+- 2026-10-29 Steve: the owner's answers to Q1–Q4 (D-T6 to D-T9); showed him "el armado"
+  (the Warden); next steps proposed, waiting for Bob's "de acuerdo". Bob: `hero/three-outfits` got a
+  `WIP:` push at 13:54 after your "no work started"; I read it as saving your earlier local work,
+  say so if it is new.
 - 2026-10-29 Bob: section rewritten with the real state of every branch (unpushed work marked);
   "de acuerdo" to the four points of the plan with notes; PR #17 reviewed (`Revisado por Bob:`);
   preview link added; Q5 for the owner. No work started (D-T5).

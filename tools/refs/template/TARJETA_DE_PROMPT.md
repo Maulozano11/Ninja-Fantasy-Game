@@ -741,3 +741,26 @@ Fila 2 · MEDIANA, 4 cuadros de 600×600: lo mismo en menos pasos: estallido, nu
 persona y media, se abre, jirones.
 Nada morado ni rosa.
 ```
+
+**E) La invocación masiva pintada EN el patio** (2026-10-29). La hoja de magenta salió como seis
+escenas chiquitas con su propio piso (`docs/reference/summon-sigil-massive-v1-owner-reference.png`).
+Como su generador sí respeta una imagen adjunta al píxel (la fortaleza iluminada coincidió exacta),
+la invocación se pide pintada sobre el patio, **una imagen por paso**, cada una adjuntando el patio
+vacío (`docs/reference/colossal-hydra-courtyard-empty-owner-reference.png`). Al principio de cada una:
+
+```
+La MISMA imagen adjunta, idéntica píxel por píxel en todo lo que no se menciona (muro, portón,
+antorchas, losas, encuadre), cambiando SOLO esto:
+```
+
+1. *"el gran círculo alquímico grabado en el piso se enciende: sus líneas brillan dorado-anaranjado como metal al rojo, grietas de luz corren entre las losas cercanas, suben brasas; el resto del patio un poco más oscuro."*
+2. *"el círculo grabado en el piso arde con fuerza, todo dorado y blanco; TRES ANILLOS DE RUNAS de luz dorada flotan sobre él a distintas alturas, uno encima de otro, y la luz ilumina el muro y el piso alrededor; las losas cercanas se agrietan."*
+3. *"del centro del círculo grabado sale una COLUMNA DE LUZ COLOSAL dorada y blanca que sube hasta salirse por arriba de la imagen, con relámpagos alrededor; losas y piedras vuelan hacia arriba; todo el patio iluminado de dorado."*
+4. *"donde está el círculo grabado, una NUBE ENORME de humo gris y polvo, totalmente opaca, alta hasta la mitad del muro y más, llena el lado derecho del patio; piedras cayendo; la luz dorada apenas se ve dentro del humo."*
+
+La última adjunta **el fondo de la hidra** (`docs/reference/colossal-hydra-backdrop-v3-owner-reference.png`) en lugar del patio vacío:
+
+5. *"jirones de humo gris y polvo se disipan alrededor del cuerpo de la hidra y en el piso, con algunas piedras sueltas y grietas que todavía brillan débil en las losas."*
+
+El juego encadena 1→2→3→4 con fundidos, cambia al fondo de la hidra dentro del humo (4→5) y luego
+quita el humo. Sin texto ni personas en ninguna.

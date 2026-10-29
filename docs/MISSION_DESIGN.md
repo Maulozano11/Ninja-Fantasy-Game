@@ -456,18 +456,48 @@ ones. Online it can later show the % of players who chose the same.
 
 ## The hydra's fortress (the owner, 2026-10-29; not built)
 
-A story beat for a mission, in his words: arriving at the fortress (probably Kōton's; not decided)
-the party finds **the gates open and no guards**, for some strange reason, and decides how to get in:
+**The mission's goal:** recover valuable information from the enemy's base (probably Kōton's; not
+decided), by stealth or head-on. Arriving, the party finds **the gates open and no guards**, for
+some strange reason, and chooses how to get in.
 
-- **By the front gate** (apparently unguarded): into the courtyard of the colossal hydra
-  (`GAMEPLAY_DESIGN.md`, "The colossal hydra"). The story's villain is waiting there and has a
-  monologue: proud of them for coming in by the big gate, he expected no less; now let's see how
-  they deal with *this*, a beast nobody can control, only the Northstar king could. He frees it;
-  an animation plays, the hydra is summoned and the battle starts.
-- **Through the fortress's drain, at the back**: the way in follows the choice (not designed yet).
+**The choice screen.** A background painted by his generator (the fortress from outside), with
+two choice buttons in the colour of our gems: *By the front gate* and *Through the drain*. While a
+choice is selected, part of the scene changes (the path it takes lights up), and a confirm asks
+before committing.
 
-Open: who the villain is (name, clan, look), how the hydra is freed (what holds it), and what the
-drain route leads to.
+**By the front gate (the hydra).** Into the courtyard of the colossal hydra (`GAMEPLAY_DESIGN.md`,
+"The colossal hydra"), empty at first. The story's villain waits there with a monologue: proud of
+them for coming in by the big gate, he expected no less; now let's see how they deal with *this*,
+a beast nobody can control, only the Northstar king could. He **summons the hydra with an
+alchemical sigil on the floor** and the boss summon animation plays; the battle starts. After the
+hydra, the party fights its way in through several enemies to the commander's office, and may
+also find the storeroom with the loot.
+
+**Through the drain (stealth, XCOM 2 style).**
+- **A narrow map.** In the tunnels **rank S jutsu and summons can't be used** (nothing large:
+  summoned beasts, mechas, the giant spirit-armour form when active counts as a mecha; they don't
+  fit). Only small abilities or lines, and those can hit the party in the tight space.
+- **The fork.** After several tunnels the map splits: **left is a dead end**, reached after
+  spending resources, time and small fights, and the party has to turn back; **right** leads to a
+  grate into the castle's **storeroom**, where the loot is.
+- **Loot or not.** If they loot, a patrol passes, finds them and the battle starts. If they don't,
+  they get **1 turn to set up an ambush** on the patrol.
+- **The alarm.** Once found, one guard attacks and another runs to sound the alarm; there is time
+  to reach him and kill him before he does. If he sounds it, more enemies arrive over the next turns.
+- **The objective.** Reach the commander's office, take the documents (a **bonus action**), and
+  go back out through the grate to escape.
+
+**The loot.** A unique sword that can **send magic attacks back** at the caster (his example is
+an anime counter move; the name and the look must be our own), and other random, cool items that
+are sold for gold back at home or the base (his ToME decision: random loot becomes gold, weapons
+are hand-made).
+
+**Summons, from here on.** Boss summons get their own animation (this one: the villain's
+alchemical sigil); ordinary summons get a simpler one inside the battle (the mechas too).
+**Mecha size:** a mecha is as big as the river battle's hydra (the medium hydra we have now).
+
+Open: who the villain is (name, look; clan probably Kōton), the drain's and the castle's maps, the
+sword's numbers and name.
 
 ## Story notes (for the story session)
 

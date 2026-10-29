@@ -422,6 +422,7 @@ What this means:
 
 ## Log (newest first, one line each)
 
+- 2026-10-29 Bob: hero/bronze-warrior pushed (legate cuirass in layers, general, Solen's mane + diadem, D-T17); heroine knights: the neck seams closed under a smaller head (owner's circles), tests green, push pending the full suite.
 - 2026-10-29 Bob: heroine knights: his hair in front out of the pieces (owner's correction), both heads, pushed; the helpers for the matrix, the navy and the first bronze pass were stopped from the owner's side, a new bronze helper runs (legate cuirass pixel for pixel, general, Solen's mane, diadem); Lyra sit/read pinholes noted as open.
 - 2026-10-29 Bob: D-T21, generic faces soft and square removed (owner); matrix dropped them.
 - 2026-10-29 15:25 Steve (hydra chat): `docs/colossal-hydra` #15: his hurt v2, cut and regrow sheets mounted; card 11 burnt stump; card 12 (fortress choice screen, empty courtyard, summon sigil); the fortress mission in `MISSION_DESIGN.md` (front gate or drain, XCOM-style stealth, mecha size = the river hydra). No hot files.

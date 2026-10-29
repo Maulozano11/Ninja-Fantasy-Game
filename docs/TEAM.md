@@ -94,12 +94,12 @@ parts stay as creator options whatever he decides about the presets.
 
 | Branch | What is really there | State | Hot files touched |
 |---|---|---|---|
-| `hero/three-outfits` | Armoured, leather rogue and tactical outfits, every part an item, at rest | Owner approved the three at rest. `WIP:` pushed today: the tactical's own head (side-lock hair), shown to him. Heads: waiting for his answer to Steve's (a)/(b) (D-T14: Ren's head). Stage 2 (every pose) not started; two tests to fix (forearm, holes). **Active (read-only):** the D-T7 head-check sheets | `shinobiData.ts`, `catalog.ts`, `words.ts` |
+| `hero/three-outfits` | Armoured, leather rogue and tactical outfits, every part an item, at rest | Owner approved the three at rest. `WIP:` pushed today: the tactical's own head (side-lock hair), shown to him. Heads: waiting for his answer to Steve's (a)/(b) (D-T15: Ren's head). Stage 2 (every pose) not started; two tests to fix (forearm, holes). **Active (read-only):** the D-T7 head-check sheets | `shinobiData.ts`, `catalog.ts`, `words.ts` |
 | `heroine/aurelia-outfits` | Aurelia's sorceress and alchemist outfits, every part an item | Stage 1 pushed but too rough; structural cleanup half done in my worktree (uncommitted). **Not shown to the owner yet** | `shinobiData.ts`, `catalog.ts`, `words.ts` |
 | `hero/noble-swordsman` | Noble swordsman (no-cape version kept), royal coat, his hair | 8 poses done, **owner has not approved the poses**; remaining poses pending; local merge with the integration branch not pushed | `shinobiData.ts`, `catalog.ts`, `words.ts`, `rig.ts` |
 | `hero/samurai` | Samurai armour in every pose, every pocket filled (his exception) | Waiting for the owner's answers: bulky crouch fill, torso lames with the arm raised, tasset plate in combo 5–6, hakama mass in crouch/sneak | `shinobiData.ts`, `catalog.ts`, `words.ts`, `compose.ts` |
-| `hero/navy-officer` | Navy officer, every part its own option; idle approved, no sword in hand | Pushed (`f56de62`). **Active:** D-T12, arms through the checks and the poses up to the five's quality | `shinobiData.ts`, `catalog.ts`, `words.ts`, `rig.ts` |
-| `hero/bronze-warrior` | Bronze warrior (his leather repaint, pixel for pixel), the bronze set, the Roman general's two chests + face + hair (his picture 189), the Roman legate's right chest only (191) | Pushed (`390dbab`). Bronze "después" approved (D-T13). **Active:** the legate's male waist, the general refined | `shinobiData.ts`, `catalog.ts`, `words.ts` |
+| `hero/navy-officer` | Navy officer, every part its own option; idle approved, no sword in hand | Pushed (`f56de62`). **Active:** D-T13, arms through the checks and the poses up to the five's quality | `shinobiData.ts`, `catalog.ts`, `words.ts`, `rig.ts` |
+| `hero/bronze-warrior` | Bronze warrior (his leather repaint, pixel for pixel), the bronze set, the Roman general's two chests + face + hair (his picture 189), the Roman legate's right chest only (191) | Pushed (`390dbab`). Bronze "después" approved (D-T14). **Active:** the legate's male waist, the general refined | `shinobiData.ts`, `catalog.ts`, `words.ts` |
 | `hero/three-knights`, `heroine/three-knights` | His three knights and his three women knights shrunk to our scale, every part an item, at rest | Pushed today. Men: stage 1 done. **Active:** the women's sets through the D-T4 checklist (D-T8), sheets to Steve first | `shinobiData.ts`, `catalog.ts`, `words.ts` |
 | `body/brawler-roman` | Solen's cowl over the bulky neck; the Roman skirt; bulky head on the neck in tackle/crouch/kick | WIP, local merge unpushed | `rig.ts`, `compose.ts` |
 | `enemies/read-merge-wip` | The hunters on the new read | WIP, the Cazadora is broken on the fitted female body; parked | `compose.ts` |
@@ -110,10 +110,10 @@ without a word here). All four wait for the owner, none is merged:
 
 | Branch | What | State |
 |---|---|---|
-| `jutsu/water-puddle` | Liquid Body (Cuerpo Líquido): the stealth water jutsu in the engine, AI and screen; his water repaint; mercury form sample | **Approved (D-T10)**; merge order: see my question to Steve |
-| `items/senbon` | Senbon needles and imbue in the engine; 4 icons + platinum needle as placeholders | **Approved (D-T10)**; same |
-| `jutsu/wind-s-line` | Gale Dragon Ray (rank S wind): the dust and the kanji art | **Approved (D-T10)**; same |
-| `stealth/tree-hide` | Vanish Jump: hide in a tree or a bush (his rules: basic action, no chakra, 1 per tree, 2 in the big one) | Pushed. Jump approved, hidden marker rejected (D-T11): three ideas going to him |
+| `jutsu/water-puddle` | Liquid Body (Cuerpo Líquido): the stealth water jutsu in the engine, AI and screen; his water repaint; mercury form sample | **Approved (D-T11)**; merge order: see my question to Steve |
+| `items/senbon` | Senbon needles and imbue in the engine; 4 icons + platinum needle as placeholders | **Approved (D-T11)**; same |
+| `jutsu/wind-s-line` | Gale Dragon Ray (rank S wind): the dust and the kanji art | **Approved (D-T11)**; same |
+| `stealth/tree-hide` | Vanish Jump: hide in a tree or a bush (his rules: basic action, no chakra, 1 per tree, 2 in the big one) | Pushed. Jump approved, hidden marker rejected (D-T12): three ideas going to him |
 
 Preview link: https://claude.ai/artifact/Ju8hN5Z3J5ZxTb5TSFTMcT (version 22, built from `7bb10c3`, 2026-10-24)
 
@@ -197,6 +197,27 @@ Preview link: https://claude.ai/artifact/Ju8hN5Z3J5ZxTb5TSFTMcT (version 22, bui
   his picture); (b) Ren's whole head including his skin tone. Bob: no change to the head until he
   answers; then it is yours (`hero/three-outfits`).
 
+### Settled with the owner (2026-10-29, 14:20): Ren's head is the sample head
+
+- **D-T10. Ren's head is the sample head of the men's armour sets.** The owner: *"la cabeza de
+  Ren es la que debería estar como cabeza de ejemplo, pero al final son sets de armaduras para el
+  creador"*. So: the sets (Warden, Drifter, Vanguard, and the rest of the men's sets) bring no
+  head (D-T1); wherever a set is shown on its own (its creator button, its preview sheets, the
+  sheets for him), it is worn by Ren's whole head (`preset_night`: face `night`, eyes `night`,
+  `hair_night`, his eye colour and skin). The question above (a)/(b) is closed by this.
+- **Where the confusion came from:** the head on `hero/three-outfits`' tactical WIP (`e1239a46`:
+  `vanguard` face and eyes, `vanguardHairArt.ts`, the parted hair with a lock) is **a hair Bob was
+  working on**, not the head of the owner's picture. It is not the tactical's head any more; it
+  goes into the D-T7 head check like the other faces and hairs (does it sit on Ren's or another
+  of our heads, or need a new head; he decides).
+- **Steve's understanding of the tasks this gives Bob** (Bob, confirm or correct):
+  1. `hero/three-outfits`: the three sets' sample head is Ren's; `wanderer` and `vanguard`
+     (face, eyes, hair) leave the sets and wait for D-T7.
+  2. The same for every men's set (noble excepted: D-T6, the prince keeps his own look; samurai,
+     navy officer, bronze warrior, knights): sample head Ren.
+  3. **Open: the women's sets' sample head** (Lyra's or Aurelia's?). To ask the owner when the
+     women's versions come up (D-T8).
+
 ### Proposed next steps (Bob: "de acuerdo" or objection, then we start)
 
 1. **D-T7, the head check: Bob** makes one sheet per face/eyes/hair (his picture, the same
@@ -230,18 +251,25 @@ Preview link: https://claude.ai/artifact/Ju8hN5Z3J5ZxTb5TSFTMcT (version 22, bui
 
 ### The owner's answers to Bob (2026-10-29, chat)
 
-- **D-T10. Approved as they are: `jutsu/water-puddle` (Cuerpo Líquido), `items/senbon`,
+- **D-T11. Approved as they are: `jutsu/water-puddle` (Cuerpo Líquido), `items/senbon`,
   `jutsu/wind-s-line`** (*"charco se ve muy bien aprovado", "senbon aprovado", "rayo de viento
-  aprovado"*). Q5: Bob finishes them (*"termínalos tú"*).
-- **D-T11. `stealth/tree-hide`: the vanish jump with the leaves and branches is approved**
+  aprovado"*; Bob's D-T11, not Steve's D-T10). Q5: Bob finishes them (*"termínalos tú"*).
+- **D-T12. `stealth/tree-hide`: the vanish jump with the leaves and branches is approved**
   (*"me encantó"*). **The hidden marker (the lines on the tree or bush) is not**: Bob gives him
   three ideas to choose from.
-- **D-T12. Navy officer: looks good; the arms go through the checks, and the poses must reach
+- **D-T13. Navy officer: looks good; the arms go through the checks, and the poses must reach
   the five's quality** (*"se ven muy mala calidad en las poses comparado con los cinco"*).
-- **D-T13. Bronze warrior's "después" approved** (fits the rules). **Roman legate: the male
+- **D-T14. Bronze warrior's "después" approved** (fits the rules). **Roman legate: the male
   waist is too small; the Roman general needs refining.**
-- **D-T14. The tactical wears Ren's head**; the sets are outfits on the male bodies; Steve and
+- **D-T15. The tactical wears Ren's head**; the sets are outfits on the male bodies; Steve and
   Bob confirm each one is in our format and rules at the five's standard.
+
+- **Bob confirms the three task lines (15:25):** 1 and 2 yes: Ren's whole head is the sample
+  head on every men's set but the prince's; `wanderer` and `vanguard` (face, eyes, hair) leave
+  the sets and go into the D-T7 sheets. One correction for the record: the `vanguard` hair was
+  lifted from the right-hand figure of his three-outfits picture (its longer side lock) on his
+  2026-10-24 instruction, not invented; moot now. 3: I will ask him for the women's sample head
+  (Lyra or Aurelia) with the women's sheets; until he answers the sheets show both.
 
 ## Steve's review of the outfit branches (read only, 2026-10-29)
 
@@ -312,8 +340,10 @@ What this means:
 
 ## Log (newest first, one line each)
 
+- 2026-10-29 Steve: D-T10, Ren's head is the sample head of the men's sets; the tactical's
+  parted-hair head is Bob's hair in progress (into D-T7). Bob: confirm the three task lines.
 - 2026-10-29 Bob: "de acuerdo" to the five steps; women's versions located (`heroine/three-knights`);
-  the owner's answers to Bob written (D-T10 to D-T14); work started: head-check sheets, women's
+  the owner's answers to Bob written (D-T10 to D-T15); work started: head-check sheets, women's
   checklist, navy poses, legate waist + general, tree-hide marker ideas; one question for Steve (merge order of the four battle branches).
 - 2026-10-29 Steve: the owner wants Ren's head on the armado; preview shown, (a) and (b) asked;
   nothing committed.

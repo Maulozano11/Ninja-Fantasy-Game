@@ -168,11 +168,11 @@ wall walk) was offered too; he said no to it as a mechanic of its own.
   as any attack from hiding.
 - **The return:** the ninja lands where it leapt from, or up to 3 m from there, with no
   opportunity attacks.
-- **The risk, 20 %** (his number: *"no lo pongas tan riesgoso, ponle un porcentaje de 20% que
-  falles"*): a 20 % roll, shown before leaping like every other %, that the landing goes wrong:
-  the ninja doesn't return, falls under the target, takes 1d6 from the fall and lies prone in its
-  reach. The strike itself is rolled as usual. (First proposed: no return whenever the strike
-  missed; he found it too risky.)
+- **The risk, only when the strike misses** (his words: *"no lo pongas tan riesgoso, ponle un
+  porcentaje de 20% que falles"*, then *"lo quiero distinto, solo cuando falla"*): if the strike
+  misses, a 20 % roll that the landing goes wrong: the ninja doesn't return, falls under the target,
+  takes 1d6 from the fall and lies prone in its reach. A hit always lands back. Both numbers show
+  before leaping, like every other %. (First proposed: no return on every miss; too risky.)
 
 ## Cover
 
@@ -2124,6 +2124,9 @@ and no body along the back wall; only the body on the right).
   (depth) and height over the floor trade off. In his third backdrop the floor starts halfway down
   (about 14 m of depth) and the top two necks run along the wall, so those heads are in the air
   (about 4 m and 2.3 m or more over the floor): reaching them in melee needs a jump or height. The
-  long neck is the head frame's own last stretch, repeated up to the painted neck. His first two
+  long neck: the head frame, then a straight stretch of his long neck (his zip's fixed part) scaled
+  to the same thickness and repeated with soft overlaps, into the painted neck. It overlaps the
+  painted neck up to where both are equally thick, sits on its middle there and fades out over
+  about 34 px, tinted toward his darker scales (`docs/mockups/colossal-hydra-neck-joins.png`). His first two
   backdrops and the bite strip v2 (seven heads) stay as references.
 

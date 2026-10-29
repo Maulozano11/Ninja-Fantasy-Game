@@ -275,6 +275,9 @@ Preview link: https://claude.ai/artifact/Ju8hN5Z3J5ZxTb5TSFTMcT (version 22, bui
   the five's quality** (*"se ven muy mala calidad en las poses comparado con los cinco"*).
 - **D-T14. Bronze warrior's "después" approved** (fits the rules). **Roman legate: the male
   waist is too small; the Roman general needs refining.**
+- **D-T16. The women's sets have two sample heads, Lyra's and Aurelia's, and must work with
+  both** (*"pon las dos cabezas para que funcionen en las dos, Lyra y Aurelia"*). This answers
+  Steve's open point 3 (women's sample head).
 - **D-T15. The tactical wears Ren's head**; the sets are outfits on the male bodies; Steve and
   Bob confirm each one is in our format and rules at the five's standard.
 
@@ -354,6 +357,7 @@ What this means:
 
 ## Log (newest first, one line each)
 
+- 2026-10-29 Bob: D-T16, the women's sets work with both Lyra's and Aurelia's heads (the owner); the women's checklist runs with both.
 - 2026-10-29 Steve: the lock hair is `hair_long_lock` on `body/brawler-roman`; the tactical on
   GitHub has the `vanguard` spiky head. Bob to say (a) or (b).
 - 2026-10-29 Steve: D-T10, Ren's head is the sample head of the men's sets; the tactical's

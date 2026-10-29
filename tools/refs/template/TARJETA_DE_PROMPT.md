@@ -458,3 +458,55 @@ Lo que de su imagen **no** hacemos todavía: *Expresión* (los sprites no tienen
 los retratos expresivos son para las escenas sociales) y *Rotar* (el sprite es de vista 3/4 fija;
 se puede girar a izquierda y derecha, no dar la vuelta). *Zoom* sí: ya existe el acercamiento a
 la cara al editar la cabeza.
+
+### 10b. La segunda versión (la que manda): tres columnas para todas las pestañas
+
+Su referencia: `docs/reference/creator-screen-v2-owner-reference.png` (2026-10-28). Sus reglas,
+con sus palabras: *"también esta forma para las otras pestañas"*, *"asegúrate de tener el botón
+de color personalizado a cada cosa"* y *"las poses de abajo son las poses que ya tenemos, no esas
+de ataque"*. Así queda:
+
+- **Arriba:** el título "CREADOR DE PERSONAJE · FORJA TU PROPIA LEYENDA" a la izquierda y los
+  seis pasos como **barra de pestañas** a la derecha (la activa sobre la gema roja, rombos
+  pequeños entre ellas). La misma pantalla para los seis pasos: solo cambian las dos columnas.
+- **Centro (fijo en todas):** el ninja con sus herramientas (acercar a la cara, voltear,
+  centrar), el nombre con el dado de aleatorio, y debajo **nuestras 11 poses** con su nombre
+  (Reposo, Sellos, Ataque, Arrojar, Estocada, Embestida, Combo, Lanzar, Herido, Victoria,
+  Cargar). Sin "Expresiones" (los sprites no las tienen).
+- **Botón de color personalizado en cada cosa:** al final de cada fila de muestras (cabello,
+  ojos, piel, marcas) y junto a **cada color de cada prenda** en la *Paleta de colores*, que
+  lista lo que lleva puesto, pieza por pieza y con todos sus colores (los `colors` de cada
+  `ItemDef`).
+- **Qué va en las columnas, por paso:**
+
+| Paso | Izquierda | Derecha |
+|---|---|---|
+| Origen | Los cinco orígenes con su tarjeta | Lo que da: reputaciones, riqueza, rasgo |
+| Clan | Los cuatro clanes con emblema | Sus habilidades, su naturaleza de chakra, sus ojos |
+| Clase | La clase elegida en detalle (dados, salvaciones, rasgos) | Las cinco clases, el arma (con su color), el elemento del arma, el estilo de sellos |
+| Apariencia | Leyendas, cuerpo, rostro, cabello y colores base | Ropa, armadura, capa (con "ninguna"), paleta de colores de todo lo puesto |
+| Habilidades | Las seis características con sus botones − / + | Dotes y lo que cambia (PV, CA, chakra) |
+| Jutsus | Las cinco ranuras | La lista de jutsus del rango con su icono y su carta |
+
+Maquetas con sus piezas de batalla de relleno: `docs/mockups/creator-v2-appearance-mockup.png`,
+`docs/mockups/creator-v2-class-mockup.png`.
+
+**B2) Las piezas que añade esta versión** (pegar con el preámbulo y su imagen adjunta):
+
+```
+Hoja de piezas de interfaz sobre fondo magenta puro (#FF00FF), cada pieza separada, sin texto,
+sin personajes, misma paleta y mismo marco que la imagen adjunta:
+Fila 1: la pestaña de la barra de pasos 300×70 en tres estados: normal (solo una línea dorada
+fina abajo), iluminada (dorado tenue) y activa (gema roja con borde dorado y rombos en los
+extremos); el rombo pequeño separador 40×40 dorado.
+Fila 2: el botón de color personalizado 72×72: una rueda de colores (arcoíris) dentro de un
+marco cuadrado negro con filete dorado y un "+" blanco pequeño en el centro; en normal,
+iluminado y pulsado. La cajita de color 72×72 vacía con filete dorado, normal y seleccionada.
+Fila 3: el emblema del título 160×160 (rombo dorado con una estrella de cuatro puntas), y la
+caja del nombre 700×90 negra con filete dorado y un ícono de pluma a la izquierda, vacía.
+Fila 4: tres botones cuadrados 90×90 negro y dorado para las herramientas, con iconos: lupa,
+flechas en círculo, mira (centrar); y el dado 110×110 dorado del aleatorio.
+Fila 5: el panel de sección 1000×300 con la cabecera: esquinas ornamentadas, un círculo con
+icono a la izquierda del título y una línea dorada; vacío; y el mismo en 1000×600.
+PNG, 3200×2400, sin morado fuera del magenta de fondo.
+```

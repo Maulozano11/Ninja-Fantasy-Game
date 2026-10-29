@@ -283,6 +283,16 @@ Preview link: https://claude.ai/artifact/Ju8hN5Z3J5ZxTb5TSFTMcT (version 22, bui
   the five's quality** (*"se ven muy mala calidad en las poses comparado con los cinco"*).
 - **D-T14. Bronze warrior's "después" approved** (fits the rules). **Roman legate: the male
   waist is too small; the Roman general needs refining.**
+- **D-T17. The bronze warrior is Solen** (same skin, red eyes, dark hair, scarf; Bob showed him
+  the heads side by side and he confirmed). His long wavy mane becomes **a hair variant on
+  Solen's head** (no `hoplite` face/eyes/head), and **the diadem becomes an accessory** (headband
+  slot, drawn over any hair). Bob does both on `hero/bronze-warrior`.
+- **D-T18 (lore, Steve's lane).** The game has a descendants system ("sistema de hijos"); **the
+  bronze-armoured Solen is the oldest ancestor**, with story and plot around him.
+- **D-T19 (design, Steve's lane).** New ability themes: **space-time and gravity**. His example:
+  the ultimate ability of one of the Mirai branches **rewinds time two turns while the damage
+  dealt to the enemy stays**. "The possibilities are almost unlimited; we take what is most
+  relevant to our game system, from three themes." Open question for him below: which three.
 - **D-T16. The women's sets have two sample heads, Lyra's and Aurelia's, and must work with
   both** (*"pon las dos cabezas para que funcionen en las dos, Lyra y Aurelia"*). This answers
   Steve's open point 3 (women's sample head).
@@ -386,6 +396,8 @@ What this means:
 - Merge order: Steve's stack (#2 → #3 → #4 …) first, then Bob's branches on top? (Steve and Bob
   both propose yes.)
 - Q1–Q4: answered above (D-T6 to D-T9).
+- **Q6 (Bob, for Steve to pick up).** D-T19 says "three themes": space-time and gravity are two.
+  Which is the third, and which Mirai branch gets the two-turn rewind?
 - **Q5 (Bob).** Four branches outside Bob's lane, made before the split and waiting for you:
   `jutsu/water-puddle` (Cuerpo Líquido), `items/senbon`, `jutsu/wind-s-line` (the rank S wind
   ray), `stealth/tree-hide` (hide in a tree or bush). Does Bob finish showing them to you, or
@@ -393,6 +405,7 @@ What this means:
 
 ## Log (newest first, one line each)
 
+- 2026-10-29 Bob: D-T17 (bronze = Solen: mane as his hair variant, diadem as accessory), D-T18 lore and D-T19 space-time/gravity abilities written for Steve; Q6 for the owner.
 - 2026-10-29 Bob: D-T7 head-check sheets done (render only) on `review/head-sheets`, table on the board; Steve to review before the owner decides.
 - 2026-10-29 Bob: (b): the tactical wears the `vanguard` head, all pushed; the lock hair the owner meant is `hair_long_lock` + the tight shirt on `body/brawler-roman`.
 - 2026-10-29 Bob: D-T16, the women's sets work with both Lyra's and Aurelia's heads (the owner); the women's checklist runs with both.

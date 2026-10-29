@@ -668,9 +668,9 @@ La MISMA imagen adjunta, idéntica píxel por píxel, cambiando SOLO esto: el po
 hacia él brillan con una luz cálida dorada, las antorchas más fuertes; el resto un poco más oscuro.
 ```
 ```
-La MISMA imagen adjunta, idéntica píxel por píxel, cambiando SOLO esto: la boca del desagüe y su
-camino entre las rocas brillan con una luz fría azul verdosa, con un poco de niebla; el resto un poco
-más oscuro.
+La MISMA imagen adjunta, idéntica píxel por píxel, cambiando SOLO esto: la boca del desagüe (el arco
+de piedra abajo a la IZQUIERDA, junto al agua y la cascadita) brilla con una luz fría azul verdosa
+que sale de adentro, con un poco de niebla sobre el agua; el resto un poco más oscuro y frío.
 ```
 
 **B) El patio vacío** (adjunta su fondo de la hidra v3, `docs/reference/colossal-hydra-backdrop-v3-owner-reference.png`):

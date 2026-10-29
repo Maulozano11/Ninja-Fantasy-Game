@@ -13,7 +13,7 @@ const look = (body: 'male' | 'bulky' = 'male'): SpriteAppearance => ({ ...struct
 const hex = (rgba: Uint8ClampedArray, i: number) => '#' + [0, 1, 2].map((k) => rgba[i * 4 + k].toString(16).padStart(2, '0')).join('');
 
 describe("the owner's Roman legate", () => {
-  it('shows his chest set pixel for pixel at male idle frame 0, but where our Roman chin and neck stand over the cuirass\'s top', () => {
+  it('shows his chest set pixel for pixel at male idle frame 0', () => {
     const f = renderSprite(look(), 'idle', 0);
     const wrong: string[] = [];
     LEGATE_FIGURE.rows.forEach((row, j) => {
@@ -23,7 +23,7 @@ describe("the owner's Roman legate", () => {
         if (f.rgba[p * 4 + 3] === 0 || hex(f.rgba, p) !== LEGATE_FIGURE.colors[row[i]]) wrong.push(`${LEGATE_FIGURE_AT[0] + i},${LEGATE_FIGURE_AT[1] + j}`);
       }
     });
-    assert.deepEqual(wrong, KNOWN);
+    assert.deepEqual(wrong, []);
   });
 
   it('is a male set: none of his pieces fits the female body', () => {
@@ -45,6 +45,3 @@ describe("the owner's Roman legate", () => {
       }
   });
 });
-
-// His cuirass goes on up under his beard to the neck (legate_ref.more_of): there our Roman's chin and neck are in front.
-const KNOWN = ['127,144', '128,144', '129,144', '124,145', '125,145', '126,145', '127,145', '128,145', '129,145', '130,145', '131,145'];

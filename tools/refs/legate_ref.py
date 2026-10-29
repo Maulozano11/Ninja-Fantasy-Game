@@ -9,8 +9,17 @@ hanging straps and his dark red sleeves. Not his head, beard, hair, belt, skirt,
 below the sleeves the arms are our own, in the character's skin.
 
 Brought down as his Roman general is (general_ref.py, his decision for his big pictures, bronze_ref.py): the
-body shrunk evenly onto our male rig (the least-squares fit of his joints on ours), the chest set with his
-neck on ours, cleaned with his palette only, his black line 1 px.
+body shrunk evenly onto our male rig (the least-squares fit of his joints on ours), the chest set standing
+where the least-squares fit of the joints it dresses (FIT_ON: neck, shoulders, elbows, wrists, hips and
+pelvis) puts it, cleaned with his palette only, his black line 1 px. (Stood by his neck alone, as the general
+is, the set sat 2 px too far to the far side: he draws his torso mostly to the far side of the neck, we draw
+ours to the near side, and on our male the cuirass's near edge then stopped short of the near arm and the
+waist under it read pinched. The owner, 2026-10-29: "la cintura del masculino se ve muy pequeña".)
+
+His plates (the cuirass, the pauldrons) are read in layers at our scale (engraved_ref.py, PLATES): his line,
+his plate in his shades, his gold and his seams as marks laid by cell, so the eagle, the spirals and the gold
+rims read and nothing is a blend. (The owner on the first reduction, 2026-10-29: the torso "muy mal", the
+eagle cuirass to be copied pixel for pixel, not a smoothed blur of browns.)
 
 Scripts import this with sys.path.insert(0, os.path.dirname(__file__)) and run with python3 -I from the
 repository root.
@@ -24,6 +33,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import numpy as np  # noqa: E402
 
 import bronze_ref as R  # noqa: E402
+import engraved_ref as E  # noqa: E402
 import general_ref as G  # noqa: E402  (bronze_ref set up for his big landscape pictures: grid size, colours, piece order)
 
 REF = 'docs/reference/roman-legate-owner-reference.jpg'
@@ -63,8 +73,21 @@ def body_scale():
 
 
 BODY_SCALE = body_scale()
-# His neck on ours at male idle frame 0; the chest set as he drew it round it.
-MAP = R.Map(BODY_SCALE, (R.JOINTS['neck'][0] - JOINTS['neck'][0] / BODY_SCALE, R.JOINTS['neck'][1] - JOINTS['neck'][1] / BODY_SCALE))
+# The joints his chest set hangs from and the arms it dresses: where the set stands is the least-squares fit
+# (at BODY_SCALE) of these on ours at male idle frame 0, the set as he drew it round them. His legs stand
+# apart from ours (a wider stance) and are not lifted, so they are left out of the fit of the place.
+FIT_ON = ('neck', 'pelvis', 'shoulderN', 'shoulderF', 'elbowN', 'elbowF', 'wristN', 'wristF', 'hipN', 'hipF')
+
+
+def body_offset():
+    """The fine pixel his corner (0, 0) lands on: the shift that lays FIT_ON best on ours at BODY_SCALE."""
+    A = np.array([JOINTS[k] for k in FIT_ON], float)
+    O = np.array([R.JOINTS[k] for k in FIT_ON], float)
+    t = (O - A / BODY_SCALE).mean(0)
+    return (round(float(t[0]), 2), round(float(t[1]), 2))
+
+
+MAP = R.Map(BODY_SCALE, body_offset())
 
 CHEST = ('cuirass', 'pauldron_n', 'pauldron_f', 'sleeve_n', 'sleeve_f')
 rect = G.rect
@@ -79,7 +102,9 @@ PARTS = [
     ('pauldron_n', [[(161, 43), (190, 43), (190, 68), (161, 68)]], METAL),
     ('sleeve_n', [rect(158, 62, 186, 77)], SLEEVE),
     ('pauldron_f', [rect(208, 47, 226, 67)], METAL),
-    ('cuirass', [[(182, 47), (217, 47), (217, 98), (182, 98)]], R.ALL),
+    # down to his gold rim: flat under the near chest (row 91) with his dark band under it (rows 92-93), a
+    # diagonal down to the far flat bottom (row 97); below the rim his skirt's strips, which are not his
+    ('cuirass', [[(182, 47), (217, 47), (217, 98), (202, 98), (195, 94), (182, 94)]], R.ALL),
     ('sleeve_f', [rect(212, 62, 228, 76)], SLEEVE),
     ('arm_f', [rect(214, 70, 232, 84)], ('skin', 'line')),
     ('other', [rect(128, 0, 255, 190)], G.ANY),
@@ -99,16 +124,44 @@ def more_of(name, H, W):
     return None
 
 
+# His dark band under the cuirass's near rim (rows 92-93, his line colour, cells 182-194): the cuirass's own
+# lower line, not the strips' (bronze_ref.labels gives a line to the piece it bounds, and this band's only
+# solid neighbours below are the strips).
+RIM_BAND = rect(182, 92, 195, 94)
+
+
 def load():
     """His picture snapped to his palette, and the right figure's pieces: (a, labels)."""
     a = R.snapped(R.native(REF))
-    return a, R.labels(a, PARTS)
+    lab = R.labels(a, PARTS)
+    K = R.kinds(a)
+    lab[R.inside(RIM_BAND, *lab.shape) & (K == 'line') & (lab == 'other')] = 'cuirass'
+    # his neck's skin under the beard, inside the cuirass's region: his neck, not the cuirass (which is continued
+    # up under it, more_of)
+    lab[(lab == 'cuirass') & (K == 'skin')] = 'face'
+    return a, lab
+
+
+# How his plates are read at our scale (engraved_ref, the owner's verdict on the first reduction, 2026-10-29: the
+# cuirass "muy mal", its eagle and gold filigree a blur of browns): the cuirass is his grey steel (every grey of
+# his: his 'steel', the dark greys bronze_ref.kind calls 'purple' and 'hair', his near-blacks), and his gold on
+# it is always a mark, the eagle, the spirals and the rims in his gold; the pauldrons are his bronze, their gold
+# rims and dark seams the marks.
+PLATES = {
+    'cuirass': E.Plate(('steel', 'purple', 'hair', 'dark'), foreign=('gold',), by_light=False,
+                       motifs=[('spiral', (194.5, 84.5), 4.0), ('spiral', (209.0, 84.5), 4.0), ('spiral', (192.5, 75.0), 3.5), ('spiral', (209.5, 74.5), 3.0)]),
+    'pauldron_n': E.Plate(('gold', 'leather')),
+    'pauldron_f': E.Plate(('gold', 'leather')),
+}
 
 
 def piece(a, lab, name):
-    """A piece of his at our scale, continued under what hides it: (mask, colours, line)."""
+    """A piece of his at our scale, continued under what hides it: (mask, colours, line); his plates read in
+    layers (PLATES)."""
     R.more_of = more_of
     R.HIS_JOINTS = JOINTS
+    if name in PLATES:
+        return E.piece(a, lab, name, MAP, PLATES[name])
     return R.piece(a, lab, name, MAP)
 
 

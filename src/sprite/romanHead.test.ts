@@ -196,6 +196,7 @@ describe("the owner's Roman head on his neck", () => {
     const { faceShape: _f2, eyeShape: _e2, eyeColor: _c2, slots: { hair: _h2, ...slots2 }, ...rest2 } = look;
     assert.deepEqual([slots, rest], [slots2, rest2]);
     assert.equal(JSON.stringify(solen), before, 'the preset itself unchanged');
-    for (const p of LEGENDARY_PRESETS) assert.notEqual(getAppearance(p.character).faceShape, 'roman', p.character.id);
+    // (the owner's Roman legate wears the Roman's own head by design: his legate is a Roman)
+    for (const p of LEGENDARY_PRESETS) if (p.character.id !== 'preset_roman_legate') assert.notEqual(getAppearance(p.character).faceShape, 'roman', p.character.id);
   });
 });

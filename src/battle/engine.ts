@@ -46,25 +46,7 @@ import { conduct, electrify, groundEffects, plantTag, saveHit, springTrap, TAG, 
 import { aiInterposes, canDeflect, deflect, interpose, interposers } from './reactions';
 import { blazeAt, blazeBurns, blowSteam, freeze, iceAt, mire, pathArea, slips, soak, spill } from './ground';
 import { breakable, damageStructure, faceToward, hitStructuresIn, jutsuWallAt, raiseStructure, STRUCTURE_AC, structureAt, structureAttack, structureBlocker } from './structures';
-import {
-  addNode,
-  auraEntered,
-  canEvade,
-  command,
-  commandBlocker,
-  enteredAura,
-  evade,
-  leavesNodes,
-  ownNodeAt,
-  spatialSwap,
-  submissionBlocker,
-  submit,
-  swapBlocker,
-  warpBlocker,
-  warpLanding,
-  warpStrike,
-  openEye,
-} from './clans';
+import { addNode, auraEntered, canEvade, command, commandBlocker, enteredAura, evade, leavesNodes, ownNodeAt, spatialSwap, submissionBlocker, submit, swapBlocker, warpBlocker, warpLanding, warpStrike, openEye, WEAPON_THROW } from './clans';
 import { goalOf, ninjaOptions, reachTo, replanAgainst } from './intent';
 import { chargedFoe, chargeHolds, crackUnder, endCharge } from './charged';
 import { activeImbue, EARTH_CRIT, ELEMENTAL_SLASH, endImbue, IMBUE_DAMAGE, IMBUE_DICE, imbueBlocker, imbueHolds, slashBlocker, slashRange, startImbue, unitImbueElement, WIND_PUSH, type ImbueElement } from './imbue';
@@ -620,6 +602,47 @@ function elementalSlash(s: BattleState, u: Unit, t: Unit, ev: BattleEvent[]): vo
   applyHits(s, hits, loud(s, u), ev);
 }
 
+/**
+ * Weapon Throw (a Ryusei's, the owner's 2026-10-28; its action and chakra are paid): the weapon in
+ * hand flies at a foe in sight as a shooting star and the Ryusei goes after it as light, catching it
+ * where it lands, beside the foe (Shooting-Star Thrust's landing, clans.ts warpLanding). The throw
+ * is rolled from where it stood (the weapon's attack: its die + the same modifier as its blows) and
+ * lands as the Ryusei arrives; hit or miss, the weapon's landing leaves a Node (Weapon Nodes).
+ * Landing beside the foe gives the edge of a thrust: its next attack this turn comes from behind.
+ * With nowhere to land beside it, the weapon comes back to its hand and it stays where it was.
+ */
+function weaponThrow(s: BattleState, u: Unit, t: Unit, ev: BattleEvent[]): void {
+  const w = wielded(u);
+  if (t.pos.x !== u.pos.x) u.facing = t.pos.x > u.pos.x ? 1 : -1;
+  ev.push({ t: 'jutsu', unit: u.id, jutsu: WEAPON_THROW, at: { ...t.pos }, shape: null, enhanced: false });
+  const pv = attackPreview(s, u, t, 'jutsu', { jutsuRange: JUTSU[WEAPON_THROW].range, weapon: true });
+  const roll = check(s, 'attack', pv.mod, pv.ac, pv.adv, true);
+  // A thrust's edge from before goes with this roll (the next attack roll after it).
+  const edge = !!u.cond.warpEdge;
+  if (edge) u.cond.warpEdge = false;
+  addNode(s, u, t.pos, ev);
+  const node = s.nodes[s.nodes.length - 1];
+  const to = warpLanding(s, u, node);
+  if (to) {
+    const from = { ...u.pos };
+    warpStrike(s, u, to, ev);
+    enteredAura(s, u, from, ev);
+  }
+  ev.push({ t: 'attack', unit: u.id, target: t.id, what: w.name, roll, ranged: true, ...(pv.reasons.length ? { reasons: pv.reasons } : {}) });
+  reveal(u, ev);
+  const hits: Hit[] = [];
+  if (roll.success) {
+    const str = abilityMod(u.stats.str);
+    const dex = abilityMod(u.stats.dex);
+    const mod = w.finesse ? Math.max(str, dex) : str;
+    let amount = rollDiceExpr(s, w.dice, roll.crit) + mod;
+    if (u.lastStand) amount *= SACRIFICE_POWER;
+    hits.push({ unit: t.id, amount: Math.max(1, amount), type: w.type, source: u.id, what: w.name, crit: roll.crit, aimed: true, unblockable: edge });
+  }
+  if (s.phase === 'combat') scareAnimalsNear(s, t.pos, 6, ev);
+  applyHits(s, hits, loud(s, u), ev);
+}
+
 function opportunityAttack(s: BattleState, r: Unit, m: Unit, ev: BattleEvent[], resume: NonNullable<AfterHits['resumeWalk']>): boolean {
   r.turn.reaction = false;
   return weaponAttack(s, r, m, false, attackPreview(s, r, m, 'melee'), {}, { resumeWalk: resume }, ev);
@@ -1157,7 +1180,7 @@ function doJutsu(s: BattleState, u: Unit, id: string, atIn: Pt, targetId: string
   switch (spec.shape) {
     case 'single':
       if (!target || !targetable(target)) return 'needTarget';
-      if (spec.special === 'slash' && target.team === u.team) return 'ally';
+      if ((spec.special === 'slash' || spec.special === 'weaponThrow') && target.team === u.team) return 'ally';
       if (d > range + 0.1 + (target.bulk ?? 0) + (target.kind === 'hydra_head' ? 2.5 : 0)) return 'outOfRange';
       if (!spec.melee && !lineOfSight(s, u.pos, target.pos)) return 'noSight';
       if (spec.melee && fullCoverBetween(s, u.pos, target.pos)) return 'blocked';
@@ -1234,6 +1257,10 @@ function doJutsu(s: BattleState, u: Unit, id: string, atIn: Pt, targetId: string
   }
   if (base.special === 'slash') {
     elementalSlash(s, u, target!, ev);
+    return null;
+  }
+  if (base.special === 'weaponThrow') {
+    weaponThrow(s, u, target!, ev);
     return null;
   }
   if (spec.melee && spec.shape === 'single' && target) {

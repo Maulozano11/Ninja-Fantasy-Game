@@ -74,6 +74,7 @@ export const ABILITY_ICON: Record<string, React.FC<{ size?: number; className?: 
   koton_wall: BrickWall,
   ryusei_warp: Locate,
   ryusei_swap: ArrowLeftRight,
+  ryusei_weapon_throw: Swords,
   northstar_command: Crown,
   northstar_submission: PawPrint,
   mirai_evasion: Eye,

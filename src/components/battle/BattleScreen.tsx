@@ -1659,6 +1659,7 @@ const SHORT: Record<string, [string, string]> = {
   koton_wall: ['Metal wall', 'Muro metal'],
   ryusei_warp: ['Star thrust', 'Estocada Fugaz'],
   ryusei_swap: ['Swap', 'Cambio'],
+  ryusei_weapon_throw: ['Weapon throw', 'Lanzar arma'],
   northstar_command: ['Command', 'Comando'],
   northstar_submission: ['Submit', 'Sumisión'],
   mirai_evasion: ['Evasion', 'Evasión'],

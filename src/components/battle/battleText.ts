@@ -200,6 +200,10 @@ const TABLE = strings({
     en: 'Bonus action, {c} chakra, {n} m ({w} m with water): only while your element is on the weapon. It leaves the weapon in one slash at a foe in sight: the weapon’s attack roll, and a hit deals the weapon’s die + {d} of the element. Every hit does the element’s effect: fire burns, lightning numbs, wind blows the foe back {p} m, earth knocks it down, water puts out flames and wets the ground under it. The element is gone from the weapon.',
     es: 'Acción adicional, {c} chakra, {n} m ({w} m con agua): solo con tu elemento en el arma. Sale del arma en un corte contra un enemigo a la vista: la tirada de ataque del arma, y si acierta hace el dado del arma + {d} del elemento. Cada acierto aplica el efecto del elemento: el fuego quema, el rayo entumece, el viento empuja al enemigo {p} m, la tierra lo derriba, el agua apaga las llamas y moja el suelo bajo él. El elemento deja el arma.',
   },
+  help_ryusei_weapon_throw: {
+    en: 'Action, 2 chakra, 12 m: throw the weapon in your hand at a foe in sight and go after it as light: you catch it where it lands, beside the foe. The weapon’s attack roll; a hit deals its die. It leaves a Node, and landing beside the foe your next attack this turn comes from behind.',
+    es: 'Acción, 2 chakra, 12 m: lanza el arma que empuñas a un enemigo a la vista y ve tras ella como luz: la atrapas donde cae, junto al enemigo. La tirada de ataque del arma; si acierta hace su dado. Deja un Nodo, y al caer junto al enemigo tu próximo ataque este turno es por la espalda.',
+  },
   help_ryusei_swap: {
     en: 'Action, 3 chakra, 18 m: swap places with anyone standing on one of your Nodes. An enemy can resist with a STR save.',
     es: 'Acción, 3 chakra, 18 m: intercambia el lugar con quien esté sobre uno de tus Nodos. Un enemigo puede resistirse con una salvación de FUE.',

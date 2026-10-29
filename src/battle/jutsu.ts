@@ -116,7 +116,7 @@ export interface JutsuSpec {
   save?: Ability;
   /** On a successful save: half damage, or nothing. */
   saveHalf: boolean;
-  special?: 'heal' | 'flicker' | 'clone' | 'kawarimi' | 'earthWall' | 'waterWall' | 'seal' | 'confuse' | 'evasion' | 'metalBlock' | 'metalWall' | 'warp' | 'swap' | 'command' | 'submission' | 'mantle' | 'galeZone' | 'imbue' | 'slash';
+  special?: 'heal' | 'flicker' | 'clone' | 'kawarimi' | 'earthWall' | 'waterWall' | 'seal' | 'confuse' | 'evasion' | 'metalBlock' | 'metalWall' | 'warp' | 'swap' | 'command' | 'submission' | 'mantle' | 'galeZone' | 'imbue' | 'slash' | 'weaponThrow';
   /** The projectile or effect the screen plays. */
   vfx: VfxRole;
   /** A signature effect of its own (vfx_<element>/<sig>, and <sig>_great or <sig>_enh enhanced). */
@@ -512,6 +512,30 @@ const CLAN_SPECS: JutsuSpec[] = [
     special: 'swap',
     vfx: 'aura',
     melee: false,
+    loud: true,
+  },
+  {
+    // Weapon Throw (the owner, 2026-10-28: "una nueva habilidad que sea lanzar arma y que se
+    // teletransporte a su arma"): the weapon in hand thrown at a foe in sight, the Ryusei gone after
+    // it as light and catching it where it lands (engine.ts weaponThrow; the numbers are ours). The
+    // attack roll and the weapon's die, so there are no dice here.
+    id: 'ryusei_weapon_throw',
+    name: 'Weapon Throw',
+    nameEs: 'Lanzar arma',
+    clan: 'Ryusei',
+    ability: true,
+    rank: '',
+    element: 'chakra',
+    cost: 2,
+    enhCost: 0,
+    cast: 'action',
+    range: 12,
+    shape: 'single',
+    saveHalf: false,
+    special: 'weaponThrow',
+    vfx: 'aura',
+    melee: false,
+    weapon: 'draw',
     loud: true,
   },
   // Northstar. The Aura of Sovereignty is passive (combat.ts, clans.ts); both of these are fought out

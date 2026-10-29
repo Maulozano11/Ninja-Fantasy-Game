@@ -126,6 +126,8 @@ export function evade(s: BattleState, t: Unit, h: Hit, ev: BattleEvent[]): void 
 
 export const WARP = 'ryusei_warp';
 export const SWAP = 'ryusei_swap';
+/** Weapon Throw: the weapon thrown at a foe and the Ryusei after it (engine.ts weaponThrow). */
+export const WEAPON_THROW = 'ryusei_weapon_throw';
 
 /** A Ryusei keeps three Nodes at most: a fourth makes the oldest go. */
 export const MAX_NODES = 3;

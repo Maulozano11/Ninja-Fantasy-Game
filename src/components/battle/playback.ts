@@ -1636,7 +1636,8 @@ export class Playback {
     if (Math.abs(ev.at.x - from.x) > 0.05) a.facing = ev.at.x > from.x ? 1 : -1;
     const caster = state.units[ev.unit];
     const head = caster?.kind === 'hydra_head';
-    const cross = spec?.special === 'warp' ? this.queue.find((e) => e.t === 'teleport' && e.how === 'phase' && e.unit === ev.unit) : undefined;
+    // (a Weapon Throw flies and follows the same way: the weapon at the foe, the Ryusei after it)
+    const cross = spec?.special === 'warp' || spec?.special === 'weaponThrow' ? this.queue.find((e) => e.t === 'teleport' && e.how === 'phase' && e.unit === ev.unit) : undefined;
     if (cross?.t === 'teleport' && this.phaseFollows(ev.unit)) {
       // A Shooting-Star Thrust that goes through: its name, and the throw starts at once (UnitView.warp).
       // The crossing's own event comes at the release; the thrust faces the foe it lands beside
@@ -1656,7 +1657,7 @@ export class Playback {
       this.cues.push({ at: now + (2 * WARP_FRAME) / this.speed, name: 'swing' }, { at: now + warpTimes(fly).land / this.speed, name: 'draw' });
       return WARP_REL;
     }
-    if ((spec?.special === 'warp' || spec?.special === 'swap') && this.phaseFollows(ev.unit)) {
+    if ((spec?.special === 'warp' || spec?.special === 'swap' || spec?.special === 'weaponThrow') && this.phaseFollows(ev.unit)) {
       // A Shooting-Star Thrust or a Spatial Swap that goes through: its name and a beat, then the phase
       // itself plays (no cast pose, no chakra flare: the ninja turns to light at once).
       h.sound('jutsu', 'chakra');
@@ -1703,6 +1704,7 @@ export class Playback {
       case 'flicker':
       case 'warp':
       case 'swap':
+      case 'weaponThrow':
         // The chakra flares while it gathers, and is gone with the ninja when it vanishes (it
         // would otherwise burn on at the spot it left, around whoever is swapped in there).
         this.fx.push({ ...base, kind: 'aura', from, to: from, t0: now, dur: castDelay + 400, unit: ev.unit, follow: true });

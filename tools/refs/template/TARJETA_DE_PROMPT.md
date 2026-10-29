@@ -331,3 +331,182 @@ con siluetas (la que ya está en su referencia), el patio al atardecer, el camin
 puerta de la aldea. Se piden una a una con el preámbulo y "misma paleta que la sala del clan".
 
 La maqueta con nuestros datos en su disposición: `docs/mockups/casa-owner-style-mockup.png`.
+
+## 9. Los avisos de batalla (Último aliento, reacciones) y los botones · las piezas de interfaz
+
+Su referencia: `docs/reference/last-stand-owner-reference.png` (2026-10-28, su generador: la
+batalla en pausa con Lyra caída y el aviso "ÚLTIMO ALIENTO" con sus dos botones y las tres
+tarjetas de resultado; *"me encanta"*). Como en el bacará y en la Casa, **el juego pone los
+textos, los retratos (salen del motor de sprites) y las barras de vida**; lo que hace falta del
+generador son **las piezas vacías** del marco y los botones, a tamaño de pantalla (1920×1080) para
+reducirlas nosotros a 1x y 2x, como los iconos. Las figuras anime de su imagen no entran en el
+juego: nuestro estándar son los sprites.
+
+Dónde va cada pieza en el juego: el marco grande es el `Prompt` de `components/battle/hud.tsx`
+(Último aliento, Desviar el kunai, Interponerse, Evasión, Kawarimi, el ataque de oportunidad);
+los dos botones gema son el sí / no de esos avisos (rojo = la opción que cuesta, azul = la segura),
+y el botón negro-dorado el de la barra de acciones (`hudKit.tsx`); las tarjetas pequeñas son el
+resumen al cerrar la batalla y las fichas de resultado; las placas con retrato son las de la
+fiesta y los enemigos arriba (`PartyFrames`).
+
+**A) La hoja de piezas**, en la plantilla magenta (como la del casino), fila por fila. Se pega con
+el preámbulo y su imagen adjunta como "misma paleta y mismo estilo de marco":
+
+```
+Hoja de piezas de interfaz de batalla sobre fondo magenta puro (#FF00FF), cada pieza separada,
+sin texto, sin personajes, misma paleta y mismo estilo de marco que la imagen adjunta (negro
+translúcido con rojo oscuro, filete dorado fino, esquinas ornamentadas, gemas rojas en rombo):
+Fila 1: el marco grande del aviso, 1500×900, vacío por dentro: filete dorado doble, esquinas con
+ornamento, una gema roja en rombo arriba al centro y otra abajo al centro, dos chispas doradas
+(✦) sueltas de 64×64 para flanquear el título; y el mismo marco en versión estrecha, 900×600.
+Fila 2: el botón gema rojo, 680×190, vacío (sin letras ni icono), en cuatro estados en fila:
+normal, iluminado (borde dorado más brillante), pulsado (más oscuro, hundido), apagado (gris).
+Fila 3: el mismo botón gema en azul, 680×190, los cuatro estados; y en dorado, 680×190, normal.
+Fila 4: el botón negro con borde dorado de la barra de acciones, 150×150 cuadrado, cuatro
+estados; y una ranura vacía del mismo tamaño para un icono.
+Fila 5: iconos de 96×96 en dorado sobre fondo negro redondo con filete dorado: espadas cruzadas
+(sacrificio), figura corriendo (retirada), calavera (muere), escudo (interponerse), hoja que
+desvía (desviar el kunai), ojo abierto (ojo del mañana), tronco con hojas (kawarimi), rayo en
+zigzag (reacción), reloj de arena (turno), ancla o gancho (brazo de madera).
+Fila 6: la tarjeta de resultado, 900×560, vacía, en tres bordes: azul, rojo y rojo oscuro; la
+placa "RESULTADO" vacía 400×60 con filete dorado; el marco de retrato cuadrado 180×180 dorado.
+Fila 7: la placa de retrato con barra de vida, 520×120, vacía (el hueco del retrato a la
+izquierda, el espacio de la barra a la derecha), en dos tonos: dorado (fiesta) y rojo (enemigo);
+la insignia de turno 220×60 negra con borde dorado; el rombo de iniciativa 110×110 dorado vacío
+y el mismo en gris (ya actuó).
+Fila 8: una barra de vida vacía 400×28 y llena en rojo; una barra de chakra llena en azul; una
+barra de dados de muerte: tres puntos rojos y tres verdes de 32×32, apagados y encendidos.
+PNG, 3200×3200, sin morado fuera del magenta de fondo.
+```
+
+**B) Si una fila sale con texto o con figuras:** se repite solo esa fila con "sin texto, sin
+personajes, solo el marco vacío" en una línea, como en el casino (sección 3).
+
+**C) Los fondos del aviso:** el marco va sobre la batalla real, no hace falta fondo. Para la
+tarjeta de resultado al cerrar la batalla sí: dos viñetas 1500×600 sin texto, "el campo de batalla
+al amanecer, vacío" y "una lápida con una espada clavada bajo un arce rojo", misma paleta que la
+imagen adjunta, pedidas una a una con el preámbulo.
+
+Con la hoja convertida (`sheet-from-template.py --hd`, piezas a `src/assets/ui_battle/`), el
+`Prompt` y los botones se redibujan con sus piezas; la maqueta con nuestros datos en su
+disposición: `docs/mockups/last-stand-mockup.png` (la de antes, con el marco actual) y la que
+haremos con las suyas.
+
+## 10. El creador de personaje · su pantalla, adaptada a nuestro creador
+
+Su referencia: `docs/reference/creator-screen-owner-reference.png` (2026-10-28, su generador).
+De ella se queda la **disposición**: los pasos como rombos arriba, el menú de grupos a la
+izquierda con el activo sobre la gema roja, una columna de accesos rápidos, el ninja grande al
+centro sobre un círculo, el panel de partes a la derecha por secciones (miniaturas y muestras de
+color), la tira de poses abajo con flechas, el retrato con botones pequeños, Aleatorio y
+Siguiente. **Se adapta a lo que el juego tiene:** nuestros seis pasos (Origen, Clan, Clase,
+Apariencia, Habilidades, Jutsus), nuestros siete grupos (Cuerpo, Cabeza, Ropa, Equipo, Arma,
+Chakra, Pintura), las leyendas de acceso rápido (Solen, Romano, Aiden, Lyra, Aurelia), nuestras
+11 poses; las miniaturas y el ninja los dibuja el motor de sprites, nunca el generador.
+Maqueta con sus piezas de batalla de relleno: `docs/mockups/creator-owner-style-mockup.png`.
+
+Lo que ya sirve de su hoja de batalla (tarjeta 9): las ranuras (miniaturas), los botones gema
+(rojo = Siguiente, dorado = Aleatorio, azul = Volver), las chispas de los títulos, el marco del
+retrato. Lo que falta se pide aquí.
+
+**A) El fondo** (clase "pintado completo", 1920×1080), con su imagen adjunta:
+
+```
+MISMO LUGAR, misma luz y mismo estilo que la imagen adjunta, pero VACÍO: quita todos los
+paneles, textos, botones, iconos, miniaturas y al personaje. Deja solo el patio del santuario de
+noche: los arces rojos, los faroles encendidos, las pagodas y la puerta torii al fondo, la luna
+azul grande arriba a la derecha, el agua que refleja las luces. En el centro, un poco abajo, un
+círculo de piedra con un sello rojo tenue grabado (ahí se para el personaje), visto de frente y
+algo desde arriba. Los lados izquierdo y derecho con poco detalle y más oscuros (ahí van los
+paneles). Pixel art de 16 bits. Panorámico 16:9, 1920×1080, PNG, sin magenta ni morado.
+```
+
+**B) La hoja de piezas del creador** (plantilla magenta, como la de batalla), con su imagen
+adjunta como "misma paleta y mismo estilo":
+
+```
+Hoja de piezas de interfaz del creador de personaje sobre fondo magenta puro (#FF00FF), cada
+pieza separada, sin texto, sin personajes, misma paleta y mismo marco que la imagen adjunta
+(negro translúcido, filete dorado fino, esquinas ornamentadas, gemas rojas):
+Fila 1: el panel alto vacío 560×1100 con esquinas ornamentadas y una gema roja arriba y abajo al
+centro; el panel ancho vacío 1100×320 (la tira de poses); el panel pequeño vacío 560×480.
+Fila 2: el rombo de paso de 160×160 en tres estados: apagado (borde gris), disponible (borde
+dorado) y activo (rojo encendido con brillo); vacío por dentro, sin icono.
+Fila 3: la fila del menú de grupos, 520×90: normal (solo una línea dorada fina abajo), iluminada
+(dorado tenue) y activa (gema roja con borde dorado, como el botón rojo de la imagen).
+Fila 4: la cajita de muestra de color 120×56 vacía (borde oscuro) y seleccionada (borde dorado
+grueso con brillo); el botón cuadrado pequeño 80×80 negro y dorado en normal y activo; la cajita
+"ninguno" 120×120 con una X gris.
+Fila 5: dos flechas de carrusel doradas 60×120 (izquierda y derecha) en normal y encendida; un
+deslizador: la barra 400×24 negra con filete dorado y la perilla dorada 48×48.
+Fila 6: la cabecera de sección 600×40: una chispa dorada a la izquierda y una línea dorada fina
+que se desvanece a la derecha; el círculo del suelo 900×220 visto en perspectiva: anillo rojo
+brillante con un sello tenue, sin fondo.
+Fila 7: iconos dorados de 96×96 sobre círculo negro con filete dorado: figura de pie (cuerpo),
+cabeza de perfil (cabeza), camisa (ropa), escudo (equipo), espada (arma), llama (chakra),
+pincel (pintura), pergamino (origen), abanico o emblema de clan (clan), kunai cruzados (clase),
+puño (habilidades), mano haciendo un sello (jutsus), dado (aleatorio), lupa (zoom), flechas en
+círculo (girar), retrato (vista previa).
+PNG, 3200×3200, sin morado fuera del magenta de fondo.
+```
+
+**C) Si algo sale con texto o con figuras:** se repite esa fila sola con "sin texto, sin
+personajes, solo la pieza vacía". Si el fondo sale con el personaje, se repite A con "SIN
+NINGUNA PERSONA".
+
+Lo que de su imagen **no** hacemos todavía: *Expresión* (los sprites no tienen caras distintas;
+los retratos expresivos son para las escenas sociales) y *Rotar* (el sprite es de vista 3/4 fija;
+se puede girar a izquierda y derecha, no dar la vuelta). *Zoom* sí: ya existe el acercamiento a
+la cara al editar la cabeza.
+
+### 10b. La segunda versión (la que manda): tres columnas para todas las pestañas
+
+Su referencia: `docs/reference/creator-screen-v2-owner-reference.png` (2026-10-28). Sus reglas,
+con sus palabras: *"también esta forma para las otras pestañas"*, *"asegúrate de tener el botón
+de color personalizado a cada cosa"* y *"las poses de abajo son las poses que ya tenemos, no esas
+de ataque"*. Así queda:
+
+- **Arriba:** el título "CREADOR DE PERSONAJE · FORJA TU PROPIA LEYENDA" a la izquierda y los
+  seis pasos como **barra de pestañas** a la derecha (la activa sobre la gema roja, rombos
+  pequeños entre ellas). La misma pantalla para los seis pasos: solo cambian las dos columnas.
+- **Centro (fijo en todas):** el ninja con sus herramientas (acercar a la cara, voltear,
+  centrar), el nombre con el dado de aleatorio, y debajo **nuestras 11 poses** con su nombre
+  (Reposo, Sellos, Ataque, Arrojar, Estocada, Embestida, Combo, Lanzar, Herido, Victoria,
+  Cargar). Sin "Expresiones" (los sprites no las tienen).
+- **Botón de color personalizado en cada cosa:** al final de cada fila de muestras (cabello,
+  ojos, piel, marcas) y junto a **cada color de cada prenda** en la *Paleta de colores*, que
+  lista lo que lleva puesto, pieza por pieza y con todos sus colores (los `colors` de cada
+  `ItemDef`).
+- **Qué va en las columnas, por paso:**
+
+| Paso | Izquierda | Derecha |
+|---|---|---|
+| Origen | Los cinco orígenes con su tarjeta | Lo que da: reputaciones, riqueza, rasgo |
+| Clan | Los cuatro clanes con emblema | Sus habilidades, su naturaleza de chakra, sus ojos |
+| Clase | La clase elegida en detalle (dados, salvaciones, rasgos) | Las cinco clases, el arma (con su color), el elemento del arma, el estilo de sellos |
+| Apariencia | Leyendas, cuerpo, rostro, cabello y colores base | Ropa, armadura, capa (con "ninguna"), paleta de colores de todo lo puesto |
+| Habilidades | Las seis características con sus botones − / + | Dotes y lo que cambia (PV, CA, chakra) |
+| Jutsus | Las cinco ranuras | La lista de jutsus del rango con su icono y su carta |
+
+Maquetas con sus piezas de batalla de relleno: `docs/mockups/creator-v2-appearance-mockup.png`,
+`docs/mockups/creator-v2-class-mockup.png`.
+
+**B2) Las piezas que añade esta versión** (pegar con el preámbulo y su imagen adjunta):
+
+```
+Hoja de piezas de interfaz sobre fondo magenta puro (#FF00FF), cada pieza separada, sin texto,
+sin personajes, misma paleta y mismo marco que la imagen adjunta:
+Fila 1: la pestaña de la barra de pasos 300×70 en tres estados: normal (solo una línea dorada
+fina abajo), iluminada (dorado tenue) y activa (gema roja con borde dorado y rombos en los
+extremos); el rombo pequeño separador 40×40 dorado.
+Fila 2: el botón de color personalizado 72×72: una rueda de colores (arcoíris) dentro de un
+marco cuadrado negro con filete dorado y un "+" blanco pequeño en el centro; en normal,
+iluminado y pulsado. La cajita de color 72×72 vacía con filete dorado, normal y seleccionada.
+Fila 3: el emblema del título 160×160 (rombo dorado con una estrella de cuatro puntas), y la
+caja del nombre 700×90 negra con filete dorado y un ícono de pluma a la izquierda, vacía.
+Fila 4: tres botones cuadrados 90×90 negro y dorado para las herramientas, con iconos: lupa,
+flechas en círculo, mira (centrar); y el dado 110×110 dorado del aleatorio.
+Fila 5: el panel de sección 1000×300 con la cabecera: esquinas ornamentadas, un círculo con
+icono a la izquierda del título y una línea dorada; vacío; y el mismo en 1000×600.
+PNG, 3200×2400, sin morado fuera del magenta de fondo.
+```

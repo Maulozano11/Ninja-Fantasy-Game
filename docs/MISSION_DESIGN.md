@@ -449,10 +449,19 @@ gem colour in every answer card:
 | Loyalty to the village (one's own, the team) | gold | |
 | The smart answer (not a personality) | blue | anyone can pick it |
 
-**Two more are unlocked by what the player does**, in the spirit of an anti-hero: a chaotic
-*good* one and a chaotic *evil* one (names proposed in the chat, waiting for his pick).
+**Two more are unlocked by what the player does**, in the spirit of an anti-hero (his picks,
+2026-10-29):
 
-**A karma meter, good to evil** (like the morality of *Fable*): every decision moves it, and it
+| Personality | Gem | |
+|---|---|---|
+| **A mi manera** (my way): chaotic good, does the right thing its own way, breaking rules | turquoise | |
+| **Que arda todo** (let it all burn): chaotic evil, does what suits it and enjoys the mess | obsidian (black with a red glint) | |
+
+They unlock after several decisions that break the rules (betraying a deal, saving someone
+against orders, mocking authority); which one opens depends on where Karma stands. From then on
+its answer shows in dialogues.
+
+**Karma, the meter from good to evil** (its name, his pick; like the morality of *Fable*): every decision moves it, and it
 changes how people treat you. His examples: a companion who jokes and chats with a good hero
 only takes orders, silently, from an evil one; teammates fear a cruel, merciless leader; at
 maximum reputation an evil hero is feared by the public, a popular superhero is loved. It ties

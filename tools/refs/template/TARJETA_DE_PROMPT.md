@@ -697,3 +697,47 @@ Fila 2 · INVOCACIÓN SIMPLE, 4 cuadros de 450×225: un círculo pequeño y senc
 nube de humo blanco que hace "puf", el humo se disipa, nada.
 Luz dorada, naranja y blanca; humo gris; nada morado ni rosa.
 ```
+
+**D) Segunda vuelta de la invocación (2026-10-29).** Su primera hoja (`docs/reference/summon-sigil-sheet-owner-reference.png`)
+funciona, pero el sello le quedó chico: *"hazme un prompt para algo más masivo, como el cuerpo de la
+hidra"*. Y un humo grande aparte, porque habrá invocaciones de ese tamaño seguido, también del lado
+del jugador (bestias, mechas, la armadura espiritual gigante).
+
+El sello masivo (adjunta el patio vacío, `docs/reference/colossal-hydra-courtyard-empty-owner-reference.png`,
+como referencia de perspectiva y estilo):
+
+```
+Hoja de efectos de una INVOCACIÓN DE JEFE MASIVA sobre FONDO MAGENTA PURO (#FF00FF), 6 cuadros de
+1800×900 en fila, separados por espacio magenta, sin texto, sin personas, alta resolución, colores
+brillantes, mismo estilo de pintura que la imagen adjunta (HD-2D).
+El sello es un CÍRCULO ALQUÍMICO GIGANTE en el suelo, visto en la MISMA perspectiva que el círculo
+grabado en el piso de la imagen adjunta: muy achatado, unas CINCO veces más ancho que alto, ocupando
+casi todo el ancho del cuadro. Tiene tres anillos concéntricos de runas, un heptagrama, cuadrados
+inscritos y símbolos alquímicos.
+1 grietas de luz dorada corren por el suelo dibujando el contorno del círculo; 2 se encienden el
+anillo exterior y sus runas, suben brasas; 3 arde toda la geometría interior y TRES ANILLOS DE RUNAS
+SE ELEVAN flotando sobre el suelo a distintas alturas, uno encima de otro, como capas; 4 todo al
+máximo: una COLUMNA DE LUZ COLOSAL dorada y blanca sale del centro y atraviesa el borde de arriba del
+cuadro, con relámpagos alrededor, las losas del suelo se agrietan y se levantan, vuelan piedras;
+5 la columna estalla en un muro de humo y polvo denso que llena el cuadro; 6 el sello gastado y
+humeante en el suelo, con grietas que todavía brillan débil y piedras alrededor.
+Luz dorada, naranja y blanca; humo gris; nada morado ni rosa.
+```
+
+El humo de invocación grande, para todas las invocaciones grandes (va en gris y blanco neutro: el
+juego lo tiñe del color del chakra o del elemento de quien invoca):
+
+```
+Hoja de HUMO DE INVOCACIÓN sobre FONDO MAGENTA PURO (#FF00FF), cada cuadro separado por espacio
+magenta, sin texto, sin personas, alta resolución, mismo estilo de pintura HD-2D que la imagen
+adjunta. Humo GRIS Y BLANCO NEUTRO, sin color (el juego lo tiñe), denso, con volumen, luces y sombras
+suaves; visto de lado, apoyado en el suelo.
+Fila 1 · GRANDE, 6 cuadros de 1000×1000: 1 un anillo de polvo revienta a ras del suelo; 2 el humo se
+levanta en una columna que se ensancha; 3 una NUBE ENORME y totalmente OPACA, alta como un edificio de
+tres pisos, que tapa por completo lo que hay dentro; 4 la nube empieza a abrirse desde el centro; 5 la
+nube se abre del todo y deja el centro vacío (ahí aparece la criatura), quedan jirones a los lados;
+6 los últimos jirones y polvo en el suelo.
+Fila 2 · MEDIANA, 4 cuadros de 600×600: lo mismo en menos pasos: estallido, nube opaca alta como una
+persona y media, se abre, jirones.
+Nada morado ni rosa.
+```

@@ -113,7 +113,7 @@ parts stay as creator options whatever he decides about the presets.
 | `hero/samurai` | Samurai armour in every pose, every pocket filled (his exception) | Waiting for the owner's answers: bulky crouch fill, torso lames with the arm raised, tasset plate in combo 5–6, hakama mass in crouch/sneak | `shinobiData.ts`, `catalog.ts`, `words.ts`, `compose.ts` |
 | `hero/navy-officer` | Navy officer, every part its own option; idle approved, no sword in hand | Pushed (`f56de62`). **Active:** D-T13, arms through the checks and the poses up to the five's quality | `shinobiData.ts`, `catalog.ts`, `words.ts`, `rig.ts` |
 | `hero/bronze-warrior` | Bronze warrior (his leather repaint, pixel for pixel), the bronze set, the Roman general's two chests + face + hair (his picture 189), the Roman legate's right chest only (191) | Pushed (`4c4d2d7`): the legate's eagle cuirass and the general's plates read in layers (his colours only, waist as accepted); D-T17 done: `hair_solen_mane`, `acc_solen_diadem`, `hoplite` face/eyes removed. Sheets shown to the owner, waiting for his word | `shinobiData.ts`, `catalog.ts`, `words.ts` |
-| `hero/three-knights`, `heroine/three-knights` | His three knights and his three women knights shrunk to our scale, every part an item, at rest | Men: stage 1 done. Women pushed (`0da9135`): his hair in front out of the pieces, the neck seams closed under a smaller head, both heads (D-T16), 842 tests green; checklist items 2, 4 and the poses still to verify. Lyra's own sit 0 / read 9 pinholes noted as open | `shinobiData.ts`, `catalog.ts`, `words.ts` |
+| `hero/three-knights`, `heroine/three-knights` | His three knights and his three women knights shrunk to our scale, every part an item, at rest | Men: stage 1 done. Women pushed (`2f24d0b`): his hair in front out of the pieces, the neck seams closed under a smaller head, both heads (D-T16), 842 tests green; checklist items 2, 4 and the poses still to verify. Lyra's own sit 0 / read 9 pinholes noted as open | `shinobiData.ts`, `catalog.ts`, `words.ts` |
 | `body/brawler-roman` | Solen's cowl over the bulky neck; the Roman skirt; bulky head on the neck in tackle/crouch/kick | WIP, local merge unpushed | `rig.ts`, `compose.ts` |
 | `enemies/read-merge-wip` | The hunters on the new read | WIP, the Cazadora is broken on the fitted female body; parked | `compose.ts` |
 | `armor/roman-paintover`, `sets/ascended-standard`, `companions/heroines`, `enemies/owner-standard`, `heroine/elise-v2` | Older art branches, each merged into the integration branch already or superseded | Parked; only local merges on top, nothing new | |
@@ -464,6 +464,7 @@ What this means:
 
 ## Log (newest first, one line each)
 
+- 2026-10-29 Bob: heroine/three-knights 2f24d0b (fourth pass on the owner's circles: collar plate, hood top as hair, far-side strands), 842 green; legate: pauldrons to the shoulder and the ankle in the sandal in progress; Solen's mane: three options proposed to the owner, waiting.
 - 2026-10-29 Bob: heroine/three-knights pushed (0da9135): mane and neck strand all hair, seams closed, 842 tests green.
 - 2026-10-29 17:45 Steve 2: D-T7 sheets reviewed: OK for the owner; Bob, add a `founder` column (D-T17)
   and fix gallant on Aurelia (D-T16); hairs in with `heads`, faces out is the suggestion.

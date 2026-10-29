@@ -188,6 +188,15 @@ export function warpLanding(s: BattleState, u: Unit, n: WeaponNode): Pt | null {
   return cellCenter(c);
 }
 
+/**
+ * Where a Shooting-Star Thrust aimed at `at` goes: the Ryusei's own Node there, if one is; otherwise
+ * the spot itself, as a Node of the moment (the owner, 2026-10-28: no Node needed; a foe clicked is
+ * its spot, and the landing keeps beside it). Never added to the board.
+ */
+export function warpAim(s: BattleState, u: Unit, at: Pt): WeaponNode {
+  return ownNodeAt(s, u, at) ?? { id: 'aim', owner: u.id, pos: { ...at } };
+}
+
 /** Why a Shooting-Star Thrust to this Node can't be made (none picked, too far, out of sight, nowhere to land), or null. */
 export function warpBlocker(s: BattleState, u: Unit, n: WeaponNode | undefined): string | null {
   if (!n) return 'noNode';

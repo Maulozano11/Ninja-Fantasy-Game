@@ -46,7 +46,7 @@ import { conduct, electrify, groundEffects, plantTag, saveHit, springTrap, TAG, 
 import { aiInterposes, canDeflect, deflect, interpose, interposers } from './reactions';
 import { blazeAt, blazeBurns, blowSteam, freeze, iceAt, mire, pathArea, slips, soak, spill } from './ground';
 import { breakable, damageStructure, faceToward, hitStructuresIn, jutsuWallAt, raiseStructure, STRUCTURE_AC, structureAt, structureAttack, structureBlocker } from './structures';
-import { addNode, auraEntered, canEvade, command, commandBlocker, enteredAura, evade, leavesNodes, ownNodeAt, spatialSwap, submissionBlocker, submit, swapBlocker, warpBlocker, warpLanding, warpStrike, openEye, WEAPON_THROW } from './clans';
+import { addNode, auraEntered, canEvade, command, commandBlocker, enteredAura, evade, leavesNodes, ownNodeAt, spatialSwap, submissionBlocker, submit, swapBlocker, warpBlocker, warpLanding, warpStrike, openEye, WEAPON_THROW, warpAim } from './clans';
 import { goalOf, ninjaOptions, reachTo, replanAgainst } from './intent';
 import { chargedFoe, chargeHolds, crackUnder, endCharge } from './charged';
 import { activeImbue, EARTH_CRIT, ELEMENTAL_SLASH, endImbue, IMBUE_DAMAGE, IMBUE_DICE, imbueBlocker, imbueHolds, slashBlocker, slashRange, startImbue, unitImbueElement, WIND_PUSH, type ImbueElement } from './imbue';
@@ -1202,11 +1202,13 @@ function doJutsu(s: BattleState, u: Unit, id: string, atIn: Pt, targetId: string
       if (d < MIN_AIM) return 'needDirection';
       break;
     case 'node': {
-      // Shooting-Star Thrust: one of the Ryusei's own Nodes, landing beside it if someone stands on it.
-      const n = ownNodeAt(s, u, at);
+      // Shooting-Star Thrust: one of the Ryusei's own Nodes, or (the owner, 2026-10-28: "que se ponga
+      // el objetivo enemigo... o teletransportarse a donde se indique sin los nodos") the foe aimed at
+      // or the spot aimed at; it lands beside whoever stands there (clans.ts warpAim).
+      const n = warpAim(s, u, at);
       const why = warpBlocker(s, u, n);
       if (why) return why;
-      at = warpLanding(s, u, n!)!;
+      at = warpLanding(s, u, n)!;
       break;
     }
     case 'onNode': {

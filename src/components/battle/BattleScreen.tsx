@@ -17,7 +17,7 @@ import { cellCenter, cellOf, dist, fullCoverBetween, getMap, gridFor, idx, lineO
 import { canStop, occupancy, pathCost, pathTo, reachable } from '../../battle/nav';
 import { foreseen } from '../../battle/intent';
 import { MAX_STRUCTURES, STRUCTURE_AC, breakable, jutsuWallAt, ownStructures, structureAt, structureAttack, structureBlocker, structureDist } from '../../battle/structures';
-import { auraEntered, commandBlocker, edgeFoe, nodeInSight, nodeUnder, ownNodeAt, ownNodes, submissionBlocker, submissionRefused, swapBlocker, warpBlocker, warpLanding } from '../../battle/clans';
+import { auraEntered, commandBlocker, edgeFoe, nodeInSight, nodeUnder, ownNodeAt, ownNodes, submissionBlocker, submissionRefused, swapBlocker, warpAim, warpBlocker, warpLanding } from '../../battle/clans';
 import { KUNAI, KUNAI_LONG, wielded } from '../../battle/units';
 import { EARTH_CRIT, ELEMENTAL_SLASH, IMBUE_COST, IMBUE_DICE, IMBUE_ROUNDS, imbueBlocker, type ImbueElement, slashBlocker, slashRange, SLASH_COST, SLASH_RANGE, unitImbueElements, WATER_REACH, WEAPON_ELEMENT, WIND_PUSH } from '../../battle/imbue';
 import { ELEMENT_ES } from '../../game/ruleText';
@@ -499,15 +499,17 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
         sub = [structureName(hw, lang), T('ac', { n: STRUCTURE_AC }), ...adv].join(' · ');
       }
     } else if (mode.k === 'jutsu' && spec && spec.shape === 'node') {
-      // Shooting-Star Thrust: the Nodes it can jump to light up; the one under the cursor shows where it lands.
+      // Shooting-Star Thrust: its Nodes light up, but any foe or spot in reach will do (the owner,
+      // 2026-10-28); the one under the cursor shows where it lands.
       o.range = { at: actor.pos, radius: spec.range };
       o.nodes = { valid: ownNodes(s, actor).filter((n) => !warpBlocker(s, actor, n)).map((n) => n.id) };
-      const n = (hu && ownNodeAt(s, actor, hu.pos)) || (hover?.pt && ownNodeAt(s, actor, hover.pt)) || undefined;
+      const aimAt = hu ? hu.pos : hover?.pt;
+      const n = aimAt ? warpAim(s, actor, aimAt) : undefined;
       if (n) {
         const why = warpBlocker(s, actor, n);
         const land = why ? null : warpLanding(s, actor, n);
         const foe = land ? edgeFoe(s, actor, land) : undefined;
-        o.nodes.hover = n.id;
+        if (n.id !== 'aim') o.nodes.hover = n.id;
         o.point = { at: land ?? n.pos, ok: !!land };
         label = why ? reasonLine(why) : foe ? T('aimWarpEdge', { name: unitRef(foe, lang) }) : T('aimMove', { m: dist(actor.pos, land!).toFixed(1) });
         if (land) {
@@ -516,7 +518,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
           const hostile = Object.values(s.units).some((x) => x.team !== actor.team && sovereign(x) && dist(x.pos, land) <= AURA_RADIUS + 0.05);
           sub = [slowed ? T('aimAuraSlow') : '', foe && hostile ? T('aimAuraEdge') : ''].filter(Boolean).join(' · ') || null;
         }
-      } else label = T('r_noNode');
+      } else label = T('aimWarpAny');
     } else if (mode.k === 'jutsu' && spec && spec.shape === 'onNode') {
       // Spatial Swap: whoever stands on a Node it can reach; an enemy gets a STR save.
       o.range = { at: actor.pos, radius: spec.range };

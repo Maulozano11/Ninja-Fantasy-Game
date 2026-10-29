@@ -105,7 +105,12 @@ through Nodes.
   until 2026-10-21, id `ryusei_warp`; bonus action, 2 chakra, 18 m). The
   Ryusei throws its weapon, which flies to the Node as a shooting star, and
   follows it as light (the screen's choreography). Teleports to a Node in
-  sight, even with walls in between. If the Ryusei lands next to an enemy,
+  sight, even with walls in between. **The owner, 2026-10-28: no Node is
+  needed** (*"ponlo más fácil: que se ponga el objetivo enemigo al que se quiere
+  hacer el ataque o teletransportarse a donde se indique sin los nodos"*): it
+  also goes to a foe aimed at (landing beside it, D15's landing rules) or to
+  any spot aimed at, within 18 m and in sight. Nodes still work as before (a
+  spot with a Node is the Node), and Spatial Swap still needs them. If the Ryusei lands next to an enemy,
   their next attack this turn counts as from behind: advantage, and it can't
   be blocked.
 - **Spatial Swap** (*Intercambio Espacial*, action, 3 chakra). Swaps places

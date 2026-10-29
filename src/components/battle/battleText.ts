@@ -189,9 +189,10 @@ const TABLE = strings({
     es: 'Acción, 4 chakra, 6 m: un muro de metal de 4.5 m (cobertura total, bloquea el paso y la vista, 20 PV). Como máximo dos estructuras: la más antigua se derrumba.',
   },
   help_ryusei_warp: {
-    en: 'Bonus action, 2 chakra, 18 m: teleport to one of your Nodes, even through walls. Land next to an enemy and your next attack this turn comes from behind: advantage, and it can’t be blocked.',
-    es: 'Acción adicional, 2 chakra, 18 m: teletranspórtate a uno de tus Nodos, incluso a través de muros. Si caes junto a un enemigo, tu próximo ataque este turno es por la espalda: ventaja, y no se puede bloquear.',
+    en: 'Bonus action, 2 chakra, 18 m: teleport to a foe (you land beside it), to any spot in sight or to one of your Nodes, even through walls. Land next to an enemy and your next attack this turn comes from behind: advantage, and it can’t be blocked.',
+    es: 'Acción adicional, 2 chakra, 18 m: teletranspórtate junto a un enemigo, a cualquier punto a la vista o a uno de tus Nodos, incluso a través de muros. Si caes junto a un enemigo, tu próximo ataque este turno es por la espalda: ventaja, y no se puede bloquear.',
   },
+
   help_weapon_element: {
     en: 'Bonus action, {c} chakra: your element on the weapon in hand for {r} of your turns (this one counted). Every blow of it that hits adds {d}. Fire: a crit sets the foe burning. Lightning: a crit leaves it numb. Wind: a crit blows it back {p} m. Water: +{m} m reach, and it puts out flames. Earth, sharp obsidian: it crits on 19–20. Not on thrown kunai.',
     es: 'Acción adicional, {c} chakra: tu elemento en el arma que empuñas durante {r} de tus turnos (este incluido). Cada golpe suyo que acierta suma {d}. Fuego: un crítico deja quemado al enemigo. Rayo: un crítico lo deja entumecido. Viento: un crítico lo empuja {p} m. Agua: +{m} m de alcance, y apaga las llamas. Tierra, obsidiana filosa: hace crítico con 19–20. No en los kunai lanzados.',
@@ -204,6 +205,7 @@ const TABLE = strings({
     en: 'Action, 2 chakra, 12 m: throw the weapon in your hand at a foe in sight and go after it as light: you catch it where it lands, beside the foe. The weapon’s attack roll; a hit deals its die. It leaves a Node, and landing beside the foe your next attack this turn comes from behind.',
     es: 'Acción, 2 chakra, 12 m: lanza el arma que empuñas a un enemigo a la vista y ve tras ella como luz: la atrapas donde cae, junto al enemigo. La tirada de ataque del arma; si acierta hace su dado. Deja un Nodo, y al caer junto al enemigo tu próximo ataque este turno es por la espalda.',
   },
+  aimWarpAny: { en: 'Pick a foe or a spot within 18 m', es: 'Elige un enemigo o un punto a 18 m' },
   help_ryusei_swap: {
     en: 'Action, 3 chakra, 18 m: swap places with anyone standing on one of your Nodes. An enemy can resist with a STR save.',
     es: 'Acción, 3 chakra, 18 m: intercambia el lugar con quien esté sobre uno de tus Nodos. Un enemigo puede resistirse con una salvación de FUE.',

@@ -127,4 +127,18 @@ describe('Weapon Throw (a Ryusei)', () => {
     broke.units.a.chakra = 1;
     assert.equal(throwAt(broke).reason, 'noChakra');
   });
+
+  it('Shooting-Star Thrust needs no Node: aimed at a foe it lands beside it, aimed at the ground it lands there', () => {
+    const s = ready(10);
+    assert.equal(ownNodes(s, s.units.a).length, 0);
+    const at = applyAction(structuredClone(s), { type: 'jutsu', unit: 'a', jutsu: 'ryusei_warp', at: { ...s.units.rogue_0.pos }, target: 'rogue_0' });
+    ok(at);
+    assert.ok(dist(at.state.units.a.pos, at.state.units.rogue_0.pos) <= 1.6, 'beside the foe');
+    assert.ok(at.state.units.a.cond.warpEdge, 'from behind');
+    assert.equal(at.state.nodes.length, 0, 'no Node left behind by the thrust');
+    const spot = { x: s.units.a.pos.x + 4, z: s.units.a.pos.z };
+    const ground = ok(applyAction(structuredClone(s), { type: 'jutsu', unit: 'a', jutsu: 'ryusei_warp', at: spot }));
+    assert.ok(dist(ground.state.units.a.pos, spot) < 0.8, 'on the spot');
+    assert.equal(applyAction(structuredClone(s), { type: 'jutsu', unit: 'a', jutsu: 'ryusei_warp', at: { x: s.units.a.pos.x + 19, z: s.units.a.pos.z } }).reason, 'outOfRange');
+  });
 });

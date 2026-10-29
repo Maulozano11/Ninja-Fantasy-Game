@@ -1146,11 +1146,12 @@ describe('Ryusei: Weapon Nodes, Shooting-Star Thrust, Spatial Swap', () => {
     walled.walls.push({ id: 'w1', kind: 'metal', a: { x: 10.5, z: 11 }, b: { x: 10.5, z: 15.5 }, hp: 20, maxHp: 20, owner: 'rogue_0' });
     assert.equal(lineOfSight(walled, walled.units.r.pos, { x: 12.25, z: 13.25 }), false);
     assert.deepEqual(ok(warp(walled, { x: 12.25, z: 13.25 })).state.units.r.pos, { x: 12.25, z: 13.25 });
-    // Refused: no Node of its own there, too far, or a tent in the way.
-    assert.equal(warp(s, { x: 10.25, z: 7.25 }).reason, 'noNode');
+    // No Node needed (the owner, 2026-10-28): any free spot in reach will do, and a foe's Node is
+    // just a spot. Refused: too far, or a tent in the way.
+    assert.ok(warp(s, { x: 10.25, z: 7.25 }).ok);
     const theirs = structuredClone(s);
     theirs.nodes = [node('n1', { x: 12.25, z: 13.25 }, 'rogue_0')];
-    assert.equal(warp(theirs, { x: 12.25, z: 13.25 }).reason, 'noNode');
+    assert.ok(warp(theirs, { x: 12.25, z: 13.25 }).ok);
     const far = structuredClone(s);
     far.nodes = [node('n1', { x: 26.75, z: 10.25 })];
     assert.equal(warp(far, { x: 26.75, z: 10.25 }).reason, 'outOfRange');

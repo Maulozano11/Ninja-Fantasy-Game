@@ -2133,8 +2133,8 @@ and no body along the back wall; only the body on the right).
   an animation frame gives only the head and a short piece of neck, anchored by the neck's cut and
   faded into the strip, and a lunge just shows more of the strip. (Before, each frame brought its
   own neck and the long necks bent and shimmered from frame to frame: the owner, *"¿por qué se ven
-  tan raros los cuellos?"*.) The neck (the owner, 2026-10-28: the top three were thicker than the body's necks),
-  overlaps it up to there, sits on its middle and fades out over about 34 px, tinted toward his
+  tan raros los cuellos?"*.) The narrowing came from the owner (2026-10-28: the top three were thicker
+  than the body's necks). The strip overlaps the painted neck up to there, sits on its middle and fades out over about 34 px, tinted toward his
   darker scales (`docs/mockups/colossal-hydra-neck-joins.png`). His first two
   backdrops and the bite strip v2 (seven heads) stay as references.
 

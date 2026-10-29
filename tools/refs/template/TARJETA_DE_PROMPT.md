@@ -514,7 +514,7 @@ PNG, 3200×2400, sin morado fuera del magenta de fondo.
 ## 11. La hidra colosal, guardiana de la fortaleza · el fondo con el cuerpo, las cabezas, los efectos
 
 Aprobada por el dueño el 2026-10-28 en su versión básica (`docs/mockups/colossal-hydra-concept.png`):
-el cuerpo **solo a la derecha** (nada a lo largo del fondo ni hacia el frente), siete cabezas de
+el cuerpo **solo a la derecha** (nada a lo largo del fondo ni hacia el frente), siete cabezas (ahora **cinco**, su diseño nuevo; ver la tercera vuelta) de
 **3.3 m** (eran 4.4 m; él las bajó el 2026-10-28: *"las cabezas las bajamos a 3.3"*) en cuellos
 largos **horizontales**, **mirando a la izquierda** hacia la
 puerta, cada una en su carril y a 8 m o más de las otras (una Bola de fuego solo da a una).
@@ -545,6 +545,14 @@ mismo grueso y a la misma altura, y su cuello es del grueso de los muñones, as�
 largo se hace alargando el tramo final de la propia tira** (la pieza B queda solo de referencia:
 su cuello es un tercio más grueso que los muñones). Montado: `docs/mockups/colossal-hydra-mounted-v2.png`.
 Faltan las otras cinco tiras de C (se piden adjuntando la tira nueva) y los efectos de D.
+
+**Tercera vuelta, el diseño nuevo (2026-10-28):** él eligió su tercer fondo
+(`docs/reference/colossal-hydra-backdrop-v3-owner-reference.png`) con **5 cabezas** (*"para que no
+abarque todo el mapa"*), y sus cinco poses de cabeza (`docs/reference/colossal-hydra-head-poses-owner-reference.png`):
+gruñido, rugido hacia arriba, calma con la boca cerrada, siseo con la lengua fuera y rugido. En el
+juego son la **quieta** (gruñido, calma y siseo alternados) y el **rugido** de antes de atacar. Todas
+cortan el cuello al mismo grueso y a la misma altura, así que **ellas son la referencia de C**.
+Montado: `docs/mockups/colossal-hydra-five-heads-3.3m.png` y `-2.4m.png`.
 
 **A) El fondo con el cuerpo** (adjunta su primer fondo como estilo):
 
@@ -579,31 +587,31 @@ Sin sombra en el suelo, sin texto, nada magenta, rosa fuerte ni morado en el dib
 Entrega: PNG de unos 2400×700, la pieza entera con margen.
 ```
 
-**C) Sus animaciones**, una tira por prompt, como la de la crupier (adjunta la tira de mordida v2):
+**C) Las poses que faltan**, una tira por prompt (adjunta su hoja de cinco poses). Primero el
+preámbulo, luego la línea de la tira:
 
 ```
-De la pieza adjunta (cabeza con cuello), dibuja UNA tira de N cuadros en fila, todos del mismo
-tamaño, separados por espacio magenta, con el cuello SIEMPRE en el mismo lugar en el borde
-derecho (solo se mueven la cabeza y la parte del cuello cercana a ella). Misma pintura y colores.
-Mismo tamaño de cuadro, misma cabeza y misma escala que la tira adjunta; el cuello termina cortado
-en el borde derecho EXACTAMENTE a la misma altura y del mismo grueso que en la tira adjunta, en
-todos los cuadros.
+De la cabeza de hidra adjunta, dibuja UNA tira de N cuadros en fila sobre FONDO MAGENTA PURO
+(#FF00FF), todos del mismo tamaño, separados por espacio magenta. Misma cabeza, misma pintura,
+misma escala y mismos colores que la imagen adjunta, mirando a la IZQUIERDA. El cuello sale
+horizontal hacia la DERECHA y termina cortado en el borde derecho de cada cuadro EXACTAMENTE a la
+misma altura y del mismo grueso que en la imagen adjunta, igual en todos los cuadros: solo se
+mueven la cabeza y el tramo de cuello cercano a ella. Boca y carne ROJO OSCURO, nada morado ni
+rosa. Sin texto, sin sombra en el suelo, sin fondo.
 ```
 
-| Tira | Cuadros | Qué hace |
+| Tira | N | La línea que va después del preámbulo |
 |---|---|---|
-| Quieta | 4 | respira: la cabeza sube y baja un poco, la boca se abre y se cierra apenas |
-| Mordida | 5 | se echa atrás, se lanza a la izquierda con la boca bien abierta, cierra de golpe, vuelve |
-| Ácido | 5 | se echa atrás, abre la boca, escupe un chorro verde brillante a la izquierda, cierra, vuelve |
-| Herida | 3 | se sacude hacia atrás con los ojos cerrados, vuelve |
-| Cortada | 5 | la cabeza se separa del cuello y cae; queda el muñón del cuello sangrando oscuro |
-| Vuelve a crecer | 4 | del muñón brota la cabeza nueva, pequeña, y crece hasta su tamaño |
+| Mordida | 5 | *"Mordida: 1 echa la cabeza hacia atrás con la boca cerrada; 2 abre la boca enorme; 3 se lanza hacia la izquierda con el cuello estirado y la boca bien abierta; 4 cierra la mandíbula de golpe; 5 vuelve a su pose de calma."* (rehace la de la tira v2 con esta cabeza) |
+| Ácido | 5 | *"Escupe ácido: 1 echa la cabeza hacia atrás y la garganta se hincha; 2 abre la boca con gotas verde brillante en los dientes; 3 escupe un chorro grueso de ácido VERDE BRILLANTE hacia la izquierda; 4 el chorro se corta y le escurre baba verde; 5 cierra la boca y vuelve a su pose de calma."* |
+| Herida | 3 | *"Recibe un golpe: 1 la cabeza se sacude hacia atrás y hacia arriba con los ojos cerrados y la boca entreabierta; 2 baja un poco, aturdida, con una herida oscura en la mejilla; 3 vuelve a su pose de gruñido, enojada."* |
+| Cortada | 5 | *"La cortan: 1 la cabeza herida con los ojos en blanco; 2 un corte limpio atraviesa el cuello justo detrás de la cabeza; 3 la cabeza se separa y empieza a caer hacia abajo; 4 la cabeza cae aparte, separada del cuello por espacio magenta; 5 solo queda el muñón del cuello, cortado limpio, con la carne roja oscura, sin cabeza. En los cuadros 3 a 5 la cabeza cortada va APARTE del cuello."* |
+| Vuelve a crecer | 4 | *"Le vuelve a crecer la cabeza: 1 el muñón del cuello con la carne roja oscura; 2 la carne burbujea y asoma una cabeza pequeña y húmeda; 3 la cabeza crece a la mitad de su tamaño y abre los ojos; 4 la cabeza completa, de su tamaño normal, ruge."* |
 
-La línea para repetir si se mueve el cuello: *"el cuello queda exactamente igual en todos los
-cuadros en su borde derecho; solo se mueven la cabeza y el tramo cercano a ella"*.
+La cabeza cortada que cae y el muñón quemado van además en D.
 
-**D) Los efectos**, en una hoja magenta como los props: el escupitajo de ácido (una bola verde
-brillante con estela), el charco de ácido en el suelo (visto desde arriba, achatado), el muñón
+**D) Los efectos**, en una hoja magenta como los props (adjunta su hoja de cinco poses): el escupitajo de ácido (una bola verde
+brillante con estela), el charco de ácido en el suelo (visto desde arriba, achatado), la cabeza cortada tirada en el suelo, el muñón
 quemado (negro con brasas), el muñón crudo; cada uno en su celda, sin sombra, sin texto.
 
 Con A–D: el fondo se usa como el del casino (pintado completo); B y C pasan por

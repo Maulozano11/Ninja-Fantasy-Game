@@ -2078,27 +2078,29 @@ pequeño; el pequeño sería como la versión introductoria"*. Approved basic ve
 `docs/mockups/colossal-hydra-concept.png` (after his two cuts: nothing of the body comes forward,
 and no body along the back wall; only the body on the right).
 
-- The fortress courtyard is the view's size (about 34 m by 19 m of depth). The body stands on the
-  right, painted into the backdrop: it is never a target.
-- Seven heads, each **3.3 m** long, on long horizontal necks out of the body's left side, facing
-  left toward the gate the party comes in by. (First 4.4 m, his "2.5x del personaje"; he lowered
-  it after his generator's first head, 2026-10-28: *"las cabezas las bajamos a 3.3"*. His head,
-  mouth open and crest up, is as tall as it is long, and at 4.4 m the three rows of lanes covered
-  each other: `docs/mockups/colossal-hydra-game-camera.png`.) Each head is a unit in its own lane,
-  at least 8 m from every other head's point, so a Fireball (1.5 m) or the game's biggest area
-  (4.5 m enhanced) only ever catches one. The necks take no damage.
+- **Five heads** (the owner, 2026-10-28, with his third backdrop: *"lo pondremos ahora con 5
+  cabezas para que no abarque todo el mapa"*; first seven). His design:
+  `docs/reference/colossal-hydra-backdrop-v3-owner-reference.png`, the fortress courtyard with the
+  body on the right and five long necks painted in, cut horizontally at five heights, and his head
+  poses `docs/reference/colossal-hydra-head-poses-owner-reference.png`. The body and the painted
+  necks are never a target.
+- Each head is **3.3 m** long (first 4.4 m, his "2.5x del personaje"; he lowered it on
+  2026-10-28: *"las cabezas las bajamos a 3.3"*), facing left toward the gate. Open question: at
+  3.3 m his heads' necks come out about 40 % thicker than the necks painted in his third backdrop;
+  at 2.4 m they match (`docs/mockups/colossal-hydra-five-heads-3.3m.png` and `-2.4m.png`).
+- Each head is a unit in its own lane, as far from the others as the backdrop allows: with five
+  heads in his third backdrop the nearest two are about 7 m apart, so a Fireball (1.5 m) only
+  ever catches one. (The game's biggest area, 4.5 m enhanced, could catch two heads less than 9 m
+  apart; that was true at 8 m too.) The necks take no damage.
 - The small hydra's rules (`battle/hydra.ts`): each head has its own HP, bites and spits (acid
   instead of venom), is cut at 0 HP and grows back unless the stump is burnt, electrified or
   blown up; the hydra dies when every head is down at once. Ours until he says otherwise: a bite
   reaches about 6 m in front of the head (the neck stretches), the acid about 12 m.
 - The art: card 11 of `tools/refs/template/TARJETA_DE_PROMPT.md`, the casino's style and quality
-  (his words). The backdrop is seen from the battle camera (floor from about a third of the height
-  down, 19 m of depth, parallel flagstones, no vanishing point). The seven stumps leave the body
-  horizontally, each at its own height on screen, so a near head never sits on a far head's neck.
-  A neck is horizontal on screen at its stump's height, so each head's lane (depth) and height over
-  the floor trade off: in his second backdrop the heads stand 1.2 to 3.5 m over the floor and 8 m
-  or more apart (`docs/mockups/colossal-hydra-mounted-v2.png`). The long neck is the head strip's
-  own last stretch, repeated up to the stump. His first backdrop
-  (`docs/reference/colossal-hydra-backdrop-v1-owner-reference.png`) had a low camera (10 m of
-  floor) and stumps pointing up; his head piece and bite strip are kept as references.
+  (his words). A neck is horizontal on screen at its painted neck's height, so each head's lane
+  (depth) and height over the floor trade off. In his third backdrop the floor starts halfway down
+  (about 14 m of depth) and the top two necks run along the wall, so those heads are in the air
+  (about 4 m and 2.3 m or more over the floor): reaching them in melee needs a jump or height. The
+  long neck is the head frame's own last stretch, repeated up to the painted neck. His first two
+  backdrops and the bite strip v2 (seven heads) stay as references.
 

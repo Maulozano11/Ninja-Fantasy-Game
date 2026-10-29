@@ -80,7 +80,7 @@ Steve 2 does not touch Steve 1's branches or `MISSION_DESIGN.md`.
 
 | Task | Where | State | Hot files |
 |---|---|---|---|
-| Review of Bob's D-T7 head-check sheets against the #3 rules | `review/head-sheets` (read only) | **Active** | none |
+| Review of Bob's D-T7 head-check sheets against the #3 rules | `review/head-sheets` (read only) | **Done** (see "Steve 2's review"), shown to the owner | none |
 | Merge order of Bob's four battle branches vs the battle stack #6–#13 | proposal, shown to the owner first, then the answer to Bob | **Active** | none |
 | D-T18, D-T19, D-T20 into `CLANS_DESIGN.md` | new branch `docs/mirai-subclasses` | **Active** | docs only |
 | D-T21: remove the `soft` and `square` faces, migrate saved looks to `tapered` | `cleanup/five-only` (#3) | **Active** | `src/sprite/types.ts`, `migrateCharacter` |
@@ -365,6 +365,35 @@ on `cleanup/five-only`), so each needs `heads` on merge. The `base` head is only
 `cleanup/five-only`, so it was not rendered. Steve: review against the #3 rules, then it goes to
 the owner (I have sent him only the Ren-sample sheet and this table, no decision asked yet).
 
+### Steve 2's review of the D-T7 sheets (2026-10-29, 17:45)
+
+Checked `resumen.md` and the sheets (gallant, samurai, hoplite, lock, navy, the Ren-sample
+sheet) against the #3 rules (`docs/SPRITE_STYLE_GUIDE.md` on `cleanup/five-only`: "a hair lives
+on the head it was painted over", `ItemDef.heads` / `fitsHead`, the creator offers only his heads,
+`RETIRED_HAIR`). The verdicts match what the sheets show. **Good to go to the owner**, with these
+points:
+
+1. **The male heads in #3 are four: `valiant`, `night`, `founder`, `roman`.** The sheets test
+   three (Ren, Roman, Aiden); **`founder` (Solen) is missing.** It matters most for D-T17 (the
+   bronze mane is a hair variant *on Solen's head*): the hoplite sheet shows it does not fit Ren,
+   Roman or Aiden, which is expected; it must fit `founder`. Bob: one more column, `founder`,
+   on every men's sheet (it exists on your branches).
+2. **`base` is not tested for the women** (it exists only on #3). Not blocking: the women's sets
+   need `fine` and `aurelia` (D-T16); `base` can wait until #3 is merged.
+3. **Gallant on Aurelia does not fit** (forehead, far cheek): under D-T16 the women's sets must
+   work on both heads, so this needs Bob's fix before the women's sets merge.
+4. **The sheets are at rest, frame 0.** `heads` is a promise for every pose: before a hair
+   merges, the holes/loose-pieces tests must run on each head in its `heads` list, all poses
+   (the D-T4 checklist).
+5. **Hairs and faces are separate decisions.** Each candidate brings a hair *and* a face/eyes
+   (`wanderer`, `vanguard`, `noble`, `samurai`, `navy`, `general`, `knight`, `stern`,
+   `gallant`). Under #3 a face is a head; each one kept means a new face shape in the creator
+   (4 places). Steve 2's suggestion for the owner: **keep the hairs that fit, on the heads they
+   fit (`heads`), and leave their faces out**, except the noble prince (D-T6, his own look) and
+   the samurai (needs a new head or the Roman with a touch-up: his call).
+6. **`RETIRED_HAIR`:** no candidate is in it. Every hair needs a `heads` list when it merges
+   onto #3.
+
 ## Steve's review of the outfit branches (read only, 2026-10-29)
 
 | Branch | Presets it adds | Its own face / eyes / hair | Bodies |
@@ -435,6 +464,8 @@ What this means:
 
 ## Log (newest first, one line each)
 
+- 2026-10-29 17:45 Steve 2: D-T7 sheets reviewed: OK for the owner; Bob, add a `founder` column (D-T17)
+  and fix gallant on Aurelia (D-T16); hairs in with `heads`, faces out is the suggestion.
 - 2026-10-29 17:30 Steve 2: claimed four tasks (head-sheet review, battle merge order, D-T18–20 docs,
   D-T21 faces); Steve 1 (hydra chat) and Steve 2 split.
 - 2026-10-29 Bob: hero/bronze-warrior pushed (legate cuirass in layers, general, Solen's mane + diadem, D-T17); heroine knights: the neck seams closed under a smaller head (owner's circles), tests green, push pending the full suite.

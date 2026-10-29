@@ -454,6 +454,21 @@ ones. Online it can later show the % of players who chose the same.
 - **The scene timer** and the online 60 s vote are separate; in local play the
   fuse stops on the cover screen and each player gets the full fuse.
 
+## The hydra's fortress (the owner, 2026-10-29; not built)
+
+A story beat for a mission, in his words: arriving at the fortress (probably Kōton's; not decided)
+the party finds **the gates open and no guards**, for some strange reason, and decides how to get in:
+
+- **By the front gate** (apparently unguarded): into the courtyard of the colossal hydra
+  (`GAMEPLAY_DESIGN.md`, "The colossal hydra"). The story's villain is waiting there and has a
+  monologue: proud of them for coming in by the big gate, he expected no less; now let's see how
+  they deal with *this*, a beast nobody can control, only the Northstar king could. He frees it;
+  an animation plays, the hydra is summoned and the battle starts.
+- **Through the fortress's drain, at the back**: the way in follows the choice (not designed yet).
+
+Open: who the villain is (name, clan, look), how the hydra is freed (what holds it), and what the
+drain route leads to.
+
 ## Story notes (for the story session)
 
 - 6 or more endings (owner's choice), unlocked by marks and clan reputation.

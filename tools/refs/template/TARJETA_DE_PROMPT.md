@@ -537,6 +537,15 @@ que pedía "perspectiva suave hasta la mitad de la imagen". La A de abajo es la 
 (B) sirve tal cual; su tira de mordida (C) sirve, pero se nota la costura con el cuello largo, de
 ahí la línea nueva de C. Cómo se ve con la cámara del juego: `docs/mockups/colossal-hydra-game-camera.png`.
 
+**Segunda vuelta (2026-10-28):** el fondo nuevo (`docs/reference/colossal-hydra-backdrop-v2-owner-reference.png`)
+**funciona**: cámara alta, losas paralelas, unos 21 m de suelo y los siete muñones horizontales a
+siete alturas; las cabezas caben a 8 m o más una de otra. La tira nueva
+(`docs/reference/colossal-hydra-bite-strip-v2-owner-reference.png`) corta el cuello siempre al
+mismo grueso y a la misma altura, y su cuello es del grueso de los muñones, así que **el cuello
+largo se hace alargando el tramo final de la propia tira** (la pieza B queda solo de referencia:
+su cuello es un tercio más grueso que los muñones). Montado: `docs/mockups/colossal-hydra-mounted-v2.png`.
+Faltan las otras cinco tiras de C (se piden adjuntando la tira nueva) y los efectos de D.
+
 **A) El fondo con el cuerpo** (adjunta su primer fondo como estilo):
 
 ```
@@ -570,15 +579,15 @@ Sin sombra en el suelo, sin texto, nada magenta, rosa fuerte ni morado en el dib
 Entrega: PNG de unos 2400×700, la pieza entera con margen.
 ```
 
-**C) Sus animaciones**, una tira por prompt, como la de la crupier (adjunta B):
+**C) Sus animaciones**, una tira por prompt, como la de la crupier (adjunta la tira de mordida v2):
 
 ```
 De la pieza adjunta (cabeza con cuello), dibuja UNA tira de N cuadros en fila, todos del mismo
 tamaño, separados por espacio magenta, con el cuello SIEMPRE en el mismo lugar en el borde
 derecho (solo se mueven la cabeza y la parte del cuello cercana a ella). Misma pintura y colores.
-Cada cuadro es la pieza adjunta ENTERA: cabeza y cuello largo hasta el borde derecho, del mismo
-tamaño que la pieza. Solo se mueven la cabeza y el primer tercio del cuello; los dos tercios de la
-derecha quedan idénticos en todos los cuadros, píxel por píxel.
+Mismo tamaño de cuadro, misma cabeza y misma escala que la tira adjunta; el cuello termina cortado
+en el borde derecho EXACTAMENTE a la misma altura y del mismo grueso que en la tira adjunta, en
+todos los cuadros.
 ```
 
 | Tira | Cuadros | Qué hace |

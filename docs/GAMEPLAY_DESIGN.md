@@ -2094,8 +2094,11 @@ and no body along the back wall; only the body on the right).
 - The art: card 11 of `tools/refs/template/TARJETA_DE_PROMPT.md`, the casino's style and quality
   (his words). The backdrop is seen from the battle camera (floor from about a third of the height
   down, 19 m of depth, parallel flagstones, no vanishing point). The seven stumps leave the body
-  horizontally, three rows by lane depth (back 3, middle 2, front 2), each stump at its own height
-  so a near head never sits on a far head's neck. His first backdrop
+  horizontally, each at its own height on screen, so a near head never sits on a far head's neck.
+  A neck is horizontal on screen at its stump's height, so each head's lane (depth) and height over
+  the floor trade off: in his second backdrop the heads stand 1.2 to 3.5 m over the floor and 8 m
+  or more apart (`docs/mockups/colossal-hydra-mounted-v2.png`). The long neck is the head strip's
+  own last stretch, repeated up to the stump. His first backdrop
   (`docs/reference/colossal-hydra-backdrop-v1-owner-reference.png`) had a low camera (10 m of
   floor) and stumps pointing up; his head piece and bite strip are kept as references.
 

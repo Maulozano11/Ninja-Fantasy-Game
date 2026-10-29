@@ -318,6 +318,19 @@ built.
 
 ### Mirai
 
+**The owner confirmed the three Mirai subclasses on 2026-10-29** (told in Bob's
+chat, D-T20 on the team board). His description of each, kept beside the Paths
+below; where it adds to them it is marked "2026-10-29":
+
+1. **Oracle** (*Oráculo*): leadership and foresight buffs. Ultimate
+   *Futuro inamovible*, a super buff on the damage that follows.
+2. **Fire control** (*Dominio del fuego*), the Mirai fire. Ultimate: an
+   avatar of fire around the ninja, **in armour like a Spartan's**.
+3. **Traps and smoke** (*Trampas y humo*): looks weak early on. Ultimate: a
+   rewind, **time goes back two turns and the damage dealt to the enemy
+   stays**. Meant to make Baldur's Gate-style decisions interesting on top of
+   the combat.
+
 - **Path of the Oracle** (tactical support)
   - *Shared Vision* (Visión Compartida): cancels surprise attacks and attacks
     from behind against allies.
@@ -337,8 +350,10 @@ built.
     that destroys physical cover.
   - Ultimate, *Emperor Avatar* (Avatar Emperador): a 3x3 avatar. Immune to
     knockdown and push, leaves a trail of magma and makes massive area attacks
-    for 3 turns.
-- **Path of the Ash Weaver** (traps and interruption)
+    for 3 turns. Its look (2026-10-29): a fire avatar around the ninja, armoured
+    like a Spartan.
+- **Path of the Ash Weaver** (traps and interruption; the owner's "traps and
+  smoke", 2026-10-29: smoke is part of its kit, and it looks weak early on)
   - *Mark of Inevitability* (Marca de Inevitabilidad): attacking an enemy
     exactly where it was foreseen is a guaranteed critical.
   - *Ash Trap* (Trampa de Ceniza): invisible mines that deal damage and
@@ -347,7 +362,10 @@ built.
     burning their lungs.
   - Ultimate, *Fake Future*: plants a Time Mark. After 2 turns the whole board
     rewinds: allies and enemies go back to their positions and HP, except that
-    enemies hurt in the meantime keep the damage from the illusion.
+    enemies hurt in the meantime keep the damage from the illusion. The owner,
+    2026-10-29: time goes back two turns and the damage dealt to the enemy
+    stays. It is the first space-time ability (see "Settings, space-time and
+    gravity" below).
 
 ### Kōton
 
@@ -435,3 +453,31 @@ built.
 - Ultimate (every Ryusei), *Flash Frenzy* (Frenesí del Destello): the whole
   map becomes Nodes; 3 actions and 3 bonus actions for one turn; warps cost
   nothing and deal more damage each time. Severe fatigue the next turn.
+
+## Settings, space-time and gravity, and the eldest ancestor (the owner, 2026-10-29)
+
+Told in Bob's chat on 2026-10-29 (D-T18, D-T19 and D-T20 on the team board, `team/board`,
+`docs/TEAM.md`). Design only: nothing here is built, and numbers are proposed and approved
+before anything is.
+
+**Three settings (D-T20).** The whole game system must adapt to three settings:
+
+1. ninja / fantasy (today's game);
+2. space / mechas;
+3. superheroes and space.
+
+A clan, a Path or an ability is designed once and wears each setting's skin; it keeps its
+rules in all three.
+
+**Space-time and gravity (D-T19).** New ability themes for the clans' Paths. The owner's
+example is the Traps and smoke ultimate above (time goes back two turns, the damage dealt to
+the enemy stays). His words: the possibilities are almost unlimited; we take what is most
+relevant to our game system. Abilities of this kind must work in every setting, each under that
+setting's skin. Before any is built, each is proposed to him with its numbers, the way the
+Paths are.
+
+**The eldest ancestor (D-T18, lore).** The game has a descendants system (children who inherit,
+`docs/WORLD_DESIGN.md`, section 11, on `docs/world-design`, PR #2). **Solen in his bronze armour is the oldest
+ancestor**, and the story and plot are built around him. His look: the owner's bronze warrior
+is Solen (D-T17: same skin, red eyes, dark hair, scarf; the long wavy mane is a hair variant on
+Solen's head and the diadem an accessory, both on `hero/bronze-warrior`).

@@ -588,28 +588,30 @@ Sin sombra en el suelo, sin texto, nada magenta, rosa fuerte ni morado en el dib
 Entrega: PNG de unos 2400×700, la pieza entera con margen.
 ```
 
-**C) Las poses que faltan**, una tira por prompt (adjunta su hoja de cinco poses). Primero el
-preámbulo, luego la línea de la tira:
+**C) Las animaciones que faltan** (2026-10-28, sobre su hoja de 5 filas x 6 cuadros, una fila por
+cabeza, `docs/reference/colossal-hydra-heads-grid-owner-reference.png`; él confirmó *"como la
+montaste está bien"*). Una hoja por animación, adjuntando esa hoja. Primero el preámbulo, luego la
+línea de la animación:
 
 ```
-De la cabeza de hidra adjunta, dibuja UNA tira de N cuadros en fila sobre FONDO MAGENTA PURO
-(#FF00FF), todos del mismo tamaño, separados por espacio magenta. Misma cabeza, misma pintura,
-misma escala y mismos colores que la imagen adjunta, mirando a la IZQUIERDA. El cuello sale
-horizontal hacia la DERECHA y termina cortado en el borde derecho de cada cuadro EXACTAMENTE a la
-misma altura y del mismo grueso que en la imagen adjunta, igual en todos los cuadros: solo se
-mueven la cabeza y el tramo de cuello cercano a ella. Boca y carne ROJO OSCURO, nada morado ni
-rosa. Sin texto, sin sombra en el suelo, sin fondo.
+Dibuja una hoja igual a la adjunta: 5 FILAS x 6 CUADROS sobre FONDO MAGENTA PURO (#FF00FF), cada
+cuadro separado por espacio magenta. Cada fila es la MISMA cabeza de hidra que esa fila de la hoja
+adjunta (misma cabeza, misma escala, mismos colores, mirando a la IZQUIERDA), con su cuello largo
+saliendo hacia la DERECHA y cortado en el borde derecho de cada cuadro EXACTAMENTE a la misma altura
+y del mismo grueso que en esa fila de la hoja adjunta, igual en los 6 cuadros: solo se mueven la
+cabeza y el tramo de cuello cercano a ella. Las 5 filas hacen la misma animación, cada una con su
+cabeza. Boca y carne ROJO OSCURO, nada morado ni rosa. Sin texto, sin sombra en el suelo.
 ```
 
-| Tira | N | La línea que va después del preámbulo |
-|---|---|---|
-| Mordida | 5 | *"Mordida: 1 echa la cabeza hacia atrás con la boca cerrada; 2 abre la boca enorme; 3 se lanza hacia la izquierda con el cuello estirado y la boca bien abierta; 4 cierra la mandíbula de golpe; 5 vuelve a su pose de calma."* (rehace la de la tira v2 con esta cabeza) |
-| Ácido | 5 | *"Escupe ácido: 1 echa la cabeza hacia atrás y la garganta se hincha; 2 abre la boca con gotas verde brillante en los dientes; 3 escupe un chorro grueso de ácido VERDE BRILLANTE hacia la izquierda; 4 el chorro se corta y le escurre baba verde; 5 cierra la boca y vuelve a su pose de calma."* |
-| Herida | 3 | *"Recibe un golpe: 1 la cabeza se sacude hacia atrás y hacia arriba con los ojos cerrados y la boca entreabierta; 2 baja un poco, aturdida, con una herida oscura en la mejilla; 3 vuelve a su pose de gruñido, enojada."* |
-| Cortada | 5 | *"La cortan: 1 la cabeza herida con los ojos en blanco; 2 un corte limpio atraviesa el cuello justo detrás de la cabeza; 3 la cabeza se separa y empieza a caer hacia abajo; 4 la cabeza cae aparte, separada del cuello por espacio magenta; 5 solo queda el muñón del cuello, cortado limpio, con la carne roja oscura, sin cabeza. En los cuadros 3 a 5 la cabeza cortada va APARTE del cuello."* |
-| Vuelve a crecer | 4 | *"Le vuelve a crecer la cabeza: 1 el muñón del cuello con la carne roja oscura; 2 la carne burbujea y asoma una cabeza pequeña y húmeda; 3 la cabeza crece a la mitad de su tamaño y abre los ojos; 4 la cabeza completa, de su tamaño normal, ruge."* |
+| Animación | La línea que va después del preámbulo |
+|---|---|
+| Mordida | *"MORDIDA, de izquierda a derecha: 1 echa la cabeza hacia atrás con la boca cerrada; 2 abre la boca enorme; 3 se lanza hacia la izquierda con el cuello estirado y la boca bien abierta; 4 cierra la mandíbula de golpe; 5 sacude la cabeza con la presa; 6 vuelve a su pose de reposo."* |
+| Ácido | *"ESCUPE ÁCIDO, de izquierda a derecha: 1 echa la cabeza hacia atrás y la garganta se hincha; 2 abre la boca con gotas verde brillante en los dientes; 3 escupe un chorro grueso de ácido VERDE BRILLANTE hacia la izquierda; 4 el chorro sigue saliendo; 5 el chorro se corta y le escurre baba verde; 6 cierra la boca y vuelve a su pose de reposo."* |
+| Herida | *"RECIBE UN GOLPE, de izquierda a derecha: 1 la cabeza en reposo; 2 se sacude hacia atrás y hacia arriba con los ojos cerrados; 3 una herida oscura le aparece en la mejilla; 4 baja aturdida, con la boca entreabierta; 5 levanta la cabeza, enojada; 6 vuelve a su pose de gruñido."* |
+| Cortada | *"LA CORTAN, de izquierda a derecha: 1 la cabeza herida con los ojos en blanco; 2 un corte limpio atraviesa el cuello justo detrás de la cabeza; 3 la cabeza se separa del cuello; 4 la cabeza cae hacia abajo, APARTE del cuello, con espacio magenta entre los dos; 5 la cabeza cortada queda abajo del cuadro, aparte; 6 solo queda el muñón del cuello, cortado limpio, con la carne roja oscura, sin cabeza."* |
+| Vuelve a crecer | *"LE VUELVE A CRECER LA CABEZA, de izquierda a derecha: 1 el muñón del cuello con la carne roja oscura; 2 la carne burbujea; 3 asoma una cabeza pequeña y húmeda; 4 la cabeza crece a la mitad de su tamaño y abre los ojos; 5 la cabeza casi completa; 6 la cabeza completa, de su tamaño normal, rugiendo."* |
 
-La cabeza cortada que cae y el muñón quemado van además en D.
+La cabeza cortada tirada en el suelo y el muñón quemado van además en D.
 
 **D) Los efectos**, en una hoja magenta como los props (adjunta su hoja de cinco poses): el escupitajo de ácido (una bola verde
 brillante con estela), el charco de ácido en el suelo (visto desde arriba, achatado), la cabeza cortada tirada en el suelo, el muñón

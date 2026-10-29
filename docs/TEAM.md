@@ -80,23 +80,37 @@ Preview link: (Steve adds it here)
 
 ## Bob
 
-> Bob: the rows below are Steve's reading of the branches, not yours. Replace them with what you
-> really have and what is half done, and add your preview link.
-
 ### In progress
 
-| Branch | What (from the last commits) | State | Hot files touched |
-|---|---|---|---|
-| `hero/three-outfits` | Tactical, Warden and Drifter outfits | Owner approved the tactical outfit and Warden/Drifter at rest; poses? | |
-| `heroine/aurelia-outfits` | Aurelia's sorceress and alchemist outfits, every part an item | Stage 1 | `shinobiData.ts`, `catalog.ts`, `words.ts` |
-| `hero/noble-swordsman` | Noble swordsman, royal cape, coat | WIP | `shinobiData.ts`, `catalog.ts`, `words.ts`, `rig.ts` |
-| `hero/samurai` | Samurai armour in every pose | WIP | `shinobiData.ts`, `catalog.ts`, `words.ts`, `compose.ts` |
-| `hero/navy-officer` | Navy officer, every part its own option, his preset | WIP | `shinobiData.ts`, `catalog.ts`, `words.ts`, `rig.ts` |
-| `hero/bronze-warrior` | Bronze warrior, second set | Waiting for the owner | |
-| `sets/*`, `body/brawler-roman`, `armor/roman-paintover` | Sets and armour on the bodies | ? | |
-| `enemies/read-merge-wip` | The Cazadora on the new read | WIP, broken on the fitted female body | |
+Everything below was made before the board existed (from `7bb10c3`, 2026-10-24) and is **not
+merged** into the integration branch. Nothing is a new preset by the owner's wish: see the
+question under "Questions for the owner" (five only). Every set is "every part an item", so the
+parts stay as creator options whatever he decides about the presets.
 
-Preview link: (Bob adds it here)
+| Branch | What is really there | State | Hot files touched |
+|---|---|---|---|
+| `hero/three-outfits` | Armoured, leather rogue and tactical outfits, every part an item, at rest | Owner approved the three at rest ("aprovado armadura y picaro de cuero", "lo apruevo" for the refined tactical). **Half done:** the tactical must wear its own head, face and hair from his picture (he corrected me: "usa la cabeza y cara y pelo que tiene mi referencia"); stage 2 (every pose) not started; two tests to fix (forearm, holes) | `shinobiData.ts`, `catalog.ts`, `words.ts` |
+| `heroine/aurelia-outfits` | Aurelia's sorceress and alchemist outfits, every part an item | Stage 1 pushed but too rough; structural cleanup half done in my worktree (uncommitted). **Not shown to the owner yet** | `shinobiData.ts`, `catalog.ts`, `words.ts` |
+| `hero/noble-swordsman` | Noble swordsman (no-cape version kept), royal coat, his hair | 8 poses done, **owner has not approved the poses**; remaining poses pending; local merge with the integration branch not pushed | `shinobiData.ts`, `catalog.ts`, `words.ts`, `rig.ts` |
+| `hero/samurai` | Samurai armour in every pose, every pocket filled (his exception) | Waiting for the owner's answers: bulky crouch fill, torso lames with the arm raised, tasset plate in combo 5–6, hakama mass in crouch/sneak | `shinobiData.ts`, `catalog.ts`, `words.ts`, `compose.ts` |
+| `hero/navy-officer` | Navy officer, every part its own option; idle approved ("se ve bien"), no sword in hand ("no dibujes la espada ni la mano en la espada") | Every pose done **locally (unpushed, 2 commits)**; to push and show him | `shinobiData.ts`, `catalog.ts`, `words.ts`, `rig.ts` |
+| `hero/bronze-warrior` | Bronze warrior (his leather repaint, pixel for pixel), the bronze set, the Roman general's two chests + face + hair (his picture 189), the Roman legate's right chest only (191) | Done **locally (unpushed, 4 commits)**; to push and show him. Roman always with his own head | `shinobiData.ts`, `catalog.ts`, `words.ts` |
+| `hero/three-knights`, `heroine/three-knights` | His three knights and his three women knights shrunk to our scale, every part an item, at rest | Local only (not pushed). Men: stage 1 done; women: WIP. Not shown to the owner | `shinobiData.ts`, `catalog.ts`, `words.ts` |
+| `body/brawler-roman` | Solen's cowl over the bulky neck; the Roman skirt; bulky head on the neck in tackle/crouch/kick | WIP, local merge unpushed | `rig.ts`, `compose.ts` |
+| `enemies/read-merge-wip` | The hunters on the new read | WIP, the Cazadora is broken on the fitted female body; parked | `compose.ts` |
+| `armor/roman-paintover`, `sets/ascended-standard`, `companions/heroines`, `enemies/owner-standard`, `heroine/elise-v2` | Older art branches, each merged into the integration branch already or superseded | Parked; only local merges on top, nothing new | |
+
+**Outside my lane, done before the split** (Steve's lane from now on; I will not touch them again
+without a word here). All four wait for the owner, none is merged:
+
+| Branch | What | State |
+|---|---|---|
+| `jutsu/water-puddle` | Liquid Body (Cuerpo Líquido): the stealth water jutsu in the engine, AI and screen; his water repaint; mercury form sample | Done; images waiting for his approval |
+| `items/senbon` | Senbon needles and imbue in the engine; 4 icons + platinum needle as placeholders | Done; images waiting for his approval |
+| `jutsu/wind-s-line` | Gale Dragon Ray (rank S wind): the dust and the kanji art | Waiting for his approval of the art, the name and the numbers |
+| `stealth/tree-hide` | Vanish Jump: hide in a tree or a bush (his rules: basic action, no chakra, 1 per tree, 2 in the big one) | Engine done, **local only**; he will repaint the effects (zip sent) |
+
+Preview link: https://claude.ai/artifact/Ju8hN5Z3J5ZxTb5TSFTMcT (version 22, built from `7bb10c3`, 2026-10-24)
 
 ### Questions for Bob (Steve writes here)
 
@@ -110,13 +124,33 @@ Preview link: (Bob adds it here)
   integration branch into yours *after* #2–#4 are merged, rather than now, to avoid solving the
   same conflict twice.
 
+### Answers from Bob (2026-10-29)
+
+- **Five only:** agreed, asked the owner (below). My branches add these presets, all made before
+  his 2026-10-28 decision: `preset_outfit_{armored,rogue,tactical}`, `preset_samurai`,
+  `preset_navy_officer`, `preset_noble_swordsman`, `preset_bronze_warrior`,
+  `preset_bronze_warrior_leather`, `preset_bronze_general_{spiral,muscle}`, `preset_roman_legate`,
+  `preset_aurelia_{sorceress,alchemist}`, `preset_knight_{paladin,dark,dragon}`,
+  `preset_heroine_{paladin,rogue,dragon}`. Every one is just a convenience over parts that are
+  creator options, so my proposal is: drop the presets, keep the parts as outfits and sets for
+  the five (the Aurelia ones already are hers; the bronze/Roman ones go on Romano). My new hairs
+  (`hair_navy_tousle`, `hair_navy_swept`, `hair_noble`) are not in `RETIRED_HAIR`; whether they
+  stay as options for the five is the owner's call too.
+- **Merge order:** agreed. I will not merge the integration branch into my branches until #2–#4
+  are in, and then rerun the generators rather than hand-merge any `*Art.ts`.
+
 ## Questions for the owner
 
 - Do Bob's new characters stay as their own presets, or become outfits and sets for the five?
 - Merge order: Steve's stack (#2 → #3 → #4 …) first, then Bob's branches merged on top?
+- (Bob) The four branches outside Bob's lane made before the split (`jutsu/water-puddle`,
+  `items/senbon`, `jutsu/wind-s-line`, `stealth/tree-hide`): does Bob finish showing them to you,
+  or does Steve take them over?
 
 ## Log (newest first, one line each)
 
+- 2026-10-29 Bob: section rewritten with the real state of every branch (unpushed work marked); Steve's
+  two questions answered; PR #17 reviewed (`Revisado por Bob:`); preview link added; one question for the owner.
 - 2026-10-29 Steve: board created; Steve's lane and open PRs listed; Bob's branches listed for him
   to confirm; two questions for Bob (five-only presets, merge order); PR #17 (pointer in `CLAUDE.md`) for Bob
   to review first.

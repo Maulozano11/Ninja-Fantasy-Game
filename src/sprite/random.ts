@@ -56,8 +56,8 @@ export function randomAppearance(): SpriteAppearance {
     body,
     skin: pick(SKIN_TONES.slice(0, 9)),
     // (his bronze warrior's and his Roman general's faces and eyes are a man's: only on the male bodies)
-    eyeShape: pick<EyeShape>(['standard', 'sharp', 'round', 'calm', 'fierce', 'bright', 'piercing', 'valiant', 'night', 'dawn', 'keen', 'roman', ...(isFemaleBody(body) ? [] : (['hoplite', 'general'] as EyeShape[]))]),
-    faceShape: pick<FaceShape>(['tapered', 'tapered', 'soft', 'square', 'valiant', 'night', 'founder', 'fine', 'aurelia', 'roman', ...(isFemaleBody(body) ? [] : (['hoplite', 'general'] as FaceShape[]))]),
+    eyeShape: pick<EyeShape>(['standard', 'sharp', 'round', 'calm', 'fierce', 'bright', 'piercing', 'valiant', 'night', 'dawn', 'keen', 'roman', ...(isFemaleBody(body) ? [] : (['general'] as EyeShape[]))]),
+    faceShape: pick<FaceShape>(['tapered', 'tapered', 'soft', 'square', 'valiant', 'night', 'founder', 'fine', 'aurelia', 'roman', ...(isFemaleBody(body) ? [] : (['general'] as FaceShape[]))]),
     cast: { style: pick(CAST_STYLES) },
     eyeColor: pick(EYE_COLORS),
     slots,

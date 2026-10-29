@@ -5,7 +5,7 @@ import { describe, it } from 'node:test';
 import { LEGENDARY_PRESETS } from '../data/shinobiData';
 import { faceAnchor } from './body';
 import { getItem } from './catalog';
-import { renderSprite } from './compose';
+import { renderSprite, spriteLayers } from './compose';
 import type { DrawCtx } from './ctx';
 import { HOPLITE_FIGURE, HOPLITE_FIGURE_AT, HOPLITE_JOINTS, HOPLITE_R_FIGURE, HOPLITE_R_FIGURE_AT } from './items/hopliteRepaintArt';
 import { hopliteRig } from './hopliteRig';
@@ -27,13 +27,12 @@ function figure(fig = HOPLITE_FIGURE, at = HOPLITE_FIGURE_AT): Map<number, strin
   return out;
 }
 
-/** The pixels a render differs from his figure in. */
+/** The pixels of his figure a render differs in (his figure is his body: the head is Solen's, with his mane over the shoulders). */
 function wrongPixels(rgba: Uint8ClampedArray, his: Map<number, string>): string[] {
   const wrong: string[] = [];
-  for (let i = 0; i < GRID * GRID; i++) {
-    const want = his.get(i);
+  for (const [i, want] of his) {
     const shown = rgba[i * 4 + 3] > 0;
-    if (want === undefined ? shown : !shown || hex(rgba, i) !== want) wrong.push(`${i % GRID},${(i / GRID) | 0}: ${shown ? hex(rgba, i) : 'none'} (his ${want ?? 'none'})`);
+    if (!shown || hex(rgba, i) !== want) wrong.push(`${i % GRID},${(i / GRID) | 0}: ${shown ? hex(rgba, i) : 'none'} (his ${want})`);
   }
   return wrong;
 }
@@ -53,18 +52,32 @@ describe("the owner's bronze warrior", () => {
     assert.deepEqual([nx, ny], [123, 139]);
   });
 
-  it('in his bronze set is his repainted pieces with the bronze cuirass pixel for pixel at male idle frame 0, and nothing else', () => {
+  it('in his bronze set is his repainted pieces with the bronze cuirass pixel for pixel at male idle frame 0, below his head', () => {
     const wrong = wrongPixels(renderSprite(look(), 'idle', 0).rgba, figure());
     assert.equal(wrong.length, 0, `${wrong.length} pixels differ: ${wrong.slice(0, 12).join('; ')}`);
   });
 
-  it('in his second set (leather chest, iron pauldrons, sleeves) is his own repaint pixel for pixel', () => {
+  it('in his second set (leather chest, iron pauldrons, sleeves) is his own repaint pixel for pixel, below his head', () => {
     const wrong = wrongPixels(renderSprite(look('male', 'preset_bronze_warrior_leather'), 'idle', 0).rgba, figure(HOPLITE_R_FIGURE, HOPLITE_R_FIGURE_AT));
     assert.equal(wrong.length, 0, `${wrong.length} pixels differ: ${wrong.slice(0, 12).join('; ')}`);
   });
 
+  it("wears Solen's head with his mane over it (the owner, 2026-10-29: the bronze warrior is Solen): no skull shows past the mane", () => {
+    for (const id of ['preset_bronze_warrior', 'preset_bronze_warrior_leather']) {
+      const l = look('male', id);
+      assert.equal(l.faceShape, 'founder', id);
+      assert.equal(l.slots.hair?.id, 'hair_solen_mane', id);
+      const { layers, rig } = spriteLayers(l, 'idle', 0);
+      const { nx, ny } = faceAnchor({ rig, bp: rig.bp, look: l } as unknown as DrawCtx);
+      const head = layers.get('head.body')!;
+      const front = layers.get('hairFront')!;
+      // above the hairline (solen-mane-from-ref.py HAIRLINE) every pixel of the head is under his hair
+      for (let y = ny - 14; y < ny - 4; y++) for (let x = nx - 10; x <= nx + 12; x++) if (head.has(x, y)) assert.ok(front.has(x, y), `${id}: skull at ${x},${y}`);
+    }
+  });
+
   it('is a male set: none of his pieces fits the female body', () => {
-    for (const id of ['hair_hoplite', 'acc_hoplite_diadem', 'armor_hoplite', 'acc_hoplite_pauldrons', 'cape_hoplite', 'skirt_hoplite', 'hands_hoplite_bracers', 'feet_hoplite_greaves', 'armor_hoplite_leather', 'acc_hoplite_iron_pauldrons', 'top_hoplite_sleeves']) {
+    for (const id of ['hair_solen_mane', 'acc_solen_diadem', 'armor_hoplite', 'acc_hoplite_pauldrons', 'cape_hoplite', 'skirt_hoplite', 'hands_hoplite_bracers', 'feet_hoplite_greaves', 'armor_hoplite_leather', 'acc_hoplite_iron_pauldrons', 'top_hoplite_sleeves']) {
       const d = getItem(id);
       assert.ok(d, id);
       assert.deepEqual(d!.bodies, ['male', 'bulky'], id);

@@ -1,8 +1,10 @@
 // The owner's bronze warrior (docs/reference/bronze-warrior-owner-reference.jpg, 2026-10-24: "nuevos sets para
 // cuerpos masculinos hazme los sets de estos personajes"), part by part, each its own creator option: his
-// hair and braid, his diadem, his cuirass (and the leather chest of his second picture), his pauldrons, his
-// cape and scarf, his skirt, his bare arms with their bracers and fists, and his legs with their greaves
-// and shoes. (His face and eyes are the 'hoplite' face and eye shape: body.ts.) His picture is brought down
+// diadem, his cuirass (and the leather chest of his second picture), his pauldrons, his cape and scarf, his
+// skirt, his bare arms with their bracers and fists, and his legs with their greaves and shoes. The owner's
+// decision (2026-10-29): the bronze warrior IS Solen: he wears Solen's head (the 'founder' face), his mane
+// and braid are Solen's hair option hair_solen_mane (items/hair.ts) and his diadem the accessory below, both
+// lifted onto Solen's skull (tools/refs/solen-mane-from-ref.py). His picture is brought down
 // to our scale and cleaned in his palette (tools/refs/bronze_ref.py, his decision "Reducir y limpiar yo");
 // worn whole his figure stands on his joints (hopliteRig.ts), so at male idle frame 0 every pixel is that
 // reduction's. In other poses each piece of his turns whole about our joints. His black line and his
@@ -19,6 +21,7 @@ import type { BodyType } from '../types';
 import { HOPLITE_ARMOR_BRONZE, HOPLITE_ARMOR_STEEL, HOPLITE_CHEST, HOPLITE_CHEST_KIND, HOPLITE_CLASP, HOPLITE_CLASP_KIND } from './hopliteArmorArt';
 import { HOPLITE_PAULDRON_BRONZE, HOPLITE_PAULDRON_F, HOPLITE_PAULDRON_F_KIND, HOPLITE_PAULDRON_N, HOPLITE_PAULDRON_N_KIND } from './hoplitePauldronsArt';
 import * as RP from './hopliteRepaintArt';
+import { SOLEN_DIADEM, SOLEN_DIADEM_BRONZE, SOLEN_DIADEM_KIND } from './solenManeArt';
 import { faceAnchor } from '../body';
 
 type Kind = 'cloth' | 'leather' | 'metal';
@@ -50,12 +53,6 @@ type Kinds = Record<string, string>;
  * pixel"); his body there lies on his first picture's reduction to the pixel, so it stands on the same joints.
  */
 const ART = {
-  hair: RP.HOPLITE_R_HAIR,
-  hairK: RP.HOPLITE_R_HAIR_KIND as Kinds,
-  braid: RP.HOPLITE_R_BRAID,
-  braidK: RP.HOPLITE_R_BRAID_KIND as Kinds,
-  diadem: RP.HOPLITE_R_DIADEM,
-  diademK: RP.HOPLITE_R_DIADEM_KIND as Kinds,
   cape: RP.HOPLITE_R_CAPE,
   capeK: RP.HOPLITE_R_CAPE_KIND as Kinds,
   scarf: RP.HOPLITE_R_SCARF,
@@ -251,7 +248,7 @@ function drawLegs(g: DrawCtx, bronze: string, shoe: string): void {
 }
 
 // ---------------------------------------------------------------------------------------------------
-// His hair and diadem (stamped on the face anchor, as his Roman hair is)
+// His diadem (stamped on the face anchor, as his Roman hair is)
 // ---------------------------------------------------------------------------------------------------
 
 export function stampOnFace(g: DrawCtx, depth: Depth, p: PaintedPiece, tint: (ch: string, hex: string) => string): void {
@@ -263,29 +260,14 @@ export function stampOnFace(g: DrawCtx, depth: Depth, p: PaintedPiece, tint: (ch
 
 export const HOPLITE_ITEMS: ItemDef[] = [
   {
-    id: 'hair_hoplite',
-    slot: 'hair',
-    name: "Bronze Warrior's Mane",
-    desc: 'Long wild black hair with a braid tied in bronze bands behind, painted by the owner for his bronze warrior.',
-    colors: [col('main', 'Hair', RP.HOPLITE_R_HAIR_BASE), col('band', 'Bands', RP.HOPLITE_R_HAIR_BAND, 'metal')],
-    bodies: [...MEN],
-    draw: (g, [c, band]) => {
-      const hair = [RP.HOPLITE_R_HAIR_BASE, c] as [string, string];
-      const slots = { hair, navy: hair, grey: hair, purple: hair, warm: [RP.HOPLITE_R_HAIR_BAND, band] as [string, string] };
-          stampOnFace(g, 'hairBack', ART.braid, hopliteTint(g, ART.braidK, slots));
-      stampOnFace(g, 'hairFront', ART.hair, hopliteTint(g, ART.hairK, slots));
-    },
-  },
-  {
-    id: 'acc_hoplite_diadem',
+    id: 'acc_solen_diadem',
     slot: 'accessory',
-    name: "Bronze Warrior's Diadem",
-    desc: 'A bronze diadem across the forehead with a small emblem, painted by the owner for his bronze warrior.',
-    colors: [col('bronze', 'Bronze', RP.HOPLITE_R_DIADEM_BRONZE, 'metal')],
+    name: "Solen's Diadem",
+    desc: 'A bronze diadem across the brow with a small emblem, worn over any hair: the diadem the owner painted for his bronze warrior, on Solen\'s head.',
+    colors: [col('bronze', 'Bronze', SOLEN_DIADEM_BRONZE, 'metal')],
     bodies: [...MEN],
-    draw: (g, [c]) => {
-          stampOnFace(g, 'head.gear', ART.diadem, hopliteTint(g, ART.diademK, { warm: [RP.HOPLITE_R_DIADEM_BRONZE, c] }));
-    },
+    // (lifted with the mane onto Solen's skull, over the hair at the brow)
+    draw: (g, [c]) => stampOnFace(g, 'head.gear', SOLEN_DIADEM, hopliteTint(g, SOLEN_DIADEM_KIND, { warm: [SOLEN_DIADEM_BRONZE, c] })),
   },
   {
     id: 'armor_hoplite',

@@ -515,7 +515,8 @@ PNG, 3200×2400, sin morado fuera del magenta de fondo.
 
 Aprobada por el dueño el 2026-10-28 en su versión básica (`docs/mockups/colossal-hydra-concept.png`):
 el cuerpo **solo a la derecha** (nada a lo largo del fondo ni hacia el frente), siete cabezas de
-**2.5 personajes** (4.4 m) en cuellos largos **horizontales**, **mirando a la izquierda** hacia la
+**3.3 m** (eran 4.4 m; él las bajó el 2026-10-28: *"las cabezas las bajamos a 3.3"*) en cuellos
+largos **horizontales**, **mirando a la izquierda** hacia la
 puerta, cada una en su carril y a 8 m o más de las otras (una Bola de fuego solo da a una).
 **Mismo estilo y calidad que el casino** (sus palabras: *"que haga el mismo estilo y calidad que
 el casino"*): fondo pintado HD-2D como el casino v3, piezas HD como los props del patio
@@ -529,31 +530,29 @@ la pone en cada carril).
 **Ojo con el magenta:** la boca de la hidra pequeña es morada-rosa; aquí va **rojo oscuro**,
 porque el morado se borra con el fondo magenta.
 
-**A) El fondo con el cuerpo** (adjunta la versión básica y el fondo del casino v3 como estilo):
+**Primera vuelta (2026-10-28):** su fondo (`docs/reference/colossal-hydra-backdrop-v1-owner-reference.png`)
+tiene el estilo que queremos, pero la cámara quedó baja (el suelo solo en el tercio de abajo, unos
+10 m de fondo, con punto de fuga) y los muñones apuntan hacia arriba; la culpa fue de esta tarjeta,
+que pedía "perspectiva suave hasta la mitad de la imagen". La A de abajo es la corregida. Su cabeza
+(B) sirve tal cual; su tira de mordida (C) sirve, pero se nota la costura con el cuello largo, de
+ahí la línea nueva de C. Cómo se ve con la cámara del juego: `docs/mockups/colossal-hydra-game-camera.png`.
+
+**A) El fondo con el cuerpo** (adjunta su primer fondo como estilo):
 
 ```
-FONDO · el patio interior de una fortaleza de piedra, de noche, con una hidra colosal dormida a la
-derecha · PANORÁMICO 16:9 (1920×1080)
-Pintura de fondo para un juego de pixel art de 16 bits de vista lateral (2.5D), con la MISMA
-calidad, pincel y luz que el fondo del casino adjunto: un escenario visto de frente, con
-profundidad hacia atrás, NO isométrico.
-Qué se ve:
-- el SUELO del patio, losas de piedra grandes y gastadas, en perspectiva suave, desde el borde de
-  abajo hasta la mitad de la imagen (ahí pisan los personajes);
-- al fondo, el MURO de la fortaleza: sillares grises, almenas, dos torres con ventanas encendidas
-  de luz naranja, antorchas en el muro;
-- a la IZQUIERDA, el portón de entrada de madera reforzada, abierto, por donde entran los héroes;
-- a la DERECHA, ocupando un tercio del ancho y toda la altura del patio, el CUERPO de una hidra
-  colosal: escamas verde azulado profundo, placas del vientre doradas-ocre, púas doradas en el
-  lomo, apoyado en el suelo; de su costado izquierdo salen SIETE muñones de cuello (hombros
-  gruesos, cortados limpio, sin cabezas), escalonados a distintas alturas y profundidades, que
-  apuntan a la izquierda. Del cuerpo NO sale nada hacia el frente ni a lo largo del muro: ni cola
-  ni patas al frente.
-Luz: de noche, fría y azul desde arriba, cálida desde antorchas y ventanas; sombras suaves.
-Paleta corta: piedra gris, verde azulado de escamas, oro ocre, naranja de las luces, azul noche;
-3 o 4 tonos por material, en bandas planas; sin degradados finos, sin ruido.
-PROHIBIDO: texto, personas, cabezas de la hidra, magenta, rosa fuerte o morado.
-Entrega: PNG a 1920×1080.
+FONDO · el patio interior de una fortaleza de piedra, de noche, con una hidra colosal a la derecha · 1920×1080
+MISMO estilo, pincel, paleta y luz que la imagen adjunta (pixel art HD-2D), pero con la CÁMARA ALTA:
+vista táctica de batalla, la cámara elevada mirando hacia abajo unos 40°, proyección paralela SIN
+punto de fuga: las juntas de las losas son líneas horizontales y verticales paralelas, y las losas
+miden lo mismo arriba que abajo.
+- El SUELO ocupa los dos tercios de abajo: desde un tercio de la altura hasta el borde inferior.
+- El MURO de la fortaleza solo ocupa el tercio de arriba: casi no se ve cielo; almenas, torres y
+  antorchas cortadas por el borde superior. El portón abierto a la izquierda.
+- El CUERPO de la hidra a la derecha, en el último quinto del ancho, de arriba a abajo, apoyado en
+  el suelo. De su costado izquierdo salen SIETE muñones cortados limpio, en HORIZONTAL, apuntando
+  a la izquierda, cada uno a una altura distinta: tres a un 35% de la altura de la imagen, dos a un
+  57%, dos a un 78%, escalonados un poco entre sí. Nada del cuerpo hacia el frente ni a lo largo del muro.
+PROHIBIDO: texto, personas, cabezas, magenta, rosa o morado.
 ```
 
 **B) La cabeza con su cuello, quieta** (adjunta A cuando esté hecho, para la misma escama y luz):
@@ -577,6 +576,9 @@ Entrega: PNG de unos 2400×700, la pieza entera con margen.
 De la pieza adjunta (cabeza con cuello), dibuja UNA tira de N cuadros en fila, todos del mismo
 tamaño, separados por espacio magenta, con el cuello SIEMPRE en el mismo lugar en el borde
 derecho (solo se mueven la cabeza y la parte del cuello cercana a ella). Misma pintura y colores.
+Cada cuadro es la pieza adjunta ENTERA: cabeza y cuello largo hasta el borde derecho, del mismo
+tamaño que la pieza. Solo se mueven la cabeza y el primer tercio del cuello; los dos tercios de la
+derecha quedan idénticos en todos los cuadros, píxel por píxel.
 ```
 
 | Tira | Cuadros | Qué hace |

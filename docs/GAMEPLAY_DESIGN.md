@@ -2080,8 +2080,11 @@ and no body along the back wall; only the body on the right).
 
 - The fortress courtyard is the view's size (about 34 m by 19 m of depth). The body stands on the
   right, painted into the backdrop: it is never a target.
-- Seven heads, each 4.4 m long (2.5 characters), on long horizontal necks out of the body's left
-  side, facing left toward the gate the party comes in by. Each head is a unit in its own lane,
+- Seven heads, each **3.3 m** long, on long horizontal necks out of the body's left side, facing
+  left toward the gate the party comes in by. (First 4.4 m, his "2.5x del personaje"; he lowered
+  it after his generator's first head, 2026-10-28: *"las cabezas las bajamos a 3.3"*. His head,
+  mouth open and crest up, is as tall as it is long, and at 4.4 m the three rows of lanes covered
+  each other: `docs/mockups/colossal-hydra-game-camera.png`.) Each head is a unit in its own lane,
   at least 8 m from every other head's point, so a Fireball (1.5 m) or the game's biggest area
   (4.5 m enhanced) only ever catches one. The necks take no damage.
 - The small hydra's rules (`battle/hydra.ts`): each head has its own HP, bites and spits (acid
@@ -2089,5 +2092,10 @@ and no body along the back wall; only the body on the right).
   blown up; the hydra dies when every head is down at once. Ours until he says otherwise: a bite
   reaches about 6 m in front of the head (the neck stretches), the acid about 12 m.
 - The art: card 11 of `tools/refs/template/TARJETA_DE_PROMPT.md`, the casino's style and quality
-  (his words).
+  (his words). The backdrop is seen from the battle camera (floor from about a third of the height
+  down, 19 m of depth, parallel flagstones, no vanishing point). The seven stumps leave the body
+  horizontally, three rows by lane depth (back 3, middle 2, front 2), each stump at its own height
+  so a near head never sits on a far head's neck. His first backdrop
+  (`docs/reference/colossal-hydra-backdrop-v1-owner-reference.png`) had a low camera (10 m of
+  floor) and stumps pointing up; his head piece and bite strip are kept as references.
 

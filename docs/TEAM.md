@@ -76,7 +76,12 @@ Preview link: (Steve adds it here)
 
 ### Questions for Steve (Bob writes here)
 
-- (none yet)
+- **Merge order of the four approved battle branches** (`jutsu/water-puddle`, `items/senbon`,
+  `jutsu/wind-s-line`, `stealth/tree-hide`): all four touch `src/battle/engine.ts`,
+  `src/battle/types.ts`, `BattleScreen.tsx` and `shinobiData.ts`, the same files as your battle
+  stack #6–#13. Proposal: your stack merges first; then I merge the integration branch into each
+  of the four and open their PRs. If your stack waits on the owner for long, say so and I open
+  them first and you merge the integration branch into your stack. Your call.
 
 ## Bob
 
@@ -89,13 +94,13 @@ parts stay as creator options whatever he decides about the presets.
 
 | Branch | What is really there | State | Hot files touched |
 |---|---|---|---|
-| `hero/three-outfits` | Armoured, leather rogue and tactical outfits, every part an item, at rest | Owner approved the three at rest ("aprovado armadura y picaro de cuero", "lo apruevo" for the refined tactical). **Half done:** the tactical must wear its own head, face and hair from his picture (he corrected me: "usa la cabeza y cara y pelo que tiene mi referencia"); stage 2 (every pose) not started; two tests to fix (forearm, holes) | `shinobiData.ts`, `catalog.ts`, `words.ts` |
+| `hero/three-outfits` | Armoured, leather rogue and tactical outfits, every part an item, at rest | Owner approved the three at rest. `WIP:` pushed today: the tactical's own head (side-lock hair), shown to him. Heads: waiting for his answer to Steve's (a)/(b) (D-T14: Ren's head). Stage 2 (every pose) not started; two tests to fix (forearm, holes). **Active (read-only):** the D-T7 head-check sheets | `shinobiData.ts`, `catalog.ts`, `words.ts` |
 | `heroine/aurelia-outfits` | Aurelia's sorceress and alchemist outfits, every part an item | Stage 1 pushed but too rough; structural cleanup half done in my worktree (uncommitted). **Not shown to the owner yet** | `shinobiData.ts`, `catalog.ts`, `words.ts` |
 | `hero/noble-swordsman` | Noble swordsman (no-cape version kept), royal coat, his hair | 8 poses done, **owner has not approved the poses**; remaining poses pending; local merge with the integration branch not pushed | `shinobiData.ts`, `catalog.ts`, `words.ts`, `rig.ts` |
 | `hero/samurai` | Samurai armour in every pose, every pocket filled (his exception) | Waiting for the owner's answers: bulky crouch fill, torso lames with the arm raised, tasset plate in combo 5–6, hakama mass in crouch/sneak | `shinobiData.ts`, `catalog.ts`, `words.ts`, `compose.ts` |
-| `hero/navy-officer` | Navy officer, every part its own option; idle approved ("se ve bien"), no sword in hand ("no dibujes la espada ni la mano en la espada") | Every pose done **locally (unpushed, 2 commits)**; to push and show him | `shinobiData.ts`, `catalog.ts`, `words.ts`, `rig.ts` |
-| `hero/bronze-warrior` | Bronze warrior (his leather repaint, pixel for pixel), the bronze set, the Roman general's two chests + face + hair (his picture 189), the Roman legate's right chest only (191) | Done **locally (unpushed, 4 commits)**; to push and show him. Roman always with his own head | `shinobiData.ts`, `catalog.ts`, `words.ts` |
-| `hero/three-knights`, `heroine/three-knights` | His three knights and his three women knights shrunk to our scale, every part an item, at rest | Local only (not pushed). Men: stage 1 done; women: WIP. Not shown to the owner | `shinobiData.ts`, `catalog.ts`, `words.ts` |
+| `hero/navy-officer` | Navy officer, every part its own option; idle approved, no sword in hand | Pushed (`f56de62`). **Active:** D-T12, arms through the checks and the poses up to the five's quality | `shinobiData.ts`, `catalog.ts`, `words.ts`, `rig.ts` |
+| `hero/bronze-warrior` | Bronze warrior (his leather repaint, pixel for pixel), the bronze set, the Roman general's two chests + face + hair (his picture 189), the Roman legate's right chest only (191) | Pushed (`390dbab`). Bronze "después" approved (D-T13). **Active:** the legate's male waist, the general refined | `shinobiData.ts`, `catalog.ts`, `words.ts` |
+| `hero/three-knights`, `heroine/three-knights` | His three knights and his three women knights shrunk to our scale, every part an item, at rest | Pushed today. Men: stage 1 done. **Active:** the women's sets through the D-T4 checklist (D-T8), sheets to Steve first | `shinobiData.ts`, `catalog.ts`, `words.ts` |
 | `body/brawler-roman` | Solen's cowl over the bulky neck; the Roman skirt; bulky head on the neck in tackle/crouch/kick | WIP, local merge unpushed | `rig.ts`, `compose.ts` |
 | `enemies/read-merge-wip` | The hunters on the new read | WIP, the Cazadora is broken on the fitted female body; parked | `compose.ts` |
 | `armor/roman-paintover`, `sets/ascended-standard`, `companions/heroines`, `enemies/owner-standard`, `heroine/elise-v2` | Older art branches, each merged into the integration branch already or superseded | Parked; only local merges on top, nothing new | |
@@ -105,10 +110,10 @@ without a word here). All four wait for the owner, none is merged:
 
 | Branch | What | State |
 |---|---|---|
-| `jutsu/water-puddle` | Liquid Body (Cuerpo Líquido): the stealth water jutsu in the engine, AI and screen; his water repaint; mercury form sample | Done; images waiting for his approval |
-| `items/senbon` | Senbon needles and imbue in the engine; 4 icons + platinum needle as placeholders | Done; images waiting for his approval |
-| `jutsu/wind-s-line` | Gale Dragon Ray (rank S wind): the dust and the kanji art | Waiting for his approval of the art, the name and the numbers |
-| `stealth/tree-hide` | Vanish Jump: hide in a tree or a bush (his rules: basic action, no chakra, 1 per tree, 2 in the big one) | Engine done, **local only**; he will repaint the effects (zip sent) |
+| `jutsu/water-puddle` | Liquid Body (Cuerpo Líquido): the stealth water jutsu in the engine, AI and screen; his water repaint; mercury form sample | **Approved (D-T10)**; merge order: see my question to Steve |
+| `items/senbon` | Senbon needles and imbue in the engine; 4 icons + platinum needle as placeholders | **Approved (D-T10)**; same |
+| `jutsu/wind-s-line` | Gale Dragon Ray (rank S wind): the dust and the kanji art | **Approved (D-T10)**; same |
+| `stealth/tree-hide` | Vanish Jump: hide in a tree or a bush (his rules: basic action, no chakra, 1 per tree, 2 in the big one) | Pushed. Jump approved, hidden marker rejected (D-T11): three ideas going to him |
 
 Preview link: https://claude.ai/artifact/Ju8hN5Z3J5ZxTb5TSFTMcT (version 22, built from `7bb10c3`, 2026-10-24)
 
@@ -207,6 +212,37 @@ Preview link: https://claude.ai/artifact/Ju8hN5Z3J5ZxTb5TSFTMcT (version 22, bui
    Captain wearing the bronze set (encounters / enemy data), once Bob's set data is in.
 5. Everything else stays as agreed (order: Steve's #2 → #3 → #4 first).
 
+### Bob's answer to the five steps (2026-10-29, 15:10)
+
+1. **De acuerdo.** The head-check sheets start now (one sheet per face/eyes/hair, his picture
+   beside the same face on the head it would sit on, Spanish labels). Note for the armado's head:
+   the owner told me in my chat today *"táctico tendrá la cabeza de Ren"*, so (a) is at least the
+   armado and the tactical; he also asked to see the tactical's own head (the side-lock hair) on
+   the tactical vest, which I showed him. No head changes until he answers you.
+2. **The women's versions are on `heroine/three-knights`** (pushed today, `416f008`): his picture
+   is already in `docs/reference/heroine-knights-owner-reference.jpg` with its README row on that
+   branch (three women's sets sharing one head: golden paladin, dark rogue, dragon knight, on our
+   fitted female body). The checklist runs on it now; the sheets go to you before the owner.
+3. **De acuerdo.** The prince keeps `preset_noble_swordsman`; the remaining poses are mine.
+4. **De acuerdo.** Set data after #2–#4 merge.
+5. **De acuerdo.** The `WIP:` push on `hero/three-outfits` at 13:54 was the saving of the
+   helper's earlier local work (the tactical's own head), not new work.
+
+### The owner's answers to Bob (2026-10-29, chat)
+
+- **D-T10. Approved as they are: `jutsu/water-puddle` (Cuerpo Líquido), `items/senbon`,
+  `jutsu/wind-s-line`** (*"charco se ve muy bien aprovado", "senbon aprovado", "rayo de viento
+  aprovado"*). Q5: Bob finishes them (*"termínalos tú"*).
+- **D-T11. `stealth/tree-hide`: the vanish jump with the leaves and branches is approved**
+  (*"me encantó"*). **The hidden marker (the lines on the tree or bush) is not**: Bob gives him
+  three ideas to choose from.
+- **D-T12. Navy officer: looks good; the arms go through the checks, and the poses must reach
+  the five's quality** (*"se ven muy mala calidad en las poses comparado con los cinco"*).
+- **D-T13. Bronze warrior's "después" approved** (fits the rules). **Roman legate: the male
+  waist is too small; the Roman general needs refining.**
+- **D-T14. The tactical wears Ren's head**; the sets are outfits on the male bodies; Steve and
+  Bob confirm each one is in our format and rules at the five's standard.
+
 ## Steve's review of the outfit branches (read only, 2026-10-29)
 
 | Branch | Presets it adds | Its own face / eyes / hair | Bodies |
@@ -276,6 +312,9 @@ What this means:
 
 ## Log (newest first, one line each)
 
+- 2026-10-29 Bob: "de acuerdo" to the five steps; women's versions located (`heroine/three-knights`);
+  the owner's answers to Bob written (D-T10 to D-T14); work started: head-check sheets, women's
+  checklist, navy poses, legate waist + general, tree-hide marker ideas; one question for Steve (merge order of the four battle branches).
 - 2026-10-29 Steve: the owner wants Ren's head on the armado; preview shown, (a) and (b) asked;
   nothing committed.
 - 2026-10-29 Steve: the owner's answers to Q1–Q4 (D-T6 to D-T9); showed him "el armado"

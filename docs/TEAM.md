@@ -283,6 +283,29 @@ Preview link: https://claude.ai/artifact/Ju8hN5Z3J5ZxTb5TSFTMcT (version 22, bui
   the five's quality** (*"se ven muy mala calidad en las poses comparado con los cinco"*).
 - **D-T14. Bronze warrior's "después" approved** (fits the rules). **Roman legate: the male
   waist is too small; the Roman general needs refining.**
+- **D-T17. The bronze warrior is Solen** (same skin, red eyes, dark hair, scarf; Bob showed him
+  the heads side by side and he confirmed). His long wavy mane becomes **a hair variant on
+  Solen's head** (no `hoplite` face/eyes/head), and **the diadem becomes an accessory** (headband
+  slot, drawn over any hair). Bob does both on `hero/bronze-warrior`.
+- **D-T18 (lore, Steve's lane).** The game has a descendants system ("sistema de hijos"); **the
+  bronze-armoured Solen is the oldest ancestor**, with story and plot around him.
+- **D-T19 (design, Steve's lane).** New ability themes: **space-time and gravity**. His example:
+  the ultimate ability of one of the Mirai branches **rewinds time two turns while the damage
+  dealt to the enemy stays**. "The possibilities are almost unlimited; we take what is most
+  relevant to our game system, from three themes." Open question for him below: which three.
+- **D-T20 (design, Steve's lane; answers Q6).** "Three themes" means **three settings the whole
+  game system must adapt to: ninja/fantasy, space/mechas, superheroes + space.** Abilities of the
+  space-time/gravity kind are meant to work in every setting under its own skin.
+  **The three Mirai subclasses**, as he described them (his references are descriptions only:
+  the docs use original names, CLAUDE.md's no-franchise rule):
+  1. **Oráculo (Oracle):** leadership and foresight buffs; ultimate "**Futuro inamovible**", a
+     super buff on the following damage.
+  2. **Dominio del fuego (fire control), the Mirai fire:** ultimate a fire avatar around the
+     ninja, armoured like a Spartan (he says "a susano-like avatar but Spartan armour").
+  3. **Trampas y humo (traps and smoke):** weak-looking early; its ultimate is a rewind of the
+     izanagi kind: **time goes back two turns and the damage dealt to the enemy stays**
+     (D-T19's example). Meant to make Baldur's Gate-style decisions interesting, on top of the
+     combat complexity.
 - **D-T16. The women's sets have two sample heads, Lyra's and Aurelia's, and must work with
   both** (*"pon las dos cabezas para que funcionen en las dos, Lyra y Aurelia"*). This answers
   Steve's open point 3 (women's sample head).
@@ -295,6 +318,34 @@ Preview link: https://claude.ai/artifact/Ju8hN5Z3J5ZxTb5TSFTMcT (version 22, bui
   lifted from the right-hand figure of his three-outfits picture (its longer side lock) on his
   2026-10-24 instruction, not invented; moot now. 3: I will ask him for the women's sample head
   (Lyra or Aurelia) with the women's sheets; until he answers the sheets show both.
+
+### D-T7 head-check sheets, for Steve's review (Bob, 2026-10-29, 16:40)
+
+Render only, nothing committed on the art branches. The sheets are on the branch
+`review/head-sheets` (never merged), folder `review/cabezas/`: one PNG per head (his crop, the
+head as it is on its branch, the same hair and eyes on Ren's, the Roman's and Aiden's heads with
+"encaja / no encaja" and the reason), `ren-como-cabeza-de-muestra.png` (every men's set worn by
+Ren's whole head: all clean) and `resumen.md`. Read with
+`git fetch origin review/head-sheets && git show origin/review/head-sheets:review/cabezas/resumen.md`
+(or check the branch out). Summary:
+
+| Head (branch) | Verdict | Why |
+|---|---|---|
+| wanderer (three-outfits: armado, pícaro) | fits Ren's head as is (Aiden's too) | fringe, eye row and jaw inside the hair; on the Roman the nape shows |
+| vanguard (three-outfits: táctico) | fits Ren's head as is (Aiden's too) | same |
+| noble | fits the Roman head as is (Ren, Aiden too) | made at the Roman head's size; trims the skull |
+| samurai | **needs a new head** (or the Roman with a touch-up) | his face is bigger: fringe reaches Ren's/Aiden's eye row; on the Roman the temple shows 1 px |
+| navy tousle, navy swept | fit the Roman head as is | made at the Roman head's size; on Ren/Aiden too much forehead |
+| hoplite (bronze, his repaint) | **needs its own head** | smaller head, hair does not trim the skull: our skull shows on Ren/Aiden, nape and braid detach on the Roman |
+| general (bronze) | fits the Roman head as is (Ren, Aiden too) | the curls enclose the face |
+| knight (three-knights) | fits Ren's head as is (Aiden's too) | fringe and jaw inside the hair; Roman's nape shows |
+| gallant (heroine/three-knights, women) | fits Lyra's head as is | on Aurelia the face is wider and lower: forehead and far cheek stick out (D-T16 needs a fix) |
+| hair_long_lock (brawler-roman, his broad man) | fits Ren's head as is (Aiden's too) | the hair was made on our skull; Roman's nape shows |
+
+None of these hairs is in `RETIRED_HAIR`; none has a `heads` field yet (that rule exists only
+on `cleanup/five-only`), so each needs `heads` on merge. The `base` head is only on
+`cleanup/five-only`, so it was not rendered. Steve: review against the #3 rules, then it goes to
+the owner (I have sent him only the Ren-sample sheet and this table, no decision asked yet).
 
 ## Steve's review of the outfit branches (read only, 2026-10-29)
 
@@ -358,6 +409,7 @@ What this means:
 - Merge order: Steve's stack (#2 → #3 → #4 …) first, then Bob's branches on top? (Steve and Bob
   both propose yes.)
 - Q1–Q4: answered above (D-T6 to D-T9).
+- Q6: answered, see D-T20 (three settings; the rewind is the traps-and-smoke subclass's ultimate).
 - **Q5 (Bob).** Four branches outside Bob's lane, made before the split and waiting for you:
   `jutsu/water-puddle` (Cuerpo Líquido), `items/senbon`, `jutsu/wind-s-line` (the rank S wind
   ray), `stealth/tree-hide` (hide in a tree or bush). Does Bob finish showing them to you, or
@@ -366,6 +418,9 @@ What this means:
 ## Log (newest first, one line each)
 
 - 2026-10-29 15:25 Steve (hydra chat): `docs/colossal-hydra` #15: his hurt v2, cut and regrow sheets mounted; card 11 burnt stump; card 12 (fortress choice screen, empty courtyard, summon sigil); the fortress mission in `MISSION_DESIGN.md` (front gate or drain, XCOM-style stealth, mecha size = the river hydra). No hot files.
+- 2026-10-29 Bob: D-T20, the three settings (ninja/fantasy, space/mechas, superheroes+space) and the three Mirai subclasses with their ultimates, for Steve's docs (CLANS_DESIGN.md).
+- 2026-10-29 Bob: D-T17 (bronze = Solen: mane as his hair variant, diadem as accessory), D-T18 lore and D-T19 space-time/gravity abilities written for Steve; Q6 for the owner.
+- 2026-10-29 Bob: D-T7 head-check sheets done (render only) on `review/head-sheets`, table on the board; Steve to review before the owner decides.
 - 2026-10-29 Bob: (b): the tactical wears the `vanguard` head, all pushed; the lock hair the owner meant is `hair_long_lock` + the tight shirt on `body/brawler-roman`.
 - 2026-10-29 Bob: D-T16, the women's sets work with both Lyra's and Aurelia's heads (the owner); the women's checklist runs with both.
 - 2026-10-29 Steve: the lock hair is `hair_long_lock` on `body/brawler-roman`; the tactical on

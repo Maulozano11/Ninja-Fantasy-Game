@@ -30,6 +30,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import numpy as np  # noqa: E402
 
 import bronze_ref as R  # noqa: E402
+import engraved_ref as E  # noqa: E402
 
 REF = 'docs/reference/roman-general-owner-reference.jpg'
 # His grid: the bronze warrior's pitch; where his first cell starts (picture pixels, the least spread inside
@@ -185,8 +186,44 @@ R.SPLIT = 0.05
 
 R.FRONT += [('sleeve_n', 'pauldron_n'), ('sleeve_f', 'pauldron_f'), ('pauldron_f', 'cuirass'), ('sleeve_f', 'cuirass'),
             ('cuirass', 'sleeve_n'), ('face', 'scarf'), ('hair', 'scarf'), ('cuirass', 'other'), ('scarf', 'other')]
-# No motif of the bronze warrior's is his here.
+# His motifs, each where he drew it (his cells, per figure): on the spiral cuirass his nine spirals in three
+# rows, his lion face at the top of the chest and the square buckle of its belt; on the muscle cuirass the
+# spiral at each shoulder, the lion face at the chest and its buckle. Laid at our scale as the bronze
+# warrior's are (engraved_ref.motifs), each a clean reading among his pixels.
+MOTIFS = {
+    'L': [
+        ('spiral', (61.5, 52.5), 5.0), ('lion', (73.5, 52.0), 6.5), ('spiral', (86.5, 52.5), 5.0),
+        ('spiral', (60.0, 66.0), 5.0), ('spiral', (73.5, 66.0), 5.0), ('spiral', (87.0, 66.0), 4.5),
+        ('spiral', (61.0, 78.5), 4.5), ('spiral', (73.5, 78.5), 4.5), ('spiral', (86.0, 78.5), 4.5),
+        ('square', (73.5, 87.0), 4.5),
+    ],
+    'R': [
+        ('spiral', (186.5, 47.5), 5.0), ('lion', (205.5, 50.0), 7.0), ('spiral', (222.5, 48.0), 4.5),
+        ('square', (205.5, 87.5), 4.5),
+    ],
+}
 R.MOTIFS = []
+# How his plates are read at our scale (engraved_ref, after the owner's verdict on the first reductions,
+# 2026-10-29): each cuirass and pauldron is his bronze or gold in his shades, his gold engraving and rims as
+# light marks, his dark seams and shadows as dark marks and his line through the piece where he drew it, so the
+# spirals, the lion, the plates and the studs read and nothing is a blend.
+BRONZE = ('gold', 'leather', 'skin')
+GOLD = ('gold', 'skin')
+PLATES = {
+    # the spiral cuirass: his gold lines on his bronze, the dark engraving between them shading the plate
+    ('L', 'cuirass'): E.Plate(BRONZE, darks=False, motifs=MOTIFS['L']),
+    # the muscle cuirass: his gold plates, their dark seams (the abs, the pecs) as his dark marks
+    ('R', 'cuirass'): E.Plate(BRONZE, motifs=MOTIFS['R']),
+    ('L', 'pauldron_n'): E.Plate(BRONZE, darks=False), ('L', 'pauldron_f'): E.Plate(BRONZE, darks=False),
+    ('R', 'pauldron_n'): E.Plate(BRONZE), ('R', 'pauldron_f'): E.Plate(BRONZE),
+}
+# His face's eyes and shading: at our scale a pixel is his dark only where his dark half covers this much of
+# it, so his skin comes out smooth in his shades.
+R.DARK_WINS_OF = {'face': 0.45}
+# His curls are masses of three browns: smoothed with their neighbours as his bronze is (not the bronze
+# warrior's strands, drawn fine), so they come out in clusters and not in single pixels.
+R.NO_SMOOTH = ('face', 'diadem', 'skirt')
+R.KEEP_SPLIT = ('face', 'diadem')
 
 _more_of = R.more_of
 
@@ -227,12 +264,116 @@ def load():
     return a, labs
 
 
+# A piece whole (the owner's rules for his pictures, 2026-10-29: whole pieces, no holes, no stray pixels, a
+# clean 1 px outline): a speck of it detached from the rest (under FRAGMENT pixels) is dropped, a hole inside
+# it takes its neighbours' colour, a notch in its edge (a pixel three of whose neighbours are the piece) is
+# closed with his line, and a lone pixel darker or lighter than every neighbour of its piece by SPECK_LUMA (his
+# dark fold on a sleeve, a glint on the scarf, which at our scale is one pixel of noise) takes their colour.
+FRAGMENT = 6
+SPECK_LUMA = 24
+
+
+def whole(m, col, isl, black, keep=(), specks=True):
+    H, W = m.shape
+    lum = lambda c: 0.299 * int(c[0]) + 0.587 * int(c[1]) + 0.114 * int(c[2])
+    nb4 = lambda y, x: [(y + dy, x + dx) for dy, dx in ((1, 0), (-1, 0), (0, 1), (0, -1)) if 0 <= y + dy < H and 0 <= x + dx < W]
+    # 1. detached specks (8-neighbours)
+    seen = np.zeros((H, W), bool)
+    for y, x in zip(*np.nonzero(m)):
+        if seen[y, x]:
+            continue
+        group, stack = [], [(y, x)]
+        seen[y, x] = True
+        while stack:
+            q, p = stack.pop()
+            group.append((q, p))
+            for dq in (-1, 0, 1):
+                for dp in (-1, 0, 1):
+                    yy, xx = q + dq, p + dp
+                    if 0 <= yy < H and 0 <= xx < W and m[yy, xx] and not seen[yy, xx]:
+                        seen[yy, xx] = True
+                        stack.append((yy, xx))
+        if len(group) < FRAGMENT:
+            for q in group:
+                m[q] = False
+                isl[q] = False
+    # 2. holes: what is not the piece and cannot reach the frame's edge without crossing it
+    out = np.zeros((H, W), bool)
+    stack = [(y, x) for y in (0, H - 1) for x in range(W)] + [(y, x) for x in (0, W - 1) for y in range(H)]
+    while stack:
+        y, x = stack.pop()
+        if out[y, x] or m[y, x]:
+            continue
+        out[y, x] = True
+        stack += nb4(y, x)
+    for y, x in zip(*np.nonzero(~m & ~out)):
+        tally = {}
+        for q in nb4(y, x):
+            if m[q] and not isl[q]:
+                c = tuple(int(v) for v in col[q])
+                tally[c] = tally.get(c, 0) + 1
+        m[y, x] = True
+        if tally:
+            col[y, x] = max(sorted(tally), key=lambda c: tally[c])
+        else:
+            col[y, x] = black
+            isl[y, x] = True
+    # 3. notches in the edge
+    for _ in range(2):
+        add = [(y, x) for y, x in zip(*np.nonzero(~m)) if sum(1 for q in nb4(y, x) if m[q]) >= 3]
+        for y, x in add:
+            m[y, x] = True
+            col[y, x] = black
+            isl[y, x] = True
+    # 4. lone specks
+    fixed = col.copy()
+    for y, x in zip(*np.nonzero(m & ~isl)):
+        if (y, x) in keep or not specks:
+            continue
+        nb = [q for q in nb4(y, x) if m[q] and not isl[q]]
+        if len(nb) < 3:
+            continue
+        mine = lum(col[y, x])
+        ls = [lum(col[q]) for q in nb]
+        if all(l >= mine + SPECK_LUMA for l in ls) or all(l <= mine - SPECK_LUMA for l in ls):
+            tally = {}
+            for q in nb:
+                c = tuple(int(v) for v in col[q])
+                tally[c] = tally.get(c, 0) + 1
+            fixed[y, x] = max(sorted(tally), key=lambda c: tally[c])
+    col[:] = fixed
+    return m, col, isl
+
+
 def piece(a, labs, fig, name):
-    """A piece of a figure at our scale, continued under what hides it: (mask, colours, line)."""
+    """A piece of a figure at our scale, continued under what hides it and made whole (whole): (mask,
+    colours, line)."""
     R.more_of = more_of_for(fig)
     R.HIS_JOINTS = JOINTS[fig]
     M = HEAD if name in HEAD_PIECES else body_map(fig, name)
-    return R.piece(a, labs[fig], name, M)
+    if (fig, name) in PLATES:
+        # (a plate's lone light pixel is his stud or his glint, read by engraved_ref: not a speck)
+        m, c, isl = E.piece(a, labs[fig], name, M, PLATES[(fig, name)])
+        return whole(m, c, isl, R.his_line(a), specks=False)
+    m, c, isl = R.piece(a, labs[fig], name, M)
+    black = R.his_line(a)
+    if name == 'face':
+        # his eyes' whites and the greys of his lids off the eye pixels (bronze_ref's eye step): on a face
+        # pixel they are not his eye but a grey speck under it; it takes the skin beside it
+        eyes = set(R.EYE_PIXELS)
+        for y, x in zip(*np.nonzero(m & ~isl)):
+            if (y, x) in eyes or R.material(c[y, x], 'face') != 'white':
+                continue
+            tally = {}
+            for dy, dx in ((0, -1), (0, 1), (1, 0), (-1, 0), (1, 1), (1, -1), (-1, 1), (-1, -1)):
+                q = (y + dy, x + dx)
+                if m[q] and not isl[q] and (q not in eyes) and R.material(c[q], 'face') == 'skin':
+                    k = tuple(int(v) for v in c[q])
+                    tally[k] = tally.get(k, 0) + 1
+            if tally:
+                c[y, x] = max(sorted(tally), key=lambda k: tally[k])
+        return whole(m, c, isl, black, keep=eyes)
+    return whole(m, c, isl, black)
 
 
 # Where each piece is stamped from: our joint (the scripts bring his joint onto it) or the face anchor.

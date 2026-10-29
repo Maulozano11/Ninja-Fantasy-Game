@@ -9,7 +9,7 @@ import type { PaintedPiece } from '../painted';
 /** His colours the colour slots recolour from (at these, every pixel is his). */
 export const GENERAL_SLEEVE_NAVY = '#1a2846';
 export const GENERAL_SCARF_CLOTH = '#840e43';
-export const GENERAL_SCARF_CLASP = '#754223';
+export const GENERAL_SCARF_CLASP = '#70422f';
 
 /** Where each piece lands in our male idle frame 0 (his joints), unturned: the fine pixel of its first row's first cell. */
 export const GENERAL_CLOTH_REST: Record<string, [number, number]> = {
@@ -33,8 +33,8 @@ export const GENERAL_SLEEVE_N: PaintedPiece = {
     '.abcccccdcba',
     '.acddddddaaa',
     'aaddeedda...',
-    'a.deeedda...',
-    '...eeeda....',
+    'aadeeedda...',
+    '...eeedaa...',
     '......aaa...',
   ],
   colors: {
@@ -96,17 +96,17 @@ export const GENERAL_SCARF: PaintedPiece = {
   pivot: [14, 4],
   angle: -89.65,
   rows: [
-    '........a...............',
-    '.....aaaba......aa......',
-    '..aaacdefa.....aha......',
-    'aaiiijklfmaaa.adlnaa....',
-    'apqpajjrrestfakunvdca...',
-    '.aqa.aurrwttffmcciilla..',
-    '.aqqaldpxyztefffekjria..',
-    'aqqqqxAAxtttdrefekjjja.a',
-    '.aqaaxxxatBlprkdnrcja...',
-    '..a..axa.aaaaaaaaaaa...a',
-    '......aa................',
+    '........a.............',
+    '.....aaaba......aa....',
+    '..aaacdefa.....aha....',
+    'aaiiijklfmaaaaadlnaa..',
+    'apqpajjrrestfakunvdca.',
+    '.aqaaaurrwttffmcciilla',
+    '.aqqaldpxyztefffekjria',
+    'aqqqqxAAxtttdrefekjjja',
+    '.aqaaxxxatBlprkdnrcja.',
+    '..a..axaaaaaaaaaaaaa..',
+    '......aa..............',
   ],
   colors: {
     a: '#02021c',
@@ -242,16 +242,16 @@ export const GENERAL_M_SCARF: PaintedPiece = {
   pivot: [15, 4],
   angle: -89.65,
   rows: [
-    '..................a......',
-    '.................aa......',
-    '...aaaaaa.a.....aba......',
-    '.aacdefhiaja...acfkaa....',
-    'ailmnkpcfkeeaaankbinda...',
-    '.aqrilnmkhstujeprlnddda..',
-    '..aabrrqavwxmpejepppka...',
-    '....aaaaayzxknpkjepppa...',
-    '.........aaaaanddddda...a',
-    '..............aaaaaa.....',
+    '..................a....',
+    '.................aa....',
+    '...aaaaaaaa.....aba....',
+    '.aacdefhiaja...acfkaa..',
+    'ailmnkpcfkeeaaankbinda.',
+    '.aqrilnmkhsstjepklnddda',
+    '..aabrrqauvwmpejepppka.',
+    '....aaaaaxywknpkjepppa.',
+    '.........aaaaanddddda..',
+    '..............aaaaaa...',
   ],
   colors: {
     a: '#02021c',
@@ -271,13 +271,12 @@ export const GENERAL_M_SCARF: PaintedPiece = {
     q: '#000226',
     r: '#140624',
     s: '#56331a',
-    t: '#d69642',
-    u: '#9e144f',
-    v: '#512a1c',
-    w: '#4e2d26',
-    x: '#623828',
-    y: '#5a3226',
-    z: '#42241e',
+    t: '#9e144f',
+    u: '#512a1c',
+    v: '#4e2d26',
+    w: '#623828',
+    x: '#5a3226',
+    y: '#42241e',
   },
 };
 
@@ -306,5 +305,4 @@ export const GENERAL_M_SCARF_KIND: Record<string, 'dark' | 'line' | 'purple' | '
   '#881550': 'purple',
   '#94134c': 'purple',
   '#9e144f': 'purple',
-  '#d69642': 'warm',
 };

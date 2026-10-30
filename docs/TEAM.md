@@ -531,6 +531,8 @@ What this means:
 
 ## Log (newest first, one line each)
 
+- 2026-10-29 20:55 Steve 2: the owner sent both plates (fire without armour); they register with the
+  keyframes (silhouettes match); both stances rebuilt at 24 fps with them. The method works.
 - 2026-10-29 20:25 Steve 2: cut-out cinematic method proposed (one keyframe + plate, code animates);
   proof video on the avatar sent to the owner; question to Steve 1 about sharing it with the hydra.
 - 2026-10-29 20:16 Steve 2: fire avatar cinematics animated from the owner's layers (draft videos sent).

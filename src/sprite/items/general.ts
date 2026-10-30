@@ -9,7 +9,7 @@
 
 import { armDepth, armJoints, type DrawCtx, type ItemDef, Side } from '../ctx';
 import { type PaintedPiece, segAngle, stampBent, stampLeaning, stampPiece } from '../painted';
-import { type PartId } from '../raster';
+import { GRID, partIndex, type PartId, RES, type Vec } from '../raster';
 import { drawRig, type Rig } from '../rig';
 import type { BodyType } from '../types';
 import { GENERAL_SKIN } from '../generalHeadArt';
@@ -81,14 +81,48 @@ export function drawPauldrons(g: DrawCtx, pieces: [Side, PaintedPiece, Kinds][],
   }
 }
 
+/** How far past the upper arm's radius (fine pixels) a sleeve may reach once the arm has turned from rest. */
+const SLEEVE_PAST = 1.5;
+
+/**
+ * A sleeve kept on its upper arm: once the arm has turned from rest, the sleeve's pixels farther from the
+ * shoulder-to-elbow segment than the arm's radius plus SLEEVE_PAST are taken away (the owner, 2026-10-30,
+ * his circle on the legate's elbow in the attack: swung up, the sleeve's hem stood out above the arm and hung
+ * under the elbow). At rest nothing is taken: his sleeve lies on the arm as he drew it.
+ */
+function keepSleeveOnArm(g: DrawCtx, s: Side, shoulder: Vec, elbow: Vec, turned: boolean): void {
+  if (!turned) return;
+  const L = g.L(armDepth(s, 'cloth'));
+  if (!L.used) return;
+  const part = partIndex(prt(s));
+  const r = (Math.max(g.bp.armR[0], g.bp.armR[1]) + SLEEVE_PAST / RES) * RES;
+  const ax = shoulder.x * RES;
+  const ay = shoulder.y * RES;
+  const dx = elbow.x * RES - ax;
+  const dy = elbow.y * RES - ay;
+  const len2 = dx * dx + dy * dy || 1;
+  for (let i = 0; i < GRID * GRID; i++) {
+    if (L.mat[i] < 0 || L.part[i] !== part) continue;
+    const px = (i % GRID) + 0.5 - ax;
+    const py = Math.floor(i / GRID) + 0.5 - ay;
+    const t = Math.max(0, Math.min(1, (px * dx + py * dy) / len2));
+    const ex = px - t * dx;
+    const ey = py - t * dy;
+    if (ex * ex + ey * ey > r * r) L.mat[i] = -1;
+  }
+}
+
 /** His sleeves on our upper arms, turning with them at the shoulder; below them our bare arm. */
 export function drawSleevePieces(g: DrawCtx, sleeves: Record<Side, [PaintedPiece, Kinds]>, slots: Record<string, [string, string]>): void {
+  const rest = idle(g.rig.body);
   for (const s of ['F', 'N'] as Side[]) {
     const [p, k] = sleeves[s];
     const j = armJoints(g.rig, s);
     const upper = segAngle(j.shoulder, j.elbow);
     const bend = wrap(p.angle + torsoTurn(g) - upper);
     stampBent(g, armDepth(s, 'cloth'), p, j.shoulder, upper, prt(s), [{ about: j.shoulder, r: 4, bend }], lineOf(k), tint(g, k, slots));
+    const j0 = armJoints(rest, s);
+    keepSleeveOnArm(g, s, j.shoulder, j.elbow, Math.abs(wrap(upper - segAngle(j0.shoulder, j0.elbow))) > 1e-6 || Math.abs(torsoTurn(g)) > 1e-6);
   }
 }
 

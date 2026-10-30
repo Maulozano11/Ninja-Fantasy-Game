@@ -239,6 +239,13 @@ with `carry`); a far limb he drew only a sliver of is filled from its twin at th
 the limb (`LIKE`), never with one flat colour; a part's polygon never takes in the cape or the hem beside the
 limb (`CUT_POLYS`); and a turned piece loses its 1 px tips (`pruneTips`).
 
+**The figure in the striking poses (the owner, 2026-10-30, on the legate's attack 1: "en las poses de
+arrojar tienes el problema de figura, arréglalo y asegúrate que no pase con ninguna pose y ningún futuro
+personaje").** When an arm turns away from the body the torso piece keeps its own side: its line and its
+curve run on under the armpit with no step, no notch and no bare column between the cuirass and the
+cape; a knee reads as a knee, the shin's piece on the thigh's axis at the joint, never kinked. Same
+check as above: every pose and frame on every body, at 6x, before he sees it.
+
 ## Checklist for a new item
 
 1. Render `npm run sprites -- item <id>` and check every body and pose.

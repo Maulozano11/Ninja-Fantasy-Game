@@ -482,8 +482,10 @@ sprite at our scale: `docs/reference/barrabas-design-owner-reference.png`,
 **His halberd, as his generator drew it** (the owner, 2026-10-29: size 1 of
 `docs/mockups/barrabas-halberd-sizes.png`, 154 px, two thirds taller than him): big on purpose,
 **long reach** like the Kōton iron path's scythe (`CLANS_DESIGN.md`, Crimson Steel, Reactive
-Armory: the scythe drags enemies out of cover). Our proposal: reach 4.5 m (a sword reaches 1.5 m),
-and a hook pull like the scythe's. The scythe's look is to be our own design (his example was an
+Armory: the scythe drags enemies out of cover). **Reach 4.5 m** (a sword reaches 1.5 m) and **a
+hook that pulls** an enemy out of cover, like the scythe's (approved by the owner, 2026-10-29).
+**Barrabás does not fight in the hydra battle** (the owner): after the summon he withdraws; he is
+met again later (where and how: open). The scythe's look is to be our own design (his example was an
 anime character's scythe: only the idea of the reach is taken).
 
 **His welcome (draft, the owner's lines refined; his words to approve):**

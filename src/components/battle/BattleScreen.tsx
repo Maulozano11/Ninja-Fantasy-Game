@@ -17,7 +17,7 @@ import { cellCenter, cellOf, dist, fullCoverBetween, getMap, gridFor, idx, lineO
 import { canStop, occupancy, pathCost, pathTo, reachable } from '../../battle/nav';
 import { foreseen } from '../../battle/intent';
 import { MAX_STRUCTURES, STRUCTURE_AC, breakable, jutsuWallAt, ownStructures, structureAt, structureAttack, structureBlocker, structureDist } from '../../battle/structures';
-import { auraEntered, commandBlocker, edgeFoe, nodeInSight, nodeUnder, ownNodeAt, ownNodes, submissionBlocker, submissionRefused, swapBlocker, warpBlocker, warpLanding } from '../../battle/clans';
+import { auraEntered, commandBlocker, edgeFoe, nodeInSight, nodeUnder, ownNodeAt, ownNodes, submissionBlocker, submissionRefused, swapBlocker, warpAim, warpBlocker, warpLanding } from '../../battle/clans';
 import { KUNAI, KUNAI_LONG, wielded } from '../../battle/units';
 import { EARTH_CRIT, ELEMENTAL_SLASH, IMBUE_COST, IMBUE_DICE, IMBUE_ROUNDS, imbueBlocker, type ImbueElement, slashBlocker, slashRange, SLASH_COST, SLASH_RANGE, unitImbueElements, WATER_REACH, WEAPON_ELEMENT, WIND_PUSH } from '../../battle/imbue';
 import { ELEMENT_ES } from '../../game/ruleText';
@@ -41,6 +41,9 @@ import type { LogLine } from './battleLog';
 import { DMG_ES, SAVE_EN, SAVE_ES, T } from './battleText';
 import type { TKey } from './battleText';
 import { ABILITY_ICON, ACTION_ICON, ELEMENT_ICON, LogPanel, PartyFrames, Prompt, RollToast, Tip } from './hud';
+import { HOOK_RANGE } from '../../battle/engine';
+import { effectMods } from '../../rules/effects';
+import { SACRIFICE_LIVES, SACRIFICE_POWER } from '../../battle/lastStand';
 import type { ActionButton, ButtonTip } from './hud';
 import { JUTSUS_DATA } from '../../data/shinobiData';
 import { ActionDock, MiniRing, PartyDock, TopPlaque, plaqueUnit } from './hudKit';
@@ -58,6 +61,8 @@ type Mode =
   | { k: 'item'; item: 'bandage' | 'antidote' | 'tag' | 'tagTrap' }
   | { k: 'shove'; mode: 'push' | 'prone' }
   | { k: 'stone' }
+  /** A wooden arm's grapple hook: where to pull to. */
+  | { k: 'hook' }
   | { k: 'stabilize' }
   | { k: 'drag'; body: string };
 
@@ -494,15 +499,17 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
         sub = [structureName(hw, lang), T('ac', { n: STRUCTURE_AC }), ...adv].join(' · ');
       }
     } else if (mode.k === 'jutsu' && spec && spec.shape === 'node') {
-      // Shooting-Star Thrust: the Nodes it can jump to light up; the one under the cursor shows where it lands.
+      // Shooting-Star Thrust: its Nodes light up, but any foe or spot in reach will do (the owner,
+      // 2026-10-28); the one under the cursor shows where it lands.
       o.range = { at: actor.pos, radius: spec.range };
       o.nodes = { valid: ownNodes(s, actor).filter((n) => !warpBlocker(s, actor, n)).map((n) => n.id) };
-      const n = (hu && ownNodeAt(s, actor, hu.pos)) || (hover?.pt && ownNodeAt(s, actor, hover.pt)) || undefined;
+      const aimAt = hu ? hu.pos : hover?.pt;
+      const n = aimAt ? warpAim(s, actor, aimAt) : undefined;
       if (n) {
         const why = warpBlocker(s, actor, n);
         const land = why ? null : warpLanding(s, actor, n);
         const foe = land ? edgeFoe(s, actor, land) : undefined;
-        o.nodes.hover = n.id;
+        if (n.id !== 'aim') o.nodes.hover = n.id;
         o.point = { at: land ?? n.pos, ok: !!land };
         label = why ? reasonLine(why) : foe ? T('aimWarpEdge', { name: unitRef(foe, lang) }) : T('aimMove', { m: dist(actor.pos, land!).toFixed(1) });
         if (land) {
@@ -511,7 +518,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
           const hostile = Object.values(s.units).some((x) => x.team !== actor.team && sovereign(x) && dist(x.pos, land) <= AURA_RADIUS + 0.05);
           sub = [slowed ? T('aimAuraSlow') : '', foe && hostile ? T('aimAuraEdge') : ''].filter(Boolean).join(' · ') || null;
         }
-      } else label = T('r_noNode');
+      } else label = T('aimWarpAny');
     } else if (mode.k === 'jutsu' && spec && spec.shape === 'onNode') {
       // Spatial Swap: whoever stands on a Node it can reach; an enemy gets a STR save.
       o.range = { at: actor.pos, radius: spec.range };
@@ -618,6 +625,13 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
     } else if (mode.k === 'stone') {
       o.range = { at: actor.pos, radius: STONE_RANGE };
       if (hover?.pt) o.point = { at: hover.pt, ok: dist(actor.pos, hover.pt) <= STONE_RANGE };
+    } else if (mode.k === 'hook') {
+      o.range = { at: actor.pos, radius: HOOK_RANGE };
+      if (hover?.pt) {
+        const ok = dist(actor.pos, hover.pt) <= HOOK_RANGE + 0.1 && lineOfSight(s, actor.pos, hover.pt);
+        o.point = { at: hover.pt, ok };
+        label = ok ? T('aimHook') : T('aimNoReach');
+      }
     } else if (mode.k === 'shove' || mode.k === 'stabilize' || (mode.k === 'item' && mode.item !== 'tag' && mode.item !== 'tagTrap')) {
       o.range = { at: actor.pos, radius: 1.5 };
       if (hu) o.targets = [hu.id];
@@ -944,6 +958,9 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
       case 'stone':
         if (pt) act({ type: 'stone', unit: actor.id, at: pt });
         return;
+      case 'hook':
+        if (pt) act({ type: 'hook', unit: actor.id, at: pt });
+        return;
       case 'stabilize':
         if (u) act({ type: 'stabilize', unit: actor.id, target: u.id });
         return;
@@ -1057,6 +1074,8 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
       const edge = (map.exits.left && u.pos.x <= 1.5) || (map.exits.right && u.pos.x >= map.widthM - 1.5);
       add({ id: 'disengage', label: t('act_disengage'), icon: ACTION_ICON.disengage, disabled: !can.action || stealth, help: t('help_disengage') });
       add({ id: 'crouch', label: t(u.cond.crouched ? 'act_stand' : 'act_crouch'), icon: ACTION_ICON.crouch, disabled: !u.cond.crouched && !can.bonus, help: t('help_crouch') });
+      // A Mirai's Eye of Tomorrow (the owner, 2026-10-28, N14 "c"): a bonus action and 1 chakra, open until its next turn.
+      if (u.character?.clan === 'Mirai') add({ id: 'eye', label: t(u.eyeOpen ? 'act_eyeOpen' : 'act_eye'), icon: ACTION_ICON.eye, disabled: !!u.eyeOpen || !can.bonus || stealth || u.chakra < 1, active: !!u.eyeOpen, why: u.eyeOpen ? t('r_eyeOpen') : stealth ? t('r_combatOnly') : t('r_noBonus'), help: t('help_eye') });
       add({ id: 'jump', label: t('act_jump'), icon: ACTION_ICON.jump, disabled: !can.bonus, help: t('help_jump') });
       add({ id: 'shove', label: t('act_shove'), icon: ACTION_ICON.shove, disabled: !can.action, active: mode.k === 'shove' && mode.mode === 'push', help: t('help_shove') });
       add({ id: 'trip', label: t('act_trip'), icon: ACTION_ICON.trip, disabled: !can.action, active: mode.k === 'shove' && mode.mode === 'prone', help: t('help_trip') });
@@ -1069,6 +1088,8 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
       add({ id: 'tagTrap', label: t('act_tagTrap'), icon: ACTION_ICON.tagTrap, badge: s.supplies.explosiveTags, disabled: !can.action || s.supplies.explosiveTags < 1, active: mode.k === 'item' && mode.item === 'tagTrap', help: t('help_tagTrap') });
       if (downedAlly) add({ id: 'stabilize', label: t('act_stabilize'), icon: ACTION_ICON.stabilize, disabled: !can.action, active: mode.k === 'stabilize', help: t('help_stabilize') });
       if (stealth) add({ id: 'stone', label: t('act_stone'), icon: ACTION_ICON.stone, disabled: !can.action, active: mode.k === 'stone', help: t('help_stone') });
+      // A wooden arm's grapple hook (the owner's M2, 2026-10-28: an implant's ability).
+      if (effectMods(u.effects).hook) add({ id: 'hook', label: t('act_hook'), icon: ACTION_ICON.hook, disabled: !can.bonus || !!u.cond.prone, why: t('r_noBonus'), active: mode.k === 'hook', help: t('help_hook') });
       // Its id carries the body; its painted icon is the owner's drag (sheet 19).
       if (stealth && body) add({ id: `drag:${body.unit}`, label: t('act_drag'), iconId: 'drag', icon: ACTION_ICON.shove, active: mode.k === 'drag' });
       if (edge) add({ id: 'flee', label: t('act_flee'), icon: ACTION_ICON.flee, disabled: s.phase === 'combat' && !can.action, help: t('help_flee') });
@@ -1125,6 +1146,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
         case 'jump':
         case 'focus':
         case 'draw':
+        case 'eye':
           act({ type: id, unit: u.id });
           return;
         case 'pill':
@@ -1147,6 +1169,9 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
           return;
         case 'stone':
           setMode({ k: 'stone' });
+          return;
+        case 'hook':
+          setMode((m) => (m.k === 'hook' ? { k: 'move' } : { k: 'hook' }));
           return;
         case 'flee':
           act({ type: 'flee', unit: u.id });
@@ -1287,6 +1312,17 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
     if (pending.kind === 'evasion') {
       const by = pending.hit.source ? unitRef(state.units[pending.hit.source], lang) : '';
       return { title: T('evadeTitle'), text: T('evadeAsk', { name: unitRef(reactor, lang), dmg: pending.hit.amount, by }) };
+    }
+    if (pending.kind === 'lastStand') {
+      return { title: T('lastStandTitle'), text: T('lastStandAsk', { name: unitRef(reactor, lang), p: Math.round(SACRIFICE_LIVES * 100), x: SACRIFICE_POWER * 100 }) };
+    }
+    if (pending.kind === 'deflect') {
+      const by = pending.hit.source ? unitRef(state.units[pending.hit.source], lang) : '';
+      return { title: T('deflectTitle'), text: T('deflectAsk', { name: unitRef(reactor, lang), dmg: pending.hit.amount, by }) };
+    }
+    if (pending.kind === 'interpose') {
+      const by = pending.hit.source ? unitRef(state.units[pending.hit.source], lang) : '';
+      return { title: T('interposeTitle'), text: T('interposeAsk', { name: unitRef(reactor, lang), victim: unitRef(state.units[pending.hit.unit], lang), dmg: pending.hit.amount, by }) };
     }
     return { title: T('kawaTitle'), text: T('kawaAsk', { name: unitRef(reactor, lang), dmg: pending.hit.amount, c: JUTSU.substitution_kawarimi.cost }) };
   };
@@ -1565,7 +1601,16 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
       })}
 
       {prompt && reactor && (
-        <Prompt title={prompt.title} text={prompt.text} yes={T('yes')} no={T('no')} yesKey={lang === 'es' ? 'S' : 'Y'} onYes={() => act({ type: 'react', unit: reactor.id, take: true })} onNo={() => act({ type: 'react', unit: reactor.id, take: false })} />
+        <Prompt
+          title={prompt.title}
+          text={prompt.text}
+          yes={pending?.kind === 'lastStand' ? T('sacrifice') : T('yes')}
+          no={pending?.kind === 'lastStand' ? T('retreatChoice') : T('no')}
+          yesKey={lang === 'es' ? 'S' : 'Y'}
+          noKey={pending?.kind === 'lastStand' ? 'R' : 'N'}
+          onYes={() => act({ type: 'react', unit: reactor.id, take: true })}
+          onNo={() => act({ type: 'react', unit: reactor.id, take: false })}
+        />
       )}
 
       {ended && (
@@ -1616,6 +1661,7 @@ const SHORT: Record<string, [string, string]> = {
   koton_wall: ['Metal wall', 'Muro metal'],
   ryusei_warp: ['Star thrust', 'Estocada Fugaz'],
   ryusei_swap: ['Swap', 'Cambio'],
+  ryusei_weapon_throw: ['Weapon throw', 'Lanzar arma'],
   northstar_command: ['Command', 'Comando'],
   northstar_submission: ['Submit', 'Sumisión'],
   mirai_evasion: ['Evasion', 'Evasión'],
@@ -1710,7 +1756,8 @@ function reasonsText(pv: ReturnType<typeof attackPreview>, lang: ReturnType<type
   const parts: string[] = [];
   if (pv.adv !== 'none') parts.push(T(pv.adv === 'advantage' ? 'adv' : 'disadv', undefined, lang));
   // Reasons on both sides with no edge left: say they cancel ("por la espalda · aura de soberanía").
-  else if (pv.reasons.length > 1) parts.push(T('advCancel', undefined, lang));
+  // (the cover-and-height notes are no edge: they say what the height did to the cover)
+  else if (pv.reasons.filter((r) => r !== 'overCover' && r !== 'ledgeCover').length > 1) parts.push(T('advCancel', undefined, lang));
   for (const r of pv.reasons) {
     const k = `reason_${r}` as TKey;
     if (T.has(k)) parts.push(T(k, undefined, lang));

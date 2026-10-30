@@ -65,10 +65,16 @@ seal chakra).
 
 Focus: control of position, inevitability and bending the dice.
 
-- **Eye of Tomorrow** (*Ojo del Mañana*, passive). Already in the game as
-  Future Foresight: a Mirai sees the next move of every enemy within 18 m in
-  sight. Now the ground also lights up where each enemy plans to move and what
-  it plans to attack.
+- **Eye of Tomorrow** (*Ojo del Mañana*, **bonus action, 1 chakra**; the owner,
+  2026-10-28, N14 "c" of `docs/SPACE_DESIGN.md`: it used to be passive). Closed
+  at the start of a battle; opened, it stays open **until the Mirai's next turn
+  begins**: the Mirai sees the next move of every enemy within 18 m in sight
+  (whom it will attack, with what, and where it will move: the ground lights up
+  and the marks sit over the enemies), and its Premonitory Evasion can answer a
+  blow it saw coming. Closed, it sees no plan and Evasion has nothing to answer.
+  An AI Mirai opens it with the bonus action it has left before ending its turn,
+  so it is open through the party's turn. (`clans.ts` `openEye`, `closeEye`,
+  `eyeOpen`; the hotbar's "Ojo del Mañana" button.)
 - **Premonitory Evasion** (*Evasión Premonitoria*, reaction, once a round,
   2 chakra). Against an attack on a single target that the Mirai saw coming,
   the Mirai steps 1 square (1.5 m) aside and the attack misses. The step
@@ -99,12 +105,32 @@ through Nodes.
   until 2026-10-21, id `ryusei_warp`; bonus action, 2 chakra, 18 m). The
   Ryusei throws its weapon, which flies to the Node as a shooting star, and
   follows it as light (the screen's choreography). Teleports to a Node in
-  sight, even with walls in between. If the Ryusei lands next to an enemy,
+  sight, even with walls in between. **The owner, 2026-10-28: no Node is
+  needed** (*"ponlo más fácil: que se ponga el objetivo enemigo al que se quiere
+  hacer el ataque o teletransportarse a donde se indique sin los nodos"*): it
+  also goes to a foe aimed at (landing beside it, D15's landing rules) or to
+  any spot aimed at, within 18 m and in sight. Nodes still work as before (a
+  spot with a Node is the Node); Spatial Swap needs none either (below). If the Ryusei lands next to an enemy,
   their next attack this turn counts as from behind: advantage, and it can't
   be blocked.
-- **Spatial Swap** (*Intercambio Espacial*, action, 3 chakra). Swaps places
-  with any unit, ally or enemy, standing on a Node. An enemy can resist with a
-  STR save.
+- **Spatial Swap** (*Intercambio Espacial*, action, 3 chakra, 18 m). Swaps
+  places with any ninja, ally or enemy, in reach and in sight (walls don't
+  hide them). **The owner, 2026-10-28: no Node needed** (*"quita ese
+  requisito, que cambie con libertad"*; it asked for one standing on a Node
+  before). An enemy can resist with a STR save.
+- **Weapon Throw** (*Lanzar arma*, id `ryusei_weapon_throw`; action, 2 chakra,
+  12 m; the owner, 2026-10-28: *"una nueva habilidad que sea lanzar arma y que
+  se teletransporte a su arma"*; the numbers are ours). The Ryusei throws the
+  weapon in its hand at a foe in sight and goes after it as light (the
+  Shooting-Star Thrust's comet and phase), catching it where it lands, beside
+  the foe (the thrust's landing rules, D15). The weapon's attack roll from where
+  it stood: a hit deals its die + the same modifier as its blows. Hit or miss,
+  the landing leaves a Node; landing beside the foe gives the thrust's edge (its
+  next attack this turn from behind). A Bukijutsu Master can deflect it like a
+  kunai. With nowhere to land beside the foe, the weapon comes back and the
+  Ryusei stays. Needs a weapon in hand (drawn for free). The AI does not use it
+  yet. Unlike the thrust, it needs no Node placed first: it is the Ryusei's
+  opening move.
 
 ### Northstar: the Sovereign's eyes (+2 CHA, +1 WIS)
 
@@ -292,6 +318,19 @@ built.
 
 ### Mirai
 
+**The owner confirmed the three Mirai subclasses on 2026-10-29** (told in Bob's
+chat, D-T20 on the team board). His description of each, kept beside the Paths
+below; where it adds to them it is marked "2026-10-29":
+
+1. **Oracle** (*Oráculo*): leadership and foresight buffs. Ultimate
+   *Futuro inamovible*, a super buff on the damage that follows.
+2. **Fire control** (*Dominio del fuego*), the Mirai fire. Ultimate: an
+   avatar of fire around the ninja, **in armour like a Spartan's**.
+3. **Traps and smoke** (*Trampas y humo*): looks weak early on. Ultimate: a
+   rewind, **time goes back two turns and the damage dealt to the enemy
+   stays**. Meant to make Baldur's Gate-style decisions interesting on top of
+   the combat.
+
 - **Path of the Oracle** (tactical support)
   - *Shared Vision* (Visión Compartida): cancels surprise attacks and attacks
     from behind against allies.
@@ -311,8 +350,40 @@ built.
     that destroys physical cover.
   - Ultimate, *Emperor Avatar* (Avatar Emperador): a 3x3 avatar. Immune to
     knockdown and push, leaves a trail of magma and makes massive area attacks
-    for 3 turns.
-- **Path of the Ash Weaver** (traps and interruption)
+    for 3 turns. Its look (2026-10-29): a fire avatar around the ninja, armoured
+    like a Spartan.
+  - **Approved numbers (the owner, 2026-10-29: "me encantan los números").** The
+    avatar is a hollow Spartan armour of fire rising from the ninja's feet, the
+    ninja in front in his own fire aura; a summon cinematic plays the first time
+    (the armour forged piece by piece out of its fire), then it stays on the map.
+    Three steps:
+    - *Ember Armour* (Armadura de Brasas), **level 6**: bonus action, 4 chakra,
+      3 turns. +2 AC, resistance to fire, weapon blows deal +1d4 fire, a melee
+      attacker takes 1d6 fire. The look: a light Spartan fire armour worn over the
+      ninja (helmet with a crest of flame, pauldrons, short cuirass, bracers,
+      greaves).
+    - *Colossal Avatar* (Avatar Colosal), **level 9**: action, 10 chakra, once a
+      mission, 3 turns, the avatar 3.3 times the ninja's height. The ninja gains 15
+      temporary HP and the Ember Armour; immune to knockdown and push; where it
+      steps the ground turns to magma (1d6 fire on entering). Two stances, the
+      switch a bonus action with no chakra; it stays in the last one used.
+      Shield: +3 AC (+5 with the armour); allies within 3 m have half cover; a
+      reaction once a round: the shield takes a blow aimed at an adjacent ally and
+      the damage is cancelled completely. Spear: weapon blows deal +2d6 fire (in
+      place of the armour's +1d4); an action once a turn, the throw: an 18 m line,
+      4d10 fire, DEX save for half, the line burns for 1 turn.
+    - *Improved Colossal Avatar*, **level 12**: 12 chakra, once a mission, 4 turns,
+      the avatar 5 times the ninja's height. 30 temporary HP; magma 2d6; the stance
+      switch is free once a turn. Shield: +4 AC (+6 with the armour), half cover
+      for allies within 4.5 m, the reaction twice a round. Spear: blows +3d6 fire;
+      the throw a 24 m line, 6d10 fire, burning for 2 turns.
+    - Balance (checked with the game's formulas, the enemy templates raised to the
+      level): the 4d10 throw averages about 18 a target (a quarter of a level-9
+      enemy's HP; never one shot), the 6d10 about 27 at level 12; a rank S jutsu
+      averages about 35 for 8 chakra with no limit. An AI-vs-AI check once built;
+      enemies of levels 9 and 12 are needed for it (today they stop at 6).
+- **Path of the Ash Weaver** (traps and interruption; the owner's "traps and
+  smoke", 2026-10-29: smoke is part of its kit, and it looks weak early on)
   - *Mark of Inevitability* (Marca de Inevitabilidad): attacking an enemy
     exactly where it was foreseen is a guaranteed critical.
   - *Ash Trap* (Trampa de Ceniza): invisible mines that deal damage and
@@ -321,7 +392,10 @@ built.
     burning their lungs.
   - Ultimate, *Fake Future*: plants a Time Mark. After 2 turns the whole board
     rewinds: allies and enemies go back to their positions and HP, except that
-    enemies hurt in the meantime keep the damage from the illusion.
+    enemies hurt in the meantime keep the damage from the illusion. The owner,
+    2026-10-29: time goes back two turns and the damage dealt to the enemy
+    stays. It is the first space-time ability (see "Settings, space-time and
+    gravity" below).
 
 ### Kōton
 
@@ -409,3 +483,31 @@ built.
 - Ultimate (every Ryusei), *Flash Frenzy* (Frenesí del Destello): the whole
   map becomes Nodes; 3 actions and 3 bonus actions for one turn; warps cost
   nothing and deal more damage each time. Severe fatigue the next turn.
+
+## Settings, space-time and gravity, and the eldest ancestor (the owner, 2026-10-29)
+
+Told in Bob's chat on 2026-10-29 (D-T18, D-T19 and D-T20 on the team board, `team/board`,
+`docs/TEAM.md`). Design only: nothing here is built, and numbers are proposed and approved
+before anything is.
+
+**Three settings (D-T20).** The whole game system must adapt to three settings:
+
+1. ninja / fantasy (today's game);
+2. space / mechas;
+3. superheroes and space.
+
+A clan, a Path or an ability is designed once and wears each setting's skin; it keeps its
+rules in all three.
+
+**Space-time and gravity (D-T19).** New ability themes for the clans' Paths. The owner's
+example is the Traps and smoke ultimate above (time goes back two turns, the damage dealt to
+the enemy stays). His words: the possibilities are almost unlimited; we take what is most
+relevant to our game system. Abilities of this kind must work in every setting, each under that
+setting's skin. Before any is built, each is proposed to him with its numbers, the way the
+Paths are.
+
+**The eldest ancestor (D-T18, lore).** The game has a descendants system (children who inherit,
+`docs/WORLD_DESIGN.md`, section 11, on `docs/world-design`, PR #2). **Solen in his bronze armour is the oldest
+ancestor**, and the story and plot are built around him. His look: the owner's bronze warrior
+is Solen (D-T17: same skin, red eyes, dark hair, scarf; the long wavy mane is a hair variant on
+Solen's head and the diadem an accessory, both on `hero/bronze-warrior`).

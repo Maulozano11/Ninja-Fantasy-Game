@@ -23,6 +23,15 @@ import { bendsOf, seedOf } from './paths';
 import { CRESCENT, crescentStart, effectLands, vortexAt } from './stagePlan';
 import { edgeFoe } from '../../battle/clans';
 
+/** The kinds of ground the elements leave (battle/ground.ts), as the state keeps them. */
+export type GroundKind = 'wet' | 'steam' | 'ice' | 'oil' | 'blaze' | 'mud';
+export const GROUND_KINDS: readonly GroundKind[] = ['wet', 'steam', 'ice', 'oil', 'blaze', 'mud'];
+/** The cells of a kind of ground in the state (a blaze is the oil that is burning). */
+export function groundOf(state: BattleState, kind: GroundKind): Record<string, unknown> {
+  if (kind === 'blaze') return Object.fromEntries(Object.entries(state.oil ?? {}).filter(([, o]) => o.blazing));
+  return state[kind] ?? {};
+}
+
 export interface UnitView {
   pos: Pt;
   facing: 1 | -1;
@@ -413,8 +422,8 @@ export class Playback {
    * When each wet cell and each steam cell ("c,r") showed up on the screen (the wave's cells as its
    * crest goes over them), and the ones drying or thinning away (from when their event played).
    */
-  groundBorn = { wet: new Map<string, number>(), steam: new Map<string, number>() };
-  groundGone: { kind: 'wet' | 'steam'; cells: string[]; t0: number; blown?: Pt }[] = [];
+  groundBorn = { wet: new Map<string, number>(), steam: new Map<string, number>(), ice: new Map<string, number>(), oil: new Map<string, number>(), blaze: new Map<string, number>(), mud: new Map<string, number>() };
+  groundGone: { kind: GroundKind; cells: string[]; t0: number; blown?: Pt }[] = [];
   /** Kōton structures that crumbled or broke, sinking out of sight (from when their event played). */
   fallen: { wall: Wall; t0: number }[] = [];
   /** Whose turn the screen shows (it trails the engine while events play). */
@@ -534,8 +543,8 @@ export class Playback {
       this.round = state.round;
     }
     // Ground that is gone from the state needs no start time any more.
-    for (const kind of ['wet', 'steam'] as const) {
-      const have = state[kind] ?? {};
+    for (const kind of GROUND_KINDS) {
+      const have = groundOf(state, kind);
       for (const k of this.groundBorn[kind].keys()) if (!(k in have)) this.groundBorn[kind].delete(k);
     }
   }
@@ -766,7 +775,7 @@ export class Playback {
    * Ground cells whose event is still to play: the ones coming (`on`, not shown yet unless the
    * wave already timed them) and the ones going (still shown).
    */
-  groundQueued(kind: 'wet' | 'steam', on: boolean): Set<string> {
+  groundQueued(kind: GroundKind, on: boolean): Set<string> {
     const out = new Set<string>();
     for (const e of this.queue) if (e.t === 'ground' && e.kind === kind && e.on === on) for (const k of e.cells) out.add(k);
     return out;
@@ -1627,7 +1636,8 @@ export class Playback {
     if (Math.abs(ev.at.x - from.x) > 0.05) a.facing = ev.at.x > from.x ? 1 : -1;
     const caster = state.units[ev.unit];
     const head = caster?.kind === 'hydra_head';
-    const cross = spec?.special === 'warp' ? this.queue.find((e) => e.t === 'teleport' && e.how === 'phase' && e.unit === ev.unit) : undefined;
+    // (a Weapon Throw flies and follows the same way: the weapon at the foe, the Ryusei after it)
+    const cross = spec?.special === 'warp' || spec?.special === 'weaponThrow' ? this.queue.find((e) => e.t === 'teleport' && e.how === 'phase' && e.unit === ev.unit) : undefined;
     if (cross?.t === 'teleport' && this.phaseFollows(ev.unit)) {
       // A Shooting-Star Thrust that goes through: its name, and the throw starts at once (UnitView.warp).
       // The crossing's own event comes at the release; the thrust faces the foe it lands beside
@@ -1647,7 +1657,7 @@ export class Playback {
       this.cues.push({ at: now + (2 * WARP_FRAME) / this.speed, name: 'swing' }, { at: now + warpTimes(fly).land / this.speed, name: 'draw' });
       return WARP_REL;
     }
-    if ((spec?.special === 'warp' || spec?.special === 'swap') && this.phaseFollows(ev.unit)) {
+    if ((spec?.special === 'warp' || spec?.special === 'swap' || spec?.special === 'weaponThrow') && this.phaseFollows(ev.unit)) {
       // A Shooting-Star Thrust or a Spatial Swap that goes through: its name and a beat, then the phase
       // itself plays (no cast pose, no chakra flare: the ninja turns to light at once).
       h.sound('jutsu', 'chakra');
@@ -1694,6 +1704,7 @@ export class Playback {
       case 'flicker':
       case 'warp':
       case 'swap':
+      case 'weaponThrow':
         // The chakra flares while it gathers, and is gone with the ninja when it vanishes (it
         // would otherwise burn on at the spot it left, around whoever is swapped in there).
         this.fx.push({ ...base, kind: 'aura', from, to: from, t0: now, dur: castDelay + 400, unit: ev.unit, follow: true });
@@ -1962,6 +1973,25 @@ export class Playback {
         if (label) this.float(label, '#c4b5fd', at, now, { rise: 120 });
         return 300;
       }
+      case 'deflect': {
+        // The blade meets the kunai: a spark at the ninja, and the catch holds a beat before the throw back.
+        const v = this.view(ev.unit);
+        if (v) {
+          this.fx.push({ kind: 'burst', element: 'chakra', from: v.pos, to: v.pos, t0: now, dur: 320, lift: [30, 30] });
+          this.setPose(v, 'attack', now, 260);
+        }
+        h.sound('hit');
+        return ev.caught ? 420 : 240;
+      }
+      case 'interpose': {
+        // The comrade braces in front of the one the blow was meant for (it stays where it stands).
+        const v = this.view(ev.unit);
+        if (v) {
+          this.setPose(v, 'guard', now, 500);
+          this.fx.push({ kind: 'burst', element: 'chakra', from: v.pos, to: v.pos, t0: now, dur: 300, lift: [24, 24] });
+        }
+        return 260;
+      }
       case 'pushed': {
         const v = this.view(ev.unit);
         if (!v) return 0;
@@ -1971,6 +2001,13 @@ export class Playback {
         if (ev.fall) h.shake(3);
         // Swept by a jutsu: the fall follows at once, while it still slides.
         return ev.what ? 120 : 280;
+      }
+      case 'slam': {
+        // Slammed into a wall or into someone: a jolt, a burst of dust where it hit.
+        this.fx.push({ kind: 'burst', element: 'earth', from: ev.at, to: ev.at, t0: now, dur: 380, lift: [20, 20] });
+        h.sound('hit');
+        h.shake(ev.into === 'wall' ? 5 : 3);
+        return 260;
       }
       case 'attack': {
         const a = this.view(ev.unit);
@@ -2259,6 +2296,10 @@ export class Playback {
         const born = this.groundBorn[ev.kind];
         if (ev.on) {
           for (const k of ev.cells) if (!born.has(k)) born.set(k, now);
+          if (ev.kind === 'blaze') {
+            h.sound('hit');
+            return 350;
+          }
           return ev.kind === 'steam' ? 450 : 0;
         }
         for (const k of ev.cells) born.delete(k);
@@ -2362,6 +2403,16 @@ export class Playback {
       case 'act': {
         if (label) this.float(label, '#e2e8f0', this.posOf(ev.unit, now), now, { rise: 124 });
         return 180;
+      }
+      case 'eye': {
+        // The Eye opens: a red gleam at the Mirai; the marks on the enemies follow from the state.
+        if (ev.on) {
+          const v = this.view(ev.unit);
+          if (v) this.fx.push({ kind: 'aura', element: 'fire', from: v.pos, to: v.pos, t0: now, dur: 700, unit: ev.unit });
+          if (label) this.float(label, '#fda4af', this.posOf(ev.unit, now), now, { rise: 124 });
+          return 300;
+        }
+        return 0;
       }
       case 'intent':
         return 0;

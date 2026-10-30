@@ -50,7 +50,9 @@ export const byRankDown = (a: JutsuDefinition, b: JutsuDefinition): number => RA
  * S-rank slots. Utility jutsu (the medical palm, a Water jutsu open to every nature) and clan secrets
  * are not gated.
  */
-export const natureGated = (j: JutsuDefinition): boolean => (j.category === 'Elemental' || j.category === 'Ultimate') && ELEMENTS.includes(j.nature);
+// A secret scroll's jutsu is not gated by nature: the scroll teaches it to whoever holds it (the owner,
+// 2026-10-28, gave the frost scroll to Lyra, a Wind ninja).
+export const natureGated = (j: JutsuDefinition): boolean => !j.scroll && (j.category === 'Elemental' || j.category === 'Ultimate') && ELEMENTS.includes(j.nature);
 
 /**
  * Whether a ninja of this nature may learn the jutsu: it is not gated, or it is of the ninja's element,
@@ -60,11 +62,15 @@ export const natureGated = (j: JutsuDefinition): boolean => (j.category === 'Ele
 export const jutsuFitsNature = (j: JutsuDefinition, nature: ChakraNature, extra: readonly ChakraNature[] = []): boolean =>
   !natureGated(j) || j.nature === nature || (extra as readonly string[]).includes(j.nature);
 
-/** The jutsu a slot offers a ninja of this nature (and `extra` elements) and clan, in the game's order. */
-export function jutsuChoices(slot: JutsuSlot, nature: ChakraNature, clan: ClanType, extra: readonly ChakraNature[] = []): JutsuDefinition[] {
+/**
+ * The jutsu a slot offers a ninja of this nature (and `extra` elements) and clan, in the game's order. A
+ * secret jutsu (JutsuDefinition.scroll) is offered only with its scroll in `scrolls` (the owner,
+ * 2026-10-28: found in the story, inherited by children).
+ */
+export function jutsuChoices(slot: JutsuSlot, nature: ChakraNature, clan: ClanType, extra: readonly ChakraNature[] = [], scrolls: readonly string[] = []): JutsuDefinition[] {
   const category = SLOT_CATEGORY[slot];
   return JUTSUS_DATA.filter(
-    (j) => j.category === category && (category !== 'Clan' || !j.requiredClan || j.requiredClan === clan) && jutsuFitsNature(j, nature, extra),
+    (j) => j.category === category && (category !== 'Clan' || !j.requiredClan || j.requiredClan === clan) && jutsuFitsNature(j, nature, extra) && (!j.scroll || scrolls.includes(j.scroll)),
   );
 }
 

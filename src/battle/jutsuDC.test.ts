@@ -501,7 +501,9 @@ describe('rank D and C jutsu in battle', () => {
     const mv = out.events.find((e) => e.t === 'move');
     assert.ok(mv?.t === 'move' && mv.jutsu === 'taijutsu_rush' && mv.run);
     const a = out.state.units.a;
-    assert.ok(dist(a.pos, out.state.units.rogue_0.pos) <= 1.6);
+    // The blow knocks the rogue 1.5 m back (the owner, 2026-10-28: "embestida y choca contra objeto o muro").
+    assert.ok(out.events.some((e) => e.t === 'pushed' && e.unit === 'rogue_0'), 'knocked back');
+    assert.ok(dist(a.pos, out.state.units.rogue_0.pos) <= 3.2);
     assert.equal(a.turn.move, s.units.a.turn.move, 'no movement spent');
     assert.equal(a.armed, false);
     assert.ok(!out.events.some((e) => (e.t === 'attack' && e.unit === 'hunter_0') || e.t === 'reactionAsk'), 'no opportunity attack');

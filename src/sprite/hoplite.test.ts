@@ -62,22 +62,18 @@ describe("the owner's bronze warrior", () => {
     assert.equal(wrong.length, 0, `${wrong.length} pixels differ: ${wrong.slice(0, 12).join('; ')}`);
   });
 
-  it("wears Solen's head with his mane over it (the owner, 2026-10-29: the bronze warrior is Solen): no skull shows past the mane", () => {
+  it("wears Solen's head, his own hair and the diadem as an accessory (the owner, 2026-10-29 and 2026-10-30: the bronze warrior is Solen; his mane was dropped)", () => {
     for (const id of ['preset_bronze_warrior', 'preset_bronze_warrior_leather']) {
       const l = look('male', id);
       assert.equal(l.faceShape, 'founder', id);
-      assert.equal(l.slots.hair?.id, 'hair_solen_mane', id);
-      const { layers, rig } = spriteLayers(l, 'idle', 0);
-      const { nx, ny } = faceAnchor({ rig, bp: rig.bp, look: l } as unknown as DrawCtx);
-      const head = layers.get('head.body')!;
-      const front = layers.get('hairFront')!;
-      // above the hairline (solen-mane-from-ref.py HAIRLINE) every pixel of the head is under his hair
-      for (let y = ny - 14; y < ny - 4; y++) for (let x = nx - 10; x <= nx + 12; x++) if (head.has(x, y)) assert.ok(front.has(x, y), `${id}: skull at ${x},${y}`);
+      assert.equal(l.slots.hair?.id, 'hair_founder_spikes', id);
+      assert.ok(l.accessories.some((a) => a.id === 'acc_solen_diadem'), `${id}: no diadem`);
+      assert.equal(getItem('hair_solen_mane'), undefined, 'the mane is gone');
     }
   });
 
   it('is a male set: none of his pieces fits the female body', () => {
-    for (const id of ['hair_solen_mane', 'acc_solen_diadem', 'armor_hoplite', 'acc_hoplite_pauldrons', 'cape_hoplite', 'skirt_hoplite', 'hands_hoplite_bracers', 'feet_hoplite_greaves', 'armor_hoplite_leather', 'acc_hoplite_iron_pauldrons', 'top_hoplite_sleeves']) {
+    for (const id of ['acc_solen_diadem', 'armor_hoplite', 'acc_hoplite_pauldrons', 'cape_hoplite', 'skirt_hoplite', 'hands_hoplite_bracers', 'feet_hoplite_greaves', 'armor_hoplite_leather', 'acc_hoplite_iron_pauldrons', 'top_hoplite_sleeves']) {
       const d = getItem(id);
       assert.ok(d, id);
       assert.deepEqual(d!.bodies, ['male', 'bulky'], id);

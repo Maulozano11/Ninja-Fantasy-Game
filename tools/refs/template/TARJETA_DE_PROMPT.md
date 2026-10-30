@@ -634,9 +634,46 @@ suelo. Las chispas y el humo que se separen van sobre magenta puro.
 
 La cabeza cortada tirada en el suelo y el muñón quemado van además en D.
 
-**D) Los efectos**, en una hoja magenta como los props (adjunta su hoja de cinco poses): el escupitajo de ácido (una bola verde
-brillante con estela), el charco de ácido en el suelo (visto desde arriba, achatado), la cabeza cortada tirada en el suelo, el muñón
-quemado (negro con brasas), el muñón crudo; cada uno en su celda, sin sombra, sin texto.
+**D) Los efectos del ácido** (2026-10-29: la cabeza cortada en el suelo ya sale de la hoja "la
+cortan" y el muñón quemado de su hoja; aquí solo falta el ácido). Una hoja, adjuntando su hoja de
+"escupe ácido" (`docs/reference/colossal-hydra-acid-grid-owner-reference.png`) para el color:
+
+```
+Hoja de EFECTOS de ácido para un juego, en el MISMO VERDE ÁCIDO BRILLANTE que el chorro de la imagen
+adjunta, mismo estilo pintado de alta resolución (NO pixel art), sobre FONDO MAGENTA PURO (#FF00FF).
+3 FILAS de 6 cuadros, cada cosa SUELTA en su cuadro con margen de magenta alrededor, nada cortado.
+Fila 1, EL ESCUPITAJO volando hacia la IZQUIERDA: una bola de ácido verde brillante, espesa y
+burbujeante, con una ESTELA de gotas y vapor detrás (a la derecha); 6 cuadros que ondulan y
+gotean distinto para que se mueva en el aire.
+Fila 2, EL IMPACTO en el suelo: 1 la bola toca el piso y se aplasta; 2 SALPICA hacia los lados en
+gotas gruesas; 3 la salpicadura en lo más alto; 4 las gotas caen; 5 queda el charco recién hecho con
+gotas cayendo; 6 el charco quieto. El suelo NO se dibuja: el piso es plano y lo vemos desde arriba en
+diagonal, así que todo lo que queda en el suelo va ACHATADO, unas 3 veces más ancho que alto.
+Fila 3, EL CHARCO de ácido en el suelo, achatado igual (3 veces más ancho que alto), de orilla
+irregular: 1 a 4 el charco burbujeando, con burbujas que se inflan y revientan y un vapor verde
+pálido que sube, distinto en cada cuadro para que hierva en bucle; 5 el charco más chico y más
+oscuro, ya secándose; 6 solo una mancha oscura quemada con un poco de vapor.
+El ácido es VERDE BRILLANTE con centro casi amarillo y orillas verde oscuro; el vapor verde pálido.
+Nada magenta, rosa ni morado en el dibujo, sin sombras, sin texto.
+```
+
+**E) La hidra muerta** (2026-10-29): el fondo para cuando cae la última cabeza. Se pide como
+**edición del fondo de las cinco cabezas** (adjunta `docs/reference/colossal-hydra-backdrop-v3-owner-reference.png`),
+para que el patio, la cámara y el cuerpo queden en el mismo lugar y el juego pueda pasar de uno a
+otro con la caída, el polvo y la sacudida:
+
+```
+Edita la imagen adjunta: MISMO patio, MISMA cámara, MISMA luz de noche con antorchas, MISMO tamaño y
+MISMO lugar del cuerpo de la hidra. Lo único que cambia: LA HIDRA ESTÁ MUERTA. El cuerpo enorme se
+desplomó sobre el piso donde estaba: el pecho y la panza tocan el suelo, las patas dobladas y abiertas,
+la cola caída, las púas de la espalda ya sin brillo. Sus CINCO CUELLOS caen sin fuerza hacia la
+IZQUIERDA sobre el piso del patio, largos y flojos, uno sobre otro, y las CINCO CABEZAS quedan tiradas
+en el suelo con los OJOS CERRADOS y sin brillo, las mandíbulas entreabiertas, la lengua colgando en
+una. Algunas cabezas tienen cortes y sangre ROJA seca; un charco de sangre roja oscura debajo de los
+cuellos. Polvo asentándose alrededor y unas grietas nuevas en las losas donde cayó. El tercio
+IZQUIERDO del piso queda LIBRE (ahí está el grupo de héroes). Sin personajes, sin texto, nada morado
+ni rosa. Misma resolución y proporción que la imagen adjunta.
+```
 
 Con A–D: el fondo se usa como el del casino (pintado completo); B y C pasan por
 `sheet-from-template.py --hd` a una hoja de la hidra colosal como la de `world/creatures/`

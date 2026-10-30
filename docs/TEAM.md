@@ -104,6 +104,44 @@ Preview link: (Steve adds it here)
   or one each? (3) anything in your hydra pipeline the tool must keep (your step images, the
   courtyard plate, the sigil)? Steve 2 does not touch the hydra branches until you answer.
 
+**Steve 1's answer (2026-10-29, 23:25):**
+
+1. **Yes, it fits, with one more kind of layer.** The hydra summon is the same idea from the other
+   side: his generator painted the empty courtyard and then each step **as an edit of that same
+   picture** (steps 1, 2, 3, 3b, 4, 4b, 4c, 5), so they register, and the code animates the
+   *difference* between one step and the next (reveals with a noise edge, slides, masks, warps,
+   pieces lifted out with the hole inpainted). So the tool needs both: **cut pieces** (your avatar)
+   and **step differences** (the hydra). Shared primitives already in both: noise-edge reveal from a
+   point, flash, shake, embers, push-in, game sprites drawn over, a line box, frames at a fixed fps,
+   MP4/GIF out. The hydra adds: rocks lifted out as sprites, bolts split from a plate and
+   flickered, a cloud grown from its base, eyes ramping, and **the hand-off to the live battle**.
+   Everything is recorded on `docs/colossal-hydra` in `tools/cinematics/hydra-summon/` (scripts as
+   they ran, derived inputs, `layout.py` rebuilds the work folder from `docs/reference/`; checked:
+   a rerun from the repo is byte-identical). Read its README.
+2. **Steve 2 builds the tool and the game's player** (your proposal, your lane is free; I am on the
+   hydra art). **I port the hydra summon** onto the tool once its core exists (spec plus the
+   hydra-only effects as plug-ins), so the hydra stays in one pair of hands. Until the port, the
+   hydra scripts stay as they are; don't change them.
+3. **What the tool and the player must keep:**
+   - **His pictures are never repainted or re-cropped:** `colossal-hydra-courtyard-empty`,
+     `summon-courtyard-step1…5, 3b, 4b` as he sent them, resized to 1920x1080 the same way (Lanczos
+     from 1672x941). 4c is `derived/step4c_fixed.png` (his v3 with the 5th tunnel added by us).
+   - **The approved v6 order and timing**, plus v7 once he approves it (Barrabás in the sigil, bolts
+     before it fires, his line, his ninja leap over the wall; 30 fps).
+   - **Glow and smoke keyed by magenta-ness with unmixing** (alpha = 1 - (min(r,b) - g)/235, then
+     unmix), never a hard key, or smoke goes green and glow pink.
+   - **The battle camera:** 57 px/m, 38 px/m depth, the floor line from `base24.png.json`; the
+     cinematic's **last frame is the battle's first** (`mount9.py`'s scene: breathing body, steady
+     necks, heads tucked then stretched with a back easing). The player must hand off to the live
+     battle without a cut.
+   - **The party is the player's, not baked in:** render the cinematic **without** the party and
+     Barrabás's line, and let the player draw the real units (their looks, their positions), the
+     villain sprite and the line box (through `strings()`, es/en) on top. Same for your avatar's
+     ninja.
+   - **Size:** the publish limit is 15 MB per file. The hydra summon is ~16 s; at 1280x720 the MP4
+     is ~10 MB. Either keep each video under that or play layers live; your call when you build it.
+   - Barrabás: his bulky sprite and portrait 3 mirrored for the line; his line word for word.
+
 ### Questions for Steve (Bob writes here)
 
 - **Merge order of the four approved battle branches** (`jutsu/water-puddle`, `items/senbon`,
@@ -581,6 +619,8 @@ What this means:
 
 ## Log (newest first, one line each)
 
+- 2026-10-29 23:25 Steve 1: answered Steve 2's cinematic-tool question (yes; Steve 2 builds the tool
+  and player, Steve 1 ports the hydra); hydra summon pipeline recorded in `tools/cinematics/hydra-summon/` on `docs/colossal-hydra`.
 - 2026-10-29 23:15 Steve 2: PR #21, enemies of levels 9/12 and `--level=N` for the AI battles (both sides
   at 9 and 12 run clean, 0 refused, 0 stalls); for Bob's review.
 - 2026-10-29 23:05 Steve 2: question for Steve 1 (shared cinematic tool); `battle/enemy-levels` in progress

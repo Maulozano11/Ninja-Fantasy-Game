@@ -96,6 +96,31 @@ function partsOff(g: DrawCtx, depths: Depth[], parts: PartId[]): void {
   }
 }
 
+/**
+ * Takes the stray pixels off a turned piece: a pixel of the part on this layer with at most one other pixel
+ * of the layer among its eight neighbours is a 1 px tooth RotSprite left on his line (a corner of a continued
+ * piece's edge, the end of a thin strip), never part of the piece. At his angle nothing is touched (every
+ * pixel is his).
+ */
+function pruneTips(g: DrawCtx, depth: Depth, part: PartId): void {
+  const L = g.L(depth);
+  if (!L.used) return;
+  const id = partIndex(part);
+  const tips: number[] = [];
+  for (let y = 1; y < GRID - 1; y++)
+    for (let x = 1; x < GRID - 1; x++) {
+      const i = y * GRID + x;
+      if (L.mat[i] < 0 || L.part[i] !== id) continue;
+      let n = 0;
+      for (let dy = -GRID; dy <= GRID; dy += GRID) for (let dx = -1; dx <= 1; dx++) if ((dy || dx) && L.mat[i + dy + dx] >= 0) n++;
+      if (n <= 1) tips.push(i);
+    }
+  for (const i of tips) L.mat[i] = -1;
+}
+
+/** Whether a limb points another way than at rest (a piece on it is turned, not his pixels in place). */
+const turnedFrom = (now: number, home: number) => Math.round(now - home) % 360 !== 0;
+
 /** Takes our torso away below the neck: his armour is the torso, so none of our skin or cloth shows past it. */
 function torsoOff(g: DrawCtx): void {
   const r = g.rig;
@@ -134,21 +159,21 @@ function onTorso(g: DrawCtx, m: Module, prefix: string, set: HkSet, part: string
 /** How much of the upper arm's turn (from rest, the torso's taken off) a shoulder piece follows: it rides the shoulder. */
 const PAULDRON_FOLLOW = 0.6;
 
-/** A shoulder piece's angle: with the torso, and part of the way with its upper arm. */
-function pauldronAngle(g: DrawCtx, s: Side, p: PaintedPiece): number {
+/** A shoulder piece's angle: with the torso, and `follow` of the way with its upper arm. */
+function pauldronAngle(g: DrawCtx, s: Side, p: PaintedPiece, follow = PAULDRON_FOLLOW): number {
   const t = torsoTurn(g);
   const j = armJoints(g.rig, s);
   const turn = wrap180(segAngle(j.shoulder, j.elbow) - t - p.angle);
-  return p.angle + t + PAULDRON_FOLLOW * turn;
+  return p.angle + t + follow * turn;
 }
 
-/** A shoulder piece on the shoulder, pinned to where he drew it at rest. */
-function onShoulder(g: DrawCtx, m: Module, prefix: string, set: HkSet, part: string, s: Side, depth: Depth, color: (ch: string, hex: string) => string, line: (hex: string) => boolean, rowsFrom = 0): void {
+/** A shoulder piece on the shoulder, pinned to where he drew it at rest; `follow`: how far it turns with the arm (pauldronAngle). */
+function onShoulder(g: DrawCtx, m: Module, prefix: string, set: HkSet, part: string, s: Side, depth: Depth, color: (ch: string, hex: string) => string, line: (hex: string) => boolean, rowsFrom = 0, follow = PAULDRON_FOLLOW): void {
   let p = piece(m, set, part);
   if (!p) return;
   if (rowsFrom > 0) p = { ...p, rows: p.rows.map((r, i) => (i < rowsFrom ? '.'.repeat(r.length) : r)) };
   const home = armJoints(hkRestRig(g.look), s);
-  stampPiece(g, depth, pinned(p, rest(m, prefix, set, part), home.shoulder, `${prefix}|${set}|${part}|${rowsFrom}`), armJoints(g.rig, s).shoulder, pauldronAngle(g, s, p), `upperArm${s}` as PartId, color, line);
+  stampPiece(g, depth, pinned(p, rest(m, prefix, set, part), home.shoulder, `${prefix}|${set}|${part}|${rowsFrom}`), armJoints(g.rig, s).shoulder, pauldronAngle(g, s, p, follow), `upperArm${s}` as PartId, color, line);
 }
 
 function armorSlots(set: HkSet, c: string[]): Slot[] {
@@ -198,6 +223,16 @@ function elbowBend(g: DrawCtx, s: Side, upper: PaintedPiece, fore: PaintedPiece)
   return wrap180(segAngle(j.shoulder, j.elbow) - segAngle(j.elbow, j.wrist) - (upper.angle - fore.angle));
 }
 
+/** How far round the knee (fine px) his thigh's end is swept through a bend (stampBent): about half the thigh's width. */
+const KNEE_R = 5;
+
+/** How far a knee bends past the way he drew it (degrees): the shin's turn against the thigh beyond their turn at rest. */
+function kneeBend(g: DrawCtx, s: Side): number {
+  const j = legJoints(g.rig, s);
+  const h = legJoints(hkRestRig(g.look), s);
+  return wrap180(segAngle(j.knee, j.ankle) - segAngle(j.hip, j.knee) - (segAngle(h.knee, h.ankle) - segAngle(h.hip, h.knee)));
+}
+
 function armSlots(set: HkSet, c: string[]): Slot[] {
   const M = ARMS as Module;
   if (set === 'paladin')
@@ -230,9 +265,12 @@ function drawArms(g: DrawCtx, set: HkSet, c: string[]): void {
     const U = piece(M, set, `UPPER_${s}`);
     const F = piece(M, set, `FORE_${s}`);
     const H = piece(M, set, `HAND_${s}`);
-    if (U) stampPiece(g, armDepth(s, 'cloth'), pinned(U, rest(M, 'HK_ARMS', set, `UPPER_${s}`), h.shoulder, `arms|${set}|U${s}`), j.shoulder, segAngle(j.shoulder, j.elbow) + (U.angle - segAngle(h.shoulder, h.elbow)), up, color, line);
+    // The upper arm about the shoulder; its end past the elbow (continued under his vambrace, the converter's
+    // PAST) rides the forearm, and its cells next to the elbow fill the outside of the bend (stampBent), so
+    // the elbow never opens on the ground: the owner's rule, SPRITE_STYLE_GUIDE "Legs, knees and ankles".
+    const bend = U && F ? elbowBend(g, s, U, F) : 0;
+    if (U) stampBent(g, armDepth(s, 'cloth'), pinned(U, rest(M, 'HK_ARMS', set, `UPPER_${s}`), h.shoulder, `arms|${set}|U${s}`), j.shoulder, segAngle(j.shoulder, j.elbow) + (U.angle - segAngle(h.shoulder, h.elbow)), up, [{ about: j.elbow, r: ELBOW_R, bend: -bend, carry: true }], line, color);
     if (F) {
-      const bend = U ? elbowBend(g, s, U, F) : 0;
       stampBent(g, armDepth(s, 'armor'), pinned(F, rest(M, 'HK_ARMS', set, `FORE_${s}`), h.elbow, `arms|${set}|F${s}`), j.elbow, segAngle(j.elbow, j.wrist) + (F.angle - segAngle(h.elbow, h.wrist)), fore, [{ about: j.elbow, r: ELBOW_R, bend }], line, color);
     }
     if (H) {
@@ -245,7 +283,12 @@ function drawArms(g: DrawCtx, set: HkSet, c: string[]): void {
         for (const [ch, hex] of Object.entries(P.colors)) pal[ch] = [g.m(color(ch, hex), 'flat'), 3];
         const base = hold.mirror ? 180 - P.angle : P.angle;
         stampTemplate(g.L(armDepth(s, 'armor')), P, j.wrist, hold.fist + (H.angle - segAngle(h.elbow, h.wrist)) - base, pal, hand, { flipX: hold.mirror, flags: F_NO_TEXTURE | F_NO_OUTLINE, line: (ch: string) => line(P.colors[ch]) });
-      } else stampPiece(g, armDepth(s, 'armor'), P, j.wrist, segAngle(j.elbow, j.wrist) + (H.angle - segAngle(h.elbow, h.wrist)), hand, color, line);
+      } else stampPiece(g, armDepth(s, 'armor'), P, j.wrist, segAngle(j.elbow, j.wrist) + (H.angle - segAngle(h.elbow, h.wrist)), hand, color, line, true);
+    }
+    if (U && turnedFrom(segAngle(j.shoulder, j.elbow) + (U.angle - segAngle(h.shoulder, h.elbow)), U.angle)) pruneTips(g, armDepth(s, 'cloth'), up);
+    if (F && turnedFrom(segAngle(j.elbow, j.wrist) + (F.angle - segAngle(h.elbow, h.wrist)), F.angle)) {
+      pruneTips(g, armDepth(s, 'armor'), fore);
+      pruneTips(g, armDepth(s, 'armor'), hand);
     }
   }
 }
@@ -345,7 +388,13 @@ function drawThighs(g: DrawCtx, set: HkSet, c: string[]): void {
     if (!p) continue;
     const j = legJoints(g.rig, s);
     const h = legJoints(home, s);
-    stampPiece(g, legDepth(s, 'cloth'), pinned(p, rest(M, 'HK_LEGS', set, `THIGH_${s}`), h.hip, `legs|${set}|${s}`), j.hip, segAngle(j.hip, j.knee) + (p.angle - segAngle(h.hip, h.knee)), `thigh${s}` as PartId, color, line);
+    // The thigh about the hip; its end past the knee (continued under his knee cop, the converter's PAST) rides
+    // the shin, and its cells next to the knee fill the outside of the bend (stampBent), so the knee never
+    // opens on the ground: the owner's rule, SPRITE_STYLE_GUIDE "Legs, knees and ankles".
+    const deg = segAngle(j.hip, j.knee) + (p.angle - segAngle(h.hip, h.knee));
+    const bend = kneeBend(g, s);
+    stampBent(g, legDepth(s, 'cloth'), pinned(p, rest(M, 'HK_LEGS', set, `THIGH_${s}`), h.hip, `legs|${set}|${s}`), j.hip, deg, `thigh${s}` as PartId, [{ about: j.knee, r: KNEE_R, bend, carry: true }], line, color);
+    if (turnedFrom(deg, p.angle) || Math.abs(bend) >= 1) pruneTips(g, legDepth(s, 'cloth'), `thigh${s}` as PartId);
   }
 }
 
@@ -377,9 +426,17 @@ function drawFeet(g: DrawCtx, set: HkSet, c: string[]): void {
     const turn = footTurn(g, s);
     // the foot flat on the ground under the ankle (turned with the shin once the leg swings it off the
     // ground), the greave over it about the knee along the shin
-    if (foot) stampPiece(g, D, pinned(foot, rest(M, 'HK_FEET', set, `FOOT_${s}`), h.ankle, `feet|${set}|F${s}`), j.ankle, foot.angle + turn, `foot${s}` as PartId, color, line);
-    if (shin) stampPiece(g, D, pinned(shin, rest(M, 'HK_FEET', set, `SHIN_${s}`), h.knee, `feet|${set}|S${s}`), j.knee, segAngle(j.knee, j.ankle) + (shin.angle - segAngle(h.knee, h.ankle)), `shin${s}` as PartId, color, line);
-    if (turn && lineHex.length) closeAnkle(g, s, j.ankle, g.m(lineHex[0], 'flat'), new Set(lineHex.map((x) => g.m(x, 'flat'))));
+    // (closed: turned, a pixel of the piece left on the layer's edge becomes his line, so his line stays whole)
+    if (foot) stampPiece(g, D, pinned(foot, rest(M, 'HK_FEET', set, `FOOT_${s}`), h.ankle, `feet|${set}|F${s}`), j.ankle, foot.angle + turn, `foot${s}` as PartId, color, line, true);
+    if (shin) {
+      const shinDeg = segAngle(j.knee, j.ankle) + (shin.angle - segAngle(h.knee, h.ankle));
+      stampPiece(g, D, pinned(shin, rest(M, 'HK_FEET', set, `SHIN_${s}`), h.knee, `feet|${set}|S${s}`), j.knee, shinDeg, `shin${s}` as PartId, color, line, true);
+      if (turn && lineHex.length) closeAnkle(g, s, j.ankle, g.m(lineHex[0], 'flat'), new Set(lineHex.map((x) => g.m(x, 'flat'))));
+      if (turnedFrom(shinDeg, shin.angle)) {
+        pruneTips(g, D, `shin${s}` as PartId);
+        pruneTips(g, D, `foot${s}` as PartId);
+      }
+    }
   }
 }
 
@@ -419,9 +476,12 @@ function drawCape(g: DrawCtx, set: HkSet, c: string[]): void {
     const lineHex = Object.keys(kinds).find((h) => kinds[h] === 'line')!;
     hemOnGround(g, 'capeBack', g.m(lineHex, 'flat'), 'back');
   }
-  // the rogue's hood, down over her near shoulder, and her high collar's far side
-  onShoulder(g, M, 'HK_CAPE', set, 'MANTLE_F', 'F', 'torso.over', color, line);
-  onShoulder(g, M, 'HK_CAPE', set, 'MANTLE_N', 'N', 'nearArm.over', color, line);
+  // the rogue's hood, down over her near shoulder, and her high collar's far side: cloth hanging from the
+  // neck, they stay with the torso (follow 0), so a raised or extended arm comes out from under the hood
+  // and the torso keeps its own side under the armpit (the owner's rule, SPRITE_STYLE_GUIDE "The figure in
+  // the striking poses"), instead of the hood swinging off the shoulder with the arm
+  onShoulder(g, M, 'HK_CAPE', set, 'MANTLE_F', 'F', 'torso.over', color, line, 0, 0);
+  onShoulder(g, M, 'HK_CAPE', set, 'MANTLE_N', 'N', 'nearArm.over', color, line, 0, 0);
 }
 
 // ---------------------------------------------------------------------------

@@ -501,6 +501,24 @@ POLYS = {
 }
 # The sword's own colours (his steel, blade cyan, gem blue, gold and his line): what the sword's polygons take.
 SWORD_KINDS = ('cyan', 'steel', 'blue', 'white', 'gold', 'ivory', 'line')
+# Tighter polygons for cutting the pieces (cut_labels()): the cleaned picture keeps POLYS, which it was cleaned
+# and approved with (the dragon's scales are tiled by part), but a far leg's polygon took in the cape beside
+# it (his red between her far leg and the cape's edge) and the paladin's tabard took in the top of her far
+# greave under its hem: carried with the leg or the tabard, they came out as lumps beside the knee and the
+# hem in the moving poses (the owner, 2026-10-30: "las piernas y brazos se ven muy toscos"). At rest nothing
+# changes: every pixel is still drawn where it is, by the piece beside it.
+CUT_POLYS = {
+    'paladin': {
+        'skirt': [[(43, 64), (58, 64), (58, 100), (57, 104), (57, 106), (53, 106), (52, 108), (52, 110), (51, 111), (51, 113), (43, 113)]],
+        'thighF': [[(55, 76), (61, 76), (61, 91), (55, 91)]],
+        'shinF': [[(48, 91), (62, 91), (62, 119), (48, 119)]],
+    },
+    'rogue': {'shinF': [[(55, 91), (62, 91), (62, 101), (59, 104), (59, 117), (48, 117), (49, 104), (55, 100)]]},
+    'dragon': {
+        'thighF': [[(55, 70), (61, 70), (61, 93), (55, 93)]],
+        'shinF': [[(54, 92), (62, 92), (62, 104), (59, 106), (59, 120), (48, 120), (49, 104), (54, 100)]],
+    },
+}
 # Where a figure's parts overlap otherwise than PARTS has them: the rogue's legs stand in front of her torn
 # skirt's tatters.
 ORDER = {'rogue': PARTS[:8] + ['thighN', 'shinN', 'footN', 'thighF', 'shinF', 'footF', 'skirt', 'torso', 'pauldF', 'upperF', 'foreF', 'handF', 'hairBack', 'cape']}
@@ -609,12 +627,12 @@ def hair_front(fig):
 _LABELS = {}
 
 
-def labels(fig, skip=()):
+def labels(fig, skip=(), cut=False):
     """Which part each pixel of a figure is (a (134, 80) array of part names, '' off the figure): each part's
-    polygons (POLYS, SHARED) front to back, then snapped to his line: a cell of his colours walled in by his
-    line goes whole to the part most of it is in (CELL_MAJORITY), and his line between parts to the frontmost
-    part beside it."""
-    key = (fig, tuple(skip))
+    polygons (POLYS, SHARED; with `cut`, CUT_POLYS over them) front to back, then snapped to his line: a cell
+    of his colours walled in by his line goes whole to the part most of it is in (CELL_MAJORITY), and his line
+    between parts to the frontmost part beside it."""
+    key = (fig, tuple(skip), cut)
     if key in _LABELS:
         return _LABELS[key].copy()
     a = figure_native(fig)
@@ -622,7 +640,7 @@ def labels(fig, skip=()):
     H, W = m.shape
     raw = np.full((H, W), '', dtype='<U10')
     free = m.copy()
-    polys = POLYS[fig]
+    polys = {**POLYS[fig], **CUT_POLYS.get(fig, {})} if cut else POLYS[fig]
     if 'hairFront' not in skip:
         hf = hair_front(fig)
         raw[hf] = 'hairFront'
@@ -1417,7 +1435,7 @@ SETS = ('paladin', 'rogue', 'dragon')
 # (an arm, a leg, a tabard's stripes, long hair) or its rows (the torso, the belt, the cape behind her).
 FILL_AXIS = {'torso': 'rows', 'belt': 'rows', 'cape': 'rows', 'skirt': 'cols', 'pauldN': 'cols', 'pauldF': 'cols',
              'upperN': 'cols', 'upperF': 'cols', 'foreN': 'cols', 'foreF': 'cols', 'thighN': 'cols', 'thighF': 'cols',
-             'shinN': 'cols', 'shinF': 'cols', 'hairBack': 'cols'}
+             'shinN': 'cols', 'shinF': 'cols', 'footN': 'cols', 'footF': 'cols', 'hairBack': 'cols'}
 
 
 def hull(mask):
@@ -1467,12 +1485,100 @@ REACH = {'torso': ('shoulderN', 'shoulderF', 'neck', 'collarN', 'collarF'), 'upp
 # streaks of its edges carried across.
 FLAT = ('cape',)
 
+# A limb continued past the joint at its far end, under the piece drawn in front of it there (a thigh under
+# the knee cop, a boot up under the greave, an upper arm under the vambrace, a forearm under the glove):
+# (the joint it is continued past, the joint the limb runs from). At rest the piece in front covers it; a
+# knee, ankle, elbow or wrist bent past the way he drew it keeps his limb overlapping the next piece instead
+# of opening on the ground (the owner, 2026-10-30: "las piernas y brazos se ven muy toscos").
+# (the joint it is continued past, the limb's other joint, and whether it is continued toward that joint (a
+# boot up its shin) or away from it (a thigh on past its knee); the window along the limb, fine pixels from
+# the joint, over which the piece's width there is measured: a cuisse ends in a point above the knee cop,
+# so its width is taken a little above the knee and the block under the cop is that wide)
+PAST = {'thighN': ('kneeN', 'hipN', False), 'thighF': ('kneeF', 'hipF', False), 'footN': ('ankleN', 'kneeN', True), 'footF': ('ankleF', 'kneeF', True),
+        'upperN': ('elbowN', 'shoulderN', False), 'upperF': ('elbowF', 'shoulderF', False), 'foreN': ('wristN', 'elbowN', False), 'foreF': ('wristF', 'elbowF', False)}
+PAST_PX = 2
+# The piece drawn in front of a limb at the joint it is continued past: the block past the joint is at least as
+# wide as that piece is there (the knee cop over a cuisse that ends in a point, the vambrace over the rerebrace),
+# measured over this window along the limb from the joint, so a bent joint leaves no notch beside the narrow
+# end of the upper piece.
+LOWER = {'thighN': 'shinN', 'thighF': 'shinF', 'footN': 'shinN', 'footF': 'shinF', 'upperN': 'foreN', 'upperF': 'foreF', 'foreN': 'handN', 'foreF': 'handF'}
+LOWER_WINDOW = (-1.0, 6.0)
+PAST_WINDOW = {'footN': (-3.0, 0.5), 'footF': (-3.0, 0.5)}
+PAST_WINDOW_DEFAULT = (-7.0, -1.0)
+# And round the joint itself the limb is continued in a disc of this radius (fine pixels): the back of a bent
+# knee or elbow is closed by the upper piece's own pixels whatever the angle, as the strip past the joint
+# only closes it along the limb.
+PAST_DISC_R = 3.5
+# A boot is continued only up its shin (the strip), never across the hull of its cells (a scrap of his beside the
+# sword's tip would pull a lump of boot under the blade).
+STRIP_ONLY = ('footN', 'footF')
+# The lower piece of a joint carries a round cap of the upper one over the joint (the female standard,
+# SPRITE_STYLE_GUIDE "Joints stay whole"): the upper piece's cells within CAP_R fine pixels of the joint go
+# into the lower piece too, in the upper's colours. At rest the lower piece draws them where the upper does;
+# bent, they turn with the lower piece and close the inside of the knee or elbow.
+CAP = {'shinN': ('thighN', 'kneeN'), 'shinF': ('thighF', 'kneeF'), 'foreN': ('upperN', 'elbowN'), 'foreF': ('upperF', 'elbowF')}
+CAP_R = 4.0
 
-def complete(lab, name, mask, col, axis, fig=SHARED_FROM):
+
+def capped(name, mask, col, done):
+    """A piece with the cap of the piece above its joint (CAP) added: (mask, colours)."""
+    if name not in CAP or done is None or CAP[name][0] not in done:
+        return mask, col
+    upper, joint = CAP[name]
+    um, uc = done[upper]
+    jx, jy = his_joint(joint)
+    yy, xx = np.mgrid[0:GRID, 0:GRID]
+    cap = um & ~mask & (np.hypot(xx + 0.5 - jx, yy + 0.5 - jy) <= CAP_R)
+    if not cap.any():
+        return mask, col
+    c = col.copy()
+    c[cap] = uc[cap]
+    return mask | cap, c
+# A limb he drew only a sliver of (the far thigh, behind the near leg and the tabard) is continued like its
+# twin: as wide as it at the hip and the knee (on its inner side, toward the near leg; its outer side is
+# his line), each hidden cell in the colour the twin has at the same place along and across the limb, so a
+# far leg that steps out is armoured as the near one, not a flat strip of one of his colours.
+LIKE = {'thighF': ('thighN', ('hipF', 'kneeF'), ('hipN', 'kneeN'))}
+
+
+def limb_frame(j0, j1):
+    """A limb's frame in our grid: its first joint, its unit direction and its unit normal (to its left on screen)."""
+    a = np.array(his_joint(j0))
+    b = np.array(his_joint(j1))
+    d = b - a
+    n = np.hypot(*d)
+    d /= n
+    return a, d, np.array([d[1], -d[0]]), n
+
+
+# How near a joint (fine pixels) a piece's cells count toward its width there (half_width): the limb's own
+# width, not a toe or a scrap of his beside the joint.
+WIDTH_R = 6
+
+
+def half_width(mask, j0, j1, t_lo, t_hi, r=None):
+    """How far (fine pixels) a piece's cells reach to each side of the limb from j0 to j1, among those between
+    t_lo and t_hi of the way along it (and within `r` of j1): (left, right)."""
+    a, d, nrm, n = limb_frame(j0, j1)
+    ys, xs = np.nonzero(mask)
+    p = np.stack([xs + 0.5, ys + 0.5], 1) - a
+    t = p @ d / n
+    u = p @ nrm
+    sel = (t >= t_lo) & (t <= t_hi)
+    if r is not None:
+        sel &= np.hypot(*(p - d * n).T) <= r
+    if not sel.any():
+        return 0.0, 0.0
+    return float(max(0.0, u[sel].max())), float(max(0.0, -u[sel].min()))
+
+
+def complete(lab, name, mask, col, axis, fig=SHARED_FROM, done=None, lower=None):
     """A piece continued where the parts drawn in front of it (DRAWN) hide it at rest, within the hull of its
-    own cells: each hidden cell takes the piece's nearest pixel of his that is not his line along its columns
-    or rows (axis), else the nearest at all; a filled cell on the hull's edge is his line. At rest nothing
-    changes: the parts in front cover every filled cell. Returns (mask, colours)."""
+    own cells (reaching its joints, REACH, past the far one, PAST, and as wide as its twin, LIKE): each hidden
+    cell takes its twin's pixel at the same place on the limb (LIKE), else the piece's nearest pixel of his
+    that is not his line along its columns or rows (axis), else the nearest at all; a filled cell on the hull's
+    edge is his line. At rest nothing changes: the parts in front cover every filled cell. `done`: the pieces
+    already cut, by part; `lower`: the mask of the piece in front at the joint (LOWER). Returns (mask, colours)."""
     order = DRAWN_OF.get(fig, DRAWN)
     rank = {n: i for i, n in enumerate(order)}
     front = np.isin(lab, [n for n in order if rank[n] > rank[name]])
@@ -1480,7 +1586,46 @@ def complete(lab, name, mask, col, axis, fig=SHARED_FROM):
     for j in REACH.get(name, ()):
         x, y = his_joint(j)
         reach[int(y), int(x)] = True
-    hm = hull(reach)
+    hm = mask.copy() if name in STRIP_ONLY else hull(reach)
+    like = LIKE.get(name)
+    twin = done.get(like[0]) if like and done else None
+    yy, xx = np.mgrid[0:GRID, 0:GRID]
+    if name in PAST:
+        # the strip past the joint: as wide as the piece near the joint (a far thigh: as its twin at the knee,
+        # on its inner side), from where its width is measured to PAST_PX past the joint
+        joint, other, toward = PAST[name]
+        a, d, nrm, n = limb_frame(other, joint)
+        if toward:
+            d, nrm = -d, -nrm
+        lo, hi = PAST_WINDOW.get(name, PAST_WINDOW_DEFAULT)
+        src, (s0, s1) = (mask, (other, joint)) if twin is None else (twin[0], like[2])
+        nn = limb_frame(s0, s1)[3]
+        wl, wr = half_width(src, s0, s1, 1 + lo / nn, 1 + hi / nn, WIDTH_R)
+        if toward:
+            wl, wr = wr, wl
+        if twin is not None:
+            wr = 0.0
+        if name in LOWER and lower is not None:
+            l0, l1 = LOWER_WINDOW
+            if toward:
+                lr, ll = half_width(lower, other, joint, 1 - l1 / n, 1 - l0 / n, WIDTH_R)
+            else:
+                ll, lr = half_width(lower, other, joint, 1 + l0 / n, 1 + l1 / n, WIDTH_R)
+            wl, wr = max(wl, ll), max(wr, lr)
+        end = np.array(his_joint(joint))
+        px = np.stack([xx + 0.5 - end[0], yy + 0.5 - end[1]], -1)
+        t = px @ d
+        u = px @ nrm
+        hm |= (t >= lo) & (t <= PAST_PX) & (u <= wl) & (u >= -wr)
+        hm |= np.hypot(px[..., 0], px[..., 1]) <= PAST_DISC_R
+    if twin is not None:
+        # the far limb as wide as its twin along its whole length, on its inner side
+        a, d, nrm, n = limb_frame(*like[1])
+        wl, _ = half_width(twin[0], *like[2], 0.1, 0.9)
+        px = np.stack([xx + 0.5 - a[0], yy + 0.5 - a[1]], -1)
+        t = (px @ d) / n
+        u = px @ nrm
+        hm |= (t >= 0) & (t <= 1) & (u <= wl) & (u >= 0)
     add = hm & front & ~mask
     if not add.any():
         return mask, col
@@ -1500,10 +1645,21 @@ def complete(lab, name, mask, col, axis, fig=SHARED_FROM):
         dark = [c for c in cl if luma(c) <= med]
         flat = np.array(max(sorted(set(dark)), key=dark.count))
     top = int(np.nonzero(mask.any(1))[0].min())
+    if twin is not None:
+        fa, fd, fn, fl = limb_frame(*like[1])
+        ta, td, tn, tl = limb_frame(*like[2])
+        tm, tc = twin
     for y, x in zip(*np.nonzero(add)):
         if flat is not None:
             c[y, x] = flat
             continue
+        if twin is not None:
+            p = np.array([x + 0.5, y + 0.5]) - fa
+            q = ta + td * (p @ fd) * tl / fl + tn * (p @ fn)
+            qx, qy = int(q[0]), int(q[1])
+            if 0 <= qx < GRID and 0 <= qy < GRID and tm[qy, qx] and not is_line(tc[qy, qx]) and kind(tc[qy, qx]) not in bad:
+                c[y, x] = tc[qy, qx]
+                continue
         # above the piece's own top (the collar under his chin): the column below continues up
         if y < top and axis == 'rows':
             below = [yy for yy in np.nonzero(solid[:, x])[0] if yy > y]
@@ -1528,11 +1684,28 @@ def complete(lab, name, mask, col, axis, fig=SHARED_FROM):
     return m, c
 
 
+def cut_labels(fig, lab):
+    """A game()'s labels with the pieces' tighter polygons (CUT_POLYS): a cell the tighter polygons label
+    otherwise than POLYS, and that the cleaning left as POLYS labelled it, takes the tighter label."""
+    if fig not in CUT_POLYS:
+        return lab
+    rows, cols = kept(fig)
+    fr, fc = to_frame(fig)
+    base = labels(fig)[np.ix_(rows, cols)]
+    tight = labels(fig, cut=True)[np.ix_(rows, cols)]
+    out = lab.copy()
+    sub = out[fr[0]:fr[-1] + 1, fc[0]:fc[-1] + 1]
+    move = (base != tight) & (sub == base)
+    sub[move] = tight[move]
+    return out
+
+
 def set_pieces(fig):
     """A set's game() cut into the pieces its items stamp: {part: (mask, colours)} in our frame, each a part's
-    pixels with his line round them (cut()), continued where the parts in front of it hide it at rest
-    (complete()), so it is whole when it moves apart from them."""
+    pixels with his line round them (cut(), the tighter CUT_POLYS), continued where the parts in front of it
+    hide it at rest (complete()), so it is whole when it moves apart from them."""
     rgb, lab = game(fig)
+    lab = cut_labels(fig, lab)
     out = {}
     tops = {}
     for n in ('torso', 'pauldN', 'pauldF', 'upperN', 'upperF', 'foreN', 'foreF', 'handN', 'handF', 'belt', 'skirt',
@@ -1541,7 +1714,10 @@ def set_pieces(fig):
         if m.any():
             tops[n] = int(np.nonzero(m.any(1))[0].min())
         if n in FILL_AXIS and m.any():
-            m, c = complete(lab, n, m, c, FILL_AXIS[n], fig)
+            lower = cut(rgb, lab, [LOWER[n]])[0] if n in LOWER else None
+            m, c = complete(lab, n, m, c, FILL_AXIS[n], fig, out, lower)
+        if m.any():
+            m, c = capped(n, m, c, out)
         out[n] = (m, c)
     # beside the neck, above the torso's own top (the collar under his chin): a cell only the torso's
     # continuation covers, with the near shoulder piece (the pauldron, the rogue's hood) a few pixels to its

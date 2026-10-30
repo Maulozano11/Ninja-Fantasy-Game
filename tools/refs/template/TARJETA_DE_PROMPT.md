@@ -877,6 +877,22 @@ suelo, con un brillo VERDE ALQUÍMICO en la mano (el momento de invocar).
 Sin texto, sin fondo, nada magenta, rosa ni morado en el dibujo.
 ```
 
+**Segunda vuelta de los retratos** (2026-10-29). La primera hoja (`docs/reference/barrabas-portraits-owner-reference.png`)
+sirve, pero el busto se corta recto a los lados y abajo (hombreras, brazos y codos cortados por el
+borde de cada cuadro), y en el cuadro de diálogo se ve como un recorte. Adjuntando esa hoja:
+
+```
+Rehaz la hoja adjunta con los MISMOS 8 retratos (misma cara, expresiones, pelo, armadura, colores y
+estilo, mismo orden), cambiando SOLO el encuadre: cada busto va COMPLETO y SUELTO dentro de su cuadro,
+rodeado de FONDO MAGENTA PURO (#FF00FF) por los cuatro lados, con un margen de magenta de al menos
+40 píxeles entre el dibujo y el borde del cuadro. Nada toca ni se corta en los bordes: se ven enteras
+las dos hombreras con sus púas, los dos brazos hasta los codos y las manos, y la capa a los lados.
+El busto termina abajo a la altura de la cintura con una orilla redondeada y limpia, como una figura
+recortada (no un corte recto de lado a lado). Todos los bustos del mismo tamaño y a la misma altura.
+Los retratos 3 y 6 miran a la IZQUIERDA como los demás. Sin texto, nada magenta, rosa ni morado en el
+dibujo.
+```
+
 Cada expresión tiene su momento del monólogo: 3 "¡Ja! Sabía que vendrían", 2 "...Insolente", 4 la
 opción azul, 6 y 5 la provocación (3b), 7 el kunai a media frase (4a), 8 la invocación.
 

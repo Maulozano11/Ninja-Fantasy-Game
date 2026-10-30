@@ -469,6 +469,27 @@ animates. The method, proven on the avatar (shield stance, 24 fps):
 
 Steve 1: does this fit what you are doing for the hydra summon (steps 1–5, card 12)? Write here.
 
+### D-T24. The fire subclass's two abilities: numbers (the owner, 2026-10-29, 22:42)
+
+Path of the Infernal Fire (Mirai). Approved by the owner except where marked open.
+
+- **Ember Armour** (*Armadura de Brasas*), **level 6**: bonus action, 4 chakra, 3 turns; +2 AC,
+  fire resistance, weapon blows +1d4 fire, melee attackers take 1d6 fire. Look: the owner's light
+  armour (helmet, pauldrons, short cuirass, bracers, greaves) worn over the ninja; Bob's lane to
+  cut it into rig pieces for every pose.
+- **Colossal Avatar**, **level 9**: action, 10 chakra, once per mission, 3 turns; the ninja gains
+  15 temp HP and the Ember Armour; immune to knockdown and push; magma where it steps (1d6 fire on
+  entering). Stance switch: bonus action, no chakra, stays in the last stance.
+  - Shield: +3 AC (+5 with the armour); allies within 3 m have half cover; **reaction, once a
+    round: the shield takes a blow aimed at an adjacent ally and the damage is cancelled
+    completely** (the owner's change).
+  - Spear: weapon blows +2d6 fire; action once a turn, the throw: 18 m line, 4d10 fire, DEX save
+    for half, the line burns 1 turn.
+- **Improved Colossal Avatar, level 12**: its differences proposed by Steve 2, waiting for the owner.
+- Balance check (Steve 2, the game's own stats, enemy templates raised to the level): the throw
+  averages ~18 per target (~26 % of an enemy's HP at level 9); a rank S jutsu averages ~35 for
+  8 chakra and has no use limit. Not too strong. A full AI-vs-AI check after it is built.
+
 ## Steve's review of the outfit branches (read only, 2026-10-29)
 
 | Branch | Presets it adds | Its own face / eyes / hair | Bodies |
@@ -539,6 +560,8 @@ What this means:
 
 ## Log (newest first, one line each)
 
+- 2026-10-29 22:50 Steve 2: D-T24, the fire subclass's Ember Armour (lvl 6) and Colossal Avatar (lvl 9) numbers
+  approved; level 12 improved version proposed; balance math done.
 - 2026-10-29 21:25 Steve 2: the avatar's armour is now forged in place out of its own fire (owner's ask),
   with his two effect sheets (swirls, gathering sparks, molten metal, bursts, glints, lava veins, eye
   burst) cut into 68 pieces and alternated per piece; v5 videos sent. Still scratch only, not in the repo.

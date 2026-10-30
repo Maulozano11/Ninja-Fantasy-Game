@@ -85,6 +85,24 @@ BL = PLATE3 - NOBOLT
 MX = np.clip((2 * CX - XX).astype(int), 0, VW - 1)
 BLM = np.clip(BL, 0, None)[:, MX[0]]
 WA, WB = noise(70, 7), noise(70, 8)
+# The smoke's drift field scrolls through a bigger noise field instead of np.roll: a roll wraps the
+# field round and its seam showed as a straight line sweeping through the smoke (the owner, 2026-10-29:
+# "unas líneas raras que se ven recorriendo el humo").
+PAD = 1200
+
+
+def noise_big(scale, seed, h, w):
+    r = np.random.default_rng(seed).random((h // scale + 2, w // scale + 2)).astype(np.float32)
+    r = ndimage.zoom(r, scale, order=3)[:h, :w]
+    return (r - r.min()) / (r.max() - r.min())
+
+
+WAB, WBB = noise_big(70, 7, VH, VW + PAD), noise_big(70, 8, VH + PAD, VW)
+
+
+def drift(k):
+    s = min(k * 3, PAD)
+    return WAB[:, PAD - s:PAD - s + VW], WBB[s:s + VH]
 
 
 def beam(k, base=None):
@@ -126,8 +144,9 @@ def rocks_at(img, u, scale=1.0, alpha=1.0, fall_only=False):
 
 
 def smoke_warp(src, k, amt=1.0, rise=0.0):
-    dx = (np.roll(WA, k * 3, axis=1) - 0.5) * 28 * amt * SMOKE
-    dy = (np.roll(WB, -k * 3, axis=0) - 0.5) * 22 * amt * SMOKE - rise * SMOKE
+    wa, wb = drift(k)
+    dx = (wa - 0.5) * 28 * amt * SMOKE
+    dy = (wb - 0.5) * 22 * amt * SMOKE - rise * SMOKE
     return np.stack([map_coordinates(src[..., c], [YY + dy, XX + dx], order=1, mode='nearest') for c in range(3)], -1)
 
 # embers: spawn on the circle, rise, flicker
@@ -411,8 +430,9 @@ EYES = np.clip(EYES * 4, 0, 1)
 
 
 def warp(src, k, mask, amt=1.0, rise=0.0):
-    dx = (np.roll(WA, k * 3, axis=1) - 0.5) * 28 * amt * mask
-    dy = (np.roll(WB, -k * 3, axis=0) - 0.5) * 22 * amt * mask - rise * mask
+    wa, wb = drift(k)
+    dx = (wa - 0.5) * 28 * amt * mask
+    dy = (wb - 0.5) * 22 * amt * mask - rise * mask
     return np.stack([map_coordinates(src[..., c], [YY + dy, XX + dx], order=1, mode='nearest') for c in range(3)], -1)
 
 
@@ -497,7 +517,9 @@ def back(t):
     return 1 + (c + 1) * (t - 1) ** 3 + c * (t - 1) ** 2
 
 
-S4C = np.roll(ld(f'{C}/step4c_fixed.png'), -7, axis=1)  # his 4c, tunnels moved onto our lanes, 6 px to the left of 4b
+S4C = ld(f'{C}/step4c_fixed.png')
+S4C = np.concatenate([S4C[:, 7:], np.repeat(S4C[:, -1:], 7, axis=1)], axis=1)  # no wrap at the right edge
+_ = None  # his 4c, tunnels moved onto our lanes, 6 px to the left of 4b
 _c = np.abs(S4C - E).mean(-1) > 45
 _c = ndimage.binary_opening(_c, iterations=4)
 _c = ndimage.binary_fill_holes(ndimage.binary_closing(_c, iterations=20))
@@ -515,7 +537,9 @@ for i in range(T):
     c = min(max((t - 0.34) / 0.10, 0.0), 1.0)  # the tunnels tear open as the heads shoot out
     src = S4B * (1 - c) + S4C * c
     sm = warp(src, K3 + i, np.maximum(M4W, MC * (XX > 700)), 1.0 + t, rise=9 + 90 * max(0.0, t - 0.3))
-    a = np.roll(M4B * (1 - c) + M4C * c, int(-9 - 90 * max(0.0, t - 0.3)), axis=0)
+    a = M4B * (1 - c) + M4C * c
+    sh = int(9 + 90 * max(0.0, t - 0.3))  # lift without wrapping the bottom rows round to the top
+    a = np.concatenate([a[sh:], np.zeros_like(a[:sh])], axis=0)
     a = a * np.clip((NZ2 * 0.8 + 0.2 - max(0.0, t - 0.42) * 1.8) * 3.5, 0, 1)
     a = a * np.clip((YY - (9 + 90 * max(0.0, t - 0.3))) / 80, 0, 1)
     if h < 1:

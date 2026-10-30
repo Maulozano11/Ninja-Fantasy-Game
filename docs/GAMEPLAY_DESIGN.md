@@ -2154,7 +2154,10 @@ and no body along the back wall; only the body on the right).
     stain. `docs/mockups/colossal-hydra-acid-effects.png`.
   - **Its death:** the body collapses where it stands, the five necks fall to the floor ending in
     cut stumps, and the five **heads lie cut off, apart from the necks**, eyes shut (the owner,
-    2026-10-30); they can be looted for a basilisk tooth (`MISSION_DESIGN.md`, the fortress loot). His first picture (`colossal-hydra-dead-v1`, a different
+    2026-10-30); they can be looted for a basilisk tooth (`MISSION_DESIGN.md`, the fortress loot).
+    In the battle, with no cut to another shot: it shudders, a wall of dust rises along its body
+    and hides the fall, and the dust settles on his dead-hydra picture v2, which is an exact edit
+    of the battle backdrop (`colossal-hydra-dead-v2`, `docs/mockups/colossal-hydra-death-collapse.png`). His first picture (`colossal-hydra-dead-v1`, a different
     framing with burnt stumps, shown as a letterboxed final shot) he did not like (2026-10-30); a
     second one is asked as an exact edit of the five-head backdrop (prompt card 11 E, second round).
 

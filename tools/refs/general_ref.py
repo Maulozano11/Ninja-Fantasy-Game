@@ -473,9 +473,117 @@ def whole(m, col, isl, black, keep=(), specks=True):
     return m, col, isl
 
 
+# Our shoulders on the male bodies: the bare arm and torso round each shoulder joint that his pauldron and
+# his sleeve must cover (the owner on the legate, 2026-10-29: "las hombreras no están llegando a cubrir todo
+# el hombro", and on the general, 2026-10-30: "que no se le pase arreglarle el hombro": his figures' shoulders
+# are narrower than ours, so the arm showed past his pauldron's outer edge and above his far pauldron, and on
+# the general our navy sleeve showed under the plate). Offsets (dx, dy) from our shoulder joint at male idle frame 0, the union over the male
+# and bulky bodies of the skin shown round the shoulder without his pieces (read off the game: compose.ts
+# spriteLayers, the arm's and the torso's body layers; the torso past the neck and the neck's base under the chin
+# left out).
+COVER = {
+    'N': [(-3, -5), (-2, -5), (-1, -5), (0, -5), (-4, -4), (-3, -4), (-2, -4), (-5, -3), (-4, -3), (-3, -3), (-6, -2), (-5, -2), (-4, -2),
+          (-3, -2), (-6, -1), (-5, -1), (-4, -1), (-6, 0), (-5, 0), (-6, 1), (-5, 1), (-6, 2), (-6, 3), (-7, 4), (-6, 4), (-5, 4), (-7, 5),
+          (-6, 5), (-5, 5), (-7, 6), (-6, 6), (-7, 7), (-6, 7), (-4, 7), (-8, 8), (-7, 8), (-6, 8), (-5, 8), (-4, 8), (-3, 8), (-2, 8),
+          (-8, 9), (-7, 9), (-6, 9), (-5, 9), (-4, 9), (-3, 9), (-2, 9), (-1, 9), (0, 9), (1, 9)],
+    'F': [(-2, -5), (-1, -5), (0, -5), (1, -5), (2, -5), (3, -5), (-3, -4), (-2, -4), (-1, -4), (0, -4), (1, -4), (2, -4), (3, -4),
+          (4, -4), (-3, -3), (-2, -3), (-1, -3), (0, -3), (1, -3), (2, -3), (3, -3), (4, -3), (5, -3), (2, -2), (3, -2),
+          (4, -2), (5, -2), (6, -2), (2, -1), (3, -1), (4, -1), (5, -1), (6, -1), (3, 0), (4, 0), (5, 0), (6, 0), (3, 1), (4, 1), (5, 1),
+          (6, 1), (3, 2), (4, 2), (5, 2), (6, 2), (4, 3), (5, 3), (6, 3), (4, 4), (5, 4), (6, 4), (4, 5), (5, 5), (6, 5), (7, 5), (4, 6),
+          (5, 6), (6, 6), (7, 6), (3, 7), (4, 7), (5, 7), (6, 7), (7, 7), (4, 8), (5, 8), (6, 8), (7, 8), (4, 9), (5, 9), (6, 9), (7, 9)],
+}
+# The pauldron covers the shoulder down to this row from the joint (the legate's pauldron's last plate; the
+# general's is PAULDRON_ROWS); below it the sleeve, which covers the arm's width in its own rows (below the
+# sleeve the arm is bare, as he drew it).
+PAULDRON_TO = 7
+
+
+def grown(m, c, isl, side, rows=None, design=None, to=PAULDRON_TO, holes=False):
+    """A piece grown to cover our shoulder (COVER): each covered pixel not in the piece takes his nearest
+    pixel of it (his line left out, the same row first: his plates and folds run on sideways), his line
+    closes the new edge, and his old line that the growth leaves inside takes his colour beside it. `rows`:
+    only the piece's own rows (the sleeve); else down to PAULDRON_TO. `design`: another piece of his (the
+    near pauldron, for the far one) whose pixels, mirrored about its shoulder joint, the new pixels take
+    where it has one, so the far pauldron is his near one seen from behind (the owner, 2026-10-30: grown
+    from its own few pixels the far one was "muy tosco y simplón"). `holes`: a hole the growth leaves in a
+    row, between his piece and the new pixels, is filled the same way (the general's sleeves and pauldrons;
+    our skin there is hidden on the figure COVER was read from, so it is not in COVER). Not for the legate's
+    pieces, whose straps hang apart in their rows."""
+    black = np.array(R.LINE)
+    jx, jy = (int(np.floor(v)) for v in R.fine_joint('shoulder' + side))
+    m, c, isl = m.copy(), c.copy(), isl.copy()
+    own = [(y, x) for y, x in zip(*np.nonzero(m & ~isl))]
+    mirror = {}
+    if design is not None:
+        dm, dc, dl = design
+        ox, oy = (int(np.floor(v)) for v in R.fine_joint('shoulderN' if side == 'F' else 'shoulderF'))
+        for y, x in zip(*np.nonzero(dm & ~dl)):
+            mirror[(y - oy, -(x - ox))] = dc[y, x]
+    lines = [(y, x) for y, x in zip(*np.nonzero(m & isl))]
+    if lines:
+        # (his black line of this piece: its commonest line colour)
+        tally = {}
+        for q in lines:
+            t = tuple(int(v) for v in c[q])
+            tally[t] = tally.get(t, 0) + 1
+        black = np.array(max(sorted(tally), key=lambda t: tally[t]))
+    have = set(int(y) for y in np.nonzero(m.any(1))[0])
+    new = []
+    for dx, dy in COVER[side]:
+        y, x = jy + dy, jx + dx
+        if m[y, x]:
+            continue
+        if rows is not None and y not in have:
+            continue
+        if rows is None and dy > to:
+            continue
+        if (dy, dx) in mirror:
+            c[y, x] = mirror[(dy, dx)]
+        else:
+            q = min(own, key=lambda p: ((p[0] - y) * 2) ** 2 + (p[1] - x) ** 2 + (p[0] != y))
+            c[y, x] = c[q]
+        m[y, x] = True
+        isl[y, x] = False
+        new.append((y, x))
+    near4 = ((1, 0), (-1, 0), (0, 1), (0, -1))
+    for y in sorted(set(q[0] for q in new)) if holes else ():
+        xs = np.nonzero(m[y])[0]
+        for x in range(int(xs.min()), int(xs.max()) + 1):
+            if m[y, x] or not any((y + dy, x + dx) in set(new) for dy, dx in near4):
+                continue
+            if (y - jy, x - jx) in mirror:
+                c[y, x] = mirror[(y - jy, x - jx)]
+            else:
+                q = min(own, key=lambda p: ((p[0] - y) * 2) ** 2 + (p[1] - x) ** 2 + (p[0] != y))
+                c[y, x] = c[q]
+            m[y, x] = True
+            isl[y, x] = False
+            new.append((y, x))
+    newset = set(new)
+    # his line the growth leaves inside the piece: his colour beside it (the nearest of his pixels in its row)
+    for y, x in lines:
+        if all(m[y + dy, x + dx] for dy, dx in near4) and any((y + dy, x + dx) in newset for dy, dx in near4):
+            q = min(own, key=lambda p: ((p[0] - y) * 2) ** 2 + (p[1] - x) ** 2)
+            c[y, x] = c[q]
+            isl[y, x] = False
+    # his line closes the new edge
+    for y, x in new:
+        if any(not m[y + dy, x + dx] for dy, dx in near4):
+            c[y, x] = black
+            isl[y, x] = True
+    return m, c, isl
+
+
+# The general's pauldrons cover the shoulder down to this row from the joint: his near pauldron's last plate
+# at our scale (the far one hangs as low, grown with the near one's design mirrored); under them his short
+# navy sleeve covers the arm's width in its own rows.
+PAULDRON_ROWS = 5
+
+
 def piece(a, labs, fig, name):
     """A piece of a figure at our scale, continued under what hides it and made whole (whole): (mask,
-    colours, line). The head pieces come from his second picture (head_pieces)."""
+    colours, line). The head pieces come from his second picture (head_pieces); his pauldrons and sleeves
+    are grown to cover our shoulder (grown)."""
     if name in HEAD_PIECES:
         return head_pieces()[name]
     R.more_of = more_of_for(fig)
@@ -483,10 +591,18 @@ def piece(a, labs, fig, name):
     M = body_map(fig, name)
     if (fig, name) in PLATES:
         # (a plate's lone light pixel is his stud or his glint, read by engraved_ref: not a speck)
-        m, c, isl = E.piece(a, labs[fig], name, M, PLATES[(fig, name)])
-        return whole(m, c, isl, R.his_line(a), specks=False)
-    m, c, isl = R.piece(a, labs[fig], name, M)
-    return whole(m, c, isl, R.his_line(a))
+        m, c, isl = whole(*E.piece(a, labs[fig], name, M, PLATES[(fig, name)]), R.his_line(a), specks=False)
+        if name == 'pauldron_n':
+            return grown(m, c, isl, 'N', to=PAULDRON_ROWS, holes=True)
+        if name == 'pauldron_f':
+            # (the far one grows with his near pauldron's design mirrored: his pixels, seen from behind)
+            near = whole(*E.piece(a, labs[fig], 'pauldron_n', M, PLATES[(fig, 'pauldron_n')]), R.his_line(a), specks=False)
+            return grown(m, c, isl, 'F', design=near, to=PAULDRON_ROWS, holes=True)
+        return m, c, isl
+    m, c, isl = whole(*R.piece(a, labs[fig], name, M), R.his_line(a))
+    if name.startswith('sleeve_'):
+        return grown(m, c, isl, name[-1].upper(), rows=True, holes=True)
+    return m, c, isl
 
 
 # Where each piece is stamped from: our joint (the scripts bring his joint onto it) or the face anchor.

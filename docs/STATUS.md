@@ -272,6 +272,11 @@ Merge checks (`git merge-tree` on the origin tips, nothing changed):
   jaw lines as one piece and his hair as the other, snapped to the palette of the first reading so the head
   matches his sets, his eyes' lid states from his own pixels, a skull under the hair for other hairs and his
   neck continued under the scarf (`general_ref` head_pieces, HEAD_*; `g12-cabeza-nueva.png`).
+  His circle on the general's shoulders ("que no se le pase arreglarle el hombro"): both pauldrons and both
+  sleeves of each chest grown to cover our whole shoulder on both male bodies as the legate's were (the
+  shoulder footprint and `grown` now live in `general_ref`, shared; the general's pauldrons to his near
+  plate's last row, PAULDRON_ROWS, the far one from his near design mirrored, and the row holes the growth
+  leaves filled); the navy sleeve stays under the plate as he drew it (`g13-hombros.png`).
   Names for both characters and their items are his to give.
 - `hero/bronze-warrior` (2026-10-29, D-T17): the bronze warrior is Solen. Both bronze presets wear Solen's head
   (`founder` face, standard eyes in his red, his skin); his repainted mane with the braid is `hair_solen_mane`

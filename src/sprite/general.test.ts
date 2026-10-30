@@ -32,7 +32,7 @@ describe("the owner's Roman general", () => {
   });
 
   it('shows his muscle set, face and hair pixel for pixel at male idle frame 0, but where our near arm hangs in front of the cuirass', () => {
-    assert.deepEqual(wrong('preset_bronze_general_muscle', GENERAL_MUSCLE_FIGURE, GENERAL_MUSCLE_FIGURE_AT), ['115,160', '115,161']);
+    assert.deepEqual(wrong('preset_bronze_general_muscle', GENERAL_MUSCLE_FIGURE, GENERAL_MUSCLE_FIGURE_AT), ['115,161']);
   });
 
   it('is a male set: none of his pieces fits the female body', () => {

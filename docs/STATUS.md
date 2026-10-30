@@ -333,6 +333,10 @@ Merge checks (`git merge-tree` on the origin tips, nothing changed):
   on the fringe and its drop clear of the brows (DIADEM_UP). Proof in the sheet script: on each of the four
   heads the rows from the brows' first row to the eyes, between the strands, equal the bare head pixel for
   pixel (`s7-cejas.png`).
+  Then the owner cancelled the mane ("estamos perdiendo mucho tiempo", e503267) and, sending the same repaint
+  again, put it back **for Solen's head only** ("pon la variante esta como un pelo en la cabeza de Solen y nada
+  más, para evitar problemas"): `hair_solen_mane` has `faces: ['founder']` (`ItemDef.faces`, `fitsFace`: the
+  creator's hair picker and the random look offer it only with Solen's face); the s7 fringe stays.
 
 - `jutsu/tide-s` (2026-10-22): the Dragon Tsunami is approved (look, rank S, names, numbers for now).
   Still open, small:

@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight, Flame, Lock, Paintbrush, PersonStanding, ScanFace, Shield, Shirt, Sword } from 'lucide-react';
-import { fitsBody, itemsForSlot, getItem } from '../../sprite/catalog';
+import { fitsBody, fitsFace, itemsForSlot, getItem } from '../../sprite/catalog';
 import { resolveParts, type ItemDef } from '../../sprite/ctx';
 import { CHAKRA_CHOICES, TINT_CHOICES, chakraChoice, chakraHex } from '../../sprite/chakraInfo';
 import { CHAKRA_TYPES, chakraNature, chakraType, withNature } from '../../sprite/chakraNature';
@@ -738,7 +738,7 @@ const SlotPicker: React.FC<{
   crop: 'full' | 'head';
   setSlot: (s: SlotId, c: ItemChoice | null) => void;
 }> = ({ slot, look, eye, crop, setSlot }) => {
-  const items = useMemo(() => itemsForSlot(slot).filter((d) => !d.id.endsWith('_none') && fitsBody(d, look.body)), [slot, look.body]);
+  const items = useMemo(() => itemsForSlot(slot).filter((d) => !d.id.endsWith('_none') && fitsBody(d, look.body) && fitsFace(d, look.faceShape)), [slot, look.body, look.faceShape]);
   const current = look.slots[slot];
   const currentDef = current ? getItem(current.id) : undefined;
   const options: (ItemDef | null)[] = [null, ...items];

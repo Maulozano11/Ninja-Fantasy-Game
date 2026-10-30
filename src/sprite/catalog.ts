@@ -12,7 +12,7 @@ import { GENERAL_ITEMS } from './items/general';
 import { HOPLITE_ITEMS } from './items/hoplite';
 import { LEGATE_ITEMS } from './items/legate';
 import { NIGHT_ITEMS } from './items/night';
-import type { BodyType, SlotId } from './types';
+import type { BodyType, FaceShape, SlotId } from './types';
 
 export const ALL_ITEMS: ItemDef[] = [
   ...HAIR_ITEMS,
@@ -45,6 +45,9 @@ export function getItem(id: string): ItemDef | undefined {
 
 /** Whether a body type can wear the item (see ItemDef.bodies). */
 export const fitsBody = (d: ItemDef, body: BodyType): boolean => !d.bodies || d.bodies.includes(body);
+
+/** Whether a face shape can wear the item (see ItemDef.faces). */
+export const fitsFace = (d: ItemDef, face: FaceShape | undefined): boolean => !d.faces || (!!face && d.faces.includes(face));
 
 export function itemsForSlot(slot: SlotId | 'accessory'): ItemDef[] {
   return ALL_ITEMS.filter((d) => d.slot === slot);

@@ -67,6 +67,7 @@ describe("the owner's bronze warrior", () => {
       const l = look('male', id);
       assert.equal(l.faceShape, 'founder', id);
       assert.equal(l.slots.hair?.id, 'hair_solen_mane', id);
+      assert.deepEqual(getItem('hair_solen_mane')!.faces, ['founder'], 'the mane is for Solen\'s head only');
       const { layers, rig } = spriteLayers(l, 'idle', 0);
       const { nx, ny } = faceAnchor({ rig, bp: rig.bp, look: l } as unknown as DrawCtx);
       const head = layers.get('head.body')!;

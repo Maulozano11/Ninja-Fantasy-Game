@@ -81,7 +81,8 @@ Steve 2 does not touch Steve 1's branches or `MISSION_DESIGN.md`.
 | Task | Where | State | Hot files |
 |---|---|---|---|
 | Review of Bob's D-T7 head-check sheets against the #3 rules | `review/head-sheets` (read only) | **Done** (see "Steve 2's review"), shown to the owner | none |
-| Merge order of Bob's four battle branches vs the battle stack #6–#13 | proposal (trial merges done), **with the owner for approval**; Bob gets the answer after he approves | Waiting for the owner | none |
+| Merge order of Bob's four battle branches vs the battle stack #6–#13 | approved (D-T22); Steve 2 merges the stack and #19 now | **Active** | merges into the integration branch |
+| Fire avatar of the Mirai fire subclass: a basic original concept (a Spartan-armoured fire elemental over the ninja, shown on Aiden) | concept image only, nothing committed | Shown to the owner | none |
 | D-T18, D-T19, D-T20 into `CLANS_DESIGN.md` | `docs/mirai-subclasses`, **PR #19** (stacked on #13, the battle stack also edits that doc) | Done, waiting to merge after #13 | docs only |
 | D-T21: remove the `soft` and `square` faces, migrate saved looks to `tapered` | `cleanup/five-only` (#3), commit `2bc83df` | Done (843/843 tests) | `src/sprite/types.ts` (the `FaceShape` line), `legacy.ts`, `body.ts` |
 
@@ -394,6 +395,23 @@ points:
 6. **`RETIRED_HAIR`:** no candidate is in it. Every hair needs a `heads` list when it merges
    onto #3.
 
+### D-T22. Merge order of the battle branches (the owner, 2026-10-29, 18:33)
+
+Approved as Steve 2 proposed it (trial merges: Bob's four branches conflict with each other and
+with the battle stack, so one at a time):
+
+1. **Steve 2 merges the battle stack now**, in order: #6 `battle/ice-oil` → #7 `knockback` → #8
+   `cover-height` → #9 `intents-reactions` → #10 `death-choice` → #13 `ryusei-weapon-throw`,
+   then #19 (`docs/mirai-subclasses`, D-T18–20 in `CLANS_DESIGN.md`, approved: *"lo apruebo
+   así"*). Each with a merge commit; tests run on the stack top first.
+2. **Then Bob, one branch at a time**, each brought up to date with the integration branch,
+   reviewed by Steve 2, merged before the next starts: **`jutsu/wind-s-line` first** (the owner:
+   approved with Bob), then `jutsu/water-puddle`, then `items/senbon`, and **`stealth/tree-hide`
+   last** (its hidden marker still waits for his choice, D-T12).
+3. The owner: everything listed in D-T11 was approved with Bob in Bob's chat.
+
+Steve 1: the stack only meets your chain (#2–#4, #12, #15) on `docs/STATUS.md` lines.
+
 ## Steve's review of the outfit branches (read only, 2026-10-29)
 
 | Branch | Presets it adds | Its own face / eyes / hair | Bodies |
@@ -464,6 +482,8 @@ What this means:
 
 ## Log (newest first, one line each)
 
+- 2026-10-29 18:40 Steve 2: D-T22 merge order approved; Steve 2 merges #6–#10, #13, #19 now; then Bob,
+  wind ray first. Fire avatar concept shown to the owner (original design, no franchise look).
 - 2026-10-30 Bob: hero/bronze-warrior 3e186ba: legate pauldrons to the shoulder, sandal ankle fix (ankle.ts/feet.ts, shared by Solen and the Roman in motion); shown to the owner.
 - 2026-10-29 Steve 2: D-T21 done on #3 (`2bc83df`): `soft`/`square` out of `FaceShape`, saved looks load
   as `tapered`. Bob: `hero/bronze-warrior` adds `general` on the same `FaceShape` line, a one-line

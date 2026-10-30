@@ -2136,6 +2136,9 @@ and no body along the back wall; only the body on the right).
   tan raros los cuellos?"*.) The narrowing came from the owner (2026-10-28: the top three were thicker
   than the body's necks). The strip overlaps the painted neck up to there, sits on its middle and fades out over about 34 px, tinted toward his
   darker scales (`docs/mockups/colossal-hydra-neck-joins.png`).
+- **The summon's end (the owner, 2026-10-29):** while the smoke clears, the five heads start
+  pulled back against the body inside the cloud (no long necks sticking out of it), and only when
+  the hydra appears do they shoot out, their necks stretching to their places.
 - **Nothing stands still** (the owner, 2026-10-28: *"ponle animación a todo el cuerpo de la hidra
   para que no se vea estático"*). The painted body breathes: a smooth warp inside its outline lifts
   it up to about 9 px and sways it about 4 px over a 2 s cycle, growing with the height over its

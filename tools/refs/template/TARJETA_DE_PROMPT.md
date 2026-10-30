@@ -790,6 +790,20 @@ cabezas estuvieran recogidas contra el cuerpo. El borde izquierdo de la nube no 
 patio. Piedras cayendo, brasas sueltas, un resplandor dorado débil al pie de la nube.
 ```
 
+*4c, las cabezas rasgan la nube* (adjunta **el fondo de la hidra**; él lo pidió 2026-10-29: el humo
+esparcido antes de tiempo por las cabezas al salir). Las cabezas NO se pintan: las pone el juego
+saliendo por cada túnel.
+```
+La MISMA imagen adjunta, idéntica píxel por píxel en todo lo que no se menciona (la hidra, sus cuellos,
+el muro, el portón, las antorchas, las losas, el encuadre), cambiando SOLO esto: la NUBE ENORME de humo
+gris y polvo sigue cubriendo el lado derecho del patio, pero se está RASGANDO: a la altura de cada uno
+de los CINCO CUELLOS se abre un TÚNEL HORIZONTAL en el humo hacia la izquierda, como si algo acabara de
+salir disparado por ahí; por los túneles se ven los cuellos de la imagen, y el humo alrededor de cada
+túnel se arremolina en espiral y es arrastrado hacia la izquierda en jirones largos. NO dibujes
+cabezas: cada túnel termina en un remolino de humo donde iría la cabeza. El cuerpo todavía se ve
+entre humo; piedras y brasas sueltas cayendo.
+```
+
 Con estos el juego hace: columna (3) → la columna se rompe (3b) → la nube (4) → la nube con la silueta
 (4b, ya sobre el fondo de la hidra, así el cambio de fondo pasa dentro del humo) → el humo se deshace
 mientras las cinco cabezas salen de la nube y estiran el cuello hasta su lugar. Si 4b sale alineado, opcional un 4c igual pero con el humo a la mitad.

@@ -1,0 +1,49 @@
+{
+ "group": "vfx_hand",
+ "pxPerMeter": 57,
+ "sprites": {
+  "lightning_hand": {
+   "label": "Lightning in the hand: his lightning hit crackling as a ball (gather, crackle, crackle_enh) and over his bolt's trailing spark (dash); anchor: the middle of the ball",
+   "file": "lightning_hand.png",
+   "frameW": 72,
+   "frameH": 61,
+   "anchor": [
+    41,
+    30
+   ],
+   "meters": [
+    1.26,
+    1.07
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "gather": {
+     "row": 0,
+     "frames": 4,
+     "fps": 12,
+     "loop": false
+    },
+    "crackle": {
+     "row": 1,
+     "frames": 6,
+     "fps": 12,
+     "loop": true
+    },
+    "crackle_enh": {
+     "row": 2,
+     "frames": 6,
+     "fps": 12,
+     "loop": true
+    },
+    "dash": {
+     "row": 3,
+     "frames": 6,
+     "fps": 12,
+     "loop": true
+    }
+   }
+  }
+ }
+}

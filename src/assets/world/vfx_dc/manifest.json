@@ -1,0 +1,1984 @@
+{
+ "group": "vfx_dc",
+ "pxPerMeter": 57,
+ "sprites": {
+  "fire_multi_0": {
+   "label": "Fire multi, comet flame 1 of 3 on its own (his frames; row a<deg> flies at that angle, a-18 is his)",
+   "file": "fire_multi_0.png",
+   "frameW": 32,
+   "frameH": 47,
+   "anchor": [
+    23,
+    23
+   ],
+   "meters": [
+    0.56,
+    0.82
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "a-90": {
+     "row": 0,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-84": {
+     "row": 1,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-78": {
+     "row": 2,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-72": {
+     "row": 3,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-66": {
+     "row": 4,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-60": {
+     "row": 5,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-54": {
+     "row": 6,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-48": {
+     "row": 7,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-42": {
+     "row": 8,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-36": {
+     "row": 9,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-30": {
+     "row": 10,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-24": {
+     "row": 11,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-18": {
+     "row": 12,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-12": {
+     "row": 13,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-6": {
+     "row": 14,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a0": {
+     "row": 15,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a6": {
+     "row": 16,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a12": {
+     "row": 17,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a18": {
+     "row": 18,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a24": {
+     "row": 19,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a30": {
+     "row": 20,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a36": {
+     "row": 21,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a42": {
+     "row": 22,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a48": {
+     "row": 23,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a54": {
+     "row": 24,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a60": {
+     "row": 25,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a66": {
+     "row": 26,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a72": {
+     "row": 27,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a78": {
+     "row": 28,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a84": {
+     "row": 29,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a90": {
+     "row": 30,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    }
+   }
+  },
+  "fire_multi_1": {
+   "label": "Fire multi, comet flame 2 of 3 on its own (his frames; row a<deg> flies at that angle, a-6 is his)",
+   "file": "fire_multi_1.png",
+   "frameW": 34,
+   "frameH": 49,
+   "anchor": [
+    24,
+    24
+   ],
+   "meters": [
+    0.6,
+    0.86
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "a-90": {
+     "row": 0,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-84": {
+     "row": 1,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-78": {
+     "row": 2,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-72": {
+     "row": 3,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-66": {
+     "row": 4,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-60": {
+     "row": 5,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-54": {
+     "row": 6,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-48": {
+     "row": 7,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-42": {
+     "row": 8,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-36": {
+     "row": 9,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-30": {
+     "row": 10,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-24": {
+     "row": 11,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-18": {
+     "row": 12,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-12": {
+     "row": 13,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-6": {
+     "row": 14,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a0": {
+     "row": 15,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a6": {
+     "row": 16,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a12": {
+     "row": 17,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a18": {
+     "row": 18,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a24": {
+     "row": 19,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a30": {
+     "row": 20,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a36": {
+     "row": 21,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a42": {
+     "row": 22,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a48": {
+     "row": 23,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a54": {
+     "row": 24,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a60": {
+     "row": 25,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a66": {
+     "row": 26,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a72": {
+     "row": 27,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a78": {
+     "row": 28,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a84": {
+     "row": 29,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a90": {
+     "row": 30,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    }
+   }
+  },
+  "fire_multi_2": {
+   "label": "Fire multi, comet flame 3 of 3 on its own (his frames; row a<deg> flies at that angle, a12 is his)",
+   "file": "fire_multi_2.png",
+   "frameW": 35,
+   "frameH": 52,
+   "anchor": [
+    26,
+    25
+   ],
+   "meters": [
+    0.61,
+    0.91
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "a-90": {
+     "row": 0,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-84": {
+     "row": 1,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-78": {
+     "row": 2,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-72": {
+     "row": 3,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-66": {
+     "row": 4,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-60": {
+     "row": 5,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-54": {
+     "row": 6,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-48": {
+     "row": 7,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-42": {
+     "row": 8,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-36": {
+     "row": 9,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-30": {
+     "row": 10,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-24": {
+     "row": 11,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-18": {
+     "row": 12,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-12": {
+     "row": 13,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-6": {
+     "row": 14,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a0": {
+     "row": 15,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a6": {
+     "row": 16,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a12": {
+     "row": 17,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a18": {
+     "row": 18,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a24": {
+     "row": 19,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a30": {
+     "row": 20,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a36": {
+     "row": 21,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a42": {
+     "row": 22,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a48": {
+     "row": 23,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a54": {
+     "row": 24,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a60": {
+     "row": 25,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a66": {
+     "row": 26,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a72": {
+     "row": 27,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a78": {
+     "row": 28,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a84": {
+     "row": 29,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a90": {
+     "row": 30,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    }
+   }
+  },
+  "lightning_multi_0": {
+   "label": "Lightning multi, thunder needle 1 of 3 on its own (his frames; row a<deg> flies at that angle, a-24 is his)",
+   "file": "lightning_multi_0.png",
+   "frameW": 56,
+   "frameH": 86,
+   "anchor": [
+    43,
+    43
+   ],
+   "meters": [
+    0.98,
+    1.51
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "a-90": {
+     "row": 0,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-84": {
+     "row": 1,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-78": {
+     "row": 2,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-72": {
+     "row": 3,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-66": {
+     "row": 4,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-60": {
+     "row": 5,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-54": {
+     "row": 6,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-48": {
+     "row": 7,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-42": {
+     "row": 8,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-36": {
+     "row": 9,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-30": {
+     "row": 10,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-24": {
+     "row": 11,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-18": {
+     "row": 12,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-12": {
+     "row": 13,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-6": {
+     "row": 14,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a0": {
+     "row": 15,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a6": {
+     "row": 16,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a12": {
+     "row": 17,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a18": {
+     "row": 18,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a24": {
+     "row": 19,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a30": {
+     "row": 20,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a36": {
+     "row": 21,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a42": {
+     "row": 22,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a48": {
+     "row": 23,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a54": {
+     "row": 24,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a60": {
+     "row": 25,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a66": {
+     "row": 26,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a72": {
+     "row": 27,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a78": {
+     "row": 28,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a84": {
+     "row": 29,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a90": {
+     "row": 30,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    }
+   }
+  },
+  "lightning_multi_1": {
+   "label": "Lightning multi, thunder needle 2 of 3 on its own (his frames; row a<deg> flies at that angle, a0 is his)",
+   "file": "lightning_multi_1.png",
+   "frameW": 62,
+   "frameH": 86,
+   "anchor": [
+    44,
+    44
+   ],
+   "meters": [
+    1.09,
+    1.51
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "a-90": {
+     "row": 0,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-84": {
+     "row": 1,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-78": {
+     "row": 2,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-72": {
+     "row": 3,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-66": {
+     "row": 4,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-60": {
+     "row": 5,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-54": {
+     "row": 6,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-48": {
+     "row": 7,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-42": {
+     "row": 8,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-36": {
+     "row": 9,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-30": {
+     "row": 10,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-24": {
+     "row": 11,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-18": {
+     "row": 12,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-12": {
+     "row": 13,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-6": {
+     "row": 14,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a0": {
+     "row": 15,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a6": {
+     "row": 16,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a12": {
+     "row": 17,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a18": {
+     "row": 18,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a24": {
+     "row": 19,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a30": {
+     "row": 20,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a36": {
+     "row": 21,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a42": {
+     "row": 22,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a48": {
+     "row": 23,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a54": {
+     "row": 24,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a60": {
+     "row": 25,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a66": {
+     "row": 26,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a72": {
+     "row": 27,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a78": {
+     "row": 28,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a84": {
+     "row": 29,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a90": {
+     "row": 30,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    }
+   }
+  },
+  "lightning_multi_2": {
+   "label": "Lightning multi, thunder needle 3 of 3 on its own (his frames; row a<deg> flies at that angle, a24 is his)",
+   "file": "lightning_multi_2.png",
+   "frameW": 44,
+   "frameH": 67,
+   "anchor": [
+    33,
+    33
+   ],
+   "meters": [
+    0.77,
+    1.18
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "a-90": {
+     "row": 0,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-84": {
+     "row": 1,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-78": {
+     "row": 2,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-72": {
+     "row": 3,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-66": {
+     "row": 4,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-60": {
+     "row": 5,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-54": {
+     "row": 6,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-48": {
+     "row": 7,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-42": {
+     "row": 8,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-36": {
+     "row": 9,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-30": {
+     "row": 10,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-24": {
+     "row": 11,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-18": {
+     "row": 12,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-12": {
+     "row": 13,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-6": {
+     "row": 14,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a0": {
+     "row": 15,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a6": {
+     "row": 16,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a12": {
+     "row": 17,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a18": {
+     "row": 18,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a24": {
+     "row": 19,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a30": {
+     "row": 20,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a36": {
+     "row": 21,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a42": {
+     "row": 22,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a48": {
+     "row": 23,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a54": {
+     "row": 24,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a60": {
+     "row": 25,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a66": {
+     "row": 26,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a72": {
+     "row": 27,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a78": {
+     "row": 28,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a84": {
+     "row": 29,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a90": {
+     "row": 30,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    }
+   }
+  },
+  "earth_multi_0": {
+   "label": "Earth multi, rock bullet 1 of 3 on its own (his frames; row a<deg> flies at that angle, a-12 is his)",
+   "file": "earth_multi_0.png",
+   "frameW": 86,
+   "frameH": 113,
+   "anchor": [
+    56,
+    56
+   ],
+   "meters": [
+    1.51,
+    1.98
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "a-90": {
+     "row": 0,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-84": {
+     "row": 1,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-78": {
+     "row": 2,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-72": {
+     "row": 3,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-66": {
+     "row": 4,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-60": {
+     "row": 5,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-54": {
+     "row": 6,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-48": {
+     "row": 7,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-42": {
+     "row": 8,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-36": {
+     "row": 9,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-30": {
+     "row": 10,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-24": {
+     "row": 11,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-18": {
+     "row": 12,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-12": {
+     "row": 13,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-6": {
+     "row": 14,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a0": {
+     "row": 15,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a6": {
+     "row": 16,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a12": {
+     "row": 17,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a18": {
+     "row": 18,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a24": {
+     "row": 19,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a30": {
+     "row": 20,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a36": {
+     "row": 21,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a42": {
+     "row": 22,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a48": {
+     "row": 23,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a54": {
+     "row": 24,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a60": {
+     "row": 25,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a66": {
+     "row": 26,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a72": {
+     "row": 27,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a78": {
+     "row": 28,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a84": {
+     "row": 29,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a90": {
+     "row": 30,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    }
+   }
+  },
+  "earth_multi_1": {
+   "label": "Earth multi, rock bullet 2 of 3 on its own (his frames; row a<deg> flies at that angle, a0 is his)",
+   "file": "earth_multi_1.png",
+   "frameW": 108,
+   "frameH": 147,
+   "anchor": [
+    73,
+    73
+   ],
+   "meters": [
+    1.89,
+    2.58
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "a-90": {
+     "row": 0,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-84": {
+     "row": 1,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-78": {
+     "row": 2,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-72": {
+     "row": 3,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-66": {
+     "row": 4,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-60": {
+     "row": 5,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-54": {
+     "row": 6,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-48": {
+     "row": 7,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-42": {
+     "row": 8,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-36": {
+     "row": 9,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-30": {
+     "row": 10,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-24": {
+     "row": 11,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-18": {
+     "row": 12,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-12": {
+     "row": 13,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-6": {
+     "row": 14,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a0": {
+     "row": 15,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a6": {
+     "row": 16,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a12": {
+     "row": 17,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a18": {
+     "row": 18,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a24": {
+     "row": 19,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a30": {
+     "row": 20,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a36": {
+     "row": 21,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a42": {
+     "row": 22,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a48": {
+     "row": 23,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a54": {
+     "row": 24,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a60": {
+     "row": 25,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a66": {
+     "row": 26,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a72": {
+     "row": 27,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a78": {
+     "row": 28,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a84": {
+     "row": 29,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a90": {
+     "row": 30,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    }
+   }
+  },
+  "earth_multi_2": {
+   "label": "Earth multi, rock bullet 3 of 3 on its own (his frames; row a<deg> flies at that angle, a12 is his)",
+   "file": "earth_multi_2.png",
+   "frameW": 87,
+   "frameH": 117,
+   "anchor": [
+    58,
+    58
+   ],
+   "meters": [
+    1.53,
+    2.05
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "a-90": {
+     "row": 0,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-84": {
+     "row": 1,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-78": {
+     "row": 2,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-72": {
+     "row": 3,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-66": {
+     "row": 4,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-60": {
+     "row": 5,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-54": {
+     "row": 6,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-48": {
+     "row": 7,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-42": {
+     "row": 8,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-36": {
+     "row": 9,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-30": {
+     "row": 10,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-24": {
+     "row": 11,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-18": {
+     "row": 12,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-12": {
+     "row": 13,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-6": {
+     "row": 14,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a0": {
+     "row": 15,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a6": {
+     "row": 16,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a12": {
+     "row": 17,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a18": {
+     "row": 18,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a24": {
+     "row": 19,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a30": {
+     "row": 20,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a36": {
+     "row": 21,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a42": {
+     "row": 22,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a48": {
+     "row": 23,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a54": {
+     "row": 24,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a60": {
+     "row": 25,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a66": {
+     "row": 26,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a72": {
+     "row": 27,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a78": {
+     "row": 28,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a84": {
+     "row": 29,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a90": {
+     "row": 30,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    }
+   }
+  },
+  "lightning_fan": {
+   "label": "Lightning breath (his forked cone) turned to every direction, anchored at the root of the fork",
+   "file": "lightning_fan.png",
+   "frameW": 158,
+   "frameH": 200,
+   "anchor": [
+    55,
+    102
+   ],
+   "meters": [
+    2.77,
+    3.51
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "a-90": {
+     "row": 0,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-80": {
+     "row": 1,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-70": {
+     "row": 2,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-60": {
+     "row": 3,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-50": {
+     "row": 4,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-40": {
+     "row": 5,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-30": {
+     "row": 6,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-20": {
+     "row": 7,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a-10": {
+     "row": 8,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a0": {
+     "row": 9,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a10": {
+     "row": 10,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a20": {
+     "row": 11,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a30": {
+     "row": 12,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a40": {
+     "row": 13,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a50": {
+     "row": 14,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a60": {
+     "row": 15,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a70": {
+     "row": 16,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a80": {
+     "row": 17,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "a90": {
+     "row": 18,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    }
+   }
+  }
+ }
+}

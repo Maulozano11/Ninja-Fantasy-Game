@@ -1,0 +1,582 @@
+{
+ "kit": "ui_icons_18",
+ "references": [
+  "docs/reference/icons-owner-reference-18.jpg"
+ ],
+ "round": 1,
+ "screen": [
+  1600,
+  900
+ ],
+ "pixel": "one art pixel per screen pixel (as ui_icons, sheet 1): draw at 1x on a 1600x900 screen, @2x on a 2x screen, always with image-rendering: pixelated",
+ "frame": {
+  "from": "ui_icons (sheet 1), read only: skill_slot_steel.png and skill_slot_steel_active.png, 56x56, the icon window 44x44 at 6,6; see ui_icons/manifest.json for its slices",
+  "window": {
+   "x": 6,
+   "y": 6,
+   "w": 44,
+   "h": 44
+  }
+ },
+ "method": "his sheets are pixel art (480x268 scaled 4.1667x and saved as JPEG); his pixels are taken back first (tools/refs/icons-from-ref-23.py). 88: his own pixels one to one (his 90x90 or 93x91 window with the columns and rows that show least dropped), on a palette sampled from his pixels, 1-2 pixel areas merged only where his own pixels do not stand out. 44: area mean of his pixels, except his thin lines and strongest specks, which keep their own colour one pixel wide; a light bilateral filter, nearest palette entry, 1-2 pixel areas merged; then hand-fixes only where that still loses his picture (see tools/ui/ui-icons-23.ts). Sheets 8 to 11 use no bilateral filter (it lightened his dark figures into his ground), and their palettes give his rare colours a slot each: after the k-means, every colour of the 44's and the 88's pictures still far from the palette in hue (his skin, his violet chains, a dragon's teeth, his greys and whites) is grouped and the group missed most gets its own entry, his nearest real colour, up to 20 (paletteCovered); his thin marks of one colour (skin, violet chains, embers, teeth, mouth cores, foam) are kept by colour rules. Sheets 13 to 22 (tools/refs/icons-from-ref-13.py) are made as sheets 9 and 10. Some are 240x134 pictures (sheets 15, 16, 17, 19): their windows are 47 to 63 of his pixels, so at 88 every one of his pixels is kept and some are shown twice (twice88), and their 44 is his pixels one to one too, the columns and rows that show least dropped (dropped44); sheet 18 (78 to 79 of his pixels) is grown to 88 the same way and reduced to 44 as the others. Sheets 20 to 22 (100 to 101 by 103 to 104) are reduced at 88 as sheets 8 and 11",
+ "checks": "small = 8-connected areas of one colour of 1 or 2 pixels: smallHis are his own marks (at 88 his pixel stands out there; at 44 his kept specks), smallDrawn hold a hand-fixed detail, smallOther are left over from the reduction; lowFreq = mean OKLab difference x100 to his box reduction after both are blurred (sigma size/30), lowFreqBoxOnPalette = the same for his box reduction put on our palette; ssim = structural similarity of the lightness (Gaussian window sigma 1.5) to his picture box-reduced to 88, ours (the 44 shown 2x) against ssimBox, his own box reduction to 44 shown 2x; hue = OKLab median hue in degrees (hueHis: his box reduction); thinRun = the longest straight run of one colour one pixel thick [length, row or col, index]",
+ "icons": {
+  "pill": {
+   "name": "Soldier Pill",
+   "sheet": "docs/reference/icons-owner-reference-18.jpg",
+   "file": "pill.png",
+   "file2x": "pill@2x.png",
+   "size": [
+    44,
+    44
+   ],
+   "size2x": [
+    88,
+    88
+   ],
+   "label": "PILDORA SOLD",
+   "hisWindow": [
+    78,
+    82
+   ],
+   "method88": "his 78x82 pixels, every one kept, some shown twice (fewer than 88)",
+   "twice88": {
+    "columns": [
+     2,
+     7,
+     21,
+     26,
+     37,
+     39,
+     51,
+     54,
+     64,
+     76
+    ],
+    "rows": [
+     2,
+     20,
+     27,
+     49,
+     57,
+     80
+    ]
+   },
+   "palette": [
+    "#020810",
+    "#0e101b",
+    "#10141c",
+    "#161c2a",
+    "#0a2447",
+    "#0a2a2c",
+    "#1b273a",
+    "#1c3246",
+    "#124056",
+    "#403c3d",
+    "#244673",
+    "#0d4f65",
+    "#524e4b",
+    "#2e5e63",
+    "#145e7c",
+    "#46586d",
+    "#0c62a3",
+    "#6d6256",
+    "#0c6e8e",
+    "#5b6a70",
+    "#057ea6",
+    "#5078a2",
+    "#7b7a76",
+    "#3a8999",
+    "#0f86cf",
+    "#1491be",
+    "#1ba1bc",
+    "#52aaa9",
+    "#1facd6",
+    "#1aacec",
+    "#53bad3",
+    "#74bce7",
+    "#4eccde",
+    "#8accdd",
+    "#46d4f9",
+    "#64deee",
+    "#5eeff7",
+    "#96f2fd"
+   ],
+   "paletteDetailOnly": [],
+   "paletteCovered": [
+    "#0c62a3",
+    "#46586d",
+    "#244673",
+    "#0f86cf",
+    "#3a8999",
+    "#8accdd",
+    "#2e5e63",
+    "#0a2a2c",
+    "#0a2447",
+    "#5078a2",
+    "#52aaa9",
+    "#46d4f9",
+    "#74bce7",
+    "#1aacec",
+    "#5b6a70"
+   ],
+   "sampled": [
+    "his darkest outline"
+   ],
+   "checks": {
+    "44": {
+     "small": 6,
+     "smallHis": 6,
+     "smallDrawn": 0,
+     "smallOther": 0,
+     "lowFreq": 1.98,
+     "lowFreqBoxOnPalette": 1.05,
+     "ssim": 0.738,
+     "ssimBox": 0.839,
+     "hue": 231,
+     "hueHis": 226,
+     "colours": 34,
+     "thinRun": [
+      7,
+      "row",
+      32
+     ]
+    },
+    "88": {
+     "small": 613,
+     "smallHis": 613,
+     "smallDrawn": 0,
+     "smallOther": 0,
+     "lowFreq": 1.48,
+     "lowFreqBoxOnPalette": 0.99,
+     "ssim": 0.834,
+     "ssimBox": 1,
+     "hue": 231,
+     "hueHis": 226,
+     "colours": 38,
+     "thinRun": [
+      11,
+      "row",
+      73
+     ]
+    }
+   },
+   "use": "Hotbar skill icon: fills the 44x44 window of skill_slot_steel (ui_icons), at 6,6."
+  },
+  "bandage": {
+   "name": "Bandage",
+   "sheet": "docs/reference/icons-owner-reference-18.jpg",
+   "file": "bandage.png",
+   "file2x": "bandage@2x.png",
+   "size": [
+    44,
+    44
+   ],
+   "size2x": [
+    88,
+    88
+   ],
+   "label": "VENDA",
+   "hisWindow": [
+    79,
+    82
+   ],
+   "method88": "his 79x82 pixels, every one kept, some shown twice (fewer than 88)",
+   "twice88": {
+    "columns": [
+     2,
+     10,
+     25,
+     26,
+     36,
+     48,
+     55,
+     65,
+     77
+    ],
+    "rows": [
+     6,
+     26,
+     29,
+     53,
+     55,
+     79
+    ]
+   },
+   "palette": [
+    "#30211c",
+    "#533230",
+    "#56342f",
+    "#574625",
+    "#644033",
+    "#724b36",
+    "#815639",
+    "#70605a",
+    "#806b46",
+    "#90633e",
+    "#83756e",
+    "#a06e41",
+    "#ae7b44",
+    "#998880",
+    "#c68a49",
+    "#a79688",
+    "#b2a373",
+    "#c69f6e",
+    "#b8a693",
+    "#daa052",
+    "#c8b8a6",
+    "#eab864",
+    "#d8cbb6",
+    "#e4ca92",
+    "#f8d17d",
+    "#eae0ce",
+    "#fce472",
+    "#f4ebb4",
+    "#ffea97",
+    "#faf3e2"
+   ],
+   "paletteDetailOnly": [],
+   "paletteCovered": [
+    "#b2a373",
+    "#806b46",
+    "#e4ca92",
+    "#574625",
+    "#fce472",
+    "#c69f6e",
+    "#f4ebb4"
+   ],
+   "sampled": [
+    "his darkest outline"
+   ],
+   "checks": {
+    "44": {
+     "small": 4,
+     "smallHis": 4,
+     "smallDrawn": 0,
+     "smallOther": 0,
+     "lowFreq": 0.98,
+     "lowFreqBoxOnPalette": 0.52,
+     "ssim": 0.752,
+     "ssimBox": 0.852,
+     "hue": 62,
+     "hueHis": 62,
+     "colours": 27,
+     "thinRun": [
+      7,
+      "col",
+      42
+     ]
+    },
+    "88": {
+     "small": 396,
+     "smallHis": 396,
+     "smallDrawn": 0,
+     "smallOther": 0,
+     "lowFreq": 0.98,
+     "lowFreqBoxOnPalette": 0.51,
+     "ssim": 0.81,
+     "ssimBox": 1,
+     "hue": 62,
+     "hueHis": 61,
+     "colours": 30,
+     "thinRun": [
+      10,
+      "col",
+      46
+     ]
+    }
+   },
+   "use": "Hotbar skill icon: fills the 44x44 window of skill_slot_steel (ui_icons), at 6,6."
+  },
+  "antidote": {
+   "name": "Antidote",
+   "sheet": "docs/reference/icons-owner-reference-18.jpg",
+   "file": "antidote.png",
+   "file2x": "antidote@2x.png",
+   "size": [
+    44,
+    44
+   ],
+   "size2x": [
+    88,
+    88
+   ],
+   "label": "ANTIDOTO",
+   "hisWindow": [
+    78,
+    82
+   ],
+   "method88": "his 78x82 pixels, every one kept, some shown twice (fewer than 88)",
+   "twice88": {
+    "columns": [
+     5,
+     8,
+     15,
+     30,
+     32,
+     43,
+     52,
+     60,
+     67,
+     75
+    ],
+    "rows": [
+     7,
+     20,
+     37,
+     43,
+     59,
+     80
+    ]
+   },
+   "palette": [
+    "#000607",
+    "#081909",
+    "#0b2518",
+    "#112620",
+    "#2a2521",
+    "#1a342a",
+    "#033913",
+    "#144234",
+    "#0c4d3a",
+    "#364e4c",
+    "#105940",
+    "#52554e",
+    "#0f681b",
+    "#0c6841",
+    "#117744",
+    "#3f7555",
+    "#567672",
+    "#188848",
+    "#68828e",
+    "#1f9d50",
+    "#53967e",
+    "#928d80",
+    "#38b25e",
+    "#52af78",
+    "#84a09d",
+    "#2aba42",
+    "#48c46a",
+    "#84baa0",
+    "#9abcb2",
+    "#48da50",
+    "#64d77f",
+    "#7bea75",
+    "#95e496",
+    "#c3dacf",
+    "#aceaae",
+    "#96f990",
+    "#e4f8ee",
+    "#dcfed6"
+   ],
+   "paletteDetailOnly": [],
+   "paletteCovered": [
+    "#52554e",
+    "#aceaae",
+    "#48da50",
+    "#52af78",
+    "#928d80",
+    "#2a2521",
+    "#033913",
+    "#dcfed6",
+    "#84baa0",
+    "#95e496",
+    "#364e4c",
+    "#2aba42",
+    "#0f681b",
+    "#68828e",
+    "#3f7555"
+   ],
+   "sampled": [
+    "his darkest outline"
+   ],
+   "checks": {
+    "44": {
+     "small": 12,
+     "smallHis": 12,
+     "smallDrawn": 0,
+     "smallOther": 0,
+     "lowFreq": 1.59,
+     "lowFreqBoxOnPalette": 0.58,
+     "ssim": 0.714,
+     "ssimBox": 0.816,
+     "hue": 158,
+     "hueHis": 160,
+     "colours": 34,
+     "thinRun": [
+      12,
+      "col",
+      1
+     ]
+    },
+    "88": {
+     "small": 703,
+     "smallHis": 703,
+     "smallDrawn": 0,
+     "smallOther": 0,
+     "lowFreq": 0.94,
+     "lowFreqBoxOnPalette": 0.49,
+     "ssim": 0.817,
+     "ssimBox": 1,
+     "hue": 158,
+     "hueHis": 160,
+     "colours": 38,
+     "thinRun": [
+      14,
+      "row",
+      84
+     ]
+    }
+   },
+   "use": "Hotbar skill icon: fills the 44x44 window of skill_slot_steel (ui_icons), at 6,6."
+  },
+  "tag": {
+   "name": "Explosive Tag",
+   "sheet": "docs/reference/icons-owner-reference-18.jpg",
+   "file": "tag.png",
+   "file2x": "tag@2x.png",
+   "size": [
+    44,
+    44
+   ],
+   "size2x": [
+    88,
+    88
+   ],
+   "label": "SELLO EXPLOS",
+   "hisWindow": [
+    78,
+    82
+   ],
+   "method88": "his 78x82 pixels, every one kept, some shown twice (fewer than 88)",
+   "twice88": {
+    "columns": [
+     2,
+     7,
+     19,
+     29,
+     34,
+     45,
+     50,
+     55,
+     69,
+     74
+    ],
+    "rows": [
+     1,
+     19,
+     29,
+     46,
+     64,
+     79
+    ]
+   },
+   "palette": [
+    "#220607",
+    "#290507",
+    "#30080a",
+    "#28180c",
+    "#3f0c0e",
+    "#4e1214",
+    "#462829",
+    "#5f1815",
+    "#5e2a18",
+    "#721614",
+    "#871811",
+    "#7a3632",
+    "#6a4644",
+    "#9c2210",
+    "#b82714",
+    "#92564a",
+    "#a65036",
+    "#8a6c3c",
+    "#886a66",
+    "#d41b0c",
+    "#b44e4d",
+    "#cc3e26",
+    "#a06d5b",
+    "#d46441",
+    "#e65a2c",
+    "#c4785d",
+    "#ba866a",
+    "#c68340",
+    "#e67c2e",
+    "#ee755d",
+    "#e6805a",
+    "#d09e7b",
+    "#eda139",
+    "#f39c70",
+    "#d2b58d",
+    "#e6b690",
+    "#ffb67d",
+    "#f3ca94",
+    "#f8cf4f",
+    "#fed275",
+    "#fff68a"
+   ],
+   "paletteDetailOnly": [],
+   "paletteCovered": [
+    "#a65036",
+    "#eda139",
+    "#462829",
+    "#e67c2e",
+    "#886a66",
+    "#c68340",
+    "#d41b0c",
+    "#8a6c3c",
+    "#e65a2c",
+    "#7a3632",
+    "#fed275",
+    "#c4785d",
+    "#5e2a18",
+    "#28180c",
+    "#d2b58d",
+    "#b44e4d",
+    "#ffb67d",
+    "#ee755d"
+   ],
+   "sampled": [
+    "his darkest outline"
+   ],
+   "checks": {
+    "44": {
+     "small": 3,
+     "smallHis": 3,
+     "smallDrawn": 0,
+     "smallOther": 0,
+     "lowFreq": 1.36,
+     "lowFreqBoxOnPalette": 0.6,
+     "ssim": 0.727,
+     "ssimBox": 0.823,
+     "hue": 27,
+     "hueHis": 29,
+     "colours": 36,
+     "thinRun": [
+      4,
+      "row",
+      11
+     ]
+    },
+    "88": {
+     "small": 635,
+     "smallHis": 635,
+     "smallDrawn": 0,
+     "smallOther": 0,
+     "lowFreq": 1.04,
+     "lowFreqBoxOnPalette": 0.55,
+     "ssim": 0.838,
+     "ssimBox": 1,
+     "hue": 27,
+     "hueHis": 29,
+     "colours": 41,
+     "thinRun": [
+      8,
+      "col",
+      73
+     ]
+    }
+   },
+   "use": "Hotbar skill icon: fills the 44x44 window of skill_slot_steel (ui_icons), at 6,6."
+  }
+ }
+}

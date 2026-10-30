@@ -217,7 +217,10 @@ export interface Unit {
    */
   imbued?: { element: 'Fire' | 'Lightning' | 'Wind' | 'Water' | 'Earth'; rounds: number };
   /** Battle bookkeeping for the mission result. */
-  stats2: { critsTaken: number; critsLanded: number; pills: number; fell: boolean; fellToCrit: boolean; tension: number; jutsuCast: number };
+  stats2: { critsTaken: number; critsLanded: number; pills: number; fell: boolean; fellToCrit: boolean; tension: number; jutsuCast: number; lastHitType?: DamageType };
+  /** The last stand (battle/lastStand.ts): its blow at 300 % and free while this is set; the mutilation a retreat left. */
+  lastStand?: boolean;
+  mutilation?: 'missing_arm' | 'missing_eye' | 'missing_leg';
   /** Skill proficiencies (Stealth, Perception, Medicine...). */
   skills: string[];
 }
@@ -459,7 +462,9 @@ export type PendingReaction =
   /** A kunai coming at a Bukijutsu Master: deflect it (battle/reactions.ts). */
   | { kind: 'deflect'; reactor: string; hit: Hit; rest: Hit[]; after: AfterHits }
   /** A blow about to land on a comrade beside the reactor: take it instead. */
-  | { kind: 'interpose'; reactor: string; hit: Hit; rest: Hit[]; after: AfterHits };
+  | { kind: 'interpose'; reactor: string; hit: Hit; rest: Hit[]; after: AfterHits }
+  /** The third death save lost (the owner, 2026-10-28, M1): the last stand, a sacrifice or a retreat (battle/lastStand.ts). */
+  | { kind: 'lastStand'; reactor: string };
 
 export interface BattleState {
   version: 1;
@@ -524,6 +529,8 @@ export type Action =
   | { type: 'dash' | 'disengage' | 'dodge' | 'hide' | 'focus' | 'crouch' | 'jump' | 'draw'; unit: string }
   /** A Mirai opens the Eye of Tomorrow (bonus action, EYE_COST chakra) until its next turn begins. */
   | { type: 'eye'; unit: string }
+  /** A wooden arm's grapple hook (bonus action): the ninja pulls itself to `at`, within HOOK_RANGE in sight. */
+  | { type: 'hook'; unit: string; at: Pt }
   | { type: 'shove'; unit: string; target: string; mode: 'prone' | 'push' }
   /** `tag` throws an explosive tag at a point; `tagTrap` hides one on the ground there. */
   | { type: 'item'; unit: string; item: 'pill' | 'bandage' | 'antidote' | 'tag' | 'tagTrap'; target?: string; at?: Pt }
@@ -565,6 +572,8 @@ export type BattleEvent =
   | { t: 'slam'; unit: string; into: 'wall' | string; at: Pt }
   /** A kunai deflected (the damage it loses; caught and thrown back when it loses it all) or a comrade stepping in front of a blow meant for `for`. */
   | { t: 'deflect'; unit: string; less: number; caught: boolean }
+  /** The last stand: the choice made; a sacrifice's fate (lives or dies) once its blow is struck. */
+  | { t: 'lastStand'; unit: string; choice: 'sacrifice' | 'retreat'; lives?: boolean; mutilation?: string }
   | { t: 'interpose'; unit: string; for: string }
   | { t: 'weapon'; unit: string; armed: boolean; cost: 'free' | 'bonus' }
   | { t: 'act'; unit: string; act: 'dash' | 'disengage' | 'dodge' | 'focus' | 'crouch' | 'stand' | 'jump' | 'item' | 'stone' }

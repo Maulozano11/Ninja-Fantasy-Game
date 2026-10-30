@@ -21,6 +21,7 @@ import type {
   Cell,
   GaleZone,
   Hit,
+  Intent,
   Outcome,
   Pt,
   Rank,
@@ -32,7 +33,8 @@ import { homeTeam } from './types';
 import { cellBlocked, cellCenter, cellOf, clearRun, coverBetween, dampAt, dist, fullCoverBetween, getMap, gridFor, hideSpotAt, idx, inGrid, levelAtPt, lineOfSight, propRules, sameCell, segmentsCross, waterAtPt } from './map';
 import { canStop, freeSpot, occupancy, pathTo, pathTouchesDeep, reachable, stepCost } from './nav';
 import type { AttackPreview } from './combat';
-import { attackPreview, check, damage, heal, hostileAura, passivePerception, PERFECT_HIDE, reveal, revealOutOfHiding, rollDiceExpr, skillMod } from './combat';
+import { attackPreview, check, damage, heal, hostileAura, nextRng, passivePerception, PERFECT_HIDE, reveal, revealOutOfHiding, rollDiceExpr, skillMod } from './combat';
+import { mutilationFor, SACRIFICE_LIVES, SACRIFICE_POWER } from './lastStand';
 import { JUTSU, MIN_AIM, areaOf, enhanced, fanDice, fanned, fannedBy } from './jutsu';
 import type { JutsuSpec } from './jutsu';
 import { KUNAI, KUNAI_LONG, enemyNameOf, enemyUnit, handsFree, unitFrom, wielded } from './units';
@@ -63,7 +65,7 @@ import {
   warpStrike,
   openEye,
 } from './clans';
-import { reachTo, replanAgainst } from './intent';
+import { goalOf, ninjaOptions, reachTo, replanAgainst } from './intent';
 import { chargedFoe, chargeHolds, crackUnder, endCharge } from './charged';
 import { activeImbue, EARTH_CRIT, ELEMENTAL_SLASH, endImbue, IMBUE_DAMAGE, IMBUE_DICE, imbueBlocker, imbueHolds, slashBlocker, slashRange, startImbue, unitImbueElement, WIND_PUSH, type ImbueElement } from './imbue';
 
@@ -275,6 +277,8 @@ function dispatch(s: BattleState, a: Action, ev: BattleEvent[]): string | null {
       return openEye(s, u, ev);
     case 'jump':
       return doJump(u, ev);
+    case 'hook':
+      return doHook(s, u, a.at, ev);
     case 'draw':
       return doDraw(u, ev);
     case 'shove':
@@ -554,6 +558,7 @@ function weaponAttack(
     let amount = rollDiceExpr(s, w.dice, roll.crit) + mod + (ranged ? 0 : effectMods(a.effects).meleeDamage);
     if (surprise) amount += rollDiceExpr(s, '1d6', roll.crit);
     if (!ranged && hasEffect(a.effects, 'gates_open')) amount += rollDiceExpr(s, '1d8', roll.crit);
+    if (a.lastStand) amount *= SACRIFICE_POWER;
     const hit: Hit = { unit: t.id, amount: Math.max(1, amount), type: w.type, source: a.id, what: w.name, crit: roll.crit, knockout: o.knockout && !ranged, melee: !ranged, aimed: true, unseen: surprise, unblockable: edge };
     if (imbue) imbuedHit(s, a, hit, imbue);
     hits.push(hit);
@@ -1000,6 +1005,11 @@ function react(s: BattleState, unitId: string, take: boolean, ev: BattleEvent[])
     return null;
   }
   const t = s.units[p.reactor];
+  if (p.kind === 'lastStand') {
+    if (take) sacrifice(s, t, ev);
+    else retreat(s, t, ev);
+    return null;
+  }
   if (p.kind === 'evasion') {
     // Letting Evasion go puts the blow back in the queue: Kawarimi may be offered for it next.
     if (take && canEvade(s, t, p.hit)) {
@@ -1026,6 +1036,51 @@ function react(s: BattleState, unitId: string, take: boolean, ev: BattleEvent[])
   else landHit(s, t, p.hit, ev);
   applyHits(s, p.rest, p.after, ev, true);
   return null;
+}
+
+// --- the last stand (lastStand.ts) -----------------------------------------------------------
+
+/**
+ * The sacrifice: the ninja rises for one blow, its strongest (the plan the AI would make for it),
+ * free and at SACRIFICE_POWER; then the d100 of SACRIFICE_LIVES: it lives, stable at 0 HP, or dies
+ * for good. With nothing to strike it still spends itself.
+ */
+function sacrifice(s: BattleState, u: Unit, ev: BattleEvent[]): void {
+  ev.push({ t: 'lastStand', unit: u.id, choice: 'sacrifice' });
+  u.down = undefined;
+  u.hp = 1;
+  u.cond = {};
+  u.turn = { move: 0, action: true, bonus: true, reaction: false, moved: 0 };
+  u.lastStand = true;
+  // Its strongest blow at a foe it can reach from where it lies (it rises, it does not walk): the
+  // AI's options, but only the strikes (at 1 HP the AI would rather dodge or heal, and a last stand
+  // is neither).
+  const strike = (o: { intent: Intent }) => ['jutsu', 'melee', 'ranged'].includes(o.intent.kind) && !!o.intent.target && s.units[o.intent.target]?.team !== u.team && !!goalOf(s, u, o.intent)?.ready;
+  const plan = ninjaOptions(s, u).find(strike)?.intent;
+  if (plan?.target && s.units[plan.target]) {
+    const at = plan.at ?? { ...s.units[plan.target].pos };
+    if (plan.kind === 'jutsu') doJutsu(s, u, plan.what, at, plan.target, false, ev);
+    else if (plan.kind === 'melee' || plan.kind === 'ranged') doAttack(s, u, plan.target, plan.kind === 'ranged', false, ev);
+  }
+  u.lastStand = false;
+  // (a reaction the blow raised in a player's comrade is theirs to answer; the fate is settled now)
+  const lives = nextRng(s)() < SACRIFICE_LIVES;
+  u.hp = 0;
+  u.turn = { move: 0, action: false, bonus: false, reaction: false, moved: 0 };
+  u.cond = { prone: true };
+  u.down = lives ? 'stable' : 'dead';
+  ev.push({ t: 'down', unit: u.id, state: u.down });
+  ev.push({ t: 'lastStand', unit: u.id, choice: 'sacrifice', lives });
+}
+
+/** The retreat: the ninja leaves the battle alive at 1 HP, with the mutilation its last blow fixed. */
+function retreat(s: BattleState, u: Unit, ev: BattleEvent[]): void {
+  u.mutilation = mutilationFor(u.stats2.lastHitType);
+  u.down = 'fled';
+  u.hp = 1;
+  u.cond = {};
+  ev.push({ t: 'lastStand', unit: u.id, choice: 'retreat', mutilation: u.mutilation });
+  ev.push({ t: 'down', unit: u.id, state: 'fled' });
 }
 
 // --- jutsu ---------------------------------------------------------------------------------
@@ -1055,7 +1110,9 @@ function doJutsu(s: BattleState, u: Unit, id: string, atIn: Pt, targetId: string
   if (effectMods(u.effects).noJutsu) return 'chakraSealed';
   if (enh && !base.enhCost) return 'noEnhanced';
   const spec = enh ? enhanced(base) : base;
-  const { cost, woven } = jutsuCostParts(u, base, enh);
+  const { cost: fullCost, woven } = jutsuCostParts(u, base, enh);
+  // (the last stand's blow is free: lastStand.ts)
+  const cost = u.lastStand ? 0 : fullCost;
   if (u.chakra < cost) return 'noChakra';
   if (base.cast === 'bonus' ? !u.turn.bonus : !u.turn.action) return base.cast === 'bonus' ? 'noBonus' : 'noAction';
   // One charged hand at a time.
@@ -1311,7 +1368,7 @@ function jutsuHits(s: BattleState, u: Unit, spec: JutsuSpec, target: Unit | unde
   const fromCaster = spec.shape === 'selfCircle' || spec.shape === 'cone' || spec.shape === 'line';
   const victims = area ? unitsInArea(s, area, fromCaster ? [u.id] : [], fromCaster ? u.pos : at) : target ? [target] : [];
   const type = spec.dmgType ?? 'Force';
-  const amount = spec.dice ? rollDiceExpr(s, spec.dice) : 0;
+  const amount = (spec.dice ? rollDiceExpr(s, spec.dice) : 0) * (u.lastStand ? SACRIFICE_POWER : 1);
   // Areas dent the Kōton structures they reach (an illusion doesn't).
   if (area && spec.dmgType && type !== 'Psychic') hitStructuresIn(s, area, amount, ev);
   // A Ryusei's warp edge goes with its next attack roll: a jutsu that rolls to hit can't be blocked.
@@ -1556,11 +1613,37 @@ function doCrouch(s: BattleState, u: Unit, ev: BattleEvent[]): string | null {
 
 /** Ninja jump (bonus action): climbing and dropping a level cost little for the rest of the turn. */
 function doJump(u: Unit, ev: BattleEvent[]): string | null {
-  if (!u.turn.bonus) return 'noBonus';
-  u.turn.bonus = false;
+  // (a steel leg's jump costs no bonus action: rules/effects.ts freeJump)
+  const free = effectMods(u.effects).freeJump;
+  if (!free && !u.turn.bonus) return 'noBonus';
+  if (!free) u.turn.bonus = false;
   u.cond.ninjaJump = true;
   ev.push({ t: 'act', unit: u.id, act: 'jump' });
   ev.push({ t: 'condition', unit: u.id, cond: 'ninjaJump', on: true });
+  return null;
+}
+
+/** How far a wooden arm's grapple hook pulls its ninja (rules/effects.ts hook). */
+export const HOOK_RANGE = 6;
+
+/**
+ * The grapple hook of a wooden arm (the owner's M2, 2026-10-28): a bonus action pulls the ninja to a
+ * free spot within HOOK_RANGE in sight, no movement spent, no opportunity attack (it flies).
+ */
+function doHook(s: BattleState, u: Unit, at: Pt, ev: BattleEvent[]): string | null {
+  if (!effectMods(u.effects).hook) return 'noHook';
+  if (!u.turn.bonus) return 'noBonus';
+  if (u.cond.prone) return 'prone';
+  if (dist(u.pos, at) > HOOK_RANGE + 0.1) return 'outOfRange';
+  if (!lineOfSight(s, u.pos, at)) return 'noSight';
+  const c = cellOf(at);
+  if (cellBlocked(s, c) || waterAtPt(s, at) === 2 || !canStop(s, u, c)) return 'blocked';
+  u.turn.bonus = false;
+  const from = { ...u.pos };
+  u.pos = cellCenter(c);
+  if (u.pos.x !== from.x) u.facing = u.pos.x > from.x ? 1 : -1;
+  ev.push({ t: 'pushed', unit: u.id, from, to: { ...u.pos }, fall: 0, what: 'hook' });
+  afterMove(s, u, ev);
   return null;
 }
 

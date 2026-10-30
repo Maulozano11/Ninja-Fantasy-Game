@@ -58,7 +58,8 @@ export function skillMod(u: Unit, skill: string): number {
   return abilityMod(u.stats[ab]) + (u.skills.includes(skill) ? u.prof : 0) - exh + m.allRolls + (ab === 'dex' ? m.dexRolls : 0);
 }
 
-export const passivePerception = (u: Unit): number => 10 + skillMod(u, 'perception');
+/** Passive Perception: 10 + the skill; a missing eye (rules/effects.ts disadvPerception) takes 5 off it, as disadvantage does. */
+export const passivePerception = (u: Unit): number => 10 + skillMod(u, 'perception') - (effectMods(u.effects).disadvPerception ? 5 : 0);
 
 /** A hidden unit gives itself away (an attack, a loud jutsu). */
 export function reveal(u: Unit, ev: BattleEvent[]): void {
@@ -190,10 +191,16 @@ export function attackPreview(s: BattleState, a: Unit, t: Unit, kind: AttackKind
     const w = kind === 'ranged' ? KUNAI : wielded(a);
     const ab = kind === 'ranged' ? abilityMod(a.stats.dex) : w.finesse ? Math.max(abilityMod(a.stats.str), abilityMod(a.stats.dex)) : abilityMod(a.stats.str);
     mod = a.prof + ab + am.allRolls - 2 * (a.character?.exhaustion ?? 0) + (kind === 'ranged' ? am.dexRolls : 0);
-    inRange = kind === 'ranged' ? d <= KUNAI_LONG + 0.1 : d <= w.reach + 0.1 + (t.kind === 'hydra_head' ? 2.5 : 0) + (t.bulk ?? 0);
-    if (kind === 'ranged' && d > KUNAI.reach + 0.1) {
+    // A missing eye shortens the throw (rules/effects.ts rangedReachM); a missing arm fights a two-handed weapon badly.
+    const reachM = effectMods(a.effects).rangedReachM;
+    inRange = kind === 'ranged' ? d <= KUNAI_LONG + reachM + 0.1 : d <= w.reach + 0.1 + (t.kind === 'hydra_head' ? 2.5 : 0) + (t.bulk ?? 0);
+    if (kind === 'ranged' && d > KUNAI.reach + reachM + 0.1) {
       advs.push('disadvantage');
       reasons.push('longRange');
+    }
+    if (kind !== 'ranged' && w.twoHanded && effectMods(a.effects).noTwoHanded) {
+      advs.push('disadvantage');
+      reasons.push('oneArm');
     }
   }
   const cover = close ? 0 : coverBetween(s, a.pos, t.pos, [a.id, t.id]);
@@ -334,6 +341,8 @@ export function damage(s: BattleState, t: Unit, raw: number, type: DamageType, o
   }
   const attacker = o.source ? s.units[o.source] : undefined;
   let amount = adjustDamage(s, t, raw, type);
+  // (what a retreat from the last stand costs is fixed by the blow that brought it there: lastStand.ts)
+  t.stats2.lastHitType = type;
   // By the side it belongs to: a commanded enemy is still an enemy.
   if (attacker && homeTeam(attacker) === 'enemy') amount = Math.round(amount * attacker.power);
   if (o.crit) {
@@ -418,7 +427,14 @@ function deathSaveFailure(s: BattleState, t: Unit, n: number, ev: BattleEvent[])
 }
 
 function finishDying(s: BattleState, t: Unit, ev: BattleEvent[]): void {
-  // Only Legend has permanent death; in Story and Normal the ninja stays out until the end.
+  // A player's ninja losing its third death save makes its last stand (the owner, 2026-10-28, M1): a
+  // sacrifice or a retreat, chosen by the player (battle/lastStand.ts, engine.ts react). The AI's
+  // ninjas as before: only Legend has permanent death; in Story and Normal they stay out to the end.
+  if (t.team === 'party' && t.controller === 'player' && t.kind === 'ninja' && s.phase === 'combat') {
+    s.pending = { kind: 'lastStand', reactor: t.id };
+    ev.push({ t: 'reactionAsk', pending: s.pending });
+    return;
+  }
   t.down = s.difficulty === 'legend' ? 'dead' : 'stable';
   ev.push({ t: 'down', unit: t.id, state: t.down });
 }

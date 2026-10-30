@@ -328,6 +328,20 @@ ours until he says otherwise):
   target's deflection → each comrade in reach, nearest first. Letting one go moves to the next.
 - "Enemigo a la vista" (an enemy walking into sight or reach) is the opportunity attack the game
   has; a ranged one waits for his answer.
+
+### The last stand (the owner, 2026-10-28, M1; `src/battle/lastStand.ts`)
+
+His: *"cuando se pierden los 3 dados de salvación… se puede hacer el jutsu o golpe definitivo más
+fuerte con 300 % de fuerza y hay un 34 % de probabilidad de no morir; retirada: se retira de la
+batalla y sale vivo con una mutilación fija"*. In the battle: when a player's ninja loses its third
+death save in combat, the engine pauses (a `lastStand` prompt, like a reaction) and the player
+chooses **Sacrificio** or **Retirada** (keys S / R). The sacrifice rises the ninja for one blow,
+free and at ×3 (its strongest plan, as the AI would pick it: a jutsu or a strike at the nearest
+foe); then a 34 % roll leaves it stable at 0 HP or dead for good in every mode. The retreat takes
+it out of the battle (`fled`, 1 HP) with the mutilation its last blow fixed. The rules of the
+mutilations and the implants that replace them (the wooden arm's hook is a bonus action, the
+`hook` button; the steel leg's free jump; the transplanted eye's night sight) are in
+`docs/MISSION_DESIGN.md` "Difficulty, death and saves".
 - The log: "{a} desvía el kunai: {n} menos", "{a} atrapa el kunai y lo devuelve", "{a} se interpone
   por {b}"; floats "¡Desviado!", "¡Se interpone!".
 

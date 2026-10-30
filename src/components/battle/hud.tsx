@@ -41,6 +41,7 @@ import {
   Crown,
   PawPrint,
   Eye,
+  Anchor,
   Moon,
 } from 'lucide-react';
 import type { AiOrder, BattleState, Unit } from '../../battle/types';
@@ -93,6 +94,7 @@ export const ACTION_ICON: Record<string, React.FC<{ size?: number; className?: s
   trip: Hand,
   focus: Sparkles,
   eye: Eye,
+  hook: Anchor,
   draw: Swords,
   pill: Pill,
   bandage: Bandage,

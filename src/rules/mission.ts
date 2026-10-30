@@ -1,6 +1,7 @@
 // A party on the road: starting a mission, travelling legs and zones, and folding a battle's
 // result back into the party (Tension, falls, death saves, soldier pills, effect durations).
 
+import type { EffectId } from '../types/mission';
 import type { ShinobiCharacter } from '../types/shinobi';
 import type { Difficulty, PartyState, RuleEvent, StatusEffect, Supplies, SupplyId } from '../types/mission';
 import { effectiveMaxHp } from './derived';
@@ -110,8 +111,10 @@ export interface BattleMemberResult {
   /** Dropped to 0 HP during the battle (by a critical hit, for a Grave wound). */
   fell?: boolean;
   fellToCrit?: boolean;
-  /** Died during the battle (Legend only: failed death saves). */
+  /** Died during the battle (Legend; or a sacrifice in the last stand, any difficulty). */
   died?: boolean;
+  /** Retreated from the last stand (battle/lastStand.ts): the mutilation it left, a permanent effect. */
+  mutilation?: EffectId;
   /** Effects as the battle ended, for battles that track them; they replace the ninja's own. */
   effects?: StatusEffect[];
   /** Tension gained in the battle itself (failed saves against fear, such as the hydra's roar). */
@@ -225,6 +228,7 @@ export function applyBattleResult(party: PartyState, result: BattleResult, battl
       };
 
       if (r.fell) step(giveEffect(ch, 'fall_aftermath', 'Fell in battle', { campNo }));
+      if (r.mutilation && !hasEffect(ch.effects, r.mutilation)) step(giveEffect(ch, r.mutilation, 'Retreated from the last stand', { campNo }));
       if (r.fellToCrit) step(giveEffect(ch, 'grave_wound', 'Dropped by a critical hit', { campNo }));
 
       const fromCrits = Math.max(-2, Math.min(2, (r.critsTaken ?? 0) - (r.critsLanded ?? 0)));

@@ -354,6 +354,7 @@ function legToLacedShin(g: DrawCtx, s: Side, piece: PaintedPiece, at: Vec, deg: 
   const cos = Math.cos(rad);
   const sin = Math.sin(rad);
   const spans = piece.rows.map((r) => [r.search(/[^.]/), r.length - 1 - [...r].reverse().join('').search(/[^.]/)]);
+  const onShin = kneeSide(g, s);
   for (const d of [legDepth(s, 'body'), legDepth(s, 'cloth')]) {
     const L = g.L(d);
     for (let i = 0; i < GRID * GRID; i++) {
@@ -363,11 +364,14 @@ function legToLacedShin(g: DrawCtx, s: Side, piece: PaintedPiece, at: Vec, deg: 
       const kx = x + 0.5 - knee.x * RES;
       const ky = y + 0.5 - knee.y * RES;
       const below = L.part[i] === shin && kx * dir.x + ky * dir.y > 0;
-      // (on a moving leg bent at the knee our shin stays whole within the round of the knee: on the bulky
-      // body, whose calf is wider than his laces, a pocket opened at the knee's outside between the thigh's
-      // round and the laces; a still leg keeps to his laces there too, as at rest)
+      // (on a moving leg bent at the knee our shin stays whole within the round of the knee on the thigh's
+      // side of the joint, under the thigh's round: on the bulky body, whose calf is wider than his laces, a
+      // pocket opened at the knee's outside between the thigh's round and the laces; on the shin's side it
+      // keeps to his laces as below the knee, so no calf shows beside them when the knee bends (the owner,
+      // 2026-10-30, on the general's run and walk: "la rodilla sale de la rodillera"); a still leg keeps to
+      // his laces there too, as at rest)
       const inRound = Math.hypot(kx, ky) <= round;
-      if (moving && bent && inRound) continue;
+      if (moving && bent && inRound && !onShin(x, y)) continue;
       if (!below && !inRound) continue;
       const row = Math.floor(-(x - ax) * sin + (y - ay) * cos + piece.pivot[1] + 0.5);
       const col = Math.floor((x - ax) * cos + (y - ay) * sin + piece.pivot[0] + 0.5);

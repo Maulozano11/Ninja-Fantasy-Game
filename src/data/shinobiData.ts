@@ -1839,8 +1839,8 @@ export const LEGENDARY_PRESETS: { name: string; tag: string; nameEs?: string; ta
       jutsuAttackBonus: 7,
       appearance: spriteLook({
         skin: HOPLITE_SKIN,
-        faceShape: 'founder',
-        eyeShape: 'standard',
+        faceShape: 'hoplite',
+        eyeShape: 'hoplite',
         eyeColor: HOPLITE_IRIS,
         slots: {
           hair: it('hair_solen_mane'),
@@ -1906,8 +1906,8 @@ export const LEGENDARY_PRESETS: { name: string; tag: string; nameEs?: string; ta
       jutsuAttackBonus: 7,
       appearance: spriteLook({
         skin: HOPLITE_SKIN,
-        faceShape: 'founder',
-        eyeShape: 'standard',
+        faceShape: 'hoplite',
+        eyeShape: 'hoplite',
         eyeColor: HOPLITE_IRIS,
         slots: {
           hair: it('hair_solen_mane'),

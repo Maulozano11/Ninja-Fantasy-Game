@@ -30,7 +30,7 @@ function slotItem(slot: SlotId, body: BodyType, face: FaceShape): ItemChoice | u
 export function randomAppearance(): SpriteAppearance {
   const body = pick<BodyType>(['male', 'female', 'bulky']);
   // (his bronze warrior's and his Roman general's faces and eyes are a man's: only on the male bodies)
-  const faceShape = pick<FaceShape>(['tapered', 'tapered', 'soft', 'square', 'valiant', 'night', 'founder', 'fine', 'aurelia', 'roman', ...(isFemaleBody(body) ? [] : (['general'] as FaceShape[]))]);
+  const faceShape = pick<FaceShape>(['tapered', 'tapered', 'soft', 'square', 'valiant', 'night', 'founder', 'fine', 'aurelia', 'roman', ...(isFemaleBody(body) ? [] : (['hoplite', 'general'] as FaceShape[]))]);
   const slots: SpriteAppearance['slots'] = {};
   const put = (slot: SlotId, p: number) => {
     if (!chance(p)) return;
@@ -57,7 +57,7 @@ export function randomAppearance(): SpriteAppearance {
     version: 1,
     body,
     skin: pick(SKIN_TONES.slice(0, 9)),
-    eyeShape: pick<EyeShape>(['standard', 'sharp', 'round', 'calm', 'fierce', 'bright', 'piercing', 'valiant', 'night', 'dawn', 'keen', 'roman', ...(isFemaleBody(body) ? [] : (['general'] as EyeShape[]))]),
+    eyeShape: pick<EyeShape>(['standard', 'sharp', 'round', 'calm', 'fierce', 'bright', 'piercing', 'valiant', 'night', 'dawn', 'keen', 'roman', ...(isFemaleBody(body) ? [] : (['hoplite', 'general'] as EyeShape[]))]),
     faceShape,
     cast: { style: pick(CAST_STYLES) },
     eyeColor: pick(EYE_COLORS),

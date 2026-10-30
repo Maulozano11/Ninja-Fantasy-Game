@@ -27,10 +27,9 @@ bronze-pauldrons-from-ref.py).
   - His face and eyes are the 'hoplite' face and eye shapes (body.ts), his eyes cell by cell with the lid
     states the game needs (eye_states).
   - HOPLITE_FIGURE is the bronze set at male idle frame 0 as these pieces draw it with the bronze cuirass,
-    clasp and pauldrons; HOPLITE_R_FIGURE the leather set, his repaint; both without his head, hair, braid
-    and diadem (the owner, 2026-10-29: the bronze warrior is Solen, who wears Solen's head; his mane and
-    diadem are lifted onto it by solen-mane-from-ref.py); HOPLITE_JOINTS where his figure stands
-    (hopliteRig.ts).
+    clasp and pauldrons; HOPLITE_R_FIGURE the leather set, his repaint, his head included (the owner,
+    2026-10-30: "simplemente agarra mi repintado y usalo pixel por pixel"); HOPLITE_JOINTS where his figure
+    stands (hopliteRig.ts).
 
 The same picture always gives the same bytes. Run from the repository root:
 
@@ -235,27 +234,14 @@ def build(col, on, pieces, who):
     return {n: tuple(v) for n, v in out.items()}, own
 
 
-# The pieces the idle figures leave out: his head and what hangs from it (Solen's head wears them lifted).
-HEAD_PIECES = HEAD + ('braid',)
-
-
-def bronze(rep, pieces, own=None):
-    """The bronze set at rest with these pieces: (colours, which piece each pixel is), back to front. With
-    `own` (which piece each pixel of his repaint is), without his head: neither its pieces nor the pixels
-    under them, his face continued to his neck included (Solen's head and neck stand there now)."""
+def bronze(rep, pieces):
+    """The bronze set at rest with these pieces: (colours, which piece each pixel is), back to front."""
     img = np.zeros((256, 256, 3), np.int32)
     who = np.full((256, 256), '', object)
     for _, n in R.GAME_ORDER:
-        if own is not None and n in HEAD_PIECES:
-            continue
         m, c, _ = rep[n] if n in SHARED else pieces[n]
         img[m] = c[m]
         who[m] = n
-    if own is not None:
-        under = np.isin(own, HEAD_PIECES)
-        for n in HEAD_PIECES:
-            under |= rep[n][0]
-        who[under] = ''
     return img, who
 
 
@@ -381,9 +367,9 @@ def main(out, study=None):
         x, y = R.fine_joint(k)
         t.append(f'  {k}: [{x:.4f}, {y:.4f}],')
     t += ['} as const;', '']
-    img, bwho = bronze(rep, pieces, own)
-    t += figure_ts('HOPLITE_FIGURE', 'The bronze set at male idle frame 0 below his head, as the game draws its preset: the first row\'s first cell at HOPLITE_FIGURE_AT.', img, bwho != '')
-    t += figure_ts('HOPLITE_R_FIGURE', 'His repaint below his head, the leather set at male idle frame 0 as the game draws its preset: the first row\'s first cell at HOPLITE_R_FIGURE_AT.', col, on & ~np.isin(own, HEAD_PIECES))
+    img, bwho = bronze(rep, pieces)
+    t += figure_ts('HOPLITE_FIGURE', 'The bronze set whole at male idle frame 0, as the game draws its preset: the first row\'s first cell at HOPLITE_FIGURE_AT.', img, bwho != '')
+    t += figure_ts('HOPLITE_R_FIGURE', 'His repaint whole, the leather set at male idle frame 0 as the game draws its preset: the first row\'s first cell at HOPLITE_R_FIGURE_AT.', col, on)
     R.write(out, '\n'.join(t))
     if study:
         names = sorted(set(own[on]))

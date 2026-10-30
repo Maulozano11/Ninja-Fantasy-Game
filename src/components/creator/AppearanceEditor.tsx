@@ -130,6 +130,7 @@ const FACE_SHAPES: { id: FaceShape; label: string; sub: string }[] = [
   { id: 'fine', label: 'Fine', sub: "Lyra's face" },
   { id: 'aurelia', label: 'Serene', sub: "Aurelia's face" },
   { id: 'roman', label: 'Roman', sub: "The Roman's face" },
+  { id: 'hoplite', label: 'Bronze warrior', sub: "The bronze warrior's face" },
   { id: 'general', label: 'Roman general', sub: "The Roman general's face" },
 ];
 
@@ -156,6 +157,7 @@ const EYE_SHAPES: { id: EyeShape; label: string; sub?: string }[] = [
   { id: 'dawn', label: 'Dawn', sub: "Aurelia's eyes" },
   { id: 'keen', label: 'Keen', sub: "Lyra's eyes" },
   { id: 'roman', label: 'Roman', sub: "The Roman's eyes" },
+  { id: 'hoplite', label: 'Bronze warrior', sub: "The bronze warrior's eyes" },
   { id: 'general', label: 'Roman general', sub: "The Roman general's eyes" },
 ];
 
@@ -400,7 +402,7 @@ export const AppearanceEditor: React.FC<{
           <div>
             <SectionLabel>Face Shape</SectionLabel>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              {FACE_SHAPES.filter((f) => f.id !== 'general' || !isFemaleBody(look.body)).map((f) => (
+              {FACE_SHAPES.filter((f) => (f.id !== 'hoplite' && f.id !== 'general') || !isFemaleBody(look.body)).map((f) => (
                 <OptionCard
                   key={f.id}
                   selected={(look.faceShape || 'tapered') === f.id}
@@ -423,7 +425,7 @@ export const AppearanceEditor: React.FC<{
             <div>
               <SectionLabel>Eye Shape</SectionLabel>
               <div className="grid grid-cols-4 gap-2">
-                {EYE_SHAPES.filter((e) => e.id !== 'general' || !isFemaleBody(look.body)).map((e) => (
+                {EYE_SHAPES.filter((e) => (e.id !== 'hoplite' && e.id !== 'general') || !isFemaleBody(look.body)).map((e) => (
                   <OptionCard
                     key={e.id}
                     selected={look.eyeShape === e.id}

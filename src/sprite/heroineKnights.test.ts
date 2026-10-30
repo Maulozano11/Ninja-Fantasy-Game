@@ -7,11 +7,15 @@ import { describe, it } from 'node:test';
 import { LEGENDARY_PRESETS } from '../data/shinobiData';
 import { fitsBody, getItem } from './catalog';
 import { renderSprite } from './compose';
+import { type DrawCtx } from './ctx';
+import { heroineGrip } from './grip';
 import { HK_SKIN } from './heroineKnightsJointsArt';
+import { hkRestRig } from './heroineKnightsRig';
 import { HK_REF } from './heroineKnightsRefPixels';
 import { HK_LEGS_KIND } from './items/heroineKnightLegsArt';
+import { HK_SWORD_GUARD, HK_SWORD_REST } from './items/heroineKnightSwordArt';
 import { skinTone } from './painted';
-import { GRID, partIndex } from './raster';
+import { GRID, partIndex, RES } from './raster';
 import { frameCount, rigPoseFor } from './rig';
 import { MOVE_POSES, SPRITE_POSES, type SpriteAppearance, type SpritePose } from './types';
 
@@ -153,5 +157,18 @@ describe("the owner's heroine knights", () => {
       else if (hex(a.rgba, i) !== hex(b.rgba, i)) changed++;
     }
     assert.ok(changed > 150, `${changed} pixels recoloured`);
+  });
+  it('at rest her gauntlet holds the longsword unbent, on his grip pixel (grip.ts heroineGrip)', () => {
+    for (const set of SETS) {
+      const look = preset(`preset_heroine_${set}`);
+      const rig = hkRestRig(look);
+      const g = { rig, look, has: (slot: string, id: string) => (look.slots as Record<string, { id: string } | undefined>)[slot]?.id === id } as unknown as DrawCtx;
+      const hold = heroineGrip(g);
+      assert.ok(hold, `${set}: no grip`);
+      assert.ok(!hold.mirror && Math.abs(hold.bend) < 0.01, `${set}: at rest the wrist bends ${hold.bend} (mirror ${hold.mirror})`);
+      const [x, y] = [Math.floor(hold.at.x * RES), Math.floor(hold.at.y * RES)];
+      const his = [HK_SWORD_REST.HK_SWORD_GUARD[0] + HK_SWORD_GUARD.pivot[0], HK_SWORD_REST.HK_SWORD_GUARD[1] + HK_SWORD_GUARD.pivot[1]];
+      assert.deepEqual([x, y], his, `${set}: the grip is at ${x},${y}, his at ${his}`);
+    }
   });
 });

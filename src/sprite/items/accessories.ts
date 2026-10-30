@@ -22,7 +22,7 @@ import { LYRA_SWORD_BLADE, LYRA_SWORD_GUARD } from './lyraSwordArt';
 import { drawLyraRapier } from './lyraSword';
 import { drawHeroineSword, HK_SWORD_GEM, HK_SWORD_HILT, HK_SWORD_PARTS, HK_SWORD_STEEL, heroineSwordPreview } from './heroineKnightSword';
 import { drawOwner, ownerFrame, slotTint } from '../ownerFrames';
-import { gripPoint, handsBusy, handsLimp, handsReleased, paintedGrip, poleAngle, swordAngle, throwsKunai } from '../grip';
+import { gripPoint, handsBusy, handsLimp, handsReleased, heroineGrip, paintedGrip, poleAngle, swordAngle, throwsKunai } from '../grip';
 import type { Rig } from '../rig';
 import { addSeam, clothSeam } from '../seams';
 
@@ -577,7 +577,8 @@ export const HELD_ITEMS: ItemDef[] = [
         drawHeroineSword(g, 'backGear', add(backGrip(g, LYRA_STOW_DEG), scale(v(Math.cos(a), Math.sin(a)), HK_STOW_SLIDE)), backAngle(g, LYRA_STOW_DEG), colors, parts);
       }
       else if (handsLimp(g)) drawHeroineSword(g, 'nearArm.held', droppedGrip(g, 0.7), -86, colors, parts);
-      else if (!handsReleased(g)) drawHeroineSword(g, 'nearArm.held', gripPoint(g), swordAngle(g), colors, parts);
+      // In her gauntlet the grip goes through it where he drew it (grip.ts heroineGrip).
+      else if (!handsReleased(g)) drawHeroineSword(g, 'nearArm.held', heroineGrip(g)?.at ?? gripPoint(g), swordAngle(g), colors, parts);
     },
   },
   {

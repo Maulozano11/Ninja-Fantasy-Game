@@ -10,7 +10,9 @@ import { KATANA_V2 } from './items/katanaV2Art';
 import { NIGHT_GLOVE_N } from './items/nightBootsGlovesArt';
 import { add, norm, RES, scale, sub, v, Vec } from './raster';
 import { LYRA_RAPIER } from './items/lyraSwordArt';
-import { HK_SWORD_BLADE } from './items/heroineKnightSwordArt';
+import { HK_SWORD_BLADE, HK_SWORD_GUARD, HK_SWORD_REST } from './items/heroineKnightSwordArt';
+import { hkRestRig } from './heroineKnightsRig';
+import { segAngle } from './painted';
 import { drawRig, THROW_RELEASE_FRAME } from './rig';
 import type { Rig } from './rig';
 import { isFemaleBody, type BodyType, type SpriteAppearance } from './types';
@@ -35,7 +37,7 @@ const PIERCE_POLE = [-26, -4, -1, -1, -20];
 
 /** Screen angle of a hand-held blade per pose/frame (degrees, 0 = facing right, + = clockwise/down). */
 export function swordAngle(g: DrawCtx): number {
-  return paintedGrip(g)?.sword ?? poseSwordAngle(g);
+  return paintedGrip(g)?.sword ?? heroineGrip(g)?.sword ?? poseSwordAngle(g);
 }
 
 /** The pose's own blade angle (swordAngle without the owner's fist round his Katana v2). */
@@ -129,6 +131,56 @@ export function paintedGrip(g: DrawCtx): PaintedGrip | null {
   const d = sub(r.handN, r.wristN);
   const at = Math.abs(bend) < 0.5 ? r.handN : add(r.wristN, v(d.x * c - d.y * s, d.x * s + d.y * c));
   return { mirror, fist, sword: Math.abs(full) < 0.5 || bend === full ? want : fist + (mirror ? -rel : rel), at };
+}
+
+/**
+ * The heroine knights' longsword in her near gauntlet (items/heroineKnights.ts drawArms, items/accessories.ts):
+ * the owner drew the grip through her fist at a fixed angle to the forearm (HK_SWORD_BLADE.angle less the
+ * forearm's angle at rest), so, as paintedGrip does for his Katana v2, the gauntlet turns with the forearm (or
+ * its mirror image where the blade is carried the other way) and the wrist bends it toward the pose's blade
+ * angle: as far as the blade needs in a strike, at most CARRY_BEND otherwise, the blade then going where the
+ * fist points. `at` is his grip point (the sword's pivot, HK_SWORD_REST + pivot) carried round the wrist with
+ * the fist: at rest it is his pixel, so the frame stays his.
+ */
+export interface HeroineGrip {
+  /** Her gauntlet drawn mirrored (the grip crossing the forearm the other way). */
+  mirror: boolean;
+  /** How far the wrist bends the gauntlet off the forearm's line (degrees, + clockwise). */
+  bend: number;
+  /** Where the gauntlet points, elbow to wrist line turned by the bend (degrees, as swordAngle). */
+  fist: number;
+  /** The blade's angle. */
+  sword: number;
+  /** The grip point where the sword is held (design units). */
+  at: Vec;
+}
+
+export function heroineGrip(g: DrawCtx): HeroineGrip | null {
+  if (!g.has('held', 'held_heroine_longsword')) return null;
+  if (throwsKunai(g) || handsBusy(g) || handsLimp(g) || handsReleased(g)) return null;
+  const r = g.rig;
+  const h = hkRestRig(g.look);
+  const fo = segAngle(r.elbowN, r.wristN);
+  const rest = segAngle(h.elbowN, h.wristN);
+  const rel = HK_SWORD_BLADE.angle - rest;
+  const want = poseSwordAngle(g);
+  const bendOf = (m: boolean) => wrap(want - (fo + (m ? -rel : rel)));
+  const mirror = Math.abs(bendOf(true)) < Math.abs(bendOf(false));
+  const full = bendOf(mirror);
+  const bend = STRIKES.has(r.pose) || r.aim !== undefined ? full : Math.max(-CARRY_BEND, Math.min(CARRY_BEND, full));
+  const fist = fo + bend;
+  // His grip point, a hundredth of a pixel in from its pixel's corner, as the gauntlet carries it: along and
+  // across the forearm at rest (across the other way mirrored), laid along where the fist points now.
+  const grip = v((HK_SWORD_REST.HK_SWORD_GUARD[0] + HK_SWORD_GUARD.pivot[0] + 0.01) / RES, (HK_SWORD_REST.HK_SWORD_GUARD[1] + HK_SWORD_GUARD.pivot[1] + 0.01) / RES);
+  const d = sub(grip, h.wristN);
+  const c0 = Math.cos((rest * Math.PI) / 180);
+  const s0 = Math.sin((rest * Math.PI) / 180);
+  const along = d.x * c0 + d.y * s0;
+  const across = (-d.x * s0 + d.y * c0) * (mirror ? -1 : 1);
+  const c1 = Math.cos((fist * Math.PI) / 180);
+  const s1 = Math.sin((fist * Math.PI) / 180);
+  const at = add(r.wristN, v(along * c1 - across * s1, along * s1 + across * c1));
+  return { mirror, bend, fist, sword: Math.abs(full) < 0.5 || bend === full ? want : fist + (mirror ? -rel : rel), at };
 }
 
 /** Polearm angle: upright at rest, thrust forward in attacks. */

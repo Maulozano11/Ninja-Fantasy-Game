@@ -28,7 +28,7 @@ import heroine_knights_ref as R  # noqa: E402
 
 # The blade's foot (our frame): the guard is what lies before this line across the blade (x + y <= GUARD_CUT),
 # the blade what lies past it.
-GUARD_CUT = 296
+GUARD_CUT = R.BLADE_FOOT
 
 
 def blade_angle(m, col):

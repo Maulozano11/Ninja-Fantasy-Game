@@ -1043,6 +1043,106 @@ def gems(fig, rgb, lab):
             rgb[y, x] = a[ey, ex]
 
 
+
+# The blade's foot in our frame: the guard is what lies before this line across the blade (x + y <= BLADE_FOOT),
+# the blade what lies past it (hk-sword-from-ref.py cuts the two parts there).
+BLADE_FOOT = 296
+
+
+def straight_blade(rgb, lab):
+    """His blade past the foot redrawn as a straight band: the owner (2026-10-30), "la espada se hace más
+    angosta y luego más ancha, debería ser casi recta; lo que no es recto es para darle una imagen de más
+    calidad en diagonal". The band runs at the angle of his blade through its middle, with the width his
+    blade has over most of its length, tapering to his point over the last pixels; its pixels are his colours
+    by stripe (the colour his blade has most often at that distance from the middle: his line on both edges,
+    his light along the upper edge, his dark steel below), so the diagonal steps evenly. A pixel of his
+    blade the band leaves goes to the part beside it (its nearest pixel), as the blade's shadow would.
+    In place on (rgb, lab)."""
+    yy, xx = np.mgrid[0:GRID, 0:GRID]
+    B = (lab == 'blade') & (xx + yy > BLADE_FOOT)
+    if B.sum() < 20:
+        return
+    ys, xs = np.nonzero(B)
+    k, b = np.polyfit(ys, xs, 1)
+    u = np.array([k, 1.0]) / np.hypot(k, 1.0)  # (x, y) along the blade, foot to point
+    n = np.array([-u[1], u[0]])  # across it, toward the upper right
+    cx, cy = xs.mean() + 0.5, ys.mean() + 0.5
+    px, py = xs + 0.5 - cx, ys + 0.5 - cy
+    tt = px * u[0] + py * u[1]
+    oo = px * n[0] + py * n[1]
+    t0, t1 = tt.min(), tt.max()
+    L = t1 - t0
+    # the width over the blade's middle 60%
+    mid = (tt > t0 + 0.2 * L) & (tt < t1 - 0.2 * L)
+    halves = []
+    for t in np.unique(np.round(tt[mid])):
+        sel = mid & (np.abs(tt - t) < 0.5)
+        if sel.any():
+            halves.append((oo[sel].max() - oo[sel].min()) / 2 + 0.5)
+    h = float(np.median(halves))
+    # his colours by stripe (distance from the middle), the line left out but at the edges
+    stripes = {}
+    for o, y, x in zip(oo, ys, xs):
+        if is_line(rgb[y, x]):
+            continue
+        stripes.setdefault(int(round(o)), []).append(tuple(int(v) for v in rgb[y, x]))
+    stripe = {i: max(sorted(set(c)), key=c.count) for i, c in stripes.items()}
+    idx = sorted(stripe)
+    taper = 2 * h + 2
+    line = his_line()
+    new = np.zeros((GRID, GRID), bool)
+    newc = {}
+    env_y, env_x = np.nonzero((xx + yy > BLADE_FOOT) & (np.abs((xx + 0.5 - cx) * n[0] + (yy + 0.5 - cy) * n[1]) <= h + 1) & (((xx + 0.5 - cx) * u[0] + (yy + 0.5 - cy) * u[1]) >= t0 - 0.5) & (((xx + 0.5 - cx) * u[0] + (yy + 0.5 - cy) * u[1]) <= t1 + 0.5))
+    for y, x in zip(env_y, env_x):
+        qx, qy = x + 0.5 - cx, y + 0.5 - cy
+        t = qx * u[0] + qy * u[1]
+        o = qx * n[0] + qy * n[1]
+        hw = h if t <= t1 - taper else max(0.5, h * (t1 - t) / taper)
+        if abs(o) > hw:
+            continue
+        new[y, x] = True
+        if abs(o) > hw - 1.0 or t > t1 - 1.0:
+            newc[(y, x)] = line
+        else:
+            i = int(round(o))
+            j = min(idx, key=lambda s: abs(s - i))
+            newc[(y, x)] = np.array(stripe[j])
+    # pixels of his blade the band leaves: the part beside them (but at the blade's foot, within three
+    # pixels of the cut, his own stay: they join the blade to the guard)
+    H, W = lab.shape
+    for y, x in zip(ys, xs):
+        if new[y, x] or x + y <= BLADE_FOOT + 3:
+            continue
+        best = None
+        # (only a pixel touching the part: a cell handed to a part it does not touch would be a loose scrap of it)
+        for r in range(1, 2):
+            for dy in range(-r, r + 1):
+                for dx in range(-r, r + 1):
+                    if max(abs(dy), abs(dx)) != r:
+                        continue
+                    q = (y + dy, x + dx)
+                    if 0 <= q[0] < H and 0 <= q[1] < W and lab[q] not in ('', 'blade') and not new[q] and not is_line(rgb[q]):
+                        best = q
+                        break
+                if best:
+                    break
+            if best:
+                break
+        if best:
+            lab[y, x] = lab[best]
+            rgb[y, x] = rgb[best]
+        else:
+            lab[y, x] = ''
+            rgb[y, x] = 0
+    # (the band takes the ground, the old blade and the parts drawn behind the blade; never her fist, her
+    # sleeve or anything drawn in front of it)
+    rank = {n: i for i, n in enumerate(DRAWN)}
+    for (y, x), c in newc.items():
+        if lab[y, x] in ('', 'blade') or (lab[y, x] in rank and rank[lab[y, x]] < rank['blade']):
+            lab[y, x] = 'blade'
+            rgb[y, x] = c
+
+
 _GAME = {}
 
 
@@ -1052,6 +1152,8 @@ def game(fig):
     the shared pieces' pixels (shared()), the same in all three."""
     if fig not in _GAME:
         rgb, lab = clean(fig, *composed(fig))
+        if fig == SHARED_FROM:
+            straight_blade(rgb, lab)
         # a scrap of a set's part of at most four pixels left on its own beside his hair in front (the shrink
         # can part it from its piece) is the hair's: it would be a loose piece under any other head
         own = (lab != '') & ~np.isin(lab, SHARED_PARTS)
@@ -1070,6 +1172,37 @@ def game(fig):
             srgb, slab = shared()
             m = np.isin(lab, SHARED_PARTS) & (slab != '')
             rgb[m] = srgb[m]
+            # her sword is the paladin's straightened blade (straight_blade()): a cell of the old blade the band
+            # leaves goes to the part beside it, a cell of the band not yet hers is the blade's
+            yy, xx = np.mgrid[0:GRID, 0:GRID]
+            past = xx + yy > BLADE_FOOT
+            old_only = (lab == 'blade') & past & (slab != 'blade')
+            for y, x in zip(*np.nonzero(old_only)):
+                best = None
+                for r in range(1, 2):
+                    for dy in range(-r, r + 1):
+                        for dx in range(-r, r + 1):
+                            if max(abs(dy), abs(dx)) != r:
+                                continue
+                            q = (y + dy, x + dx)
+                            if 0 <= q[0] < GRID and 0 <= q[1] < GRID and lab[q] not in ('', 'blade') and not old_only[q] and not is_line(rgb[q]):
+                                best = q
+                                break
+                        if best:
+                            break
+                    if best:
+                        break
+                if best:
+                    lab[y, x] = lab[best]
+                    rgb[y, x] = rgb[best]
+                else:
+                    lab[y, x] = ''
+                    rgb[y, x] = 0
+            rank = {n: i for i, n in enumerate(DRAWN)}
+            behind = np.vectorize(lambda n: n == '' or (n in rank and rank[n] < rank['blade']))(lab)
+            band = (slab == 'blade') & past & (lab != 'blade') & behind
+            lab[band] = 'blade'
+            rgb[band] = srgb[band]
         _GAME[fig] = (rgb, lab)
     rgb, lab = _GAME[fig]
     return rgb.copy(), lab.copy()

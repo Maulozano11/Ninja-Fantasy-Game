@@ -17,6 +17,8 @@ import { retintHex } from '../color';
 import { armDepth, armJoints, type Depth, DrawCtx, ItemDef, legDepth, legJoints, Side } from '../ctx';
 import { type PaintedPiece, segAngle, skinTone, stampBent, stampLeaning, stampPiece } from '../painted';
 import { F_NO_OUTLINE, F_NO_TEXTURE, GRID, partIndex, PartId, RES, v, Vec } from '../raster';
+import { stampTemplate, type TemplatePalette } from '../rotsprite';
+import { heroineGrip } from '../grip';
 import { drawRig, GROUND, type Rig } from '../rig';
 import { HK_BODIES, hkRestRig, type HkSet } from '../heroineKnightsRig';
 import { HK_SKIN } from '../heroineKnightsJointsArt';
@@ -141,11 +143,12 @@ function pauldronAngle(g: DrawCtx, s: Side, p: PaintedPiece): number {
 }
 
 /** A shoulder piece on the shoulder, pinned to where he drew it at rest. */
-function onShoulder(g: DrawCtx, m: Module, prefix: string, set: HkSet, part: string, s: Side, depth: Depth, color: (ch: string, hex: string) => string, line: (hex: string) => boolean): void {
-  const p = piece(m, set, part);
+function onShoulder(g: DrawCtx, m: Module, prefix: string, set: HkSet, part: string, s: Side, depth: Depth, color: (ch: string, hex: string) => string, line: (hex: string) => boolean, rowsFrom = 0): void {
+  let p = piece(m, set, part);
   if (!p) return;
+  if (rowsFrom > 0) p = { ...p, rows: p.rows.map((r, i) => (i < rowsFrom ? '.'.repeat(r.length) : r)) };
   const home = armJoints(hkRestRig(g.look), s);
-  stampPiece(g, depth, pinned(p, rest(m, prefix, set, part), home.shoulder, `${prefix}|${set}|${part}`), armJoints(g.rig, s).shoulder, pauldronAngle(g, s, p), `upperArm${s}` as PartId, color, line);
+  stampPiece(g, depth, pinned(p, rest(m, prefix, set, part), home.shoulder, `${prefix}|${set}|${part}|${rowsFrom}`), armJoints(g.rig, s).shoulder, pauldronAngle(g, s, p), `upperArm${s}` as PartId, color, line);
 }
 
 function armorSlots(set: HkSet, c: string[]): Slot[] {
@@ -172,8 +175,15 @@ function drawArmor(g: DrawCtx, set: HkSet, c: string[]): void {
   torsoOff(g);
   onShoulder(g, M, 'HK_ARMOR', set, 'PAULD_F', 'F', 'farArm.armor', color, line);
   onTorso(g, M, 'HK_ARMOR', set, 'TORSO', 'neck', 'torso.armor', color, line, 'torso');
-  onShoulder(g, M, 'HK_ARMOR', set, 'PAULD_N', 'N', 'nearArm.armor', color, line);
+  // The dragon's head on her near shoulder rises to where her long hair falls: he drew the hair over it, so
+  // the whole head goes under the hair (before 'hairFront'), and its lower rows, which he drew over the
+  // sleeve, once more on the arm's own layer; the other pauldrons stay low, on the arm's layer only.
+  if (set === 'dragon') onShoulder(g, M, 'HK_ARMOR', set, 'PAULD_N', 'N', 'torso.over', color, line);
+  onShoulder(g, M, 'HK_ARMOR', set, 'PAULD_N', 'N', 'nearArm.armor', color, line, set === 'dragon' ? DRAGON_HEAD_ROWS : 0);
 }
+
+/** The rows of the dragon-head pauldron that are the head's crest, under her hair; below them it is over the sleeve. */
+const DRAGON_HEAD_ROWS = 9;
 
 // ---------------------------------------------------------------------------
 // The arms
@@ -225,7 +235,18 @@ function drawArms(g: DrawCtx, set: HkSet, c: string[]): void {
       const bend = U ? elbowBend(g, s, U, F) : 0;
       stampBent(g, armDepth(s, 'armor'), pinned(F, rest(M, 'HK_ARMS', set, `FORE_${s}`), h.elbow, `arms|${set}|F${s}`), j.elbow, segAngle(j.elbow, j.wrist) + (F.angle - segAngle(h.elbow, h.wrist)), fore, [{ about: j.elbow, r: ELBOW_R, bend }], line, color);
     }
-    if (H) stampPiece(g, armDepth(s, 'armor'), pinned(H, rest(M, 'HK_ARMS', set, `HAND_${s}`), h.wrist, `arms|${set}|H${s}`), j.wrist, segAngle(j.elbow, j.wrist) + (H.angle - segAngle(h.elbow, h.wrist)), hand, color, line);
+    if (H) {
+      const P = pinned(H, rest(M, 'HK_ARMS', set, `HAND_${s}`), h.wrist, `arms|${set}|H${s}`);
+      const hold = s === 'N' ? heroineGrip(g) : null;
+      if (hold) {
+        // Round her longsword the gauntlet turns as grip.ts heroineGrip says: with the forearm, the wrist bent
+        // toward the blade, mirrored where the grip crosses the other way (at rest, unbent, his pixels).
+        const pal: TemplatePalette = {};
+        for (const [ch, hex] of Object.entries(P.colors)) pal[ch] = [g.m(color(ch, hex), 'flat'), 3];
+        const base = hold.mirror ? 180 - P.angle : P.angle;
+        stampTemplate(g.L(armDepth(s, 'armor')), P, j.wrist, hold.fist + (H.angle - segAngle(h.elbow, h.wrist)) - base, pal, hand, { flipX: hold.mirror, flags: F_NO_TEXTURE | F_NO_OUTLINE, line: (ch: string) => line(P.colors[ch]) });
+      } else stampPiece(g, armDepth(s, 'armor'), P, j.wrist, segAngle(j.elbow, j.wrist) + (H.angle - segAngle(h.elbow, h.wrist)), hand, color, line);
+    }
   }
 }
 

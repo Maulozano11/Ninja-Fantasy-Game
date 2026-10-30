@@ -485,7 +485,10 @@ Path of the Infernal Fire (Mirai). Approved by the owner except where marked ope
     completely** (the owner's change).
   - Spear: weapon blows +2d6 fire; action once a turn, the throw: 18 m line, 4d10 fire, DEX save
     for half, the line burns 1 turn.
-- **Improved Colossal Avatar, level 12**: its differences proposed by Steve 2, waiting for the owner.
+- **Improved Colossal Avatar, level 12** (approved 22:51, "me encantan los números"): 12 chakra, 4 turns,
+  the 5x sprite, 30 temp HP, magma 2d6, free stance switch; shield +4 AC, cover 4.5 m, reaction twice a
+  round; spear +3d6, throw 24 m 6d10 burning 2 turns. All three steps written into `CLANS_DESIGN.md`
+  (PR #20, merged).
 - Balance check (Steve 2, the game's own stats, enemy templates raised to the level): the throw
   averages ~18 per target (~26 % of an enemy's HP at level 9); a rank S jutsu averages ~35 for
   8 chakra and has no use limit. Not too strong. A full AI-vs-AI check after it is built.
@@ -560,6 +563,9 @@ What this means:
 
 ## Log (newest first, one line each)
 
+- 2026-10-29 22:55 Steve 2: the owner approved all the fire avatar numbers; `CLANS_DESIGN.md` PR #20 merged.
+  Open for building: the Ember Armour as rig pieces (Bob's lane), enemies of levels 9/12 for testing,
+  the shared cinematic tool (ask Steve 1).
 - 2026-10-29 22:50 Steve 2: D-T24, the fire subclass's Ember Armour (lvl 6) and Colossal Avatar (lvl 9) numbers
   approved; level 12 improved version proposed; balance math done.
 - 2026-10-29 21:25 Steve 2: the avatar's armour is now forged in place out of its own fire (owner's ask),

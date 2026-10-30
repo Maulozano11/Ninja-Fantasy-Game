@@ -49,8 +49,11 @@ import bronze_ref as R  # noqa: E402
 
 REPAINT = importlib.import_module('bronze-repaint-from-ref')
 
-# How many rows his mane, braid and diadem are lifted on Solen's head.
-LIFT = 3
+# How many rows his mane, braid and diadem are lifted on Solen's head: his fringe's black bottom rows, drawn
+# resting on his eyes' lids, must rest on Solen's lids too (two rows: lifted three they floated on the forehead
+# as a black line between the diadem and the eyes, the owner's circle of 2026-10-30; lifted one they crossed
+# the eyes).
+LIFT = 2
 # Our male heads' skull: the head's first row in each column from the face anchor (dx: dy), read off the game
 # (src/sprite/compose.ts spriteLayers, the 'head.body' layer of the male idle frame 0 with no hair, against
 # body.ts faceAnchor; the same for the founder, roman, valiant and night faces).

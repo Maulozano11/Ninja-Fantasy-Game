@@ -263,6 +263,10 @@ Merge checks (`git merge-tree` on the origin tips, nothing changed):
   skin in two of his tones (lit, and his shadow on the far side of the nose), his eyes as the reduction reads
   them with their lid row as the brow, and his lines only where he drew them, the nose's shadow a 3 px column
   and the mouth a 3 px row in his dark tone (`general_ref.face_lines`, FACE_LINES; `g11-cara.png`).
+  His review of l11 (2026-10-30, "te pedí 2 píxeles más, le pusiste 4-5"): he counts the width in all, so
+  the cuirass's sides now move out 1 px each (2 px of width), his side's curve kept to the pixel and only his
+  two 1 px teeth closed; the bulky seam fill stops below the sleeve, so the cuirass's curve stays free of the
+  bare arm (`legate_ref.widened` WAIST_BY, `legate.ts` closeArmSeams; `l13-cintura-2px.png`).
   Names for both characters and their items are his to give.
 - `hero/bronze-warrior` (2026-10-29, D-T17): the bronze warrior is Solen. Both bronze presets wear Solen's head
   (`founder` face, standard eyes in his red, his skin); his repainted mane with the braid is `hair_solen_mane`
@@ -275,7 +279,10 @@ Merge checks (`git merge-tree` on the origin tips, nothing changed):
   `s3-mechon-movido.png`. Then his "lo haremos un cabello" (2026-10-30), done: the mane and the diadem are one
   hair, `hair_solen_mane` draws his diadem over the hair at the brow (the clip that holds it, his pixels,
   following the hair's bronze slot); both bronze presets wear it and no longer carry `acc_solen_diadem`, which
-  stays for other hairs; `s4-melena-con-diadema.png`.
+  stays for other hairs; `s4-melena-con-diadema.png`. His circle on s4 (the black line across the forehead
+  on every head): it was his fringe's black bottom rows, drawn resting on his own eyes' lids, lifted three
+  rows onto Solen's forehead; the mane is lifted two rows now, so they rest on Solen's lids as in his picture
+  (`solen-mane-from-ref.py` LIFT; `s5-frente-sin-linea.png`).
 
 - `jutsu/tide-s` (2026-10-22): the Dragon Tsunami is approved (look, rank S, names, numbers for now).
   Still open, small:

@@ -8,13 +8,13 @@ import type { PaintedPiece } from '../painted';
 /** One character per colour of his (the front and the back share them). */
 const SOLEN_MANE_COLORS: Record<string, string> = {
   a: '#00001a',
-  b: '#1c2336',
-  c: '#20142a',
-  d: '#485766',
-  e: '#536473',
-  f: '#343a4a',
-  h: '#332836',
-  i: '#090e1f',
+  b: '#090e1f',
+  c: '#1c2336',
+  d: '#20142a',
+  e: '#485766',
+  f: '#536473',
+  h: '#343a4a',
+  i: '#332836',
   j: '#423048',
   k: '#0f1a34',
   l: '#414a59',
@@ -22,58 +22,58 @@ const SOLEN_MANE_COLORS: Record<string, string> = {
 
 /** Every pixel of his mane over the head, lifted onto Solen's skull: his blue-blacks and his black line. Its pivot is the cell on our face anchor (the near eye's lash start). */
 export const SOLEN_MANE_FRONT: PaintedPart = {
-  pivot: [9, 14],
+  pivot: [9, 13],
   rows: [
-    '.........a................',
-    '.......aaaaaaaaaaaaa......',
-    '.....aaabaabcddefbca......',
-    '....aaaahibjddbbccaaa.....',
-    '...ababiibfcfcbjddddfaaa..',
-    '...abakfccbccccccbbfcca...',
-    '...aacfcfcffccfbcffclcba..',
-    '..aacfclcffcffaaaaaaadfa..',
-    '..aabchafdcddaaaaaaaadcha.',
-    '.aabacaalceecaaaaaaaacdaba',
-    '..aabaaaaafdaaaaaaaaaafaa.',
-    '...abaaaabfhaaaaaaaaaacca.',
-    '..abaacaaaaaaa...aaa.aaca.',
-    '..abacafa.....aa.aa.aaaca.',
-    '.aaabbacaa...aaaa..aaaaa..',
-    '...abaaaa............aaa..',
-    '...abaaaa............a.a..',
-    '..aaaabaa............a....',
-    '.aababaa.............a....',
+    '.......aaaaaaaa...........',
+    '.....aabaacaaaaaaaaa......',
+    '....adcacaacdeefhcda......',
+    '...aaaaaibcjeeccddaaa.....',
+    '...acacbbchdhdcjeeeehaaa..',
+    '...acakhddcddddddcchdda...',
+    '..acadhdhdhhddhcdhhdldca..',
+    '..aadhdldhhdhhaaaaaaaeha..',
+    '..aacdiahedeeaaaaaaaaedia.',
+    '.aacadaaldffdaaaaaaaadeaca',
+    '..aacaaaaaheaaaaaaaaaahaa.',
+    '...acaaaacaaaaaaaaaaaadda.',
+    '..acaadaaa...a...aaa.aada.',
+    '..acadaha.....aa.aa.aaada.',
+    '.aaaccadaa...aaaa..aaaaa..',
+    '...acaaaa............aaa..',
+    '...acaaaa............a.a..',
+    '..aaaacaa............a....',
+    '.aacacaa.............a....',
     'aa...aaaa...........a.....',
-    '.........a..........a.....',
+    '............a.......a.....',
   ],
   colors: SOLEN_MANE_COLORS,
 };
 
 /** His mane with what the head hides filled in above the brow, drawn behind the head; also the head's outline there (the game trims our skull to it). */
 export const SOLEN_MANE_BACK: PaintedPart = {
-  pivot: [9, 14],
+  pivot: [9, 13],
   rows: [
-    '.........a................',
-    '.......aaaaaaaaaaaaa......',
-    '.....aaabaabcddefbca......',
-    '....aaaahibjddbbccaaa.....',
-    '...ababiibfcfcbjddddfaaa..',
-    '...abakfccbccccccbbfcca...',
-    '...aacfcfcffccfbcffclcba..',
-    '..aacfclcffcffaaaaaaadfa..',
-    '..aabchafdcddaaaaaaaadcha.',
-    '.aabacaalceecaaaaaaaacdaba',
-    '..aabaaaaafdaaaaaaaaaafaa.',
-    '...abaaaabfhaaaaaaaaaacca.',
-    '..abaacaaaaaaafbcaaa.aaca.',
-    '..abacafabfhcfaacaacaaaca.',
-    '.aaabbacaa...aaaa..aaaaa..',
-    '...abaaaa............aaa..',
-    '...abaaaa............a.a..',
-    '..aaaabaa............a....',
-    '.aababaa.............a....',
+    '.......aaaaaaaa...........',
+    '.....aabaacaaaaaaaaa......',
+    '....adcacaacdeefhcda......',
+    '...aaaaaibcjeeccddaaa.....',
+    '...acacbbchdhdcjeeeehaaa..',
+    '...acakhddcddddddcchdda...',
+    '..acadhdhdhhddhcdhhdldca..',
+    '..aadhdldhhdhhaaaaaaaeha..',
+    '..aacdiahedeeaaaaaaaaedia.',
+    '.aacadaaldffdaaaaaaaadeaca',
+    '..aacaaaaaheaaaaaaaaaahaa.',
+    '...acaaaacaaaaaaaaaaaadda.',
+    '..acaadaaahedahcdaaa.aada.',
+    '..acadaha.....aa.aa.aaada.',
+    '.aaaccadaa...aaaa..aaaaa..',
+    '...acaaaa............aaa..',
+    '...acaaaa............a.a..',
+    '..aaaacaa............a....',
+    '.aacacaa.............a....',
     'aa...aaaa...........a.....',
-    '.........a..........a.....',
+    '............a.......a.....',
   ],
   colors: SOLEN_MANE_COLORS,
 };
@@ -118,7 +118,7 @@ const SOLEN_BRAID_COLORS: Record<string, string> = {
 
 /** His braid and its bronze bands, behind the head and shoulders, lifted with the mane: pivot on the face anchor. */
 export const SOLEN_MANE_BRAID: PaintedPart = {
-  pivot: [20, -2],
+  pivot: [20, -3],
   rows: [
     '..............a.',
     '.............bba',
@@ -168,7 +168,7 @@ export const SOLEN_MANE_BAND = '#754e32';
 
 /** His bronze diadem across the brow, lifted with the mane: stamped on the face anchor, over any hair. */
 export const SOLEN_DIADEM: PaintedPiece = {
-  pivot: [3, 6],
+  pivot: [3, 5],
   angle: -90.00,
   rows: [
     '........abaccad',
@@ -220,7 +220,7 @@ const SOLEN_MANE_DIADEM_COLORS: Record<string, string> = {
 
 /** His diadem as a part of the mane (the clip that holds the hair): the same pixels as SOLEN_DIADEM, drawn over the hair at the brow; pivot on the face anchor. */
 export const SOLEN_MANE_DIADEM: PaintedPart = {
-  pivot: [3, 6],
+  pivot: [3, 5],
   rows: [
     '........abaccad',
     '.e.....eefehibf',

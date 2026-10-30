@@ -23,6 +23,15 @@ import { bendsOf, seedOf } from './paths';
 import { CRESCENT, crescentStart, effectLands, vortexAt } from './stagePlan';
 import { edgeFoe } from '../../battle/clans';
 
+/** The kinds of ground the elements leave (battle/ground.ts), as the state keeps them. */
+export type GroundKind = 'wet' | 'steam' | 'ice' | 'oil' | 'blaze' | 'mud';
+export const GROUND_KINDS: readonly GroundKind[] = ['wet', 'steam', 'ice', 'oil', 'blaze', 'mud'];
+/** The cells of a kind of ground in the state (a blaze is the oil that is burning). */
+export function groundOf(state: BattleState, kind: GroundKind): Record<string, unknown> {
+  if (kind === 'blaze') return Object.fromEntries(Object.entries(state.oil ?? {}).filter(([, o]) => o.blazing));
+  return state[kind] ?? {};
+}
+
 export interface UnitView {
   pos: Pt;
   facing: 1 | -1;
@@ -413,8 +422,8 @@ export class Playback {
    * When each wet cell and each steam cell ("c,r") showed up on the screen (the wave's cells as its
    * crest goes over them), and the ones drying or thinning away (from when their event played).
    */
-  groundBorn = { wet: new Map<string, number>(), steam: new Map<string, number>() };
-  groundGone: { kind: 'wet' | 'steam'; cells: string[]; t0: number; blown?: Pt }[] = [];
+  groundBorn = { wet: new Map<string, number>(), steam: new Map<string, number>(), ice: new Map<string, number>(), oil: new Map<string, number>(), blaze: new Map<string, number>(), mud: new Map<string, number>() };
+  groundGone: { kind: GroundKind; cells: string[]; t0: number; blown?: Pt }[] = [];
   /** Kōton structures that crumbled or broke, sinking out of sight (from when their event played). */
   fallen: { wall: Wall; t0: number }[] = [];
   /** Whose turn the screen shows (it trails the engine while events play). */
@@ -534,8 +543,8 @@ export class Playback {
       this.round = state.round;
     }
     // Ground that is gone from the state needs no start time any more.
-    for (const kind of ['wet', 'steam'] as const) {
-      const have = state[kind] ?? {};
+    for (const kind of GROUND_KINDS) {
+      const have = groundOf(state, kind);
       for (const k of this.groundBorn[kind].keys()) if (!(k in have)) this.groundBorn[kind].delete(k);
     }
   }
@@ -766,7 +775,7 @@ export class Playback {
    * Ground cells whose event is still to play: the ones coming (`on`, not shown yet unless the
    * wave already timed them) and the ones going (still shown).
    */
-  groundQueued(kind: 'wet' | 'steam', on: boolean): Set<string> {
+  groundQueued(kind: GroundKind, on: boolean): Set<string> {
     const out = new Set<string>();
     for (const e of this.queue) if (e.t === 'ground' && e.kind === kind && e.on === on) for (const k of e.cells) out.add(k);
     return out;
@@ -2259,6 +2268,10 @@ export class Playback {
         const born = this.groundBorn[ev.kind];
         if (ev.on) {
           for (const k of ev.cells) if (!born.has(k)) born.set(k, now);
+          if (ev.kind === 'blaze') {
+            h.sound('hit');
+            return 350;
+          }
           return ev.kind === 'steam' ? 450 : 0;
         }
         for (const k of ev.cells) born.delete(k);

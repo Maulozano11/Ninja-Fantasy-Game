@@ -27,6 +27,8 @@ export interface EffectMods {
   advStealth: boolean;
   advTensionSave: boolean;
   noJutsu: boolean;
+  /** Held fast in ice: no movement, no action, no reaction. */
+  frozen: boolean;
   noRestHp: boolean;
   cannotBeSurprised: boolean;
   refusesAllyHealing: boolean;
@@ -65,6 +67,8 @@ export const EFFECTS: Record<EffectId, EffectDef> = {
   will_of_fire: def({ id: 'will_of_fire', name: 'Will of Fire', nameEs: 'Voluntad de Fuego', kind: 'buff', duration: 'mission', description: 'Awakening: +2 to saves, immune to fear.', mods: { saves: 2 } }),
 
   bleeding: def({ id: 'bleeding', name: 'Bleeding', nameEs: 'Sangrando', kind: 'debuff', duration: 'untilTreated', curedBy: ['bandage', 'close_tenketsu'], description: '1d4 damage per round in battle and per road leg.' }),
+  // Frozen by an ice jutsu (the owner, 2026-10-28: "añadir estado congelado"): held fast until its next turn ends; fire thaws it.
+  frozen: def({ id: 'frozen', name: 'Frozen', nameEs: 'Congelado', kind: 'debuff', duration: 'rounds', count: 1, description: 'Cannot move or act until its next turn ends; fire damage thaws it.', mods: { frozen: true } }),
   burning: def({ id: 'burning', name: 'Burning', nameEs: 'Quemado', kind: 'debuff', duration: 'rounds', count: 2, description: '1d6 per round; water or an action puts it out.' }),
   chakra_sealed: def({ id: 'chakra_sealed', name: 'Chakra sealed', nameEs: 'Chakra sellado', kind: 'debuff', duration: 'rounds', count: 2, description: 'Cannot cast jutsu.', mods: { noJutsu: true } }),
   confused: def({ id: 'confused', name: 'Confused', nameEs: 'Confundido', kind: 'debuff', duration: 'rounds', count: 2, description: 'Each turn, a 1 in 4 chance to lose the action to the illusion.' }),
@@ -94,7 +98,7 @@ export const BREAKDOWN_MODS: Record<string, Partial<EffectMods>> = {
 const ZERO: EffectMods = {
   ac: 0, allRolls: 0, saves: 0, dexRolls: 0, speedM: 0, initiative: 0, meleeDamage: 0, firstJutsuDiscount: 0, tempHpAtBattleStart: 0, maxHpPct: 0,
   disadvAttacks: false, disadvChecks: false, disadvConSaves: false, disadvWisSaves: false, advAttacks: false, advStealth: false, advTensionSave: false,
-  noJutsu: false, noRestHp: false, cannotBeSurprised: false, refusesAllyHealing: false,
+  noJutsu: false, frozen: false, noRestHp: false, cannotBeSurprised: false, refusesAllyHealing: false,
 };
 
 function addMods(into: EffectMods, m: Partial<EffectMods>): void {

@@ -25,7 +25,7 @@ import type { SpriteAppearance, SpritePose } from '../../sprite/types';
 import { PHASE_ADD, PHASE_RAMP, phaseHue } from '../../sprite/phase';
 import { edgeFoe, leavesNodes, nodeUnder, WARP, warpLanding } from '../../battle/clans';
 import { GRID, RES } from '../../sprite/raster';
-import { depthFx, drawAuraBack, drawCracks, drawDouses, drawWetGround, drawHeld, drawLinger, drawScreenBlood, drawVfxSprite, drawWallSprite, wallTint } from './vfxSprites';
+import { depthFx, drawAuraBack, drawCracks, drawDouses, drawElementGround, drawWetGround, drawHeld, drawLinger, drawScreenBlood, drawVfxSprite, drawWallSprite, wallTint } from './vfxSprites';
 import { isTintElement, vfxTintColors } from '../../sprite/vfxTint';
 import { jutsuTint, unitTint } from './vfxTintPlan';
 import { ACTIVATE_FRAMES, IMBUE_FPS, IMBUE_LOOP } from '../../sprite/imbue';
@@ -183,8 +183,9 @@ export function drawBattle(ctx: CanvasRenderingContext2D, sc: Scene): void {
   const ground = image(art.ground);
   if (ready(ground)) ctx.drawImage(ground, 0, 0);
 
-  // Wet ground lies on the ground itself, under the aiming overlays.
+  // Wet ground, ice, oil and mud lie on the ground itself, under the aiming overlays.
   drawWetGround(ctx, sc);
+  drawElementGround(ctx, sc);
   drawGroundOverlays(ctx, sc);
   // The ground cracked by a charged hand's steps lies under everything that stands.
   drawCracks(ctx, sc, CRACK_FADE);

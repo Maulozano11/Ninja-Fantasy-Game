@@ -61,7 +61,7 @@ const rankFits = (j: JutsuDefinition, nature: ChakraNature, clan: ClanType, grow
  * at every rank: what the nature (rules/jutsuNature.ts) and the class (rules/jutsuClass.ts) allow.
  */
 export function learnable(slot: JutsuSlot, nature: ChakraNature, clan: ClanType, cls: ShinobiClassType, growth: Growth = NO_GROWTH): JutsuDefinition[] {
-  return jutsuChoices(slot, nature, clan, growth.extra).filter((j) => jutsuFitsClass(j, cls));
+  return jutsuChoices(slot, nature, clan, growth.extra, growth.scrolls).filter((j) => jutsuFitsClass(j, cls));
 }
 
 /**

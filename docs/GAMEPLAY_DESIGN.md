@@ -1777,6 +1777,51 @@ cortina de humo que nubla la visión y hace daño por turno si estás en el
     vapor quema a …", "El viento se lleva el vapor", "El vapor se disipa", "El
     suelo mojado se seca"; a blow into the steam says "dentro del vapor".
 
+### Ice, oil and quicksand (the owner, 2026-10-28; the numbers are ours, "lo que pones está bien")
+
+From his sci-fi design brought home to this game (*"refrigerante se refiere a hielo, que también
+lo añadiremos al de shinobi; combustible es como gasolina o aceite inflamable"*, *"habrá varios
+jutsus de hielo ... y añadir estado congelado"*, *"habrá jutsus de tierra relacionados al aceite y
+también una tierra que sería arena movediza estilo fango que haría el terreno difícil en área"*).
+In the engine: `src/battle/ground.ts` (`ice`, `oil`, `mud` by navigation cell, like `wet`).
+
+- **Ice.** An ice jutsu freezes the ground of its area (wet ground too: its water is used up; a
+  river, a pond, a wall's or a tree's cell stay as they are) for **the rest of the round and two
+  more** (`ICE_ROUNDS`, as wet ground). **Slippery**: whoever walks onto it makes a **DEX save
+  against 13** (`ICE_DC`) or slips, falls prone and the walk ends there (one save per walk: who
+  keeps their feet keeps them). Whoever **starts a turn on it moves at half speed**. It **conducts
+  lightning like wet ground** (one patch of wet and icy cells together). **Fire melts it** back to
+  wet ground. Ice put over blazing oil puts the blaze out.
+- **Frozen** (`rules/effects.ts`): whoever fails an ice jutsu's save is held fast **until its next
+  turn ends** (no movement, no action, no reaction; the turn is lost: "está congelado y pierde el
+  turno"); **fire damage thaws it** at once.
+- **The ice jutsu are secret** (his: *"un pergamino secreto que puedas conseguir en la historia; tus
+  hijos pueden heredarlo, y habrá varias cosas así en los diferentes temas de juego"*): a jutsu with
+  `scroll` (`JutsuDefinition.scroll`) is offered only to a ninja whose sheet holds that scroll
+  (`ShinobiCharacter.scrolls`; the creator and the level-ups go by it, `rules/jutsuNature.ts`
+  `jutsuChoices`). The first: **Frost Ground** (`water_frost_ground`, Water, rank C, a 6 m cone,
+  2d6 cold, DEX for half, freezes the cone and whoever fails; scroll `frost`). Nothing gives the
+  scroll yet: it comes with the story (campaign step 2) and the lineage (step 7).
+- **Oil.** The Earth jutsu **Black Oil** (`earth_black_oil`, rank C, 1.5 m round at 9 m, 1d4
+  bludgeoning as it gushes) spills a pool for **3 rounds** (`OIL_ROUNDS`); so will broken barrels
+  tagged `[Combustible]` (not built yet). Oil is **difficult terrain** (every step costs double),
+  and **fire lights the whole joined pool** (diagonals included): it **blazes 2 rounds**
+  (`BLAZE_ROUNDS`), **2d6 fire, DEX 13 for half** (`BLAZE_DICE`, `BLAZE_DC`) to whoever stands in
+  it as it lights, starts a turn in it or walks into it; when the blaze ends the oil is burnt up.
+  **Water or ice puts the blaze out** (the oil stays). A pool spilt against a lit one catches.
+- **Quicksand.** The Earth jutsu **Quicksand** (`earth_quicksand`, rank C, a 3 m round at 9 m, 1d6
+  bludgeoning, STR for half, whoever fails is pulled down prone) turns the ground to mud for **3
+  rounds** (`MUD_ROUNDS`): **difficult terrain**.
+- Still to come from his list: tagged props as conduits (`[Madera] [Metal] [Combustible]`; the
+  rayo running from a `[Metal]` console), knockbacks and charges with collision damage
+  (`docs/SPACE_DESIGN.md` N11: dice by obstacle), verticality, the death decision with mutilation
+  and implants (N12 b).
+- On the screen (`components/battle/vfxSprites.ts`): ice is a pale blue-white sheen with hard
+  glints, oil a black pool with an oily shimmer, mud a matte brown round, the blaze tongues of
+  flame on every other burning cell with a glow under them; the log says "El suelo se congela",
+  "{name} resbala en el hielo y cae", "Se derrama aceite por el suelo", "Fuego sobre aceite: arde
+  todo el charco", "El aceite en llamas quema a …", "El suelo se vuelve arena movediza".
+
 ### How they look now (his pieces moved, scaled, layered and timed; nothing redrawn)
 
 - **Devouring Tide** ("combinar los dos muros"): his horizontal water wall

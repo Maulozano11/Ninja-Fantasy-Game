@@ -331,6 +331,13 @@ export interface SteamCell {
   by: string;
 }
 
+/** A cell of spilt oil: how long it stays, whose it is, and how long it still blazes if lit. */
+export interface OilCell {
+  rounds: number;
+  by: string;
+  blazing?: number;
+}
+
 /** A trap on the ground (explosive tag, camp perimeter trap). */
 export interface Trap {
   id: string;
@@ -462,6 +469,16 @@ export interface BattleState {
   wet?: Record<string, number>;
   /** Steam hanging over the cells ("c,r") where fire met wet ground: it blocks sight and burns. */
   steam?: Record<string, SteamCell>;
+  /**
+   * The ground the elements leave (the owner, 2026-10-28, from his sci-fi design brought home: "hielo
+   * ... también lo añadiremos al de shinobi", "jutsus de tierra relacionados al aceite", "arena movediza
+   * estilo fango"; battle/ground.ts): ice ("c,r" → rounds), slippery and conducting like wet ground;
+   * oil, difficult terrain that blazes when fire touches it; mud, difficult terrain. None in a battle
+   * saved before they existed.
+   */
+  ice?: Record<string, number>;
+  oil?: Record<string, OilCell>;
+  mud?: Record<string, number>;
   traps: Trap[];
   /** The Ryusei's Weapon Nodes, oldest first. */
   nodes: WeaponNode[];
@@ -569,7 +586,7 @@ export type BattleEvent =
    * fire or wind did it (wet ground turned to steam, steam blown away); unset when it ran out of rounds.
    * `blown`: steam the wind carried off, from this point (it drifts away from it on the screen).
    */
-  | { t: 'ground'; kind: 'wet' | 'steam'; cells: string[]; on: boolean; by?: string; blown?: Pt }
+  | { t: 'ground'; kind: 'wet' | 'steam' | 'ice' | 'oil' | 'blaze' | 'mud'; cells: string[]; on: boolean; by?: string; blown?: Pt }
   /** Lightning runs across a patch of wet ground (these cells), from where it struck: whose it is. */
   | { t: 'conduct'; cells: string[]; at: Pt; source?: string }
   | { t: 'trap'; trap: Trap; on: boolean }

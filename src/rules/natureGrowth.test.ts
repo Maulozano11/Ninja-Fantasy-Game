@@ -149,7 +149,7 @@ describe('what each choice opens (the builder\'s proposal: second element D and 
     assert.deepEqual(fire(ninja(5, { natureGrowth: 'rank' })), ['fire_three_embers', 'fireball_goukakyu', 'dragon_fire_stream', 'kenjutsu_bleeding_cut'], 'rank up: Fire B');
     assert.deepEqual(fire(ninja(4, { natureGrowth: 'rank' })), ['fire_three_embers', 'fireball_goukakyu', 'kenjutsu_bleeding_cut'], 'below level 5 the choice opens nothing');
     assert.deepEqual(fire(ninja(5, { natureGrowth: 'element', extraNatures: ['Water'] })), ['fire_three_embers', 'fireball_goukakyu', 'water_geyser', 'water_shield_suijinheki', 'kenjutsu_bleeding_cut'], 'Water: its C, not its B');
-    assert.deepEqual(fire(ninja(5, { natureGrowth: 'element', extraNatures: ['Earth'] })), ['fire_three_embers', 'fireball_goukakyu', 'earth_pebble_shot', 'earth_spike_crown', 'earth_rubble_gust', 'kenjutsu_bleeding_cut'], 'Earth: its D and C (Pebble Shot, Spike Crown, Rubble Gust)');
+    assert.deepEqual(fire(ninja(5, { natureGrowth: 'element', extraNatures: ['Earth'] })), ['fire_three_embers', 'fireball_goukakyu', 'earth_pebble_shot', 'earth_spike_crown', 'earth_rubble_gust', 'earth_black_oil', 'earth_quicksand', 'kenjutsu_bleeding_cut'], 'Earth: its D and C (Pebble Shot, Spike Crown, Rubble Gust, Black Oil, Quicksand)');
     // The S-rank slot stays locked whatever the choice; the Utility and clan slots don't change.
     for (const g of [ninja(5), ninja(5, { natureGrowth: 'rank' }), ninja(5, { natureGrowth: 'element', extraNatures: ['Lightning'] })]) {
       assert.equal(slotLocked('slot5Ultimate', 'Fire', g.clan, g.shinobiClass, growthOf(g, 'Fire')), true);

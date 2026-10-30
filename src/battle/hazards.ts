@@ -6,7 +6,7 @@
 import type { Advantage } from '../rules/checks';
 import type { AreaShape, BattleEvent, BattleState, DamageType, Hit, Pt, Trap, Unit } from './types';
 import { cellCenter, cellKey, cellOf, dampAt, keyCell, dist, fullCoverBetween, getMap, propRules, waterAtPt } from './map';
-import { lightningSeeds, steamUp, unitsOnPatch, wetPatch } from './ground';
+import { BLAZE_DC, BLAZE_DICE, ignite, lightningSeeds, melt, steamUp, unitsOnPatch, wetPatch } from './ground';
 import { inArea } from './jutsu';
 import { rollDiceExpr, savingThrow } from './combat';
 import { maxCritDamage } from '../rules/dice';
@@ -115,6 +115,16 @@ export function groundEffects(s: BattleState, area: AreaShape, type: DamageType 
   // burn. Which cells were wet is taken before the steam uses their water up.
   const soaked = type === 'Fire' && s.wet ? new Set(Object.keys(s.wet)) : undefined;
   if (type === 'Fire') steamUp(s, area, by, ev);
+  // Fire melts ice back to wet ground and lights the oil it touches (the whole pool): whoever stands
+  // in oil that just caught is burnt (ground.ts BLAZE_DICE, a DEX save for half).
+  if (type === 'Fire') {
+    melt(s, area, by, ev);
+    const lit = ignite(s, area, by, ev);
+    if (lit.length) {
+      const amount = rollDiceExpr(s, BLAZE_DICE);
+      for (const u of unitsOnPatch(s, new Set(lit))) hits.push(saveHit(s, u, 'dex', BLAZE_DC, amount, 'Fire', true, by || 'blaze', 'blaze', {}, ev, 'none', maxCritDamage(BLAZE_DICE)));
+    }
+  }
   const map = getMap(s.mapId);
   const fiery = type === 'Fire' || type === 'Lightning';
   map.props.forEach((p, i) => {

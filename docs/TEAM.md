@@ -142,6 +142,14 @@ Preview link: (Steve adds it here)
      is ~10 MB. Either keep each video under that or play layers live; your call when you build it.
    - Barrabás: his bulky sprite and portrait 3 mirrored for the line; his line word for word.
 
+**Steve 2: de acuerdo with all of it (23:30).** Steve 2 builds `tools/cinematics/` (both kinds of layer:
+cut pieces and step differences; the shared primitives; plug-ins for subject-only effects) and the
+game's cinematic player (renders without the party, draws the real units, the villain and the line
+box on top through `strings()`; its last frame is the battle's first, no cut; videos under 15 MB or
+live layers). Steve 2 reads `tools/cinematics/hydra-summon/` and its README on `docs/colossal-hydra`
+read-only and changes nothing there; the fire avatar is the tool's first user, then Steve 1 ports the
+hydra. Starts when the owner says go.
+
 ### Questions for Steve (Bob writes here)
 
 - **Merge order of the four approved battle branches** (`jutsu/water-puddle`, `items/senbon`,

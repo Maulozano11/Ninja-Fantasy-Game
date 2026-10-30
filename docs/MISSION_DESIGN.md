@@ -514,6 +514,14 @@ anime character's scythe: only the idea of the reach is taken).
     (he will remember it).
 - Then, whatever was answered: *a beast nobody can control, only the Northstar king could*; the
   alchemical sigil, the summon, the battle.
+- **How the choice looks** (mock, 2026-10-30, waiting for the owner): his line stays in the box,
+  the scene dims, and the four answers stand in the middle on his gem buttons, each with its
+  personality's name over it (red pride, blue the smart one with what unlocked it, gold
+  loyalty, amethyst the mission first: his red gem recoloured until he paints one); the
+  speaker's Focus shows over its portrait and lights a diamond when the hovered answer is true
+  to its personality. Then the answer is said with its gem by the name, and Barrabás answers
+  that tone with his own face. `docs/mockups/barrabas-welcome-choice.png`,
+  `docs/mockups/barrabas-welcome-replies.png`.
 
 **Through the drain (stealth, XCOM 2 style).**
 - **A narrow map.** In the tunnels **rank S jutsu and summons can't be used** (nothing large:

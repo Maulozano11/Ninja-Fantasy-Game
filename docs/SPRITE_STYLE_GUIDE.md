@@ -218,6 +218,18 @@ says; the only fills are the ones he saw on the sheets and left unmarked, listed
 wrong, its entry goes; a new one is never added without his eye. A pocket that looks wrong is shown to him
 first, never filled on its own.
 
+**Legs, knees and ankles in every pose (the owner, 2026-10-30).** On Lyra's paladin set the knees and
+ankles came out wrong in the moving poses, "como todas las piernas y tobillos pasadas", and he asked for
+a rule so no future character needs that fix again. For every character, his or ours, in every frame of
+every pose: the thigh and the shin overlap at the knee and the shin and the foot at the ankle (the lower
+piece carries a cap of the upper one, or the piece is continued 1-2 px past the joint along the limb);
+no background shows at a joint; the foot sits on the shin, turned with it, never apart from it or
+kinked; a limb is clothed or armoured along its whole length at every angle (no bare gap between a
+skirt and a shin); turned pieces keep his black line whole (`closed`, `rotateLined`) with no 1 px teeth
+or stray pixels. This is checked on a sheet of all poses at 6x **before** a character is shown to him,
+not after he marks it. `heroineKnights.test.ts` (no loose pieces in any pose) and `holes.test.ts` guard
+the loose parts; the eye does the rest.
+
 ## Checklist for a new item
 
 1. Render `npm run sprites -- item <id>` and check every body and pose.

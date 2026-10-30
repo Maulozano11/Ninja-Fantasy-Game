@@ -228,7 +228,16 @@ kinked; a limb is clothed or armoured along its whole length at every angle (no 
 skirt and a shin); turned pieces keep his black line whole (`closed`, `rotateLined`) with no 1 px teeth
 or stray pixels. This is checked on a sheet of all poses at 6x **before** a character is shown to him,
 not after he marks it. `heroineKnights.test.ts` (no loose pieces in any pose) and `holes.test.ts` guard
-the loose parts; the eye does the rest.
+the loose parts; the eye does the rest. How the heroine knights meet it (`tools/refs/heroine_knights_ref.py`
+`complete()`, `items/heroineKnights.ts`), the numbers for the next character cut from a picture of his:
+the upper piece of every joint is continued under the piece in front of it (hidden at rest) 2 px past the
+joint (`PAST_PX`) in a block at least as wide as the piece in front is there (`LOWER`: the knee cop over a
+cuisse that ends in a point), plus a disc of 3.5 px round the joint (`PAST_DISC_R`) that closes the back of
+the bend at any angle; a boot is continued 2 px up its shin the same way; the continued end rides the lower
+piece and the cells within 5 px of the knee (`KNEE_R`, 4 at the elbow) sweep through the bend (`stampBent`
+with `carry`); a far limb he drew only a sliver of is filled from its twin at the same place along and across
+the limb (`LIKE`), never with one flat colour; a part's polygon never takes in the cape or the hem beside the
+limb (`CUT_POLYS`); and a turned piece loses its 1 px tips (`pruneTips`).
 
 ## Checklist for a new item
 

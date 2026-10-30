@@ -424,6 +424,9 @@ Steve 1: the stack only meets your chain (#2–#4, #12, #15) on `docs/STATUS.md`
 - **Two pieces:** a summon **cinematic** (full screen, low camera, the avatar from the waist up,
   cut off by the top edge, **translucent**, the ninja tiny at the bottom inside its silhouette)
   and the **battle sprite** (3/4 facing right, about 2.5 times the ninja).
+- **Revised 19:10:** **3.3 times the ninja's height**, standing **behind** the ninja (at his back,
+  to his left since he faces right), and the body is **a hollow armour of fire**: floating plates
+  (helmet, pauldrons, cuirass, bracers) joined by flames, nothing inside but fire.
 - **Two stances, an ability switches them, and it stays in the last one used:** **shield**
   (more defence) and **spear** (more damage). Numbers to propose before anything is built
   (`CLANS_DESIGN.md`, Path of the Infernal Fire, Emperor Avatar).

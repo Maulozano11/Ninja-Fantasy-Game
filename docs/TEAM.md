@@ -430,6 +430,11 @@ Steve 1: the stack only meets your chain (#2–#4, #12, #15) on `docs/STATUS.md`
 - **Two stances, an ability switches them, and it stays in the last one used:** **shield**
   (more defence) and **spear** (more damage). Numbers to propose before anything is built
   (`CLANS_DESIGN.md`, Path of the Infernal Fire, Emperor Avatar).
+- 20:15: the owner sent his layers (background, avatar alone in each stance, the three-step
+  appearance sheet per stance); Steve 2 built both animated cinematics from them (draft, about
+  3 s: ring of fire, column rises, plates gather, cut to the final shot on the eyes' flash,
+  embers, slow push-in). Not in the repo yet; to share one cinematic system with Steve 1's
+  hydra summon when it goes in.
 - No franchise look: the camera feel only (low angle, scale contrast, crop), never another
   work's design. Prompt cards given to the owner for both stances.
 
@@ -503,6 +508,7 @@ What this means:
 
 ## Log (newest first, one line each)
 
+- 2026-10-29 20:16 Steve 2: fire avatar cinematics animated from the owner's layers (draft videos sent).
 - 2026-10-30 Bob: hero/bronze-warrior 5bbb872: mane strand moved (option 1), far pauldron with his design, bulky seam, far-leg ankle; 844 green; shown to the owner.
 - 2026-10-29 19:05 Steve 2: D-T23, the fire avatar: cinematic + sprite, translucent, two stances
   (shield / spear) switched by an ability; prompt cards to the owner.

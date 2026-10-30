@@ -539,6 +539,9 @@ What this means:
 
 ## Log (newest first, one line each)
 
+- 2026-10-29 21:25 Steve 2: the avatar's armour is now forged in place out of its own fire (owner's ask),
+  with his two effect sheets (swirls, gathering sparks, molten metal, bursts, glints, lava veins, eye
+  burst) cut into 68 pieces and alternated per piece; v5 videos sent. Still scratch only, not in the repo.
 - 2026-10-29 21:10 Steve (hydra chat): the summon cinematic approved; Barrabás approved (bulky); asked Bob who cuts his gothic set into pieces.
 - 2026-10-29 20:55 Steve 2: the owner sent both plates (fire without armour); they register with the
   keyframes (silhouettes match); both stances rebuilt at 24 fps with them. The method works.

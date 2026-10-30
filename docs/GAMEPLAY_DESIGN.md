@@ -2162,7 +2162,10 @@ and no body along the back wall; only the body on the right).
     last head hits the floor** (the owner, 2026-10-30): the head falls and lands, the body shudders, a wall of dust rises along it and hides
     the fall, and the dust settles on his dead-hydra picture v2 (an exact edit of the battle
     backdrop) with four of its stumps charred from his own pixels and the front one raw
-    (`tools/cinematics/hydra-summon/char_stumps.py`, `collapse.py`;
+    The party stays where each one ended the battle (no reset to a line-up), and the loot shows
+    itself: **one fang of the front head, longer than the others, glows and sparkles** (the owner,
+    2026-10-30); that is the basilisk tooth to take.
+    (`tools/cinematics/hydra-summon/char_stumps.py`, `loot_tooth.py`, `collapse.py`;
     `docs/mockups/colossal-hydra-death-collapse.png`). His first picture (`colossal-hydra-dead-v1`, a different
     framing with burnt stumps, shown as a letterboxed final shot) he did not like (2026-10-30); a
     second one is asked as an exact edit of the five-head backdrop (prompt card 11 E, second round).

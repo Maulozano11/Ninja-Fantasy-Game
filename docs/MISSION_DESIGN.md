@@ -534,7 +534,7 @@ an anime counter move; the name and the look must be our own), and other random,
 are sold for gold back at home or the base (his ToME decision: random loot becomes gold, weapons
 are hand-made).
 **Loot from the dead hydra** (the owner, 2026-10-30): its heads lie cut off on the courtyard floor
-after the battle, and the party can loot them for a **basilisk tooth** (what it does, and whether
+after the battle, and the party can loot them for a **basilisk tooth** (the front head's one long fang, which glows) (what it does, and whether
 it is a material for the forge or an item of its own, to propose).
 
 **Summons, from here on.** Boss summons get their own animation (this one: the villain's

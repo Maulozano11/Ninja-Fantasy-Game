@@ -15,7 +15,7 @@ os.makedirs(FD, exist_ok=True)
 for f in os.listdir(FD):
     os.remove(os.path.join(FD, f))
 ld = lambda p: np.array(Image.open(p).convert('RGB').resize((VW, VH), Image.LANCZOS)).astype(np.float32)
-DEAD = ld(f'{S}/hydra/col19/dead2_char.png')  # his v2 with four stumps charred (char_stumps.py)
+DEAD = ld(f'{S}/hydra/col19/dead2_loot.png')  # his v2 with four stumps charred (char_stumps.py)
 EMPTY = ld(f'{S}/hydra/col14/empty.png')
 REST = rows_of(f'{S}/hydra/col5/grid.png', 130)
 YY, XX = np.mgrid[0:VH, 0:VW].astype(np.float32)
@@ -37,8 +37,35 @@ def live(i):
     return np.array(scene(REST, (i // 5) % 6, 0.0, i / 60).convert('RGB')).astype(np.float32)
 
 
+GLOW = [None]  # the frame the loot fang starts to glow
+TX_, TY_ = 666.0 * VW / 1672, 789.0 * VH / 941
+
+
+def loot_glow(img, n):
+    # the loot fang: a warm pulsing glow and a twinkle at its tip, so the player sees what to take
+    ph = (n - GLOW[0]) / 30.0
+    a = min(1.0, (n - GLOW[0]) / 20.0) * (0.75 + 0.25 * np.sin(ph * 2 * np.pi / 1.4))
+    lay = Image.new('RGBA', img.size)
+    d = ImageDraw.Draw(lay)
+    for r, al in [(70, 55), (44, 105), (24, 170), (12, 230)]:
+        d.ellipse([TX_ - r * 0.7, TY_ - r * 1.2, TX_ + r * 0.7, TY_ + r * 1.2], fill=(255, 225, 140, int(al * a)))
+    img.alpha_composite(lay.filter(ImageFilter.GaussianBlur(9)))
+    img.alpha_composite(lay.filter(ImageFilter.GaussianBlur(3)))
+    tw = 0.5 + 0.5 * np.sin(ph * 2 * np.pi / 0.9)
+    L = int(14 + 20 * tw)
+    sx, sy = TX_ + 1, TY_ + 14
+    d = ImageDraw.Draw(img)
+    c = (255, 250, 225, int(255 * a))
+    d.line([(sx - L, sy), (sx + L, sy)], fill=c, width=2)
+    d.line([(sx, sy - L), (sx, sy + L)], fill=c, width=2)
+    d.line([(sx - L * 0.4, sy - L * 0.4), (sx + L * 0.4, sy + L * 0.4)], fill=c, width=1)
+    d.line([(sx - L * 0.4, sy + L * 0.4), (sx + L * 0.4, sy - L * 0.4)], fill=c, width=1)
+
+
 def emit(arr, shake=0):
     img = Image.fromarray(np.clip(arr, 0, 255).astype(np.uint8)).convert('RGBA')
+    if GLOW[0] is not None and N[0] >= GLOW[0]:
+        loot_glow(img, N[0])
     if DUST:
         lay = Image.new('RGBA', img.size)
         d = ImageDraw.Draw(lay)
@@ -94,7 +121,8 @@ def floor_head(r):
 # their difference with the battle backdrop), the last one (E, the front) falls there when cut
 K = VW / 1672
 HM = np.load(f'{S}/hydra/col19/heads1672.npy')
-DSRC = np.array(Image.open(f'{S}/hydra/col19/dead2_char.png').convert('RGB'))
+DSRC = np.array(Image.open(f'{S}/hydra/col19/dead2_loot.png').convert('RGB'))
+HM = HM | (np.load(f'{S}/hydra/col19/tooth_mask.npy').astype(np.uint8) * 16)  # the loot fang belongs to the front head
 def head_sprite(bit):
     m = ndimage.gaussian_filter(((HM & bit) > 0).astype(np.float32), 1.2)
     ys, xs = np.nonzero(m > 0.02)
@@ -180,7 +208,8 @@ for i in range(T):
     frame = frame * (1 - 0.92 * cover) + DCOL * 0.92 * cover
     dust_step(4 if t > 0.5 else 0)
     emit(frame, shake=0 if t < 0.35 else int(16 * (1 - abs(t - 0.6) * 2)))
-# the dust thins off his picture
+# the dust thins off his picture; the loot fang starts to glow
+GLOW[0] = N[0] + 10
 for i in range(24):
     t = i / 23
     cover = np.clip(HY * 1.3 * (1 - t) * 0.45 + (NZ - 0.5) * 0.3 * (1 - t), 0, 1)[..., None]

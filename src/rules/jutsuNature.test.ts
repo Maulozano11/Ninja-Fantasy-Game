@@ -20,7 +20,8 @@ const ids = (xs: { id: string }[]) => xs.map((j) => j.id);
 describe('which jutsu the nature gates', () => {
   it('elemental jutsu in the Element and S-rank slots; never Utility, clan secrets or jutsu with no element', () => {
     for (const j of JUTSUS_DATA) {
-      const want = (j.category === 'Elemental' || j.category === 'Ultimate') && isElement(j.nature);
+      // (a secret scroll's jutsu is not gated: the scroll teaches it to whoever holds it)
+      const want = !j.scroll && (j.category === 'Elemental' || j.category === 'Ultimate') && isElement(j.nature);
       assert.equal(natureGated(j), want, j.id);
     }
     // The medical palm, a utility jutsu, stays free though its nature is Water (the explosive tag is an item now).

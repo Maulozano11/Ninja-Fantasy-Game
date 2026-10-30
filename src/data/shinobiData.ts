@@ -1888,6 +1888,8 @@ export const LEGENDARY_PRESETS: { name: string; tag: string; nameEs?: string; ta
         slot4Clan: 'adamantine_sealing_chains',
         slot5Ultimate: 'rasenshuriken_wind',
       },
+      // The frost scroll (the owner, 2026-10-28: "1 Lyra"): the Frost Ground is hers to take in the creator.
+      scrolls: ['frost'],
       sheetVersion: 2,
       maxHp: 49,
       currentHp: 49,

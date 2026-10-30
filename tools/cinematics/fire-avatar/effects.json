@@ -1,0 +1,22 @@
+{
+ "about": "The owner's two forging effect sheets (same layout, two variants used in turn). Each effect: its row band [y0, y1] and its cells [x0, x1] in sheet pixels (1536x1024). 'rect' cuts touching effects as faded rectangles; the rest go by where each part's middle falls. 'dots': the two light points of each eyes cell, in the cut cell's own pixels (measured), for laying it on the avatar's two eyes.",
+ "sheets": {
+  "a": "docs/reference/fire-forge-effects-a-owner-reference.png",
+  "b": "docs/reference/fire-forge-effects-b-owner-reference.png"
+ },
+ "effects": {
+  "swirl_s": {"band": [0, 262], "cells": [[20, 118], [130, 228], [228, 312], [312, 390]]},
+  "swirl_m": {"band": [0, 262], "cells": [[395, 565], [565, 690], [690, 795], [795, 890]]},
+  "swirl_l": {"band": [0, 280], "cells": [[895, 1128], [1128, 1282], [1282, 1418], [1418, 1530]], "rect": true},
+  "gather":  {"band": [240, 460], "cells": [[25, 468], [468, 795], [795, 1052], [1052, 1300], [1300, 1515]]},
+  "molten":  {"band": [425, 640], "cells": [[30, 365], [380, 715], [715, 1120]]},
+  "burst":   {"band": [560, 835], "cells": [[15, 200], [200, 480], [480, 705], [705, 965]]},
+  "glint":   {"band": [592, 800], "cells": [[1005, 1165], [1165, 1335], [1335, 1525]], "rect": true},
+  "veins":   {"band": [812, 1015], "cells": [[15, 245], [245, 455], [455, 615], [615, 800]]},
+  "eyes":    {"band": [838, 1015], "cells": [[800, 1060], [1060, 1272], [1272, 1530]], "rect": true}
+ },
+ "dots": {
+  "a": {"eyes": [[[89.4, 37.6], [152.2, 37.5]], [[63.6, 60.9], [118.3, 61.0]], [[72, 60], [135, 60]]]},
+  "b": {"eyes": [[[78.4, 32.4], [138.7, 32.4]], [[62, 58], [118, 60]], [[88, 57], [132, 56]]]}
+ }
+}

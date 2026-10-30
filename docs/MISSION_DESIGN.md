@@ -490,7 +490,9 @@ him** as he says *"Diviértanse. Yo estaré adentro contando mi dinero... ¡jaja
 circle fires, and **he leaves with a ninja leap**: a crouch, a puff of dust, a flip up and over the
 wall to the right, an afterimage trail (the owner, 2026-10-29: *"salgan rayos y se active y luego
 barrabás se va de escena con un tipo salto ninja como lo tenemos para saltar a un árbol pero sin el
-árbol"*). Then the column, the smoke and the hydra. Mock: `docs/mockups/hydra-summon-barrabas-leap.png`. **He is met again in the commander's office** at
+árbol"*). Then the column, the smoke and the hydra. Mock: `docs/mockups/hydra-summon-barrabas-leap.png`.
+**The summon cinematic with Barrabás (v7) is approved** (the owner, 2026-10-29, 23:39); its
+scripts are in `tools/cinematics/hydra-summon/`. **He is met again in the commander's office** at
 the end of the mission, and fights there with his halberd and hook (approved 2026-10-29). The scythe's look is to be our own design (his example was an
 anime character's scythe: only the idea of the reach is taken).
 

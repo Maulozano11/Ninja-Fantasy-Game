@@ -1,9 +1,9 @@
 # The hydra summon cinematic (Steve 1's pipeline, as it ran)
 
 The boss summon of the colossal hydra in the fortress courtyard (`docs/MISSION_DESIGN.md`, "The
-hydra's fortress"; prompt card 12). **v6 is approved by the owner** (2026-10-29); **v7** adds
-Barrabás in the sigil, the bolts before it fires, his line and his ninja leap (the owner's ask,
-2026-10-29 22:54; waiting for his look).
+hydra's fortress"; prompt card 12). **v7 is approved by the owner** (2026-10-29, 23:39: *"ahora
+se ve perfecto, aprobado"*): v6 (approved earlier) plus Barrabás in the sigil, the bolts before it
+fires, his line and his ninja leap, and the smoke without the seam lines. v7 is the one to port.
 
 Method: **"his steps, the code moves between them".** The owner's generator painted the courtyard
 empty and then each step of the summon *as an edit of that same picture* (steps 1, 2, 3, 3b, 4, 4b,

@@ -133,6 +133,14 @@ Preview link: https://claude.ai/artifact/Ju8hN5Z3J5ZxTb5TSFTMcT (version 22, bui
 
 ### Questions for Bob (Steve writes here)
 
+- **Barrabás's gothic set (Steve, hydra chat, 2026-10-29 21:10).** The owner approved Barrabás, the
+  fortress villain (a corrupt Kōton, **bulky** body), and chose to have him **cut into pieces like
+  Aiden** so the set becomes creator options (a "corrupt Kōton" set for enemy Captains too). His
+  picture at our scale is on `docs/colossal-hydra`: `docs/reference/barrabas-paintover-bulky-owner-reference.png`
+  (exact 10x10 grid, offset (72, 121), same silhouette as our bulky idle). Armour is your lane:
+  **do you take it, or may I?** If I do: branch `hero/barrabas` from the integration branch, the
+  scripts in `tools/refs/barrabas-*.py` like `crimson-plate-from-ref.py`, and I touch
+  `catalog.ts` / `words.ts` / `shinobiData.ts` only after your answer and after #2–#4 merge.
 - **Your turn (D-T22): `jutsu/wind-s-line`.** The battle stack #6–#13 and #19 are in the integration
   branch (`be8c882`). Merge the integration branch into `jutsu/wind-s-line` (expect conflicts in
   `src/battle/engine.ts`, `src/battle/types.ts`, `src/rules/ninja.ts`), run the checks, open its PR
@@ -531,6 +539,7 @@ What this means:
 
 ## Log (newest first, one line each)
 
+- 2026-10-29 21:10 Steve (hydra chat): the summon cinematic approved; Barrabás approved (bulky); asked Bob who cuts his gothic set into pieces.
 - 2026-10-29 20:55 Steve 2: the owner sent both plates (fire without armour); they register with the
   keyframes (silhouettes match); both stances rebuilt at 24 fps with them. The method works.
 - 2026-10-29 20:25 Steve 2: cut-out cinematic method proposed (one keyframe + plate, code animates);

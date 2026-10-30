@@ -2152,8 +2152,9 @@ and no body along the back wall; only the body on the right).
   - **The acid spit:** a head throws its head back and opens its mouth, the ball of acid flies in an
     arc to the target, splashes, and leaves a puddle that boils under it, then dries to a burnt
     stain. `docs/mockups/colossal-hydra-acid-effects.png`.
-  - **Its death:** the body collapses where it stands, the five necks fall to the floor, the
-    heads lie with their eyes shut. His first picture (`colossal-hydra-dead-v1`, a different
+  - **Its death:** the body collapses where it stands, the five necks fall to the floor ending in
+    cut stumps, and the five **heads lie cut off, apart from the necks**, eyes shut (the owner,
+    2026-10-30); they can be looted for a basilisk tooth (`MISSION_DESIGN.md`, the fortress loot). His first picture (`colossal-hydra-dead-v1`, a different
     framing with burnt stumps, shown as a letterboxed final shot) he did not like (2026-10-30); a
     second one is asked as an exact edit of the five-head backdrop (prompt card 11 E, second round).
 

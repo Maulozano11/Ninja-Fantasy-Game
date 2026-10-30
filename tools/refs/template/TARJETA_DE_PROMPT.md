@@ -677,7 +677,8 @@ ni rosa. Misma resolución y proporción que la imagen adjunta.
 
 **Segunda vuelta de E** (2026-10-30). La primera (`docs/reference/colossal-hydra-dead-v1-owner-reference.png`)
 salió en 3:1, más cerca que el fondo y con los cinco muñones quemados en vez de las cabezas; no le
-gustó. Se pide otra vez adjuntando el mismo fondo de las cinco cabezas:
+gustó. Él: las cabezas tienen que estar **separadas del cuerpo** (se podrán saquear por un diente de
+basilisco). Se pide otra vez adjuntando el mismo fondo de las cinco cabezas:
 
 ```
 Usa la imagen adjunta como BASE y edítala SIN cambiar el encuadre: el resultado debe ser la MISMA
@@ -687,10 +688,13 @@ antorchas a la misma altura, el MISMO cielo arriba y el MISMO piso de losas moja
 hasta el borde de abajo. No acerques ni alejes la cámara, no recortes nada.
 Lo único que cambia es la HIDRA: está MUERTA, desplomada donde estaba, del mismo tamaño. El pecho y la
 panza tocan el piso, las patas dobladas, las púas sin brillo. Sus CINCO CUELLOS caen flojos sobre el
-piso hacia la IZQUIERDA, uno junto al otro, y en la punta de cada cuello su CABEZA DE DRAGÓN COMPLETA
-tirada de lado en el suelo, con los OJOS CERRADOS, la mandíbula entreabierta y los dientes a la vista,
-los cuernos dorados sin brillo. Sangre ROJA en algunos cortes y un charco de sangre roja oscura bajo
-los cuellos; polvo asentándose alrededor; algunas losas rotas donde cayó.
+piso hacia la IZQUIERDA, uno junto al otro, y cada cuello termina en un MUÑÓN CORTADO limpio, con la
+carne roja oscura (sin fuego, sin quemar). Las CINCO CABEZAS DE DRAGÓN están CORTADAS y SEPARADAS del
+cuerpo: tiradas de lado en el piso, cada una suelta y aparte, con piso visible entre la cabeza y su
+muñón, más hacia el centro del patio que los muñones; los OJOS CERRADOS, la mandíbula entreabierta
+con los colmillos bien a la vista, los cuernos dorados sin brillo. Sangre ROJA en los cortes y
+charcos de sangre roja oscura bajo los muñones y las cabezas; polvo asentándose alrededor; algunas
+losas rotas donde cayó.
 El tercio IZQUIERDO del piso queda vacío. Sin personajes, sin texto, sin fuego, nada morado ni rosa.
 ```
 

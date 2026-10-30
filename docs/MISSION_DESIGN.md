@@ -537,8 +537,10 @@ are hand-made).
 after the battle, and the party can loot them for a **basilisk tooth** (the front head's one long fang, which glows). **To take it a character must walk up to it** (the owner, 2026-10-30): close
 enough, the choice **"Lootear"** or **"Seguir adelante"** appears; both can be done (loot, then go
 on). **Going on, the party leaps one by one over the wall to the right, where Barrabás went, with
-his same ninja leap** (crouch, dust puff, flip, afterimage trail), and the mission moves on into
-the castle. The fang's glow is soft. `docs/mockups/colossal-hydra-after-battle.png` (what it does, and whether
+the tree jump's leap** (the owner, 2026-10-30: *"como en el salto al árbol"*; the Vanish Jump's
+look on `stealth/tree-hide`, `vanishArt.ts`: a crouch, the take-off puff, the body in lagging
+bands with pale after-images and speed lines, fading out over the battlements), and the mission
+moves on into the castle. `docs/mockups/colossal-hydra-party-leap.png`. The fang's glow is soft. `docs/mockups/colossal-hydra-after-battle.png` (what it does, and whether
 it is a material for the forge or an item of its own, to propose).
 
 **Summons, from here on.** Boss summons get their own animation (this one: the villain's

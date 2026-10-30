@@ -3,7 +3,7 @@ softly; the only way to take it is to walk up to it: a character close enough ge
 "Lootear" or "Seguir adelante" (both can be done: loot, then go on). Going on, the party leaps one by
 one over the wall to the right, where Barrabás went, with his ninja leap (crouch, dust puff, flip,
 afterimage trail). 30 fps, MP4 + GIF + storyboard frames."""
-import math, os, subprocess, sys
+import json, math, os, subprocess, sys
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter, ImageFont, ImageEnhance
 
@@ -31,7 +31,85 @@ for name, x, z in PARTY:
     sp = sp.crop(sp.getbbox())
     sp = sp.resize((int(sp.width * 100 / sp.height), 100), Image.NEAREST)
     X, Y = P(x, z)
-    U[name] = dict(sp=sp, x=float(X), y=float(Y), on=True, sx=1.0, sy=1.0, rot=0.0, trail=[], face=1)
+    U[name] = dict(name=name, sp=sp, x=float(X), y=float(Y), on=True, sx=1.0, sy=1.0, rot=0.0, trail=[], face=1)
+# the Vanish Jump's frames and sheets (Bob's stealth/tree-hide: vanishArt.ts and src/assets/world/vfx_hide)
+V = f'{S}/vanish'
+POSE = {}
+for name in U:
+    n = name[4:]
+    idle = Image.open(f'{V}/{n}_idle.png').convert('RGBA')
+    bb = idle.getbbox()
+    k = 100 / (bb[3] - bb[1])
+    fx, fy = (bb[0] + bb[2]) / 2 * k, bb[3] * k  # the feet in the scaled frame
+    POSE[name] = {p: (Image.open(f'{V}/{n}_{p}.png').convert('RGBA').resize((int(256 * k), int(256 * k)), Image.NEAREST), fx, fy) for p in ('crouch', 'run')}
+VM = json.load(open(f'{V}/manifest.json'))['sprites']
+SHEET = {nm: Image.open(f'{V}/{VM[nm]["file"]}').convert('RGBA') for nm in ('dash_lines', 'vanish_burst')}
+
+
+def world(img, nm, anim, frame, x, y, mirror=False, alpha=1.0):
+    sp = VM[nm]
+    a = sp['anims'][anim]
+    f = max(0, min(a['frames'] - 1, frame))
+    W_, H_ = sp['frameW'], sp['frameH']
+    c = SHEET[nm].crop((f * W_, a['row'] * H_, (f + 1) * W_, (a['row'] + 1) * H_))
+    ax, ay = sp['anchor']
+    if mirror:
+        c = c.transpose(Image.FLIP_LEFT_RIGHT)
+        ax = W_ - ax
+    if alpha < 1:
+        c.putalpha(c.getchannel('A').point(lambda v: int(v * alpha)))
+    img.alpha_composite(c, (int(x - ax), int(y - ay)))
+
+
+WIND, LEAP = 150, 520  # ms: the crouch, the flight (the tree jump's 420, a little longer for the longer leap)
+ease = lambda x: 1 - (1 - max(0.0, min(1.0, x))) ** 1.7
+leapK = lambda ms: 0.0 if ms < WIND else ease((ms - WIND) / LEAP)
+
+
+def leap_px(u, k):
+    hop = 30 + (u['y0'] - u['ty']) * 0.25
+    return u['x0'] + (u['tx'] - u['x0']) * k, u['y0'] + (u['ty'] - u['y0']) * k - hop * math.sin(math.pi * k)
+
+
+def put_frame(img, fr, x, y, alpha=1.0, bands=0, sil=False):
+    im, fx, fy = fr
+    if sil:
+        a = im.getchannel('A')
+        im = Image.new('RGBA', im.size, (0xcf, 0xe3, 0xe6, 255))
+        im.putalpha(a)
+    if bands:  # cut in 2 px bands that lag behind (to the left: it flies right)
+        out = Image.new('RGBA', im.size)
+        for yy in range(0, im.height, 2):
+            out.alpha_composite(im.crop((0, yy, im.width, yy + 2)), (-((yy // 2) % 3) * bands, yy))
+        im = out
+    if alpha < 1:
+        im = im.copy()
+        im.putalpha(im.getchannel('A').point(lambda v: int(v * alpha)))
+    img.alpha_composite(im, (int(round(x - fx)), int(round(y - fy))))
+
+
+def draw_vanish(img, name, u, ms):
+    if ms < WIND:
+        put_frame(img, POSE[name]['crouch'], u['x0'], u['y0'])
+        return
+    k = leapK(ms)
+    run = POSE[name]['run']
+    for g in (3, 2, 1):  # pale after-images where it was a moment ago
+        if ms - g * 45 < WIND:
+            continue
+        qx, qy = leap_px(u, leapK(ms - g * 45))
+        put_frame(img, run, qx, qy, alpha=0.16 * (4 - g) * (1 if k < 0.9 else 0.5), sil=True)
+    x, y = leap_px(u, k)
+    fade = 1 if k < 0.6 else max(0.0, 1 - (k - 0.6) / 0.38)
+    if fade > 0:
+        put_frame(img, run, x, y, alpha=fade, bands=2 + round(k * 8))
+    px, py = leap_px(u, leapK(ms - 40))
+    dx, dy = x - px, y - py
+    if math.hypot(dx, dy) >= 0.5:
+        row = max(-90, min(90, round(math.degrees(math.atan2(dy, dx)) / 15) * 15))
+        world(img, 'dash_lines', f'a{row}', int(ms // 50) % 4, x, y - 52, alpha=1 if k < 0.95 else 0.6)
+
+
 N = [0]
 STATE = dict(tooth=True, glow0=0, prompt=None, popup=None, puffs=[])
 
@@ -89,6 +167,10 @@ def prompt(img, alpha, hover, looted):
 def draw_unit(img, u):
     if not u['on']:
         return
+    if 'vms' in u:
+        if u['vms'] >= 0:
+            draw_vanish(img, u['name'], u, u['vms'])
+            return
     for x, y, r, a in u['trail']:
         g = u['sp'].rotate(r, resample=Image.NEAREST, expand=True)
         al = np.array(g)
@@ -119,6 +201,10 @@ def emit():
             p[0] += p[4]
             p[1] -= 1.4
         img.alpha_composite(lay.filter(ImageFilter.GaussianBlur(3)))
+    for b in STATE.get('bursts', []):
+        e = (N[0] - b[2]) / 30.0
+        if 0 <= e * 20 < 8:
+            world(img, 'vanish_burst', 'burst', int(e * 20), b[0], b[1])
     for u in sorted(U.values(), key=lambda u: u['y']):
         draw_unit(img, u)
     if STATE['prompt']:
@@ -177,32 +263,32 @@ for i in range(30):
     emit()
 MARK['go'] = N[0] - 1
 STATE['prompt'] = None
-# 6. Seguir adelante: one by one they leap over the wall to the right, after Barrabás
+# 6. Seguir adelante: one by one they vanish over the wall to the right, after Barrabás, with the
+# tree jump's leap (vanishArt.ts): a crouch, a puff, the body in lagging bands with pale after-images
+# and speed lines, fading as it goes over the battlements
 ORDER = ['leg_aiden', 'leg_lyra', 'leg_solen', 'leg_romano', 'leg_aurelia']
-START = {n: 6 * k for k, n in enumerate(ORDER)}
-XT, YT = VW + 120, 40.0
-JT = 22
-for f in range(6 * len(ORDER) + 5 + JT + 8):
+STATE['bursts'] = []
+TARGETS = [(1500, 95), (1580, 90), (1660, 95), (1740, 90), (1820, 95)]  # over the battlements
+for k_, n in enumerate(ORDER):
+    u = U[n]
+    u.update(x0=u['x'], y0=u['y'], tx=TARGETS[k_][0], ty=TARGETS[k_][1], vms=-1)
+START = {n: 9 * k for k, n in enumerate(ORDER)}
+FMS = 1000 / 30
+for f in range(9 * len(ORDER) + int((WIND + LEAP) / FMS) + 4):
     for n in ORDER:
         u = U[n]
         j = f - START[n]
-        if j < 0 or not u['on']:
+        if j < 0:
             continue
-        if j < 5:  # the crouch
-            c = math.sin(math.pi * j / 4 * 0.5)
-            u.update(sx=1 + 0.1 * c, sy=1 - 0.16 * c)
-            if j == 4:
-                u['x0'], u['y0'] = u['x'], u['y']
-                STATE['puffs'] += [[u['x'] + dx, u['y'] - 4, 6, 0.9, dx * 0.1] for dx in (-36, -18, 0, 18, 36)]
-        elif j < 5 + JT:
-            uu = (j - 4) / JT
-            u['trail'] = ([(u['x'], u['y'] - 50, u['rot'], 0.45)] + [(x, y, r, al * 0.6) for x, y, r, al in u['trail']])[:4]
-            u.update(sx=1.0, sy=1.0, rot=-360 * min(1, uu * 1.1) if uu > 0.12 else 0.0,
-                     x=u['x0'] + (XT - u['x0']) * uu, y=u['y0'] + (YT - u['y0']) * uu - 380 * 4 * uu * (1 - uu))
-        else:
+        ms = j * FMS
+        if ms > WIND + LEAP:
             u['on'] = False
+            continue
+        if u['vms'] < 0 or j == 0:
+            STATE['bursts'].append((u['x0'], u['y0'], N[0]))
+        u['vms'] = ms
     emit()
-    if f == 14:
+    if f == 22:
         MARK['leap'] = N[0] - 1
 for _ in range(20):
     emit()

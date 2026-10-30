@@ -167,6 +167,8 @@ hydra. Starts when the owner says go.
   of the four and open their PRs. If your stack waits on the owner for long, say so and I open
   them first and you merge the integration branch into your stack. Your call.
 
+- **Reviews done (Bob, 2026-10-30, the owner's go):** `Revisado por Bob:` on #21, #22 and #23, with the full `npm install`. #21 and #22: no objections (tsc only the five integration errors; 872/872; #22 driven in Chromium at `#cinematic`: both cinematics play, the ninja drawn and following the camera, no console errors). **#23 needs a fix before merging:** `BattleScreen.tsx:998` `t` drops params, so the avatar buttons' help reads "Acción, {c} chakra" (lines 1097-1098); plus 8 tsc errors in `colossalAvatar.test.ts` / `emberArmour.test.ts` (`false` as `AttackKind`, a `Hit` without `what`). 892/892. #22 conflicts with my #24/#25 only in `docs/reference/README.md` rows (keep both). Details in each PR comment.
+
 ## Bob
 
 ### In progress
@@ -659,6 +661,7 @@ What this means:
 - 2026-10-29 20:25 Steve 2: cut-out cinematic method proposed (one keyframe + plate, code animates);
   proof video on the avatar sent to the owner; question to Steve 1 about sharing it with the hydra.
 - 2026-10-29 20:16 Steve 2: fire avatar cinematics animated from the owner's layers (draft videos sent).
+- 2026-10-30 Bob: reviewed #21, #22 (tsc + browser check) and #23 on the owner's go; #23 has a visible "{c}" in the avatar help and 8 test tsc errors; note for Steve above "## Bob".
 - 2026-10-30 Bob (new chat): watching PRs #24 and #25 until they merge; both clean, no comments, no CI. Dry run of both together: five "keep both" conflicts for whichever merges second, resolution ready; tsc only the five integration errors. Steve: #21, #22, #23 still have no `Revisado por Bob:`; asking the owner before I post.
 - 2026-10-30 Bob: PR #24 (hero/bronze-warrior) and PR #25 (heroine/three-knights) opened on the owner's word, both with the integration branch merged in and the suites green. Steve: the integration branch at 3e2b000 has five tsc errors of its own (lastStand.test.ts, reactions.test.ts, playback.ts:1990 'guard' pose, partyText.ts:35 missing effect ids); not from my branches, yours to fix. Both PRs touch shinobiData.ts, catalog.ts and words.ts in different places: whichever merges second gets a merge + rerun first.
 - 2026-10-30 Bob: the owner approved s11 (the bronze warrior's own repainted head). hero/bronze-warrior is complete and approved; PR into the integration branch next.

@@ -301,7 +301,8 @@ const RESIST: Partial<Record<string, DamageType>> = { Fire: 'Fire', Water: 'Cold
 export function adjustDamage(s: BattleState, t: Unit, amount: number, type: DamageType): number {
   let dmg = amount;
   const seal = t.effects.find((e) => e.id === 'warding_seal');
-  if (seal && RESIST[seal.detail ?? 'Fire'] === type) dmg = Math.floor(dmg / 2);
+  // The Ember Armour (battle/infernal.ts) resists fire; like 5e, two resistances to one type halve it once.
+  if ((seal && RESIST[seal.detail ?? 'Fire'] === type) || (type === 'Fire' && t.effects.some((e) => e.id === 'ember_armour'))) dmg = Math.floor(dmg / 2);
   if (t.character?.shinobiClass === 'Taijutsu Master' && type === 'Bludgeoning') dmg = Math.floor(dmg / 2);
   if (s.weather === 'Downpour') {
     if (type === 'Fire') dmg = Math.floor(dmg * 0.75);

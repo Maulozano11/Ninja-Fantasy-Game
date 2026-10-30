@@ -17,6 +17,8 @@ import { cellCenter, cellOf, dist, fullCoverBetween, getMap, gridFor, idx, lineO
 import { canStop, occupancy, pathCost, pathTo, reachable } from '../../battle/nav';
 import { foreseen } from '../../battle/intent';
 import { MAX_STRUCTURES, STRUCTURE_AC, breakable, jutsuWallAt, ownStructures, structureAt, structureAttack, structureBlocker, structureDist } from '../../battle/structures';
+import { EMBER_COST, emberOn } from '../../battle/infernal';
+import { infernalSteps } from '../../rules/paths';
 import { auraEntered, commandBlocker, edgeFoe, nodeInSight, nodeUnder, ownNodeAt, ownNodes, submissionBlocker, submissionRefused, swapBlocker, warpAim, warpBlocker, warpLanding } from '../../battle/clans';
 import { KUNAI, KUNAI_LONG, wielded } from '../../battle/units';
 import { EARTH_CRIT, ELEMENTAL_SLASH, IMBUE_COST, IMBUE_DICE, IMBUE_ROUNDS, imbueBlocker, type ImbueElement, slashBlocker, slashRange, SLASH_COST, SLASH_RANGE, unitImbueElements, WATER_REACH, WEAPON_ELEMENT, WIND_PUSH } from '../../battle/imbue';
@@ -1061,6 +1063,11 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
           });
         }
       }
+      // The Infernal Fire's Ember Armour (D-T24): a bonus action and EMBER_COST chakra, 3 turns.
+      if (infernalSteps(u.character).ember) {
+        const on = emberOn(u);
+        add({ id: 'ember', label: t('act_ember'), iconId: 'ember_armour', icon: ACTION_ICON.focus, disabled: !can.bonus || stealth || u.chakra < EMBER_COST, active: on, why: stealth ? t('r_combatOnly') : !can.bonus ? t('r_noBonus') : t('r_noChakra'), help: t('help_ember') });
+      }
       add({ id: 'dash', label: t('act_dash'), icon: ACTION_ICON.dash, disabled: !can.action, why: noAction, help: t('help_dash') });
       add({ id: 'dodge', label: t('act_dodge'), icon: ACTION_ICON.dodge, disabled: !can.action || stealth, why: noAction ?? t('r_combatOnly'), help: t('help_dodge') });
       add({ id: 'hide', label: t('act_hide'), icon: ACTION_ICON.hide, disabled: !can.action, why: noAction, help: t('help_hide') });
@@ -1147,6 +1154,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
         case 'focus':
         case 'draw':
         case 'eye':
+        case 'ember':
           act({ type: id, unit: u.id });
           return;
         case 'pill':

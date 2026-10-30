@@ -2,6 +2,8 @@
 // Support). It only ever sends ordinary actions through the engine, one at a time, so an AI turn
 // replays and travels over the network like a player's.
 
+import { EMBER_COST, emberOn } from './infernal';
+import { infernalSteps } from '../rules/paths';
 import { effectMods, hasEffect } from '../rules/effects';
 import type { Action, BattleEvent, BattleState, Cell, Intent, Pt, Unit } from './types';
 import { cellCenter, cellOf, coverBetween, dampAt, dist, fullCoverBetween, gridFor, idx, lineOfSight, sameCell, segmentsCross, steamAt } from './map';
@@ -219,7 +221,16 @@ function fallback(s: BattleState, u: Unit): Action | null {
  */
 function bonusBefore(s: BattleState, u: Unit, i: Intent): Action | null {
   if (!u.turn.bonus) return null;
-  return ryuseiWarp(s, u, i) ?? imbueFirst(s, u, i) ?? slashAway(s, u, false);
+  return ryuseiWarp(s, u, i) ?? emberFirst(s, u, i) ?? imbueFirst(s, u, i) ?? slashAway(s, u, false);
+}
+
+/**
+ * The Ember Armour before closing in (battle/infernal.ts): a Mirai of the Infernal Fire whose plan is a
+ * blow up close puts it on when it isn't on, before its element on the weapon (it lasts 3 turns).
+ */
+function emberFirst(s: BattleState, u: Unit, i: Intent): Action | null {
+  if (i.kind !== 'melee' || emberOn(u) || !infernalSteps(u.character).ember || u.chakra < EMBER_COST || effectMods(u.effects).noJutsu) return null;
+  return { type: 'ember', unit: u.id };
 }
 
 /**

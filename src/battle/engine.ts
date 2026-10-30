@@ -46,6 +46,7 @@ import { conduct, electrify, groundEffects, plantTag, saveHit, springTrap, TAG, 
 import { aiInterposes, canDeflect, deflect, interpose, interposers } from './reactions';
 import { blazeAt, blazeBurns, blowSteam, freeze, iceAt, mire, pathArea, slips, soak, spill } from './ground';
 import { breakable, damageStructure, faceToward, hitStructuresIn, jutsuWallAt, raiseStructure, STRUCTURE_AC, structureAt, structureAttack, structureBlocker } from './structures';
+import { EMBER_BURN, emberArmour, emberBlow, emberOn } from './infernal';
 import { addNode, auraEntered, canEvade, command, commandBlocker, enteredAura, evade, leavesNodes, ownNodeAt, spatialSwap, submissionBlocker, submit, swapBlocker, warpBlocker, warpLanding, warpStrike, openEye, WEAPON_THROW, warpAim } from './clans';
 import { goalOf, ninjaOptions, reachTo, replanAgainst } from './intent';
 import { chargedFoe, chargeHolds, crackUnder, endCharge } from './charged';
@@ -257,6 +258,8 @@ function dispatch(s: BattleState, a: Action, ev: BattleEvent[]): string | null {
       return doCrouch(s, u, ev);
     case 'eye':
       return openEye(s, u, ev);
+    case 'ember':
+      return emberArmour(s, u, ev);
     case 'jump':
       return doJump(u, ev);
     case 'hook':
@@ -543,6 +546,7 @@ function weaponAttack(
     if (a.lastStand) amount *= SACRIFICE_POWER;
     const hit: Hit = { unit: t.id, amount: Math.max(1, amount), type: w.type, source: a.id, what: w.name, crit: roll.crit, knockout: o.knockout && !ranged, melee: !ranged, aimed: true, unseen: surprise, unblockable: edge };
     if (imbue) imbuedHit(s, a, hit, imbue);
+    emberBlow(a, hit, (x, c) => rollDiceExpr(s, x, c));
     hits.push(hit);
   }
   applyHits(s, hits, after, ev);
@@ -839,6 +843,12 @@ function landHit(s: BattleState, t: Unit, h: Hit, ev: BattleEvent[]): void {
   // The element on the weapon, after the blow: not on a ninja the blow dropped, but a fire or
   // lightning blade seals the hydra's stump it has just cut.
   if (h.bonus && h.bonus.amount > 0 && (!t.down || t.head?.severed)) damage(s, t, h.bonus.amount, h.bonus.type, { crit: h.crit, source: h.source, knockout: h.knockout, melee: h.melee }, ev);
+  // The Ember Armour's fire on the blow (battle/infernal.ts), and its burn on whoever strikes it up close.
+  if (h.ember && h.ember > 0 && (!t.down || t.head?.severed)) damage(s, t, h.ember, 'Fire', { crit: h.crit, source: h.source, melee: h.melee }, ev);
+  const striker = h.source ? s.units[h.source] : undefined;
+  if (h.melee && h.amount > 0 && emberOn(t) && striker && striker.id !== t.id && !striker.down) {
+    damage(s, striker, rollDiceExpr(s, EMBER_BURN), 'Fire', { source: t.id }, ev);
+  }
   // A charged hand, or an element on the weapon, doesn't outlast its ninja's fall.
   chargeHolds(t, false, ev);
   imbueHolds(t, false, ev);

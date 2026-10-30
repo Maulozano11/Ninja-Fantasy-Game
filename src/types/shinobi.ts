@@ -3,6 +3,9 @@ import type { ConvictionValue, SkillId, StatusEffect } from './mission';
 
 export type ClanType = 'Mirai' | 'Koton' | 'Ryusei' | 'Northstar';
 
+/** A clan's Paths of Mastery (docs/CLANS_DESIGN.md): three a clan; only the Mirai's are named so far. */
+export type ClanPath = 'mirai_oracle' | 'mirai_infernal_fire' | 'mirai_ash_weaver';
+
 export type DojutsuType =
   | 'None'
   | 'Sharingan (1-Tomoe)'
@@ -240,6 +243,12 @@ export interface ShinobiCharacter {
    * or a ninja that has not chosen). Its chakra type, the main element, never changes.
    */
   natureGrowth?: NatureGrowth;
+  /**
+   * The clan's Path of Mastery (docs/CLANS_DESIGN.md, "Later phases"), chosen in the creator and in
+   * force from level 3 (the owner, 2026-10-30: "el camino se elige en el creador de personajes pero
+   * se desbloquea hasta el nivel 3"); rules/paths.ts. Missing: none chosen.
+   */
+  path?: ClanPath;
   /**
    * The elements the ninja has besides its chakra type: the second (the level-5 choice, or a legend's
    * own: Kaien Fire, Raiga Earth) and later a third (a special feat). Missing: none.

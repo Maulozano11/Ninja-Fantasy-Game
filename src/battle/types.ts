@@ -402,6 +402,8 @@ export interface Hit {
   unit: string;
   amount: number;
   type: DamageType;
+  /** The Ember Armour's fire on a weapon blow (battle/infernal.ts), dealt after it as fire. */
+  ember?: number;
   /** Who dealt it, and with what (a jutsu id, a weapon name, 'explosion'…). */
   source?: string;
   what: string;
@@ -529,6 +531,8 @@ export type Action =
   | { type: 'dash' | 'disengage' | 'dodge' | 'hide' | 'focus' | 'crouch' | 'jump' | 'draw'; unit: string }
   /** A Mirai opens the Eye of Tomorrow (bonus action, EYE_COST chakra) until its next turn begins. */
   | { type: 'eye'; unit: string }
+  /** The Infernal Fire's Ember Armour (bonus action, EMBER_COST chakra, 3 turns; battle/infernal.ts). */
+  | { type: 'ember'; unit: string }
   /** A wooden arm's grapple hook (bonus action): the ninja pulls itself to `at`, within HOOK_RANGE in sight. */
   | { type: 'hook'; unit: string; at: Pt }
   | { type: 'shove'; unit: string; target: string; mode: 'prone' | 'push' }

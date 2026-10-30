@@ -21,6 +21,7 @@ export type EffectId =
   | 'comrades_bond'
   | 'encouraged'
   | 'will_of_fire'
+  | 'ember_armour'
   // debuffs
   | 'bleeding'
   | 'burning'

@@ -313,8 +313,15 @@ unfinished battles still 0), so the fixes changed no outcome there.
 
 ## Later phases: the Paths of Mastery (the owner's design)
 
-Not built yet. Numbers will be proposed and approved before each Path is
-built.
+Not built yet, except the Infernal Fire's Ember Armour (below). Numbers will be
+proposed and approved before each Path is built.
+
+**Choosing a Path (the owner, 2026-10-30: "el camino se elige en el creador de
+personajes pero se desbloquea hasta el nivel 3").** The Path is picked in the
+character creator, among its clan's three, and saved on the character
+(`ShinobiCharacter.path`, `src/rules/paths.ts`). It counts from **level 3**:
+below it the Path is shown but locked, and none of its abilities work. Its
+abilities then arrive at their own levels (the Infernal Fire: 6, 9, 12).
 
 ### Mirai
 

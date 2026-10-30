@@ -1516,6 +1516,8 @@ export const LEGENDARY_PRESETS: { name: string; tag: string; nameEs?: string; ta
       title: 'The Crimson Knight',
       level: 5,
       clan: 'Mirai',
+      // His fire avatar is the Infernal Fire's (2026-10-29); it counts from level 3, its armour from 6.
+      path: 'mirai_infernal_fire',
       shinobiClass: 'Bukijutsu Master',
       stats: { str: 16, dex: 16, con: 16, int: 14, wis: 14, cha: 12 },
       palette: {

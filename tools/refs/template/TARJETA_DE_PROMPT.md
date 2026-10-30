@@ -790,18 +790,19 @@ cabezas estuvieran recogidas contra el cuerpo. El borde izquierdo de la nube no 
 patio. Piedras cayendo, brasas sueltas, un resplandor dorado débil al pie de la nube.
 ```
 
-*4c, las cabezas rasgan la nube* (adjunta **el fondo de la hidra**; él lo pidió 2026-10-29: el humo
-esparcido antes de tiempo por las cabezas al salir). Las cabezas NO se pintan: las pone el juego
-saliendo por cada túnel.
+*4c, las cabezas rasgan la nube* (él lo pidió 2026-10-29: el humo esparcido antes de tiempo por las
+cabezas al salir). **Primera vuelta** (`docs/reference/summon-courtyard-step4c-v1-owner-reference.png`):
+el generador pintó cinco cuellos LARGOS hasta los túneles, en otras alturas que los nuestros, y repintó
+el cuerpo; con nuestras cabezas encima salen cuellos dobles. Se pide de nuevo **sobre el 4b** (la nube
+con los ojos), con los túneles VACÍOS: los cuellos y las cabezas los pone el juego.
 ```
-La MISMA imagen adjunta, idéntica píxel por píxel en todo lo que no se menciona (la hidra, sus cuellos,
-el muro, el portón, las antorchas, las losas, el encuadre), cambiando SOLO esto: la NUBE ENORME de humo
-gris y polvo sigue cubriendo el lado derecho del patio, pero se está RASGANDO: a la altura de cada uno
-de los CINCO CUELLOS se abre un TÚNEL HORIZONTAL en el humo hacia la izquierda, como si algo acabara de
-salir disparado por ahí; por los túneles se ven los cuellos de la imagen, y el humo alrededor de cada
-túnel se arremolina en espiral y es arrastrado hacia la izquierda en jirones largos. NO dibujes
-cabezas: cada túnel termina en un remolino de humo donde iría la cabeza. El cuerpo todavía se ve
-entre humo; piedras y brasas sueltas cayendo.
+La MISMA imagen adjunta, idéntica píxel por píxel en todo lo que no se menciona (el muro, el portón, las
+antorchas, las losas, el encuadre, la forma de la nube), cambiando SOLO esto: la nube se está RASGANDO
+por dentro: CINCO TÚNELES HORIZONTALES VACÍOS atraviesan el humo de derecha a izquierda, uno a la altura
+de cada par de ojos verdes, como si algo acabara de salir disparado por ahí; los túneles son huecos de
+aire oscuro con las paredes de humo arremolinadas en espiral, y en la boca izquierda de cada túnel el
+humo sale despedido hacia la izquierda en jirones largos. NO dibujes cuellos, cabezas, escamas ni el
+cuerpo: dentro de los túneles solo hay aire y humo. Los ojos verdes ya no están. Piedras y brasas sueltas.
 ```
 
 Con estos el juego hace: columna (3) → la columna se rompe (3b) → la nube (4) → la nube con la silueta

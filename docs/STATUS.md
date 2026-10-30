@@ -306,7 +306,13 @@ Merge checks (`git merge-tree` on the origin tips, nothing changed):
   black bottom rows are his line, which on his own head is the brows and lashes; over the face, between the
   temple strand and the far lock, the fringe now ends above the brows, its pixels on the brow and eye rows
   gone and its bottom line in his hair tones (`solen-mane-from-ref.py` brow, FACE_COLS, FRINGE_*), so each
-  face's own eyebrows show under it on the four heads (`s6-ceja.png`).
+  face's own eyebrows show under it on the four heads (`s6-ceja.png`). His word on s6 ("devuélvele las
+  cejas a todas las cabezas", his circles on the brow's inner end): the fringe still sat on Solen's brows
+  (they slant up to four rows over the lash row) and the circled pixels were the diadem's drop; the fringe now
+  ends above the highest brows (FRINGE_END -4) and the diadem goes up four rows more than the mane, its band
+  on the fringe and its drop clear of the brows (DIADEM_UP). Proof in the sheet script: on each of the four
+  heads the rows from the brows' first row to the eyes, between the strands, equal the bare head pixel for
+  pixel (`s7-cejas.png`).
 
 - `jutsu/tide-s` (2026-10-22): the Dragon Tsunami is approved (look, rank S, names, numbers for now).
   Still open, small:

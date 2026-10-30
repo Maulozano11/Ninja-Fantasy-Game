@@ -33,8 +33,8 @@ export const SOLEN_MANE_FRONT: PaintedPart = {
     '..acadhdhdhhddhcdhhdldca..',
     '..aadhdldhhdhhhcdhhdaeha..',
     '..aacdilhedeehhcdhhdaedia.',
-    '.aacadalldffdhhcdhhdadeaca',
-    '..aacaalldhedhhcdhhdaahaa.',
+    '.aacada.............adeaca',
+    '..aacaa.............aahaa.',
     '...acaa.............aadda.',
     '..acaad..............aada.',
     '..acada.............aaada.',
@@ -62,10 +62,10 @@ export const SOLEN_MANE_BACK: PaintedPart = {
     '..acadhdhdhhddhcdhhdldca..',
     '..aadhdldhhdhhhcdhhdaeha..',
     '..aacdilhedeehhcdhhdaedia.',
-    '.aacadalldffdhhcdhhdadeaca',
-    '..aacaalldhedhhcdhhdaahaa.',
-    '...acaalldhedhhcdhhdaadda.',
-    '..acaadlldhedhhcdhhd.aada.',
+    '.aacadalhedeehhcdhhdadeaca',
+    '..aacaalhedeehhcdhhdaahaa.',
+    '...acaalhedeehhcdhhdaadda.',
+    '..acaadlhedeehhcdhhd.aada.',
     '..acada.............aaada.',
     '.aaacca.............aaaa..',
     '...acaa..............aaa..',
@@ -168,7 +168,7 @@ export const SOLEN_MANE_BAND = '#754e32';
 
 /** His bronze diadem across the brow, lifted with the mane: stamped on the face anchor, over any hair. */
 export const SOLEN_DIADEM: PaintedPiece = {
-  pivot: [3, 5],
+  pivot: [3, 9],
   angle: -90.00,
   rows: [
     '........abaccad',
@@ -220,7 +220,7 @@ const SOLEN_MANE_DIADEM_COLORS: Record<string, string> = {
 
 /** His diadem as a part of the mane (the clip that holds the hair): the same pixels as SOLEN_DIADEM, drawn over the hair at the brow; pivot on the face anchor. */
 export const SOLEN_MANE_DIADEM: PaintedPart = {
-  pivot: [3, 5],
+  pivot: [3, 9],
   rows: [
     '........abaccad',
     '.e.....eefehibf',

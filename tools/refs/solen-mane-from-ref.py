@@ -78,31 +78,35 @@ def skull(x, y):
 STRAND = (0, -1, 3, 6)
 STRAND_SHIFT = -3
 # The fringe over the brow (the owner, 2026-10-30, on s5: "una línea negra a la altura de la ceja en todas las
-# cabezas, es la que no me gusta", and "asegúrate de no quitar las cejas"): his fringe's bottom rows are his
-# black line, which on his own head are the brows and lashes; on Solen's head the brows are the face's own.
-# Over the face, between the near strand and the far temple lock (FACE_COLS: columns from the anchor), the
-# fringe ends above the brows: its pixels from row FRINGE_END (from the anchor; the brows' first row) down to
-# row FRINGE_LAST go, and above them, from row FRINGE_TONE down, his line pixels at the fringe's bottom (with
-# no hair tone of his under them in their column down to the brow) take his hair tone nearest above them in
-# the column (else beside them), so the fringe ends in his hair tones and the brows show under it. His diadem
-# lies over the fringe there as he set it.
+# cabezas, es la que no me gusta", and "asegúrate de no quitar las cejas"; on s6: "devuélvele las cejas a todas
+# las cabezas"): his fringe's bottom rows are his black line, which on his own head are the brows and lashes;
+# on Solen's head the brows are the face's own, and the highest of our male heads' brows (Solen's, which
+# slant up from the eye) start four rows over the lash row. Over the face, between the near strand and the far
+# temple lock (FACE_COLS: columns from the anchor), the fringe ends above every head's brows: its pixels from
+# row FRINGE_END (from the anchor: the highest brows' first row) down to row FRINGE_LAST go, and above them,
+# from row FRINGE_TONE down, his line pixels at the fringe's bottom (with no hair tone of his under them in
+# their column down to the brow) take his hair tone nearest above them in the column (else beside them), so
+# the fringe ends in his hair tones and the brows show under it on the founder, roman, valiant and night
+# faces. His diadem goes up DIADEM_UP rows more than the mane, so its band lies on the fringe over the brows
+# and its drop hangs clear of them (his circles on s6 were the drop's pixels on the brow's inner end).
 FACE_COLS = (-2, 10)
-FRINGE_END = -2
+FRINGE_END = -4
 FRINGE_LAST = 3
-FRINGE_TONE = -6
+FRINGE_TONE = -8
+DIADEM_UP = 4
 
 ANCHOR = R.ANCHOR
 NEAR4 = ((1, 0), (-1, 0), (0, 1), (0, -1))
 
 
-def lifted(piece):
+def lifted(piece, rows=LIFT):
     m, c, isl = piece
     out_m = np.zeros_like(m)
     out_c = np.zeros_like(c)
     out_l = np.zeros_like(isl)
-    out_m[:-LIFT] = m[LIFT:]
-    out_c[:-LIFT] = c[LIFT:]
-    out_l[:-LIFT] = isl[LIFT:]
+    out_m[:-rows] = m[rows:]
+    out_c[:-rows] = c[rows:]
+    out_l[:-rows] = isl[rows:]
     return out_m, out_c, out_l
 
 
@@ -262,7 +266,7 @@ def main(out, study=None):
     black = np.array(R.commonest([q for q in zip(*np.nonzero(hm0)) if R.material(hc0[q], 'hair') == 'line'], hc0))
     hair = lifted(rep['hair'])
     braid = lifted(rep['braid'])
-    diadem = lifted(rep['diadem'])
+    diadem = lifted(rep['diadem'], LIFT + DIADEM_UP)
     hm, hc, hl = crown(*hair, black)
     hm, hc, hl = moved(hm, hc, hl, black)
     hm, hc, hl = brow(hm, hc, hl)

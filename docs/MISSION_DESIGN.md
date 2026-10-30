@@ -479,6 +479,12 @@ armour, the corrupt ones a darker, more gothic version: that is his. Dark green 
 design; no franchise look.) On the **bulky** body (the owner, 2026-10-29). His design and his
 sprite at our scale: `docs/reference/barrabas-design-owner-reference.png`,
 `docs/reference/barrabas-paintover-bulky-owner-reference.png`.
+**His halberd, as his generator drew it** (the owner, 2026-10-29: size 1 of
+`docs/mockups/barrabas-halberd-sizes.png`, 154 px, two thirds taller than him): big on purpose,
+**long reach** like the Kōton iron path's scythe (`CLANS_DESIGN.md`, Crimson Steel, Reactive
+Armory: the scythe drags enemies out of cover). Our proposal: reach 4.5 m (a sword reaches 1.5 m),
+and a hook pull like the scythe's. The scythe's look is to be our own design (his example was an
+anime character's scythe: only the idea of the reach is taken).
 
 **His welcome (draft, the owner's lines refined; his words to approve):**
 - The party walks in; Barrabás stands in the middle of the courtyard. *"¡Ja! Sabía que vendrían.

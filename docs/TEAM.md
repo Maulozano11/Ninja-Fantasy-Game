@@ -64,7 +64,7 @@ Most of this is a stack of PRs, each based on the one before; merge from the bot
 | `campaign/state-origin` #4 | CampaignState, origins, campaign save, the Casa screen | Done, waiting to merge | |
 | `creator/owner-ui` #12 | Creator dressed in his UI pieces (shrine, panels, gem buttons, poses as pictures) | Waiting for the owner | `src/components/creator/` |
 | `ui/battle-prompts` | Battle UI sheet cut into pieces; last-stand mock; card 9 | Waiting for the owner | |
-| `battle/ice-oil` #6 → `knockback` #7 → `cover-height` #8 → `intents-reactions` #9 → `death-choice` #10 → `ryusei-weapon-throw` #13 | Battle rules stack | Done, waiting to merge in order | `engine.ts`, `BattleScreen.tsx` |
+| `battle/ice-oil` #6 → `knockback` #7 → `cover-height` #8 → `intents-reactions` #9 → `death-choice` #10 → `ryusei-weapon-throw` #13 | Battle rules stack | **Merged** 2026-10-29 by Steve 2 (D-T22), integration at `be8c882` | `engine.ts`, `BattleScreen.tsx` |
 | `creator/pose-bar` #11 | Pose bar under the panels | Done | `src/components/creator/` |
 | `world/hydra-art` #14, `docs/colossal-hydra` #15 | The colossal hydra: his sheets (cut-off, regrow, hurt) mounted; card 11 | **Active 2026-10-29** | |
 | `docs/space-design` #5, `docs/tome-ideas` #16 | Design docs (space game, ideas from ToME) | Waiting to merge | docs only |
@@ -81,9 +81,9 @@ Steve 2 does not touch Steve 1's branches or `MISSION_DESIGN.md`.
 | Task | Where | State | Hot files |
 |---|---|---|---|
 | Review of Bob's D-T7 head-check sheets against the #3 rules | `review/head-sheets` (read only) | **Done** (see "Steve 2's review"), shown to the owner | none |
-| Merge order of Bob's four battle branches vs the battle stack #6–#13 | approved (D-T22); Steve 2 merges the stack and #19 now | **Active** | merges into the integration branch |
+| Merge order of Bob's four battle branches vs the battle stack #6–#13 | approved (D-T22); the stack and #19 **merged** (integration `be8c882`, 867/867 tests on the same tree) | Done; **Bob's turn: `jutsu/wind-s-line`** | |
 | Fire avatar of the Mirai fire subclass: a basic original concept (a Spartan-armoured fire elemental over the ninja, shown on Aiden) | concept image only, nothing committed | Shown to the owner | none |
-| D-T18, D-T19, D-T20 into `CLANS_DESIGN.md` | `docs/mirai-subclasses`, **PR #19** (stacked on #13, the battle stack also edits that doc) | Done, waiting to merge after #13 | docs only |
+| D-T18, D-T19, D-T20 into `CLANS_DESIGN.md` | `docs/mirai-subclasses`, PR #19 | **Merged** (approved by the owner) | docs only |
 | D-T21: remove the `soft` and `square` faces, migrate saved looks to `tapered` | `cleanup/five-only` (#3), commit `2bc83df` | Done (843/843 tests) | `src/sprite/types.ts` (the `FaceShape` line), `legacy.ts`, `body.ts` |
 
 Preview link: (Steve adds it here)
@@ -133,6 +133,11 @@ Preview link: https://claude.ai/artifact/Ju8hN5Z3J5ZxTb5TSFTMcT (version 22, bui
 
 ### Questions for Bob (Steve writes here)
 
+- **Your turn (D-T22): `jutsu/wind-s-line`.** The battle stack #6–#13 and #19 are in the integration
+  branch (`be8c882`). Merge the integration branch into `jutsu/wind-s-line` (expect conflicts in
+  `src/battle/engine.ts`, `src/battle/types.ts`, `src/rules/ninja.ts`), run the checks, open its PR
+  and write it here; Steve 2 reviews it before it merges. Then `water-puddle`, `senbon`, and
+  `tree-hide` last, one at a time.
 - **Please answer each point of "Plan: outfits and sets" below with "de acuerdo" or your
   objection.** Neither of us starts that work until you have answered and the owner has
   answered Q1–Q4.
@@ -482,6 +487,9 @@ What this means:
 
 ## Log (newest first, one line each)
 
+- 2026-10-29 18:55 Steve 2: battle stack #6, #7, #8, #9, #10, #13 and docs #19 merged into the integration
+  branch (`be8c882`; 867/867 tests on that exact tree). Bob: wind ray next. Fire-avatar prompt card
+  given to the owner for his generator.
 - 2026-10-30 Bob: heroine/three-knights fifth pass pushed (the shoulder piece reaches the neck row by row); legate: far pauldron design, bulky torso-arm seam and far-leg ankle queued on the bronze helper after the mane (option 1 approved by the owner).
 - 2026-10-29 18:40 Steve 2: D-T22 merge order approved; Steve 2 merges #6–#10, #13, #19 now; then Bob,
   wind ray first. Fire avatar concept shown to the owner (original design, no franchise look).

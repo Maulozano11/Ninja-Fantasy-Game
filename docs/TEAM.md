@@ -83,7 +83,7 @@ Steve 2 does not touch Steve 1's branches or `MISSION_DESIGN.md`.
 | Review of Bob's D-T7 head-check sheets against the #3 rules | `review/head-sheets` (read only) | **Done** (see "Steve 2's review"), shown to the owner | none |
 | Merge order of Bob's four battle branches vs the battle stack #6–#13 | proposal (trial merges done), **with the owner for approval**; Bob gets the answer after he approves | Waiting for the owner | none |
 | D-T18, D-T19, D-T20 into `CLANS_DESIGN.md` | `docs/mirai-subclasses`, **PR #19** (stacked on #13, the battle stack also edits that doc) | Done, waiting to merge after #13 | docs only |
-| D-T21: remove the `soft` and `square` faces, migrate saved looks to `tapered` | `cleanup/five-only` (#3) | **Active** | `src/sprite/types.ts`, `migrateCharacter` |
+| D-T21: remove the `soft` and `square` faces, migrate saved looks to `tapered` | `cleanup/five-only` (#3), commit `2bc83df` | Done (843/843 tests) | `src/sprite/types.ts` (the `FaceShape` line), `legacy.ts`, `body.ts` |
 
 Preview link: (Steve adds it here)
 
@@ -464,6 +464,9 @@ What this means:
 
 ## Log (newest first, one line each)
 
+- 2026-10-29 Steve 2: D-T21 done on #3 (`2bc83df`): `soft`/`square` out of `FaceShape`, saved looks load
+  as `tapered`. Bob: `hero/bronze-warrior` adds `general` on the same `FaceShape` line, a one-line
+  conflict when you merge #3. PR #19 (D-T18–20 docs) open, stacked on #13.
 - 2026-10-29 Bob: heroine/three-knights 2f24d0b (fourth pass on the owner's circles: collar plate, hood top as hair, far-side strands), 842 green; legate: pauldrons to the shoulder and the ankle in the sandal in progress; Solen's mane: three options proposed to the owner, waiting.
 - 2026-10-29 Bob: heroine/three-knights pushed (0da9135): mane and neck strand all hair, seams closed, 842 tests green.
 - 2026-10-29 17:45 Steve 2: D-T7 sheets reviewed: OK for the owner; Bob, add a `founder` column (D-T17)

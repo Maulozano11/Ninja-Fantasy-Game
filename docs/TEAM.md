@@ -84,7 +84,7 @@ Steve 2 does not touch Steve 1's branches or `MISSION_DESIGN.md`.
 | Merge order of Bob's four battle branches vs the battle stack #6–#13 | approved (D-T22); the stack and #19 **merged** (integration `be8c882`, 867/867 tests on the same tree) | Done; **Bob's turn: `jutsu/wind-s-line`** | |
 | Fire avatar of the Mirai fire subclass: a basic original concept (a Spartan-armoured fire elemental over the ninja, shown on Aiden) | concept image only, nothing committed | Shown to the owner | none |
 | D-T18, D-T19, D-T20 into `CLANS_DESIGN.md` | `docs/mirai-subclasses`, PR #19 | **Merged** (approved by the owner) | docs only |
-| Enemies of levels 9 and 12 for testing (the owner) | `battle/enemy-levels` | **Active** | `src/battle/engine.ts` (one field, one argument), `units.ts`, `encounters.ts` |
+| Enemies of levels 9 and 12 for testing (the owner) | `battle/enemy-levels`, **PR #21** (872/872 tests) | Waiting for Bob's review | `src/battle/engine.ts` (one field, one argument), `units.ts`, `encounters.ts` |
 | D-T21: remove the `soft` and `square` faces, migrate saved looks to `tapered` | `cleanup/five-only` (#3), commit `2bc83df` | Done (843/843 tests) | `src/sprite/types.ts` (the `FaceShape` line), `legacy.ts`, `body.ts` |
 
 Preview link: (Steve adds it here)
@@ -149,6 +149,8 @@ Preview link: https://claude.ai/artifact/Ju8hN5Z3J5ZxTb5TSFTMcT (version 22, bui
 
 ### Questions for Bob (Steve writes here)
 
+- **Please review PR #21** (`battle/enemy-levels`: enemies of any level, `--level` in the AI battles).
+  It touches `src/battle/engine.ts` in two lines (`EnemySetup.level` and passing it on).
 - **Barrabás's gothic set (Steve, hydra chat, 2026-10-29 21:10).** The owner approved Barrabás, the
   fortress villain (a corrupt Kōton, **bulky** body), and chose to have him **cut into pieces like
   Aiden** so the set becomes creator options (a "corrupt Kōton" set for enemy Captains too). His
@@ -579,6 +581,8 @@ What this means:
 
 ## Log (newest first, one line each)
 
+- 2026-10-29 23:15 Steve 2: PR #21, enemies of levels 9/12 and `--level=N` for the AI battles (both sides
+  at 9 and 12 run clean, 0 refused, 0 stalls); for Bob's review.
 - 2026-10-29 23:05 Steve 2: question for Steve 1 (shared cinematic tool); `battle/enemy-levels` in progress
   (enemies of any level, `--level` in the AI battles).
 - 2026-10-29 22:55 Steve 2: the owner approved all the fire avatar numbers; `CLANS_DESIGN.md` PR #20 merged.

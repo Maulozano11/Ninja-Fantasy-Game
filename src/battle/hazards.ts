@@ -6,9 +6,9 @@
 import type { Advantage } from '../rules/checks';
 import type { AreaShape, BattleEvent, BattleState, DamageType, Hit, Pt, Trap, Unit } from './types';
 import { cellCenter, cellKey, cellOf, dampAt, keyCell, dist, fullCoverBetween, getMap, propRules, waterAtPt } from './map';
-import { lightningSeeds, steamUp, unitsOnPatch, wetPatch } from './ground';
+import { BLAZE_DC, BLAZE_DICE, ignite, lightningSeeds, melt, spill, steamUp, unitsOnPatch, wetPatch } from './ground';
 import { inArea } from './jutsu';
-import { rollDiceExpr, savingThrow } from './combat';
+import { rollDiceExpr, saveCover, savingThrow } from './combat';
 import { maxCritDamage } from '../rules/dice';
 import { hitStructuresIn } from './structures';
 
@@ -65,7 +65,7 @@ export function explode(s: BattleState, at: Pt, radius: number, dice: string, dc
   const area: AreaShape = { kind: 'circle', center: at, radius };
   const amount = rollDiceExpr(s, dice);
   const hits: Hit[] = [];
-  for (const u of unitsInArea(s, area, [], at)) hits.push(saveHit(s, u, 'dex', dc, amount, 'Fire', true, source, 'explosion', { explosion: true }, ev, 'none', maxCritDamage(dice)));
+  for (const u of unitsInArea(s, area, [], at)) hits.push(saveHit(s, u, 'dex', dc, amount, 'Fire', true, source, 'explosion', { explosion: true }, ev, 'none', maxCritDamage(dice), at));
   hitStructuresIn(s, area, amount, ev);
   hits.push(...groundEffects(s, area, 'Fire', ev, seen, false, source));
   return hits;
@@ -89,10 +89,12 @@ export function saveHit(
   ev: BattleEvent[],
   adv: Advantage = 'none',
   maxAmount?: number,
+  from?: Pt,
 ): Hit {
   if (u.head?.severed) return { unit: u.id, amount: 0, type, source, what, ...extra, effect: undefined, prone: undefined, push: undefined };
-  const roll = savingThrow(s, u, ab, dc, adv);
-  ev.push({ t: 'save', unit: u.id, what, roll, ab });
+  const cover = saveCover(s, u, ab, from);
+  const roll = savingThrow(s, u, ab, dc, adv, from);
+  ev.push({ t: 'save', unit: u.id, what, roll, ab, ...(cover ? { cover } : {}) });
   // The owner's rule (A3): a natural 20 resists it completely, no damage even where a save halves.
   if (roll.crit) return { unit: u.id, amount: 0, type, source, what, ...extra, effect: undefined, tension: undefined, prone: undefined, push: undefined };
   // (B3): a natural 1 takes it as a critical, maximum damage (`maxAmount`, the dice at their
@@ -115,6 +117,16 @@ export function groundEffects(s: BattleState, area: AreaShape, type: DamageType 
   // burn. Which cells were wet is taken before the steam uses their water up.
   const soaked = type === 'Fire' && s.wet ? new Set(Object.keys(s.wet)) : undefined;
   if (type === 'Fire') steamUp(s, area, by, ev);
+  // Fire melts ice back to wet ground and lights the oil it touches (the whole pool): whoever stands
+  // in oil that just caught is burnt (ground.ts BLAZE_DICE, a DEX save for half).
+  if (type === 'Fire') {
+    melt(s, area, by, ev);
+    const lit = ignite(s, area, by, ev);
+    if (lit.length) {
+      const amount = rollDiceExpr(s, BLAZE_DICE);
+      for (const u of unitsOnPatch(s, new Set(lit))) hits.push(saveHit(s, u, 'dex', BLAZE_DC, amount, 'Fire', true, by || 'blaze', 'blaze', {}, ev, 'none', maxCritDamage(BLAZE_DICE)));
+    }
+  }
   const map = getMap(s.mapId);
   const fiery = type === 'Fire' || type === 'Lightning';
   map.props.forEach((p, i) => {
@@ -130,6 +142,18 @@ export function groundEffects(s: BattleState, area: AreaShape, type: DamageType 
     } else if (rules.flammable && type === 'Fire' && !dampAt(s, p) && !soaked?.has(cellKey(cellOf(p)))) {
       st.destroyed = true;
       ev.push({ t: 'prop', prop: i, state: 'burnt' });
+    } else if (rules.tags?.includes('fuel') && type === 'Fire') {
+      // A barrel of oil under fire: it burns, and its oil spills round it already blazing.
+      st.destroyed = true;
+      ev.push({ t: 'prop', prop: i, state: 'burnt' });
+      ev.push({ t: 'note', key: 'barrelSpills', params: {} });
+      const pool = { kind: 'circle' as const, center: { x: p.x, z: p.z }, radius: 1 };
+      spill(s, pool, by, ev);
+      const lit = ignite(s, pool, by, ev);
+      if (lit.length) {
+        const amount = rollDiceExpr(s, BLAZE_DICE);
+        for (const u of unitsOnPatch(s, new Set(lit))) hits.push(saveHit(s, u, 'dex', BLAZE_DC, amount, 'Fire', true, by || 'blaze', 'blaze', {}, ev, 'none', maxCritDamage(BLAZE_DICE)));
+      }
     } else if (clearFoliage && rules.hideSpot) {
       st.destroyed = true;
       ev.push({ t: 'prop', prop: i, state: 'cut' });

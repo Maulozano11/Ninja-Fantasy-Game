@@ -41,6 +41,7 @@ import {
   Crown,
   PawPrint,
   Eye,
+  Anchor,
   Moon,
 } from 'lucide-react';
 import type { AiOrder, BattleState, Unit } from '../../battle/types';
@@ -73,6 +74,7 @@ export const ABILITY_ICON: Record<string, React.FC<{ size?: number; className?: 
   koton_wall: BrickWall,
   ryusei_warp: Locate,
   ryusei_swap: ArrowLeftRight,
+  ryusei_weapon_throw: Swords,
   northstar_command: Crown,
   northstar_submission: PawPrint,
   mirai_evasion: Eye,
@@ -92,6 +94,8 @@ export const ACTION_ICON: Record<string, React.FC<{ size?: number; className?: s
   shove: Hand,
   trip: Hand,
   focus: Sparkles,
+  eye: Eye,
+  hook: Anchor,
   draw: Swords,
   pill: Pill,
   bandage: Bandage,

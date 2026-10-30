@@ -39,12 +39,14 @@ export interface Growth {
   rankUp: boolean;
   /** Its level: rank A opens at 7, rank S at 10 (rules/progression.ts). Missing: below both. */
   level?: number;
+  /** The secret scrolls it holds: a jutsu with `scroll` is open only with its scroll. */
+  scrolls?: string[];
 }
 
 /** No growth: a ninja below level 5 with only its type. */
 export const NO_GROWTH: Growth = { extra: [], rankUp: false };
 
-type Grows = Pick<ShinobiCharacter, 'level'> & Partial<Pick<ShinobiCharacter, 'natureGrowth' | 'extraNatures' | 'selectedFeats'>>;
+type Grows = Pick<ShinobiCharacter, 'level'> & Partial<Pick<ShinobiCharacter, 'natureGrowth' | 'extraNatures' | 'selectedFeats' | 'scrolls'>>;
 
 /** The ninja is level 5 or more: it may make the level-5 choice. */
 export const growthOpen = (c: Pick<ShinobiCharacter, 'level'>): boolean => c.level >= GROWTH_LEVEL;
@@ -86,7 +88,7 @@ export const naturesOf = (c: Grows, nature: ChakraNature): ChakraNature[] => [na
 export const rankedUp = (c: Grows): boolean => growthOpen(c) && c.natureGrowth === 'rank';
 
 /** What the ninja's growth opens to it. */
-export const growthOf = (c: Grows, nature: ChakraNature): Growth => ({ extra: extraNatures(c, nature), rankUp: rankedUp(c), level: c.level });
+export const growthOf = (c: Grows, nature: ChakraNature): Growth => ({ extra: extraNatures(c, nature), rankUp: rankedUp(c), level: c.level, ...(c.scrolls?.length ? { scrolls: c.scrolls } : {}) });
 
 /** The elements a ninja of this type may take as its second (or third): the other four of the five. */
 export const otherElements = (nature: ChakraNature, has: readonly ChakraNature[] = []): ChakraNature[] =>

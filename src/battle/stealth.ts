@@ -3,6 +3,7 @@
 // raises the alarm and the battle begins. Running is noisy and startles animals; a thrown stone
 // draws a guard to look; silent takedowns leave bodies that raise the alarm if seen.
 
+import { effectMods } from '../rules/effects';
 import type { BattleEvent, BattleState, Cell, Pt, Unit } from './types';
 import { cellCenter, cellOf, dist, gridFor, hideSpotAt, lineOfSight, getMap, propRules, levelAtPt } from './map';
 import { pathCost, reachable, canStop, pathTo, stepCost } from './nav';
@@ -27,7 +28,7 @@ export const lookOf = (u: Unit): number => u.guard?.look ?? (u.facing > 0 ? 0 : 
 export function seesPoint(s: BattleState, g: Unit, p: Pt): boolean {
   const d = dist(g.pos, p);
   if (d <= VISION.near) return true;
-  const range = (s.time === 'night' ? VISION.night : VISION.day) + (levelAtPt(s, g.pos) - levelAtPt(s, p) >= 0.9 ? 3 : 0);
+  const range = (s.time === 'night' ? VISION.night + effectMods(g.effects).darkSightM : VISION.day) + (levelAtPt(s, g.pos) - levelAtPt(s, p) >= 0.9 ? 3 : 0);
   if (d > range) return false;
   let diff = Math.abs(deg(Math.atan2(p.z - g.pos.z, p.x - g.pos.x)) - lookOf(g)) % 360;
   if (diff > 180) diff = 360 - diff;
@@ -41,7 +42,7 @@ export function exposure(s: BattleState, g: Unit, u: Unit, at: Pt = u.pos): numb
   const d = dist(g.pos, at);
   const hidden = u.cond.hidden !== undefined && hideSpotAt(s, at) >= 0;
   if (hidden && d > VISION.near && passivePerception(g) < (u.cond.hidden ?? 0)) return 0;
-  const range = s.time === 'night' ? VISION.night : VISION.day;
+  const range = s.time === 'night' ? VISION.night + effectMods(g.effects).darkSightM : VISION.day;
   let rate = 100 * Math.max(0.25, 1 - Math.max(0, d - VISION.near) / (range - VISION.near));
   if (u.cond.crouched) rate *= 0.5;
   if (hideSpotAt(s, at) >= 0) rate *= 0.5;

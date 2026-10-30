@@ -24,6 +24,13 @@ export type EffectId =
   // debuffs
   | 'bleeding'
   | 'burning'
+  | 'frozen'
+  | 'missing_arm'
+  | 'missing_eye'
+  | 'missing_leg'
+  | 'implant_wood_arm'
+  | 'implant_eye'
+  | 'implant_steel_leg'
   | 'chakra_sealed'
   | 'confused'
   | 'marked'

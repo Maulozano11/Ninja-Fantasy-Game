@@ -10,7 +10,7 @@ import type { AreaShape, GaleZone, Pt, Wall } from '../../battle/types';
 import { isTintElement } from '../../sprite/vfxTint';
 import { worldSprite } from '../world/WorldSpriteView';
 import type { VfxElement } from '../../battle/jutsu';
-import type { Fx, Held, VolleyPath } from './playback';
+import { groundOf, type Fx, type GroundKind, type Held, type VolleyPath } from './playback';
 import type { Scene } from './renderer';
 import { ELEMENT_COLORS, auraDx, foeHidden, fxPos, project, tintColors } from './renderer';
 import { WAIT, hurryVfxSheets, tintedSheet } from './vfxTintCache';
@@ -1373,12 +1373,12 @@ type GroundCell = { k: string; p: Pt; a: number; blow?: { ux: number; uz: number
  * whose event is still to play (unless a wave timed them), plus the ones going whose event is still
  * to play or that are fading.
  */
-function groundShown(sc: Scene, kind: 'wet' | 'steam'): GroundCell[] {
+function groundShown(sc: Scene, kind: GroundKind): GroundCell[] {
   const { state, pb, now } = sc;
   const born = pb.groundBorn[kind];
   const coming = pb.groundQueued(kind, true);
   const out: GroundCell[] = [];
-  const have = state[kind] ?? {};
+  const have = groundOf(state, kind);
   for (const k of Object.keys(have)) {
     const b = born.get(k);
     if (b === undefined && coming.has(k)) continue;
@@ -1468,6 +1468,103 @@ export function drawWetGround(ctx: CanvasRenderingContext2D, sc: Scene): void {
     ctx.fill(path);
   }
   ctx.restore();
+}
+
+/** Rounded cells of one colour over the ground (ice, oil, mud): a wider faint pass softens the patch's edge. */
+function fillGround(ctx: CanvasRenderingContext2D, sc: Scene, cells: GroundCell[], color: string, strengths: readonly [number, number]): void {
+  const { map } = sc;
+  const rx = 0.37 * map.px.perM;
+  const rz = 0.37 * map.px.perMDepth;
+  ctx.fillStyle = color;
+  for (const [grow, strength] of [[1.6, strengths[0]], [1, strengths[1]]] as const) {
+    const steps = new Map<number, Path2D>();
+    for (const c of cells) {
+      const a = Math.ceil(c.a * 6) / 6;
+      const path = steps.get(a) ?? new Path2D();
+      const q = project(map, c.p);
+      path.ellipse(Math.round(q.X), Math.round(q.Y), rx * grow, rz * grow, 0, 0, Math.PI * 2);
+      steps.set(a, path);
+    }
+    for (const [a, path] of steps) {
+      ctx.globalAlpha = strength * a;
+      ctx.fill(path);
+    }
+  }
+}
+
+/**
+ * Ice (the owner, 2026-10-28): a pale blue-white sheen with hard glints, over the ground. Oil: a
+ * black pool with an oily shimmer. Quicksand mud: a matte brown circle. Drawn with the wet ground,
+ * under everything that stands.
+ */
+export function drawElementGround(ctx: CanvasRenderingContext2D, sc: Scene): void {
+  const ice = groundShown(sc, 'ice');
+  const oil = groundShown(sc, 'oil');
+  const mud = groundShown(sc, 'mud');
+  if (!ice.length && !oil.length && !mud.length) return;
+  const { map } = sc;
+  ctx.save();
+  if (mud.length) fillGround(ctx, sc, mud, '#4a3418', [0.3, 0.55]);
+  if (oil.length) {
+    fillGround(ctx, sc, oil, '#0a0806', [0.35, 0.7]);
+    // an oily shimmer: a coloured glint on a few cells
+    for (const c of oil) {
+      const h = cellHash(c.k);
+      if (h % 4) continue;
+      const q = project(map, c.p);
+      ctx.fillStyle = h % 8 ? '#6b4fb3' : '#2f9e7a';
+      ctx.globalAlpha = 0.35 * c.a * (0.5 + 0.5 * Math.sin(sc.now / 900 + h));
+      ctx.fillRect(Math.round(q.X - 5 + (h % 7)), Math.round(q.Y - 1 + ((h >> 3) % 3)), 6, 1);
+    }
+  }
+  if (ice.length) {
+    fillGround(ctx, sc, ice, '#bfe6ff', [0.22, 0.42]);
+    ctx.fillStyle = '#ffffff';
+    for (const c of ice) {
+      const h = cellHash(c.k);
+      if (h % 3) continue;
+      const q = project(map, c.p);
+      ctx.globalAlpha = 0.8 * c.a * (0.4 + 0.6 * Math.abs(Math.sin(sc.now / 600 + h)));
+      ctx.fillRect(Math.round(q.X - 3 + (h % 6)), Math.round(q.Y - 2 + ((h >> 2) % 4)), 3, 1);
+      ctx.fillRect(Math.round(q.X - 2 + (h % 6)), Math.round(q.Y - 3 + ((h >> 2) % 4)), 1, 3);
+    }
+  }
+  ctx.restore();
+}
+
+/** Blazing oil (the owner's H4): tongues of flame on every burning cell, in the depth list with whoever stands in them. */
+function blazeItems(ctx: CanvasRenderingContext2D, sc: Scene): DepthItem[] {
+  const cells = groundShown(sc, 'blaze');
+  if (!cells.length) return [];
+  const { map } = sc;
+  const out: DepthItem[] = [];
+  const col = ELEMENT_COLORS.fire;
+  for (const c of cells) {
+    const h = cellHash(c.k);
+    out.push({ z: c.p.z + 0.1, draw: () => {
+      const q = project(map, c.p);
+      ctx.save();
+      // a glow on the ground
+      ctx.globalAlpha = 0.35 * c.a * (0.7 + 0.3 * Math.sin(sc.now / 90 + h));
+      ctx.fillStyle = col[1];
+      ctx.beginPath();
+      ctx.ellipse(Math.round(q.X), Math.round(q.Y), 0.5 * map.px.perM, 0.5 * map.px.perMDepth, 0, 0, Math.PI * 2);
+      ctx.fill();
+      // the tongues: on every other cell, so whoever stands in the blaze still shows through
+      if (h % 2 === 0) {
+        for (let i = 0; i < 3; i++) {
+          const fl = (6 + ((i * 7 + h + Math.floor(sc.now / 70)) % 9)) * (0.6 + 0.4 * c.a);
+          ctx.fillStyle = i % 3 === 0 ? col[0] : i % 3 === 1 ? col[1] : col[2];
+          ctx.globalAlpha = 0.7 * c.a;
+          ctx.beginPath();
+          ctx.ellipse(Math.round(q.X + (((i * 23 + h) % 22) - 11)), Math.round(q.Y - fl), 3, fl, 0, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+      ctx.restore();
+    } });
+  }
+  return out;
 }
 
 type WorldSheet = NonNullable<ReturnType<typeof worldSprite>>;
@@ -1739,6 +1836,7 @@ export function depthFx(ctx: CanvasRenderingContext2D, sc: Scene): DepthItem[] {
     else if (f.kind === 'conduct') out.push(...conductItems(ctx, sc, f));
   }
   out.push(...steamItems(ctx, sc));
+  out.push(...blazeItems(ctx, sc));
   out.push(...crackDustItems(ctx, sc));
   const pending = (id: string) => sc.pb.queue.some((e) => e.t === 'zone' && e.on && e.zone.id === id);
   for (const z of [...(sc.state.zones ?? []), ...sc.pb.goneZones()]) if (!pending(z.id)) out.push(...galeItems(ctx, sc, z));

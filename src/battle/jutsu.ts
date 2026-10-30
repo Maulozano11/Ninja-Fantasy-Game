@@ -116,7 +116,7 @@ export interface JutsuSpec {
   save?: Ability;
   /** On a successful save: half damage, or nothing. */
   saveHalf: boolean;
-  special?: 'heal' | 'flicker' | 'clone' | 'kawarimi' | 'earthWall' | 'waterWall' | 'seal' | 'confuse' | 'evasion' | 'metalBlock' | 'metalWall' | 'warp' | 'swap' | 'command' | 'submission' | 'mantle' | 'galeZone' | 'imbue' | 'slash';
+  special?: 'heal' | 'flicker' | 'clone' | 'kawarimi' | 'earthWall' | 'waterWall' | 'seal' | 'confuse' | 'evasion' | 'metalBlock' | 'metalWall' | 'warp' | 'swap' | 'command' | 'submission' | 'mantle' | 'galeZone' | 'imbue' | 'slash' | 'weaponThrow';
   /** The projectile or effect the screen plays. */
   vfx: VfxRole;
   /** A signature effect of its own (vfx_<element>/<sig>, and <sig>_great or <sig>_enh enhanced). */
@@ -170,6 +170,8 @@ export interface JutsuSpec {
   douse?: boolean;
   /** How long the ground it soaks stays wet, in rounds (a water jutsu; WET_ROUNDS when unset). */
   wetRounds?: number;
+  /** What it leaves on the ground on purpose (ground.ts): ice (slippery, conducting), oil (blazes with fire) or quicksand mud. */
+  ground?: 'ice' | 'oil' | 'mud';
   /**
    * Activated, not thrown (the owner, 2026-10-21: the Chidori, and the Rasengan when it is built): the
    * cast charges the near hand with it for up to `rounds` of the caster's turns (shape 'self'), and
@@ -264,7 +266,8 @@ const OVERRIDE: Record<string, Partial<JutsuSpec>> = {
   // blood it draws thrown the way the cut goes.
   kenjutsu_bleeding_cut: { vfx: 'slash', vfxSet: 'neutral', melee: true, effect: 'bleeding', loud: false, seq: { blood: true } },
   // A shoulder tackle with the weapon put away (the owner): a straight run in, then the blow.
-  taijutsu_rush: { vfx: 'hit', melee: true, charge: true, weapon: 'stow', pose: 'tackle', seq: { launchFlash: true, fastRun: 2 } },
+  // The charge knocks its target 1.5 m back (the owner, 2026-10-28: "embestida y choca contra objeto o muro"): engine.ts slam.
+  taijutsu_rush: { vfx: 'hit', melee: true, charge: true, weapon: 'stow', pose: 'tackle', push: { m: 1.5 }, seq: { launchFlash: true, fastRun: 2 } },
   // The gaps in the elements (the owner's answers of 2026-10-21; docs/GAMEPLAY_DESIGN.md, "Jutsu for
   // the gaps"). Water's rank A (the owner's second round: "ola devoradora es rango a"): a 9 m cone
   // that sweeps the ones who fail 3 m away, knocks them down and puts their fire out.
@@ -284,6 +287,11 @@ const OVERRIDE: Record<string, Partial<JutsuSpec>> = {
   wind_gale_curtain: { special: 'galeZone', vfx: 'wall', loud: false },
   // A straight bolt along the line, a spark on each one it runs through.
   lightning_thunder_beam: { vfx: 'stream', width: 1.2, seq: { hitEach: { stagger: 80 } } },
+  // The ground the elements leave (the owner, 2026-10-28; ground.ts): frost freezes the cone and whoever
+  // fails; oil pools; quicksand pulls down whoever fails.
+  water_frost_ground: { vfx: 'breath', effect: 'frozen', ground: 'ice', seq: { castAura: 560, breathMs: 1400, hitEach: { stagger: 80 } } },
+  earth_black_oil: { vfx: 'blast', ground: 'oil', seq: { fromGround: { warn: 300 } } },
+  earth_quicksand: { vfx: 'blast', prone: true, ground: 'mud', seq: { fromGround: { warn: 300 }, shake: 2 } },
   // Dust and stones along the cone: whoever fails ends up on the ground.
   earth_rubble_gust: { vfx: 'breath', prone: true, seq: { castAura: 560, breathMs: 1400, hitEach: { stagger: 80 } } },
 };
@@ -504,6 +512,30 @@ const CLAN_SPECS: JutsuSpec[] = [
     special: 'swap',
     vfx: 'aura',
     melee: false,
+    loud: true,
+  },
+  {
+    // Weapon Throw (the owner, 2026-10-28: "una nueva habilidad que sea lanzar arma y que se
+    // teletransporte a su arma"): the weapon in hand thrown at a foe in sight, the Ryusei gone after
+    // it as light and catching it where it lands (engine.ts weaponThrow; the numbers are ours). The
+    // attack roll and the weapon's die, so there are no dice here.
+    id: 'ryusei_weapon_throw',
+    name: 'Weapon Throw',
+    nameEs: 'Lanzar arma',
+    clan: 'Ryusei',
+    ability: true,
+    rank: '',
+    element: 'chakra',
+    cost: 2,
+    enhCost: 0,
+    cast: 'action',
+    range: 12,
+    shape: 'single',
+    saveHalf: false,
+    special: 'weaponThrow',
+    vfx: 'aura',
+    melee: false,
+    weapon: 'draw',
     loud: true,
   },
   // Northstar. The Aura of Sovereignty is passive (combat.ts, clans.ts); both of these are fought out

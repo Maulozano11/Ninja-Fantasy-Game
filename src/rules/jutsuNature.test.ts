@@ -20,7 +20,8 @@ const ids = (xs: { id: string }[]) => xs.map((j) => j.id);
 describe('which jutsu the nature gates', () => {
   it('elemental jutsu in the Element and S-rank slots; never Utility, clan secrets or jutsu with no element', () => {
     for (const j of JUTSUS_DATA) {
-      const want = (j.category === 'Elemental' || j.category === 'Ultimate') && isElement(j.nature);
+      // (a secret scroll's jutsu is not gated: the scroll teaches it to whoever holds it)
+      const want = !j.scroll && (j.category === 'Elemental' || j.category === 'Ultimate') && isElement(j.nature);
       assert.equal(natureGated(j), want, j.id);
     }
     // The medical palm, a utility jutsu, stays free though its nature is Water (the explosive tag is an item now).
@@ -34,7 +35,7 @@ describe('which jutsu the nature gates', () => {
       for (const clan of CLANS)
         for (const slot of SLOTS) {
           const list = jutsuChoices(slot, nature, clan);
-          const all = JUTSUS_DATA.filter((j) => j.category === SLOT_CATEGORY[slot] && (SLOT_CATEGORY[slot] !== 'Clan' || !j.requiredClan || j.requiredClan === clan));
+          const all = JUTSUS_DATA.filter((j) => !j.scroll && j.category === SLOT_CATEGORY[slot] && (SLOT_CATEGORY[slot] !== 'Clan' || !j.requiredClan || j.requiredClan === clan));
           assert.deepEqual(ids(list), ids(all.filter((j) => jutsuFitsNature(j, nature))), `${nature} ${clan} ${slot}`);
           for (const j of list) assert.ok(!natureGated(j) || j.nature === nature, `${nature} ${slot}: ${j.id}`);
         }
@@ -49,7 +50,10 @@ describe('which jutsu the nature gates', () => {
     // Whirlwind Tower, the Thunder Beam and the Devouring Tide (Water's rank A, his second round).
     // The Tide is the Tsunami since 2026-10-22 (the owner renamed it; the id stays).
     assert.deepEqual(offer('Water', 'slot2Elemental'), ['water_geyser', 'water_dragon_suiryuudan', 'water_shield_suijinheki', 'water_devouring_tide', ...free]);
-    assert.deepEqual(offer('Earth', 'slot2Elemental'), ['earth_pebble_shot', 'earth_spike_crown', 'earth_rubble_gust', 'earth_wall_doryuheki', 'earth_spear_doryuudan', ...free]);
+    assert.deepEqual(offer('Earth', 'slot2Elemental'), ['earth_pebble_shot', 'earth_spike_crown', 'earth_rubble_gust', 'earth_black_oil', 'earth_quicksand', 'earth_wall_doryuheki', 'earth_spear_doryuudan', ...free]);
+    // The Frost Ground is a secret: only with its scroll (the owner, 2026-10-28).
+    assert.ok(!offer('Water', 'slot2Elemental').includes('water_frost_ground'));
+    assert.ok(ids(jutsuChoices('slot2Elemental', 'Water', 'Mirai', [], ['frost'])).includes('water_frost_ground'));
     assert.deepEqual(offer('Wind', 'slot2Elemental'), ['wind_whirl', 'wind_blade_daitoppa', 'wind_gale_curtain', 'wind_whirlwind_tower', ...free]);
     assert.deepEqual(offer('Lightning', 'slot3Elemental'), ['lightning_jolt', 'lightning_spark_fan', 'lightning_thunder_beam', 'chidori_lightning_blade', 'lightning_hound_raidon', ...free]);
     // Yasaka no Magatama, the genjutsu rank S, is out of the game (the owner, 2026-10-22: "quitala del juego").

@@ -289,6 +289,15 @@ treated · **M** until the mission ends · **P** permanent.
 | Shrine's curse | M | −1 to all saves |
 | Breakdown | M | Panic, Paranoia, Blind rage or Despair |
 | Grave wound | M | −10 % max HP; badly treated it leaves a scar (P); gained when dropped to 0 HP by a critical |
+| Missing arm | P | −1 melee damage; two-handed weapons at disadvantage (the last stand's retreat after fire, poison, cold…) |
+| Missing eye | P | Kunai reach −3 m; −5 passive Perception (after a cut or a thrust) |
+| Missing leg | P | −3 m speed (after a blow or force) |
+
+| Implant | Duration | Effect |
+|---|---|---|
+| Wooden arm | P | Replaces a missing arm; a grapple hook: a bonus action pulls the ninja up to 6 m to a free spot in sight (no movement, no opportunity attacks) |
+| Transplanted eye | P | Replaces a missing eye; +3 m sight at night |
+| Steel leg | P | Replaces a missing leg; the ninja jump costs no bonus action |
 
 Breakdowns: **Panic** (disadvantage attacking with an enemy within 3 m),
 **Paranoia** (refuses healing from allies), **Blind rage** (advantage attacking,
@@ -314,6 +323,23 @@ disadvantage on WIS saves), **Despair** (−2 to all saves).
 - **No-randomness mode** (optional, outside battle): a check is worth 10 +
   modifier; % rolls become a counter (the ambush comes when the camps' % add up to
   100); a curio succeeds when its % is 50 or more.
+- **The last stand** (the owner, 2026-10-28, M1): when a player's ninja loses its
+  third death save in combat (two on a critical hit while down), the player
+  chooses, in any mode:
+  - **Sacrifice:** the ninja rises for one blow, its strongest (the jutsu or the
+    strike the AI would plan for it), free and at **300 % damage**. Then the dice:
+    a **34 %** chance it lives, stable at 0 HP; otherwise it dies for good, even in
+    Story and Normal.
+  - **Retreat:** the ninja leaves the battle alive at 1 HP with a **fixed
+    mutilation**, decided by the blow that dropped it: a cut or a thrust takes an
+    eye, a blow or force a leg, anything else (fire, poison, cold, lightning) an
+    arm. The mutilation is a permanent effect on the character (table above).
+  The enemy's ninjas and the AI's party members fall as before (dead in Legend,
+  stable in Story and Normal). More options will come (M2: "habrá más opciones").
+- **Implants** (M2): a mutilation can be replaced by an implant bought at a
+  sanctuary or a forge at price 3 of the campaign's wealth scale (campaign
+  `buy`, `docs/WORLD_DESIGN.md` wealth levels), each with its own ability (table above). Not
+  for sale yet: the Casa screen gets a shop in a later step.
 - **After a mission:** scars stay, plus one small trait for each Breakdown or
   Awakening. The village restores everything else.
 

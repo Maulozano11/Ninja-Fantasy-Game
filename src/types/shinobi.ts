@@ -111,6 +111,11 @@ export interface JutsuDefinition {
   descriptionEs?: string;
   environmentalEffect?: 'Ignites Wood' | 'Creates Earth Wall' | 'Creates Water Barrier' | 'Clears Foliage' | 'Electrifies Water' | 'Freezes Water' | 'Sets Trap';
   requiredClan?: ClanType;
+  /**
+   * A secret jutsu: offered only to a ninja who holds this scroll (ShinobiCharacter.scrolls). The owner,
+   * 2026-10-28: "un pergamino secreto que puedas conseguir en la historia; tus hijos pueden heredarlo".
+   */
+  scroll?: string;
 }
 
 export interface CharacterPalette {
@@ -220,6 +225,8 @@ export interface ShinobiCharacter {
    * owner, 2026-10-21: rules/progression.ts `typeFixed`). Missing on a new ninja and on the presets.
    */
   created?: boolean;
+  /** The secret scrolls the ninja holds (JutsuDefinition.scroll): found in the story, inherited by children. */
+  scrolls?: string[];
   /**
    * The tools the ninja carries in its own pouch: they join the party's backpack at the start of
    * every mission and practice battle (rules/pouch.ts). Today only explosive tags, given to a sheet

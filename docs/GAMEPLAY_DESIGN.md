@@ -163,6 +163,21 @@ elements.
   - Each world sprite's manifest lists its cover in its tags.
 - Cover can be destroyed: trees burn, earth walls break.
 - Crouching behind cover helps you hide; it costs a Bonus Action.
+- **Height changes cover** (the owner, 2026-10-28, from his sci-fi design brought home: "estar
+  elevado ignora coberturas bajas"; "ya tenemos algo puesto en el juego, solo hay que trabajar
+  mejor las coberturas medias y altas"; `map.ts` `coverBetween`, `PropRules.tall`):
+  - **From a level or more above** the target: a **low** cover (bushes, barrels, crates, rocks,
+    fences, lanterns, stumps, a Kōton block, someone in the way) counts for **nothing**; a
+    **tall** one (trees, bamboo, tents, stacked crates, boulders) covers **a step less** (¾ → ½,
+    ½ → none); an earth or metal wall covers as ever. The preview says "desde arriba: la
+    cobertura baja no cuenta". The +2 to hit from high ground stays.
+  - **From a level or more below**: any cover the target has is **three-quarters** (the ledge
+    hides the rest): "desde abajo: el desnivel cubre el resto". The −2 to hit stays.
+  - The AI reads the same cover, so it looks for high ground and for cover against it.
+- **Cover adds to DEX saves** (as it adds to AC): +2 behind half cover, +5 behind three-quarters,
+  against a blast (a tag, a barrel, a trap), a burst (from its middle) or a cone or a line (from
+  its caster), judged from where the danger comes; nothing when it goes off right by the ninja.
+  The log says "(cobertura +2)" on the save. Mock: `docs/mockups/cover-height-mockup.png`.
 
 ## Stealth
 
@@ -288,6 +303,48 @@ D21 and D24 there):
   never on top of them.
 
 ## Class abilities in battle
+
+### Reactions in the enemy's turn (the owner, 2026-10-28; N15 a of `docs/SPACE_DESIGN.md`)
+
+His: *"pausa y pregunta con cada disparador nuevo (proyectil entrante, enemigo a la vista, aliado
+golpeado)"*, from his sci-fi design brought home. Built on the pause the engine already had for the
+opportunity attack, Premonitory Evasion and Kawarimi (`src/battle/reactions.ts`; the numbers are
+ours until he says otherwise):
+
+- **Deflect the kunai** (*Desviar el kunai*, Bukijutsu Master, reaction, 1 chakra): a kunai thrown
+  at a Bukijutsu Master with a weapon in hand, in the fighting, seen coming (not from hiding, not a
+  warp edge). The blow loses **1d10 + DEX + level**; if it loses it all, **the kunai is caught and
+  thrown straight back** at whoever threw it (a free kunai attack, if in range and in sight). Not
+  against a blade's blow nor a jutsu. The player is asked ("¿Desviarlo con la hoja?"); an AI
+  Bukijutsu Master deflects what would hurt it (the rule it uses for Kawarimi).
+- **Step in front** (*Interponerse*, any ninja, reaction): a blow aimed at a comrade (a blade, a
+  kunai, a single-target jutsu that rolls to hit; not an area, not from hiding, not a warp edge),
+  when the ninja stands **within 1.5 m** of the comrade, on its feet, with its reaction. Taken, the
+  whole blow lands on the ninja instead; its comrade's own Evasion and Kawarimi come first (the
+  target is asked before its comrades). The player is asked ("¿{name} lo recibe en su lugar?");
+  an AI comrade under the *defensive* order steps in when it stands the blow far better than the
+  one meant for it. Nobody is asked twice for one blow.
+- The order of the prompts for one blow: the target's Evasion → the target's Kawarimi → the
+  target's deflection → each comrade in reach, nearest first. Letting one go moves to the next.
+- "Enemigo a la vista" (an enemy walking into sight or reach) is the opportunity attack the game
+  has; a ranged one waits for his answer.
+
+### The last stand (the owner, 2026-10-28, M1; `src/battle/lastStand.ts`)
+
+His: *"cuando se pierden los 3 dados de salvación… se puede hacer el jutsu o golpe definitivo más
+fuerte con 300 % de fuerza y hay un 34 % de probabilidad de no morir; retirada: se retira de la
+batalla y sale vivo con una mutilación fija"*. In the battle: when a player's ninja loses its third
+death save in combat, the engine pauses (a `lastStand` prompt, like a reaction) and the player
+chooses **Sacrificio** or **Retirada** (keys S / R). The sacrifice rises the ninja for one blow,
+free and at ×3 (its strongest plan, as the AI would pick it: a jutsu or a strike at the nearest
+foe); then a 34 % roll leaves it stable at 0 HP or dead for good in every mode. The retreat takes
+it out of the battle (`fled`, 1 HP) with the mutilation its last blow fixed. The rules of the
+mutilations and the implants that replace them (the wooden arm's hook is a bonus action, the
+`hook` button; the steel leg's free jump; the transplanted eye's night sight) are in
+`docs/MISSION_DESIGN.md` "Difficulty, death and saves".
+- The log: "{a} desvía el kunai: {n} menos", "{a} atrapa el kunai y lo devuelve", "{a} se interpone
+  por {b}"; floats "¡Desviado!", "¡Se interpone!".
+
 
 ### Weapon Element Enhancement (the owner, 2026-10-23; in the game since 2026-10-23, every element)
 
@@ -1776,6 +1833,75 @@ cortina de humo que nubla la visión y hace daño por turno si estás en el
     "Fuego sobre suelo mojado: sube vapor y ciega a quien esté dentro", "El
     vapor quema a …", "El viento se lleva el vapor", "El vapor se disipa", "El
     suelo mojado se seca"; a blow into the steam says "dentro del vapor".
+
+### Ice, oil and quicksand (the owner, 2026-10-28; the numbers are ours, "lo que pones está bien")
+
+From his sci-fi design brought home to this game (*"refrigerante se refiere a hielo, que también
+lo añadiremos al de shinobi; combustible es como gasolina o aceite inflamable"*, *"habrá varios
+jutsus de hielo ... y añadir estado congelado"*, *"habrá jutsus de tierra relacionados al aceite y
+también una tierra que sería arena movediza estilo fango que haría el terreno difícil en área"*).
+In the engine: `src/battle/ground.ts` (`ice`, `oil`, `mud` by navigation cell, like `wet`).
+
+- **Ice.** An ice jutsu freezes the ground of its area (wet ground too: its water is used up; a
+  river, a pond, a wall's or a tree's cell stay as they are) for **the rest of the round and two
+  more** (`ICE_ROUNDS`, as wet ground). **Slippery**: whoever walks onto it makes a **DEX save
+  against 13** (`ICE_DC`) or slips, falls prone and the walk ends there (one save per walk: who
+  keeps their feet keeps them). Whoever **starts a turn on it moves at half speed**. It **conducts
+  lightning like wet ground** (one patch of wet and icy cells together). **Fire melts it** back to
+  wet ground. Ice put over blazing oil puts the blaze out.
+- **Frozen** (`rules/effects.ts`): whoever fails an ice jutsu's save is held fast **until its next
+  turn ends** (no movement, no action, no reaction; the turn is lost: "está congelado y pierde el
+  turno"); **fire damage thaws it** at once.
+- **The ice jutsu are secret** (his: *"un pergamino secreto que puedas conseguir en la historia; tus
+  hijos pueden heredarlo, y habrá varias cosas así en los diferentes temas de juego"*): a jutsu with
+  `scroll` (`JutsuDefinition.scroll`) is offered only to a ninja whose sheet holds that scroll
+  (`ShinobiCharacter.scrolls`; the creator and the level-ups go by it, `rules/jutsuNature.ts`
+  `jutsuChoices`). The first: **Frost Ground** (`water_frost_ground`, Water, rank C, a 6 m cone,
+  2d6 cold, DEX for half, freezes the cone and whoever fails; scroll `frost`). Nothing gives the
+  scroll yet: it comes with the story (campaign step 2) and the lineage (step 7).
+- **Oil.** The Earth jutsu **Black Oil** (`earth_black_oil`, rank C, 1.5 m round at 9 m, 1d4
+  bludgeoning as it gushes) spills a pool for **3 rounds** (`OIL_ROUNDS`); so will broken barrels
+  tagged `[Combustible]` (not built yet). Oil is **difficult terrain** (every step costs double),
+  and **fire lights the whole joined pool** (diagonals included): it **blazes 2 rounds**
+  (`BLAZE_ROUNDS`), **2d6 fire, DEX 13 for half** (`BLAZE_DICE`, `BLAZE_DC`) to whoever stands in
+  it as it lights, starts a turn in it or walks into it; when the blaze ends the oil is burnt up.
+  **Water or ice puts the blaze out** (the oil stays). A pool spilt against a lit one catches.
+- **Quicksand.** The Earth jutsu **Quicksand** (`earth_quicksand`, rank C, a 3 m round at 9 m, 1d6
+  bludgeoning, STR for half, whoever fails is pulled down prone) turns the ground to mud for **3
+  rounds** (`MUD_ROUNDS`): **difficult terrain**.
+- **The frost scroll is Lyra's** (his "1 Lyra"): her preset holds `scrolls: ['frost']` (a saved
+  copy of her gets it on loading, `rules/ninja.ts` `addLegendScrolls`), and **a scroll's jutsu is
+  not gated by nature**: the scroll teaches it to whoever holds it (she is Wind), so the Frost
+  Ground sits in her Element slots in the creator.
+
+### Knockbacks and tagged props (the owner, 2026-10-28; N11 b of `docs/SPACE_DESIGN.md`)
+
+His design brought home: *"empujón con habilidades y embestida y choca contra objeto o muro"*,
+the props' tags *"[Madera] [Metal] [Combustible]"*. In the engine: `src/battle/engine.ts`
+`slam`, `src/battle/map.ts` `PROP_RULES` tags.
+
+- **A push cut short slams** (`sweep`, and the Shove's push): the pushed ninja stopped by **a
+  wall, a tree, a structure or the map's edge** takes **2d6 bludgeoning** (`SLAM_WALL_DICE`);
+  stopped by **another ninja**, **1d6 to each** (`SLAM_UNIT_DICE`) and **the other is pushed on
+  the same way with the force that was left** (a chain: it may slam in turn). A push against
+  what the ninja already stood by slams too. A drag toward a tornado's middle (the Whirlwind
+  Tower) bumps and stops as before: the slam is the knockback's. Falls off a ledge stay 1d6 a
+  level.
+- **The Rush is a charge that knocks back**: its blow pushes the target 1.5 m (`taijutsu_rush`
+  `push`), so a tackle into a wall or into a comrade slams.
+- **Tags** (`PropRules.tags`): trees, fences and crates are `wood`; the **plain barrel is
+  `fuel`** (and `wood`): broken by a blow it **spills a 1 m pool of oil**; **under fire it burns
+  and its oil spills already blazing**; the explosive barrel keeps its blast. The **stone
+  lantern is `metal`**: lightning that reaches a wet or icy patch joined to it, or strikes by it,
+  **runs through it** (its cell conducts, `ground.ts` `conducts`). No `[Metal]` console yet: the
+  space pack brings them.
+- The log: "{a} se estrella contra el muro", "{a} choca contra {b}", "El barril se rompe y su
+  aceite se derrama"; the screen jolts and bursts dust where it hit.
+- On the screen (`components/battle/vfxSprites.ts`): ice is a pale blue-white sheen with hard
+  glints, oil a black pool with an oily shimmer, mud a matte brown round, the blaze tongues of
+  flame on every other burning cell with a glow under them; the log says "El suelo se congela",
+  "{name} resbala en el hielo y cae", "Se derrama aceite por el suelo", "Fuego sobre aceite: arde
+  todo el charco", "El aceite en llamas quema a …", "El suelo se vuelve arena movediza".
 
 ### How they look now (his pieces moved, scaled, layered and timed; nothing redrawn)
 

@@ -28,6 +28,7 @@ export function battleResult(s: BattleState): PartyBattleResult {
       fell: u.stats2.fell,
       fellToCrit: u.stats2.fellToCrit,
       died: u.down === 'dead',
+      ...(u.mutilation ? { mutilation: u.mutilation } : {}),
       effects: u.effects,
       tension: u.stats2.tension,
       ...(u.tripleNature ? { tripleNatureSpent: u.tripleNature.spent } : {}),

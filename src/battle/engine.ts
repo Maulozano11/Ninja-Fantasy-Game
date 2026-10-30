@@ -21,6 +21,7 @@ import type {
   Cell,
   GaleZone,
   Hit,
+  Intent,
   Outcome,
   Pt,
   Rank,
@@ -32,36 +33,21 @@ import { homeTeam } from './types';
 import { cellBlocked, cellCenter, cellOf, clearRun, coverBetween, dampAt, dist, fullCoverBetween, getMap, gridFor, hideSpotAt, idx, inGrid, levelAtPt, lineOfSight, propRules, sameCell, segmentsCross, waterAtPt } from './map';
 import { canStop, freeSpot, occupancy, pathTo, pathTouchesDeep, reachable, stepCost } from './nav';
 import type { AttackPreview } from './combat';
-import { attackPreview, check, damage, heal, hostileAura, passivePerception, PERFECT_HIDE, reveal, revealOutOfHiding, rollDiceExpr, skillMod } from './combat';
+import { attackPreview, check, damage, heal, hostileAura, nextRng, passivePerception, PERFECT_HIDE, reveal, revealOutOfHiding, rollDiceExpr, skillMod } from './combat';
+import { mutilationFor, SACRIFICE_LIVES, SACRIFICE_POWER } from './lastStand';
 import { JUTSU, MIN_AIM, areaOf, enhanced, fanDice, fanned, fannedBy } from './jutsu';
 import type { JutsuSpec } from './jutsu';
-import { KUNAI, enemyNameOf, enemyUnit, handsFree, unitFrom, wielded } from './units';
+import { KUNAI, KUNAI_LONG, enemyNameOf, enemyUnit, handsFree, unitFrom, wielded } from './units';
 import type { EnemyKind } from './units';
 import { hydraUnits } from './hydra';
 import { checkEnd, current, endTurn, startCombat } from './turns';
 import { afterStealthAttack, alarm, canTakedown, dragBody, guardsTurn, openFight, scareAnimalsNear, stealthMove, STONE_RANGE, throwStone } from './stealth';
 import { conduct, electrify, groundEffects, plantTag, saveHit, springTrap, TAG, throwTag, trapAt, unitsInArea } from './hazards';
-import { blowSteam, pathArea, soak } from './ground';
+import { aiInterposes, canDeflect, deflect, interpose, interposers } from './reactions';
+import { blazeAt, blazeBurns, blowSteam, freeze, iceAt, mire, pathArea, slips, soak, spill } from './ground';
 import { breakable, damageStructure, faceToward, hitStructuresIn, jutsuWallAt, raiseStructure, STRUCTURE_AC, structureAt, structureAttack, structureBlocker } from './structures';
-import {
-  addNode,
-  auraEntered,
-  canEvade,
-  command,
-  commandBlocker,
-  enteredAura,
-  evade,
-  leavesNodes,
-  ownNodeAt,
-  spatialSwap,
-  submissionBlocker,
-  submit,
-  swapBlocker,
-  warpBlocker,
-  warpLanding,
-  warpStrike,
-} from './clans';
-import { reachTo, replanAgainst } from './intent';
+import { addNode, auraEntered, canEvade, command, commandBlocker, enteredAura, evade, leavesNodes, ownNodeAt, spatialSwap, submissionBlocker, submit, swapBlocker, warpBlocker, warpLanding, warpStrike, openEye, WEAPON_THROW, warpAim } from './clans';
+import { goalOf, ninjaOptions, reachTo, replanAgainst } from './intent';
 import { chargedFoe, chargeHolds, crackUnder, endCharge } from './charged';
 import { activeImbue, EARTH_CRIT, ELEMENTAL_SLASH, endImbue, IMBUE_DAMAGE, IMBUE_DICE, imbueBlocker, imbueHolds, slashBlocker, slashRange, startImbue, unitImbueElement, WIND_PUSH, type ImbueElement } from './imbue';
 
@@ -269,8 +255,12 @@ function dispatch(s: BattleState, a: Action, ev: BattleEvent[]): string | null {
       return doHide(s, u, ev);
     case 'crouch':
       return doCrouch(s, u, ev);
+    case 'eye':
+      return openEye(s, u, ev);
     case 'jump':
       return doJump(u, ev);
+    case 'hook':
+      return doHook(s, u, a.at, ev);
     case 'draw':
       return doDraw(u, ev);
     case 'shove':
@@ -392,6 +382,8 @@ function walk(s: BattleState, u: Unit, path: Cell[], from: number, ev: BattleEve
   };
   const rules = { waterWalk: !!u.cond.waterWalk, ninjaJump: !!u.cond.ninjaJump };
   const g = gridFor(s.mapId);
+  // One footing save per walk on the ice (ground.ts slips): kept once passed.
+  let surefooted = false;
   // Who else stands or lies where (nobody else moves while this walk goes on).
   const others = occupancy({ ...s, units: Object.fromEntries(Object.entries(s.units).filter(([id]) => id !== u.id)) });
   const taken = (c: Cell) => others.has(idx(g, c));
@@ -436,6 +428,23 @@ function walk(s: BattleState, u: Unit, path: Cell[], from: number, ev: BattleEve
       flush();
       stepHazards(s, u, next, ev);
       break;
+    }
+    // Ice underfoot (ground.ts): a DEX save or the walker slips, goes down and the walk ends here.
+    if (iceAt(s, next) && !surefooted && !taken(c)) {
+      flush();
+      if (slips(s, u, ev)) {
+        u.cond.prone = true;
+        ev.push({ t: 'condition', unit: u.id, cond: 'prone', on: true });
+        u.turn.move = 0;
+        break;
+      }
+      surefooted = true;
+    }
+    // Walking into blazing oil burns (ground.ts), and the walk goes on if the walker can.
+    if (blazeAt(s, next) && !taken(c)) {
+      flush();
+      blazeBurns(s, u, ev);
+      if (u.down) break;
     }
     // A charged hand within reach of a foe: the blow goes off, and the walk stops there (on a cell
     // the ninja can stand on: never mid-hop).
@@ -531,6 +540,7 @@ function weaponAttack(
     let amount = rollDiceExpr(s, w.dice, roll.crit) + mod + (ranged ? 0 : effectMods(a.effects).meleeDamage);
     if (surprise) amount += rollDiceExpr(s, '1d6', roll.crit);
     if (!ranged && hasEffect(a.effects, 'gates_open')) amount += rollDiceExpr(s, '1d8', roll.crit);
+    if (a.lastStand) amount *= SACRIFICE_POWER;
     const hit: Hit = { unit: t.id, amount: Math.max(1, amount), type: w.type, source: a.id, what: w.name, crit: roll.crit, knockout: o.knockout && !ranged, melee: !ranged, aimed: true, unseen: surprise, unblockable: edge };
     if (imbue) imbuedHit(s, a, hit, imbue);
     hits.push(hit);
@@ -592,6 +602,47 @@ function elementalSlash(s: BattleState, u: Unit, t: Unit, ev: BattleEvent[]): vo
   applyHits(s, hits, loud(s, u), ev);
 }
 
+/**
+ * Weapon Throw (a Ryusei's, the owner's 2026-10-28; its action and chakra are paid): the weapon in
+ * hand flies at a foe in sight as a shooting star and the Ryusei goes after it as light, catching it
+ * where it lands, beside the foe (Shooting-Star Thrust's landing, clans.ts warpLanding). The throw
+ * is rolled from where it stood (the weapon's attack: its die + the same modifier as its blows) and
+ * lands as the Ryusei arrives; hit or miss, the weapon's landing leaves a Node (Weapon Nodes).
+ * Landing beside the foe gives the edge of a thrust: its next attack this turn comes from behind.
+ * With nowhere to land beside it, the weapon comes back to its hand and it stays where it was.
+ */
+function weaponThrow(s: BattleState, u: Unit, t: Unit, ev: BattleEvent[]): void {
+  const w = wielded(u);
+  if (t.pos.x !== u.pos.x) u.facing = t.pos.x > u.pos.x ? 1 : -1;
+  ev.push({ t: 'jutsu', unit: u.id, jutsu: WEAPON_THROW, at: { ...t.pos }, shape: null, enhanced: false });
+  const pv = attackPreview(s, u, t, 'jutsu', { jutsuRange: JUTSU[WEAPON_THROW].range, weapon: true });
+  const roll = check(s, 'attack', pv.mod, pv.ac, pv.adv, true);
+  // A thrust's edge from before goes with this roll (the next attack roll after it).
+  const edge = !!u.cond.warpEdge;
+  if (edge) u.cond.warpEdge = false;
+  addNode(s, u, t.pos, ev);
+  const node = s.nodes[s.nodes.length - 1];
+  const to = warpLanding(s, u, node);
+  if (to) {
+    const from = { ...u.pos };
+    warpStrike(s, u, to, ev);
+    enteredAura(s, u, from, ev);
+  }
+  ev.push({ t: 'attack', unit: u.id, target: t.id, what: w.name, roll, ranged: true, ...(pv.reasons.length ? { reasons: pv.reasons } : {}) });
+  reveal(u, ev);
+  const hits: Hit[] = [];
+  if (roll.success) {
+    const str = abilityMod(u.stats.str);
+    const dex = abilityMod(u.stats.dex);
+    const mod = w.finesse ? Math.max(str, dex) : str;
+    let amount = rollDiceExpr(s, w.dice, roll.crit) + mod;
+    if (u.lastStand) amount *= SACRIFICE_POWER;
+    hits.push({ unit: t.id, amount: Math.max(1, amount), type: w.type, source: u.id, what: w.name, crit: roll.crit, aimed: true, unblockable: edge });
+  }
+  if (s.phase === 'combat') scareAnimalsNear(s, t.pos, 6, ev);
+  applyHits(s, hits, loud(s, u), ev);
+}
+
 function opportunityAttack(s: BattleState, r: Unit, m: Unit, ev: BattleEvent[], resume: NonNullable<AfterHits['resumeWalk']>): boolean {
   r.turn.reaction = false;
   return weaponAttack(s, r, m, false, attackPreview(s, r, m, 'melee'), {}, { resumeWalk: resume }, ev);
@@ -632,7 +683,14 @@ function attackProp(s: BattleState, u: Unit, i: number, ranged: boolean, ev: Bat
     // A barrel's blast is the same as a tag's (and sets off what is around it).
     ev.push({ t: 'prop', prop: i, state: 'exploded' });
     applyHits(s, throwTag(s, u, { x: p.x, z: p.z }, ev), loud(s, u), ev);
-  } else ev.push({ t: 'prop', prop: i, state: 'broken' });
+  } else {
+    ev.push({ t: 'prop', prop: i, state: 'broken' });
+    // A broken barrel of oil (tagged fuel, map.ts) spills its oil round it (ground.ts).
+    if (rules.tags?.includes('fuel')) {
+      ev.push({ t: 'note', key: 'barrelSpills', params: {} });
+      spill(s, { kind: 'circle', center: { x: p.x, z: p.z }, radius: 1 }, u.id, ev);
+    }
+  }
   return null;
 }
 
@@ -716,14 +774,67 @@ function applyHits(s: BattleState, hits: Hit[], after: AfterHits, ev: BattleEven
         continue;
       }
     }
+    // A kunai coming at a Bukijutsu Master: deflected (reactions.ts); the AI deflects what would hurt.
+    if (canDeflect(s, t, h)) {
+      if (t.controller === 'player') {
+        s.pending = { kind: 'deflect', reactor: t.id, hit: h, rest: queue, after };
+        ev.push({ t: 'reactionAsk', pending: s.pending });
+        return;
+      }
+      if (aiAvoids(t, h)) {
+        queue.unshift(deflected(s, t, h, ev));
+        continue;
+      }
+    }
+    // A comrade beside the target may take the blow instead: a player's is asked, an AI's steps in to protect.
+    const guard = blockable ? interposers(s, h) : [];
+    if (guard.length) {
+      const r = guard[0];
+      if (r.controller === 'player') {
+        s.pending = { kind: 'interpose', reactor: r.id, hit: h, rest: queue, after };
+        ev.push({ t: 'reactionAsk', pending: s.pending });
+        return;
+      }
+      if (aiInterposes(r, t, h)) {
+        ev.push({ t: 'interpose', unit: r.id, for: t.id });
+        queue.unshift(interpose(r, h));
+        continue;
+      }
+      queue.unshift({ ...h, interposeDeclined: [...(h.interposeDeclined ?? []), r.id] });
+      continue;
+    }
     landHit(s, t, h, ev);
   }
   finishAfter(s, after, ev, resumed);
 }
 
+/**
+ * The Bukijutsu Master deflects the kunai (reactions.ts): the blow loses damage; caught, it is thrown
+ * straight back at whoever threw it (a free kunai attack). Returns the blow as it lands.
+ */
+function deflected(s: BattleState, t: Unit, h: Hit, ev: BattleEvent[]): Hit {
+  const d = deflect(s, t, h);
+  ev.push({ t: 'chakra', unit: t.id, delta: -1, chakra: t.chakra, reason: 'deflect' });
+  ev.push({ t: 'deflect', unit: t.id, less: d.less, caught: d.caught });
+  if (d.caught) {
+    const thrower = h.source ? s.units[h.source] : undefined;
+    if (thrower && !thrower.down && dist(t.pos, thrower.pos) <= KUNAI_LONG + 0.1 && lineOfSight(s, t.pos, thrower.pos)) {
+      const pv = attackPreview(s, t, thrower, 'ranged');
+      weaponAttack(s, t, thrower, true, pv, {}, {}, ev);
+    }
+  }
+  return d.hit;
+}
+
 function landHit(s: BattleState, t: Unit, h: Hit, ev: BattleEvent[]): void {
   if (h.amount > 0 || t.head?.severed) {
     damage(s, t, h.amount, h.type, { crit: h.crit, source: h.source, knockout: h.knockout, melee: h.melee, explosion: h.explosion }, ev);
+  }
+  // Fire thaws a frozen ninja (rules/effects.ts 'frozen').
+  if (h.type === 'Fire' && h.amount > 0 && hasEffect(t.effects, 'frozen')) {
+    t.effects = removeEffect(t.effects, 'frozen');
+    ev.push({ t: 'effect', unit: t.id, effect: 'frozen', on: false });
+    ev.push({ t: 'note', key: 'thawed', params: { name: t.name } });
   }
   // The element on the weapon, after the blow: not on a ninja the blow dropped, but a fire or
   // lightning blade seals the hydra's stump it has just cut.
@@ -793,8 +904,12 @@ function sweep(s: BattleState, t: Unit, h: Hit, ev: BattleEvent[]): void {
     if (moved < full) break;
     left -= full;
   }
+  const stopped = left > 0.05;
   if (sameCell(cellOf(from), cellOf(t.pos))) {
     t.pos = from;
+    // Pushed against what it already stood by: it still slams into it (a drag toward a tornado's middle
+    // bumps and stops, as before: the slam is the knockback's, "empujón... contra objeto o muro").
+    if (stopped && !p.toward) slam(s, t, p, left, h.source, ev);
     return;
   }
   const drop = levelAtPt(s, from) - levelAtPt(s, t.pos);
@@ -807,6 +922,55 @@ function sweep(s: BattleState, t: Unit, h: Hit, ev: BattleEvent[]): void {
   if (dampAt(s, t.pos) && hasEffect(t.effects, 'burning')) {
     t.effects = removeEffect(t.effects, 'burning');
     ev.push({ t: 'effect', unit: t.id, effect: 'burning', on: false });
+  }
+  // What cut the push short takes the blow (and gives it back).
+  if (stopped && !p.toward && !t.down) slam(s, t, p, left, h.source, ev);
+}
+
+/** Knockback collisions (the owner, 2026-10-28, N11 b): against a wall, a tree, a structure or the map's edge; against another ninja, who is pushed on with what was left. */
+export const SLAM_WALL_DICE = '2d6';
+export const SLAM_UNIT_DICE = '1d6';
+
+/** The cell `m` metres on from `at`, the way a push from `origin` goes (toward it or away from it). */
+function pushNext(at: Pt, origin: Pt, toward: boolean | undefined, m = 0.5): Cell {
+  const d = Math.max(0.05, dist(at, origin));
+  const k = (toward ? m : -m) / d;
+  return cellOf({ x: at.x + (origin.x - at.x) * k, z: at.z + (origin.z - at.z) * k });
+}
+
+/**
+ * A push that something stopped slams the pushed one into it (his design brought home: "empujón
+ * con habilidades y embestida y choca contra objeto o muro"): a wall, a tree, a structure or the
+ * edge of the map, SLAM_WALL_DICE bludgeoning; another ninja, SLAM_UNIT_DICE to each, and the
+ * other is pushed on the same way with the force that was left (a chain). Nothing happens when the
+ * push was stopped by nothing solid (a hydra, the pushed one's own bulk).
+ */
+function slam(s: BattleState, t: Unit, p: NonNullable<Hit['push']>, left: number, source: string | undefined, ev: BattleEvent[]): void {
+  const g = gridFor(s.mapId);
+  const occ = occupancy(s);
+  // The ninja it was pushed up against: the sweep stops SWEEP_GAP short of one, so look that far on.
+  let other: Unit | undefined;
+  for (const m of [0.5, 1, 1.5]) {
+    const o = occ.get(idx(g, pushNext(t.pos, p.from, p.toward, m)));
+    if (o && o.id !== t.id) {
+      other = o;
+      break;
+    }
+  }
+  const next = pushNext(t.pos, p.from, p.toward);
+  if (other && other.kind === 'ninja' && !other.down) {
+    ev.push({ t: 'slam', unit: t.id, into: other.id, at: { ...other.pos } });
+    const a = rollDiceExpr(s, SLAM_UNIT_DICE);
+    const b = rollDiceExpr(s, SLAM_UNIT_DICE);
+    landHit(s, t, { unit: t.id, amount: a, type: 'Bludgeoning', source, what: 'slam' }, ev);
+    // the one hit is pushed on with the force that was left, from where it was hit
+    const chain: Hit = { unit: other.id, amount: b, type: 'Bludgeoning', source, what: 'slam', push: { from: { ...t.pos }, m: left, toward: p.toward } };
+    landHit(s, other, chain, ev);
+    return;
+  }
+  if (!inGrid(g, next) || cellBlocked(s, next) || !pushClear(s, t.pos, cellCenter(next))) {
+    ev.push({ t: 'slam', unit: t.id, into: 'wall', at: cellCenter(next) });
+    landHit(s, t, { unit: t.id, amount: rollDiceExpr(s, SLAM_WALL_DICE), type: 'Bludgeoning', source, what: 'slam' }, ev);
   }
 }
 
@@ -864,6 +1028,11 @@ function react(s: BattleState, unitId: string, take: boolean, ev: BattleEvent[])
     return null;
   }
   const t = s.units[p.reactor];
+  if (p.kind === 'lastStand') {
+    if (take) sacrifice(s, t, ev);
+    else retreat(s, t, ev);
+    return null;
+  }
   if (p.kind === 'evasion') {
     // Letting Evasion go puts the blow back in the queue: Kawarimi may be offered for it next.
     if (take && canEvade(s, t, p.hit)) {
@@ -872,10 +1041,69 @@ function react(s: BattleState, unitId: string, take: boolean, ev: BattleEvent[])
     } else applyHits(s, [{ ...p.hit, evadeDeclined: true }, ...p.rest], p.after, ev, true);
     return null;
   }
+  if (p.kind === 'deflect') {
+    // Taken or not, the blow goes back in the queue (lighter if deflected; a comrade may still step in).
+    const h = take && canDeflect(s, t, p.hit) ? deflected(s, t, p.hit, ev) : { ...p.hit, deflectDeclined: true };
+    applyHits(s, [h, ...p.rest], p.after, ev, true);
+    return null;
+  }
+  if (p.kind === 'interpose') {
+    const victim = s.units[p.hit.unit];
+    if (take && !t.down && t.turn.reaction && victim && !victim.down && dist(t.pos, victim.pos) <= 1.6) {
+      ev.push({ t: 'interpose', unit: t.id, for: victim.id });
+      applyHits(s, [interpose(t, p.hit), ...p.rest], p.after, ev, true);
+    } else applyHits(s, [{ ...p.hit, interposeDeclined: [...(p.hit.interposeDeclined ?? []), t.id] }, ...p.rest], p.after, ev, true);
+    return null;
+  }
   if (take && canKawarimi(s, t)) kawarimi(s, t, p.hit, ev);
   else landHit(s, t, p.hit, ev);
   applyHits(s, p.rest, p.after, ev, true);
   return null;
+}
+
+// --- the last stand (lastStand.ts) -----------------------------------------------------------
+
+/**
+ * The sacrifice: the ninja rises for one blow, its strongest (the plan the AI would make for it),
+ * free and at SACRIFICE_POWER; then the d100 of SACRIFICE_LIVES: it lives, stable at 0 HP, or dies
+ * for good. With nothing to strike it still spends itself.
+ */
+function sacrifice(s: BattleState, u: Unit, ev: BattleEvent[]): void {
+  ev.push({ t: 'lastStand', unit: u.id, choice: 'sacrifice' });
+  u.down = undefined;
+  u.hp = 1;
+  u.cond = {};
+  u.turn = { move: 0, action: true, bonus: true, reaction: false, moved: 0 };
+  u.lastStand = true;
+  // Its strongest blow at a foe it can reach from where it lies (it rises, it does not walk): the
+  // AI's options, but only the strikes (at 1 HP the AI would rather dodge or heal, and a last stand
+  // is neither).
+  const strike = (o: { intent: Intent }) => ['jutsu', 'melee', 'ranged'].includes(o.intent.kind) && !!o.intent.target && s.units[o.intent.target]?.team !== u.team && !!goalOf(s, u, o.intent)?.ready;
+  const plan = ninjaOptions(s, u).find(strike)?.intent;
+  if (plan?.target && s.units[plan.target]) {
+    const at = plan.at ?? { ...s.units[plan.target].pos };
+    if (plan.kind === 'jutsu') doJutsu(s, u, plan.what, at, plan.target, false, ev);
+    else if (plan.kind === 'melee' || plan.kind === 'ranged') doAttack(s, u, plan.target, plan.kind === 'ranged', false, ev);
+  }
+  u.lastStand = false;
+  // (a reaction the blow raised in a player's comrade is theirs to answer; the fate is settled now)
+  const lives = nextRng(s)() < SACRIFICE_LIVES;
+  u.hp = 0;
+  u.turn = { move: 0, action: false, bonus: false, reaction: false, moved: 0 };
+  u.cond = { prone: true };
+  u.down = lives ? 'stable' : 'dead';
+  ev.push({ t: 'down', unit: u.id, state: u.down });
+  ev.push({ t: 'lastStand', unit: u.id, choice: 'sacrifice', lives });
+}
+
+/** The retreat: the ninja leaves the battle alive at 1 HP, with the mutilation its last blow fixed. */
+function retreat(s: BattleState, u: Unit, ev: BattleEvent[]): void {
+  u.mutilation = mutilationFor(u.stats2.lastHitType);
+  u.down = 'fled';
+  u.hp = 1;
+  u.cond = {};
+  ev.push({ t: 'lastStand', unit: u.id, choice: 'retreat', mutilation: u.mutilation });
+  ev.push({ t: 'down', unit: u.id, state: 'fled' });
 }
 
 // --- jutsu ---------------------------------------------------------------------------------
@@ -905,7 +1133,9 @@ function doJutsu(s: BattleState, u: Unit, id: string, atIn: Pt, targetId: string
   if (effectMods(u.effects).noJutsu) return 'chakraSealed';
   if (enh && !base.enhCost) return 'noEnhanced';
   const spec = enh ? enhanced(base) : base;
-  const { cost, woven } = jutsuCostParts(u, base, enh);
+  const { cost: fullCost, woven } = jutsuCostParts(u, base, enh);
+  // (the last stand's blow is free: lastStand.ts)
+  const cost = u.lastStand ? 0 : fullCost;
   if (u.chakra < cost) return 'noChakra';
   if (base.cast === 'bonus' ? !u.turn.bonus : !u.turn.action) return base.cast === 'bonus' ? 'noBonus' : 'noAction';
   // One charged hand at a time.
@@ -950,7 +1180,7 @@ function doJutsu(s: BattleState, u: Unit, id: string, atIn: Pt, targetId: string
   switch (spec.shape) {
     case 'single':
       if (!target || !targetable(target)) return 'needTarget';
-      if (spec.special === 'slash' && target.team === u.team) return 'ally';
+      if ((spec.special === 'slash' || spec.special === 'weaponThrow') && target.team === u.team) return 'ally';
       if (d > range + 0.1 + (target.bulk ?? 0) + (target.kind === 'hydra_head' ? 2.5 : 0)) return 'outOfRange';
       if (!spec.melee && !lineOfSight(s, u.pos, target.pos)) return 'noSight';
       if (spec.melee && fullCoverBetween(s, u.pos, target.pos)) return 'blocked';
@@ -972,11 +1202,13 @@ function doJutsu(s: BattleState, u: Unit, id: string, atIn: Pt, targetId: string
       if (d < MIN_AIM) return 'needDirection';
       break;
     case 'node': {
-      // Shooting-Star Thrust: one of the Ryusei's own Nodes, landing beside it if someone stands on it.
-      const n = ownNodeAt(s, u, at);
+      // Shooting-Star Thrust: one of the Ryusei's own Nodes, or (the owner, 2026-10-28: "que se ponga
+      // el objetivo enemigo... o teletransportarse a donde se indique sin los nodos") the foe aimed at
+      // or the spot aimed at; it lands beside whoever stands there (clans.ts warpAim).
+      const n = warpAim(s, u, at);
       const why = warpBlocker(s, u, n);
       if (why) return why;
-      at = warpLanding(s, u, n!)!;
+      at = warpLanding(s, u, n)!;
       break;
     }
     case 'onNode': {
@@ -1027,6 +1259,10 @@ function doJutsu(s: BattleState, u: Unit, id: string, atIn: Pt, targetId: string
   }
   if (base.special === 'slash') {
     elementalSlash(s, u, target!, ev);
+    return null;
+  }
+  if (base.special === 'weaponThrow') {
+    weaponThrow(s, u, target!, ev);
     return null;
   }
   if (spec.melee && spec.shape === 'single' && target) {
@@ -1161,7 +1397,7 @@ function jutsuHits(s: BattleState, u: Unit, spec: JutsuSpec, target: Unit | unde
   const fromCaster = spec.shape === 'selfCircle' || spec.shape === 'cone' || spec.shape === 'line';
   const victims = area ? unitsInArea(s, area, fromCaster ? [u.id] : [], fromCaster ? u.pos : at) : target ? [target] : [];
   const type = spec.dmgType ?? 'Force';
-  const amount = spec.dice ? rollDiceExpr(s, spec.dice) : 0;
+  const amount = (spec.dice ? rollDiceExpr(s, spec.dice) : 0) * (u.lastStand ? SACRIFICE_POWER : 1);
   // Areas dent the Kōton structures they reach (an illusion doesn't).
   if (area && spec.dmgType && type !== 'Psychic') hitStructuresIn(s, area, amount, ev);
   // A Ryusei's warp edge goes with its next attack roll: a jutsu that rolls to hit can't be blocked.
@@ -1176,7 +1412,9 @@ function jutsuHits(s: BattleState, u: Unit, spec: JutsuSpec, target: Unit | unde
     // Fire that lands on wet ground turns the water to steam: the flames don't catch there.
     if (extra.effect === 'burning' && dampAt(s, v.pos)) extra.effect = undefined;
     if (spec.save) {
-      hits.push(saveHit(s, v, spec.save, u.saveDC, amount, type, spec.saveHalf, u.id, spec.id, extra, ev, spec.saveAdv, spec.dice ? maxCritDamage(spec.dice) : undefined));
+      // Cover counts against an area's DEX save: from a burst's middle, or from the caster of a cone or a line.
+      const danger = area ? (area.kind === 'circle' ? area.center : u.pos) : u.pos;
+      hits.push(saveHit(s, v, spec.save, u.saveDC, amount, type, spec.saveHalf, u.id, spec.id, extra, ev, spec.saveAdv, spec.dice ? maxCritDamage(spec.dice) : undefined, danger));
       continue;
     }
     const pv = attackPreview(s, u, v, 'jutsu', { jutsuRange: spec.range, melee: spec.melee });
@@ -1190,7 +1428,11 @@ function jutsuHits(s: BattleState, u: Unit, spec: JutsuSpec, target: Unit | unde
   const ground = area ?? { kind: 'circle' as const, center: at, radius: 1 };
   if (spec.dmgType) hits.push(...groundEffects(s, ground, spec.env === 'clearFoliage' ? 'Wind' : type, ev, new Set(), spec.env === 'clearFoliage', u.id));
   // Water soaks the ground it passes over, wind blows steam away (the owner, 2026-10-21; ground.ts).
-  if (spec.elemental && spec.element === 'water' && spec.dmgType) soak(s, ground, u.id, ev, spec.wetRounds);
+  if (spec.elemental && spec.element === 'water' && spec.dmgType && spec.ground !== 'ice') soak(s, ground, u.id, ev, spec.wetRounds);
+  // What a jutsu leaves on the ground on purpose (the owner, 2026-10-28): ice, oil or quicksand mud.
+  if (spec.ground === 'ice') freeze(s, ground, u.id, ev);
+  else if (spec.ground === 'oil') spill(s, ground, u.id, ev);
+  else if (spec.ground === 'mud') mire(s, ground, u.id, ev);
   // Every wind attack does (his "puede ser eliminada con ataques elementales de aire"): over its area,
   // and from the caster's own cell for a cone or a line; a single-target one along its path, hit or miss.
   if (spec.elemental && spec.element === 'wind' && spec.dmgType) {
@@ -1400,11 +1642,37 @@ function doCrouch(s: BattleState, u: Unit, ev: BattleEvent[]): string | null {
 
 /** Ninja jump (bonus action): climbing and dropping a level cost little for the rest of the turn. */
 function doJump(u: Unit, ev: BattleEvent[]): string | null {
-  if (!u.turn.bonus) return 'noBonus';
-  u.turn.bonus = false;
+  // (a steel leg's jump costs no bonus action: rules/effects.ts freeJump)
+  const free = effectMods(u.effects).freeJump;
+  if (!free && !u.turn.bonus) return 'noBonus';
+  if (!free) u.turn.bonus = false;
   u.cond.ninjaJump = true;
   ev.push({ t: 'act', unit: u.id, act: 'jump' });
   ev.push({ t: 'condition', unit: u.id, cond: 'ninjaJump', on: true });
+  return null;
+}
+
+/** How far a wooden arm's grapple hook pulls its ninja (rules/effects.ts hook). */
+export const HOOK_RANGE = 6;
+
+/**
+ * The grapple hook of a wooden arm (the owner's M2, 2026-10-28): a bonus action pulls the ninja to a
+ * free spot within HOOK_RANGE in sight, no movement spent, no opportunity attack (it flies).
+ */
+function doHook(s: BattleState, u: Unit, at: Pt, ev: BattleEvent[]): string | null {
+  if (!effectMods(u.effects).hook) return 'noHook';
+  if (!u.turn.bonus) return 'noBonus';
+  if (u.cond.prone) return 'prone';
+  if (dist(u.pos, at) > HOOK_RANGE + 0.1) return 'outOfRange';
+  if (!lineOfSight(s, u.pos, at)) return 'noSight';
+  const c = cellOf(at);
+  if (cellBlocked(s, c) || waterAtPt(s, at) === 2 || !canStop(s, u, c)) return 'blocked';
+  u.turn.bonus = false;
+  const from = { ...u.pos };
+  u.pos = cellCenter(c);
+  if (u.pos.x !== from.x) u.facing = u.pos.x > from.x ? 1 : -1;
+  ev.push({ t: 'pushed', unit: u.id, from, to: { ...u.pos }, fall: 0, what: 'hook' });
+  afterMove(s, u, ev);
   return null;
 }
 
@@ -1449,8 +1717,12 @@ function doShove(s: BattleState, u: Unit, targetId: string, mode: 'prone' | 'pus
     const cellAt = (m: number) => cellOf({ x: t.pos.x + ((t.pos.x - u.pos.x) / d) * m, z: t.pos.z + ((t.pos.z - u.pos.z) / d) * m });
     const fits = (m: number) => pushClear(s, t.pos, cellCenter(cellAt(m))) && canStop(s, t, cellAt(m));
     const c = atk.crit && mode === 'push' && fits(3) ? cellAt(3) : cellAt(1.5);
-    if (!pushClear(s, t.pos, cellCenter(c)) || !canStop(s, t, c)) ev.push({ t: 'note', key: 'shoveBlocked', params: { name: t.name } });
-    else {
+    if (!pushClear(s, t.pos, cellCenter(c)) || !canStop(s, t, c)) {
+      // Shoved against what it stands by: it slams into it (N11 b), or doesn't budge if nothing solid is there.
+      const before = ev.length;
+      slam(s, t, { from: { ...u.pos }, m: 1.5 }, 1.5, u.id, ev);
+      if (ev.length === before) ev.push({ t: 'note', key: 'shoveBlocked', params: { name: t.name } });
+    } else {
       const from = { ...t.pos };
       const to = cellCenter(c);
       const drop = levelAtPt(s, from) - levelAtPt(s, to);

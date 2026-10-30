@@ -3,7 +3,7 @@
 // flash-in). Movement is shown in meters.
 
 import type { BattleState, Cell, Pt, Unit } from './types';
-import { CELL, cellBlocked, cellCenter, cellOf, dist, gridFor, idx, inGrid } from './map';
+import { CELL, cellBlocked, cellCenter, cellKey, cellOf, dist, gridFor, idx, inGrid } from './map';
 
 const DIRS: [number, number, number][] = [
   [1, 0, 1],
@@ -77,8 +77,10 @@ export function stepCost(s: BattleState, from: Cell, to: Cell, diag: boolean, ru
     const levels = Math.round(Math.abs(dl));
     cost += dl > 0 ? levels * (rules.ninjaJump ? JUMP_UP : CLIMB_UP) : levels * (rules.ninjaJump ? JUMP_DOWN : CLIMB_DOWN);
   }
-  // Ground cracked by a charged ninja's steps is difficult terrain (battle/charged.ts).
-  if (s.cracks && crackKey(to) in s.cracks) cost *= 2;
+  // Ground cracked by a charged ninja's steps is difficult terrain (battle/charged.ts); so are spilt
+  // oil and quicksand mud (battle/ground.ts).
+  const tk = cellKey(to);
+  if ((s.cracks && crackKey(to) in s.cracks) || (s.oil && tk in s.oil) || (s.mud && tk in s.mud)) cost *= 2;
   if (rules.dragging) cost *= 2;
   return cost;
 }

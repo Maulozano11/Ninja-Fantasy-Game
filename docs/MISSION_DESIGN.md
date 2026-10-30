@@ -539,7 +539,7 @@ enough, the choice **"Lootear"** or **"Seguir adelante"** appears; both can be d
 on). **Going on, the party leaps one by one over the wall to the right, where Barrabás went, with
 the tree jump's leap** (the owner, 2026-10-30: *"como en el salto al árbol"*; the Vanish Jump's
 look on `stealth/tree-hide`, `vanishArt.ts`: a crouch, the take-off puff, the body in lagging
-bands with pale after-images and speed lines, fading out over the battlements), and the mission
+bands with pale after-images and speed lines, fading out over the battlements; his leap effects since 2026-10-30, the take-off burst and the trail, and no cloud where they vanish: that cloud is the dodge's), and the mission
 moves on into the castle. `docs/mockups/colossal-hydra-party-leap.png`. The fang's glow is soft. `docs/mockups/colossal-hydra-after-battle.png` (what it does, and whether
 it is a material for the forge or an item of its own, to propose).
 

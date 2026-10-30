@@ -136,9 +136,7 @@ def draw_vanish(img, name, u, ms):
     dx, dy = x - px, y - py
     if math.hypot(dx, dy) >= 0.5 and fade > 0.05:
         trail(img, min(5, int(k * 6)), x, y - 50, math.degrees(math.atan2(dy, dx)), alpha=min(1.0, fade * 1.3))
-    if k >= 0.6 and not u.get('poofed'):
-        u['poofed'] = True
-        STATE['poofs'].append((x, y - 50, N[0]))
+    # (no cloud where it vanishes: the owner, 2026-10-30; his vanish row is the dodge's now)
 
 N = [0]
 STATE = dict(poofs=[], tooth=True, glow0=0, prompt=None, popup=None, puffs=[])

@@ -56,7 +56,8 @@ elements.
   On screen (the owner, 2026-10-30): the "vanish" row of his ninja-leap effects sheet
   (`docs/reference/ninja-leap-fx-owner-reference.png`, row 3: the flash, the round cloud with
   leaves, its wisps) is the swap's cloud where the ninja stood, a log in its place takes the blow,
-  and the same cloud, smaller and quicker, where it comes out (`docs/mockups/kawarimi-dodge-cloud.png`).
+  and the same cloud, smaller and quicker, where it comes out, with the word **¡Esquivado!** /
+  **Dodged!** over it (approved by the owner 2026-10-30; the word was "Kawarimi!") (`docs/mockups/kawarimi-dodge-cloud.png`).
 - **Dice**: every roll shows as a quick d20 over the acting character, with a
   button to speed it up. The big dice window is kept for criticals and
   important checks. Checks and attacks show their % before rolling.

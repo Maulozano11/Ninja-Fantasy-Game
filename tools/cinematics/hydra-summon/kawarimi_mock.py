@@ -134,7 +134,7 @@ def emit(f, q):
         a = min(1, k / 5) * min(1, (40 - k) / 10)
         if a > 0:
             d = ImageDraw.Draw(img)
-            d.text((BXs - 70, BYs - 160 - k), 'Kawarimi', font=FB(30), fill=(233, 216, 166, int(255 * a)), stroke_width=3, stroke_fill=(10, 6, 6, int(255 * a)))
+            d.text((max(110, BXs), BYs - 130 - k), '¡Esquivado!', anchor='ms', font=FB(30), fill=(233, 216, 166, int(255 * a)), stroke_width=3, stroke_fill=(10, 6, 6, int(255 * a)))
     img.convert('RGB').save(f'{FD}/f{n:04d}.png')
     N[0] += 1
 

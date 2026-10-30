@@ -218,6 +218,43 @@ says; the only fills are the ones he saw on the sheets and left unmarked, listed
 wrong, its entry goes; a new one is never added without his eye. A pocket that looks wrong is shown to him
 first, never filled on its own.
 
+**Legs, knees and ankles in every pose (the owner, 2026-10-30).** On Lyra's paladin set the knees and
+ankles came out wrong in the moving poses, "como todas las piernas y tobillos pasadas", and he asked for
+a rule so no future character needs that fix again. For every character, his or ours, in every frame of
+every pose: the thigh and the shin overlap at the knee and the shin and the foot at the ankle (the lower
+piece carries a cap of the upper one, or the piece is continued 1-2 px past the joint along the limb);
+no background shows at a joint; the foot sits on the shin, turned with it, never apart from it or
+kinked; a limb is clothed or armoured along its whole length at every angle (no bare gap between a
+skirt and a shin); turned pieces keep his black line whole (`closed`, `rotateLined`) with no 1 px teeth
+or stray pixels. This is checked on a sheet of all poses at 6x **before** a character is shown to him,
+not after he marks it. `heroineKnights.test.ts` (no loose pieces in any pose) and `holes.test.ts` guard
+the loose parts; the eye does the rest. How the heroine knights meet it (`tools/refs/heroine_knights_ref.py`
+`complete()`, `items/heroineKnights.ts`), the numbers for the next character cut from a picture of his:
+the upper piece of every joint is continued under the piece in front of it (hidden at rest) 2 px past the
+joint (`PAST_PX`) in a block at least as wide as the piece in front is there (`LOWER`: the knee cop over a
+cuisse that ends in a point), plus a disc of 3.5 px round the joint (`PAST_DISC_R`) that closes the back of
+the bend at any angle; a boot is continued 2 px up its shin the same way; the continued end rides the lower
+piece and the cells within 5 px of the knee (`KNEE_R`, 4 at the elbow) sweep through the bend (`stampBent`
+with `carry`); a far limb he drew only a sliver of is filled from its twin at the same place along and across
+the limb (`LIKE`), never with one flat colour; a part's polygon never takes in the cape or the hem beside the
+limb (`CUT_POLYS`); and a turned piece loses its 1 px tips (`pruneTips`). **A thigh keeps his figure and
+shape** (the owner, 2026-10-30, after the thighs were widened: "ok ahora solo utiliza la regla en los muslos
+de respetar la figura y forma y evitar esos 'mordiscos' que tiene en algunos"): from the hip to the knee each
+edge of a thigh is one smooth, slightly convex outline, never a bite, a notch where the edge steps in and
+back out over a few pixels. On the heroine knights a turned thigh is closed along the limb (`closeBites`,
+`BITE_SPAN`): in each lane beside the axis a gap between two cells of the piece, or between the hip end and
+the lane's first cell, is filled with his shading continued from beside it and his line moved out to the new
+edge; it also runs when the hand that hangs over the thigh at rest has moved away (`HAND_AWAY`), since the
+converter continues nothing of the thigh under his hand. Checked mechanically (walk both edges along the
+axis; a dip of 1.5 px or more against both neighbours within 4 px is a bite) on every non-idle frame.
+
+**The figure in the striking poses (the owner, 2026-10-30, on the legate's attack 1: "en las poses de
+arrojar tienes el problema de figura, arréglalo y asegúrate que no pase con ninguna pose y ningún futuro
+personaje").** When an arm turns away from the body the torso piece keeps its own side: its line and its
+curve run on under the armpit with no step, no notch and no bare column between the cuirass and the
+cape; a knee reads as a knee, the shin's piece on the thigh's axis at the joint, never kinked. Same
+check as above: every pose and frame on every body, at 6x, before he sees it.
+
 ## Checklist for a new item
 
 1. Render `npm run sprites -- item <id>` and check every body and pose.

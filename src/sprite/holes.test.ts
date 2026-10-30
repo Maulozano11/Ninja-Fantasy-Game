@@ -7,6 +7,7 @@ import { describe, it } from 'node:test';
 import { enemyCharacter, type EnemyKind } from '../battle/units';
 import { COMPANIONS } from '../data/missions';
 import type { ShinobiCharacter } from '../types/shinobi';
+import { fitsBody, getItem } from './catalog';
 import { renderSprite, type SpriteFrame } from './compose';
 import { airOf, closePinholes, findNicks, findPinholes, PINHOLE } from './holes';
 import { frontOfBack } from './items/accessories';
@@ -134,7 +135,12 @@ describe('the 1-pixel holes', () => {
     const bad: string[] = [];
     LOOKS.forEach((L, li) => {
       POSES.forEach((pose, pi) => {
-        const body = BODIES[(li + pi) % BODIES.length];
+        // the women's sets (preset_heroine_*, every piece female only) stay on the bodies their pieces fit; the
+        // other looks keep their turn through every body (Lyra's own sit and read on the female body show
+        // pinholes of her seated hair, open, so her turn is not changed here)
+        const fits = L.id.startsWith('preset_heroine_') ? BODIES.filter((b) => Object.values(L.look.slots).every((it) => { const d = it && getItem(it.id); return !d || fitsBody(d, b); })) : BODIES;
+        const bodies = fits.length ? fits : BODIES;
+        const body = bodies[(li + pi) % bodies.length];
         const l = { ...structuredClone(L.look), body };
         const fc = frameCount(rigPoseFor(pose, l.cast?.style, l.slots.held?.id));
         const f = (li * 3 + pi) % fc;

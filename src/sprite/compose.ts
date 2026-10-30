@@ -22,6 +22,7 @@ import { drawCastFx } from './castfx';
 import { sealCloth } from './seal';
 import { maleSkinRamp, paintMaleSkin } from './maleSkin';
 import { romanRig } from './romanNeck';
+import { heroineKnightsRig } from './heroineKnightsRig';
 import { applyTexture, frayHair } from './texture';
 import { isFemaleBody, type EyeSpecial, type PixelEdit, type SlotId, type SpriteAppearance, type SpritePose } from './types';
 
@@ -279,7 +280,7 @@ function drawLayers(look: SpriteAppearance, pose: SpritePose, frame: number, eye
   // where the owner drew it: aureliaHead.ts; his Roman face on a male body stands higher on his neck:
   // romanNeck.ts)
   // (his own figure in his painted frames sits on his joints; any other look holds its hands from its own neck: rig.ts PoseAt.hisNeck)
-  const rig = heldOnly ?? aureliaRig(romanRig(carryHead(drawRig(look.body, rigPoseFor(pose, look.cast?.style, look.stowed ? undefined : look.slots.held?.id), frame, look.arms, wearsHisFigure(look)), look.neck), look), look);
+  const rig = heldOnly ?? heroineKnightsRig(aureliaRig(romanRig(carryHead(drawRig(look.body, rigPoseFor(pose, look.cast?.style, look.stowed ? undefined : look.slots.held?.id), frame, look.arms, wearsHisFigure(look)), look.neck), look), look), look);
   const mats = new MaterialTable();
   const layers = new Map<Depth, Layer>();
   const equipped = new Map<SlotId, ItemDef>();

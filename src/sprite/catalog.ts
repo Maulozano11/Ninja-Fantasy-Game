@@ -9,6 +9,7 @@ import { BOTTOM_ITEMS, HAND_ITEMS, TOP_ITEMS, WAIST_ITEMS } from './items/clothe
 import { FEET_ITEMS } from './items/feet';
 import { HAIR_ITEMS } from './items/hair';
 import { NIGHT_ITEMS } from './items/night';
+import { HEROINE_KNIGHT_ITEMS } from './items/heroineKnights';
 import type { BodyType, SlotId } from './types';
 
 export const ALL_ITEMS: ItemDef[] = [
@@ -26,6 +27,7 @@ export const ALL_ITEMS: ItemDef[] = [
   ...ACCESSORY_ITEMS,
   // the owner's Ren, part by part (the jacket, belt, skirt, trousers and boots)
   ...NIGHT_ITEMS,
+  ...HEROINE_KNIGHT_ITEMS,
 ];
 
 const byId = new Map(ALL_ITEMS.map((d) => [d.id, d]));

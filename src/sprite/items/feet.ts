@@ -537,8 +537,8 @@ function drawRomanSandals(g: DrawCtx, tint: (ch: string, hex: string) => string)
     // (the ankle inside the sandal in every pose: the crack between the laces and a foot held flat closed
     // with his laces continued, and his line round what is left open; nothing at rest)
     if (shinTurn(g, s)) {
-      const joined = joinAnkle(g, s, at);
       const lineHex = [...Object.values(shin.colors), ...Object.values(foot.colors)].filter((hex) => ROMAN_KIT_KIND[hex] === 'line');
+      const joined = lineHex.length ? joinAnkle(g, s, at, g.m(lineHex[0], 'flat')) : 0;
       if ((turn || joined) && lineHex.length) closeAnkle(g, s, at, g.m(lineHex[0], 'flat'), new Set(lineHex.map((hex) => g.m(hex, 'flat'))));
     }
   }
@@ -777,6 +777,11 @@ export const FEET_ITEMS: ItemDef[] = [
         const shin = moving ? sandalShinMoving(g.rig.body, s) : pieces[s].shin;
         const foot = pieces[s].foot;
         const at = add(ankle, founderLegOut(g, s).out);
+        // On bare legs (no trousers of his to stand them where he drew them: the legate, the general) our
+        // lower leg takes his laced shin's shape, as it does under his Roman paint, so no calf shows beside
+        // the laces down to the foot (the owner, 2026-10-30, on the legate's far leg: the ankle out of the
+        // sandal). Under his trousers the leg is his own.
+        if (!g.has('bottom', 'bottom_founder')) legToLacedShin(g, s, shin, at, segAngle(knee, ankle));
         // Lifted well off the ground (a kick, the run's back leg), either sandal turns with its laced shin about
         // the ankle, as he drew them as one (footTurn: 0 standing, so at rest every pixel is his).
         const turn = moving ? footTurn(g, s, false, SANDAL_LIMITS) : 0;
@@ -784,12 +789,10 @@ export const FEET_ITEMS: ItemDef[] = [
         stampPiece(g, legDepth(s, 'feet'), foot, at, foot.angle + turn, `foot${s}`, tint, line);
         // (the ankle inside the sandal in every pose: the crack between the laces and a foot held flat closed
         // with his laces continued; nothing at rest)
-        if (moving && shinTurn(g, s)) joinAnkle(g, s, at);
-        if (moving || turn) {
-          // His line round the ankle: the pieces' line colours (his line is never tinted).
-          const lineHex = Object.values(shin.colors).filter((hex) => pieces.kind[hex] === 'line');
-          if (lineHex.length) closeAnkle(g, s, at, g.m(lineHex[0], 'flat'), new Set(lineHex.map((hex) => g.m(hex, 'flat'))));
-        }
+        // His line round the ankle: the pieces' line colours (his line is never tinted).
+        const lineHex = Object.values(shin.colors).filter((hex) => pieces.kind[hex] === 'line');
+        if (moving && shinTurn(g, s) && lineHex.length) joinAnkle(g, s, at, g.m(lineHex[0], 'flat'));
+        if ((moving || turn) && lineHex.length) closeAnkle(g, s, at, g.m(lineHex[0], 'flat'), new Set(lineHex.map((hex) => g.m(hex, 'flat'))));
       }
     },
   },

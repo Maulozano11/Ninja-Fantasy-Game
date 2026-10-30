@@ -69,25 +69,31 @@ export interface FootLimits {
 export const SANDAL_LIMITS: FootLimits = { turn: 15, lift: 2 };
 
 /** How far from the ankle (fine pixels) the crack between a shin and its foot is looked for. */
-const JOIN_R = 6;
+const JOIN_R = 7;
+/** How far (fine pixels) across the crack the shin and the foot may stand from each other. */
+const JOIN_ACROSS = 4;
+/** The directions a crack is looked across: along a row, a column and both diagonals (a shin turned any way). */
+const JOIN_DIRS: [number, number][] = [[1, 0], [0, 1], [1, 1], [1, -1]];
 
 /**
  * The crack between a shin and its foot closed with the shin continued: an empty pixel of the layer near the
- * ankle with the shin on one side of it and the foot on the other (among its 8 neighbours, or within two
- * pixels along its row or column) takes the material of the nearest shin pixel, as part of the foot, so the
- * ankle stays inside the sandal where the shin leans away from a foot held flat on the ground (a crouch, a
- * lunge, a step) or the two are rounded apart. Twice, for a crack two pixels wide. Nothing at rest: there
- * he drew the two as one.
+ * ankle with the shin on one side of it and the foot on the other (among its 8 neighbours, or within
+ * JOIN_ACROSS pixels along its row, its column or a diagonal) takes the material of the nearest shin pixel,
+ * as part of the shin (his laces run on), so the ankle stays inside the sandal where the shin leans away from a foot held flat
+ * on the ground (a crouch, a lunge, a step), where the far foot reaches down past the ankle, or where the two
+ * are rounded apart; what shows there otherwise is the leg's skin under it. Pass after pass until nothing is
+ * left, for a crack several pixels wide. Nothing at rest: there he drew the two as one.
  */
-export function joinAnkle(g: DrawCtx, s: Side, at: Vec, depth = legDepth(s, 'feet')): number {
+export function joinAnkle(g: DrawCtx, s: Side, at: Vec, line: number, depth = legDepth(s, 'feet')): number {
   const L = g.L(depth);
   const shin = partIndex(`shin${s}`);
   const foot = partIndex(`foot${s}`);
   const ax = Math.floor(at.x * RES);
   const ay = Math.floor(at.y * RES);
   const is = (i: number, p: number) => L.mat[i] >= 0 && L.part[i] === p;
+  const filledAt = new Set<number>();
   let filled = 0;
-  for (let pass = 0; pass < 2; pass++) {
+  for (let pass = 0; pass < JOIN_ACROSS; pass++) {
     const add: [number, number][] = [];
     for (let y = ay - JOIN_R; y <= ay + JOIN_R; y++)
       for (let x = ax - JOIN_R; x <= ax + JOIN_R; x++) {
@@ -102,9 +108,13 @@ export function joinAnkle(g: DrawCtx, s: Side, at: Vec, depth = legDepth(s, 'fee
             if (is(j, shin)) nearShin = true;
             if (is(j, foot)) nearFoot = true;
           }
-        const across = [[1, 0], [0, 1]].some(([dx, dy]) => {
-          const a = [i - dy * GRID - dx, i - 2 * dy * GRID - 2 * dx];
-          const b = [i + dy * GRID + dx, i + 2 * dy * GRID + 2 * dx];
+        const across = JOIN_DIRS.some(([dx, dy]) => {
+          const a: number[] = [];
+          const b: number[] = [];
+          for (let k = 1; k <= JOIN_ACROSS; k++) {
+            a.push(i - k * dy * GRID - k * dx);
+            b.push(i + k * dy * GRID + k * dx);
+          }
           return (a.some((j) => is(j, shin)) && b.some((j) => is(j, foot))) || (a.some((j) => is(j, foot)) && b.some((j) => is(j, shin)));
         });
         if (!((nearShin && nearFoot) || across)) continue;
@@ -124,11 +134,21 @@ export function joinAnkle(g: DrawCtx, s: Side, at: Vec, depth = legDepth(s, 'fee
       }
     for (const [i, m] of add) {
       L.mat[i] = m;
-      L.part[i] = foot;
+      L.part[i] = shin;
+      filledAt.add(i);
     }
     filled += add.length;
     if (!add.length) break;
   }
+  // his line closes the filled crack where it meets the air: a filled pixel with nothing beside it
+  if (filled)
+    for (let y = ay - JOIN_R; y <= ay + JOIN_R; y++)
+      for (let x = ax - JOIN_R; x <= ax + JOIN_R; x++) {
+        const i = y * GRID + x;
+        if (x < 2 || y < 2 || x >= GRID - 2 || y >= GRID - 2 || !is(i, shin) || L.mat[i] === line) continue;
+        if (!filledAt.has(i)) continue;
+        if ([i - 1, i + 1, i - GRID, i + GRID].some((j) => L.mat[j] < 0)) L.mat[i] = line;
+      }
   return filled;
 }
 

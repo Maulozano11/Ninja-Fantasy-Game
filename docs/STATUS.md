@@ -247,6 +247,13 @@ Merge checks (`git merge-tree` on the origin tips, nothing changed):
   and the gladiator sandal's ankle kept inside the sandal in every pose (`items/ankle.ts` `SANDAL_LIMITS`,
   `joinAnkle`: the foot turns with a lifted shin from 15 degrees, the crack between laces and a flat foot is
   filled with his laces; shared by Solen's and the Roman's sandals, idle unchanged; `l7-tobillo-antes-despues.png`).
+  His three marks on l6/l7 (2026-10-30), done: the far pauldron grows with his near pauldron's pixels mirrored
+  (the same piece seen from behind, `legate_ref.grown` design; `l8-hombrera-lejana-antes-despues.png`); on
+  the bulky body the seam between the cuirass and the near arm is closed with the cuirass continued
+  (`legate.ts` closeArmSeams; `l9-fornido-torso-brazo.png`); on bare legs the Solen-paint sandal gives our
+  lower leg his laced shin's shape, so no calf shows beside the laces down to the foot (far leg; `feet.ts`,
+  `ankle.ts` joinAnkle 4 px in four directions; the legate's and the general's idle lose the 2 px calf strip
+  beside the far laces; `l10-tobillo-lejano.png`).
   Names for both characters and their items are his to give.
 - `hero/bronze-warrior` (2026-10-29, D-T17): the bronze warrior is Solen. Both bronze presets wear Solen's head
   (`founder` face, standard eyes in his red, his skin); his repainted mane with the braid is `hair_solen_mane`

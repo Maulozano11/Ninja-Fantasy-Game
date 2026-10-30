@@ -1587,6 +1587,13 @@ def capped(name, mask, col, done):
 # his line), each hidden cell in the colour the twin has at the same place along and across the limb, so a
 # far leg that steps out is armoured as the near one, not a flat strip of one of his colours.
 LIKE = {'thighF': ('thighN', ('hipF', 'kneeF'), ('hipN', 'kneeN'))}
+# A thigh keeps his cuisse's width along its whole length (the owner, 2026-10-30, on the far thigh between the
+# tabard and the greave: "los muslos se ven muy flacos"): a band round the limb's axis from the hip to past
+# the knee, as wide to each side as the cuisse reaches to either side at its widest (the far thigh as wide as
+# its twin), filled where the tabard or the near leg hide it at rest, its edge his line; the turned piece then
+# is a column of that width, never a wedge thinning to the knee.
+BAND = {'thighN': ('hipN', 'kneeN'), 'thighF': ('hipF', 'kneeF')}
+BAND_ALONG = (0.1, 0.9)
 
 
 def limb_frame(j0, j1):
@@ -1666,14 +1673,15 @@ def complete(lab, name, mask, col, axis, fig=SHARED_FROM, done=None, lower=None)
         u = px @ nrm
         hm |= (t >= lo) & (t <= PAST_PX) & (u <= wl) & (u >= -wr)
         hm |= np.hypot(px[..., 0], px[..., 1]) <= PAST_DISC_R
-    if twin is not None:
-        # the far limb as wide as its twin along its whole length, on its inner side
-        a, d, nrm, n = limb_frame(*like[1])
-        wl, _ = half_width(twin[0], *like[2], 0.1, 0.9)
+    if name in BAND:
+        # the cuisse's full width (the far thigh its twin's) to both sides of the axis, hip to past the knee
+        a, d, nrm, n = limb_frame(*BAND[name])
+        src, seg = (mask, BAND[name]) if twin is None else (twin[0], like[2])
+        w = max(half_width(src, *seg, *BAND_ALONG))
         px = np.stack([xx + 0.5 - a[0], yy + 0.5 - a[1]], -1)
         t = (px @ d) / n
         u = px @ nrm
-        hm |= (t >= 0) & (t <= 1) & (u <= wl) & (u >= 0)
+        hm |= (t >= 0) & (t <= 1 + PAST_PX / n) & (u <= w) & (u >= -w)
     add = hm & front & ~mask
     if not add.any():
         return mask, col

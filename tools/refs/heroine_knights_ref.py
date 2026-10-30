@@ -1161,6 +1161,53 @@ def straight_blade(rgb, lab):
             rgb[y, x] = c
 
 
+# How near (pixels) his blade a pixel of its light on the parts it crosses is scrubbed (scrub_glints), and
+# those parts: the legs, the feet, the skirt and the cape (the belt and the hands keep their own highlights
+# beside the guard).
+GLINT_NEAR = 2
+GLINT_PARTS = ('thighN', 'thighF', 'shinN', 'shinF', 'footN', 'footF', 'skirt', 'cape')
+GLINT_KINDS = ('cyan', 'white')
+# (and only light ones: the dragon tabard's dark teal is its own)
+GLINT_LUMA = 110
+
+
+def scrub_glints(fig, rgb, lab):
+    """Pixels of a blade's light (cyan, white) left on a leg, a boot, the skirt or the cape within GLINT_NEAR of
+    the figure's own blade or the shared one: the straightened blade no longer passes there, so a boot or a
+    hem carried a pale speck of the old blade into every moving pose (the rogue's far boot). Each takes the
+    nearest pixel of its own part that is not his line and not blade light: the part continued. In place."""
+    raw_lab = raw_frame(fig)[1]
+    light = lambda c: kind(c) in GLINT_KINDS and luma(c) > GLINT_LUMA
+    near = (raw_lab == 'blade') | (lab == 'blade')
+    for _ in range(GLINT_NEAR):
+        grown = near.copy()
+        for dy in (-1, 0, 1):
+            for dx in (-1, 0, 1):
+                grown |= np.roll(np.roll(near, dy, 0), dx, 1)
+        near = grown
+    parts = np.isin(lab, GLINT_PARTS)
+    for y, x in zip(*np.nonzero(near & parts)):
+        if not light(rgb[y, x]):
+            continue
+        best = None
+        for r in range(1, 6):
+            for dy in range(-r, r + 1):
+                for dx in range(-r, r + 1):
+                    if max(abs(dy), abs(dx)) != r:
+                        continue
+                    q = (y + dy, x + dx)
+                    if not (0 <= q[0] < GRID and 0 <= q[1] < GRID) or lab[q] != lab[y, x] or is_line(rgb[q]) or light(rgb[q]):
+                        continue
+                    best = q
+                    break
+                if best:
+                    break
+            if best:
+                break
+        if best:
+            rgb[y, x] = rgb[best]
+
+
 _GAME = {}
 
 
@@ -1221,6 +1268,7 @@ def game(fig):
             band = (slab == 'blade') & past & (lab != 'blade') & behind
             lab[band] = 'blade'
             rgb[band] = srgb[band]
+        scrub_glints(fig, rgb, lab)
         _GAME[fig] = (rgb, lab)
     rgb, lab = _GAME[fig]
     return rgb.copy(), lab.copy()

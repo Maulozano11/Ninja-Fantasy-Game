@@ -11,7 +11,7 @@ export const HK_ROGUE_BOOT_PAD = '#241c27';
 export const HK_DRAGON_GREAVE_SCALES = '#723e3a';
 
 /** What each of his colours is, as the script sorts them (tools/refs/heroine_knights_ref.py kind). */
-export const HK_FEET_KIND: Record<string, 'cyan' | 'gold' | 'ivory' | 'line' | 'plum' | 'red' | 'steel' | 'warm' | 'white'> = {
+export const HK_FEET_KIND: Record<string, 'gold' | 'ivory' | 'line' | 'plum' | 'red' | 'steel' | 'warm' | 'white'> = {
   '#000100': 'line',
   '#0d1018': 'warm',
   '#140e18': 'warm',
@@ -105,7 +105,6 @@ export const HK_FEET_KIND: Record<string, 'cyan' | 'gold' | 'ivory' | 'line' | '
   '#c7823e': 'warm',
   '#c9984c': 'warm',
   '#cf8e3d': 'warm',
-  '#cff4f3': 'cyan',
   '#d26a55': 'warm',
   '#d29c58': 'warm',
   '#d3c4a8': 'ivory',
@@ -530,16 +529,16 @@ export const HK_ROGUE_SHIN_F: PaintedPiece = {
     '..aaecccccab..',
     '..aeaccddcaa..',
     '.aeeeacaaaaa..',
-    '.aaeeca.ffaa..',
-    'aaeaeccaaff...',
+    '.aaeeca.ccaa..',
+    'aaeaeccaacc...',
     'aeaeaecdaaa...',
-    'aeeaeaahdca...',
+    'aeeaeaafcca...',
     '.aeeeeaadca...',
     '.aeeeeeaaca...',
-    '.acccehhaa....',
+    '.accceffaa....',
     '.aceeeedda....',
-    '..aeeehdda....',
-    '..aeeehhha....',
+    '..aeeefdda....',
+    '..aeeefffa....',
     '..a......a....',
   ],
   colors: {
@@ -548,8 +547,7 @@ export const HK_ROGUE_SHIN_F: PaintedPiece = {
     c: '#2d1e25',
     d: '#533638',
     e: '#241c27',
-    f: '#cff4f3',
-    h: '#3a272b',
+    f: '#3a272b',
   },
 };
 

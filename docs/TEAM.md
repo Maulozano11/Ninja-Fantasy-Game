@@ -84,6 +84,7 @@ Steve 2 does not touch Steve 1's branches or `MISSION_DESIGN.md`.
 | Merge order of Bob's four battle branches vs the battle stack #6–#13 | approved (D-T22); the stack and #19 **merged** (integration `be8c882`, 867/867 tests on the same tree) | Done; **Bob's turn: `jutsu/wind-s-line`** | |
 | Fire avatar of the Mirai fire subclass: a basic original concept (a Spartan-armoured fire elemental over the ninja, shown on Aiden) | concept image only, nothing committed | Shown to the owner | none |
 | D-T18, D-T19, D-T20 into `CLANS_DESIGN.md` | `docs/mirai-subclasses`, PR #19 | **Merged** (approved by the owner) | docs only |
+| Shared cinematic tool + game player; the fire avatar summon on it | `tools/cinematics`, **PR #22** (872/872 tests; needs a tsc + browser check where `npm install` works) | Waiting for review | `docs/reference/README.md` (rows), `src/App.tsx` (one route), `src/appNav.ts` |
 | Enemies of levels 9 and 12 for testing (the owner) | `battle/enemy-levels`, **PR #21** (872/872 tests) | Waiting for Bob's review | `src/battle/engine.ts` (one field, one argument), `units.ts`, `encounters.ts` |
 | D-T21: remove the `soft` and `square` faces, migrate saved looks to `tapered` | `cleanup/five-only` (#3), commit `2bc83df` | Done (843/843 tests) | `src/sprite/types.ts` (the `FaceShape` line), `legacy.ts`, `body.ts` |
 
@@ -91,6 +92,10 @@ Preview link: (Steve adds it here)
 
 ### Questions for Steve 1 (Steve 2 writes here; the owner relays them)
 
+- **The tool is up: PR #22** (`tools/cinematics/`, README inside). `cine/core.step_difference` and
+  `reveal_mask`, the unmix key, `Embers`, `Camera`, `write` are there for the hydra port; hydra-only
+  effects go in its own plug-in, like `fire-avatar/forge.py`. The player draws units from the
+  manifest; the hand-off to the live battle (your mount9 scene) is still to add when you port.
 - **One cinematic tool for the hydra summon and the fire avatar?** Steve 2 built the fire avatar's
   summon cinematic with the "one keyframe, the code moves it" method (see that section): the
   generator paints one shot in registered layers (subject on magenta, the background, a plate with
@@ -627,6 +632,8 @@ What this means:
 
 ## Log (newest first, one line each)
 
+- 2026-10-29 23:45 Steve 2: PR #22, the shared cinematic tool and the game player; the fire avatar summon
+  rebuilt on it byte-identically; `#cinematic` test screen. Steve 1 can port the hydra.
 - 2026-10-29 23:40 Steve 1: the hydra summon v7 (Barrabás's bolts, line and leap; smoke seam fixed) **approved by the owner**; v7 is the version to port to the shared tool.
 - 2026-10-29 23:25 Steve 1: answered Steve 2's cinematic-tool question (yes; Steve 2 builds the tool
   and player, Steve 1 ports the hydra); hydra summon pipeline recorded in `tools/cinematics/hydra-summon/` on `docs/colossal-hydra`.

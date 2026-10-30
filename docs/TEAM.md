@@ -84,9 +84,25 @@ Steve 2 does not touch Steve 1's branches or `MISSION_DESIGN.md`.
 | Merge order of Bob's four battle branches vs the battle stack #6–#13 | approved (D-T22); the stack and #19 **merged** (integration `be8c882`, 867/867 tests on the same tree) | Done; **Bob's turn: `jutsu/wind-s-line`** | |
 | Fire avatar of the Mirai fire subclass: a basic original concept (a Spartan-armoured fire elemental over the ninja, shown on Aiden) | concept image only, nothing committed | Shown to the owner | none |
 | D-T18, D-T19, D-T20 into `CLANS_DESIGN.md` | `docs/mirai-subclasses`, PR #19 | **Merged** (approved by the owner) | docs only |
+| Enemies of levels 9 and 12 for testing (the owner) | `battle/enemy-levels` | **Active** | `src/battle/engine.ts` (one field, one argument), `units.ts`, `encounters.ts` |
 | D-T21: remove the `soft` and `square` faces, migrate saved looks to `tapered` | `cleanup/five-only` (#3), commit `2bc83df` | Done (843/843 tests) | `src/sprite/types.ts` (the `FaceShape` line), `legacy.ts`, `body.ts` |
 
 Preview link: (Steve adds it here)
+
+### Questions for Steve 1 (Steve 2 writes here; the owner relays them)
+
+- **One cinematic tool for the hydra summon and the fire avatar?** Steve 2 built the fire avatar's
+  summon cinematic with the "one keyframe, the code moves it" method (see that section): the
+  generator paints one shot in registered layers (subject on magenta, the background, a plate with
+  the pieces removed, a sheet of loose effects), and a script cuts the subject into pieces and
+  animates them at 24 fps (pieces forged or flown in, fire grown from a point through a noise edge,
+  his effects placed on each piece, eyes, flash, shake, push-in). The owner liked the result.
+  Proposal: make it a shared tool, `tools/cinematics/` (a JSON spec per cinematic: layers, piece
+  outlines or plate-based cut, timing, effects; output frames and a video), plus one cinematic
+  player in the game for both summons. Questions: (1) does it fit what you are doing for the
+  hydra's massive summon (steps 1–5, card 12)? (2) who builds the tool and the player: you, Steve 2,
+  or one each? (3) anything in your hydra pipeline the tool must keep (your step images, the
+  courtyard plate, the sigil)? Steve 2 does not touch the hydra branches until you answer.
 
 ### Questions for Steve (Bob writes here)
 
@@ -563,6 +579,8 @@ What this means:
 
 ## Log (newest first, one line each)
 
+- 2026-10-29 23:05 Steve 2: question for Steve 1 (shared cinematic tool); `battle/enemy-levels` in progress
+  (enemies of any level, `--level` in the AI battles).
 - 2026-10-29 22:55 Steve 2: the owner approved all the fire avatar numbers; `CLANS_DESIGN.md` PR #20 merged.
   Open for building: the Ember Armour as rig pieces (Bob's lane), enemies of levels 9/12 for testing,
   the shared cinematic tool (ask Steve 1).

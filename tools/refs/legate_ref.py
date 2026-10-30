@@ -238,12 +238,15 @@ def grown(m, c, isl, side, rows=None, design=None):
     return m, c, isl
 
 
-# The cuirass's sides at the stomach: WAIST_BY more pixels on each side from row WAIST_FROM (from his neck
-# joint, fine rows) down to the rim, the plate continued with his pixels beside the edge and his line at the
-# new edge (the owner, 2026-10-30: "el lateral del estómago con 2 píxeles más de ancho para que no se vea
-# tan flaco con esta armadura"); the row above it one pixel, so the sides run on without a step.
+# The cuirass's sides from under the armpit to the rim: WAIST_BY more pixels on each side from row WAIST_FROM
+# (from his neck joint, fine rows) down, the plate continued with his pixels beside the edge and his line at
+# the new edge (the owner, 2026-10-30: "el lateral del estómago con 2 píxeles más de ancho para que no se
+# vea tan flaco con esta armadura": two pixels of width in all, one each side, as he counted them on a first
+# try of two a side: "te pedí 2 píxeles más, le pusiste 4-5"). The new edge is his edge moved out, his side's
+# curve kept ("que no pierda la figura y forma que tiene"); only his 1 px teeth (a row indented one pixel
+# between its neighbours) are closed first, since moved out past the arm they would show as holes.
 WAIST_FROM = 10
-WAIST_BY = 2
+WAIST_BY = 1
 
 
 def widened(m, c, isl):
@@ -259,25 +262,29 @@ def widened(m, c, isl):
     jy = int(np.floor(R.fine_joint('neck')[1]))
     m, c, isl = m.copy(), c.copy(), isl.copy()
     ys = [int(y) for y in np.nonzero(m.any(1))[0]]
-    # his sides' teeth (a row indented a pixel between its neighbours) come out to its neighbours' edge, so the
-    # widened sides run straight (the owner's standing rule: no notches)
     edges = {y: (int(np.nonzero(m[y])[0].min()), int(np.nonzero(m[y])[0].max())) for y in ys}
     for y in ys:
         dy = y - jy
         if dy < WAIST_FROM - 1 or (y - 1) not in edges or (y + 1) not in edges:
             continue
         x0, x1 = edges[y]
-        lo = max(edges[y - 1][0], edges[y + 1][0])
-        hi = min(edges[y - 1][1], edges[y + 1][1])
-        for x in list(range(lo, x0)) + list(range(x1 + 1, hi + 1)):
-            m[y, x] = True
-            c[y, x] = c[y, x0 if x < x0 else x1]
-            isl[y, x] = isl[y, x0 if x < x0 else x1]
+        lo, hi = max(edges[y - 1][0], edges[y + 1][0]), min(edges[y - 1][1], edges[y + 1][1])
+        # (a tooth: one pixel in from both neighbours)
+        if x0 == lo + 1:
+            m[y, lo] = True
+            c[y, lo] = c[y, x0]
+            isl[y, lo] = isl[y, x0]
+        if x1 == hi - 1:
+            m[y, hi] = True
+            c[y, hi] = c[y, x1]
+            isl[y, hi] = isl[y, x1]
     for y in ys:
         dy = y - jy
         if dy < WAIST_FROM - 1:
             continue
-        by = WAIST_BY if dy >= WAIST_FROM else WAIST_BY - 1
+        by = WAIST_BY if dy >= WAIST_FROM else 0
+        if not by:
+            continue
         xs = np.nonzero(m[y])[0]
         x0, x1 = int(xs.min()), int(xs.max())
         for edge, step in ((x0, -1), (x1, 1)):

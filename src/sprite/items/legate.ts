@@ -26,7 +26,9 @@ const SEAM = 4;
  * 2026-10-30, his circle on the bulky figures). Once the whole figure is drawn, each row's background between
  * an arm piece and the cuirass's edge, up to SEAM wide, becomes the cuirass: his line at the new edge against
  * the arm, his plate between, his old edge line taking the plate beside it. On the bulky body only: on the
- * male his cuirass is cut to the torso, and the slit of background at the armpit is the arm's own.
+ * male his cuirass is cut to the torso, and the slit of background at the armpit is the arm's own. Only
+ * beside his sleeve or his pauldron: below the sleeve the bare arm hangs free of the cuirass's side, whose
+ * curve stays his (the owner, 2026-10-30, his red curve along the side: not a wall to the arm).
  */
 function closeArmSeams(g: DrawCtx, layers: ReadonlyMap<Depth, Layer>, lines: Set<number>): void {
   const armor = layers.get('torso.armor');
@@ -38,7 +40,7 @@ function closeArmSeams(g: DrawCtx, layers: ReadonlyMap<Depth, Layer>, lines: Set
     for (let i = 0; i < GRID * GRID; i++) if (l.mat[i] >= 0) covered[i] = 1;
   }
   const arms: Record<Side, Layer[]> = { N: [], F: [] };
-  for (const [d, l] of layers) if (l.used && /^(near|far)Arm\./.test(d)) arms[d.startsWith('near') ? 'N' : 'F'].push(l);
+  for (const [d, l] of layers) if (l.used && /^(near|far)Arm\.(cloth|armor)$/.test(d)) arms[d.startsWith('near') ? 'N' : 'F'].push(l);
   const torso = partIndex('torso');
   const y0 = Math.floor(Math.min(g.rig.neck.y, g.rig.pelvis.y) * RES);
   const y1 = Math.ceil(Math.max(g.rig.neck.y, g.rig.pelvis.y) * RES);

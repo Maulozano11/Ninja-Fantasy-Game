@@ -352,6 +352,36 @@ below; where it adds to them it is marked "2026-10-29":
     knockdown and push, leaves a trail of magma and makes massive area attacks
     for 3 turns. Its look (2026-10-29): a fire avatar around the ninja, armoured
     like a Spartan.
+  - **Approved numbers (the owner, 2026-10-29: "me encantan los números").** The
+    avatar is a hollow Spartan armour of fire rising from the ninja's feet, the
+    ninja in front in his own fire aura; a summon cinematic plays the first time
+    (the armour forged piece by piece out of its fire), then it stays on the map.
+    Three steps:
+    - *Ember Armour* (Armadura de Brasas), **level 6**: bonus action, 4 chakra,
+      3 turns. +2 AC, resistance to fire, weapon blows deal +1d4 fire, a melee
+      attacker takes 1d6 fire. The look: a light Spartan fire armour worn over the
+      ninja (helmet with a crest of flame, pauldrons, short cuirass, bracers,
+      greaves).
+    - *Colossal Avatar* (Avatar Colosal), **level 9**: action, 10 chakra, once a
+      mission, 3 turns, the avatar 3.3 times the ninja's height. The ninja gains 15
+      temporary HP and the Ember Armour; immune to knockdown and push; where it
+      steps the ground turns to magma (1d6 fire on entering). Two stances, the
+      switch a bonus action with no chakra; it stays in the last one used.
+      Shield: +3 AC (+5 with the armour); allies within 3 m have half cover; a
+      reaction once a round: the shield takes a blow aimed at an adjacent ally and
+      the damage is cancelled completely. Spear: weapon blows deal +2d6 fire (in
+      place of the armour's +1d4); an action once a turn, the throw: an 18 m line,
+      4d10 fire, DEX save for half, the line burns for 1 turn.
+    - *Improved Colossal Avatar*, **level 12**: 12 chakra, once a mission, 4 turns,
+      the avatar 5 times the ninja's height. 30 temporary HP; magma 2d6; the stance
+      switch is free once a turn. Shield: +4 AC (+6 with the armour), half cover
+      for allies within 4.5 m, the reaction twice a round. Spear: blows +3d6 fire;
+      the throw a 24 m line, 6d10 fire, burning for 2 turns.
+    - Balance (checked with the game's formulas, the enemy templates raised to the
+      level): the 4d10 throw averages about 18 a target (a quarter of a level-9
+      enemy's HP; never one shot), the 6d10 about 27 at level 12; a rank S jutsu
+      averages about 35 for 8 chakra with no limit. An AI-vs-AI check once built;
+      enemies of levels 9 and 12 are needed for it (today they stop at 6).
 - **Path of the Ash Weaver** (traps and interruption; the owner's "traps and
   smoke", 2026-10-29: smoke is part of its kit, and it looks weak early on)
   - *Mark of Inevitability* (Marca de Inevitabilidad): attacking an enemy

@@ -1907,7 +1907,7 @@ export const HAIR_ITEMS: ItemDef[] = [
     ],
     bodies: ['male', 'bulky'],
     // Solen's head only (the owner, 2026-10-30: "pon la variante esta como un pelo en la cabeza de Solen y nada
-    // más, para evitar problemas"): its fringe is cut for Solen's brows and sat wrong on the other heads.
+    // más, para evitar problemas"): its fringe rests on Solen's lids as he painted it and sat wrong on the other heads.
     faces: ['founder'],
     draw: (g, [c, band]) => {
       // The owner's bronze warrior is Solen (2026-10-29): his repainted mane (tools/refs/solen-mane-from-ref.py)

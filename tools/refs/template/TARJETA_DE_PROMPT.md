@@ -879,3 +879,41 @@ Sin texto, sin fondo, nada magenta, rosa ni morado en el dibujo.
 
 Cada expresión tiene su momento del monólogo: 3 "¡Ja! Sabía que vendrían", 2 "...Insolente", 4 la
 opción azul, 6 y 5 la provocación (3b), 7 el kunai a media frase (4a), 8 la invocación.
+
+**C) Barrabás a nuestro formato** (2026-10-29). Su hoja de diseño (`docs/reference/barrabas-design-owner-reference.png`)
+está aprobada, pero no está a nuestra escala. Se convierte como el romano: **repintando nuestro sprite**.
+La plantilla `tools/refs/template/sprite-paintover-aiden-idle-10x.png` es Aiden en reposo en el juego, cada
+píxel del sprite = un cuadro de 10×10 (1010×1010, desplazado (72, 121) en nuestro lienzo de 256), sobre
+magenta. Se adjuntan dos imágenes: primero la plantilla, después su hoja de diseño.
+
+```
+Repinta la PRIMERA imagen adjunta (un sprite de pixel art de 16 bits sobre magenta, donde cada píxel del
+juego es un cuadro de 10×10) para que sea el personaje de la SEGUNDA imagen, Barrabás. Reglas estrictas:
+- MISMA cuadrícula: cada píxel sigue siendo un cuadro de 10×10 exacto, alineado con la cuadrícula de la
+  primera imagen; nada de detalles más finos que un cuadro, nada de degradados suaves ni antialias.
+- MISMA pose, MISMO tamaño y MISMA posición: el cuerpo, la cabeza, los brazos, las piernas y los pies
+  quedan donde están (vista de tres cuartos mirando a la derecha, de pie, en reposo); solo cambia lo que
+  lleva puesto, la cabeza y el pelo.
+- Pon la armadura de Barrabás de la segunda imagen: placas de acero ennegrecido con filos de cobre
+  envejecido, hombreras con púas curvas, el CÍRCULO ALQUÍMICO con el triángulo en el peto, guanteletes
+  oscuros, cinturón con los frascos verdes, el faldón verde oscuro, grebas oscuras, y la capa NEGRA
+  rasgada con forro verde detrás del cuerpo (donde está la capa roja ahora).
+- Su cabeza: pelo VERDE OSCURO peinado hacia atrás con mechones sueltos, barba corta, ojos ámbar, la
+  cicatriz en la ceja; mismo tamaño de cabeza que el sprite actual.
+- SIN ARMA: quita la espada; las manos quedan en el mismo lugar, cerradas.
+- Contorno negro de 1 cuadro alrededor de todo, como ahora. Luz de arriba a la izquierda. Fondo magenta
+  puro (#FF00FF) intacto, nada magenta, rosa ni morado en el personaje.
+```
+
+**D) Su alabarda, aparte** (adjunta la plantilla y su hoja de diseño):
+
+```
+Dibuja SOLO la alabarda de la segunda imagen, sobre FONDO MAGENTA PURO (#FF00FF), en pixel art de 16 bits
+con la MISMA cuadrícula de la primera imagen (cada píxel un cuadro de 10×10 exacto) y a la MISMA escala
+que el personaje de la primera imagen: el asta negra con anillos de cobre, de la altura del personaje y un
+poco más, vertical, la hoja de hacha de cobre grabada con el círculo alquímico, la punta de lanza y el
+gancho; contorno negro de 1 cuadro, luz de arriba a la izquierda. Sin personaje, sin texto.
+```
+
+Con A y C se recorta como las piezas de Aiden (una pieza por parte: cabeza, pelo, peto, hombreras,
+guanteletes, cinturón, faldón, grebas, capa); las poses las hace nuestro motor.

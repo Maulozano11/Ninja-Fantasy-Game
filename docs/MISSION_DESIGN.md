@@ -484,8 +484,10 @@ sprite at our scale: `docs/reference/barrabas-design-owner-reference.png`,
 **long reach** like the Kōton iron path's scythe (`CLANS_DESIGN.md`, Crimson Steel, Reactive
 Armory: the scythe drags enemies out of cover). **Reach 4.5 m** (a sword reaches 1.5 m) and **a
 hook that pulls** an enemy out of cover, like the scythe's (approved by the owner, 2026-10-29).
-**Barrabás does not fight in the hydra battle** (the owner): after the summon he withdraws; he is
-met again later (where and how: open). The scythe's look is to be our own design (his example was an
+**Barrabás does not fight in the hydra battle** (the owner): once the hydra roars he leaps onto
+the back wall and says *"Diviértanse. Yo estaré adentro contando mi dinero... ¡jajaja!"* (his line),
+then is gone through a door on the battlements. **He is met again in the commander's office** at
+the end of the mission, and fights there with his halberd and hook (approved 2026-10-29). The scythe's look is to be our own design (his example was an
 anime character's scythe: only the idea of the reach is taken).
 
 **His welcome (draft, the owner's lines refined; his words to approve):**

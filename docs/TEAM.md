@@ -87,6 +87,7 @@ Steve 2 does not touch Steve 1's branches or `MISSION_DESIGN.md`.
 | Shared cinematic tool + game player; the fire avatar summon on it | `tools/cinematics`, **PR #22** (872/872 tests; needs a tsc + browser check where `npm install` works) | Waiting for review | `docs/reference/README.md` (rows), `src/App.tsx` (one route), `src/appNav.ts` |
 | Enemies of levels 9 and 12 for testing (the owner) | `battle/enemy-levels`, **PR #21** (872/872 tests) | Waiting for Bob's review | `src/battle/engine.ts` (one field, one argument), `units.ts`, `encounters.ts` |
 | D-T21: remove the `soft` and `square` faces, migrate saved looks to `tapered` | `cleanup/five-only` (#3), commit `2bc83df` | Done (843/843 tests) | `src/sprite/types.ts` (the `FaceShape` line), `legacy.ts`, `body.ts` |
+| D-T25 + D-T24 built: the Path picker (creator, from level 3), the Ember Armour, the Colossal Avatar and the improved one in the battle engine, his battle sprites on the map (3.3x / 5x), magma, the spear throw, the shield guard, AI, tests | `clans/infernal-fire` (`a3cc823`, `0a1ab75`; 490/490 rules+game+battle tests; checked in Chromium) | Shown to the owner; PR next. Left: his seven hotbar icons, the summon cinematic on the summon (after PR #22) | `src/battle/engine.ts` (dispatch, walk, applyHits, react, shove), `types.ts`, `turns.ts`, `combat.ts`, `BattleScreen.tsx` (buttons, aim, prompt), `renderer.ts`, `playback.ts`, `vfxSprites.ts`, `CharacterCreator.tsx`, `shinobiData.ts` (Aiden's `path`) |
 
 Preview link: (Steve adds it here)
 
@@ -715,3 +716,10 @@ What this means:
 - 2026-10-29 Steve: board created; Steve's lane and open PRs listed; Bob's branches listed for him
   to confirm; two questions for Bob (five-only presets, merge order); PR #17 (pointer in `CLAUDE.md`) for Bob
   to review first.
+
+### D-T25. Clan Paths: chosen in the creator, in force from level 3 (the owner, 2026-10-30, 02:30)
+
+"si el camino se elije en el creador de personajes pero se desbloqua asta el nivel 3". The creator
+lists the clan's three Paths under the clan; the choice is saved on the character; below level 3
+it shows but does nothing. Written into `CLANS_DESIGN.md` (Paths of Mastery). Built on
+`clans/infernal-fire`.

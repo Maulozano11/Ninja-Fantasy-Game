@@ -221,11 +221,74 @@ PLATES = {
     ('L', 'pauldron_n'): E.Plate(BRONZE, **PAULDRON), ('L', 'pauldron_f'): E.Plate(BRONZE, **PAULDRON),
     ('R', 'pauldron_n'): E.Plate(BRONZE, **PAULDRON), ('R', 'pauldron_f'): E.Plate(BRONZE, **PAULDRON),
 }
-# His face read in layers too (the owner, 2026-10-30: "definirle más las facciones a la cara con 1-2
-# píxeles"): his skin in its shades, his darker tones in thin runs (the brow, the nose's shadow, the mouth:
-# not the shade of the far cheek, which shades the plate) as dark marks laid by cell, his eyes as
-# bronze_ref.reduce reads them (kept).
-FACE = E.Plate(('skin', 'leather', 'gold'), lights=False, delta=24, mark_min=0.3, line_min=0.45, smooth=1, thin=2)
+# His face (the owner, 2026-10-30: "definirle más las facciones a la cara con 1-2 píxeles", then, on a first
+# reading in layers: no shade patches, lines only where his picture has a line): his skin in two of his tones,
+# his lit skin and, on the far side of the nose where his shade lies, his shadow skin; his eyes as
+# bronze_ref.reduce reads them, their lid row his brow; and his lines, each one pixel wide, laid where his
+# cells land: the nose's shadow (a column beside the nose) and the mouth (a row). His jaw is shade, not a
+# line, so it draws none. FACE_LINES: his cells (x, y from, x, y to), each line his darkest tone there.
+FACE_LINES = {
+    'nose': ((74.5, 24.5), (74.5, 28.0)),
+    'mouth': ((69.5, 32.5), (74.5, 32.5)),
+}
+# The column of our frame (from the face anchor) the far side's shade starts at: the nose's line.
+FACE_SHADE_FROM = 6
+# His shadow skin: his commonest skin this much darker (luma) than his lit skin, between these two bounds
+# (lighter than his lines, so the lines stand out of it).
+FACE_SHADE = (18, 45)
+# His eyes stay as bronze_ref.reduce reads them: each eye's box (its lid row to its last row, a column wider
+# each side, the sockets with it).
+EYE_PAD = 1
+
+
+def face_lines(a, lab, m, c, isl):
+    """His face in two skin tones and his lines (module comment): (mask, colours, line, the pixels to keep
+    from the cleaning: his eyes' boxes and his lines)."""
+    K = R.kinds(a)
+    Lg = R.luma(a.astype(float))
+    cells = [(y, x) for y, x in zip(*np.nonzero((lab == 'face') & (K == 'skin')))]
+    tally = {}
+    for q in cells:
+        t = tuple(int(v) for v in a[q])
+        tally[t] = tally.get(t, 0) + 1
+    lit = max(sorted(tally), key=lambda t: tally[t])
+    lit_l = E.lum(lit)
+    dark = {t: n for t, n in tally.items() if lit_l - FACE_SHADE[1] <= E.lum(t) <= lit_l - FACE_SHADE[0]}
+    shadow = max(sorted(dark), key=lambda t: dark[t]) if dark else lit
+    nx, ny = R.ANCHOR
+    eyes = set()
+    for x0, y0, x1, y1 in R.eyes(m, c, dict(R.EYE_PIXELS)).values():
+        for y in range(y0, y1 + 1):
+            for x in range(x0 - EYE_PAD, x1 + EYE_PAD + 1):
+                eyes.add((y, x))
+    lids = set()
+    c = c.copy()
+    for j, i in zip(*np.nonzero(m & ~isl)):
+        if (j, i) in eyes:
+            continue
+        under = [(y, x, w) for y, x, w in R.footprint(HEAD, i, j) if 0 <= y < a.shape[0] and 0 <= x < a.shape[1] and lab[y, x] == 'face' and K[y, x] == 'skin']
+        if under and i - nx >= FACE_SHADE_FROM:
+            mean = sum(float(Lg[y, x]) * w for y, x, w in under) / sum(w for _, _, w in under)
+            c[j, i] = shadow if mean <= (lit_l + E.lum(shadow)) / 2 else lit
+        else:
+            c[j, i] = lit
+    for name, ((x0, y0), (x1, y1)) in FACE_LINES.items():
+        n = int(max(abs(x1 - x0), abs(y1 - y0))) + 1
+        pts = [(x0 + (x1 - x0) * k / max(1, n - 1), y0 + (y1 - y0) * k / max(1, n - 1)) for k in range(n)]
+        # (his cells along the line, whatever piece labels() gave them: his mouth's dark red lies on the row
+        # where the scarf's region begins)
+        his = [(int(y), int(x)) for x, y in pts if 0 <= int(y) < a.shape[0] and 0 <= int(x) < a.shape[1] and K[int(y), int(x)] != 'white']
+        if not his:
+            continue
+        tone = min(his, key=lambda q: (Lg[q], q))
+        tone = tuple(int(v) for v in a[tone])
+        for x, y in pts:
+            fx, fy = HEAD.fine((x, y))
+            q = (int(np.floor(fy)), int(np.floor(fx)))
+            if m[q] and not isl[q] and q not in eyes:
+                c[q] = tone
+                lids.add(q)
+    return m, c, isl, eyes | lids
 # His face's eyes and shading: at our scale a pixel is his dark only where his dark half covers this much of
 # it, so his skin comes out smooth in his shades.
 R.DARK_WINS_OF = {'face': 0.45}
@@ -364,12 +427,10 @@ def piece(a, labs, fig, name):
         # (a plate's lone light pixel is his stud or his glint, read by engraved_ref: not a speck)
         m, c, isl = E.piece(a, labs[fig], name, M, PLATES[(fig, name)])
         return whole(m, c, isl, R.his_line(a), specks=False)
-    if name == 'face':
-        m, c, isl = E.piece(a, labs[fig], name, M, FACE, keep=lambda: set(R.EYE_PIXELS))
-    else:
-        m, c, isl = R.piece(a, labs[fig], name, M)
+    m, c, isl = R.piece(a, labs[fig], name, M)
     black = R.his_line(a)
     if name == 'face':
+        m, c, isl, kept = face_lines(a, labs[fig], m, c, isl)
         # his eyes' whites and the greys of his lids off the eye pixels (bronze_ref's eye step): on a face
         # pixel they are not his eye but a grey speck under it; it takes the skin beside it
         eyes = set(R.EYE_PIXELS)
@@ -384,7 +445,7 @@ def piece(a, labs, fig, name):
                     tally[k] = tally.get(k, 0) + 1
             if tally:
                 c[y, x] = max(sorted(tally), key=lambda k: tally[k])
-        return whole(m, c, isl, black, keep=eyes)
+        return whole(m, c, isl, black, keep=eyes | kept)
     return whole(m, c, isl, black)
 
 

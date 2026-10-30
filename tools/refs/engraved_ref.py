@@ -50,16 +50,13 @@ class Plate:
     light cells are marks (off where his engraving's shadows would clot, or a face's highlights speckle: they
     shade the plate instead); `motifs` [(what, centre, radius)] in his cells; `smooth` how many times a
     pixel's own plate lightness counts against each neighbour's; `mark_min` / `line_min` how much of a pixel
-    his marks / his line must cover to take it (MARK_MIN, LINE_MIN); `thin` whether only his marks in thin runs
-    count (a face: its brow, nose and mouth lines, not the shadow of its far side, which shades the plate); `ends`
-    whether a mark takes his lightest / darkest tone outright (a gold rim on bronze of the same kind, a seam),
-    not the tone nearest its cells' lightness."""
+    his marks / his line must cover to take it (MARK_MIN, LINE_MIN); `ends` whether a mark takes his lightest /
+    darkest tone outright (a gold rim on bronze of the same kind, a seam), not the tone nearest its cells'
+    lightness."""
 
-    def __init__(self, plate, foreign=(), by_light=True, darks=True, lights=True, motifs=(), smooth=2, delta=MARK_DELTA, mark_min=MARK_MIN, line_min=None, thin=False, ends=False, land=True):
-        # (`thin`: False, or the size of the solid block of marks that is a mass, not a line; `land`: whether a
-        # mark cell's middle landing on a pixel takes it with less than mark_min of it covered: off where his
-        # marks run dense, so they stay apart instead of merging)
-        self.thin = thin
+    def __init__(self, plate, foreign=(), by_light=True, darks=True, lights=True, motifs=(), smooth=2, delta=MARK_DELTA, mark_min=MARK_MIN, line_min=None, ends=False, land=True):
+        # (`land`: whether a mark cell's middle landing on a pixel takes it with less than mark_min of it
+        # covered: off where his marks run dense, so they stay apart instead of merging)
         self.land = land
         self.ends = ends
         self.plate = tuple(plate)
@@ -129,9 +126,6 @@ def marks_of(a, mine, K, cfg, lines=None):
             sign[y, x] = 1
         elif cfg.darks and Lg[y, x] < mid - cfg.delta:
             sign[y, x] = -1
-    if cfg.thin:
-        for s_ in (1, -1):
-            sign[(sign == s_) & ~thin_lines(sign == s_, None if cfg.thin is True else cfg.thin)] = 0
     return sign
 
 

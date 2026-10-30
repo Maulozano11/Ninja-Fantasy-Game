@@ -258,9 +258,11 @@ Merge checks (`git merge-tree` on the origin tips, nothing changed):
   continued and his line at the new edge, its 1 px teeth straightened (`legate_ref.widened`;
   `l11-cintura-ancha.png`); in the attack the sleeve stays on the upper arm once the arm turns (its hem stood
   out above the arm and hung under the elbow: `general.ts` keepSleeveOnArm; `l12-codo.png`); the general's
-  face read in layers with his brow, nose and mouth as 1 px marks of his darker tones and his eyes kept, and
-  his pauldrons with his gold rims and studs in his brightest gold and his seams in his darkest (`general_ref`
-  FACE, PAULDRON; `g9-cara.png`, `g10-hombreras.png`).
+  pauldrons with his gold rims and studs in his brightest gold and his seams in his darkest (`general_ref`
+  PAULDRON; `g10-hombreras.png`); and his face, after his word on a first reading (shade patches, g9): his
+  skin in two of his tones (lit, and his shadow on the far side of the nose), his eyes as the reduction reads
+  them with their lid row as the brow, and his lines only where he drew them, the nose's shadow a 3 px column
+  and the mouth a 3 px row in his dark tone (`general_ref.face_lines`, FACE_LINES; `g11-cara.png`).
   Names for both characters and their items are his to give.
 - `hero/bronze-warrior` (2026-10-29, D-T17): the bronze warrior is Solen. Both bronze presets wear Solen's head
   (`founder` face, standard eyes in his red, his skin); his repainted mane with the braid is `hair_solen_mane`

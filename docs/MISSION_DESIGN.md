@@ -484,9 +484,13 @@ sprite at our scale: `docs/reference/barrabas-design-owner-reference.png`,
 **long reach** like the Kōton iron path's scythe (`CLANS_DESIGN.md`, Crimson Steel, Reactive
 Armory: the scythe drags enemies out of cover). **Reach 4.5 m** (a sword reaches 1.5 m) and **a
 hook that pulls** an enemy out of cover, like the scythe's (approved by the owner, 2026-10-29).
-**Barrabás does not fight in the hydra battle** (the owner): once the hydra roars he leaps onto
-the back wall and says *"Diviértanse. Yo estaré adentro contando mi dinero... ¡jajaja!"* (his line),
-then is gone through a door on the battlements. **He is met again in the commander's office** at
+**Barrabás does not fight in the hydra battle** (the owner): he stands in the middle of the
+sigil while it lights; when it is about to blaze, **bolts crackle across the circle and up round
+him** as he says *"Diviértanse. Yo estaré adentro contando mi dinero... ¡jajaja!"* (his line), the
+circle fires, and **he leaves with a ninja leap**: a crouch, a puff of dust, a flip up and over the
+wall to the right, an afterimage trail (the owner, 2026-10-29: *"salgan rayos y se active y luego
+barrabás se va de escena con un tipo salto ninja como lo tenemos para saltar a un árbol pero sin el
+árbol"*). Then the column, the smoke and the hydra. Mock: `docs/mockups/hydra-summon-barrabas-leap.png`. **He is met again in the commander's office** at
 the end of the mission, and fights there with his halberd and hook (approved 2026-10-29). The scythe's look is to be our own design (his example was an
 anime character's scythe: only the idea of the reach is taken).
 
@@ -532,7 +536,7 @@ are hand-made).
 alchemical sigil); ordinary summons get a simpler one inside the battle (the mechas too).
 **Mecha size:** a mecha is as big as the river battle's hydra (the medium hydra we have now).
 
-Open: the villain's portrait, the welcome's final lines and its other two answers, the drain's and the castle's maps, the
+Open: the welcome's final lines and its other two answers, the drain's and the castle's maps, the
 sword's numbers and name.
 
 ## Story notes (for the story session)

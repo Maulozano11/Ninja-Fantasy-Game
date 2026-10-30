@@ -60,10 +60,58 @@ const SETS = {
 /** The figure whose sleeves and scarf go with the cuirass worn (the spiral one's without his cuirass). */
 const setOf = (g: DrawCtx) => (g.has('armor', 'armor_general_muscle') ? SETS.muscle : SETS.spiral);
 
-/** A chest piece of his: our torso below the neck taken away (his cuirass is the torso there), his cuirass leaning with ours. */
+/** How far from the head's centre (fine pixels) our torso stays bare above the cuirass: the neck, as long as at rest. */
+const NECK_BARE = 17;
+
+/**
+ * The cuirass up to the neck when the torso leans (the owner, 2026-10-30, on the legate's throw: "en el
+ * cuello también, cuando se inclina para enfrente": the neck a long bare column with the collar far below the
+ * chin, bare torso beside it). His cuirass turns about the neck joint with the torso, but our torso's top
+ * (the shoulders' slope under the neck) is drawn beyond that joint, so once the torso leans it stood bare
+ * above the collar. Every pixel of our torso left above the cuirass takes the cuirass's topmost plate colour
+ * of its column, his line at the new top, so the neckline follows the leaning torso; the neck itself, within
+ * NECK_BARE of the head's centre, stays skin, as long as at rest (at rest nothing of the torso is left there).
+ */
+function collarToNeck(g: DrawCtx, kinds: Kinds): void {
+  const body = g.L('torso.body');
+  const armor = g.L('torso.armor');
+  if (!body.used || !armor.used) return;
+  const torso = partIndex('torso');
+  const lines = new Set(Object.entries(kinds).filter(([, k]) => k === 'line').map(([hex]) => g.m(hex, 'flat')));
+  const line = [...lines][0];
+  const hx = g.rig.head.x * RES;
+  const hy = g.rig.head.y * RES;
+  for (let x = 0; x < GRID; x++) {
+    let top = -1;
+    let plate = -1;
+    for (let y = 0; y < GRID; y++) {
+      const m = armor.mat[y * GRID + x];
+      if (m < 0) continue;
+      if (top < 0) top = y;
+      if (!lines.has(m)) { plate = m; break; }
+    }
+    if (top < 0 || plate < 0) continue;
+    let newTop = top;
+    for (let y = top - 1; y >= 0; y--) {
+      const i = y * GRID + x;
+      if (body.mat[i] < 0 || body.part[i] !== torso) break;
+      if (Math.hypot(x + 0.5 - hx, y + 0.5 - hy) <= NECK_BARE) break;
+      armor.mat[i] = plate;
+      armor.part[i] = torso;
+      newTop = y;
+    }
+    if (newTop < top) {
+      armor.mat[newTop * GRID + x] = line;
+      if (lines.has(armor.mat[top * GRID + x]) && top + 1 < GRID && armor.mat[(top + 1) * GRID + x] >= 0) armor.mat[top * GRID + x] = plate;
+    }
+  }
+}
+
+/** A chest piece of his: our torso below the neck taken away (his cuirass is the torso there), his cuirass leaning with ours and its collar up to the neck. */
 export function drawChest(g: DrawCtx, piece: PaintedPiece, kinds: Kinds, slots: Record<string, [string, string]>, skin = GENERAL_SKIN): void {
   torsoOff(g);
   stampLeaning(g, 'torso.armor', piece, g.rig.neck, torsoAngle(g), 'torso', hopliteTint(g, kinds, slots, skin), lineOf(kinds));
+  collarToNeck(g, kinds);
 }
 
 /** A pauldron rides the torso and follows the upper arm part of the way, so it never smears across the chest. */

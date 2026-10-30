@@ -24,7 +24,7 @@ export const LEGATE_FIGURE: { rows: string[]; colors: Record<string, string> } =
     '.aasasEssCyyaasDvvfffvliFFFvvaGGGGGa',
     'asssssEssyyyaaDvHHHnflliFGFffaGaaaaa',
     'aaaaaaaaaaaaaavvHsHhhfnlGFFffaa.....',
-    '.........aDaDvvvsHHfnnnnnnfvva......',
+    '...........aDvvvsHHfnnnnnnfvva......',
     '...........afffDmIIInhhmFFFffa......',
     '...........annfvImmInilFmmFffa......',
     '...........afafiImIInnlFmFFffa......',

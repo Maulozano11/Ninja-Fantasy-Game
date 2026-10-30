@@ -276,6 +276,14 @@ Merge checks (`git merge-tree` on the origin tips, nothing changed):
   more, and on a bent leg the thigh's round closes over the laces along the line through the joint, thigh
   over shin (`feet.ts` legToLacedShin, kneeOverLaces; every pose and frame of the legate looked at on both
   bodies; `l14-poses-figura.png`).
+  His marks on l14 ("ya casi", 2026-10-30): the flank under the raised arm was a wall with a corner past the
+  skirt, and when the torso leans (the throw) the neck showed long and bare with the collar far below the
+  chin. The cuirass's near flank is now one curve from under the pauldron to the waist (`legate_ref.flank`,
+  FLANK: out a column a row onto a flank one column wider than the waist and back onto it, his plate inside,
+  his line outside; his armhole's flare, drawn beside his arm, goes), and in every leaning frame the cuirass
+  goes up to the neck (`general.ts` collarToNeck, shared with the general: our torso left above the collar
+  takes the column's plate, his line on top, the neck itself bare only as far as at rest, NECK_BARE);
+  `l15-flanco-cuello.png`.
   His new head (2026-10-30, "usa esta mejor", `general-head-v2-owner-reference.png`: the general's head drawn
   by him at the game's scale) replaces the reduced face and hair: read cell by cell, his face, eyes, brows and
   jaw lines as one piece and his hair as the other, snapped to the palette of the first reading so the head

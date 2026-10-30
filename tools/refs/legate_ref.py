@@ -159,45 +159,48 @@ PLATES = {
 # with his general.
 
 
-# The cuirass's near side above the flare, where at rest his arm, sleeve and pauldron hide it (the owner,
-# 2026-10-30, his red curve under the raised arm in the legate's attack: the side keeps its line and its
-# curve, with no step or notch at the armpit, in every pose). Under the arm his side is continued: from the
-# collar's row the near edge comes out one column a row until it stands on the flare's column (the widest row
-# above the waist, after widened), and runs straight down to the flare; a row whose edge already lies further
-# out keeps it.
-# His plate beside the edge is continued over the new pixels, his old edge line takes the plate and his line
-# closes the new edge. At rest it all lies under the near arm, sleeve and pauldron.
-def armpit(m, c, isl):
+# The cuirass's near flank, from under the pauldron to the waist, where at rest his arm, sleeve and pauldron
+# hide most of it (the owner, 2026-10-30, his red curve under the raised arm in the legate's attack, then on
+# a first try, a wall: "errores de forma": the flank must read as his flank in every pose, a smooth curve from
+# under the pauldron to the rim, continuous with the skirt, no corner past it, his plate inside and one clean
+# line outside). FLANK: the near edge's column (from the piece's first column after widened) for each row
+# from the collar's (row 0): out one column a row from under the pauldron onto the flank, one column wider
+# than his waist, and back in onto his waist's column; the rows below are his (the waist, widened). Where his
+# edge lies inside the curve the plate is continued over the new pixels with his colour two pixels inside
+# the old edge (his edge's own shade is one pixel wide); where it lies outside (his armhole's flare, drawn
+# beside his arm) the pixels past the curve go; his old edge line takes the plate and his line closes the edge.
+FLANK = {4: 3, 5: 2, 6: 2, 7: 1, 8: 1, 9: 1, 10: 1, 11: 1, 12: 1, 13: 1, 14: 2, 15: 2}
+
+
+def flank(m, c, isl):
     m, c, isl = m.copy(), c.copy(), isl.copy()
     ys = [int(y) for y in np.nonzero(m.any(1))[0]]
-    edge = {y: int(np.nonzero(m[y])[0].min()) for y in ys}
-    widest = min(ys, key=lambda y: (edge[y], y))
+    x0 = int(np.nonzero(m.any(0))[0].min())
     # (his black line of the piece: its commonest line colour)
     tally = {}
     for q in zip(*np.nonzero(m & isl)):
         t = tuple(int(v) for v in c[q])
         tally[t] = tally.get(t, 0) + 1
     black = np.array(max(sorted(tally), key=lambda t: tally[t]))
-    top = ys[0]
-    for y in ys:
-        if y >= widest:
-            break
-        e = edge[y]
-        target = max(edge[widest], edge[top] - (y - top))
-        if target >= e:
-            continue
-        plate = next((c[y, x].copy() for x in range(e, e + 6) if m[y, x] and not isl[y, x]), None)
-        if plate is None:
-            continue
-        for x in range(target, e):
-            m[y, x] = True
-            c[y, x] = plate
-            isl[y, x] = False
-        if isl[y, e]:
-            c[y, e] = plate
-            isl[y, e] = False
-        c[y, target] = black
-        isl[y, target] = True
+    for r, col in FLANK.items():
+        y = ys[0] + r
+        e = int(np.nonzero(m[y])[0].min())
+        t = x0 + col
+        if t < e:
+            plate = c[y, e + 2].copy() if m[y, e + 2] and not isl[y, e + 2] else next(c[y, x].copy() for x in range(e, e + 8) if m[y, x] and not isl[y, x])
+            for x in range(t, e):
+                m[y, x] = True
+                c[y, x] = plate
+                isl[y, x] = False
+            if isl[y, e]:
+                c[y, e] = plate
+                isl[y, e] = False
+        elif t > e:
+            for x in range(e, t):
+                m[y, x] = False
+                isl[y, x] = False
+        c[y, t] = black
+        isl[y, t] = True
     return m, c, isl
 
 
@@ -279,8 +282,8 @@ def widened(m, c, isl):
 
 def piece(a, lab, name):
     """A piece of his at our scale, continued under what hides it: (mask, colours, line); his plates read in
-    layers (PLATES); his pauldrons and sleeves grown to cover our shoulder (grown); his cuirass's near side
-    without a notch at the armpit (armpit) and widened at the stomach (widened)."""
+    layers (PLATES); his pauldrons and sleeves grown to cover our shoulder (grown); his cuirass widened at the
+    stomach (widened) and its near flank one curve from under the pauldron to the waist (flank)."""
     R.more_of = more_of
     R.HIS_JOINTS = JOINTS
     if name in PLATES:
@@ -288,7 +291,7 @@ def piece(a, lab, name):
     else:
         m, c, isl = R.piece(a, lab, name, MAP)
     if name == 'cuirass':
-        return armpit(*widened(m, c, isl))
+        return flank(*widened(m, c, isl))
     if name == 'pauldron_n':
         return G.grown(m, c, isl, 'N')
     if name == 'pauldron_f':

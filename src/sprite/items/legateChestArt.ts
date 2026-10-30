@@ -7,44 +7,44 @@
 import type { PaintedPiece } from '../painted';
 
 /** His colours the colour slots recolour from (at these, every pixel is his). */
-export const LEGATE_STEEL = '#2e2e36';
+export const LEGATE_STEEL = '#35343c';
 export const LEGATE_GOLD = '#a3703a';
 
 /** Where each piece lands in our male idle frame 0 (his joints), unturned: the fine pixel of its first row's first cell. */
 export const LEGATE_CHEST_REST: Record<string, [number, number]> = {
-  LEGATE_CHEST: [115, 147],
+  LEGATE_CHEST: [116, 147],
 };
 
 /** His grey cuirass: rides the neck, leaning with the torso. */
 export const LEGATE_CHEST: PaintedPiece = {
-  pivot: [12, 0],
+  pivot: [11, 0],
   angle: -89.65,
   rows: [
-    '......aaa.....a......',
-    '...aaabcdaaaaabaa....',
-    '...aeedffbbhheeba....',
-    '...aceeccbfbbbbea....',
-    '..aeeeeebaddiidda....',
-    '.aeeeeeebbbbbjjfa....',
-    'aeeeebjbeeehheeaa....',
-    'abbbbbeeeehfche......',
-    'abbbbbehfcfdfceb.....',
-    'akkkkjehhfcfdfdf.....',
-    'aiiiiibehefffefcedia.',
-    'allllijbeeebbdffdkkka',
-    'allllikjjbbbjfdmmmjja',
-    'alllikjnnnebffdmpmbba',
-    'alliijjninccbefpmmbba',
-    'akakjjjinnbeeeeeebjja',
-    '..abbbkhqqqecchmmmbba',
-    '..aeebjqhhqedfmhhmbba',
-    '..ababdqhqqeefmhmmbba',
-    '..ababbqhhhcefmhhhkka',
-    '..aeaeebddefeefeffiia',
-    '..aeaaebcbeeffdhffkka',
-    '..afaaaaafbbbehhebdda',
-    '........ajajbehheddda',
-    '...........aaaaaaaa..',
+    '.....aaa.....a......',
+    '..aaabcdaaaaabaa....',
+    '..aeedffbbhheeba....',
+    '..aceeccbfbbbbea....',
+    '..aeeeebaddiidda....',
+    '.aeeeeebbbbbjjfa....',
+    '.abebjbeeehheeaa....',
+    'aeeebeeeehfche......',
+    'aeeebehfcfdfceb.....',
+    'ajjkjehhfcfdfdf.....',
+    'aiiiibehefffefcedia.',
+    'alllijbeeebbdffdkkka',
+    'alllikjjbbbjfdmmmjja',
+    'allikjnnnebffdmpmbba',
+    '.aiijjninccbefpmmbba',
+    '.akjjjinnbeeeeeebjja',
+    '.abbbkhqqqecchmmmbba',
+    '.aeebjqhhqedfmhhmbba',
+    '.ababdqhqqeefmhmmbba',
+    '.ababbqhhhcefmhhhkka',
+    '.aeaeebddefeefeffiia',
+    '.aeaaebcbeeffdhffkka',
+    '.afaaaaafbbbehhebdda',
+    '.......ajajbehheddda',
+    '..........aaaaaaaa..',
   ],
   colors: {
     a: '#000220',

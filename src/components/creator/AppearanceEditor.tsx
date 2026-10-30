@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight, Flame, Lock, Paintbrush, PersonStanding, ScanFace, Shield, Shirt, Sword } from 'lucide-react';
-import { fitsBody, itemsForSlot, getItem } from '../../sprite/catalog';
+import { fitsBody, fitsFace, itemsForSlot, getItem } from '../../sprite/catalog';
 import { resolveParts, type ItemDef } from '../../sprite/ctx';
 import { CHAKRA_CHOICES, TINT_CHOICES, chakraChoice, chakraHex } from '../../sprite/chakraInfo';
 import { CHAKRA_TYPES, chakraNature, chakraType, withNature } from '../../sprite/chakraNature';
@@ -130,6 +130,8 @@ const FACE_SHAPES: { id: FaceShape; label: string; sub: string }[] = [
   { id: 'fine', label: 'Fine', sub: "Lyra's face" },
   { id: 'aurelia', label: 'Serene', sub: "Aurelia's face" },
   { id: 'roman', label: 'Roman', sub: "The Roman's face" },
+  { id: 'hoplite', label: 'Bronze warrior', sub: "The bronze warrior's face" },
+  { id: 'general', label: 'Roman general', sub: "The Roman general's face" },
 ];
 
 const ARMS: { id: ArmType; label: string; sub: string }[] = [
@@ -155,6 +157,8 @@ const EYE_SHAPES: { id: EyeShape; label: string; sub?: string }[] = [
   { id: 'dawn', label: 'Dawn', sub: "Aurelia's eyes" },
   { id: 'keen', label: 'Keen', sub: "Lyra's eyes" },
   { id: 'roman', label: 'Roman', sub: "The Roman's eyes" },
+  { id: 'hoplite', label: 'Bronze warrior', sub: "The bronze warrior's eyes" },
+  { id: 'general', label: 'Roman general', sub: "The Roman general's eyes" },
 ];
 
 const HEADBAND_POSITIONS: { id: HeadbandPosition; label: string }[] = [
@@ -398,7 +402,7 @@ export const AppearanceEditor: React.FC<{
           <div>
             <SectionLabel>Face Shape</SectionLabel>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              {FACE_SHAPES.map((f) => (
+              {FACE_SHAPES.filter((f) => (f.id !== 'hoplite' && f.id !== 'general') || !isFemaleBody(look.body)).map((f) => (
                 <OptionCard
                   key={f.id}
                   selected={(look.faceShape || 'tapered') === f.id}
@@ -421,7 +425,7 @@ export const AppearanceEditor: React.FC<{
             <div>
               <SectionLabel>Eye Shape</SectionLabel>
               <div className="grid grid-cols-4 gap-2">
-                {EYE_SHAPES.map((e) => (
+                {EYE_SHAPES.filter((e) => (e.id !== 'hoplite' && e.id !== 'general') || !isFemaleBody(look.body)).map((e) => (
                   <OptionCard
                     key={e.id}
                     selected={look.eyeShape === e.id}
@@ -736,7 +740,7 @@ const SlotPicker: React.FC<{
   crop: 'full' | 'head';
   setSlot: (s: SlotId, c: ItemChoice | null) => void;
 }> = ({ slot, look, eye, crop, setSlot }) => {
-  const items = useMemo(() => itemsForSlot(slot).filter((d) => !d.id.endsWith('_none') && fitsBody(d, look.body)), [slot, look.body]);
+  const items = useMemo(() => itemsForSlot(slot).filter((d) => !d.id.endsWith('_none') && fitsBody(d, look.body) && fitsFace(d, look.faceShape)), [slot, look.body, look.faceShape]);
   const current = look.slots[slot];
   const currentDef = current ? getItem(current.id) : undefined;
   const options: (ItemDef | null)[] = [null, ...items];

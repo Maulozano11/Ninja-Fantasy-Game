@@ -12,7 +12,9 @@ the chin. This script lifts the head out of his pixels:
   under hair    where his hair covers the face (the fringe over the brow, the sideburn before the ear, the
                 hair beside the far cheek) the face goes on in his skin: each such cell takes his nearest
                 skin in its row, toward the middle of the face, and his black line where it is the face's
-                edge, so another hairstyle never shows a hole
+                edge, so another hairstyle never shows a hole; the black line of his fringe's tips over the
+                brow is his hair's, not the face's (the owner, 2026-10-30: under his mane it read as "ese
+                cuadro raro en la cara"), so the forehead between them is skin and the brows are the hair's
   the skull     above the face his hair covers our male skull: there the head is our skull's outline
                 (SKULL, as the 'valiant' head has it) in his skin and his line, so every hairstyle covers
                 it as it covers our head
@@ -79,16 +81,9 @@ def head(a, skin):
                 his[y, x] = True  # his forehead between the strands of his fringe
             else:
                 col[y, x] = line if ch == 'o' else skin
-    # His line round his forehead's patches (his brows over the eyes) is his too.
-    near = np.zeros((H, W), bool)
-    for dy in (-1, 0, 1):
-        for dx in (-1, 0, 1):
-            near |= np.roll(np.roll(his, dy, 0), dx, 1)
-    for y in range(SKULL_Y, SKULL_Y + len(SKULL)):
-        for x in range(SKULL_X, SKULL_X + len(SKULL[0])):
-            if mask[y, x] and K[y, x] == 'line' and near[y, x]:
-                col[y, x] = a[y, x]
-                his[y, x] = True
+    # His black line round his forehead's patches is the outline of his fringe's tips, not the face's: it is
+    # his hair's (hair_founder_spikes draws it) and the head goes on in his skin under it, so no other hair
+    # shows a zigzag over the brow (the owner, 2026-10-30, on Solen's mane: "ese cuadro raro en la cara").
     for y, (x0, x1) in FACE.items():
         for x in range(x0, x1 + 1):
             mask[y, x] = True

@@ -89,6 +89,15 @@ def main():
             break
         ink |= more
     ink |= line & ~ink & (np.sum(n4(ink), axis=0) >= 2)
+    # The line at the tips of his fringe over the forehead (touching the ink and his skin, above the lash
+    # row): his hair's too, not the face's (the owner, 2026-10-30, on Solen's mane: "ese cuadro raro en la
+    # cara"; the founder face no longer carries it, solen-face-from-ref.py), so the spikes keep their tips.
+    skin = box & ~bg & (K == 'skin')
+    while True:
+        more = line & ~ink & (ys <= FOREHEAD_TO) & np.logical_or.reduce(n4(ink)) & np.logical_or.reduce(n4(skin))
+        if not more.any():
+            break
+        ink |= more
     front = hair | ink
 
     # The back: the front, and what his face hides behind the fringe and the ear.

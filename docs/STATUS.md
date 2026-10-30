@@ -128,6 +128,7 @@ screens (`CampaignMode.tsx`, `ArenaSandbox.tsx`) are English only.
 | `claude/eloquent-noether-ix51z1` | `8dfd107` | Everything approved | **Integration**, live |
 | `aiden/*` (8 branches) | `aiden/integration` `995be5d`; parts `armor` `dee8d17`, `boots-gloves` `c5dec79`, `cape` `ad183d4`, `eyes` `313d514`, `flame-sword` `4052fef`, `hair` `201cb44`, `head-shape` `930d3ad` | The owner's Aiden, part by part | Merged (`c2b84f5`) |
 | `icons/sheet-12`, `icons/sheet-12-fix` | `cd8e07b`, `b8dd15c` | Sabueso rayo, Luna creciente, Nirvana | Merged (`8dfd107`) |
+| `hero/bronze-warrior` | (pushed) | The owner's bronze warrior, both of his sets (`bronze-warrior-owner-reference.jpg`, `bronze-warrior-leather-chest-owner-reference.jpg`, `bronze-warrior-repaint-owner-reference.jpg`): his first picture shrunk and cleaned as he decided (`tools/refs/bronze_ref.py`) for the bronze cuirass, clasp and pauldrons; his own game-scale repaint, pixel for pixel, for the leather set and for every piece both sets share (`tools/refs/bronze-repaint-from-ref.py`); male-only items (`items/hoplite.ts`), his proportions on our rig (`hopliteRig.ts`), presets `preset_bronze_warrior` and `preset_bronze_warrior_leather` (provisional names); `src/sprite/hoplite.test.ts`. Also his Roman general (`roman-general-owner-reference.jpg`: two chest sets, face, eyes and curly hair, `items/general.ts`, `tools/refs/general_ref.py`, presets `preset_bronze_general_spiral` and `preset_bronze_general_muscle`) and his Roman legate's chest set (`roman-legate-owner-reference.jpg`, right figure only: `items/legate.ts`, `tools/refs/legate_ref.py`, preset `preset_roman_legate`); `general.test.ts`, `legate.test.ts`. Touches `compose.ts`, `body.ts`, `types.ts`, `catalog.ts`, `random.ts`, `words.ts`, `AppearanceEditor.tsx`, `shinobiData.ts` | Bronze idle approved (repaint pieces); his head is his repaint's again, pixel for pixel (the owner, 2026-10-30: "simplemente agarra mi repintado y usalo pixel por pixel, no te compliques": `hoplite` face and eyes, `hair_solen_mane` = his mane, braid and diadem as he drew them, for that head only; this replaces D-T17's Solen head and `tools/refs/solen-mane-from-ref.py`, both gone; **approved by the owner on s11, 2026-10-30**); the legate's eagle cuirass and the general's plates redone in layers after his verdict (`tools/refs/engraved_ref.py`), waiting for his look; poses not done (`POSES_PENDING`) |
 | `icons/sheet-13` | see the branch | His icon sheets 13–22 (34 icons: earth, fire, lightning, water, wind, taijutsu and genjutsu jutsu, the items, Hide Tag and the stealth actions); copies of his pictures | **Pushed, to merge** |
 | `camp/owner-ref` | `70293ba` | Read, lean and sit camp poses from his picture (`camp-poses-owner-reference.webp` on that branch); touches `rig.ts`, `compose.ts`, `ctx.ts`, `campfx.ts` | **WIP, being redone**: copy his book and both hands exactly; show Aiden reading |
 | `camp/hands-book` | `a3ae184` | Earlier pass, already inside `camp/owner-ref` | Superseded |
@@ -233,6 +234,124 @@ Merge checks (`git merge-tree` on the origin tips, nothing changed):
   and forehead headband; saved characters, imported sheets and presets keep their hair and headband.
 
 ## 3. Waiting for the owner
+
+- `hero/bronze-warrior` (2026-10-24): he answered our reduction of his leather set with his own repaint at
+  the game's scale ("aqui esta tu nueva version"), now that set pixel for pixel; and he chose his repainted
+  head, hair, diadem, cape, skirt, arms and legs for the bronze set too, which keeps its bronze cuirass ("si
+  las usamos si arregla el pixel"; the pixel, his neck showing beside the scarf, is fixed). Names for the
+  warrior and his items are his to give. Next: every pose on male and bulky, after his OK on the idle.
+- `hero/bronze-warrior` (2026-10-24): his Roman general ("pasa solo conjunto de pecho y cara y pelo": two chest
+  sets, the face, eyes and curly hair) and his Roman legate's right chest set ("copia solo conjunto de pecho",
+  "solo copia el de la derecha"), reduced and cleaned as his big pictures are. His verdict on the legate
+  (2026-10-29): the waist right, the torso "muy mal" (a blur of browns; the eagle cuirass to be copied pixel
+  for pixel). Redone: his plates are read in layers at our scale (`tools/refs/engraved_ref.py`: his line, his
+  plate in his shades, his gold engraving, rims, seams and studs as marks laid by cell, his spirals, lion and
+  eagle readable), for the legate's cuirass and pauldrons and the general's two cuirasses and pauldrons: look
+  at `l4-coraza-pixel-a-pixel.png`, `l5-poses.png`, `g7-partes-pixel-a-pixel.png`, `g8-quieto.png`. His answer
+  on l4/l5 (2026-10-29, "me está gustando mucho") with two fixes, done: his pauldrons and sleeves grown with
+  his pixels to cover our whole shoulder on both male bodies (`legate_ref.COVER`, `grown`; `l6-hombreras-antes-despues.png`),
+  and the gladiator sandal's ankle kept inside the sandal in every pose (`items/ankle.ts` `SANDAL_LIMITS`,
+  `joinAnkle`: the foot turns with a lifted shin from 15 degrees, the crack between laces and a flat foot is
+  filled with his laces; shared by Solen's and the Roman's sandals, idle unchanged; `l7-tobillo-antes-despues.png`).
+  His three marks on l6/l7 (2026-10-30), done: the far pauldron grows with his near pauldron's pixels mirrored
+  (the same piece seen from behind, `legate_ref.grown` design; `l8-hombrera-lejana-antes-despues.png`); on
+  the bulky body the seam between the cuirass and the near arm is closed with the cuirass continued
+  (`legate.ts` closeArmSeams; `l9-fornido-torso-brazo.png`); on bare legs the Solen-paint sandal gives our
+  lower leg his laced shin's shape, so no calf shows beside the laces down to the foot (far leg; `feet.ts`,
+  `ankle.ts` joinAnkle 4 px in four directions; the legate's and the general's idle lose the 2 px calf strip
+  beside the far laces; `l10-tobillo-lejano.png`).
+  His next round (2026-10-30), done: the cuirass's sides at the stomach 2 px wider on each side, his plate
+  continued and his line at the new edge, its 1 px teeth straightened (`legate_ref.widened`;
+  `l11-cintura-ancha.png`); in the attack the sleeve stays on the upper arm once the arm turns (its hem stood
+  out above the arm and hung under the elbow: `general.ts` keepSleeveOnArm; `l12-codo.png`); the general's
+  pauldrons with his gold rims and studs in his brightest gold and his seams in his darkest (`general_ref`
+  PAULDRON; `g10-hombreras.png`); and his face, after his word on a first reading (shade patches, g9): his
+  skin in two of his tones (lit, and his shadow on the far side of the nose), his eyes as the reduction reads
+  them with their lid row as the brow, and his lines only where he drew them, the nose's shadow a 3 px column
+  and the mouth a 3 px row in his dark tone (`general_ref.face_lines`, FACE_LINES; `g11-cara.png`).
+  His review of l11 (2026-10-30, "te pedí 2 píxeles más, le pusiste 4-5"): he counts the width in all, so
+  the cuirass's sides now move out 1 px each (2 px of width), his side's curve kept to the pixel and only his
+  two 1 px teeth closed; the bulky seam fill stops below the sleeve, so the cuirass's curve stays free of the
+  bare arm (`legate_ref.widened` WAIST_BY, `legate.ts` closeArmSeams; `l13-cintura-2px.png`).
+  His marks on l13's attack (2026-10-30, as a rule for every pose and every character): the cuirass's near
+  side under the raised arm made a step at the armpit (his cuirass's armhole, hidden by the arm at rest) and
+  a bare column opened between the pauldron and the sleeve; the side is now continued under the arm, from the
+  collar out one column a row onto the flare's column and straight down to the flare, his plate and line
+  continued (`legate_ref.armpit`), so in every pose the side keeps its line and its curve; and on the far
+  knee the laced shin stood narrow and askew beside a cut thigh: our thigh is never cut at the knee any
+  more, and on a bent leg the thigh's round closes over the laces along the line through the joint, thigh
+  over shin (`feet.ts` legToLacedShin, kneeOverLaces; every pose and frame of the legate looked at on both
+  bodies; `l14-poses-figura.png`).
+  His marks on l14 ("ya casi", 2026-10-30): the flank under the raised arm was a wall with a corner past the
+  skirt, and when the torso leans (the throw) the neck showed long and bare with the collar far below the
+  chin. The cuirass's near flank is now one curve from under the pauldron to the waist (`legate_ref.flank`,
+  FLANK: out a column a row onto a flank one column wider than the waist and back onto it, his plate inside,
+  his line outside; his armhole's flare, drawn beside his arm, goes), and in every leaning frame the cuirass
+  goes up to the neck (`general.ts` collarToNeck, shared with the general: our torso left above the collar
+  takes the column's plate, his line on top, the neck itself bare only as far as at rest, NECK_BARE);
+  `l15-flanco-cuello.png`.
+  His new head (2026-10-30, "usa esta mejor", `general-head-v2-owner-reference.png`: the general's head drawn
+  by him at the game's scale) replaces the reduced face and hair: read cell by cell, his face, eyes, brows and
+  jaw lines as one piece and his hair as the other, snapped to the palette of the first reading so the head
+  matches his sets, his eyes' lid states from his own pixels, a skull under the hair for other hairs and his
+  neck continued under the scarf (`general_ref` head_pieces, HEAD_*; `g12-cabeza-nueva.png`).
+  His circle on the general's shoulders ("que no se le pase arreglarle el hombro"): both pauldrons and both
+  sleeves of each chest grown to cover our whole shoulder on both male bodies as the legate's were (the
+  shoulder footprint and `grown` now live in `general_ref`, shared; the general's pauldrons to his near
+  plate's last row, PAULDRON_ROWS, the far one from his near design mirrored, and the row holes the growth
+  leaves filled); the navy sleeve stays under the plate as he drew it (`g13-hombros.png`).
+  His word on g13 ("ya casi está también", the bulky near shoulder's holes, and "asegúrate que en las demás
+  poses no tenga el mismo problema, sin confundir con fondos verdaderos"): the seam fill between the cuirass
+  and the near arm's pieces on the bulky body now runs for both characters (`general.ts` closeArmSeams, in
+  drawChest); his pauldrons carry his line all round (`general_ref.grown` rim: a bent arm showed their rim's
+  gold on the figure's edge); on a bent moving leg our shin stays whole within the knee's round (a pocket
+  opened at the bulky far knee between the thigh's round and the laces, `feet.ts` legToLacedShin; on a still
+  leg our thigh's round keeps to his laces as before, so no stray pixel at rest on bulky). The general and
+  the legate are now mended as his standard characters (`compose.ts` standardOf: cracks between parts that
+  meet, light edge pixels and loose bits closed in every frame but idle; never a pocket). Every pose and
+  frame of the general scanned for pockets on both chests and bodies (`findGlitches`): what our pieces
+  opened is closed, his separations (the hanging arm off the hip, a raised arm off the torso, the hand in
+  front of the body) are left, listed one by one on `g14-fornido-hombro.png`.
+  Names for both characters and their items are his to give.
+- `hero/bronze-warrior` (2026-10-29, D-T17): the bronze warrior is Solen. Both bronze presets wear Solen's head
+  (`founder` face, standard eyes in his red, his skin); his repainted mane with the braid is `hair_solen_mane`
+  and his diadem `acc_solen_diadem`, lifted 3 rows onto Solen's skull and continued up to it
+  (`tools/refs/solen-mane-from-ref.py`); the `hoplite` face and eye shapes and `hair_hoplite` /
+  `acc_hoplite_diadem` are gone (they never left this branch: no saved character has them). Look at
+  `s1-solen-con-melena.png` (the mane on the four male heads) and `s2-diadema-accesorio.png` (the diadem over
+  three hairs). His choice on the mane (2026-10-30, "option 1"), done: the front strand that crossed the near
+  eye is moved 3 columns toward the temple, his same pixels (`solen-mane-from-ref.py` STRAND, STRAND_SHIFT);
+  `s3-mechon-movido.png`. Then his "lo haremos un cabello" (2026-10-30), done: the mane and the diadem are one
+  hair, `hair_solen_mane` draws his diadem over the hair at the brow (the clip that holds it, his pixels,
+  following the hair's bronze slot); both bronze presets wear it and no longer carry `acc_solen_diadem`, which
+  stays for other hairs; `s4-melena-con-diadema.png`. His circle on s4 (the black line across the forehead
+  on every head): it was his fringe's black bottom rows, drawn resting on his own eyes' lids, lifted three
+  rows onto Solen's forehead; the mane is lifted two rows now, so they rest on Solen's lids as in his picture
+  (`solen-mane-from-ref.py` LIFT; `s5-frente-sin-linea.png`). His word on s5 ("una línea negra a la altura
+  de la ceja en todas las cabezas, es la que no me gusta", "asegúrate de no quitar las cejas"): the fringe's
+  black bottom rows are his line, which on his own head is the brows and lashes; over the face, between the
+  temple strand and the far lock, the fringe now ends above the brows, its pixels on the brow and eye rows
+  gone and its bottom line in his hair tones (`solen-mane-from-ref.py` brow, FACE_COLS, FRINGE_*), so each
+  face's own eyebrows show under it on the four heads (`s6-ceja.png`). His word on s6 ("devuélvele las
+  cejas a todas las cabezas", his circles on the brow's inner end): the fringe still sat on Solen's brows
+  (they slant up to four rows over the lash row) and the circled pixels were the diadem's drop; the fringe now
+  ends above the highest brows (FRINGE_END -4) and the diadem goes up four rows more than the mane, its band
+  on the fringe and its drop clear of the brows (DIADEM_UP). Proof in the sheet script: on each of the four
+  heads the rows from the brows' first row to the eyes, between the strands, equal the bare head pixel for
+  pixel (`s7-cejas.png`).
+  Then the owner cancelled the mane ("estamos perdiendo mucho tiempo", e503267) and, sending the same repaint
+  again, put it back **for Solen's head only** ("pon la variante esta como un pelo en la cabeza de Solen y nada
+  más, para evitar problemas"): `hair_solen_mane` has `faces: ['founder']` (`ItemDef.faces`, `fitsFace`: the
+  creator's hair picker and the random look offer it only with Solen's face); the s7 fringe stays. His word on
+  s9 ("porque esta con ese cuadro raro en la cara"): the box was the forehead between the diadem and the black
+  zigzag the `founder` face carried as brows, the outline of his spiky fringe's tips; the face no longer carries
+  it and the spikes draw it themselves (`solen-face-from-ref.py`, `solen-hair-from-ref.py`; s10). **His final
+  word (2026-10-30, on s10): "simplemente agarra mi repintado y usalo pixel por pixel, no te compliques".**
+  Done: the bronze warrior wears his own repainted head again, pixel for pixel: the `hoplite` face and eye
+  shapes are back (his eyes with the lid states), `hair_solen_mane` is his mane, braid and diadem stamped
+  where he drew them (`items/hoplite.ts`, `faces: ['hoplite']`), `acc_solen_diadem`, `solenManeArt.ts` and
+  `solen-mane-from-ref.py` are gone, and `hoplite.test.ts` checks both idle figures whole, head included;
+  `s11-repintado-tal-cual.png`. **Approved by the owner (2026-10-30, "aprovado" on s11).**
 
 - `jutsu/tide-s` (2026-10-22): the Dragon Tsunami is approved (look, rank S, names, numbers for now).
   Still open, small:

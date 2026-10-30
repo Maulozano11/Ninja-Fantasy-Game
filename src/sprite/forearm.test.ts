@@ -5,7 +5,7 @@
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { LEGENDARY_PRESETS } from '../data/shinobiData';
+import { LEGENDARY_PRESETS, POSES_PENDING } from '../data/shinobiData';
 import { renderSprite } from './compose';
 import { armJoints, armRadius, armReaches, type Depth, type DrawCtx, FOREARM_RULE, FOREARM_TAPER, type Side } from './ctx';
 import { limbR } from './items/clothes';
@@ -70,7 +70,7 @@ function across(look: SpriteAppearance, pose: SpritePose, frame: number, s: Side
 }
 
 const presets = (): [string, SpriteAppearance, EyeSpecial][] => [
-  ...LEGENDARY_PRESETS.map((p) => [p.character.id, p.character.appearance!, dojutsuToEye(p.character.dojutsu)] as [string, SpriteAppearance, EyeSpecial]),
+  ...LEGENDARY_PRESETS.filter((p) => !POSES_PENDING.has(p.character.id)).map((p) => [p.character.id, p.character.appearance!, dojutsuToEye(p.character.dojutsu)] as [string, SpriteAppearance, EyeSpecial]),
   [
     'roman',
     (() => {

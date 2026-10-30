@@ -29,7 +29,7 @@ import { gripAngle } from './grip';
 import { PixelTemplate, stampTemplate, TemplatePalette } from './rotsprite';
 import { FEMALE_HANDS } from './femaleBodyArt';
 import { ownerHand } from './ownerHands';
-import { isFemaleBody, type BodyType, type EyeSpecial, type SlotId, type SpriteAppearance } from './types';
+import { isFemaleBody, type BodyType, type EyeSpecial, type FaceShape, type SlotId, type SpriteAppearance } from './types';
 
 /**
  * Back-to-front draw order. Each item writes into whichever depths it needs
@@ -143,6 +143,8 @@ export interface ItemDef {
   hidesHair?: boolean;
   /** Body types that can wear it (all when missing): fitted pieces made for one figure. */
   bodies?: BodyType[];
+  /** Face shapes it is made for (all when missing): a hair cut to one head, such as Solen's mane. */
+  faces?: FaceShape[];
 }
 
 /** An item's parts as chosen, every part filled in (unknown or missing versions take the default). */

@@ -3,7 +3,7 @@
 // diadem, his cuirass (and the leather chest of his second picture), his pauldrons, his cape and scarf, his
 // skirt, his bare arms with their bracers and fists, and his legs with their greaves and shoes. The owner's
 // decision (2026-10-29): the bronze warrior IS Solen: he wears Solen's head (the 'founder' face), his mane
-// and braid were Solen's hair option until the owner dropped it (2026-10-30); his diadem is the accessory below,
+// and braid are Solen's hair option hair_solen_mane (items/hair.ts) and his diadem the accessory below, both
 // lifted onto Solen's skull (tools/refs/solen-mane-from-ref.py). His picture is brought down
 // to our scale and cleaned in his palette (tools/refs/bronze_ref.py, his decision "Reducir y limpiar yo");
 // worn whole his figure stands on his joints (hopliteRig.ts), so at male idle frame 0 every pixel is that

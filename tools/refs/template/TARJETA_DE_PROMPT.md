@@ -1125,3 +1125,43 @@ y una ceja levantada, guiñando un ojo; 8 BORRACHA, mejillas rojas, ojos entrece
 dos burbujitas BLANCAS junto a la cabeza.
 Sin texto, nada magenta, rosa ni morado en el dibujo.
 ```
+
+## 15. El salto ninja, refinado: la hoja de efectos (2026-10-30)
+
+El salto al árbol (y la salida tras Barrabás) usa hoy efectos provisionales hechos por código
+(`stealth/tree-hide`, `src/assets/world/vfx_hide`: el polvo del despegue y las líneas de velocidad).
+Él quiere el salto más refinado. El cuerpo lo sigue moviendo el juego (agachado, en el aire con
+franjas y estela pálida); al generador se le piden **solo los efectos**, en una hoja de 4 filas x 6
+cuadros. Se adjuntan dos imágenes: la guía de cuadros (`tools/refs/template/leap-fx-guide.png`, magenta
+con la cuadrícula y la línea del piso en las filas 1 y 4) y un cuadro del juego para la escala y el
+estilo. Ejemplo de qué va en cada fila: `docs/mockups/leap-fx-example.png`.
+
+```
+Hoja de EFECTOS de un salto ninja para un juego, en PIXEL ART de 16 bits de alta calidad, como los
+efectos de un juego de SNES pulido, sobre la PRIMERA imagen adjunta: FONDO MAGENTA PURO (#FF00FF)
+con 4 FILAS x 6 CUADROS; cada efecto va DENTRO de su cuadro, sin tocar las líneas, con margen de
+magenta. NO DIBUJES NINGÚN PERSONAJE: solo los efectos. La SEGUNDA imagen es el juego: el personaje
+mide unos 100 píxeles; los efectos van a esa escala y con esa luz de noche.
+Fila 1, EL DESPEGUE, a los pies, sobre la línea del piso: 1 se junta polvo y un brillo de chakra
+azul claro bajo los pies; 2 estalla: un anillo de viento achatado en el piso y polvo que sale hacia
+los lados; 3 el anillo se abre, piedritas saltan; 4 el polvo sube en dos nubecitas a los lados y
+unas líneas de viento suben hacia arriba; 5 se abre más y se adelgaza; 6 casi nada, unas motas.
+Fila 2, LA ESTELA en el aire, de un cuerpo que vuela hacia ARRIBA A LA DERECHA (el cuerpo no se
+dibuja, solo lo que deja atrás, abajo a la izquierda): un rastro de viento con líneas de velocidad
+blancas y azul pálido y unas chispas de chakra, que se adelgaza hacia la cola; 6 cuadros que
+parpadean distinto para que se mueva en bucle.
+Fila 3, DESVANECERSE en el aire (donde el ninja desaparece): 1 un destello pequeño blanco; 2 un
+estallido de humo blanco grisáceo en forma de nube redonda con un par de hojas verdes; 3 la nube en
+su tamaño mayor, esponjosa, con el borde iluminado; 4 la nube se abre y se deshace en jirones;
+5 jirones y unas hojas que caen; 6 solo unas motas de humo.
+Fila 4, EL ATERRIZAJE, sobre la línea del piso: 1 unas líneas de viento que bajan; 2 el golpe: polvo
+que sale aplastado hacia los dos lados y un anillo en el piso; 3 piedritas y polvo en lo más alto;
+4 el polvo se asienta; 5 una nubecita baja; 6 casi nada.
+Todo lo que va en el piso, ACHATADO (unas 3 veces más ancho que alto): el piso se ve desde arriba en
+diagonal. Contorno oscuro de 1 píxel donde haga falta, colores limpios, nada borroso. Sin sombras
+en el piso, sin texto, nada magenta, rosa ni morado en los efectos.
+```
+
+Cuando llegue la hoja, se corta con el recorte suave (alfa por magenta y desmezcla, como el humo de
+la invocación) y reemplaza los efectos provisionales del salto; el código de Bob (`vanishArt.ts`) los
+usa en el salto al árbol, en el ataque de salto y en la salida tras Barrabás.

@@ -155,14 +155,91 @@ PLATES = {
 }
 
 
+# Our shoulders on the male bodies: the bare arm and torso round each shoulder joint that his pauldron and
+# his sleeve must cover (the owner, 2026-10-29: "las hombreras no están llegando a cubrir todo el hombro":
+# his figure's shoulders are narrower than ours, so the arm showed past his pauldron's outer edge and above
+# his far pauldron). Offsets (dx, dy) from our shoulder joint at male idle frame 0, the union over the male
+# and bulky bodies of the skin shown round the shoulder without his pieces (read off the game: compose.ts
+# spriteLayers, the arm's and the torso's body layers; the torso past the neck and the neck's base under the chin
+# left out).
+COVER = {
+    'N': [(-3, -5), (-2, -5), (-1, -5), (0, -5), (-4, -4), (-3, -4), (-2, -4), (-5, -3), (-4, -3), (-3, -3), (-6, -2), (-5, -2), (-4, -2),
+          (-3, -2), (-6, -1), (-5, -1), (-4, -1), (-6, 0), (-5, 0), (-6, 1), (-5, 1), (-6, 2), (-6, 3), (-7, 4), (-6, 4), (-5, 4), (-7, 5),
+          (-6, 5), (-5, 5), (-7, 6), (-6, 6), (-7, 7), (-6, 7), (-4, 7), (-8, 8), (-7, 8), (-6, 8), (-5, 8), (-4, 8), (-3, 8), (-2, 8),
+          (-8, 9), (-7, 9), (-6, 9), (-5, 9), (-4, 9), (-3, 9), (-2, 9), (-1, 9), (0, 9), (1, 9)],
+    'F': [(-2, -5), (-1, -5), (0, -5), (1, -5), (2, -5), (3, -5), (-3, -4), (-2, -4), (-1, -4), (0, -4), (1, -4), (2, -4), (3, -4),
+          (4, -4), (-3, -3), (-2, -3), (-1, -3), (0, -3), (1, -3), (2, -3), (3, -3), (4, -3), (5, -3), (2, -2), (3, -2),
+          (4, -2), (5, -2), (6, -2), (2, -1), (3, -1), (4, -1), (5, -1), (6, -1), (3, 0), (4, 0), (5, 0), (6, 0), (3, 1), (4, 1), (5, 1),
+          (6, 1), (3, 2), (4, 2), (5, 2), (6, 2), (4, 3), (5, 3), (6, 3), (4, 4), (5, 4), (6, 4), (4, 5), (5, 5), (6, 5), (7, 5), (4, 6),
+          (5, 6), (6, 6), (7, 6), (3, 7), (4, 7), (5, 7), (6, 7), (7, 7), (4, 8), (5, 8), (6, 8), (7, 8), (4, 9), (5, 9), (6, 9), (7, 9)],
+}
+# The pauldron covers the shoulder down to this row from the joint (his pauldron's last plate); below it the
+# sleeve, which covers the arm's width in its own rows (below the sleeve the arm is bare, as he drew it).
+PAULDRON_TO = 7
+
+
+def grown(m, c, isl, side, rows=None):
+    """A piece grown to cover our shoulder (COVER): each covered pixel not in the piece takes his nearest
+    pixel of it (his line left out, the same row first: his plates and folds run on sideways), his line
+    closes the new edge, and his old line that the growth leaves inside takes his colour beside it. `rows`:
+    only the piece's own rows (the sleeve); else down to PAULDRON_TO."""
+    black = np.array(R.LINE)
+    jx, jy = (int(np.floor(v)) for v in R.fine_joint('shoulder' + side))
+    m, c, isl = m.copy(), c.copy(), isl.copy()
+    own = [(y, x) for y, x in zip(*np.nonzero(m & ~isl))]
+    lines = [(y, x) for y, x in zip(*np.nonzero(m & isl))]
+    if lines:
+        # (his black line of this piece: its commonest line colour)
+        tally = {}
+        for q in lines:
+            t = tuple(int(v) for v in c[q])
+            tally[t] = tally.get(t, 0) + 1
+        black = np.array(max(sorted(tally), key=lambda t: tally[t]))
+    have = set(int(y) for y in np.nonzero(m.any(1))[0])
+    new = []
+    for dx, dy in COVER[side]:
+        y, x = jy + dy, jx + dx
+        if m[y, x]:
+            continue
+        if rows is not None and y not in have:
+            continue
+        if rows is None and dy > PAULDRON_TO:
+            continue
+        q = min(own, key=lambda p: ((p[0] - y) * 2) ** 2 + (p[1] - x) ** 2 + (p[0] != y))
+        m[y, x] = True
+        c[y, x] = c[q]
+        isl[y, x] = False
+        new.append((y, x))
+    near4 = ((1, 0), (-1, 0), (0, 1), (0, -1))
+    newset = set(new)
+    # his line the growth leaves inside the piece: his colour beside it (the nearest of his pixels in its row)
+    for y, x in lines:
+        if all(m[y + dy, x + dx] for dy, dx in near4) and any((y + dy, x + dx) in newset for dy, dx in near4):
+            q = min(own, key=lambda p: ((p[0] - y) * 2) ** 2 + (p[1] - x) ** 2)
+            c[y, x] = c[q]
+            isl[y, x] = False
+    # his line closes the new edge
+    for y, x in new:
+        if any(not m[y + dy, x + dx] for dy, dx in near4):
+            c[y, x] = black
+            isl[y, x] = True
+    return m, c, isl
+
+
 def piece(a, lab, name):
     """A piece of his at our scale, continued under what hides it: (mask, colours, line); his plates read in
-    layers (PLATES)."""
+    layers (PLATES); his pauldrons and sleeves grown to cover our shoulder (grown)."""
     R.more_of = more_of
     R.HIS_JOINTS = JOINTS
     if name in PLATES:
-        return E.piece(a, lab, name, MAP, PLATES[name])
-    return R.piece(a, lab, name, MAP)
+        m, c, isl = E.piece(a, lab, name, MAP, PLATES[name])
+    else:
+        m, c, isl = R.piece(a, lab, name, MAP)
+    if name.startswith('pauldron_'):
+        return grown(m, c, isl, name[-1].upper())
+    if name.startswith('sleeve_'):
+        return grown(m, c, isl, name[-1].upper(), rows=True)
+    return m, c, isl
 
 
 # The game's order at rest, back to front (as items/legate.ts draws them).

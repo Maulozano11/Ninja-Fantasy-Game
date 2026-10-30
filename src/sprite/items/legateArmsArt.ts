@@ -7,44 +7,46 @@
 import type { PaintedPiece } from '../painted';
 
 /** His colours the colour slots recolour from (at these, every pixel is his). */
-export const LEGATE_PAULDRON_BRONZE = '#553a2f';
-export const LEGATE_SLEEVE_RED = '#681134';
+export const LEGATE_PAULDRON_BRONZE = '#543520';
+export const LEGATE_SLEEVE_RED = '#262128';
 
 /** Where each piece lands in our male idle frame 0 (his joints), unturned: the fine pixel of its first row's first cell. */
 export const LEGATE_ARMS_REST: Record<string, [number, number]> = {
-  LEGATE_PAULDRON_N: [109, 147],
-  LEGATE_PAULDRON_F: [128, 149],
-  LEGATE_SLEEVE_N: [109, 153],
+  LEGATE_PAULDRON_N: [107, 147],
+  LEGATE_PAULDRON_F: [128, 146],
+  LEGATE_SLEEVE_N: [106, 153],
   LEGATE_SLEEVE_F: [132, 153],
 };
 
 /** His near bronze pauldron with its straps: rides the near shoulder. */
 export const LEGATE_PAULDRON_N: PaintedPiece = {
-  pivot: [5, 5],
+  pivot: [7, 5],
   angle: 107.91,
   rows: [
-    '......aa.....',
-    '....aaba.....',
-    '...acdeffaaaa',
-    '...aahhffeiia',
-    '..ajkkahbiiia',
-    '.aiiijkahlkda',
-    '.aabmmikaccaa',
-    'aibimibaknaaa',
-    'aaiijibaia.aa',
-    '..aaaibbba.aa',
-    '.....aaaaaaaa',
+    '....aaaaaa.....',
+    '...abbccca.....',
+    '..abbbbdeffaaaa',
+    '.ahhhiaiiffejja',
+    '.ahhhhkkaicjjja',
+    '.ajjjjjhkailkda',
+    '.ajcacmmjkabbaa',
+    '.ajjcjmjcaknaaa',
+    '.ajajjhjcaja.aa',
+    'aja.aaajccca.aa',
+    'aja....aaaaaaaa',
+    'aa.............',
+    'aa.a...........',
   ],
   colors: {
     a: '#000220',
-    b: '#553a2f',
-    c: '#8c5d38',
+    b: '#8c5d38',
+    c: '#553a2f',
     d: '#a3703a',
     e: '#683d22',
     f: '#72462e',
-    h: '#d49a52',
-    i: '#543520',
-    j: '#433232',
+    h: '#433232',
+    i: '#d49a52',
+    j: '#543520',
     k: '#4b2c30',
     l: '#392e2c',
     m: '#101224',
@@ -71,20 +73,23 @@ export const LEGATE_PAULDRON_N_KIND: Record<string, 'dark' | 'line' | 'warm'> = 
 
 /** His far bronze pauldron: rides the far shoulder. */
 export const LEGATE_PAULDRON_F: PaintedPiece = {
-  pivot: [6, 2],
+  pivot: [6, 5],
   angle: 77.05,
   rows: [
-    '...aaaaa..',
-    '..abbcaa..',
-    'aabddecca.',
-    'afffccaca.',
-    'ahhhfcaca.',
-    'ahhhiiiica',
-    'aihjhklafa',
-    'afikkkhaaa',
-    'afimnhha..',
-    '.aimnha...',
-    '..aaaaa...',
+    '....aaaaaa....',
+    '...abccccca...',
+    '...abcccccca..',
+    '...abccccccca.',
+    '..abbcaccccca.',
+    'aabddecccccca.',
+    'afffccaccccca.',
+    'ahhhfcaccccca.',
+    'ahhhiiiicccca.',
+    'aihjhklaffffa.',
+    'afikkkhaaafffa',
+    'afimnhha..ahfa',
+    '.aimnha..aaaaa',
+    '..aaaaa.......',
   ],
   colors: {
     a: '#000220',
@@ -122,18 +127,18 @@ export const LEGATE_PAULDRON_F_KIND: Record<string, 'line' | 'warm'> = {
 
 /** His near dark red sleeve: rides the near shoulder. */
 export const LEGATE_SLEEVE_N: PaintedPiece = {
-  pivot: [5, -1],
+  pivot: [8, -1],
   angle: 107.91,
   rows: [
-    '.........aa..',
-    '.aaa....abba.',
-    'acbdaaaabbdda',
-    '.abddddcdddda',
-    '.adddddcbddaa',
-    'aaeeeffhhaa..',
-    'a.eieefddaa..',
-    '....aaaddaa..',
-    '.......aaaa..',
+    '..aa........aa..',
+    '..a.aaa....abba.',
+    '..aacbdaaaabbdda',
+    '.acbbbddddcdddda',
+    '.addddddddcbddaa',
+    '.aeeeeeeffhhaa..',
+    '.aeeeeieefddaa..',
+    'aeeeeeieedddaa..',
+    'aaaaaaaaaaaaaa..',
   ],
   colors: {
     a: '#000220',
@@ -164,16 +169,16 @@ export const LEGATE_SLEEVE_F: PaintedPiece = {
   pivot: [2, -2],
   angle: 77.05,
   rows: [
-    '....a.',
-    '...aba',
-    '..abca',
-    '.adcca',
-    'addefa',
-    'adefa.',
-    'abecba',
-    'abcbba',
-    'accaa.',
-    '.aa...',
+    '....aaaaa.',
+    '...abbbba.',
+    '..abcccca.',
+    '.adcccccca',
+    'addefffffa',
+    'adeffffffa',
+    'abecbbbbba',
+    'abcbbaaaaa',
+    'accaa.....',
+    '.aa.......',
   ],
   colors: {
     a: '#000220',

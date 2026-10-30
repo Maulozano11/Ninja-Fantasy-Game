@@ -675,6 +675,25 @@ IZQUIERDO del piso queda LIBRE (ahí está el grupo de héroes). Sin personajes,
 ni rosa. Misma resolución y proporción que la imagen adjunta.
 ```
 
+**Segunda vuelta de E** (2026-10-30). La primera (`docs/reference/colossal-hydra-dead-v1-owner-reference.png`)
+salió en 3:1, más cerca que el fondo y con los cinco muñones quemados en vez de las cabezas; no le
+gustó. Se pide otra vez adjuntando el mismo fondo de las cinco cabezas:
+
+```
+Usa la imagen adjunta como BASE y edítala SIN cambiar el encuadre: el resultado debe ser la MISMA
+imagen, del MISMO TAMAÑO y la MISMA PROPORCIÓN 16:9 (horizontal, no panorámica), con la cámara en el
+mismo lugar: el portón y la torre a la izquierda del mismo tamaño, la muralla con sus estandartes y
+antorchas a la misma altura, el MISMO cielo arriba y el MISMO piso de losas mojadas abajo, que llega
+hasta el borde de abajo. No acerques ni alejes la cámara, no recortes nada.
+Lo único que cambia es la HIDRA: está MUERTA, desplomada donde estaba, del mismo tamaño. El pecho y la
+panza tocan el piso, las patas dobladas, las púas sin brillo. Sus CINCO CUELLOS caen flojos sobre el
+piso hacia la IZQUIERDA, uno junto al otro, y en la punta de cada cuello su CABEZA DE DRAGÓN COMPLETA
+tirada de lado en el suelo, con los OJOS CERRADOS, la mandíbula entreabierta y los dientes a la vista,
+los cuernos dorados sin brillo. Sangre ROJA en algunos cortes y un charco de sangre roja oscura bajo
+los cuellos; polvo asentándose alrededor; algunas losas rotas donde cayó.
+El tercio IZQUIERDO del piso queda vacío. Sin personajes, sin texto, sin fuego, nada morado ni rosa.
+```
+
 Con A–D: el fondo se usa como el del casino (pintado completo); B y C pasan por
 `sheet-from-template.py --hd` a una hoja de la hidra colosal como la de `world/creatures/`
 (`hydra_neck_*`), una sola cabeza repetida en los siete carriles; el motor necesita cabezas con

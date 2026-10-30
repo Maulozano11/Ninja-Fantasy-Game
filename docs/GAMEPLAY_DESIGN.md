@@ -2152,10 +2152,8 @@ and no body along the back wall; only the body on the right).
   - **The acid spit:** a head throws its head back and opens its mouth, the ball of acid flies in an
     arc to the target, splashes, and leaves a puddle that boils under it, then dries to a burnt
     stain. `docs/mockups/colossal-hydra-acid-effects.png`.
-  - **Its death, as a final shot** (the owner, 2026-10-30: option A). When the last stump is sealed
-    the body shudders, dust rises and the screen fades to black; then a cut to his dead-hydra
-    picture (the body collapsed, the five necks on the floor, every stump burnt and smoking) as a
-    final shot in cinema bands, the party standing on the left, a slow push-in. His picture is a
-    different framing from the battle camera, so it is a cut, not a crossfade.
-    `docs/reference/colossal-hydra-dead-v1-owner-reference.png`, `docs/mockups/colossal-hydra-dead-letterbox.png`.
+  - **Its death:** the body collapses where it stands, the five necks fall to the floor, the
+    heads lie with their eyes shut. His first picture (`colossal-hydra-dead-v1`, a different
+    framing with burnt stumps, shown as a letterboxed final shot) he did not like (2026-10-30); a
+    second one is asked as an exact edit of the five-head backdrop (prompt card 11 E, second round).
 

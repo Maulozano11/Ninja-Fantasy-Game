@@ -163,6 +163,21 @@ elements.
   - Each world sprite's manifest lists its cover in its tags.
 - Cover can be destroyed: trees burn, earth walls break.
 - Crouching behind cover helps you hide; it costs a Bonus Action.
+- **Height changes cover** (the owner, 2026-10-28, from his sci-fi design brought home: "estar
+  elevado ignora coberturas bajas"; "ya tenemos algo puesto en el juego, solo hay que trabajar
+  mejor las coberturas medias y altas"; `map.ts` `coverBetween`, `PropRules.tall`):
+  - **From a level or more above** the target: a **low** cover (bushes, barrels, crates, rocks,
+    fences, lanterns, stumps, a Kōton block, someone in the way) counts for **nothing**; a
+    **tall** one (trees, bamboo, tents, stacked crates, boulders) covers **a step less** (¾ → ½,
+    ½ → none); an earth or metal wall covers as ever. The preview says "desde arriba: la
+    cobertura baja no cuenta". The +2 to hit from high ground stays.
+  - **From a level or more below**: any cover the target has is **three-quarters** (the ledge
+    hides the rest): "desde abajo: el desnivel cubre el resto". The −2 to hit stays.
+  - The AI reads the same cover, so it looks for high ground and for cover against it.
+- **Cover adds to DEX saves** (as it adds to AC): +2 behind half cover, +5 behind three-quarters,
+  against a blast (a tag, a barrel, a trap), a burst (from its middle) or a cone or a line (from
+  its caster), judged from where the danger comes; nothing when it goes off right by the ninja.
+  The log says "(cobertura +2)" on the save. Mock: `docs/mockups/cover-height-mockup.png`.
 
 ## Stealth
 

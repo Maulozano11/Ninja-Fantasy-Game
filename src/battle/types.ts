@@ -282,6 +282,8 @@ export interface PropRules {
    * oil when broken and blazes under fire; metal carries lightning (battle/ground.ts conducts).
    */
   tags?: PropTag[];
+  /** Taller than a ninja (a tree, a tent, stacked crates, a boulder): it still covers from high ground, a step less. */
+  tall?: boolean;
 }
 
 export type PropTag = 'wood' | 'metal' | 'fuel';
@@ -549,7 +551,7 @@ export type BattleEvent =
   /** `reasons`: why the roll had advantage or disadvantage (the preview's keys: 'aura', 'behind'…). */
   | { t: 'attack'; unit: string; target: string; what: string; roll: RollInfo; ranged: boolean; reasons?: string[] }
   /** `ab`: the ability the save is made with (dex, wis…). */
-  | { t: 'save'; unit: string; what: string; roll: RollInfo; ab?: string }
+  | { t: 'save'; unit: string; what: string; roll: RollInfo; ab?: string; cover?: 0 | 2 | 5 }
   | { t: 'check'; unit: string; what: string; roll: RollInfo }
   | { t: 'damage'; unit: string; amount: number; dmgType: DamageType; hp: number; crit?: boolean; source?: string }
   | { t: 'heal'; unit: string; amount: number; hp: number; source?: string }

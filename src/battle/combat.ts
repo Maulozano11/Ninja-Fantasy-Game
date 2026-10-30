@@ -95,11 +95,19 @@ export function check(s: BattleState, kind: RollInfo['kind'], mod: number, dc: n
   return rollInfo(kind, rollCheck(nextRng(s), mod, dc, adv, natural), adv);
 }
 
-export function savingThrow(s: BattleState, u: Unit, ab: Ability, dc: number, extra: Advantage = 'none'): RollInfo {
+/**
+ * A saving throw. `from`: where a DEX save's danger comes from (the blast's middle, the caster): cover
+ * between it and the ninja adds to the save as it does to AC (+2 half, +5 three-quarters; the
+ * owner, 2026-10-28, "trabajar mejor las coberturas").
+ */
+export function savingThrow(s: BattleState, u: Unit, ab: Ability, dc: number, extra: Advantage = 'none', from?: Pt): RollInfo {
   const m = effectMods(u.effects);
   const adv = combineAdvantage(extra, ab === 'con' && m.disadvConSaves ? 'disadvantage' : 'none', ab === 'wis' && m.disadvWisSaves ? 'disadvantage' : 'none');
-  return check(s, 'save', saveMod(u, ab), dc, adv);
+  return check(s, 'save', saveMod(u, ab) + saveCover(s, u, ab, from), dc, adv);
 }
+
+/** The cover a DEX save gets against a danger from `from` (0 when none, or when the danger is right by). */
+export const saveCover = (s: BattleState, u: Unit, ab: Ability, from?: Pt): 0 | 2 | 5 => (ab === 'dex' && from && dist(from, u.pos) > 0.9 ? coverBetween(s, from, u.pos, [u.id]) : 0);
 
 // --- attacks -------------------------------------------------------------------------------
 
@@ -191,6 +199,12 @@ export function attackPreview(s: BattleState, a: Unit, t: Unit, kind: AttackKind
   const cover = close ? 0 : coverBetween(s, a.pos, t.pos, [a.id, t.id]);
   const dl = unitLevel(s, a) - unitLevel(s, t);
   const height = dl >= 0.9 ? 2 : dl <= -0.9 ? -2 : 0;
+  // Said when the height changed the cover (map.ts coverBetween): from above a low cover is nothing, from below any cover is more.
+  if (!close && height) {
+    const flat = coverBetween(s, a.pos, t.pos, [a.id, t.id], true);
+    if (height > 0 && flat > cover) reasons.push('overCover');
+    if (height < 0 && cover > flat) reasons.push('ledgeCover');
+  }
   if (a.cond.hidden !== undefined) {
     advs.push('advantage');
     reasons.push('hidden');

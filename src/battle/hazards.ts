@@ -8,7 +8,7 @@ import type { AreaShape, BattleEvent, BattleState, DamageType, Hit, Pt, Trap, Un
 import { cellCenter, cellKey, cellOf, dampAt, keyCell, dist, fullCoverBetween, getMap, propRules, waterAtPt } from './map';
 import { BLAZE_DC, BLAZE_DICE, ignite, lightningSeeds, melt, spill, steamUp, unitsOnPatch, wetPatch } from './ground';
 import { inArea } from './jutsu';
-import { rollDiceExpr, savingThrow } from './combat';
+import { rollDiceExpr, saveCover, savingThrow } from './combat';
 import { maxCritDamage } from '../rules/dice';
 import { hitStructuresIn } from './structures';
 
@@ -65,7 +65,7 @@ export function explode(s: BattleState, at: Pt, radius: number, dice: string, dc
   const area: AreaShape = { kind: 'circle', center: at, radius };
   const amount = rollDiceExpr(s, dice);
   const hits: Hit[] = [];
-  for (const u of unitsInArea(s, area, [], at)) hits.push(saveHit(s, u, 'dex', dc, amount, 'Fire', true, source, 'explosion', { explosion: true }, ev, 'none', maxCritDamage(dice)));
+  for (const u of unitsInArea(s, area, [], at)) hits.push(saveHit(s, u, 'dex', dc, amount, 'Fire', true, source, 'explosion', { explosion: true }, ev, 'none', maxCritDamage(dice), at));
   hitStructuresIn(s, area, amount, ev);
   hits.push(...groundEffects(s, area, 'Fire', ev, seen, false, source));
   return hits;
@@ -89,10 +89,12 @@ export function saveHit(
   ev: BattleEvent[],
   adv: Advantage = 'none',
   maxAmount?: number,
+  from?: Pt,
 ): Hit {
   if (u.head?.severed) return { unit: u.id, amount: 0, type, source, what, ...extra, effect: undefined, prone: undefined, push: undefined };
-  const roll = savingThrow(s, u, ab, dc, adv);
-  ev.push({ t: 'save', unit: u.id, what, roll, ab });
+  const cover = saveCover(s, u, ab, from);
+  const roll = savingThrow(s, u, ab, dc, adv, from);
+  ev.push({ t: 'save', unit: u.id, what, roll, ab, ...(cover ? { cover } : {}) });
   // The owner's rule (A3): a natural 20 resists it completely, no damage even where a save halves.
   if (roll.crit) return { unit: u.id, amount: 0, type, source, what, ...extra, effect: undefined, tension: undefined, prone: undefined, push: undefined };
   // (B3): a natural 1 takes it as a critical, maximum damage (`maxAmount`, the dice at their

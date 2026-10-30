@@ -1261,7 +1261,9 @@ function jutsuHits(s: BattleState, u: Unit, spec: JutsuSpec, target: Unit | unde
     // Fire that lands on wet ground turns the water to steam: the flames don't catch there.
     if (extra.effect === 'burning' && dampAt(s, v.pos)) extra.effect = undefined;
     if (spec.save) {
-      hits.push(saveHit(s, v, spec.save, u.saveDC, amount, type, spec.saveHalf, u.id, spec.id, extra, ev, spec.saveAdv, spec.dice ? maxCritDamage(spec.dice) : undefined));
+      // Cover counts against an area's DEX save: from a burst's middle, or from the caster of a cone or a line.
+      const danger = area ? (area.kind === 'circle' ? area.center : u.pos) : u.pos;
+      hits.push(saveHit(s, v, spec.save, u.saveDC, amount, type, spec.saveHalf, u.id, spec.id, extra, ev, spec.saveAdv, spec.dice ? maxCritDamage(spec.dice) : undefined, danger));
       continue;
     }
     const pv = attackPreview(s, u, v, 'jutsu', { jutsuRange: spec.range, melee: spec.melee });

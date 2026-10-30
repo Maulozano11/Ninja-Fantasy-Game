@@ -2146,4 +2146,16 @@ and no body along the back wall; only the body on the right).
   wave from the body to the head (up to 6 px, nothing at the join so it still meets the painted
   neck), each head a little out of step with the others, and the head rides the wave. His first two
   backdrops and the bite strip v2 (seven heads) stay as references.
+- **Its stumps, its acid, its end** (the owner's sheets, 2026-10-29, prompt card 11):
+  - **The burnt stump:** fire on a cut stump chars and seals it (raw, catching, burning, charred
+    and smoking, sealed); a sealed stump never grows back. `docs/mockups/colossal-hydra-burn-stumps.png`.
+  - **The acid spit:** a head throws its head back and opens its mouth, the ball of acid flies in an
+    arc to the target, splashes, and leaves a puddle that boils under it, then dries to a burnt
+    stain. `docs/mockups/colossal-hydra-acid-effects.png`.
+  - **Its death, as a final shot** (the owner, 2026-10-30: option A). When the last stump is sealed
+    the body shudders, dust rises and the screen fades to black; then a cut to his dead-hydra
+    picture (the body collapsed, the five necks on the floor, every stump burnt and smoking) as a
+    final shot in cinema bands, the party standing on the left, a slow push-in. His picture is a
+    different framing from the battle camera, so it is a cut, not a crossfade.
+    `docs/reference/colossal-hydra-dead-v1-owner-reference.png`, `docs/mockups/colossal-hydra-dead-letterbox.png`.
 

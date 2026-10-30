@@ -764,3 +764,29 @@ La última adjunta **el fondo de la hidra** (`docs/reference/colossal-hydra-back
 
 El juego encadena 1→2→3→4 con fundidos, cambia al fondo de la hidra dentro del humo (4→5) y luego
 quita el humo. Sin texto ni personas en ninguna.
+
+**F) Los dos pasos intermedios** (2026-10-29). Los cortes de la columna al humo y del humo a la hidra
+se veían como "transición de PowerPoint" (sus palabras). Dos fondos más para esos momentos:
+
+*3b, la columna se rompe en polvo* (adjunta el **paso 3**, la columna):
+```
+La MISMA imagen adjunta, idéntica píxel por píxel en todo lo que no se menciona (muro, portón,
+antorchas, losas, encuadre), cambiando SOLO esto: la columna de luz se está ROMPIENDO: su base revienta
+en una onda de polvo y humo gris que se expande a ras del suelo hacia los lados desde el círculo, la
+columna se adelgaza y se apaga de abajo hacia arriba, las piedras siguen en el aire, el polvo empieza a
+subir y a tapar la parte de abajo de la columna; la luz dorada todavía brilla dentro del polvo.
+```
+
+*4b, la hidra dentro del humo* (adjunta **el fondo de la hidra**, `docs/reference/colossal-hydra-backdrop-v3-owner-reference.png`):
+```
+La MISMA imagen adjunta, idéntica píxel por píxel en todo lo que no se menciona (la hidra, sus cuellos,
+el muro, el portón, las antorchas, las losas, el encuadre), cambiando SOLO esto: una NUBE ENORME de humo
+gris y polvo, igual a una explosión reciente, cubre todo el lado derecho del patio y casi toda la hidra:
+de la hidra solo se adivina la SILUETA OSCURA del cuerpo y de los cuellos a través del humo, y brillan
+los OJOS VERDES de las cinco cabezas; piedras cayendo, brasas sueltas, un resplandor dorado débil al
+pie de la nube.
+```
+
+Con estos el juego hace: columna (3) → la columna se rompe (3b) → la nube (4) → la nube con la silueta
+(4b, ya sobre el fondo de la hidra, así el cambio de fondo pasa dentro del humo) → el humo se deshace
+sobre la hidra viva. Si 4b sale alineado, opcional un 4c igual pero con el humo a la mitad.

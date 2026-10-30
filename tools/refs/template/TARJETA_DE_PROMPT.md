@@ -1165,3 +1165,5 @@ en el piso, sin texto, nada magenta, rosa ni morado en los efectos.
 Cuando llegue la hoja, se corta con el recorte suave (alfa por magenta y desmezcla, como el humo de
 la invocación) y reemplaza los efectos provisionales del salto; el código de Bob (`vanishArt.ts`) los
 usa en el salto al árbol, en el ataque de salto y en la salida tras Barrabás.
+
+**Llegó a la primera** (2026-10-30, `docs/reference/ninja-leap-fx-owner-reference.png`): limpia, en sus cuadros, sin personaje. Montada en la salida tras Barrabás: el despegue a los pies, la estela girada hacia donde vuela, la nube donde se desvanece (`docs/mockups/ninja-leap-fx-mounted.png`). Escala en el juego: 0,6 del cuadro.

@@ -61,6 +61,35 @@ def world(img, nm, anim, frame, x, y, mirror=False, alpha=1.0):
     img.alpha_composite(c, (int(x - ax), int(y - ay)))
 
 
+# his effects (card 15), keyed by leapfx_cut.py: take-off, trail, vanish, landing
+FX = [[Image.open(f'{V}/fx/fx_{r}_{c}.png').convert('RGBA') for c in range(6)] for r in range(4)]
+FXS = 0.6
+FXA = {0: (132, 205), 2: (134, 118), 3: (132, 192)}  # anchors in a cell: the ring's middle on the floor, the cloud's middle
+TIP, TANG = (246, 46), -36.5  # the trail: its head (where the body is) and its painted direction
+
+
+def fx(img, r, c, x, y, alpha=1.0, sc=FXS):
+    im = FX[r][c]
+    im = im.resize((int(im.width * sc), int(im.height * sc)), Image.LANCZOS)
+    if alpha < 1:
+        im.putalpha(im.getchannel('A').point(lambda v: int(v * alpha)))
+    ax, ay = FXA[r]
+    img.alpha_composite(im, (int(x - ax * sc), int(y - ay * sc)))
+
+
+def trail(img, c, x, y, ang, alpha=1.0):
+    im = FX[1][c]
+    # put the head in the middle of a square, turn it to the flight's direction, scale it
+    R = int(max(im.width, im.height) * 1.5)
+    can = Image.new('RGBA', (2 * R, 2 * R))
+    can.alpha_composite(im, (R - TIP[0], R - TIP[1]))
+    can = can.rotate(TANG - ang, resample=Image.BICUBIC)
+    can = can.resize((int(2 * R * FXS), int(2 * R * FXS)), Image.LANCZOS)
+    if alpha < 1:
+        can.putalpha(can.getchannel('A').point(lambda v: int(v * alpha)))
+    img.alpha_composite(can, (int(x - R * FXS), int(y - R * FXS)))
+
+
 WIND, LEAP = 150, 520  # ms: the crouch, the flight (the tree jump's 420, a little longer for the longer leap)
 ease = lambda x: 1 - (1 - max(0.0, min(1.0, x))) ** 1.7
 leapK = lambda ms: 0.0 if ms < WIND else ease((ms - WIND) / LEAP)
@@ -105,13 +134,14 @@ def draw_vanish(img, name, u, ms):
         put_frame(img, run, x, y, alpha=fade, bands=2 + round(k * 8))
     px, py = leap_px(u, leapK(ms - 40))
     dx, dy = x - px, y - py
-    if math.hypot(dx, dy) >= 0.5:
-        row = max(-90, min(90, round(math.degrees(math.atan2(dy, dx)) / 15) * 15))
-        world(img, 'dash_lines', f'a{row}', int(ms // 50) % 4, x, y - 52, alpha=1 if k < 0.95 else 0.6)
-
+    if math.hypot(dx, dy) >= 0.5 and fade > 0.05:
+        trail(img, min(5, int(k * 6)), x, y - 50, math.degrees(math.atan2(dy, dx)), alpha=min(1.0, fade * 1.3))
+    if k >= 0.6 and not u.get('poofed'):
+        u['poofed'] = True
+        STATE['poofs'].append((x, y - 50, N[0]))
 
 N = [0]
-STATE = dict(tooth=True, glow0=0, prompt=None, popup=None, puffs=[])
+STATE = dict(poofs=[], tooth=True, glow0=0, prompt=None, popup=None, puffs=[])
 
 
 def glow(img, n):
@@ -203,10 +233,14 @@ def emit():
         img.alpha_composite(lay.filter(ImageFilter.GaussianBlur(3)))
     for b in STATE.get('bursts', []):
         e = (N[0] - b[2]) / 30.0
-        if 0 <= e * 20 < 8:
-            world(img, 'vanish_burst', 'burst', int(e * 20), b[0], b[1])
+        if 0 <= e * 20 < 6:
+            fx(img, 0, int(e * 20), b[0], b[1])
     for u in sorted(U.values(), key=lambda u: u['y']):
         draw_unit(img, u)
+    for px_, py_, n0 in STATE['poofs']:
+        e = (N[0] - n0) / 30.0
+        if 0 <= e * 15 < 6:
+            fx(img, 2, int(e * 15), px_, py_, sc=0.55)
     if STATE['prompt']:
         prompt(img, *STATE['prompt'])
     if STATE['popup']:

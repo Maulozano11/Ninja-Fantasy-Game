@@ -357,6 +357,8 @@ export interface EnemyOptions {
   rank?: Rank;
   /** Its number among the enemies of the battle that share its name ("Rogue 2"); none if it is the only one. */
   no?: number;
+  /** Its level, when the battle wants another than its template's (enemies of levels 9 and 12, the owner, 2026-10-29). */
+  level?: number;
 }
 
 const numbered = (name: string, no?: number): string => (no ? `${name} ${no}` : name);
@@ -368,14 +370,15 @@ export function enemyCharacter(kind: EnemyKind, n: number, o: EnemyOptions = {})
   const nm = enemyNameOf(kind, clan);
   const lk = t.looks[n % t.looks.length];
   const armor = ((lk.slots.armor && getItem(lk.slots.armor.id)?.statsArmor) || 'Ronin Wanderer Cloak') as ShinobiCharacter['armorStyle'];
-  const d = deriveStats({ level: t.level, stats: t.stats, clan, shinobiClass: t.shinobiClass, armor, feats: [] });
+  const level = o.level ?? t.level;
+  const d = deriveStats({ level, stats: t.stats, clan, shinobiClass: t.shinobiClass, armor, feats: [] });
   const slots = ['slot1Utility', 'slot2Elemental', 'slot3Elemental', 'slot4Clan', 'slot5Ultimate'] as const;
   const selected = Object.fromEntries(slots.map((s, i) => [s, t.jutsus[i] ?? ''])) as unknown as ShinobiCharacter['selectedJutsus'];
   return {
     id: `${kind}_${n}`,
     name: numbered(nm.name, o.no),
     title: nm.title,
-    level: t.level,
+    level,
     clan,
     shinobiClass: t.shinobiClass,
     stats: t.stats,

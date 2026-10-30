@@ -130,7 +130,7 @@ export function campTraps(kinds: ('tag' | 'wire')[]): Trap[] {
 export function encounterSetup(
   id: EncounterId,
   party: EncounterParty[],
-  o: { seed: number; difficulty: Difficulty; weather?: WeatherType; supplies: BattleSupplies; partySurprised?: boolean; traps?: Trap[] },
+  o: { seed: number; difficulty: Difficulty; weather?: WeatherType; supplies: BattleSupplies; partySurprised?: boolean; traps?: Trap[]; enemyLevel?: number },
 ): BattleSetup {
   const e = ENCOUNTERS[id];
   return {
@@ -140,7 +140,8 @@ export function encounterSetup(
     weather: o.weather ?? 'Clear',
     difficulty: o.difficulty,
     party: party.map((p, i) => ({ character: p.character, controller: p.controller, aiOrder: p.aiOrder, pos: e.partyAt[i % e.partyAt.length] })),
-    enemies: e.enemies,
+    // enemyLevel raises every ninja enemy to that level (the hydra keeps its own numbers)
+    enemies: o.enemyLevel ? e.enemies.map((x) => (x.kind === 'hydra' ? x : { ...x, level: o.enemyLevel })) : e.enemies,
     stealth: e.stealth,
     partySurprised: o.partySurprised,
     supplies: o.supplies,

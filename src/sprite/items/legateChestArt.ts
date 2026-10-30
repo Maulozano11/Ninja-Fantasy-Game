@@ -7,7 +7,7 @@
 import type { PaintedPiece } from '../painted';
 
 /** His colours the colour slots recolour from (at these, every pixel is his). */
-export const LEGATE_STEEL = '#35343c';
+export const LEGATE_STEEL = '#2e2e36';
 export const LEGATE_GOLD = '#a3703a';
 
 /** Where each piece lands in our male idle frame 0 (his joints), unturned: the fine pixel of its first row's first cell. */
@@ -24,15 +24,15 @@ export const LEGATE_CHEST: PaintedPiece = {
     '...aaabcdaaaaabaa....',
     '...aeedffbbhheeba....',
     '...aceeccbfbbbbea....',
-    '...aeeeebaddiidda....',
-    '...aeeeebbbbbjjfa....',
-    '...aebjbeeehheeaa....',
-    '....abeeeehfche......',
-    '....abehfcfdfceb.....',
-    '...akjehhfcfdfdf.....',
-    '..aiiibehefffefcedia.',
-    '..allijbeeebbdffdkkka',
-    '.alllikjjbbbjfdmmmjja',
+    '..aeeeeebaddiidda....',
+    '.aeeeeeebbbbbjjfa....',
+    'aeeeebjbeeehheeaa....',
+    'abbbbbeeeehfche......',
+    'abbbbbehfcfdfceb.....',
+    'akkkkjehhfcfdfdf.....',
+    'aiiiiibehefffefcedia.',
+    'allllijbeeebbdffdkkka',
+    'allllikjjbbbjfdmmmjja',
     'alllikjnnnebffdmpmbba',
     'alliijjninccbefpmmbba',
     'akakjjjinnbeeeeeebjja',

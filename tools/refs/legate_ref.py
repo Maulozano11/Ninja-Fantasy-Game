@@ -159,6 +159,48 @@ PLATES = {
 # with his general.
 
 
+# The cuirass's near side above the flare, where at rest his arm, sleeve and pauldron hide it (the owner,
+# 2026-10-30, his red curve under the raised arm in the legate's attack: the side keeps its line and its
+# curve, with no step or notch at the armpit, in every pose). Under the arm his side is continued: from the
+# collar's row the near edge comes out one column a row until it stands on the flare's column (the widest row
+# above the waist, after widened), and runs straight down to the flare; a row whose edge already lies further
+# out keeps it.
+# His plate beside the edge is continued over the new pixels, his old edge line takes the plate and his line
+# closes the new edge. At rest it all lies under the near arm, sleeve and pauldron.
+def armpit(m, c, isl):
+    m, c, isl = m.copy(), c.copy(), isl.copy()
+    ys = [int(y) for y in np.nonzero(m.any(1))[0]]
+    edge = {y: int(np.nonzero(m[y])[0].min()) for y in ys}
+    widest = min(ys, key=lambda y: (edge[y], y))
+    # (his black line of the piece: its commonest line colour)
+    tally = {}
+    for q in zip(*np.nonzero(m & isl)):
+        t = tuple(int(v) for v in c[q])
+        tally[t] = tally.get(t, 0) + 1
+    black = np.array(max(sorted(tally), key=lambda t: tally[t]))
+    top = ys[0]
+    for y in ys:
+        if y >= widest:
+            break
+        e = edge[y]
+        target = max(edge[widest], edge[top] - (y - top))
+        if target >= e:
+            continue
+        plate = next((c[y, x].copy() for x in range(e, e + 6) if m[y, x] and not isl[y, x]), None)
+        if plate is None:
+            continue
+        for x in range(target, e):
+            m[y, x] = True
+            c[y, x] = plate
+            isl[y, x] = False
+        if isl[y, e]:
+            c[y, e] = plate
+            isl[y, e] = False
+        c[y, target] = black
+        isl[y, target] = True
+    return m, c, isl
+
+
 # The cuirass's sides from under the armpit to the rim: WAIST_BY more pixels on each side from row WAIST_FROM
 # (from his neck joint, fine rows) down, the plate continued with his pixels beside the edge and his line at
 # the new edge (the owner, 2026-10-30: "el lateral del estómago con 2 píxeles más de ancho para que no se
@@ -237,8 +279,8 @@ def widened(m, c, isl):
 
 def piece(a, lab, name):
     """A piece of his at our scale, continued under what hides it: (mask, colours, line); his plates read in
-    layers (PLATES); his pauldrons and sleeves grown to cover our shoulder (grown); his cuirass widened at the
-    stomach (widened)."""
+    layers (PLATES); his pauldrons and sleeves grown to cover our shoulder (grown); his cuirass's near side
+    without a notch at the armpit (armpit) and widened at the stomach (widened)."""
     R.more_of = more_of
     R.HIS_JOINTS = JOINTS
     if name in PLATES:
@@ -246,7 +288,7 @@ def piece(a, lab, name):
     else:
         m, c, isl = R.piece(a, lab, name, MAP)
     if name == 'cuirass':
-        return widened(m, c, isl)
+        return armpit(*widened(m, c, isl))
     if name == 'pauldron_n':
         return G.grown(m, c, isl, 'N')
     if name == 'pauldron_f':

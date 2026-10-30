@@ -267,6 +267,15 @@ Merge checks (`git merge-tree` on the origin tips, nothing changed):
   the cuirass's sides now move out 1 px each (2 px of width), his side's curve kept to the pixel and only his
   two 1 px teeth closed; the bulky seam fill stops below the sleeve, so the cuirass's curve stays free of the
   bare arm (`legate_ref.widened` WAIST_BY, `legate.ts` closeArmSeams; `l13-cintura-2px.png`).
+  His marks on l13's attack (2026-10-30, as a rule for every pose and every character): the cuirass's near
+  side under the raised arm made a step at the armpit (his cuirass's armhole, hidden by the arm at rest) and
+  a bare column opened between the pauldron and the sleeve; the side is now continued under the arm, from the
+  collar out one column a row onto the flare's column and straight down to the flare, his plate and line
+  continued (`legate_ref.armpit`), so in every pose the side keeps its line and its curve; and on the far
+  knee the laced shin stood narrow and askew beside a cut thigh: our thigh is never cut at the knee any
+  more, and on a bent leg the thigh's round closes over the laces along the line through the joint, thigh
+  over shin (`feet.ts` legToLacedShin, kneeOverLaces; every pose and frame of the legate looked at on both
+  bodies; `l14-poses-figura.png`).
   His new head (2026-10-30, "usa esta mejor", `general-head-v2-owner-reference.png`: the general's head drawn
   by him at the game's scale) replaces the reduced face and hair: read cell by cell, his face, eyes, brows and
   jaw lines as one piece and his hair as the other, snapped to the palette of the first reading so the head

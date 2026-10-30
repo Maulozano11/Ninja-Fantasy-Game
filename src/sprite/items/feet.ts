@@ -328,13 +328,13 @@ function sandalShinMoving(body: BodyType, s: Side): PaintedPiece {
  * drape), from the knee down to the ankle. Row by row of his piece, our shin keeps only what lies between
  * his piece's ends in that row (under his piece, where it fills any gap the turn leaves in it); above his
  * strap band the knee keeps to the band's width, so its sides run on straight into his laces' line as his
- * knee does. Above the knee joint, within the round of the knee (the ends of our shin and thigh), only
- * what stands in front of his laces' front line is taken: the thigh comes into the knee from behind it,
- * so a bent knee keeps its shape behind that line.
+ * knee does. Above the knee joint, within the round of the knee, the end of our shin keeps only what stands
+ * in front of his laces' front line; our thigh is never cut: it comes whole into the knee, over the laces
+ * (the owner, 2026-10-30, his box on the legate's far knee in the attack: the knee must read as a knee,
+ * thigh over shin, aligned at the joint, in every pose; see kneeOverLaces).
  */
 function legToLacedShin(g: DrawCtx, s: Side, piece: PaintedPiece, at: Vec, deg: number): void {
   const shin = partIndex(`shin${s}`);
-  const thigh = partIndex(`thigh${s}`);
   const { knee, ankle } = legJoints(g.rig, s);
   const dir = norm(sub(ankle, knee));
   const round = (limbR(g, 'leg', 1) + 1) * RES;
@@ -350,12 +350,12 @@ function legToLacedShin(g: DrawCtx, s: Side, piece: PaintedPiece, at: Vec, deg: 
   for (const d of [legDepth(s, 'body'), legDepth(s, 'cloth')]) {
     const L = g.L(d);
     for (let i = 0; i < GRID * GRID; i++) {
-      if (L.mat[i] < 0 || (L.part[i] !== shin && L.part[i] !== thigh)) continue;
+      if (L.mat[i] < 0 || L.part[i] !== shin) continue;
       const x = i % GRID;
       const y = Math.floor(i / GRID);
       const kx = x + 0.5 - knee.x * RES;
       const ky = y + 0.5 - knee.y * RES;
-      const below = L.part[i] === shin && kx * dir.x + ky * dir.y > 0;
+      const below = kx * dir.x + ky * dir.y > 0;
       if (!below && Math.hypot(kx, ky) > round) continue;
       const row = Math.floor(-(x - ax) * sin + (y - ay) * cos + piece.pivot[1] + 0.5);
       const col = Math.floor((x - ax) * cos + (y - ay) * sin + piece.pivot[0] + 0.5);
@@ -365,6 +365,36 @@ function legToLacedShin(g: DrawCtx, s: Side, piece: PaintedPiece, at: Vec, deg: 
       // Under his piece (where the turn spreads it past its ends) no outline of our calf beside it.
       if (covered.has(i)) L.flags[i] |= F_NO_EDGE;
     }
+  }
+}
+
+/** A knee bent this far (degrees) from straight is a bent knee: the thigh's round closes over the laces. */
+const KNEE_BENT = 5;
+
+/**
+ * The knee as a knee when the leg bends: his laced shin, stamped turned to the shin, climbs past the joint on
+ * the outside of the bend and its top row stands narrow beside the thigh's round, a kink at the knee. Where
+ * the laces lie on the thigh's side of the knee (kneeSide) within the round of the knee, and our thigh is
+ * there, they are taken away: the thigh's round closes over the laces, the thigh over the shin, the two
+ * meeting along the line through the joint. A straight leg (at rest) is left as he drew it.
+ */
+function kneeOverLaces(g: DrawCtx, s: Side): void {
+  const { hip, knee, ankle } = legJoints(g.rig, s);
+  const bend = Math.abs(((segAngle(knee, ankle) - segAngle(hip, knee) + 540) % 360) - 180);
+  if (bend < KNEE_BENT) return;
+  const onShin = kneeSide(g, s);
+  const round = (limbR(g, 'leg', 1) + 1) * RES;
+  const shin = partIndex(`shin${s}`);
+  const thighPart = partIndex(`thigh${s}`);
+  const body = g.L(legDepth(s, 'body'));
+  const L = g.L(legDepth(s, 'feet'));
+  for (let i = 0; i < GRID * GRID; i++) {
+    if (L.mat[i] < 0 || L.part[i] !== shin) continue;
+    const x = i % GRID;
+    const y = Math.floor(i / GRID);
+    if (onShin(x, y) || Math.hypot(x + 0.5 - knee.x * RES, y + 0.5 - knee.y * RES) > round) continue;
+    if (body.mat[i] < 0 || body.part[i] !== thighPart) continue;
+    L.mat[i] = -1;
   }
 }
 
@@ -781,11 +811,13 @@ export const FEET_ITEMS: ItemDef[] = [
         // lower leg takes his laced shin's shape, as it does under his Roman paint, so no calf shows beside
         // the laces down to the foot (the owner, 2026-10-30, on the legate's far leg: the ankle out of the
         // sandal). Under his trousers the leg is his own.
-        if (!g.has('bottom', 'bottom_founder')) legToLacedShin(g, s, shin, at, segAngle(knee, ankle));
+        const bare = !g.has('bottom', 'bottom_founder');
+        if (bare) legToLacedShin(g, s, shin, at, segAngle(knee, ankle));
         // Lifted well off the ground (a kick, the run's back leg), either sandal turns with its laced shin about
         // the ankle, as he drew them as one (footTurn: 0 standing, so at rest every pixel is his).
         const turn = moving ? footTurn(g, s, false, SANDAL_LIMITS) : 0;
         stampPiece(g, legDepth(s, 'feet'), shin, at, segAngle(knee, ankle), `shin${s}`, tint, line);
+        if (bare && moving) kneeOverLaces(g, s);
         stampPiece(g, legDepth(s, 'feet'), foot, at, foot.angle + turn, `foot${s}`, tint, line);
         // (the ankle inside the sandal in every pose: the crack between the laces and a foot held flat closed
         // with his laces continued; nothing at rest)

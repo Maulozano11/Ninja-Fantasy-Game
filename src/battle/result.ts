@@ -32,6 +32,7 @@ export function battleResult(s: BattleState): PartyBattleResult {
       effects: u.effects,
       tension: u.stats2.tension,
       ...(u.tripleNature ? { tripleNatureSpent: u.tripleNature.spent } : {}),
+      ...(u.avatarSpent ? { avatarSpent: true } : {}),
     }));
   const enemies = Object.values(s.units)
     .filter((u) => homeTeam(u) === 'enemy' && u.kind !== 'hydra_head')

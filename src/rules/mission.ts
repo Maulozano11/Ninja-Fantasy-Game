@@ -121,6 +121,8 @@ export interface BattleMemberResult {
   tension?: number;
   /** Triple Nature's discount is spent (used in this battle or before it, since the last camp). */
   tripleNatureSpent?: boolean;
+  /** The Colossal Avatar was summoned (once a mission). */
+  avatarSpent?: boolean;
 }
 
 export interface BattleResult {
@@ -220,6 +222,8 @@ export function applyBattleResult(party: PartyState, result: BattleResult, battl
       ch = { ...ch, currentHp: Math.max(0, Math.min(effectiveMaxHp(ch), r.hp)), currentChakra: Math.max(0, Math.min(ch.maxChakra, r.chakra)) };
       // Triple Nature's discount, once per long rest: used in this battle, it waits for the next camp.
       if (r.tripleNatureSpent) ch = { ...ch, tripleNatureSpent: true };
+      // The Colossal Avatar, once a mission: summoned, it waits for the next one.
+      if (r.avatarSpent) ch = { ...ch, avatarSpent: true };
       if (ch.currentHp !== c.currentHp) ev.push({ type: 'hp', who: c.id, delta: ch.currentHp - c.currentHp, hp: ch.currentHp, reason: 'Battle' });
       if (ch.currentChakra !== c.currentChakra) ev.push({ type: 'chakra', who: c.id, delta: ch.currentChakra - c.currentChakra, chakra: ch.currentChakra, reason: 'Battle' });
       const step = (s: Step) => {

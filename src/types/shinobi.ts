@@ -259,6 +259,8 @@ export interface ShinobiCharacter {
    * end of the mission): rules/feats.ts. Missing: ready.
    */
   tripleNatureSpent?: boolean;
+  /** The Colossal Avatar (the Infernal Fire, level 9) was summoned in this mission: once a mission. Missing: ready. */
+  avatarSpent?: boolean;
 }
 
 /** What a ninja chooses at level 5: a second element, or a higher rank of its main element. */

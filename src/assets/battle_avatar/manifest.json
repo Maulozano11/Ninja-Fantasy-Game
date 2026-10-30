@@ -1,0 +1,26 @@
+{
+  "shield": {
+    "h": 660,
+    "rootX": 218,
+    "times": 3.3,
+    "w": 542
+  },
+  "shield_plus": {
+    "h": 809,
+    "rootX": 447,
+    "times": 5.0,
+    "w": 973
+  },
+  "spear": {
+    "h": 660,
+    "rootX": 265,
+    "times": 3.3,
+    "w": 538
+  },
+  "spear_plus": {
+    "h": 809,
+    "rootX": 505,
+    "times": 5.0,
+    "w": 1088
+  }
+}

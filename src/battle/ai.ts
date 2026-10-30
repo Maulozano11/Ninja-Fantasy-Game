@@ -2,7 +2,7 @@
 // Support). It only ever sends ordinary actions through the engine, one at a time, so an AI turn
 // replays and travels over the network like a player's.
 
-import { EMBER_COST, emberOn } from './infernal';
+import { AVATAR, AVATAR_PLUS, EMBER_COST, emberOn, throwBlocker, throwLine } from './infernal';
 import { infernalSteps } from '../rules/paths';
 import { effectMods, hasEffect } from '../rules/effects';
 import type { Action, BattleEvent, BattleState, Cell, Intent, Pt, Unit } from './types';
@@ -15,6 +15,7 @@ import { attackPreview } from './combat';
 import { current } from './turns';
 import { areaValue, bestCell, goalOf, headOptions, ninjaOptions, offensive, planIntent, reachTo, standingUnit, stepToward, swapValue, visibleFoes, WALL, wallCover } from './intent';
 import type { Goal } from './intent';
+import { unitsInArea } from './hazards';
 import { breakable, MAX_STRUCTURES, ownStructures, structureAt, structureAttack, structureBlocker, structureDist } from './structures';
 import { ELEMENTAL_SLASH, IMBUE_COST, imbueBlocker, type ImbueElement, slashBlocker, slashRange, unitImbueElements, WATER_REACH, WEAPON_ELEMENT } from './imbue';
 import { COMMAND, commandRefused, edgeFoe, ownNodes, submissionRefused, SWAP, WARP, warpBlocker, warpLanding, EYE_COST } from './clans';
@@ -88,7 +89,7 @@ function aiTurnAction(s: BattleState): Action | null {
   const out = leaveSteam(s, u, intent);
   if (out) return out;
   if (!intent) return end;
-  return bonusBefore(s, u, intent) ?? edgeStrike(s, u, intent) ?? carryOut(s, u, intent) ?? fallback(s, u) ?? end;
+  return avatarPlay(s, u) ?? bonusBefore(s, u, intent) ?? edgeStrike(s, u, intent) ?? carryOut(s, u, intent) ?? fallback(s, u) ?? end;
 }
 
 function headAction(s: BattleState, u: Unit): Action | null {
@@ -222,6 +223,35 @@ function fallback(s: BattleState, u: Unit): Action | null {
 function bonusBefore(s: BattleState, u: Unit, i: Intent): Action | null {
   if (!u.turn.bonus) return null;
   return ryuseiWarp(s, u, i) ?? emberFirst(s, u, i) ?? imbueFirst(s, u, i) ?? slashAway(s, u, false);
+}
+
+/** How near a foe must be for an AI to summon its Colossal Avatar (m). */
+const AVATAR_NEAR = 12;
+
+/**
+ * The Colossal Avatar (battle/infernal.ts): an AI of the Infernal Fire summons it once foes come
+ * near (the spear when its order is to attack, the shield otherwise), and in the spear stance throws
+ * the spear along a line that takes in foes and no comrade.
+ */
+function avatarPlay(s: BattleState, u: Unit): Action | null {
+  if (!u.turn.action || effectMods(u.effects).noJutsu) return null;
+  const foes = visibleFoes(s, u).filter((f) => standingUnit(f));
+  if (!u.avatar) {
+    const steps = infernalSteps(u.character);
+    if (!steps.colossal || u.avatarSpent || u.chakra < (steps.plus ? AVATAR_PLUS : AVATAR).cost) return null;
+    if (!foes.some((f) => dist(f.pos, u.pos) <= AVATAR_NEAR)) return null;
+    return { type: 'avatar', unit: u.id, stance: u.aiOrder === 'defensive' ? 'shield' : 'spear' };
+  }
+  if (throwBlocker(u)) return null;
+  let best: { at: Pt; n: number } | null = null;
+  for (const f of foes) {
+    const line = throwLine(u, f.pos);
+    const struck = unitsInArea(s, line, [u.id], u.pos);
+    if (struck.some((v) => v.team === u.team)) continue;
+    const n = struck.filter((v) => v.team !== u.team).length;
+    if (n && (!best || n > best.n)) best = { at: { ...f.pos }, n };
+  }
+  return best ? { type: 'avatarThrow', unit: u.id, at: best.at } : null;
 }
 
 /**

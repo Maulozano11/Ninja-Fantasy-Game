@@ -183,6 +183,10 @@ export interface Unit {
    * which a fall wipes. Missing: closed.
    */
   eyeOpen?: boolean;
+  /** The Infernal Fire's Colossal Avatar while it stands (battle/infernal.ts). */
+  avatar?: ColossalAvatar;
+  /** The avatar was summoned already in this mission (once a mission; it comes spent into later battles). */
+  avatarSpent?: boolean;
   /** Damage and HP scale for enemies in Story difficulty (1 = normal). */
   power: number;
   guard?: Guard;
@@ -426,6 +430,8 @@ export interface Hit {
   /** The reactions already offered for this blow and let go (reactions.ts): not asked again. */
   deflectDeclined?: boolean;
   interposeDeclined?: string[];
+  /** Colossal Avatars whose shield let this blow go (battle/infernal.ts). */
+  guardDeclined?: string[];
   /** Taken by a comrade who stepped in front (reactions.ts interpose): whose blow it was meant for. */
   interposedFor?: string;
   /** Knocked down on a failed save (a ninja only: big creatures don't fall). */
@@ -456,6 +462,31 @@ export interface AfterHits {
   resumeWalk?: { unit: string; path: Cell[]; stepIndex: number; skip: string[]; at: Cell };
 }
 
+/** The avatar's two stances (the owner: shield for defence, spear for damage; it stays in the last one used). */
+export type AvatarStance = 'shield' | 'spear';
+
+/** The Colossal Avatar standing over its ninja (battle/infernal.ts; the owner's numbers, D-T24). */
+export interface ColossalAvatar {
+  stance: AvatarStance;
+  /** Its ninja's turns left, this one counted. */
+  turns: number;
+  /** The improved avatar of level 12. */
+  plus: boolean;
+  /** Shield guards left before the ninja's next turn (1, or 2 improved). */
+  guards: number;
+  /** The free stance switch of the improved avatar was used this turn. */
+  freeSwitch?: boolean;
+  /** The spear throw was made this turn (once a turn). */
+  threw?: boolean;
+}
+
+/** Ground the avatar turned to magma, or its spear's line set burning: fire on whoever walks in or starts a turn there (battle/infernal.ts). */
+export interface MagmaCell {
+  rounds: number;
+  by: string;
+  dice: string;
+}
+
 /** A reaction the engine is waiting for (reactions always ask the player). */
 export type PendingReaction =
   | { kind: 'opportunity'; reactor: string; mover: string; path: Cell[]; stepIndex: number; skip: string[] }
@@ -465,6 +496,8 @@ export type PendingReaction =
   | { kind: 'deflect'; reactor: string; hit: Hit; rest: Hit[]; after: AfterHits }
   /** A blow about to land on a comrade beside the reactor: take it instead. */
   | { kind: 'interpose'; reactor: string; hit: Hit; rest: Hit[]; after: AfterHits }
+  /** A blow about to land on a comrade beside a Colossal Avatar in the shield stance: the shield takes it, all of it (battle/infernal.ts). */
+  | { kind: 'avatarGuard'; reactor: string; hit: Hit; rest: Hit[]; after: AfterHits }
   /** The third death save lost (the owner, 2026-10-28, M1): the last stand, a sacrifice or a retreat (battle/lastStand.ts). */
   | { kind: 'lastStand'; reactor: string };
 
@@ -510,6 +543,8 @@ export interface BattleState {
   ice?: Record<string, number>;
   oil?: Record<string, OilCell>;
   mud?: Record<string, number>;
+  /** Magma and burning ground the Colossal Avatar leaves ("c,r"); none in a battle saved before it existed. */
+  magma?: Record<string, MagmaCell>;
   traps: Trap[];
   /** The Ryusei's Weapon Nodes, oldest first. */
   nodes: WeaponNode[];
@@ -533,6 +568,10 @@ export type Action =
   | { type: 'eye'; unit: string }
   /** The Infernal Fire's Ember Armour (bonus action, EMBER_COST chakra, 3 turns; battle/infernal.ts). */
   | { type: 'ember'; unit: string }
+  /** The Colossal Avatar (action, once a mission), summoned in a stance; then the stance switch and the spear's throw at a point. */
+  | { type: 'avatar'; unit: string; stance: AvatarStance }
+  | { type: 'stance'; unit: string; stance: AvatarStance }
+  | { type: 'avatarThrow'; unit: string; at: Pt }
   /** A wooden arm's grapple hook (bonus action): the ninja pulls itself to `at`, within HOOK_RANGE in sight. */
   | { type: 'hook'; unit: string; at: Pt }
   | { type: 'shove'; unit: string; target: string; mode: 'prone' | 'push' }
@@ -583,6 +622,13 @@ export type BattleEvent =
   | { t: 'act'; unit: string; act: 'dash' | 'disengage' | 'dodge' | 'focus' | 'crouch' | 'stand' | 'jump' | 'item' | 'stone' }
   /** The Eye of Tomorrow opens (on) or closes as the Mirai's next turn begins (off). */
   | { t: 'eye'; unit: string; on: boolean }
+  /** The Colossal Avatar rises (or fades), in its stance; `plus`: the improved one. */
+  | { t: 'avatar'; unit: string; on: boolean; stance: AvatarStance; plus: boolean }
+  | { t: 'stance'; unit: string; stance: AvatarStance }
+  /** The shield takes the blow meant for `for`. */
+  | { t: 'avatarGuard'; unit: string; for: string }
+  /** The spear thrown along a line (its targets' saves and damage follow as their own events). */
+  | { t: 'avatarThrow'; unit: string; from: Pt; to: Pt }
   /** `reasons`: why the roll had advantage or disadvantage (the preview's keys: 'aura', 'behind'…). */
   | { t: 'attack'; unit: string; target: string; what: string; roll: RollInfo; ranged: boolean; reasons?: string[] }
   /** `ab`: the ability the save is made with (dex, wis…). */
@@ -632,7 +678,7 @@ export type BattleEvent =
    * fire or wind did it (wet ground turned to steam, steam blown away); unset when it ran out of rounds.
    * `blown`: steam the wind carried off, from this point (it drifts away from it on the screen).
    */
-  | { t: 'ground'; kind: 'wet' | 'steam' | 'ice' | 'oil' | 'blaze' | 'mud'; cells: string[]; on: boolean; by?: string; blown?: Pt }
+  | { t: 'ground'; kind: 'wet' | 'steam' | 'ice' | 'oil' | 'blaze' | 'mud' | 'magma'; cells: string[]; on: boolean; by?: string; blown?: Pt }
   /** Lightning runs across a patch of wet ground (these cells), from where it struck: whose it is. */
   | { t: 'conduct'; cells: string[]; at: Pt; source?: string }
   | { t: 'trap'; trap: Trap; on: boolean }

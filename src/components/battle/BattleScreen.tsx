@@ -17,7 +17,7 @@ import { cellCenter, cellOf, dist, fullCoverBetween, getMap, gridFor, idx, lineO
 import { canStop, occupancy, pathCost, pathTo, reachable } from '../../battle/nav';
 import { foreseen } from '../../battle/intent';
 import { MAX_STRUCTURES, STRUCTURE_AC, breakable, jutsuWallAt, ownStructures, structureAt, structureAttack, structureBlocker, structureDist } from '../../battle/structures';
-import { EMBER_COST, emberOn } from '../../battle/infernal';
+import { AVATAR, AVATAR_PLUS, EMBER_COST, emberOn, throwBlocker, throwLine } from '../../battle/infernal';
 import { infernalSteps } from '../../rules/paths';
 import { auraEntered, commandBlocker, edgeFoe, nodeInSight, nodeUnder, ownNodeAt, ownNodes, submissionBlocker, submissionRefused, swapBlocker, warpAim, warpBlocker, warpLanding } from '../../battle/clans';
 import { KUNAI, KUNAI_LONG, wielded } from '../../battle/units';
@@ -65,6 +65,8 @@ type Mode =
   | { k: 'stone' }
   /** A wooden arm's grapple hook: where to pull to. */
   | { k: 'hook' }
+  /** The Colossal Avatar's spear: where the line goes. */
+  | { k: 'avatarThrow' }
   | { k: 'stabilize' }
   | { k: 'drag'; body: string };
 
@@ -191,7 +193,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
         } else if (ev.t === 'save') {
           // Which save, and for what ("salvación de SAB · Command").
           const save = ev.ab ? T('saveOf', { save: (lg === 'es' ? SAVE_ES : SAVE_EN)[ev.ab] ?? ev.ab }, lg) : '';
-          const what = JUTSU[ev.what] ? jutsuName(ev.what, lg) : '';
+          const what = JUTSU[ev.what] ? jutsuName(ev.what, lg) : ev.what === 'avatar_throw' ? T('act_avatarThrow', undefined, lg) : '';
           setToast({ text: [name(ev.unit), save, what].filter(Boolean).join(' · '), sub: `d20 ${ev.roll.d20} → ${ev.roll.total} ${vs} ${lg === 'es' ? 'CD' : 'DC'} ${ev.roll.dc}`, note: twoDice(ev.roll, undefined, lg), die: ev.roll.d20, ok: good(ev.unit, ev.roll.success) });
         } else if (ev.t === 'deathSave') {
           setToast({ text: name(ev.unit), sub: `d20 ${ev.roll.d20} → ${ev.roll.total} ${vs} ${lg === 'es' ? 'CD' : 'DC'} ${ev.roll.dc}`, die: ev.roll.d20, ok: good(ev.unit, ev.roll.success) });
@@ -627,6 +629,19 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
     } else if (mode.k === 'stone') {
       o.range = { at: actor.pos, radius: STONE_RANGE };
       if (hover?.pt) o.point = { at: hover.pt, ok: dist(actor.pos, hover.pt) <= STONE_RANGE };
+    } else if (mode.k === 'avatarThrow') {
+      // The spear's line, its whole length toward the pointer: who it reaches, comrades warned.
+      const at = hu ? hu.pos : hover?.pt;
+      if (at && dist(actor.pos, at) > 0.3) {
+        const area = throwLine(actor, at);
+        o.area = { shape: area, tone: 'enemy' };
+        const hit = Object.values(s.units).filter((v) => !v.down && v.id !== actor.id && inAreaLoose(area, v) && !fullCoverBetween(s, actor.pos, v.pos));
+        o.targets = hit.filter((v) => v.team !== actor.team).map((v) => v.id);
+        o.warn = hit.filter((v) => v.team === actor.team).map((v) => v.id);
+        label = T('aimHits', { n: hit.length });
+        const line = T('aimSave', { save: lang === 'es' ? SAVE_ES.dex : SAVE_EN.dex, dc: actor.saveDC });
+        sub = o.warn.length ? `${line} · ${T('aimAllies', { n: o.warn.length })}` : line;
+      }
     } else if (mode.k === 'hook') {
       o.range = { at: actor.pos, radius: HOOK_RANGE };
       if (hover?.pt) {
@@ -963,6 +978,9 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
       case 'hook':
         if (pt) act({ type: 'hook', unit: actor.id, at: pt });
         return;
+      case 'avatarThrow':
+        if (u || pt) act({ type: 'avatarThrow', unit: actor.id, at: u ? { ...u.pos } : pt! });
+        return;
       case 'stabilize':
         if (u) act({ type: 'stabilize', unit: actor.id, target: u.id });
         return;
@@ -1063,10 +1081,27 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
           });
         }
       }
-      // The Infernal Fire's Ember Armour (D-T24): a bonus action and EMBER_COST chakra, 3 turns.
-      if (infernalSteps(u.character).ember) {
+      // The Infernal Fire (D-T24): the Ember Armour (a bonus action and EMBER_COST chakra, 3 turns),
+      // then the Colossal Avatar: summoned in a stance (an action, once a mission), its stance
+      // switch and, in the spear stance, the throw.
+      const fire = infernalSteps(u.character);
+      if (fire.ember && !u.avatar) {
         const on = emberOn(u);
         add({ id: 'ember', label: t('act_ember'), iconId: 'ember_armour', icon: ACTION_ICON.focus, disabled: !can.bonus || stealth || u.chakra < EMBER_COST, active: on, why: stealth ? t('r_combatOnly') : !can.bonus ? t('r_noBonus') : t('r_noChakra'), help: t('help_ember') });
+      }
+      if (fire.colossal && !u.avatar) {
+        const cost = (fire.plus ? AVATAR_PLUS : AVATAR).cost;
+        const why = stealth ? t('r_combatOnly') : u.avatarSpent ? t('r_avatarSpent') : !can.action ? noAction : t('r_noChakra');
+        const off = !can.action || stealth || !!u.avatarSpent || u.chakra < cost;
+        const icon = fire.plus ? 'colossal_avatar_plus' : 'colossal_avatar';
+        add({ id: 'avatar:shield', label: t('act_avatarShield'), iconId: icon, icon: ACTION_ICON.focus, disabled: off, why, help: t(fire.plus ? 'help_avatarPlus' : 'help_avatar', { c: cost }) });
+        add({ id: 'avatar:spear', label: t('act_avatarSpear'), iconId: icon, icon: ACTION_ICON.focus, disabled: off, why, help: t(fire.plus ? 'help_avatarPlus' : 'help_avatar', { c: cost }) });
+      }
+      if (u.avatar) {
+        const other = u.avatar.stance === 'shield' ? 'spear' : 'shield';
+        const free = u.avatar.plus && !u.avatar.freeSwitch;
+        add({ id: `stance:${other}`, label: t(other === 'spear' ? 'act_stanceSpear' : 'act_stanceShield'), iconId: other === 'spear' ? 'avatar_stance_spear' : 'avatar_stance_shield', icon: ACTION_ICON.focus, disabled: !free && !can.bonus, why: t('r_noBonus'), help: t(free ? 'help_stanceFree' : 'help_stance') });
+        if (u.avatar.stance === 'spear') add({ id: 'avatarThrow', label: t('act_avatarThrow'), iconId: 'avatar_throw', icon: ACTION_ICON.focus, disabled: !!throwBlocker(u), active: mode.k === 'avatarThrow', why: u.avatar.threw ? t('r_threwAlready') : noAction, help: t(u.avatar.plus ? 'help_avatarThrowPlus' : 'help_avatarThrow') });
       }
       add({ id: 'dash', label: t('act_dash'), icon: ACTION_ICON.dash, disabled: !can.action, why: noAction, help: t('help_dash') });
       add({ id: 'dodge', label: t('act_dodge'), icon: ACTION_ICON.dodge, disabled: !can.action || stealth, why: noAction ?? t('r_combatOnly'), help: t('help_dodge') });
@@ -1156,6 +1191,17 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
         case 'eye':
         case 'ember':
           act({ type: id, unit: u.id });
+          return;
+        case 'avatar:shield':
+        case 'avatar:spear':
+          act({ type: 'avatar', unit: u.id, stance: id === 'avatar:shield' ? 'shield' : 'spear' });
+          return;
+        case 'stance:shield':
+        case 'stance:spear':
+          act({ type: 'stance', unit: u.id, stance: id === 'stance:shield' ? 'shield' : 'spear' });
+          return;
+        case 'avatarThrow':
+          setMode((m) => (m.k === 'avatarThrow' ? { k: 'move' } : { k: 'avatarThrow' }));
           return;
         case 'pill':
           act({ type: 'item', unit: u.id, item: 'pill' });
@@ -1327,6 +1373,10 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
     if (pending.kind === 'deflect') {
       const by = pending.hit.source ? unitRef(state.units[pending.hit.source], lang) : '';
       return { title: T('deflectTitle'), text: T('deflectAsk', { name: unitRef(reactor, lang), dmg: pending.hit.amount, by }) };
+    }
+    if (pending.kind === 'avatarGuard') {
+      const by = pending.hit.source ? unitRef(state.units[pending.hit.source], lang) : '';
+      return { title: T('guardTitle'), text: T('guardAsk', { name: unitRef(reactor, lang), victim: unitRef(state.units[pending.hit.unit], lang), dmg: pending.hit.amount, by, n: reactor.avatar?.guards ?? 0 }) };
     }
     if (pending.kind === 'interpose') {
       const by = pending.hit.source ? unitRef(state.units[pending.hit.source], lang) : '';

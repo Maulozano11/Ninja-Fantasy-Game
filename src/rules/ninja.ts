@@ -153,6 +153,8 @@ export function returnToVillage(c: ShinobiCharacter): Step {
   };
   // Back at the village: Triple Nature's discount is ready again.
   delete fresh.tripleNatureSpent;
+  // ... and the Colossal Avatar (once a mission).
+  delete fresh.avatarSpent;
   fresh.currentHp = effectiveMaxHp(fresh);
   fresh.currentChakra = fresh.maxChakra;
   return { character: fresh, events };
@@ -175,6 +177,7 @@ export function sanitizeMissionFields(c: ShinobiCharacter): ShinobiCharacter {
   out.exhaustion = num(c.exhaustion, 0, 6);
   out.pillsSinceCamp = num(c.pillsSinceCamp, 0, 99);
   out.tripleNatureSpent = c.tripleNatureSpent === true ? true : undefined;
+  out.avatarSpent = c.avatarSpent === true ? true : undefined;
   out.effects = c.effects === undefined ? undefined : sanitizeEffects(c.effects);
   out.scars = strings(c.scars);
   out.traits = strings(c.traits)?.filter((t) => t in TRAITS);

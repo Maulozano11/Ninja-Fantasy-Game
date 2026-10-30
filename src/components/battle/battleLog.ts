@@ -140,6 +140,16 @@ export function logLine(ev: BattleEvent, s: BattleState, lang: Lang, wallOf = (i
       if (ev.lives === undefined) return { text: t('l_sacrifice', { a }), tone: 'text-rose-300 font-bold' };
       return { text: t(ev.lives ? 'l_sacrificeLives' : 'l_sacrificeDies', { a }), tone: ev.lives ? 'text-emerald-300 font-bold' : 'text-rose-400 font-bold' };
     }
+    case 'avatar': {
+      const st = t(ev.stance === 'shield' ? 'st_shield' : 'st_spear');
+      return ev.on ? { text: t(ev.plus ? 'l_avatarPlusOn' : 'l_avatarOn', { a: nameOf(s, ev.unit, lang), st }), tone: 'text-orange-300 font-semibold' } : { text: t('l_avatarOff', { a: nameOf(s, ev.unit, lang) }), tone: 'text-slate-400' };
+    }
+    case 'stance':
+      return { text: t('l_stance', { a: nameOf(s, ev.unit, lang), st: t(ev.stance === 'shield' ? 'st_shield' : 'st_spear') }), tone: 'text-orange-300' };
+    case 'avatarGuard':
+      return { text: t('l_guard', { a: nameOf(s, ev.unit, lang), b: nameOf(s, ev.for, lang) }), tone: 'text-cyan-300' };
+    case 'avatarThrow':
+      return { text: t('l_avatarThrow', { a: nameOf(s, ev.unit, lang) }), tone: 'text-orange-300' };
     case 'interpose':
       return { text: t('l_interpose', { a: nameOf(s, ev.unit, lang), b: nameOf(s, ev.for, lang) }), tone: 'text-cyan-300' };
     case 'sever':
@@ -289,6 +299,8 @@ export function floatLabel(ev: BattleEvent, s: BattleState, lang: Lang): string 
       return ev.choice === 'sacrifice' && ev.lives === undefined ? t('f_sacrifice') : null;
     case 'interpose':
       return t('f_interpose');
+    case 'avatarGuard':
+      return t('f_guard');
     case 'sever':
       return t('severed');
     case 'seal':

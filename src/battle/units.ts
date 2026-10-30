@@ -143,6 +143,8 @@ export function unitFrom(c: ShinobiCharacter, o: UnitOptions): Unit {
     stats2: { critsTaken: 0, critsLanded: 0, pills: 0, fell: false, fellToCrit: false, tension: 0, jutsuCast: 0 },
     skills: skillsOf(c),
     // Triple Nature's discount, once per long rest: spent already if it was used since the last camp.
+    // The Colossal Avatar, once a mission: spent already if it was summoned earlier in it.
+    ...(c.avatarSpent ? { avatarSpent: true } : {}),
     ...(thirdElementOpen(c) ? { tripleNature: { natures: naturesOf(c, natureOf(c)), spent: c.tripleNatureSpent === true } } : {}),
   };
 }

@@ -30,7 +30,7 @@ import type {
   Unit,
 } from './types';
 import { homeTeam } from './types';
-import { cellBlocked, cellCenter, cellOf, clearRun, coverBetween, dampAt, dist, fullCoverBetween, getMap, gridFor, hideSpotAt, idx, inGrid, levelAtPt, lineOfSight, propRules, sameCell, segmentsCross, waterAtPt } from './map';
+import { cellBlocked, cellCenter, cellKey, cellOf, clearRun, coverBetween, dampAt, dist, fullCoverBetween, getMap, gridFor, hideSpotAt, idx, inGrid, levelAtPt, lineOfSight, propRules, sameCell, segmentsCross, waterAtPt } from './map';
 import { canStop, freeSpot, occupancy, pathTo, pathTouchesDeep, reachable, stepCost } from './nav';
 import type { AttackPreview } from './combat';
 import { attackPreview, check, damage, heal, hostileAura, nextRng, passivePerception, PERFECT_HIDE, reveal, revealOutOfHiding, rollDiceExpr, skillMod } from './combat';
@@ -46,7 +46,7 @@ import { conduct, electrify, groundEffects, plantTag, saveHit, springTrap, TAG, 
 import { aiInterposes, canDeflect, deflect, interpose, interposers } from './reactions';
 import { blazeAt, blazeBurns, blowSteam, freeze, iceAt, mire, pathArea, slips, soak, spill } from './ground';
 import { breakable, damageStructure, faceToward, hitStructuresIn, jutsuWallAt, raiseStructure, STRUCTURE_AC, structureAt, structureAttack, structureBlocker } from './structures';
-import { EMBER_BURN, emberArmour, emberBlow, emberOn } from './infernal';
+import { EMBER_BURN, burnLine, emberArmour, emberBlow, emberOn, guard as shieldTakes, guardFor, magmaAt, magmaBurns, numbersOf, setMagma, MAGMA_ROUNDS, summonAvatar, switchStance, throwBlocker, throwLine, unshakable } from './infernal';
 import { addNode, auraEntered, canEvade, command, commandBlocker, enteredAura, evade, leavesNodes, ownNodeAt, spatialSwap, submissionBlocker, submit, swapBlocker, warpBlocker, warpLanding, warpStrike, openEye, WEAPON_THROW, warpAim } from './clans';
 import { goalOf, ninjaOptions, reachTo, replanAgainst } from './intent';
 import { chargedFoe, chargeHolds, crackUnder, endCharge } from './charged';
@@ -260,6 +260,12 @@ function dispatch(s: BattleState, a: Action, ev: BattleEvent[]): string | null {
       return openEye(s, u, ev);
     case 'ember':
       return emberArmour(s, u, ev);
+    case 'avatar':
+      return summonAvatar(s, u, a.stance, ev);
+    case 'stance':
+      return switchStance(s, u, a.stance, ev);
+    case 'avatarThrow':
+      return avatarThrow(s, u, a.at, ev);
     case 'jump':
       return doJump(u, ev);
     case 'hook':
@@ -372,6 +378,8 @@ function provoker(s: BattleState, u: Unit, hop: Pt[], skip: string[]): Unit | un
 function walk(s: BattleState, u: Unit, path: Cell[], from: number, ev: BattleEvent[], skip: string[]): void {
   let at = cellOf(u.pos);
   const pts: Pt[] = [];
+  // the cells the Colossal Avatar steps on, turned to magma once the walk is shown
+  const trail: string[] = [];
   // Ground a charged hand cracked on the way, told right after the steps that cracked it.
   const cracked: string[] = [];
   // Its cracks from its last turn mended as this one began: none yet means these are its first.
@@ -433,7 +441,7 @@ function walk(s: BattleState, u: Unit, path: Cell[], from: number, ev: BattleEve
       break;
     }
     // Ice underfoot (ground.ts): a DEX save or the walker slips, goes down and the walk ends here.
-    if (iceAt(s, next) && !surefooted && !taken(c)) {
+    if (iceAt(s, next) && !surefooted && !taken(c) && !unshakable(u)) {
       flush();
       if (slips(s, u, ev)) {
         u.cond.prone = true;
@@ -449,6 +457,13 @@ function walk(s: BattleState, u: Unit, path: Cell[], from: number, ev: BattleEve
       blazeBurns(s, u, ev);
       if (u.down) break;
     }
+    // So does walking into the avatar's magma (battle/infernal.ts); the avatar leaves it where it steps.
+    if (magmaAt(s, next) && !taken(c)) {
+      flush();
+      magmaBurns(s, u, ev);
+      if (u.down) break;
+    }
+    if (u.avatar) trail.push(cellKey(c));
     // A charged hand within reach of a foe: the blow goes off, and the walk stops there (on a cell
     // the ninja can stand on: never mid-hop).
     if (u.charged && !taken(c) && chargedFoe(s, u)) {
@@ -458,6 +473,7 @@ function walk(s: BattleState, u: Unit, path: Cell[], from: number, ev: BattleEve
     }
   }
   flush();
+  if (trail.length && u.avatar) setMagma(s, trail, u.id, numbersOf(u).magma, MAGMA_ROUNDS, ev);
   // A trap that went off mid-hop: the mover doesn't stay on someone else's cell.
   if (!u.down && taken(cellOf(u.pos))) {
     const was = { ...u.pos };
@@ -721,6 +737,31 @@ function attackStructure(s: BattleState, u: Unit, id: string, ranged: boolean, e
 /** A loud action in the stealth phase starts the fight (unaware guards are surprised). */
 const loud = (s: BattleState, u: Unit): AfterHits => (s.phase === 'stealth' ? { openFightBy: u.id } : {});
 
+/**
+ * The avatar's spear thrown (battle/infernal.ts; an action, once a turn, in the spear stance): a line
+ * of its length from the ninja toward `at`; everyone in it but the ninja makes a DEX save against its
+ * DC, its dice in fire, half on a success; the line burns. Fire does to the ground what fire does.
+ */
+function avatarThrow(s: BattleState, u: Unit, at: Pt, ev: BattleEvent[]): string | null {
+  if (s.phase !== 'combat') return 'combatOnly';
+  const why = throwBlocker(u);
+  if (why) return why;
+  const n = numbersOf(u);
+  const area = throwLine(u, at);
+  u.turn.action = false;
+  u.avatar!.threw = true;
+  if (Math.abs(at.x - u.pos.x) > 0.05) u.facing = at.x > u.pos.x ? 1 : -1;
+  const end = { x: u.pos.x + Math.cos(area.kind === 'line' ? area.dir : 0) * n.throwM, z: u.pos.z + Math.sin(area.kind === 'line' ? area.dir : 0) * n.throwM };
+  ev.push({ t: 'avatarThrow', unit: u.id, from: { ...u.pos }, to: end });
+  const amount = rollDiceExpr(s, n.throwDice);
+  hitStructuresIn(s, area, amount, ev);
+  const hits: Hit[] = unitsInArea(s, area, [u.id], u.pos).map((v) => saveHit(s, v, 'dex', u.saveDC, amount, 'Fire', true, u.id, 'avatar_throw', {}, ev, 'none', maxCritDamage(n.throwDice), u.pos));
+  hits.push(...groundEffects(s, area, 'Fire', ev, new Set(), false, u.id));
+  burnLine(s, u, area, ev);
+  applyHits(s, hits, loud(s, u), ev);
+  return null;
+}
+
 // --- hits, clones, Premonitory Evasion and Kawarimi ----------------------------------------
 
 const KAWARIMI = 'substitution_kawarimi';
@@ -789,6 +830,18 @@ function applyHits(s: BattleState, hits: Hit[], after: AfterHits, ev: BattleEven
         queue.unshift(deflected(s, t, h, ev));
         continue;
       }
+    }
+    // A Colossal Avatar beside the target in the shield stance takes the blow, all of it (battle/infernal.ts):
+    // a player's is asked (it may keep the guard for a harder blow), an AI's always takes it.
+    const shield = blockable ? guardFor(s, h) : null;
+    if (shield) {
+      if (shield.controller === 'player') {
+        s.pending = { kind: 'avatarGuard', reactor: shield.id, hit: h, rest: queue, after };
+        ev.push({ t: 'reactionAsk', pending: s.pending });
+        return;
+      }
+      shieldTakes(shield, h, ev);
+      continue;
     }
     // A comrade beside the target may take the blow instead: a player's is asked, an AI's steps in to protect.
     const guard = blockable ? interposers(s, h) : [];
@@ -871,6 +924,8 @@ function landHit(s: BattleState, t: Unit, h: Hit, ev: BattleEvent[]): void {
   }
   // A wave sweeps it off, a tornado drags it in, and down it goes (ninjas: big creatures stand firm).
   if (t.kind !== 'ninja') return;
+  // The Colossal Avatar's ninja stands firm (battle/infernal.ts).
+  if (unshakable(t)) return;
   if (h.push) sweep(s, t, h, ev);
   if (h.prone && !t.down && !t.cond.prone) {
     t.cond.prone = true;
@@ -1055,6 +1110,13 @@ function react(s: BattleState, unitId: string, take: boolean, ev: BattleEvent[])
     // Taken or not, the blow goes back in the queue (lighter if deflected; a comrade may still step in).
     const h = take && canDeflect(s, t, p.hit) ? deflected(s, t, p.hit, ev) : { ...p.hit, deflectDeclined: true };
     applyHits(s, [h, ...p.rest], p.after, ev, true);
+    return null;
+  }
+  if (p.kind === 'avatarGuard') {
+    if (take && guardFor(s, { ...p.hit, guardDeclined: undefined })?.id === t.id) {
+      shieldTakes(t, p.hit, ev);
+      applyHits(s, p.rest, p.after, ev, true);
+    } else applyHits(s, [{ ...p.hit, guardDeclined: [...(p.hit.guardDeclined ?? []), t.id] }, ...p.rest], p.after, ev, true);
     return null;
   }
   if (p.kind === 'interpose') {
@@ -1692,6 +1754,7 @@ function doShove(s: BattleState, u: Unit, targetId: string, mode: 'prone' | 'pus
   const t = s.units[targetId];
   if (!t || t.down || t.team === u.team) return 'badTarget';
   if (t.kind !== 'ninja') return 'tooBig';
+  if (unshakable(t)) return 'unshakable';
   if (dist(u.pos, t.pos) > 1.6) return 'outOfRange';
   if (fullCoverBetween(s, u.pos, t.pos)) return 'blocked';
   u.turn.action = false;

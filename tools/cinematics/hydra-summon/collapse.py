@@ -15,7 +15,7 @@ os.makedirs(FD, exist_ok=True)
 for f in os.listdir(FD):
     os.remove(os.path.join(FD, f))
 ld = lambda p: np.array(Image.open(p).convert('RGB').resize((VW, VH), Image.LANCZOS)).astype(np.float32)
-DEAD = ld(f'{S}/hydra/col19/dead2.png')
+DEAD = ld(f'{S}/hydra/col19/dead2_char.png')  # his v2 with four stumps charred (char_stumps.py)
 EMPTY = ld(f'{S}/hydra/col14/empty.png')
 REST = rows_of(f'{S}/hydra/col5/grid.png', 130)
 YY, XX = np.mgrid[0:VH, 0:VW].astype(np.float32)
@@ -67,14 +67,48 @@ def dust_step(spawn=0):
         p[3] *= 0.975
 
 
-# 1. alive, then the last blow: it shudders
-for i in range(24):
-    emit(live(i))
-for i in range(14):
-    emit(live(24 + i), shake=6 if i % 4 < 2 else 3)
+# 1. the end of the fight: four stumps already burnt and sealed (his burn sheet's last frame), the
+# fifth head (the front one) is cut off (his cut sheet), and that last cut kills it
+REF = '/home/claude/maulozano11/ninja-fantasy-game/docs/reference'
+def run(script, sheet, tag):
+    ns = {}
+    sys.argv = [script, S, sheet, f'{S}/hydra/out_dead2/_{tag}']
+    exec(open(f'{S}/hydra/{script}').read(), ns)
+    return ns
+NC = run('mount_cut.py', f'{S}/hydra/col8/cut.png', 'cut')
+NB = run('mount_burn.py', f'{S}/hydra/col17/burn.png', 'burn')
+LAST = 4  # the front head
+BURNT = NB['PASS'][-1][0]
+SHB = [-g for g in NB['GAP']]
+def floor_head(r):
+    """the cut sheet's fallen head (below the neck) laid onto the burnt stump's cell"""
+    burnt = np.array(BURNT[r][1]).copy()
+    cut = np.array(NC['PASS'][-1][0][r][1])
+    al = cut[..., 3] > 128
+    t, b2 = NC['band'](al, cut.shape[1] - 48, cut.shape[1] - 12)
+    low = al.copy()
+    low[:b2 + 25] = False
+    burnt[low] = cut[low]
+    return Image.fromarray(burnt, 'RGBA')
+FLOORED = [[BURNT[r][0], floor_head(r)] for r in range(5)]
+def battle(p_cut, i, k_in):
+    rows_c, _, f = NC['PASS'][p_cut]
+    rows = [FLOORED[r] if r != LAST else rows_c[r] for r in range(5)]
+    sh = [SHB[r] if r != LAST else NC['MAXS'][r] * k_in for r in range(5)]
+    return np.array(NC['scene'](rows, 1, sh, i / 60).convert('RGB')).astype(np.float32)
+i = 0
+for _ in range(20):
+    emit(battle(0, i, 0.0)); i += 1
+for p, (_, _, f) in enumerate(NC['PASS']):
+    k_in = 0.0 if f < 2 else (0.5 if f == 2 else 1.0)
+    for _ in range(5 if p < 7 else 3):
+        emit(battle(p, i, k_in), shake=4 if f in (1, 2) else 0); i += 1
+LASTP = len(NC['PASS']) - 1
+for j in range(12):
+    emit(battle(LASTP, i, 1.0), shake=6 if j % 4 < 2 else 3); i += 1
 # 2. it falls: a thick wall of dust rises along its whole body and hides it; under the dust it
 # gives way to his dead picture (no warp: a warped painting shows its seams)
-L = live(38)
+L = battle(LASTP, i, 1.0)
 HY = ndimage.gaussian_filter(((np.abs(L - EMPTY).mean(-1) > 30) | (np.abs(DEAD - EMPTY).mean(-1) > 30)).astype(np.float32), 25)
 def nz(seed, sc):
     r = np.random.default_rng(seed).random((VH // sc + 2, VW // sc + 2)).astype(np.float32)

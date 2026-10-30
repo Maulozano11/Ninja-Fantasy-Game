@@ -71,6 +71,8 @@ export interface EnemySetup {
   rank?: Rank;
   /** Its clan, when the encounter wants another than its template's (docs/CLANS_DESIGN.md, D6). */
   clan?: ClanType;
+  /** Its level, when the battle wants another than its template's. */
+  level?: number;
 }
 
 export interface BattleSetup {
@@ -111,7 +113,7 @@ export function createBattle(setup: BattleSetup): { state: BattleState; events: 
     }
     const n = (count[e.kind] = (count[e.kind] ?? -1) + 1);
     const no = named[nameOf(e)] > 1 ? (seen[nameOf(e)] = (seen[nameOf(e)] ?? 0) + 1) : undefined;
-    const u = enemyUnit(e.kind, n, snap(e.pos), setup.difficulty, { rank: e.rank, clan: e.clan, no });
+    const u = enemyUnit(e.kind, n, snap(e.pos), setup.difficulty, { rank: e.rank, clan: e.clan, no, level: e.level });
     if (setup.stealth) {
       u.guard = { route: (e.route ?? [u.pos]).map(snap), next: 0, suspicion: {}, alerted: false };
       if (e.look !== undefined) u.guard.look = e.look;

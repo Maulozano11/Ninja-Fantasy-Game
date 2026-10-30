@@ -1,7 +1,11 @@
 // AI-only battles on the shipped encounters (docs/CLANS_DESIGN.md, D21): how often each side uses
 // each clan move, and whether the AI ever sends an action the engine refuses or stalls.
 //
-//   npx tsx scripts/ai-battles.ts [battles per encounter = 100] [--party=3] [--only=cedar_rogues,night_raid]
+//   npx tsx scripts/ai-battles.ts [battles per encounter = 100] [--party=3] [--only=cedar_rogues,night_raid] [--level=9]
+//
+// --level=N puts every ninja on both sides at level N (enemies through encounterSetup's enemyLevel,
+// the party re-derived by deriveStats at that level, full HP and chakra): to test abilities of
+// levels the shipped encounters don't reach (today they stop at 6).
 //
 // The party is Solen, Hana, Kenji and Hiro (--party=3: without Hiro, a mission's party), all on
 // the AI and without their S-rank ultimates (which end most fights in the first round). Seeds run
@@ -17,12 +21,19 @@ import { applyAction, createBattle } from '../src/battle/engine';
 import { aiAction } from '../src/battle/ai';
 import { current } from '../src/battle/turns';
 import type { BattleState } from '../src/battle/types';
+import { deriveStats } from '../src/rules/derived';
 
 const args = process.argv.slice(2);
 const flag = (name: string) => args.find((a) => a.startsWith(`--${name}=`))?.split('=')[1];
 const N = Number(args.find((a) => !a.startsWith('--')) ?? 100);
 const only = flag('only')?.split(',') as EncounterId[] | undefined;
-const noUlt = (c: ShinobiCharacter): ShinobiCharacter => ({ ...c, effects: [], selectedJutsus: { ...c.selectedJutsus, slot5Ultimate: '' } });
+const LEVEL = flag('level') ? Number(flag('level')) : undefined;
+const atLevel = (c: ShinobiCharacter): ShinobiCharacter => {
+  if (!LEVEL) return c;
+  const d = deriveStats({ level: LEVEL, stats: c.stats, clan: c.clan, shinobiClass: c.shinobiClass, armor: c.armorStyle, feats: c.selectedFeats ?? [] });
+  return { ...c, ...d, level: LEVEL, currentHp: d.maxHp, currentChakra: d.maxChakra };
+};
+const noUlt = (c: ShinobiCharacter): ShinobiCharacter => atLevel({ ...c, effects: [], selectedJutsus: { ...c.selectedJutsus, slot5Ultimate: '' } });
 const preset = (id: string) => LEGENDARY_PRESETS.find((p) => p.character.id === id)!.character;
 const party = [
   { character: noUlt(preset('preset_founder')), controller: 'ai' as const, aiOrder: 'aggressive' as const },
@@ -56,7 +67,7 @@ for (const id of only ?? (Object.keys(ENCOUNTERS) as EncounterId[])) {
   let unfinished = 0;
   let rounds = 0;
   for (let seed = 1; seed <= N; seed++) {
-    let s: BattleState = createBattle({ ...encounterSetup(id, party, { seed, difficulty: 'normal', supplies: { soldierPills: 2, bandages: 2, antidotes: 1, explosiveTags: 2 } }), stealth: false }).state;
+    let s: BattleState = createBattle({ ...encounterSetup(id, party, { seed, difficulty: 'normal', supplies: { soldierPills: 2, bandages: 2, antidotes: 1, explosiveTags: 2 }, enemyLevel: LEVEL }), stealth: false }).state;
     const seen: Record<Side, Set<string>> = { enemy: new Set(), party: new Set() };
     let last = '';
     let inTurn = 0;

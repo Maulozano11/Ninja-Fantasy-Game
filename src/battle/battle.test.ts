@@ -7,7 +7,19 @@ import { HANA, KENJI, MISSIONS } from '../data/missions';
 import { addEffect } from '../rules/effects';
 import type { ClanType, ShinobiCharacter } from '../types/shinobi';
 import type { Action, BattleEvent, BattleState, Pt, RollInfo, Unit, Wall, WeaponNode } from './types';
-import { applyAction, createBattle } from './engine';
+import { applyAction, createBattle as createBattleClosedEyes } from './engine';
+
+/**
+ * Every battle here opens with the Mirai's Eye of Tomorrow open (the owner, 2026-10-28, N14 "c": the
+ * Eye is off until a bonus action and 1 chakra open it, clans.ts openEye): these tests were written
+ * when the Eye was passive, and they test what it sees, not the opening. The opening itself is
+ * tested in eye.test.ts.
+ */
+const createBattle: typeof createBattleClosedEyes = (setup) => {
+  const out = createBattleClosedEyes(setup);
+  for (const u of Object.values(out.state.units)) if (u.character?.clan === 'Mirai') u.eyeOpen = true;
+  return out;
+};
 import type { BattleSetup } from './engine';
 import { cellBlocked, cellCenter, cellOf, coverBetween, dist, lineOfSight, waterAtPt } from './map';
 import { canStop, reachable } from './nav';
@@ -1371,6 +1383,8 @@ describe('Ryusei: Weapon Nodes, Shooting-Star Thrust, Spatial Swap', () => {
     // A Ryusei rogue 8 m from Aki: its Fireball would reach, but with no Node of its own yet it throws.
     const { state } = createBattle(setup({ enemies: [{ kind: 'rogue', clan: 'Ryusei', pos: { x: 16, z: 10 } }] }));
     const s = turnOf(state, 'rogue_0');
+    // (Aki's reaction spent: a Bukijutsu Master would be asked to deflect the kunai, reactions.test.ts)
+    s.units.a.turn.reaction = false;
     const aki = { ...s.units.a.pos };
     assert.deepEqual([s.units.rogue_0.intent?.kind, s.units.rogue_0.intent?.target], ['ranged', 'a']);
     let t = s;

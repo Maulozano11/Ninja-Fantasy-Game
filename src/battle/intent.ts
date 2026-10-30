@@ -15,7 +15,7 @@ import { JUTSU, MIN_AIM, areaOf, inArea } from './jutsu';
 import type { JutsuSpec } from './jutsu';
 import { passivePerception, saveMod } from './combat';
 import { KUNAI, KUNAI_LONG, wielded } from './units';
-import { COMMAND, FORESIGHT_RANGE, SUBMISSION, SWAP, WARP, commandRefused, ownNodes, submissionRefused, swapBlocker, warpBlocker, warpLanding } from './clans';
+import { COMMAND, FORESIGHT_RANGE, SUBMISSION, SWAP, WARP, commandRefused, ownNodes, submissionRefused, swapBlocker, warpBlocker, warpLanding, eyeOpen } from './clans';
 import { ownStructures, structureAt, structureBlocker } from './structures';
 import { chargedReach } from './charged';
 import { activeImbue, IMBUE_DICE, imbueReach } from './imbue';
@@ -548,8 +548,8 @@ export function replanAgainst(s: BattleState, id: string, ev: BattleEvent[]): vo
   }
 }
 
-/** The Eye of Tomorrow in the party: the Mirai who can read the enemies' next moves. */
-export const miraiSeers = (s: BattleState): Unit[] => Object.values(s.units).filter((u) => u.team === 'party' && !u.down && u.character?.clan === 'Mirai');
+/** The Eye of Tomorrow in the party: the Mirai with the Eye open (clans.ts openEye) who can read the enemies' next moves. */
+export const miraiSeers = (s: BattleState): Unit[] => Object.values(s.units).filter((u) => u.team === 'party' && eyeOpen(u) && u.character?.clan === 'Mirai');
 
 /**
  * An enemy acting on its turn has begun to carry its plan out (it walked, or spent its action or

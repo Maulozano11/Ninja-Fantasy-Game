@@ -11,6 +11,7 @@ import { dampAt } from './map';
 import { blazeBurns, iceAt, steamBurns, tickGround } from './ground';
 import { planEnemy, replanAgainst } from './intent';
 import { chargeHolds, mendCracks, tickCharge } from './charged';
+import { closeEye } from './clans';
 import { imbueHolds, tickImbue } from './imbue';
 
 /** Whether a unit takes turns (heads of the hydra act on their own; fallen ninjas roll death saves). */
@@ -63,6 +64,8 @@ export function beginTurn(s: BattleState, ev: BattleEvent[]): void {
     }
     u.turn = { move: u.speed, action: true, bonus: true, reaction: true, moved: 0 };
     u.cond.dodging = false;
+    // The Eye of Tomorrow closes as the Mirai's next turn begins (clans.ts).
+    closeEye(u, ev);
     // Starting a turn on ice: half speed (ground.ts, the owner's H1).
     if (iceAt(s, u.pos)) u.turn.move = u.speed / 2;
     // Frozen fast (an ice jutsu's save failed): this turn is lost; the ice breaks as it ends.

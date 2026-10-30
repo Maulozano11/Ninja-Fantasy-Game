@@ -177,6 +177,12 @@ export interface Unit {
   turn: TurnBudget;
   controller: 'player' | 'ai';
   aiOrder: AiOrder;
+  /**
+   * The Eye of Tomorrow is open (the owner, 2026-10-28, N14 "c": off by default, a bonus action and
+   * EYE_COST chakra open it until the Mirai's next turn begins; battle/clans.ts). Kept out of `cond`,
+   * which a fall wipes. Missing: closed.
+   */
+  eyeOpen?: boolean;
   /** Damage and HP scale for enemies in Story difficulty (1 = normal). */
   power: number;
   guard?: Guard;
@@ -412,6 +418,11 @@ export interface Hit {
   unblockable?: boolean;
   /** The Mirai let Premonitory Evasion go for this hit (Kawarimi may still be offered). */
   evadeDeclined?: boolean;
+  /** The reactions already offered for this blow and let go (reactions.ts): not asked again. */
+  deflectDeclined?: boolean;
+  interposeDeclined?: string[];
+  /** Taken by a comrade who stepped in front (reactions.ts interpose): whose blow it was meant for. */
+  interposedFor?: string;
   /** Knocked down on a failed save (a ninja only: big creatures don't fall). */
   prone?: boolean;
   /**
@@ -444,7 +455,11 @@ export interface AfterHits {
 export type PendingReaction =
   | { kind: 'opportunity'; reactor: string; mover: string; path: Cell[]; stepIndex: number; skip: string[] }
   | { kind: 'kawarimi'; reactor: string; hit: Hit; rest: Hit[]; after: AfterHits }
-  | { kind: 'evasion'; reactor: string; hit: Hit; rest: Hit[]; after: AfterHits };
+  | { kind: 'evasion'; reactor: string; hit: Hit; rest: Hit[]; after: AfterHits }
+  /** A kunai coming at a Bukijutsu Master: deflect it (battle/reactions.ts). */
+  | { kind: 'deflect'; reactor: string; hit: Hit; rest: Hit[]; after: AfterHits }
+  /** A blow about to land on a comrade beside the reactor: take it instead. */
+  | { kind: 'interpose'; reactor: string; hit: Hit; rest: Hit[]; after: AfterHits };
 
 export interface BattleState {
   version: 1;
@@ -507,6 +522,8 @@ export type Action =
   | { type: 'attack'; unit: string; target: string; ranged?: boolean; knockout?: boolean }
   | { type: 'jutsu'; unit: string; jutsu: string; at: Pt; target?: string; enhanced?: boolean; target2?: string; element?: 'Fire' | 'Lightning' | 'Wind' | 'Water' | 'Earth' }
   | { type: 'dash' | 'disengage' | 'dodge' | 'hide' | 'focus' | 'crouch' | 'jump' | 'draw'; unit: string }
+  /** A Mirai opens the Eye of Tomorrow (bonus action, EYE_COST chakra) until its next turn begins. */
+  | { type: 'eye'; unit: string }
   | { type: 'shove'; unit: string; target: string; mode: 'prone' | 'push' }
   /** `tag` throws an explosive tag at a point; `tagTrap` hides one on the ground there. */
   | { type: 'item'; unit: string; item: 'pill' | 'bandage' | 'antidote' | 'tag' | 'tagTrap'; target?: string; at?: Pt }
@@ -546,8 +563,13 @@ export type BattleEvent =
   | { t: 'pushed'; unit: string; from: Pt; to: Pt; fall: number; what?: string }
   /** A push cut short: the pushed one slams into a wall (a tree, a structure, the map's edge) or into another ninja, at this point. */
   | { t: 'slam'; unit: string; into: 'wall' | string; at: Pt }
+  /** A kunai deflected (the damage it loses; caught and thrown back when it loses it all) or a comrade stepping in front of a blow meant for `for`. */
+  | { t: 'deflect'; unit: string; less: number; caught: boolean }
+  | { t: 'interpose'; unit: string; for: string }
   | { t: 'weapon'; unit: string; armed: boolean; cost: 'free' | 'bonus' }
   | { t: 'act'; unit: string; act: 'dash' | 'disengage' | 'dodge' | 'focus' | 'crouch' | 'stand' | 'jump' | 'item' | 'stone' }
+  /** The Eye of Tomorrow opens (on) or closes as the Mirai's next turn begins (off). */
+  | { t: 'eye'; unit: string; on: boolean }
   /** `reasons`: why the roll had advantage or disadvantage (the preview's keys: 'aura', 'behind'…). */
   | { t: 'attack'; unit: string; target: string; what: string; roll: RollInfo; ranged: boolean; reasons?: string[] }
   /** `ab`: the ability the save is made with (dex, wis…). */

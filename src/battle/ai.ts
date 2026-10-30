@@ -15,7 +15,7 @@ import { areaValue, bestCell, goalOf, headOptions, ninjaOptions, offensive, plan
 import type { Goal } from './intent';
 import { breakable, MAX_STRUCTURES, ownStructures, structureAt, structureAttack, structureBlocker, structureDist } from './structures';
 import { ELEMENTAL_SLASH, IMBUE_COST, imbueBlocker, type ImbueElement, slashBlocker, slashRange, unitImbueElements, WATER_REACH, WEAPON_ELEMENT } from './imbue';
-import { COMMAND, commandRefused, edgeFoe, ownNodes, submissionRefused, SWAP, WARP, warpBlocker, warpLanding } from './clans';
+import { COMMAND, commandRefused, edgeFoe, ownNodes, submissionRefused, SWAP, WARP, warpBlocker, warpLanding, EYE_COST } from './clans';
 
 /** Whether the battle is waiting on the AI (an AI unit's turn in the fighting). */
 export function aiToAct(s: BattleState): boolean {
@@ -52,11 +52,23 @@ function stillValid(s: BattleState, u: Unit, i: Intent | undefined): i is Intent
 
 /** The next action for the AI unit whose turn it is (null when it isn't the AI's turn). */
 export function aiAction(s: BattleState): Action | null {
+  const a = aiTurnAction(s);
+  // Before ending its turn, a Mirai with its bonus action left opens the Eye of Tomorrow (clans.ts): it
+  // stays open through the party's turn, where its Evasion needs it, and closes as its next turn begins.
+  if (a?.type === 'endTurn') {
+    const u = s.units[a.unit];
+    if (u && u.character?.clan === 'Mirai' && !u.eyeOpen && u.turn.bonus && u.chakra >= EYE_COST && s.phase === 'combat' && !effectMods(u.effects).noJutsu) return { type: 'eye', unit: u.id };
+  }
+  return a;
+}
+
+function aiTurnAction(s: BattleState): Action | null {
   if (!aiToAct(s)) return null;
   const u = current(s)!;
   const end: Action = { type: 'endTurn', unit: u.id };
   if (u.kind === 'hydra_body') return end;
   if (u.kind === 'hydra_head') return headAction(s, u) ?? end;
+
   if (!u.turn.action) {
     // After a dash, keep closing in with the extra movement.
     const plan = u.team === 'enemy' ? u.intent : planIntent(s, u);

@@ -304,6 +304,34 @@ D21 and D24 there):
 
 ## Class abilities in battle
 
+### Reactions in the enemy's turn (the owner, 2026-10-28; N15 a of `docs/SPACE_DESIGN.md`)
+
+His: *"pausa y pregunta con cada disparador nuevo (proyectil entrante, enemigo a la vista, aliado
+golpeado)"*, from his sci-fi design brought home. Built on the pause the engine already had for the
+opportunity attack, Premonitory Evasion and Kawarimi (`src/battle/reactions.ts`; the numbers are
+ours until he says otherwise):
+
+- **Deflect the kunai** (*Desviar el kunai*, Bukijutsu Master, reaction, 1 chakra): a kunai thrown
+  at a Bukijutsu Master with a weapon in hand, in the fighting, seen coming (not from hiding, not a
+  warp edge). The blow loses **1d10 + DEX + level**; if it loses it all, **the kunai is caught and
+  thrown straight back** at whoever threw it (a free kunai attack, if in range and in sight). Not
+  against a blade's blow nor a jutsu. The player is asked ("¿Desviarlo con la hoja?"); an AI
+  Bukijutsu Master deflects what would hurt it (the rule it uses for Kawarimi).
+- **Step in front** (*Interponerse*, any ninja, reaction): a blow aimed at a comrade (a blade, a
+  kunai, a single-target jutsu that rolls to hit; not an area, not from hiding, not a warp edge),
+  when the ninja stands **within 1.5 m** of the comrade, on its feet, with its reaction. Taken, the
+  whole blow lands on the ninja instead; its comrade's own Evasion and Kawarimi come first (the
+  target is asked before its comrades). The player is asked ("¿{name} lo recibe en su lugar?");
+  an AI comrade under the *defensive* order steps in when it stands the blow far better than the
+  one meant for it. Nobody is asked twice for one blow.
+- The order of the prompts for one blow: the target's Evasion → the target's Kawarimi → the
+  target's deflection → each comrade in reach, nearest first. Letting one go moves to the next.
+- "Enemigo a la vista" (an enemy walking into sight or reach) is the opportunity attack the game
+  has; a ranged one waits for his answer.
+- The log: "{a} desvía el kunai: {n} menos", "{a} atrapa el kunai y lo devuelve", "{a} se interpone
+  por {b}"; floats "¡Desviado!", "¡Se interpone!".
+
+
 ### Weapon Element Enhancement (the owner, 2026-10-23; in the game since 2026-10-23, every element)
 
 **His answer on the effects (2026-10-23), verbatim:** *"me gusta las armas con mejora elemental metelas en el

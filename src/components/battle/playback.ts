@@ -1971,6 +1971,25 @@ export class Playback {
         if (label) this.float(label, '#c4b5fd', at, now, { rise: 120 });
         return 300;
       }
+      case 'deflect': {
+        // The blade meets the kunai: a spark at the ninja, and the catch holds a beat before the throw back.
+        const v = this.view(ev.unit);
+        if (v) {
+          this.fx.push({ kind: 'burst', element: 'chakra', from: v.pos, to: v.pos, t0: now, dur: 320, lift: [30, 30] });
+          this.setPose(v, 'attack', now, 260);
+        }
+        h.sound('hit');
+        return ev.caught ? 420 : 240;
+      }
+      case 'interpose': {
+        // The comrade braces in front of the one the blow was meant for (it stays where it stands).
+        const v = this.view(ev.unit);
+        if (v) {
+          this.setPose(v, 'guard', now, 500);
+          this.fx.push({ kind: 'burst', element: 'chakra', from: v.pos, to: v.pos, t0: now, dur: 300, lift: [24, 24] });
+        }
+        return 260;
+      }
       case 'pushed': {
         const v = this.view(ev.unit);
         if (!v) return 0;
@@ -2382,6 +2401,16 @@ export class Playback {
       case 'act': {
         if (label) this.float(label, '#e2e8f0', this.posOf(ev.unit, now), now, { rise: 124 });
         return 180;
+      }
+      case 'eye': {
+        // The Eye opens: a red gleam at the Mirai; the marks on the enemies follow from the state.
+        if (ev.on) {
+          const v = this.view(ev.unit);
+          if (v) this.fx.push({ kind: 'aura', element: 'fire', from: v.pos, to: v.pos, t0: now, dur: 700, unit: ev.unit });
+          if (label) this.float(label, '#fda4af', this.posOf(ev.unit, now), now, { rise: 124 });
+          return 300;
+        }
+        return 0;
       }
       case 'intent':
         return 0;

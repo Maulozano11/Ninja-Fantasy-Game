@@ -65,10 +65,16 @@ seal chakra).
 
 Focus: control of position, inevitability and bending the dice.
 
-- **Eye of Tomorrow** (*Ojo del Mañana*, passive). Already in the game as
-  Future Foresight: a Mirai sees the next move of every enemy within 18 m in
-  sight. Now the ground also lights up where each enemy plans to move and what
-  it plans to attack.
+- **Eye of Tomorrow** (*Ojo del Mañana*, **bonus action, 1 chakra**; the owner,
+  2026-10-28, N14 "c" of `docs/SPACE_DESIGN.md`: it used to be passive). Closed
+  at the start of a battle; opened, it stays open **until the Mirai's next turn
+  begins**: the Mirai sees the next move of every enemy within 18 m in sight
+  (whom it will attack, with what, and where it will move: the ground lights up
+  and the marks sit over the enemies), and its Premonitory Evasion can answer a
+  blow it saw coming. Closed, it sees no plan and Evasion has nothing to answer.
+  An AI Mirai opens it with the bonus action it has left before ending its turn,
+  so it is open through the party's turn. (`clans.ts` `openEye`, `closeEye`,
+  `eyeOpen`; the hotbar's "Ojo del Mañana" button.)
 - **Premonitory Evasion** (*Evasión Premonitoria*, reaction, once a round,
   2 chakra). Against an attack on a single target that the Mirai saw coming,
   the Mirai steps 1 square (1.5 m) aside and the attack misses. The step

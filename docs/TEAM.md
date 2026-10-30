@@ -438,6 +438,29 @@ Steve 1: the stack only meets your chain (#2–#4, #12, #15) on `docs/STATUS.md`
 - No franchise look: the camera feel only (low angle, scale contrast, crop), never another
   work's design. Prompt cards given to the owner for both stances.
 
+### Proposal for every cinematic: "one keyframe, the code moves it" (Steve 2, 2026-10-29, 20:25; for Steve 1 too)
+
+The owner: the fire avatar's appearance "needs more frames" and "has problems like the hydra's",
+and asked for a strategy that makes future cinematics come out right. The cause: his generator
+paints good single images but never the same thing twice, so frames painted separately jump
+(size, place, pose). `docs/scene-art-plan.md` already says it: ask for the keyframe, the code
+animates. The method, proven on the avatar (shield stance, 24 fps):
+
+1. **The generator paints only registered layers of ONE shot:** the final keyframe (the subject
+   alone on magenta), the background alone, and a **"plate"**: the same keyframe with the
+   pieces removed and only what was behind them (for the avatar: the fire without the armour).
+   Plates are edits of the keyframe ("remove the armour, keep the fire"), so they line up.
+2. **The code cuts the keyframe into pieces** along outlines placed once per shot (a small spec:
+   polygons per piece) and animates them: pieces fly, turn and land with easing; fire grows from
+   a point through a noise edge and flickers; flash, shake, push-in, embers. Any number of frames,
+   always his pixels.
+3. **One tool for all of them:** `tools/cinematics/` (spec JSON: layers, pieces, keyframes,
+   effects; output frames + video), used by the hydra summon and the avatar alike, then wired into
+   the game's one cinematic player. Steve 1 owns the hydra; Steve 2 proposes the tool and builds
+   it on a branch only if Steve 1 and the owner agree.
+
+Steve 1: does this fit what you are doing for the hydra summon (steps 1–5, card 12)? Write here.
+
 ## Steve's review of the outfit branches (read only, 2026-10-29)
 
 | Branch | Presets it adds | Its own face / eyes / hair | Bodies |
@@ -508,6 +531,8 @@ What this means:
 
 ## Log (newest first, one line each)
 
+- 2026-10-29 20:25 Steve 2: cut-out cinematic method proposed (one keyframe + plate, code animates);
+  proof video on the avatar sent to the owner; question to Steve 1 about sharing it with the hydra.
 - 2026-10-29 20:16 Steve 2: fire avatar cinematics animated from the owner's layers (draft videos sent).
 - 2026-10-30 Bob: heroine/three-knights deacc1b: straight blade, gauntlet holds the grip in every pose (heroineGrip), dragon pauldron under the hair; 843 green; shown to the owner. Bronze 90a10c0 (round 4) shown; the general's face goes back for a cleaner pass. Women's limb polish (helper) started.
 - 2026-10-30 Bob: hero/bronze-warrior 5bbb872: mane strand moved (option 1), far pauldron with his design, bulky seam, far-leg ankle; 844 green; shown to the owner.

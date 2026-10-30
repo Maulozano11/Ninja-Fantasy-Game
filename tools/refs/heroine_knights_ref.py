@@ -1401,12 +1401,44 @@ def set_pieces(fig):
     (complete()), so it is whole when it moves apart from them."""
     rgb, lab = game(fig)
     out = {}
+    tops = {}
     for n in ('torso', 'pauldN', 'pauldF', 'upperN', 'upperF', 'foreN', 'foreF', 'handN', 'handF', 'belt', 'skirt',
               'thighN', 'thighF', 'shinN', 'shinF', 'footN', 'footF', 'cape'):
         m, c = cut(rgb, lab, [n])
+        if m.any():
+            tops[n] = int(np.nonzero(m.any(1))[0].min())
         if n in FILL_AXIS and m.any():
             m, c = complete(lab, n, m, c, FILL_AXIS[n], fig)
         out[n] = (m, c)
+    # beside the neck, above the torso's own top (the collar under his chin): a cell only the torso's
+    # continuation covers, with the near shoulder piece (the pauldron, the rogue's hood) a few pixels to its
+    # left on the same row, is that piece's, in the colour of its nearest pixel on the row: the shoulder reaches
+    # the neck with its own pixels row by row, not the torso in one flat colour (the owner, 2026-10-30:
+    # "se ve muy tosco"). Nothing a piece already has is touched.
+    tm, tc = out['torso']
+    sm, sc = out['pauldN']
+    others = np.zeros((GRID, GRID), bool)
+    for n, (m, _c) in out.items():
+        if n != 'torso':
+            others |= m
+    shoulder = sm.copy()  # (the pauldron as it is: a cell moved here is never a source for the next)
+    if 'torso' in tops:
+        for y, x in zip(*np.nonzero(tm & ~others)):
+            if y >= tops['torso']:
+                continue
+            src = None
+            for k in range(1, 5):
+                xx = x - k
+                if xx < 0:
+                    break
+                if shoulder[y, xx]:
+                    if not is_line(sc[y, xx]):
+                        src = (y, xx)
+                    break
+            if src:
+                tm[y, x] = False
+                sm[y, x] = True
+                sc[y, x] = sc[src]
     # a cell of his head or his hair that no piece covers but that lies between the set's pixels (a seam
     # between the hood and the torso under the strand: the ground would show through under a smaller head)
     # goes to the nearest piece, in its nearest colour (the owner, 2026-10-29: "veo el fondo")

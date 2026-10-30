@@ -18,7 +18,7 @@ const MEN = ['male', 'bulky'] as const;
 type Kinds = Record<string, string>;
 
 /** How wide (fine pixels) a seam between the cuirass and an arm is closed. */
-const SEAM = 3;
+const SEAM = 4;
 
 /**
  * The cuirass joined to the arms: his cuirass is cut to our male torso, and on the bulky body, whose torso is

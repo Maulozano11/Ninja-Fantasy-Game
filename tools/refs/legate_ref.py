@@ -238,15 +238,87 @@ def grown(m, c, isl, side, rows=None, design=None):
     return m, c, isl
 
 
+# The cuirass's sides at the stomach: WAIST_BY more pixels on each side from row WAIST_FROM (from his neck
+# joint, fine rows) down to the rim, the plate continued with his pixels beside the edge and his line at the
+# new edge (the owner, 2026-10-30: "el lateral del estómago con 2 píxeles más de ancho para que no se vea
+# tan flaco con esta armadura"); the row above it one pixel, so the sides run on without a step.
+WAIST_FROM = 10
+WAIST_BY = 2
+
+
+def widened(m, c, isl):
+    """The cuirass with its sides at the stomach WAIST_BY pixels wider on each side (module comment)."""
+    black = np.array(R.LINE)
+    lines = [(y, x) for y, x in zip(*np.nonzero(m & isl))]
+    if lines:
+        tally = {}
+        for q in lines:
+            t = tuple(int(v) for v in c[q])
+            tally[t] = tally.get(t, 0) + 1
+        black = np.array(max(sorted(tally), key=lambda t: tally[t]))
+    jy = int(np.floor(R.fine_joint('neck')[1]))
+    m, c, isl = m.copy(), c.copy(), isl.copy()
+    ys = [int(y) for y in np.nonzero(m.any(1))[0]]
+    # his sides' teeth (a row indented a pixel between its neighbours) come out to its neighbours' edge, so the
+    # widened sides run straight (the owner's standing rule: no notches)
+    edges = {y: (int(np.nonzero(m[y])[0].min()), int(np.nonzero(m[y])[0].max())) for y in ys}
+    for y in ys:
+        dy = y - jy
+        if dy < WAIST_FROM - 1 or (y - 1) not in edges or (y + 1) not in edges:
+            continue
+        x0, x1 = edges[y]
+        lo = max(edges[y - 1][0], edges[y + 1][0])
+        hi = min(edges[y - 1][1], edges[y + 1][1])
+        for x in list(range(lo, x0)) + list(range(x1 + 1, hi + 1)):
+            m[y, x] = True
+            c[y, x] = c[y, x0 if x < x0 else x1]
+            isl[y, x] = isl[y, x0 if x < x0 else x1]
+    for y in ys:
+        dy = y - jy
+        if dy < WAIST_FROM - 1:
+            continue
+        by = WAIST_BY if dy >= WAIST_FROM else WAIST_BY - 1
+        xs = np.nonzero(m[y])[0]
+        x0, x1 = int(xs.min()), int(xs.max())
+        for edge, step in ((x0, -1), (x1, 1)):
+            # his plate just inside the edge's line: what the new pixels continue
+            inner = edge
+            while m[y, inner] and isl[y, inner] and 0 < inner < 255:
+                inner -= step
+            if not m[y, inner]:
+                continue
+            plate = c[y, inner].copy()
+            for k in range(1, by + 1):
+                x = edge + step * k
+                if m[y, x]:
+                    break
+                m[y, x] = True
+                c[y, x] = plate
+                isl[y, x] = False
+            # the old edge line is plate now; the new outermost pixel his line
+            if isl[y, edge]:
+                c[y, edge] = plate
+                isl[y, edge] = False
+            x = edge + step * by
+            while x != edge and not m[y, x]:
+                x -= step
+            c[y, x] = black
+            isl[y, x] = True
+    return m, c, isl
+
+
 def piece(a, lab, name):
     """A piece of his at our scale, continued under what hides it: (mask, colours, line); his plates read in
-    layers (PLATES); his pauldrons and sleeves grown to cover our shoulder (grown)."""
+    layers (PLATES); his pauldrons and sleeves grown to cover our shoulder (grown); his cuirass widened at the
+    stomach (widened)."""
     R.more_of = more_of
     R.HIS_JOINTS = JOINTS
     if name in PLATES:
         m, c, isl = E.piece(a, lab, name, MAP, PLATES[name])
     else:
         m, c, isl = R.piece(a, lab, name, MAP)
+    if name == 'cuirass':
+        return widened(m, c, isl)
     if name == 'pauldron_n':
         return grown(m, c, isl, 'N')
     if name == 'pauldron_f':

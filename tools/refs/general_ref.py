@@ -209,14 +209,23 @@ R.MOTIFS = []
 # spirals, the lion, the plates and the studs read and nothing is a blend.
 BRONZE = ('gold', 'leather', 'skin')
 GOLD = ('gold', 'skin')
+# (the pauldrons: his gold rims and studs in his brightest gold outright and his seams in his darkest, by
+# what covers a pixel alone, so his dense arcs stay apart; his seams sooner than the cuirass's: the owner,
+# 2026-10-30, on the first reading: a wash)
+PAULDRON = dict(delta=20, mark_min=0.38, line_min=0.4, ends=True, land=False)
 PLATES = {
     # the spiral cuirass: his gold lines on his bronze, the dark engraving between them shading the plate
     ('L', 'cuirass'): E.Plate(BRONZE, darks=False, motifs=MOTIFS['L']),
     # the muscle cuirass: his gold plates, their dark seams (the abs, the pecs) as his dark marks
     ('R', 'cuirass'): E.Plate(BRONZE, motifs=MOTIFS['R']),
-    ('L', 'pauldron_n'): E.Plate(BRONZE, darks=False), ('L', 'pauldron_f'): E.Plate(BRONZE, darks=False),
-    ('R', 'pauldron_n'): E.Plate(BRONZE), ('R', 'pauldron_f'): E.Plate(BRONZE),
+    ('L', 'pauldron_n'): E.Plate(BRONZE, **PAULDRON), ('L', 'pauldron_f'): E.Plate(BRONZE, **PAULDRON),
+    ('R', 'pauldron_n'): E.Plate(BRONZE, **PAULDRON), ('R', 'pauldron_f'): E.Plate(BRONZE, **PAULDRON),
 }
+# His face read in layers too (the owner, 2026-10-30: "definirle más las facciones a la cara con 1-2
+# píxeles"): his skin in its shades, his darker tones in thin runs (the brow, the nose's shadow, the mouth:
+# not the shade of the far cheek, which shades the plate) as dark marks laid by cell, his eyes as
+# bronze_ref.reduce reads them (kept).
+FACE = E.Plate(('skin', 'leather', 'gold'), lights=False, delta=24, mark_min=0.3, line_min=0.45, smooth=1, thin=2)
 # His face's eyes and shading: at our scale a pixel is his dark only where his dark half covers this much of
 # it, so his skin comes out smooth in his shades.
 R.DARK_WINS_OF = {'face': 0.45}
@@ -355,7 +364,10 @@ def piece(a, labs, fig, name):
         # (a plate's lone light pixel is his stud or his glint, read by engraved_ref: not a speck)
         m, c, isl = E.piece(a, labs[fig], name, M, PLATES[(fig, name)])
         return whole(m, c, isl, R.his_line(a), specks=False)
-    m, c, isl = R.piece(a, labs[fig], name, M)
+    if name == 'face':
+        m, c, isl = E.piece(a, labs[fig], name, M, FACE, keep=lambda: set(R.EYE_PIXELS))
+    else:
+        m, c, isl = R.piece(a, labs[fig], name, M)
     black = R.his_line(a)
     if name == 'face':
         # his eyes' whites and the greys of his lids off the eye pixels (bronze_ref's eye step): on a face

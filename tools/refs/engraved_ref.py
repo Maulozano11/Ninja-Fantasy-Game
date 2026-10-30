@@ -46,19 +46,32 @@ MARK_TONES = 3
 class Plate:
     """How one piece is read: `plate` the kinds (bronze_ref.kind) its surface is made of; `foreign` the kinds
     that are always marks on it; `by_light` whether a cell that stands out by lightness alone is a mark too
-    (off where his plate's own highlights would be taken for marks); `darks` whether his dark cells are marks
-    (off where his engraving's shadows would clot: they shade the plate instead); `motifs` [(what, centre,
-    radius)] in his cells; `smooth` how many times a pixel's own plate lightness counts against each
-    neighbour's."""
+    (off where his plate's own highlights would be taken for marks); `darks` / `lights` whether his dark /
+    light cells are marks (off where his engraving's shadows would clot, or a face's highlights speckle: they
+    shade the plate instead); `motifs` [(what, centre, radius)] in his cells; `smooth` how many times a
+    pixel's own plate lightness counts against each neighbour's; `mark_min` / `line_min` how much of a pixel
+    his marks / his line must cover to take it (MARK_MIN, LINE_MIN); `thin` whether only his marks in thin runs
+    count (a face: its brow, nose and mouth lines, not the shadow of its far side, which shades the plate); `ends`
+    whether a mark takes his lightest / darkest tone outright (a gold rim on bronze of the same kind, a seam),
+    not the tone nearest its cells' lightness."""
 
-    def __init__(self, plate, foreign=(), by_light=True, darks=True, motifs=(), smooth=2, delta=MARK_DELTA):
+    def __init__(self, plate, foreign=(), by_light=True, darks=True, lights=True, motifs=(), smooth=2, delta=MARK_DELTA, mark_min=MARK_MIN, line_min=None, thin=False, ends=False, land=True):
+        # (`thin`: False, or the size of the solid block of marks that is a mass, not a line; `land`: whether a
+        # mark cell's middle landing on a pixel takes it with less than mark_min of it covered: off where his
+        # marks run dense, so they stay apart instead of merging)
+        self.thin = thin
+        self.land = land
+        self.ends = ends
         self.plate = tuple(plate)
         self.foreign = tuple(foreign)
         self.by_light = by_light
         self.darks = darks
+        self.lights = lights
         self.motifs = list(motifs)
         self.smooth = smooth
         self.delta = delta
+        self.mark_min = mark_min
+        self.line_min = LINE_MIN if line_min is None else line_min
 
 
 def lum(c):
@@ -83,15 +96,15 @@ LINE_MASS = 3
 LINE_MIN = 0.5
 
 
-def thin_lines(lines):
-    """The cells of `lines` outside every solid LINE_MASS x LINE_MASS block of them."""
+def thin_lines(lines, size=None):
+    """The cells of `lines` outside every solid block of them `size` cells square (LINE_MASS)."""
     H, W = lines.shape
-    r = LINE_MASS // 2
+    size = LINE_MASS if size is None else size
     mass = np.zeros((H, W), bool)
-    for y in range(r, H - r):
-        for x in range(r, W - r):
-            if lines[y - r:y + r + 1, x - r:x + r + 1].all():
-                mass[y - r:y + r + 1, x - r:x + r + 1] = True
+    for y in range(0, H - size + 1):
+        for x in range(0, W - size + 1):
+            if lines[y:y + size, x:x + size].all():
+                mass[y:y + size, x:x + size] = True
     return lines & ~mass
 
 
@@ -112,10 +125,13 @@ def marks_of(a, mine, K, cfg, lines=None):
             sign[y, x] = 1 if Lg[y, x] >= mid else -1
         elif not cfg.by_light:
             continue
-        elif Lg[y, x] > mid + cfg.delta:
+        elif cfg.lights and Lg[y, x] > mid + cfg.delta:
             sign[y, x] = 1
         elif cfg.darks and Lg[y, x] < mid - cfg.delta:
             sign[y, x] = -1
+    if cfg.thin:
+        for s_ in (1, -1):
+            sign[(sign == s_) & ~thin_lines(sign == s_, None if cfg.thin is True else cfg.thin)] = 0
     return sign
 
 
@@ -173,10 +189,12 @@ def nearest(ramp, l):
     return min(ramp, key=lambda c: (abs(lum(c) - l), c))
 
 
-def sharp(a, cells_mask, name, m, col, isl, M, cfg):
+def sharp(a, cells_mask, name, m, col, isl, M, cfg, keep=()):
     """The piece's colours again, read in layers (module docstring): `a` his cells (the piece continued under
     what hides it), `cells_mask` which of them are the piece, `m`/`col`/`isl` the piece at our scale from
-    bronze_ref.reduce_piece (its shape and his line are kept; every other pixel is recoloured in place)."""
+    bronze_ref.reduce_piece (its shape and his line are kept; every other pixel is recoloured in place, but
+    the pixels in `keep`: a face's eyes, read by bronze_ref.reduce)."""
+    keep = set(keep)
     H, W = cells_mask.shape
     K = R.kinds(a)
     mine = cells_mask & (K != 'line')
@@ -202,6 +220,8 @@ def sharp(a, cells_mask, name, m, col, isl, M, cfg):
     cover = {}
     mark_l = {}
     for j, i in zip(*np.nonzero(m & ~isl)):
+        if (j, i) in keep:
+            continue
         cells = [(y, x, w) for y, x, w in R.footprint(M, i, j) if 0 <= y < H and 0 <= x < W and mine[y, x]]
         if not cells:
             # (a pixel outside his cells, closed by our line: the plate, in the shade of its neighbours)
@@ -213,8 +233,8 @@ def sharp(a, cells_mask, name, m, col, isl, M, cfg):
         cover[(j, i)] = cv
         got = landed.get((j, i), 0)
         bit = {1: 1, -1: 2, LINE: 4}
-        hit = [s_ for s_ in (1, -1) if cv[s_] >= MARK_MIN or (got & bit[s_] and cv[s_] >= MARK_LAND)]
-        if cv[LINE] >= LINE_MIN:
+        hit = [s_ for s_ in (1, -1) if cv[s_] >= cfg.mark_min or (cfg.land and got & bit[s_] and cv[s_] >= MARK_LAND)]
+        if cv[LINE] >= cfg.line_min:
             hit.append(LINE)
         # (his line through the piece before his marks, his marks before his dark ones)
         s = max(hit, key=lambda s_: (s_ == LINE, cv[s_], s_)) if hit else 0
@@ -251,7 +271,10 @@ def sharp(a, cells_mask, name, m, col, isl, M, cfg):
     for (j, i), s in kind_px.items():
         if s:
             l = mark_l.get((j, i, s))
-            col[j, i] = nearest(tones[s], l) if l is not None else tones[s][len(tones[s]) // 2]
+            if cfg.ends and s in (1, -1):
+                col[j, i] = tones[s][-1] if s == 1 else tones[s][0]
+            else:
+                col[j, i] = nearest(tones[s], l) if l is not None else tones[s][len(tones[s]) // 2]
             if s == LINE:
                 isl[j, i] = True
     # the plate: his material's shade nearest the plate's lightness smoothed with the neighbours' (across the
@@ -341,7 +364,7 @@ def motifs(a, mine, K, m, col, isl, M, cfg, sign):
                 col[q] = line_c if ch == 'L' else plate_c
 
 
-def piece(a, lab, name, M, cfg):
+def piece(a, lab, name, M, cfg, keep=None):
     """A piece of his at our scale read in layers: continued under what hides it as bronze_ref.piece continues
     it (continue_under, more_of, mirrored_up), its shape and his line from bronze_ref.reduce_piece, its colours
     from sharp(): (mask, colours, line)."""
@@ -358,5 +381,5 @@ def piece(a, lab, name, M, cfg):
     m, col, isl = R.reduce_piece(a, lab, name, mask, colours, M)
     aa = np.full(a.shape, 255, np.int32)
     aa[mask] = colours[mask]
-    sharp(aa, mask, name, m, col, isl, M, cfg)
+    sharp(aa, mask, name, m, col, isl, M, cfg, keep() if keep else ())
     return m, col, isl

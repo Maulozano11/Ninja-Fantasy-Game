@@ -793,3 +793,56 @@ patio. Piedras cayendo, brasas sueltas, un resplandor dorado débil al pie de la
 Con estos el juego hace: columna (3) → la columna se rompe (3b) → la nube (4) → la nube con la silueta
 (4b, ya sobre el fondo de la hidra, así el cambio de fondo pasa dentro del humo) → el humo se deshace
 mientras las cinco cabezas salen de la nube y estiran el cuello hasta su lugar. Si 4b sale alineado, opcional un 4c igual pero con el humo a la mitad.
+
+## 13. Barrabás, el villano de la fortaleza (2026-10-29)
+
+Su diseño (`docs/MISSION_DESIGN.md`, "The hydra's fortress"): un Kōton corrupto, aliado de los
+Northstar; los Kōton usan armadura pesada como la de Aiden, los buenos de caballero respetable, los
+corruptos una versión más gótica y oscura. Pelo verde oscuro, diseño propio (nada de personajes de
+franquicias). Su sprite lo hace nuestro motor; del generador sale **su hoja de diseño** (para copiar
+su armadura pieza por pieza, como Aiden) y **su retrato con expresiones** para el monólogo.
+
+**A) La hoja de diseño** (adjunta la referencia de Aiden, `docs/reference/aiden-owner-reference.jpg`, como "misma
+calidad y misma escala de armadura pesada"):
+
+```
+Hoja de diseño de personaje sobre FONDO MAGENTA PURO (#FF00FF), pixel art de 16 bits, mismo estilo,
+misma calidad y misma escala que la imagen adjunta: tres vistas de cuerpo entero del mismo hombre en
+fila, de FRENTE, de TRES CUARTOS mirando a la derecha y de LADO, de pie, separadas por espacio magenta.
+BARRABÁS, comandante villano de un clan de alquimistas: hombre de unos 35 años, alto y ancho de
+hombros, postura arrogante, mentón levantado. Pelo VERDE OSCURO casi negro, corto a los lados y largo
+arriba, peinado hacia atrás con mechones sueltos que le caen sobre la frente; barba corta muy
+recortada; ojos ámbar fríos, cejas gruesas, una cicatriz fina que cruza la ceja izquierda; sonrisa
+de medio lado.
+ARMADURA PESADA GÓTICA Y OSCURA: placas de acero ennegrecido con filos y grabados de cobre envejecido,
+hombreras enormes con púas curvas, peto con un CÍRCULO ALQUÍMICO grabado en el centro (un círculo con
+un triángulo dentro), guanteletes con garras cortas, faldón de placas sobre una túnica de tela verde
+botella muy oscura, capa larga negra rasgada en la orilla con forro verde oscuro. En el cinturón,
+frascos alquímicos de vidrio con líquidos verdes. Sin casco. Arma: una alabarda negra con hoja de
+cobre grabada.
+Paleta corta: negro azulado, acero oscuro, cobre envejecido, verde botella, verde alquímico brillante
+solo en los frascos. Contorno oscuro de 1 píxel. Sin texto, sin sombra en el suelo, nada magenta, rosa
+ni morado en el personaje.
+```
+
+**B) Su retrato con expresiones** (adjunta la hoja A cuando esté hecha):
+
+```
+Hoja de RETRATOS del personaje adjunto sobre FONDO MAGENTA PURO (#FF00FF): 8 retratos de BUSTO (de la
+cintura para arriba) del MISMO hombre, mirando a la IZQUIERDA en tres cuartos, todos del mismo tamaño
+y en la misma posición, en 2 filas de 4, separados por espacio magenta. Pixel art de 16 bits de alta
+calidad para un cuadro de diálogo de novela visual, misma cara, pelo, armadura y paleta que la imagen
+adjunta, detalle de rostro mayor que en el sprite.
+Expresiones, de izquierda a derecha:
+Fila 1: 1 NEUTRAL arrogante, mentón arriba, mirada por encima; 2 SONRISA BURLONA de medio lado;
+3 RIENDO a carcajadas con la cabeza un poco hacia atrás ("¡Ja!"); 4 OJOS ENTRECERRADOS, desconfiado,
+evaluando.
+Fila 2: 5 ENFURECIDO, dientes apretados, venas en la sien; 6 SORPRENDIDO, ojos muy abiertos;
+7 con un CORTE FINO EN LA MEJILLA que sangra un hilo rojo, tocándose la herida con dos dedos del
+guantelete, mirada fría de rabia contenida; 8 extendiendo la mano abierta hacia abajo, palma hacia el
+suelo, con un brillo VERDE ALQUÍMICO en la mano (el momento de invocar).
+Sin texto, sin fondo, nada magenta, rosa ni morado en el dibujo.
+```
+
+Cada expresión tiene su momento del monólogo: 3 "¡Ja! Sabía que vendrían", 2 "...Insolente", 4 la
+opción azul, 6 y 5 la provocación (3b), 7 el kunai a media frase (4a), 8 la invocación.

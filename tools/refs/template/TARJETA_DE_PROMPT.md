@@ -933,3 +933,33 @@ gancho; contorno negro de 1 cuadro, luz de arriba a la izquierda. Sin personaje,
 
 Con A y C se recorta como las piezas de Aiden (una pieza por parte: cabeza, pelo, peto, hombreras,
 guanteletes, cinturón, faldón, grebas, capa); las poses las hace nuestro motor.
+
+## 14. Retratos de los cinco: Aiden primero (2026-10-29)
+
+Los retratos expresivos de las escenas sociales y de diálogo (`docs/WORLD_DESIGN.md`, "Retratos
+expresivos": busto de la cintura para arriba, unas 3 veces la escala del sprite, 8 expresiones) en el
+mismo formato que los de Barrabás v2 (bustos sueltos sobre magenta, nada cortado). Los héroes miran a
+la **DERECHA** (en el diálogo el grupo está a la izquierda y le habla a quien está a la derecha).
+Se adjuntan dos imágenes: su referencia (`docs/reference/aiden-owner-reference.jpg`) y la hoja de
+retratos de Barrabás v2 como formato.
+
+```
+Hoja de RETRATOS del personaje de la PRIMERA imagen adjunta, en el MISMO FORMATO que la SEGUNDA imagen
+(8 bustos sueltos en 2 filas de 4, mismo tamaño de busto y mismo estilo de pixel art de 16 bits de alta
+calidad), sobre FONDO MAGENTA PURO (#FF00FF). Cada busto va COMPLETO y SUELTO dentro de su cuadro, de la
+cintura para arriba, con un margen de magenta de al menos 40 píxeles por los cuatro lados: se ven enteras
+las dos hombreras, los dos brazos y la capa; la orilla de abajo redondeada y limpia, nada cortado por los
+bordes. Todos los bustos del mismo tamaño y a la misma altura, mirando a la DERECHA en tres cuartos.
+AIDEN, exactamente como en la primera imagen: joven caballero, pelo CASTAÑO alborotado en puntas, ojos
+rojizos, armadura de placas de ACERO con filos DORADOS, gola con cadena dorada, capa ROJA. Su espada no
+aparece.
+Expresiones, de izquierda a derecha:
+Fila 1: 1 NEUTRAL, sereno y seguro; 2 CONTENTO, sonrisa franca; 3 NERVIOSO, sonrisa forzada, una gota de
+sudor, rascándose la nuca; 4 ENFADADO, ceño fruncido, dientes apretados.
+Fila 2: 5 TRISTE, mirada baja; 6 SORPRENDIDO, ojos muy abiertos y boca abierta; 7 COQUETO, media sonrisa
+y una ceja levantada, guiñando un ojo; 8 BORRACHO, mejillas rojas, ojos entrecerrados, sonrisa floja.
+Sin texto, nada magenta, rosa ni morado en el dibujo.
+```
+
+Para los otros cuatro (Solen, Romano, Lyra, Aurelia) se repite cambiando el párrafo del personaje y su
+referencia.

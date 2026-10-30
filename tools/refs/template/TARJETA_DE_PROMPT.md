@@ -963,3 +963,105 @@ Sin texto, nada magenta, rosa ni morado en el dibujo.
 
 Para los otros cuatro (Solen, Romano, Lyra, Aurelia) se repite cambiando el párrafo del personaje y su
 referencia.
+
+**Aiden llegó bien** (2026-10-29, `docs/reference/aiden-portraits-owner-reference.png`): los 8 sueltos,
+mirando a la derecha. Desde ahora **su hoja es el formato** (segunda imagen) para los otros cuatro: es
+del mismo grupo y ya mira a la derecha. Lo único que se colaron fueron dos burbujas rosas en el
+borracho; por eso las de abajo piden las burbujas blancas.
+
+### 14b. Solen, Romano, Lyra y Aurelia
+
+Se adjuntan dos imágenes: su referencia (primera) y la hoja de retratos de Aiden (segunda, formato).
+Las cuatro comparten todo menos el párrafo del personaje; ellas llevan las expresiones en femenino.
+
+**Solen** (`docs/reference/solen-owner-reference.jpg`):
+
+```
+Hoja de RETRATOS del personaje de la PRIMERA imagen adjunta, en el MISMO FORMATO que la SEGUNDA imagen
+(8 bustos sueltos en 2 filas de 4, mismo tamaño de busto y mismo estilo de pixel art de 16 bits de alta
+calidad), sobre FONDO MAGENTA PURO (#FF00FF). Cada busto va COMPLETO y SUELTO dentro de su cuadro, de la
+cintura para arriba, con un margen de magenta de al menos 40 píxeles por los cuatro lados: se ven enteros
+los dos hombros, los dos brazos y la capa; la orilla de abajo redondeada y limpia, nada cortado por los
+bordes. Todos los bustos del mismo tamaño y a la misma altura, mirando a la DERECHA en tres cuartos.
+SOLEN, exactamente como en la primera imagen: joven guerrero delgado, pelo NEGRO AZULADO alborotado en
+puntas con mechones sobre la frente, ojos ROJOS, bufanda gris oscuro enrollada al cuello y CAPA NEGRA
+larga; peto de placas de ACERO gris con una correa ROJA cruzada en diagonal, mangas cortas azul marino,
+brazales de acero, una pequeña hombrera blanca en el hombro de atrás; faldón de tiras de cuero café con
+remaches. Su espada de hielo no aparece.
+Expresiones, de izquierda a derecha:
+Fila 1: 1 NEUTRAL, serio y callado; 2 CONTENTO, sonrisa leve y tranquila; 3 NERVIOSO, sonrisa forzada,
+una gota de sudor, rascándose la nuca; 4 ENFADADO, ceño fruncido, dientes apretados.
+Fila 2: 5 TRISTE, mirada baja; 6 SORPRENDIDO, ojos muy abiertos y boca abierta; 7 COQUETO, media sonrisa
+y una ceja levantada, guiñando un ojo; 8 BORRACHO, mejillas rojas, ojos entrecerrados, sonrisa floja,
+dos burbujitas BLANCAS junto a la cabeza.
+Sin texto, nada magenta, rosa ni morado en el dibujo.
+```
+
+**Romano** (`docs/reference/roman-owner-reference.jpg`):
+
+```
+Hoja de RETRATOS del personaje de la PRIMERA imagen adjunta, en el MISMO FORMATO que la SEGUNDA imagen
+(8 bustos sueltos en 2 filas de 4, mismo tamaño de busto y mismo estilo de pixel art de 16 bits de alta
+calidad), sobre FONDO MAGENTA PURO (#FF00FF). Cada busto va COMPLETO y SUELTO dentro de su cuadro, de la
+cintura para arriba, con un margen de magenta de al menos 40 píxeles por los cuatro lados: se ven enteros
+los dos hombros y los dos brazos; la orilla de abajo redondeada y limpia, nada cortado por los bordes.
+Todos los bustos del mismo tamaño y a la misma altura, mirando a la DERECHA en tres cuartos.
+ROMANO, exactamente como en la primera imagen: legionario joven y musculoso, pelo NEGRO AZULADO
+alborotado en puntas, ojos ROJOS, coraza de BRONCE con los músculos marcados, hombreras de cuero café,
+brazos descubiertos y fuertes con brazales de BRONCE, faldón de tiras de cuero café con remaches sobre
+tela ROJA. Sin bufanda ni capa sobre los hombros. No lleva arma.
+Expresiones, de izquierda a derecha:
+Fila 1: 1 NEUTRAL, firme y seguro; 2 CONTENTO, sonrisa franca; 3 NERVIOSO, sonrisa forzada, una gota de
+sudor, rascándose la nuca; 4 ENFADADO, ceño fruncido, dientes apretados.
+Fila 2: 5 TRISTE, mirada baja; 6 SORPRENDIDO, ojos muy abiertos y boca abierta; 7 COQUETO, media sonrisa
+y una ceja levantada, guiñando un ojo; 8 BORRACHO, mejillas rojas, ojos entrecerrados, sonrisa floja,
+dos burbujitas BLANCAS junto a la cabeza.
+Sin texto, nada magenta, rosa ni morado en el dibujo.
+```
+
+**Lyra** (`docs/reference/lyra-owner-reference.jpg`):
+
+```
+Hoja de RETRATOS del personaje de la PRIMERA imagen adjunta, en el MISMO FORMATO que la SEGUNDA imagen
+(8 bustos sueltos en 2 filas de 4, mismo tamaño de busto y mismo estilo de pixel art de 16 bits de alta
+calidad), sobre FONDO MAGENTA PURO (#FF00FF). Cada busto va COMPLETO y SUELTO dentro de su cuadro, de la
+cintura para arriba, con un margen de magenta de al menos 40 píxeles por los cuatro lados: se ven enteros
+los dos hombros, los dos brazos y el pelo largo; la orilla de abajo redondeada y limpia, nada cortado
+por los bordes. Todos los bustos del mismo tamaño y a la misma altura, mirando a la DERECHA en tres
+cuartos.
+LYRA, exactamente como en la primera imagen: espadachina joven, pelo largo PELIRROJO cobrizo y ondulado
+con una TRENZA que cae sobre el hombro, un adorno DORADO y un listón negro en el pelo, ojos VERDES; blusa
+color CREMA de hombros descubiertos con mangas abullonadas, chal GUINDA sobre los hombros, una hombrera
+con filigrana DORADA, corsé de cuero café con hebillas y adornos dorados, cinturón de cuero, brazales
+de cuero. Su espada no aparece.
+Expresiones, de izquierda a derecha:
+Fila 1: 1 NEUTRAL, serena y decidida; 2 CONTENTA, sonrisa franca; 3 NERVIOSA, sonrisa forzada, una gota
+de sudor, jugando con la punta de su trenza; 4 ENFADADA, ceño fruncido, dientes apretados.
+Fila 2: 5 TRISTE, mirada baja; 6 SORPRENDIDA, ojos muy abiertos y boca abierta; 7 COQUETA, media sonrisa
+y una ceja levantada, guiñando un ojo; 8 BORRACHA, mejillas rojas, ojos entrecerrados, sonrisa floja,
+dos burbujitas BLANCAS junto a la cabeza.
+Sin texto, nada magenta, rosa ni morado en el dibujo.
+```
+
+**Aurelia** (`docs/reference/aurelia-owner-reference.jpg`):
+
+```
+Hoja de RETRATOS del personaje de la PRIMERA imagen adjunta, en el MISMO FORMATO que la SEGUNDA imagen
+(8 bustos sueltos en 2 filas de 4, mismo tamaño de busto y mismo estilo de pixel art de 16 bits de alta
+calidad), sobre FONDO MAGENTA PURO (#FF00FF). Cada busto va COMPLETO y SUELTO dentro de su cuadro, de la
+cintura para arriba, con un margen de magenta de al menos 40 píxeles por los cuatro lados: se ven enteros
+los dos hombros, los dos brazos y las mangas; la orilla de abajo redondeada y limpia, nada cortado por
+los bordes. Todos los bustos del mismo tamaño y a la misma altura, mirando a la DERECHA en tres cuartos.
+AURELIA, exactamente como en la primera imagen: hechicera joven, pelo RUBIO recogido en un moño trenzado
+con un adorno DORADO, flequillo de lado y mechones sueltos junto a la cara, ojos AZULES; vestido BLANCO
+con bordados DORADOS, cuello alto y hombros descubiertos, un dije con piedra AZUL al cuello, mangas
+blancas sueltas con filos dorados, faja DORADA en la cintura y un cinturón café con bolsita. Su báculo
+no aparece.
+Expresiones, de izquierda a derecha:
+Fila 1: 1 NEUTRAL, serena y dulce; 2 CONTENTA, sonrisa franca; 3 NERVIOSA, sonrisa forzada, una gota de
+sudor, una mano junto a la mejilla; 4 ENFADADA, ceño fruncido, mejillas infladas.
+Fila 2: 5 TRISTE, mirada baja; 6 SORPRENDIDA, ojos muy abiertos y boca abierta; 7 COQUETA, media sonrisa
+y una ceja levantada, guiñando un ojo; 8 BORRACHA, mejillas rojas, ojos entrecerrados, sonrisa floja,
+dos burbujitas BLANCAS junto a la cabeza.
+Sin texto, nada magenta, rosa ni morado en el dibujo.
+```

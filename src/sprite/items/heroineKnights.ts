@@ -118,6 +118,121 @@ function pruneTips(g: DrawCtx, depth: Depth, part: PartId): void {
   for (const i of tips) L.mat[i] = -1;
 }
 
+/**
+ * How long a bite (fine px along the limb) closeBites fills: a notch no longer than this between two cells of
+ * the piece in the same lane, or between the hip end and the lane's first cell. Long enough for the far
+ * thigh's outer side above his sliver, which at rest is where his far hand hangs (so nothing of the thigh is
+ * continued there in the converter) and opens as a bite of up to 12 px once the hand moves away.
+ */
+const BITE_SPAN = 14;
+
+/**
+ * Closes the bites on a turned thigh (the owner, 2026-10-30: "respetar la figura y forma y evitar esos
+ * 'mordiscos'"): along the limb from the hip to the knee, in each lane beside the axis, a gap of at most
+ * BITE_SPAN cells between two cells of the piece is filled, so each edge of the thigh runs as one smooth
+ * column instead of stepping in and back out where RotSprite turned a stair of his line. A filled cell on
+ * the piece's new edge is his line; one inside takes the colour of the cell next to it toward the axis (his
+ * shading continued across); a cell of his line the fill has left inside takes its inward neighbour's colour
+ * too, so the line moves out to the new edge and never stays as a dark streak. Only the thigh's own cells on
+ * its layer are touched; at his angle the piece is his and this is not called.
+ */
+function closeBites(g: DrawCtx, depth: Depth, part: PartId, hip: Vec, knee: Vec, line: (mat: number) => boolean, lineMat: number): void {
+  const L = g.L(depth);
+  if (!L.used) return;
+  const id = partIndex(part);
+  const ax = hip.x * RES;
+  const ay = hip.y * RES;
+  const dx = (knee.x - hip.x) * RES;
+  const dy = (knee.y - hip.y) * RES;
+  const n = Math.hypot(dx, dy);
+  if (n < 1) return;
+  const ux = dx / n;
+  const uy = dy / n;
+  const px = -uy;
+  const py = ux;
+  // the piece's cells by lane (across) and step (along), and the grid cell of a (step, lane)
+  const lanes = new Map<number, Map<number, number>>();
+  for (let i = 0; i < GRID * GRID; i++) {
+    if (L.mat[i] < 0 || L.part[i] !== id) continue;
+    const x = (i % GRID) + 0.5 - ax;
+    const y = Math.floor(i / GRID) + 0.5 - ay;
+    const st = Math.round(x * ux + y * uy);
+    const u = Math.round(x * px + y * py);
+    let lane = lanes.get(u);
+    if (!lane) lanes.set(u, (lane = new Map()));
+    lane.set(st, i);
+  }
+  const cellAt = (st: number, u: number) => {
+    const x = Math.floor(ax + st * ux + u * px);
+    const y = Math.floor(ay + st * uy + u * py);
+    return x >= 0 && y >= 0 && x < GRID && y < GRID ? y * GRID + x : -1;
+  };
+  const added: number[] = [];
+  // the piece's first step (the hip end) and its width at mid-thigh on each side: a lane within that width
+  // that starts late is open at the top (the far thigh's outer side under his hanging hand), a bite too
+  let top = Infinity;
+  for (const lane of lanes.values()) for (const st of lane.keys()) top = Math.min(top, st);
+  const mid = Math.round(n / 2);
+  const wide = (u: number) => [mid - 1, mid, mid + 1].some((st) => lanes.get(u)?.has(st));
+  const fill = (lane: Map<number, number>, u: number, from: number, to: number, fallback: number) => {
+    for (let st = from; st <= to; st++) {
+      const i = cellAt(st, u);
+      if (i < 0 || L.mat[i] >= 0) continue;
+      // the colour beside it toward the axis and on across it (not his line), else the lane's nearest
+      // cell of his shading along the limb, else the lane's end cell
+      let mat = -1;
+      const dir = u >= 0 ? 1 : -1;
+      for (let k = 1; mat < 0 && k <= BITE_SPAN; k++) {
+        for (const v of [u - k * dir, u + k * dir]) {
+          const j = lanes.get(v)?.get(st) ?? -1;
+          if (mat < 0 && j >= 0 && !line(L.mat[j])) mat = L.mat[j];
+        }
+      }
+      for (let k = 1; mat < 0 && k <= BITE_SPAN; k++) {
+        for (const j of [lane.get(st - k) ?? -1, lane.get(st + k) ?? -1]) if (mat < 0 && j >= 0 && !line(L.mat[j])) mat = L.mat[j];
+      }
+      if (mat < 0) mat = fallback;
+      L.set(i % GRID, (i / GRID) | 0, mat, 3, part, F_NO_TEXTURE | F_NO_OUTLINE);
+      lane.set(st, i);
+      added.push(i);
+    }
+  };
+  for (const [u, lane] of lanes) {
+    const steps = [...lane.keys()].sort((a, b) => a - b);
+    for (let k = 1; k < steps.length; k++) {
+      const gap = steps[k] - steps[k - 1] - 1;
+      if (gap >= 1 && gap <= BITE_SPAN) fill(lane, u, steps[k - 1] + 1, steps[k] - 1, L.mat[lane.get(steps[k - 1])!]);
+    }
+    if (wide(u) && steps[0] - top >= 1 && steps[0] - top <= BITE_SPAN) fill(lane, u, top, steps[0] - 1, L.mat[lane.get(steps[0])!]);
+  }
+  if (!added.length) return;
+  // his line on the new edge: a filled cell with an empty 4-neighbour, and a line cell of his left inside
+  // next to a filled cell takes its inward colour
+  const empty = (i: number) => i < 0 || L.mat[i] < 0;
+  const onEdge = (i: number) => {
+    const x = i % GRID;
+    return empty(x > 0 ? i - 1 : -1) || empty(x < GRID - 1 ? i + 1 : -1) || empty(i >= GRID ? i - GRID : -1) || empty(i + GRID < GRID * GRID ? i + GRID : -1);
+  };
+  for (const i of added) if (onEdge(i)) L.mat[i] = lineMat;
+  for (const i of added) {
+    const x = i % GRID;
+    for (const j of [x > 0 ? i - 1 : -1, x < GRID - 1 ? i + 1 : -1, i - GRID, i + GRID]) {
+      if (j < 0 || j >= GRID * GRID || L.mat[j] < 0 || L.part[j] !== id || !line(L.mat[j]) || onEdge(j)) continue;
+      // the colour of the cell beyond it from the added one (deeper inside the piece)
+      const k = j + (j - i);
+      if (k >= 0 && k < GRID * GRID && L.mat[k] >= 0 && L.part[k] === id && !line(L.mat[k])) L.mat[j] = L.mat[k];
+    }
+  }
+}
+
+/**
+ * How far (fine px) a hand has to have moved from where it hangs at rest for the thigh under it to be closed
+ * (closeBites): at rest his hand hangs over the thigh's side, so the converter continues nothing of the thigh
+ * there and the hand covers the notch; moved away in a pose, the notch would show. Idle's breathing moves
+ * the hands 2 px and keeps his picture.
+ */
+const HAND_AWAY = 4;
+
 /** Whether a limb points another way than at rest (a piece on it is turned, not his pixels in place). */
 const turnedFrom = (now: number, home: number) => Math.round(now - home) % 360 !== 0;
 
@@ -394,7 +509,14 @@ function drawThighs(g: DrawCtx, set: HkSet, c: string[]): void {
     const deg = segAngle(j.hip, j.knee) + (p.angle - segAngle(h.hip, h.knee));
     const bend = kneeBend(g, s);
     stampBent(g, legDepth(s, 'cloth'), pinned(p, rest(M, 'HK_LEGS', set, `THIGH_${s}`), h.hip, `legs|${set}|${s}`), j.hip, deg, `thigh${s}` as PartId, [{ about: j.knee, r: KNEE_R, bend, carry: true }], line, color);
-    if (turnedFrom(deg, p.angle) || Math.abs(bend) >= 1) pruneTips(g, legDepth(s, 'cloth'), `thigh${s}` as PartId);
+    const moved = turnedFrom(deg, p.angle) || Math.abs(bend) >= 1;
+    if (moved) pruneTips(g, legDepth(s, 'cloth'), `thigh${s}` as PartId);
+    const wrist = armJoints(g.rig, s).wrist;
+    const wristHome = armJoints(home, s).wrist;
+    if (moved || Math.hypot(wrist.x - wristHome.x, wrist.y - wristHome.y) * RES > HAND_AWAY) {
+      const lineMats = new Set(Object.keys(kinds).filter((hex) => kinds[hex] === 'line').map((hex) => g.m(hex, 'flat')));
+      closeBites(g, legDepth(s, 'cloth'), `thigh${s}` as PartId, j.hip, j.knee, (m) => lineMats.has(m), g.m(Object.keys(kinds).find((hex) => kinds[hex] === 'line')!, 'flat'));
+    }
   }
 }
 

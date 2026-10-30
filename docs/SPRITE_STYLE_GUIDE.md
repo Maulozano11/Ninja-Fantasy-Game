@@ -237,7 +237,16 @@ the bend at any angle; a boot is continued 2 px up its shin the same way; the co
 piece and the cells within 5 px of the knee (`KNEE_R`, 4 at the elbow) sweep through the bend (`stampBent`
 with `carry`); a far limb he drew only a sliver of is filled from its twin at the same place along and across
 the limb (`LIKE`), never with one flat colour; a part's polygon never takes in the cape or the hem beside the
-limb (`CUT_POLYS`); and a turned piece loses its 1 px tips (`pruneTips`).
+limb (`CUT_POLYS`); and a turned piece loses its 1 px tips (`pruneTips`). **A thigh keeps his figure and
+shape** (the owner, 2026-10-30, after the thighs were widened: "ok ahora solo utiliza la regla en los muslos
+de respetar la figura y forma y evitar esos 'mordiscos' que tiene en algunos"): from the hip to the knee each
+edge of a thigh is one smooth, slightly convex outline, never a bite, a notch where the edge steps in and
+back out over a few pixels. On the heroine knights a turned thigh is closed along the limb (`closeBites`,
+`BITE_SPAN`): in each lane beside the axis a gap between two cells of the piece, or between the hip end and
+the lane's first cell, is filled with his shading continued from beside it and his line moved out to the new
+edge; it also runs when the hand that hangs over the thigh at rest has moved away (`HAND_AWAY`), since the
+converter continues nothing of the thigh under his hand. Checked mechanically (walk both edges along the
+axis; a dip of 1.5 px or more against both neighbours within 4 px is a bite) on every non-idle frame.
 
 **The figure in the striking poses (the owner, 2026-10-30, on the legate's attack 1: "en las poses de
 arrojar tienes el problema de figura, arréglalo y asegúrate que no pase con ninguna pose y ningún futuro

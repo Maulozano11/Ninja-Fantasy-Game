@@ -167,6 +167,9 @@ export function getAppearance(c: ShinobiCharacter): SpriteAppearance {
   return c.appearance ?? appearanceFromLegacy(c);
 }
 
+/** Face shapes cut from the game; a saved look with one loads as `tapered` (the owner, 2026-10-29). */
+export const RETIRED_FACES = new Set(['soft', 'square']);
+
 /**
  * A saved look as today's creator draws it: the headband without what the old metal plate had
  * (`slashed`, `emblem`, `plate`; the owner, 2026-10-22, "deja la pura bandana la pura tela"). Its
@@ -175,12 +178,15 @@ export function getAppearance(c: ShinobiCharacter): SpriteAppearance {
  * owner, 2026-10-22, "quitar el cuello del creador y dejar a todos con el cuello de hoy"): a saved
  * `neck` ('slim' or the thick 'strong') is dropped, and every look has today's slim nape; his Lyra's
  * long neck (`neck: 'long'`, her preset's, not a creator option) is the neck she has today and stays.
- * A look with none of these comes back as it is.
+ * The generic `soft` and `square` faces are gone (the owner, 2026-10-29, "ya no gastes recursos en
+ * ellas"): a look saved with one has the `tapered` face. A look with none of these comes back as it is.
  */
 export function migrateAppearance(look: SpriteAppearance): SpriteAppearance {
   if ((look.body as string) === 'slender') look = { ...look, body: 'female' };
   // a hair cut from the game (items/hair.ts RETIRED_HAIR, 2026-10-28) becomes the plain tousled crown
   if (look.slots?.hair && RETIRED_HAIR.has(look.slots.hair.id)) look = { ...look, slots: { ...look.slots, hair: { ...look.slots.hair, id: 'hair_tousled' } } };
+  // the generic soft and square faces are gone (the owner, 2026-10-29: "son iguales que genérica tapered"): tapered
+  if (RETIRED_FACES.has(look.faceShape as string)) look = { ...look, faceShape: 'tapered' };
   if ('neck' in look && look.neck !== 'long') {
     const { neck: _neck, ...rest } = look as SpriteAppearance & { neck?: unknown };
     look = rest;

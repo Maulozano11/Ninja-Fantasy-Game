@@ -706,14 +706,12 @@ function drawFounderHead(g: DrawCtx): void {
  * Near side of the face (cheek + jaw), columns -7..-1, one per face shape.
  * tapered (default): the cheek drops straight for two rows below the eye,
  *   then the jaw tapers to the chin so the lower face stays small.
- * soft: a fuller cheek, three rows straight before a gentle taper.
- * square: the reference's original strong jaw, with a flat jaw line.
+ * The generic soft and square faces were removed on 2026-10-29 (the owner: "son iguales que
+ * genérica tapered"); a look saved with one loads as tapered (legacy.ts, migrateAppearance).
  * (valiant, night, roman and founder, the owner's heads, are his pixels whole: see drawPaintedHead, drawFounderHead.)
  */
 const FACE_LEFT: Record<Exclude<FaceShape, 'valiant' | 'night' | 'founder' | 'fine' | 'aurelia' | 'roman' | 'base'>, string[]> = {
   tapered: ['osbbbbb', 'ossbbbb', '.osbbbb', '..osbbb', '...osbb', '....osb', '.....os', '......o', '.......', '.......'],
-  soft: ['osbbbbb', 'ossbbbb', 'ossbbbb', '.osbbbb', '..osbbb', '...osbb', '....osb', '.....oo', '.......', '.......'],
-  square: ['osbbbbb', 'ossbbbb', 'osDsbbb', 'ossbbbb', '.osbbbs', '..osbbs', '...osbs', '....ooo', '.......', '.......'],
 };
 
 const faceLeft = (g: DrawCtx): string[] => {

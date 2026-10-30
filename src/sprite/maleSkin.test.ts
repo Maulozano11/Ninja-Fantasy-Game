@@ -378,14 +378,11 @@ describe("the owner's Roman face", () => {
 
   it('keeps the other faces as they were', () => {
     // The other face and eye shapes on the female body (where the male skin does not reach), as the
-    // integration branch draws them (a7a6a10); his Aiden head in the skin he painted it in.
+    // integration branch draws them (a7a6a10); his Aiden head in the skin he painted it in. (The soft and
+    // square faces were removed on 2026-10-29; faceShapes.test.ts checks they load as tapered.)
     const was: Record<string, string> = {
       'female tapered sharp': '62e6dc0d281b890f',
       'female tapered valiant': '11a94e86b7ced661',
-      'female soft sharp': 'c643618465d6ad7a',
-      'female soft valiant': 'aba4d8a1c044b7d1',
-      'female square sharp': '6f88d59803e22806',
-      'female square valiant': 'ad206285a6e47254',
       'female valiant sharp': '8bfb865297281cf0',
       'female valiant valiant': 'bb0b95e313ca5506',
     };

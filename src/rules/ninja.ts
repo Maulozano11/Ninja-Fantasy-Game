@@ -371,9 +371,10 @@ export function dropRemovedJutsus(c: ShinobiCharacter): ShinobiCharacter {
  * - a copy of Ren in his old look given the owner's new Ren (withRensNewLook);
  * - its headband as plain cloth: the old plate's fields dropped (sprite/legacy.ts, migrateAppearance);
  * - a look on the slender body, which is gone, on the female body (migrateAppearance);
- * - a saved neck choice dropped: every look has today's slim nape, Lyra's long neck kept (migrateAppearance).
+ * - a saved neck choice dropped: every look has today's slim nape, Lyra's long neck kept (migrateAppearance);
+ * - a look with the removed `soft` or `square` face on the `tapered` face (migrateAppearance).
  * Hand-made numbers (the presets) keep their hand-made part; the other jutsu stay as they are, and of
- * the look only that old burst, the old Ren, the headband plate, the slender body and the neck change. A sheet that is already today's comes back as it is.
+ * the look only that old burst, the old Ren, the headband plate, the slender body, the neck and a removed face change. A sheet that is already today's comes back as it is.
  */
 export function migrateCharacter(saved: ShinobiCharacter): ShinobiCharacter {
   const c = dropRemovedJutsus(tideToElement(addLegendNatures(updateLegendChakra(tagJutsuToItem(withTodaysLook(withRensNewLook(saved)))))));

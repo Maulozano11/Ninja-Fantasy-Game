@@ -82,7 +82,7 @@ export type HandSize = 'normal' | 'small';
  * her head stands where he drew it, src/sprite/aureliaHead.ts).
  * Or roman, from his Roman paint-over (his whole face with his nose and mouth, in his pixels).
  */
-export type FaceShape = 'tapered' | 'soft' | 'square' | 'valiant' | 'night' | 'founder' | 'fine' | 'aurelia' | 'roman' | 'base';
+export type FaceShape = 'tapered' | 'valiant' | 'night' | 'founder' | 'fine' | 'aurelia' | 'roman' | 'base';
 
 /** Single-choice equipment slots, drawn back-to-front by depth (see compose.ts). */
 export type SlotId =

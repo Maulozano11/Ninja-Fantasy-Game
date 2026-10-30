@@ -313,8 +313,15 @@ unfinished battles still 0), so the fixes changed no outcome there.
 
 ## Later phases: the Paths of Mastery (the owner's design)
 
-Not built yet. Numbers will be proposed and approved before each Path is
-built.
+Not built yet, except the Infernal Fire's three steps (below). Numbers will be
+proposed and approved before each Path is built.
+
+**Choosing a Path (the owner, 2026-10-30: "el camino se elige en el creador de
+personajes pero se desbloquea hasta el nivel 3").** The Path is picked in the
+character creator, among its clan's three, and saved on the character
+(`ShinobiCharacter.path`, `src/rules/paths.ts`). It counts from **level 3**:
+below it the Path is shown but locked, and none of its abilities work. Its
+abilities then arrive at their own levels (the Infernal Fire: 6, 9, 12).
 
 ### Mirai
 
@@ -377,6 +384,18 @@ below; where it adds to them it is marked "2026-10-29":
       switch is free once a turn. Shield: +4 AC (+6 with the armour), half cover
       for allies within 4.5 m, the reaction twice a round. Spear: blows +3d6 fire;
       the throw a 24 m line, 6d10 fire, burning for 2 turns.
+    - **Built (2026-10-30, `src/battle/infernal.ts`).** All three steps play in
+      battle as above, with his battle sprites (`tools/refs/fire-avatar-sprites-from-ref.py`).
+      Points his numbers left open, decided for now and waiting for his word:
+      the magma lasts the rest of the round and one more; it and the burning line
+      deal the magma's dice (1d6, 2d6 improved) to whoever walks in or starts a
+      turn there, and never burn the avatar's own side; the spear's line is 1.5 m
+      wide and hits everyone in it but the ninja (like a line jutsu); the shield's
+      guard is its own reaction (it does not use up the ninja's), comes back as the
+      ninja's turn begins, and the player is asked each time (the AI always takes
+      the blow); the improved avatar's guards and free switch are the same rules
+      counted twice and once a turn; once a mission is kept on the ninja and
+      cleared back at the village.
     - Balance (checked with the game's formulas, the enemy templates raised to the
       level): the 4d10 throw averages about 18 a target (a quarter of a level-9
       enemy's HP; never one shot), the 6d10 about 27 at level 12; a rank S jutsu

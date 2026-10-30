@@ -71,6 +71,7 @@ export const EFFECTS: Record<EffectId, EffectDef> = {
   wood_skin: def({ id: 'wood_skin', name: 'Wood skin', nameEs: 'Piel de madera', kind: 'buff', duration: 'battles', count: 2, description: '+5 temporary HP at the start of each battle.', mods: { tempHpAtBattleStart: 5 } }),
   comrades_bond: def({ id: 'comrades_bond', name: "Comrades' bond", nameEs: 'Lazo de camaradas', kind: 'buff', duration: 'mission', description: '+1 AC within 3 m of the bonded partner.' }),
   encouraged: def({ id: 'encouraged', name: 'Encouraged', nameEs: 'Ánimo', kind: 'buff', duration: 'untilCamp', description: 'The next Tension gain is 1 lower, then it is lost.' }),
+  ember_armour: def({ id: 'ember_armour', name: 'Ember Armour', nameEs: 'Armadura de Brasas', kind: 'buff', duration: 'rounds', count: 3, description: '+2 AC, resistance to fire, weapon blows +1d4 fire, a melee attacker takes 1d6 fire.', mods: { ac: 2 } }),
   will_of_fire: def({ id: 'will_of_fire', name: 'Will of Fire', nameEs: 'Voluntad de Fuego', kind: 'buff', duration: 'mission', description: 'Awakening: +2 to saves, immune to fear.', mods: { saves: 2 } }),
 
   bleeding: def({ id: 'bleeding', name: 'Bleeding', nameEs: 'Sangrando', kind: 'debuff', duration: 'untilTreated', curedBy: ['bandage', 'close_tenketsu'], description: '1d4 damage per round in battle and per road leg.' }),

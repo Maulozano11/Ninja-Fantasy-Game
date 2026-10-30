@@ -9,6 +9,7 @@ import { homeTeam } from './types';
 import { check, damage, deathSave, nextRng, releaseCommand, rollDiceExpr } from './combat';
 import { dampAt } from './map';
 import { blazeBurns, iceAt, steamBurns, tickGround } from './ground';
+import { avatarTurnEnds, avatarTurnStarts, magmaBurns, tickMagma } from './infernal';
 import { planEnemy, replanAgainst } from './intent';
 import { chargeHolds, mendCracks, tickCharge } from './charged';
 import { closeEye } from './clans';
@@ -66,6 +67,8 @@ export function beginTurn(s: BattleState, ev: BattleEvent[]): void {
     u.cond.dodging = false;
     // The Eye of Tomorrow closes as the Mirai's next turn begins (clans.ts).
     closeEye(u, ev);
+    // The Colossal Avatar's guards, free switch and throw come back (infernal.ts).
+    avatarTurnStarts(u);
     // Starting a turn on ice: half speed (ground.ts, the owner's H1).
     if (iceAt(s, u.pos)) u.turn.move = u.speed / 2;
     // Frozen fast (an ice jutsu's save failed): this turn is lost; the ice breaks as it ends.
@@ -127,6 +130,7 @@ export function beginTurn(s: BattleState, ev: BattleEvent[]): void {
     if (u.effects.some((e) => e.id === 'burning')) damage(s, u, rollDie(nextRng(s), 6), 'Fire', {}, ev);
     steamBurns(s, u, ev);
     blazeBurns(s, u, ev);
+    magmaBurns(s, u, ev);
     chargeHolds(u, false, ev);
     imbueHolds(u, false, ev);
     if (u.down) {
@@ -168,6 +172,7 @@ export function endTurn(s: BattleState, ev: BattleEvent[]): void {
     const tick = tickRound(u.effects);
     u.effects = tick.effects;
     for (const id of tick.expired) ev.push({ t: 'effect', unit: u.id, effect: id, on: false });
+    avatarTurnEnds(u, ev);
     if (u.cond.hidden !== undefined && !u.cond.crouched && u.cond.perfectHide === undefined) u.cond.hidden = undefined;
     // A warp edge not struck with is gone.
     if (u.cond.warpEdge) u.cond.warpEdge = false;
@@ -215,6 +220,7 @@ function advance(s: BattleState, ev: BattleEvent[]): void {
     mendCracks(s, undefined, ev);
     // Wet ground dries and steam thins away.
     tickGround(s, ev);
+    tickMagma(s, ev);
     // Gales on the ground die down.
     if (s.zones?.length)
       s.zones = s.zones.filter((z) => {

@@ -1501,10 +1501,16 @@ export function drawElementGround(ctx: CanvasRenderingContext2D, sc: Scene): voi
   const ice = groundShown(sc, 'ice');
   const oil = groundShown(sc, 'oil');
   const mud = groundShown(sc, 'mud');
-  if (!ice.length && !oil.length && !mud.length) return;
+  const magma = groundShown(sc, 'magma');
+  if (!ice.length && !oil.length && !mud.length && !magma.length) return;
   const { map } = sc;
   ctx.save();
   if (mud.length) fillGround(ctx, sc, mud, '#4a3418', [0.3, 0.55]);
+  // The Colossal Avatar's magma (battle/infernal.ts): dark crust over a glowing orange ground; its flames are blazeItems'.
+  if (magma.length) {
+    fillGround(ctx, sc, magma, '#3a0f06', [0.4, 0.7]);
+    fillGround(ctx, sc, magma, '#ff6a1a', [0.18, 0.32 + 0.08 * Math.sin(sc.now / 260)]);
+  }
   if (oil.length) {
     fillGround(ctx, sc, oil, '#0a0806', [0.35, 0.7]);
     // an oily shimmer: a coloured glint on a few cells
@@ -1534,7 +1540,8 @@ export function drawElementGround(ctx: CanvasRenderingContext2D, sc: Scene): voi
 
 /** Blazing oil (the owner's H4): tongues of flame on every burning cell, in the depth list with whoever stands in them. */
 function blazeItems(ctx: CanvasRenderingContext2D, sc: Scene): DepthItem[] {
-  const cells = groundShown(sc, 'blaze');
+  // the avatar's magma and burning line flicker like blazing oil
+  const cells = [...groundShown(sc, 'blaze'), ...groundShown(sc, 'magma')];
   if (!cells.length) return [];
   const { map } = sc;
   const out: DepthItem[] = [];

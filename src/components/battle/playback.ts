@@ -2,6 +2,7 @@
 // striking and casting, damage numbers, effects, banners and sounds. The engine has already
 // decided everything; this only paces it so it can be watched.
 
+import type { AvatarStance } from '../../battle/types';
 import type { AreaShape, BattleEvent, BattleState, Down, GaleZone, Pt, Unit, Wall, WeaponNode } from '../../battle/types';
 import type { RollInfo } from '../../battle/types';
 import { CLICK_MS, IMPACT, WINDOW, dieLife } from '../dice/diceData';
@@ -23,9 +24,12 @@ import { bendsOf, seedOf } from './paths';
 import { CRESCENT, crescentStart, effectLands, vortexAt } from './stagePlan';
 import { edgeFoe } from '../../battle/clans';
 
+/** How long the Colossal Avatar takes to rise over its ninja (ms). */
+export const AVATAR_RISE = 900;
+
 /** The kinds of ground the elements leave (battle/ground.ts), as the state keeps them. */
-export type GroundKind = 'wet' | 'steam' | 'ice' | 'oil' | 'blaze' | 'mud';
-export const GROUND_KINDS: readonly GroundKind[] = ['wet', 'steam', 'ice', 'oil', 'blaze', 'mud'];
+export type GroundKind = 'wet' | 'steam' | 'ice' | 'oil' | 'blaze' | 'mud' | 'magma';
+export const GROUND_KINDS: readonly GroundKind[] = ['wet', 'steam', 'ice', 'oil', 'blaze', 'mud', 'magma'];
 /** The cells of a kind of ground in the state (a blaze is the oil that is burning). */
 export function groundOf(state: BattleState, kind: GroundKind): Record<string, unknown> {
   if (kind === 'blaze') return Object.fromEntries(Object.entries(state.oil ?? {}).filter(([, o]) => o.blazing));
@@ -83,6 +87,8 @@ export interface UnitView {
   imbue?: 'Fire' | 'Lightning' | 'Wind' | 'Water' | 'Earth';
   /** When the element went onto the weapon: its activation plays from `t0` to `end` (renderer.ts). */
   imbueAct?: { t0: number; end: number };
+  /** The Colossal Avatar standing over it (battle/infernal.ts): its stance, the improved one, when it rose or changed stance, when it began to fade. */
+  avatar?: { stance: AvatarStance; plus: boolean; t0: number; switched?: number; gone?: number };
 }
 
 /**
@@ -422,7 +428,7 @@ export class Playback {
    * When each wet cell and each steam cell ("c,r") showed up on the screen (the wave's cells as its
    * crest goes over them), and the ones drying or thinning away (from when their event played).
    */
-  groundBorn = { wet: new Map<string, number>(), steam: new Map<string, number>(), ice: new Map<string, number>(), oil: new Map<string, number>(), blaze: new Map<string, number>(), mud: new Map<string, number>() };
+  groundBorn = { wet: new Map<string, number>(), steam: new Map<string, number>(), ice: new Map<string, number>(), oil: new Map<string, number>(), blaze: new Map<string, number>(), mud: new Map<string, number>(), magma: new Map<string, number>() };
   groundGone: { kind: GroundKind; cells: string[]; t0: number; blown?: Pt }[] = [];
   /** Kōton structures that crumbled or broke, sinking out of sight (from when their event played). */
   fallen: { wall: Wall; t0: number }[] = [];
@@ -521,6 +527,7 @@ export class Playback {
         // A charged hand keeps its lightning (the activated Chidori).
         held: u.charged && !u.down ? (v?.held?.charged ? v.held : chargedHeld(u, now)) : undefined,
         imbue: u.imbued && !u.down ? u.imbued.element : undefined,
+        avatar: u.avatar && !u.down ? { stance: u.avatar.stance, plus: u.avatar.plus, t0: v?.avatar?.t0 ?? now - 5000 } : undefined,
       };
       this.views.set(u.id, next);
       const mantle = JUTSU.wind_breeze_mantle;
@@ -2403,6 +2410,42 @@ export class Playback {
       case 'act': {
         if (label) this.float(label, '#e2e8f0', this.posOf(ev.unit, now), now, { rise: 124 });
         return 180;
+      }
+      case 'avatar': {
+        // The Colossal Avatar rises from the ninja's feet (its summon cinematic plays first, on the screen), or fades to embers.
+        const v = this.view(ev.unit);
+        if (!v) return 0;
+        if (ev.on) {
+          v.avatar = { stance: ev.stance, plus: ev.plus, t0: now };
+          this.setPose(v, 'cast', now, 900);
+          this.fx.push({ kind: 'aura', element: 'fire', from: v.pos, to: v.pos, t0: now, dur: 1100, unit: ev.unit });
+          if (label) this.float(label, '#fdba74', this.posOf(ev.unit, now), now, { rise: 124 });
+          h.sound('hit');
+          return AVATAR_RISE;
+        }
+        if (v.avatar) v.avatar = { ...v.avatar, gone: now };
+        return 300;
+      }
+      case 'stance': {
+        const v = this.view(ev.unit);
+        if (v?.avatar) v.avatar = { ...v.avatar, stance: ev.stance, switched: now };
+        return 350;
+      }
+      case 'avatarGuard': {
+        // The shield takes the blow: a flash where it lands, the comrade untouched.
+        const v = this.view(ev.for);
+        if (v) this.fx.push({ kind: 'burst', element: 'fire', from: v.pos, to: v.pos, t0: now, dur: 380, lift: [40, 40] });
+        if (label) this.float(label, '#fdba74', this.posOf(ev.for, now), now, { rise: 110 });
+        h.sound('hit');
+        return 320;
+      }
+      case 'avatarThrow': {
+        // The spear flies the whole line from high on the avatar.
+        const v = this.view(ev.unit);
+        if (v) v.facing = ev.to.x >= ev.from.x ? 1 : -1;
+        this.fx.push({ kind: 'line', element: 'fire', from: ev.from, to: ev.to, t0: now + 200, dur: 900, lift: [160, 40], beam: { grow: 300, fade: 300 } });
+        h.sound('hit');
+        return 700;
       }
       case 'eye': {
         // The Eye opens: a red gleam at the Mirai; the marks on the enemies follow from the state.

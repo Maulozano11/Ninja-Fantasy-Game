@@ -2,6 +2,7 @@
 // overlays (reach, path, areas, vision cones, intents), jutsu effects, numbers and the night.
 // One world pixel is drawn as `k` device pixels (an integer), so the pixel art stays crisp.
 
+import { avatarArt } from './avatarArt';
 import type { AreaShape, BattleState, Cell, Intent, PropDef, Pt, Trap, Unit, Wall, WeaponNode } from '../../battle/types';
 import { homeTeam } from '../../battle/types';
 import type { MapDef } from '../../battle/map';
@@ -14,7 +15,7 @@ import { worldSprite } from '../world/WorldSpriteView';
 import type { MapArt } from './mapArt';
 import type { Fx, Playback, UnitView } from './playback';
 import type { WarpTimes } from './playback';
-import { CRACK_FADE, FALL_MS, PHASE_DASH, PHASE_IN, PHASE_OUT, phaseDash, RISE_MS, WARP_FRAME, WARP_THRUST, warpDash, warpTimes } from './playback';
+import { AVATAR_RISE, CRACK_FADE, FALL_MS, PHASE_DASH, PHASE_IN, PHASE_OUT, phaseDash, RISE_MS, WARP_FRAME, WARP_THRUST, warpDash, warpTimes } from './playback';
 import type { Lang } from '../../i18n';
 import { unitName } from './battleLog';
 import { bodyCenterDx, catchLookOf, FEET, fpsOf, framesOf, hasPhaseFrame, hasReleaseClear, hasThrownFrame, hasUnitFrame, lookOf, phaseFrameOf, releaseClearOf, STRIDE, thrownFrame, unitFrame } from './unitArt';
@@ -217,6 +218,8 @@ export function drawBattle(ctx: CanvasRenderingContext2D, sc: Scene): void {
     const pos = sc.pb.posOf(u.id, sc.now);
     // A Ryusei thrusting at the foe beside it in its Shooting-Star Thrust is drawn over it, so the thrust shows.
     items.push({ z: pos.z + (v.warp ? 0.03 : 0.01), draw: () => drawUnit(ctx, sc, u, pos) });
+    // The Colossal Avatar rises behind its ninja, the root of its fire at his feet (battle/infernal.ts).
+    if (v.avatar) items.push({ z: pos.z + 0.005, draw: () => drawAvatar(ctx, sc, u, v, pos) });
   }
   void hydra;
   // An aura's back layer sits just behind its caster.
@@ -948,6 +951,52 @@ function drawUnit(ctx: CanvasRenderingContext2D, sc: Scene, u: Unit, pos: Pt): v
     ctx.stroke();
     ctx.restore();
   }
+}
+
+/** A character's height on the map at 1x (px): the avatar stands so many times it. */
+const CHAR_PX = 100;
+/** How long the avatar takes to fade to embers (ms). */
+const AVATAR_FADE = 600;
+
+/**
+ * The fire avatar over its ninja (the owner's sprites, avatarArt.ts): the root of its fire column on
+ * the ninja's feet, 3.3 times his height (5 times improved), a little see-through and flickering
+ * like fire. It rises out of his feet (the bottom first), flares as it changes stance, and fades.
+ */
+function drawAvatar(ctx: CanvasRenderingContext2D, sc: Scene, u: Unit, v: UnitView, pos: Pt): void {
+  const av = v.avatar!;
+  const art = avatarArt(av.stance, av.plus);
+  if (!art) return;
+  const img = image(art.url);
+  if (!ready(img)) return;
+  const { map, now } = sc;
+  const s = project(map, pos, map.levelAt(pos.x, pos.z));
+  const speed = sc.pb.speed;
+  const rise = Math.max(0, Math.min(1, ((now - av.t0) * speed) / AVATAR_RISE));
+  const fade = av.gone === undefined ? 1 : Math.max(0, 1 - ((now - av.gone) * speed) / AVATAR_FADE);
+  if (rise <= 0 || fade <= 0) return;
+  const h = CHAR_PX * art.times;
+  const k = h / art.h;
+  const w = art.w * k;
+  const flicker = 0.86 + 0.06 * Math.sin(now / 110) + 0.03 * Math.sin(now / 47 + 1.3);
+  const flare = av.switched === undefined ? 0 : Math.max(0, 1 - ((now - av.switched) * speed) / 400);
+  ctx.save();
+  ctx.globalAlpha = unitAlpha(sc, u, v) * fade * Math.min(1, flicker + flare * 0.3);
+  ctx.translate(Math.round(s.X), Math.round(s.Y) + 4);
+  if (v.facing < 0) ctx.scale(-1, 1);
+  // rising: only the part already up shows, from the feet
+  const shown = h * (1 - Math.pow(1 - rise, 2));
+  ctx.beginPath();
+  ctx.rect(-w, -shown, w * 2, shown + 8);
+  ctx.clip();
+  ctx.imageSmoothingEnabled = true;
+  ctx.drawImage(img, -art.rootX * k, -h, w, h);
+  if (flare > 0) {
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.globalAlpha = flare * 0.5 * fade;
+    ctx.drawImage(img, -art.rootX * k, -h, w, h);
+  }
+  ctx.restore();
 }
 
 /** A unit frame drawn with its feet at (x0, y0 + FEET.y), mirrored when it faces left. */

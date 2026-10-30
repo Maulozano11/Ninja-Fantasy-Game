@@ -2,6 +2,7 @@
 // damage with criticals and resistances, falling to 0 HP, death saves, healing. All dice come
 // from the battle seed plus a counter, so a battle replays exactly.
 
+import { shieldAc, shieldCover } from './infernal';
 import { abilityMod, Advantage, combineAdvantage, rollCheck } from '../rules/checks';
 import type { Ability } from '../rules/checks';
 import { maxCritDamage, parseDice } from '../rules/dice';
@@ -203,7 +204,8 @@ export function attackPreview(s: BattleState, a: Unit, t: Unit, kind: AttackKind
       reasons.push('oneArm');
     }
   }
-  const cover = close ? 0 : coverBetween(s, a.pos, t.pos, [a.id, t.id]);
+  // A comrade beside a Colossal Avatar in the shield stance has half cover at least (battle/infernal.ts).
+  const cover = Math.max(close ? 0 : coverBetween(s, a.pos, t.pos, [a.id, t.id]), shieldCover(s, t) ? 2 : 0) as 0 | 2 | 5;
   const dl = unitLevel(s, a) - unitLevel(s, t);
   const height = dl >= 0.9 ? 2 : dl <= -0.9 ? -2 : 0;
   // Said when the height changed the cover (map.ts coverBetween): from above a low cover is nothing, from below any cover is more.
@@ -273,7 +275,7 @@ export function attackPreview(s: BattleState, a: Unit, t: Unit, kind: AttackKind
     reasons.push('aura');
   }
   const adv = combineAdvantage(...advs);
-  const ac = t.ac + tm.ac + cover;
+  const ac = t.ac + tm.ac + cover + shieldAc(t);
   const total = mod + height;
   const out: AttackPreview = { mod: total, ac, cover, height, adv, chance: hitChance(total, ac, adv), reasons, inRange };
   // The engine's refusals: a kunai needs the line of sight, a blow can't cross a metal wall.
@@ -301,7 +303,8 @@ const RESIST: Partial<Record<string, DamageType>> = { Fire: 'Fire', Water: 'Cold
 export function adjustDamage(s: BattleState, t: Unit, amount: number, type: DamageType): number {
   let dmg = amount;
   const seal = t.effects.find((e) => e.id === 'warding_seal');
-  if (seal && RESIST[seal.detail ?? 'Fire'] === type) dmg = Math.floor(dmg / 2);
+  // The Ember Armour (battle/infernal.ts) resists fire; like 5e, two resistances to one type halve it once.
+  if ((seal && RESIST[seal.detail ?? 'Fire'] === type) || (type === 'Fire' && t.effects.some((e) => e.id === 'ember_armour'))) dmg = Math.floor(dmg / 2);
   if (t.character?.shinobiClass === 'Taijutsu Master' && type === 'Bludgeoning') dmg = Math.floor(dmg / 2);
   if (s.weather === 'Downpour') {
     if (type === 'Fire') dmg = Math.floor(dmg * 0.75);

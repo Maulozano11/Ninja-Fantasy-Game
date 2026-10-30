@@ -52,6 +52,7 @@ import { BigButton, Chip, Frame, Heading, IronButton, Parchment, Row, StepTabs, 
 import { iconUrl } from './battle/kit';
 import { L } from './creator/words';
 import { pick, strings, useLang } from '../i18n';
+import { PATH_LEVEL, pathsOf } from '../rules/paths';
 
 const isObj = (x: unknown): x is Record<string, unknown> => !!x && typeof x === 'object' && !Array.isArray(x);
 const sameKind = (d: unknown, v: unknown) => (Array.isArray(d) ? Array.isArray(v) : isObj(d) ? isObj(v) : typeof d === typeof v);
@@ -129,6 +130,8 @@ const T = strings({
   stepAppearance: { en: 'Appearance', es: 'Apariencia' },
   pickOrigin: { en: 'Choose your origin', es: 'Elige tu origen' },
   pickClan: { en: 'Choose your clan', es: 'Elige tu clan' },
+  pathHead: { en: 'Path (from level {n})', es: 'Camino (desde el nivel {n})' },
+  pathLocked: { en: 'chosen now, it unlocks at level {n}', es: 'se elige ahora, se desbloquea en el nivel {n}' },
   pickClass: { en: 'Choose your class', es: 'Elige tu clase' },
   pickAbilities: { en: 'Ability scores', es: 'Puntuaciones de atributo' },
   pickJutsus: { en: 'Jutsu loadout', es: 'Jutsus equipados' },
@@ -589,6 +592,8 @@ export const CharacterCreator: React.FC<CharacterCreatorProps> = ({
       ...character,
       clan: newClan,
       dojutsu: newDojutsu,
+      // A Path belongs to its clan: another clan's is dropped.
+      path: pathsOf(newClan).some((p) => p.id === character.path) ? character.path : undefined,
       palette: {
         ...character.palette,
         eyeColor: newDojutsu.includes('Sharingan') ? '#ef4444' : newDojutsu.includes('Byakugan') ? '#e0e7ff' : character.palette.eyeColor,
@@ -995,6 +1000,27 @@ export const CharacterCreator: React.FC<CharacterCreatorProps> = ({
                     }}
                     onHover={hoverOn({ kind: 'dojutsu', id: d })}
                     title={dojutsuName(d)}
+                  />
+                ))}
+              {/* The clan's Paths (the owner, 2026-10-30): chosen here, in force from level 3. */}
+              {on && pathsOf(id).length > 0 && (
+                <>
+                  <Heading>{T('pathHead', { n: PATH_LEVEL })}</Heading>
+                  {character.level < PATH_LEVEL && <p className="mx-3 -mt-1 mb-1 text-[11px] text-[#f2c46d]">{T('pathLocked', { n: PATH_LEVEL })}</p>}
+                </>
+              )}
+              {on &&
+                pathsOf(id).map((p) => (
+                  <Row
+                    key={p.id}
+                    indent
+                    selected={character.path === p.id}
+                    onClick={() => {
+                      soundManager.playSelect();
+                      setCharacter({ ...character, path: character.path === p.id ? undefined : p.id });
+                    }}
+                    title={pick(p.name, p.nameEs)}
+                    sub={pick(p.role, p.roleEs)}
                   />
                 ))}
             </React.Fragment>

@@ -267,6 +267,11 @@ Merge checks (`git merge-tree` on the origin tips, nothing changed):
   the cuirass's sides now move out 1 px each (2 px of width), his side's curve kept to the pixel and only his
   two 1 px teeth closed; the bulky seam fill stops below the sleeve, so the cuirass's curve stays free of the
   bare arm (`legate_ref.widened` WAIST_BY, `legate.ts` closeArmSeams; `l13-cintura-2px.png`).
+  His new head (2026-10-30, "usa esta mejor", `general-head-v2-owner-reference.png`: the general's head drawn
+  by him at the game's scale) replaces the reduced face and hair: read cell by cell, his face, eyes, brows and
+  jaw lines as one piece and his hair as the other, snapped to the palette of the first reading so the head
+  matches his sets, his eyes' lid states from his own pixels, a skull under the hair for other hairs and his
+  neck continued under the scarf (`general_ref` head_pieces, HEAD_*; `g12-cabeza-nueva.png`).
   Names for both characters and their items are his to give.
 - `hero/bronze-warrior` (2026-10-29, D-T17): the bronze warrior is Solen. Both bronze presets wear Solen's head
   (`founder` face, standard eyes in his red, his skin); his repainted mane with the braid is `hair_solen_mane`

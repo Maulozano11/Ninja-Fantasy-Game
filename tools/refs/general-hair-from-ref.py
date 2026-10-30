@@ -1,8 +1,8 @@
-"""The owner's Roman general's hair (docs/reference/roman-general-owner-reference.jpg) as hair_general.
+"""The owner's Roman general's hair (docs/reference/general-head-v2-owner-reference.png) as hair_general.
 
-His curly, voluminous light-brown mane to the jaw, from the left figure (both figures share it), at the
-head's scale (tools/refs/general_ref.py: our Roman head's size) and cleaned in his palette. It is stamped on
-the face anchor, in front of the head.
+His curly, voluminous light-brown mane to the jaw, from his second picture of the general's head, drawn at
+the game's scale and read cell by cell (tools/refs/general_ref.py head_pieces), with his line round it. It is
+stamped on the face anchor, in front of the head.
 
 The same picture always gives the same bytes. Run from the repository root:
 
@@ -24,4 +24,4 @@ def bases(p):
 if __name__ == '__main__':
     G.run('general-hair-from-ref.py', sys.argv[1], "The owner's Roman general's curly mane.", [
         ('GENERAL_HAIR', 'L', 'hair', 'His curly mane: stamped on the face anchor, in front of the head.'),
-    ], 'GENERAL_HAIR', bases)
+    ], 'GENERAL_HAIR', bases, refs=(G.HEAD_REF,))

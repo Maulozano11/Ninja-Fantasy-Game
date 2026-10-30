@@ -10,13 +10,16 @@ pecho y cara y pelo": only the chest sets (one armor option each), the face and 
 them: they are lifted from the left one). Not his cape, skirt, bracers, greaves or sandals.
 
 His decision for his big pictures (bronze_ref.py, 2026-10-24 "Reducir y limpiar yo") holds: the body shrunk
-evenly onto our male rig (BODY_SCALE, the least-squares fit of his joints on ours), the head at the scale that
-makes it our Roman head's size (HEAD_SCALE), then cleaned with his palette only, his line 1 px, his gold
-lines continuous (bronze_ref.clean). This module sets bronze_ref's method up for this picture: its grid, its
+evenly onto our male rig (BODY_SCALE, the least-squares fit of his joints on ours), then cleaned with his
+palette only, his line 1 px, his gold lines continuous (bronze_ref.clean). This module sets bronze_ref's method up for this picture: its grid, its
 colours (his magenta), its pieces (each figure cut on its own, with the bronze warrior's piece names), and
 where each piece lands: unlike the bronze warrior these pieces go on our own figure: each chest set is brought
-down with his neck on ours, its pieces where he drew them round it (each then turns about our joint), and his
-head stands on the face anchor with his lash on the anchor's row, as the template's eyes do.
+down with his neck on ours, its pieces where he drew them round it (each then turns about our joint).
+
+His head is not reduced from this picture any more: on 2026-10-30 he drew the general's head again at the
+game's scale ("usa esta mejor", docs/reference/general-head-v2-owner-reference.png), one cell of his a fine
+pixel of ours, and that picture is read cell by cell (head_pieces): his face and eyes and his hair, stamped on
+the face anchor.
 
 Scripts import this with sys.path.insert(0, os.path.dirname(__file__)) and run with python3 -I from the
 repository root.
@@ -28,6 +31,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import numpy as np  # noqa: E402
+from PIL import Image  # noqa: E402
 
 import bronze_ref as R  # noqa: E402
 import engraved_ref as E  # noqa: E402
@@ -90,35 +94,164 @@ def body_scale():
 
 BODY_SCALE = body_scale()
 
-# The head: his pixels per fine pixel (our Roman head's size: his eyes about 6 px apart, chin to lash 8
-# rows), stood with his eyes' row (HIS_EYES: his near eye's first column, the top of his eyes' one row of
-# cells) on the row under the face anchor and one column in, as the template's eyes start (body.ts
-# faceAnchor ex), his lash on the anchor's row above them.
-HEAD_SCALE = 1.8
-HIS_EYES = (65.0, 22.0)
 # His head stands on his neck as he drew it, his chin over the scarf: the game raises it HEAD_UP rows over
 # ours (src/sprite/generalHead.ts, as his Roman head is raised), so the face anchor his head pieces are stamped
 # from is that much higher than our male idle's.
 HEAD_UP = 3
 R.ANCHOR = (R.ANCHOR[0], R.ANCHOR[1] - HEAD_UP)
-HEAD = R.Map(HEAD_SCALE, (R.ANCHOR[0] + 1 - HIS_EYES[0] / HEAD_SCALE, R.ANCHOR[1] + 1 - HIS_EYES[1] / HEAD_SCALE))
-
-# His eyes are dark brown under a heavy straight brow: at our scale each is his lash line, a small white and a
-# dark iris (bronze_ref.reduce's eye step with his own colours), only on his eyes' row (his cells), so his
-# brow and the shading of the same browns stay what they are.
-R.EYE_KINDS = ('iris', 'white')
-R.EYE_SHARE = {'iris': 0.25, 'white': 0.25}
-R.EYE_TESTS = {
-    'white': lambda c: float(R.luma(np.array(c, float))) > 150 and int(max(c)) - int(min(c)) < 60,
-    'iris': lambda c: float(R.luma(np.array(c, float))) < 120 and R.kind(c) != 'line',
-}
-EYES_AT = [(65, 22, 71, 23), (76, 22, 81, 23)]
-R.EYE_AREA = np.zeros((R.CELLS[1], R.CELLS[0]), bool)
-for _x0, _y0, _x1, _y1 in EYES_AT:
-    R.EYE_AREA[_y0:_y1, _x0:_x1] = True
 
 CHEST = ('cuirass', 'scarf', 'pauldron_n', 'pauldron_f', 'sleeve_n', 'sleeve_f')
 HEAD_PIECES = ('face', 'hair')
+
+# His new head (docs/reference/general-head-v2-owner-reference.png, 2026-10-30, "usa esta mejor"): the
+# general's face, eyes and hair drawn by him at the game's scale, one cell of his a fine pixel of ours, read cell
+# by cell, not reduced. His grid: the pitch of his cells in picture pixels, where the first cell starts and how
+# many cells the picture holds (the grid of least spread inside the cells). A cell's colour is the median of
+# its central 9 x 9 picture pixels (his cells are flat inside; the blur at their edges is left out). His panel
+# grey (within HEAD_BG of the first cell) is the background where it reaches the picture's edge: the whites he
+# closed in his line (his eyes) are his. His colours are then snapped to his palette of the first general
+# picture as it came down to our scale (HEAD_PALETTE: the 34 colours of his face and hair there, the readings
+# he approved: the same hair browns and the same skin, so the head matches his sets), each to the nearest by
+# the sum of the channels' differences (two as near: the first in the list, which is in hex order).
+HEAD_REF = 'docs/reference/general-head-v2-owner-reference.png'
+HEAD_PITCH = 27.7
+HEAD_PHASE = (9, 15)
+HEAD_CELLS = (24, 25)
+HEAD_BG = 30
+HEAD_PALETTE = (
+    '#02021c', '#1a0a16', '#26121d', '#2c1014', '#2e1427', '#341a1e', '#3a2024', '#3e2a26', '#42241e', '#441b27',
+    '#4e2d26', '#512a1c', '#5a3226', '#623236', '#623828', '#6c3e26', '#70343b', '#824d2e', '#85443c', '#8d5842',
+    '#984a44', '#996238', '#a16a42', '#a6724a', '#b2675c', '#b27640', '#b47057', '#b59e88', '#b87e4d', '#bc8546',
+    '#bcaa9d', '#c77756', '#e09868', '#e6e5e1',
+)
+# His cell (0, 0) in our frame at male idle frame 0 (where the first reading's hair began), and his rows that
+# are the head: from row HEAD_ROWS down he drew his scarf and shoulders, which the game draws from his first
+# picture. HEAD_NOT: his cells at the left edge of rows 18-19 that are the scarf's corner and its clasp's
+# white, not the head.
+HEAD_AT = (112, 125)
+HEAD_ROWS = 20
+HEAD_NOT = ((0, 18), (1, 18), (0, 19), (1, 19))
+# The face among his cells: his skin and his eyes' whites wherever they are, and inside his hairline
+# (FACE_COLS: the face's first and last column on each row of his) all else he drew there, his brows, lashes,
+# irises and the jaw's lines. The rest of his cells are the hair, with his line round it; the hair is drawn
+# in front, so at rest the two are his picture.
+FACE_COLS = {7: (16, 17), 8: (13, 18), 9: (8, 19), 10: (6, 19), 11: (6, 19), 12: (6, 19), 13: (6, 19), 14: (8, 19),
+             15: (8, 19), 16: (8, 19), 17: (7, 19), 18: (7, 19), 19: (7, 19)}
+# His eyes' cells with the letters bronze_ref.eye_states gives the template (L his lash, w his white, i his
+# iris), so the lid states the game needs come from his own pixels.
+HEAD_EYES = {'L': ((12, 11), (13, 11), (14, 11), (18, 11)), 'w': ((12, 12), (14, 12)), 'i': ((13, 12), (18, 12))}
+# Under his hair the face has a skull, for another hair on his face: an ellipse (centre, radii, in his cells)
+# of his lit skin with his line at its edge. Under the scarf his neck goes on: his last row of it repeated
+# NECK_ROWS rows down, as the first reading's face was continued (the scarf covers them at rest).
+SKULL = ((12.5, 8.5), 7.0, 7.5)
+NECK_ROWS = 4
+
+
+def head_cells():
+    """His new head picture cell by cell: (colours (rows, columns, 3) snapped to HEAD_PALETTE, which cells are
+    his (not the background))."""
+    img = np.asarray(Image.open(HEAD_REF).convert('RGB')).astype(np.int32)
+    cols, rows = HEAD_CELLS
+    red = np.zeros((rows, cols, 3), np.int32)
+    for j in range(rows):
+        y0 = int(np.floor(HEAD_PHASE[1] + HEAD_PITCH * (j + 0.5))) - 4
+        for i in range(cols):
+            x0 = int(np.floor(HEAD_PHASE[0] + HEAD_PITCH * (i + 0.5))) - 4
+            red[j, i] = np.median(img[max(0, y0):y0 + 9, max(0, x0):x0 + 9].reshape(-1, 3), axis=0)
+    grey = np.abs(red - red[0, 0]).max(axis=2) <= HEAD_BG
+    bg = np.zeros((rows, cols), bool)
+    stack = [(j, i) for j in range(rows) for i in range(cols) if (j in (0, rows - 1) or i in (0, cols - 1)) and grey[j, i]]
+    while stack:
+        j, i = stack.pop()
+        if bg[j, i] or not grey[j, i]:
+            continue
+        bg[j, i] = True
+        stack += [(j + dj, i + di) for dj, di in ((1, 0), (-1, 0), (0, 1), (0, -1)) if 0 <= j + dj < rows and 0 <= i + di < cols]
+    P = np.array([[int(h[k:k + 2], 16) for k in (1, 3, 5)] for h in HEAD_PALETTE], np.int32)
+    out = np.zeros_like(red)
+    for j, i in zip(*np.nonzero(~bg)):
+        out[j, i] = P[np.abs(P - red[j, i]).sum(axis=1).argmin()]
+    return out, ~bg
+
+
+_head_pieces = None
+
+
+def head_pieces():
+    """His face and his hair in our frame at male idle frame 0, from his new head picture: {name: (mask,
+    colours, line)}. The face is his skin and eyes wherever they are and all he drew inside his hairline, with
+    a skull under the hair and his neck continued under the scarf; the hair is the rest, with his line."""
+    global _head_pieces
+    if _head_pieces is not None:
+        return _head_pieces
+    cells, his = head_cells()
+    H = W = 256
+    cols = HEAD_CELLS[0]
+    out = {n: (np.zeros((H, W), bool), np.zeros((H, W, 3), np.int32), np.zeros((H, W), bool)) for n in HEAD_PIECES}
+    black = np.array([int(HEAD_PALETTE[0][k:k + 2], 16) for k in (1, 3, 5)], np.int32)
+    x0, y0 = HEAD_AT
+
+    def put(name, x, y, c):
+        m, col, isl = out[name]
+        m[y, x] = True
+        col[y, x] = c
+        isl[y, x] = R.material(c, name) == 'line'
+
+    for j in range(HEAD_ROWS):
+        lo, hi = FACE_COLS.get(j, (1, 0))
+        for i in range(cols):
+            if not his[j, i] or (i, j) in HEAD_NOT:
+                continue
+            c = cells[j, i]
+            face = R.material(c, 'face') in ('skin', 'white') or lo <= i <= hi
+            put('face' if face else 'hair', x0 + i, y0 + j, c)
+    fm, fc, fl = out['face']
+    # the skull under the hair, in his commonest skin
+    tally = {}
+    for y, x in zip(*np.nonzero(fm & ~fl)):
+        if R.material(fc[y, x], 'face') == 'skin':
+            k = tuple(int(v) for v in fc[y, x])
+            tally[k] = tally.get(k, 0) + 1
+    lit = max(sorted(tally), key=lambda k: tally[k])
+    (cx, cy), rx, ry = SKULL
+    added = [(y0 + j, x0 + i) for j in range(HEAD_ROWS) for i in range(cols)
+             if ((i + 0.5 - cx) / rx) ** 2 + ((j + 0.5 - cy) / ry) ** 2 <= 1 and not fm[y0 + j, x0 + i]]
+    for y, x in added:
+        fm[y, x] = True
+        fc[y, x] = lit
+    for y, x in added:
+        if not all(fm[y + dy, x + dx] for dy, dx in ((1, 0), (-1, 0), (0, 1), (0, -1))):
+            fc[y, x] = black
+            fl[y, x] = True
+    # his neck continued under the scarf: his last row from the line before its first skin cell to its end
+    y = y0 + HEAD_ROWS - 1
+    xs = [x for x in range(x0, x0 + cols) if fm[y, x] and R.material(fc[y, x], 'face') == 'skin']
+    first = xs[0] - 1 if fl[y, xs[0] - 1] else xs[0]
+    last = max(x for x in range(x0, x0 + cols) if fm[y, x])
+    for k in range(1, NECK_ROWS + 1):
+        fm[y + k, first:last + 1] = fm[y, first:last + 1]
+        fc[y + k, first:last + 1] = fc[y, first:last + 1]
+        fl[y + k, first:last + 1] = fl[y, first:last + 1]
+    _head_pieces = out
+    return out
+
+
+def head_given():
+    """His eyes' pixels for bronze_ref.eye_states: {(y, x): letter}."""
+    x0, y0 = HEAD_AT
+    return {(y0 + j, x0 + i): letter for letter, cells in HEAD_EYES.items() for i, j in cells}
+
+
+_eyes = R.eyes
+
+
+def eyes(m, c, given=None):
+    """bronze_ref.eyes with his lashes given as 'L': each eye's box starts at its lash row, which is not
+    counted as the eye."""
+    return _eyes(m, c, {q: l for q, l in given.items() if l != 'L'} if given else given)
+
+
+R.eyes = eyes
 
 
 def body_map(fig, name):
@@ -142,9 +275,10 @@ METAL = R.METAL + ('skin', 'red', 'steel')
 NAVY = ('navy', 'hair', 'steel', 'dark', 'line')
 CLOTH = ('purple', 'red', 'dark', 'line')
 ANY = R.ALL + ('white',)
-# Each figure's pieces, front to back (bronze_ref.labels): what this picture gives (CHEST, and on the left
-# the face and hair) and, so they part from them along his line, his arms ('arm_*', in front of the chest
-# where they cross it) and the rest of him ('other': his cape, skirt, bracers, legs and sandals).
+# Each figure's pieces, front to back (bronze_ref.labels): what this picture gives (CHEST) and, so they part
+# from them along his line, his face and hair (which hide the scarf; the head itself is read from his second
+# picture: head_pieces), his arms ('arm_*', in front of the chest where they cross it) and the rest of him
+# ('other': his cape, skirt, bracers, legs and sandals).
 PARTS = {
     'L': [
         ('arm_n', [rect(24, 62, 52, 80)], ('skin', 'line')),
@@ -221,96 +355,18 @@ PLATES = {
     ('L', 'pauldron_n'): E.Plate(BRONZE, **PAULDRON), ('L', 'pauldron_f'): E.Plate(BRONZE, **PAULDRON),
     ('R', 'pauldron_n'): E.Plate(BRONZE, **PAULDRON), ('R', 'pauldron_f'): E.Plate(BRONZE, **PAULDRON),
 }
-# His face (the owner, 2026-10-30: "definirle más las facciones a la cara con 1-2 píxeles", then, on a first
-# reading in layers: no shade patches, lines only where his picture has a line): his skin in two of his tones,
-# his lit skin and, on the far side of the nose where his shade lies, his shadow skin; his eyes as
-# bronze_ref.reduce reads them, their lid row his brow; and his lines, each one pixel wide, laid where his
-# cells land: the nose's shadow (a column beside the nose) and the mouth (a row). His jaw is shade, not a
-# line, so it draws none. FACE_LINES: his cells (x, y from, x, y to), each line his darkest tone there.
-FACE_LINES = {
-    'nose': ((74.5, 24.5), (74.5, 28.0)),
-    'mouth': ((69.5, 32.5), (74.5, 32.5)),
-}
-# The column of our frame (from the face anchor) the far side's shade starts at: the nose's line.
-FACE_SHADE_FROM = 6
-# His shadow skin: his commonest skin this much darker (luma) than his lit skin, between these two bounds
-# (lighter than his lines, so the lines stand out of it).
-FACE_SHADE = (18, 45)
-# His eyes stay as bronze_ref.reduce reads them: each eye's box (its lid row to its last row, a column wider
-# each side, the sockets with it).
-EYE_PAD = 1
-
-
-def face_lines(a, lab, m, c, isl):
-    """His face in two skin tones and his lines (module comment): (mask, colours, line, the pixels to keep
-    from the cleaning: his eyes' boxes and his lines)."""
-    K = R.kinds(a)
-    Lg = R.luma(a.astype(float))
-    cells = [(y, x) for y, x in zip(*np.nonzero((lab == 'face') & (K == 'skin')))]
-    tally = {}
-    for q in cells:
-        t = tuple(int(v) for v in a[q])
-        tally[t] = tally.get(t, 0) + 1
-    lit = max(sorted(tally), key=lambda t: tally[t])
-    lit_l = E.lum(lit)
-    dark = {t: n for t, n in tally.items() if lit_l - FACE_SHADE[1] <= E.lum(t) <= lit_l - FACE_SHADE[0]}
-    shadow = max(sorted(dark), key=lambda t: dark[t]) if dark else lit
-    nx, ny = R.ANCHOR
-    eyes = set()
-    for x0, y0, x1, y1 in R.eyes(m, c, dict(R.EYE_PIXELS)).values():
-        for y in range(y0, y1 + 1):
-            for x in range(x0 - EYE_PAD, x1 + EYE_PAD + 1):
-                eyes.add((y, x))
-    lids = set()
-    c = c.copy()
-    for j, i in zip(*np.nonzero(m & ~isl)):
-        if (j, i) in eyes:
-            continue
-        under = [(y, x, w) for y, x, w in R.footprint(HEAD, i, j) if 0 <= y < a.shape[0] and 0 <= x < a.shape[1] and lab[y, x] == 'face' and K[y, x] == 'skin']
-        if under and i - nx >= FACE_SHADE_FROM:
-            mean = sum(float(Lg[y, x]) * w for y, x, w in under) / sum(w for _, _, w in under)
-            c[j, i] = shadow if mean <= (lit_l + E.lum(shadow)) / 2 else lit
-        else:
-            c[j, i] = lit
-    for name, ((x0, y0), (x1, y1)) in FACE_LINES.items():
-        n = int(max(abs(x1 - x0), abs(y1 - y0))) + 1
-        pts = [(x0 + (x1 - x0) * k / max(1, n - 1), y0 + (y1 - y0) * k / max(1, n - 1)) for k in range(n)]
-        # (his cells along the line, whatever piece labels() gave them: his mouth's dark red lies on the row
-        # where the scarf's region begins)
-        his = [(int(y), int(x)) for x, y in pts if 0 <= int(y) < a.shape[0] and 0 <= int(x) < a.shape[1] and K[int(y), int(x)] != 'white']
-        if not his:
-            continue
-        tone = min(his, key=lambda q: (Lg[q], q))
-        tone = tuple(int(v) for v in a[tone])
-        for x, y in pts:
-            fx, fy = HEAD.fine((x, y))
-            q = (int(np.floor(fy)), int(np.floor(fx)))
-            if m[q] and not isl[q] and q not in eyes:
-                c[q] = tone
-                lids.add(q)
-    return m, c, isl, eyes | lids
-# His face's eyes and shading: at our scale a pixel is his dark only where his dark half covers this much of
-# it, so his skin comes out smooth in his shades.
-R.DARK_WINS_OF = {'face': 0.45}
-# His curls are masses of three browns: smoothed with their neighbours as his bronze is (not the bronze
-# warrior's strands, drawn fine), so they come out in clusters and not in single pixels.
-R.NO_SMOOTH = ('face', 'diadem', 'skirt')
-R.KEEP_SPLIT = ('face', 'diadem')
-
 _more_of = R.more_of
 
 
 def more_of_for(fig):
     """What each piece is continued over besides what hides it (bronze_ref.more_of), on this figure: the
-    chest up under the scarf to the neck, the face's skull under the hair and its neck under the scarf."""
+    chest up under the scarf to the neck."""
     J = JOINTS[fig]
 
     def more(name, H, W):
         if name == 'cuirass':
             nx, ny = J['neck']
             return R.inside(rect(nx - 18, ny - 2, nx + 20, ny + 12), H, W)
-        if name == 'face':
-            return R.ellipse_mask((68, 19), 15, 16, H, W) | R.inside(rect(60, 30, 78, 46), H, W)
         if name in ('sleeve_n', 'sleeve_f'):
             # up under the pauldron round the shoulder (a raised arm shows it)
             S = name[-1].upper()
@@ -419,34 +475,18 @@ def whole(m, col, isl, black, keep=(), specks=True):
 
 def piece(a, labs, fig, name):
     """A piece of a figure at our scale, continued under what hides it and made whole (whole): (mask,
-    colours, line)."""
+    colours, line). The head pieces come from his second picture (head_pieces)."""
+    if name in HEAD_PIECES:
+        return head_pieces()[name]
     R.more_of = more_of_for(fig)
     R.HIS_JOINTS = JOINTS[fig]
-    M = HEAD if name in HEAD_PIECES else body_map(fig, name)
+    M = body_map(fig, name)
     if (fig, name) in PLATES:
         # (a plate's lone light pixel is his stud or his glint, read by engraved_ref: not a speck)
         m, c, isl = E.piece(a, labs[fig], name, M, PLATES[(fig, name)])
         return whole(m, c, isl, R.his_line(a), specks=False)
     m, c, isl = R.piece(a, labs[fig], name, M)
-    black = R.his_line(a)
-    if name == 'face':
-        m, c, isl, kept = face_lines(a, labs[fig], m, c, isl)
-        # his eyes' whites and the greys of his lids off the eye pixels (bronze_ref's eye step): on a face
-        # pixel they are not his eye but a grey speck under it; it takes the skin beside it
-        eyes = set(R.EYE_PIXELS)
-        for y, x in zip(*np.nonzero(m & ~isl)):
-            if (y, x) in eyes or R.material(c[y, x], 'face') != 'white':
-                continue
-            tally = {}
-            for dy, dx in ((0, -1), (0, 1), (1, 0), (-1, 0), (1, 1), (1, -1), (-1, 1), (-1, -1)):
-                q = (y + dy, x + dx)
-                if m[q] and not isl[q] and (q not in eyes) and R.material(c[q], 'face') == 'skin':
-                    k = tuple(int(v) for v in c[q])
-                    tally[k] = tally.get(k, 0) + 1
-            if tally:
-                c[y, x] = max(sorted(tally), key=lambda k: tally[k])
-        return whole(m, c, isl, black, keep=eyes | kept)
-    return whole(m, c, isl, black)
+    return whole(m, c, isl, R.his_line(a))
 
 
 # Where each piece is stamped from: our joint (the scripts bring his joint onto it) or the face anchor.
@@ -471,19 +511,20 @@ GAME_ORDER = [
 ]
 
 
-def header(script, what, args=''):
-    return (f'// {what}\n// Lifted from the owner\'s Roman general (docs/reference/{os.path.basename(REF)}) and\n'
+def header(script, what, args='', refs=(REF,)):
+    pics = ' and '.join(f'docs/reference/{os.path.basename(r)}' for r in refs)
+    return (f'// {what}\n// Lifted from the owner\'s Roman general ({pics}) and\n'
             f'// brought down to our scale by tools/refs/{script} (tools/refs/general_ref.py).\n'
             f'// Generated: rerun the script to change it:\n//   python3 -I tools/refs/{script}{args}\n')
 
 
-def run(script, out, what, consts, prefix, bases=None):
+def run(script, out, what, consts, prefix, bases=None, refs=(REF,)):
     """A part script's work: its pieces (consts: (CONST, figure, piece name, doc)) brought down and written
     to `out` as a TypeScript module."""
-    a, labs = load()
+    a, labs = load() if any(n not in HEAD_PIECES for _, _, n, _ in consts) else (None, None)
     pieces = {(f, n): piece(a, labs, f, n) for _, f, n, _ in consts}
     b = bases(pieces) if bases else None
-    text = R.module(header(script, what, f' {out}'), [(c, pieces[(f, n)], d, n) for c, f, n, d in consts], prefix, b)
+    text = R.module(header(script, what, f' {out}', refs), [(c, pieces[(f, n)], d, n) for c, f, n, d in consts], prefix, b)
     R.write(out, text)
     return pieces
 

@@ -1,7 +1,7 @@
 """The owner's Roman general's chest sets whole, as the game draws them at rest: what the idle test checks.
 
-Each figure's pieces (tools/refs/general_ref.py: his cuirass, scarf, pauldrons and sleeves, his face and his
-hair from the left figure) brought down and drawn back to front as the game draws them at male idle frame 0
+Each figure's pieces (tools/refs/general_ref.py: his cuirass, scarf, pauldrons and sleeves, and his face and
+hair from his second picture of the head) brought down and drawn back to front as the game draws them at male idle frame 0
 (general_ref.GAME_ORDER): at rest, the preset wearing them shows every one of these pixels
 (src/sprite/general.test.ts).
 
@@ -35,7 +35,7 @@ def figure_ts(name, doc, img, on):
 
 def main(out):
     a, labs = G.load()
-    t = [G.header('general-figure-from-ref.py', "The owner's Roman general's chest sets whole, with his face and hair, at male idle frame 0.", f' {out}')]
+    t = [G.header('general-figure-from-ref.py', "The owner's Roman general's chest sets whole, with his face and hair, at male idle frame 0.", f' {out}', (G.REF, G.HEAD_REF))]
     for fig, name, what in (('L', 'GENERAL_SPIRAL_FIGURE', 'spiral'), ('R', 'GENERAL_MUSCLE_FIGURE', 'muscle')):
         img = np.zeros((256, 256, 3), np.int32)
         on = np.zeros((256, 256), bool)

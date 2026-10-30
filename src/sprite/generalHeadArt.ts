@@ -1,5 +1,5 @@
 // The owner's Roman general's face and eyes (face and eye shape 'general').
-// Lifted from the owner's Roman general (docs/reference/roman-general-owner-reference.jpg) and
+// Lifted from the owner's Roman general (docs/reference/general-head-v2-owner-reference.png) and
 // brought down to our scale by tools/refs/general-face-from-ref.py (tools/refs/general_ref.py).
 // Generated: rerun the script to change it:
 //   python3 -I tools/refs/general-face-from-ref.py src/sprite/generalHeadArt.ts
@@ -20,114 +20,114 @@ export const GENERAL_HEAD: PaintedPiece = {
   pivot: [6, 10],
   angle: -90.00,
   rows: [
-    '.......aaa........',
-    '.....aabbbaa......',
-    '....abbbbbbbaa....',
-    '...abbbbbbbbbbaa..',
-    '..abbbbbbbbbbbbba.',
-    '.abbbbbbbbbbbbbcba',
-    '.abbbbbbbbbbccbca.',
-    'abbbbbbbbbbbbccca.',
-    'abbbbbbbbbbbbbcca.',
-    'abbbbbbbbbbbcbccca',
-    'abbbbbbdaaebfaaaba',
-    '.abbbbbbhijbbklaba',
-    '.abbbbbbbbbbmccaa.',
-    '.ababbbbbbbbmcca..',
-    '..abbbbbbbbbmcca..',
-    '...abbbbbbbbcca...',
-    '....abbbbnnnnca...',
-    '....bbbbbbbbca....',
-    '....abbbbbbbca....',
-    '....abbbbbbba.....',
-    '.....abbbbbba.....',
-    '......aaabbba.....',
-    '.........aaa......',
+    '.....aaaaa......',
+    '...aabbbbbaa....',
+    '..cbbbbbbbbba...',
+    '..abbbbbbbbba...',
+    '.abbbbbbbbbbba..',
+    '.abbbbbbbbbbba..',
+    '.abbbbbbbbbbda..',
+    'abbbbecbfhbbbba.',
+    '.abiejkhbbbbbbhi',
+    '.ekeehjddddbbhi.',
+    '.bieeheaaalibla.',
+    '.bejebbmdmebbne.',
+    '.bkjhbbbbbbbbeh.',
+    '...jhhbbbbbbbjh.',
+    '...jkhhbbbbbejh.',
+    '...fehhhbbbbhha.',
+    '..eaefhhbbfeiha.',
+    '..eahijhbbbbka..',
+    '..aaakeehbbbba..',
+    '....akeehbbbba..',
+    '....akeehbbbba..',
+    '....akeehbbbba..',
+    '....akeehbbbba..',
   ],
   colors: {
     a: '#02021c',
     b: '#e09868',
-    c: '#c77756',
-    d: '#85443c',
-    e: '#b2675c',
-    f: '#b47057',
-    h: '#bcaa9d',
+    c: '#8d5842',
+    d: '#341a1e',
+    e: '#85443c',
+    f: '#b2675c',
+    h: '#c77756',
     i: '#70343b',
-    j: '#b59e88',
-    k: '#441b27',
+    j: '#984a44',
+    k: '#b47057',
     l: '#26121d',
-    m: '#984a44',
-    n: '#623236',
+    m: '#e6e5e1',
+    n: '#4e2d26',
   },
 };
 
 /** What each colour of GENERAL_HEAD is (tools/refs/bronze_ref.py material): his line and near-blacks are never tinted. */
-export const GENERAL_HEAD_KIND: Record<string, 'dark' | 'line' | 'skin' | 'warm'> = {
+export const GENERAL_HEAD_KIND: Record<string, 'dark' | 'line' | 'skin' | 'warm' | 'white'> = {
   '#02021c': 'line',
   '#26121d': 'dark',
-  '#441b27': 'warm',
-  '#623236': 'skin',
+  '#341a1e': 'warm',
+  '#4e2d26': 'warm',
   '#70343b': 'skin',
   '#85443c': 'skin',
+  '#8d5842': 'skin',
   '#984a44': 'skin',
   '#b2675c': 'skin',
   '#b47057': 'skin',
-  '#b59e88': 'skin',
-  '#bcaa9d': 'skin',
   '#c77756': 'skin',
   '#e09868': 'skin',
+  '#e6e5e1': 'white',
 };
 
 /** His eyes' colours, one character each (his pixels on his face). */
 export const GENERAL_EYE_COLORS: Record<string, string> = {
   a: '#02021c',
-  b: '#bcaa9d',
-  c: '#70343b',
+  b: '#e6e5e1',
+  c: '#341a1e',
   d: '#e09868',
-  e: '#441b27',
-  f: '#26121d',
-  h: '#c77756',
+  e: '#26121d',
+  f: '#4e2d26',
+  h: '#85443c',
 };
 
 /** His eyes in each lid state, stamped on the template's eye cells from the anchor's row (body.ts drawFace). */
 export const GENERAL_EYES: Record<'open' | 'lowered' | 'closed', { near: PaintedEye; far: PaintedEye }> = {
   open: {
     near: {
-      letters: ['LL', 'wi'],
-      rows: ['aa', 'bc'],
+      letters: ['LLL', 'wdw'],
+      rows: ['aaa', 'bcb'],
     },
     far: {
-      letters: ['LL', 'dd'],
-      rows: ['aa', 'ef'],
+      letters: ['L', 'i'],
+      rows: ['e', 'f'],
     },
   },
   lowered: {
     near: {
-      letters: ['LL', 'LL'],
-      rows: ['aa', 'aa'],
+      letters: ['LLL', 'LLL'],
+      rows: ['aaa', 'aaa'],
     },
     far: {
-      letters: ['LL', 'LL'],
-      rows: ['aa', 'aa'],
+      letters: ['L', 'L'],
+      rows: ['e', 'e'],
     },
   },
   closed: {
     near: {
-      letters: ['LL', 'ss'],
-      rows: ['aa', 'dd'],
+      letters: ['LLL', 'sss'],
+      rows: ['aaa', 'ddd'],
     },
     far: {
-      letters: ['LL', 'ss'],
-      rows: ['aa', 'hh'],
+      letters: ['L', 's'],
+      rows: ['e', 'h'],
     },
   },
 };
 
 /** Where his eyes start, columns from the anchor (body.ts PaintedHead ex, fx). */
-export const GENERAL_EYE_AT = { ex: 2, fx: 7 };
+export const GENERAL_EYE_AT = { ex: 1, fx: 7 };
 
 /** The eye colour his red iris is: the player's eye colour moves his reds as far. */
-export const GENERAL_IRIS = '#70343b';
+export const GENERAL_IRIS = '#4e2d26';
 
 /** How many rows over ours his head stands on a male body (src/sprite/generalHead.ts). */
 export const GENERAL_HEAD_UP = 3;

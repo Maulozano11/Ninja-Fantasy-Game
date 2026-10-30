@@ -417,6 +417,19 @@ with the battle stack, so one at a time):
 
 Steve 1: the stack only meets your chain (#2–#4, #12, #15) on `docs/STATUS.md` lines.
 
+### D-T23. The Mirai fire avatar (the owner, 2026-10-29, 19:00; Steve 2's lane, design)
+
+- His look: an original Spartan fire elemental (his picture from his generator; crested helmet,
+  muscled cuirass, round shield with a sun in flames, spear, below the waist a column of fire).
+- **Two pieces:** a summon **cinematic** (full screen, low camera, the avatar from the waist up,
+  cut off by the top edge, **translucent**, the ninja tiny at the bottom inside its silhouette)
+  and the **battle sprite** (3/4 facing right, about 2.5 times the ninja).
+- **Two stances, an ability switches them, and it stays in the last one used:** **shield**
+  (more defence) and **spear** (more damage). Numbers to propose before anything is built
+  (`CLANS_DESIGN.md`, Path of the Infernal Fire, Emperor Avatar).
+- No franchise look: the camera feel only (low angle, scale contrast, crop), never another
+  work's design. Prompt cards given to the owner for both stances.
+
 ## Steve's review of the outfit branches (read only, 2026-10-29)
 
 | Branch | Presets it adds | Its own face / eyes / hair | Bodies |
@@ -487,6 +500,8 @@ What this means:
 
 ## Log (newest first, one line each)
 
+- 2026-10-29 19:05 Steve 2: D-T23, the fire avatar: cinematic + sprite, translucent, two stances
+  (shield / spear) switched by an ability; prompt cards to the owner.
 - 2026-10-29 18:55 Steve 2: battle stack #6, #7, #8, #9, #10, #13 and docs #19 merged into the integration
   branch (`be8c882`; 867/867 tests on that exact tree). Bob: wind ray next. Fire-avatar prompt card
   given to the owner for his generator.

@@ -178,15 +178,24 @@ COVER = {
 PAULDRON_TO = 7
 
 
-def grown(m, c, isl, side, rows=None):
+def grown(m, c, isl, side, rows=None, design=None):
     """A piece grown to cover our shoulder (COVER): each covered pixel not in the piece takes his nearest
     pixel of it (his line left out, the same row first: his plates and folds run on sideways), his line
     closes the new edge, and his old line that the growth leaves inside takes his colour beside it. `rows`:
-    only the piece's own rows (the sleeve); else down to PAULDRON_TO."""
+    only the piece's own rows (the sleeve); else down to PAULDRON_TO. `design`: another piece of his (the
+    near pauldron, for the far one) whose pixels, mirrored about its shoulder joint, the new pixels take
+    where it has one, so the far pauldron is his near one seen from behind (the owner, 2026-10-30: grown
+    from its own few pixels the far one was "muy tosco y simplón")."""
     black = np.array(R.LINE)
     jx, jy = (int(np.floor(v)) for v in R.fine_joint('shoulder' + side))
     m, c, isl = m.copy(), c.copy(), isl.copy()
     own = [(y, x) for y, x in zip(*np.nonzero(m & ~isl))]
+    mirror = {}
+    if design is not None:
+        dm, dc, dl = design
+        ox, oy = (int(np.floor(v)) for v in R.fine_joint('shoulderN' if side == 'F' else 'shoulderF'))
+        for y, x in zip(*np.nonzero(dm & ~dl)):
+            mirror[(y - oy, -(x - ox))] = dc[y, x]
     lines = [(y, x) for y, x in zip(*np.nonzero(m & isl))]
     if lines:
         # (his black line of this piece: its commonest line colour)
@@ -205,9 +214,12 @@ def grown(m, c, isl, side, rows=None):
             continue
         if rows is None and dy > PAULDRON_TO:
             continue
-        q = min(own, key=lambda p: ((p[0] - y) * 2) ** 2 + (p[1] - x) ** 2 + (p[0] != y))
+        if (dy, dx) in mirror:
+            c[y, x] = mirror[(dy, dx)]
+        else:
+            q = min(own, key=lambda p: ((p[0] - y) * 2) ** 2 + (p[1] - x) ** 2 + (p[0] != y))
+            c[y, x] = c[q]
         m[y, x] = True
-        c[y, x] = c[q]
         isl[y, x] = False
         new.append((y, x))
     near4 = ((1, 0), (-1, 0), (0, 1), (0, -1))
@@ -235,8 +247,12 @@ def piece(a, lab, name):
         m, c, isl = E.piece(a, lab, name, MAP, PLATES[name])
     else:
         m, c, isl = R.piece(a, lab, name, MAP)
-    if name.startswith('pauldron_'):
-        return grown(m, c, isl, name[-1].upper())
+    if name == 'pauldron_n':
+        return grown(m, c, isl, 'N')
+    if name == 'pauldron_f':
+        # (the far one grows with his near pauldron's design mirrored: his pixels, seen from behind)
+        near = E.piece(a, lab, 'pauldron_n', MAP, PLATES['pauldron_n'])
+        return grown(m, c, isl, 'F', design=near)
     if name.startswith('sleeve_'):
         return grown(m, c, isl, name[-1].upper(), rows=True)
     return m, c, isl

@@ -270,7 +270,8 @@ export function floatLabel(ev: BattleEvent, s: BattleState, lang: Lang): string 
     case 'deathSave':
       return ev.roll.success ? '✓' : '✗';
     case 'kawarimi':
-      return 'Kawarimi!';
+      // The word over the ninja who swapped out (the owner, 2026-10-30: "Esquivado" / "Dodged").
+      return lang === 'es' ? '¡Esquivado!' : 'Dodged!';
     case 'evade':
       return t('evaded');
     case 'command':

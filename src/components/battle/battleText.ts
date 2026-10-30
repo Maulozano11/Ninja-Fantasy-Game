@@ -189,9 +189,10 @@ const TABLE = strings({
     es: 'Acción, 4 chakra, 6 m: un muro de metal de 4.5 m (cobertura total, bloquea el paso y la vista, 20 PV). Como máximo dos estructuras: la más antigua se derrumba.',
   },
   help_ryusei_warp: {
-    en: 'Bonus action, 2 chakra, 18 m: teleport to one of your Nodes, even through walls. Land next to an enemy and your next attack this turn comes from behind: advantage, and it can’t be blocked.',
-    es: 'Acción adicional, 2 chakra, 18 m: teletranspórtate a uno de tus Nodos, incluso a través de muros. Si caes junto a un enemigo, tu próximo ataque este turno es por la espalda: ventaja, y no se puede bloquear.',
+    en: 'Bonus action, 2 chakra, 18 m: teleport to a foe (you land beside it), to any spot in sight or to one of your Nodes, even through walls. Land next to an enemy and your next attack this turn comes from behind: advantage, and it can’t be blocked.',
+    es: 'Acción adicional, 2 chakra, 18 m: teletranspórtate junto a un enemigo, a cualquier punto a la vista o a uno de tus Nodos, incluso a través de muros. Si caes junto a un enemigo, tu próximo ataque este turno es por la espalda: ventaja, y no se puede bloquear.',
   },
+
   help_weapon_element: {
     en: 'Bonus action, {c} chakra: your element on the weapon in hand for {r} of your turns (this one counted). Every blow of it that hits adds {d}. Fire: a crit sets the foe burning. Lightning: a crit leaves it numb. Wind: a crit blows it back {p} m. Water: +{m} m reach, and it puts out flames. Earth, sharp obsidian: it crits on 19–20. Not on thrown kunai.',
     es: 'Acción adicional, {c} chakra: tu elemento en el arma que empuñas durante {r} de tus turnos (este incluido). Cada golpe suyo que acierta suma {d}. Fuego: un crítico deja quemado al enemigo. Rayo: un crítico lo deja entumecido. Viento: un crítico lo empuja {p} m. Agua: +{m} m de alcance, y apaga las llamas. Tierra, obsidiana filosa: hace crítico con 19–20. No en los kunai lanzados.',
@@ -200,10 +201,16 @@ const TABLE = strings({
     en: 'Bonus action, {c} chakra, {n} m ({w} m with water): only while your element is on the weapon. It leaves the weapon in one slash at a foe in sight: the weapon’s attack roll, and a hit deals the weapon’s die + {d} of the element. Every hit does the element’s effect: fire burns, lightning numbs, wind blows the foe back {p} m, earth knocks it down, water puts out flames and wets the ground under it. The element is gone from the weapon.',
     es: 'Acción adicional, {c} chakra, {n} m ({w} m con agua): solo con tu elemento en el arma. Sale del arma en un corte contra un enemigo a la vista: la tirada de ataque del arma, y si acierta hace el dado del arma + {d} del elemento. Cada acierto aplica el efecto del elemento: el fuego quema, el rayo entumece, el viento empuja al enemigo {p} m, la tierra lo derriba, el agua apaga las llamas y moja el suelo bajo él. El elemento deja el arma.',
   },
-  help_ryusei_swap: {
-    en: 'Action, 3 chakra, 18 m: swap places with anyone standing on one of your Nodes. An enemy can resist with a STR save.',
-    es: 'Acción, 3 chakra, 18 m: intercambia el lugar con quien esté sobre uno de tus Nodos. Un enemigo puede resistirse con una salvación de FUE.',
+  help_ryusei_weapon_throw: {
+    en: 'Action, 2 chakra, 12 m: throw the weapon in your hand at a foe in sight and go after it as light: you catch it where it lands, beside the foe. The weapon’s attack roll; a hit deals its die. It leaves a Node, and landing beside the foe your next attack this turn comes from behind.',
+    es: 'Acción, 2 chakra, 12 m: lanza el arma que empuñas a un enemigo a la vista y ve tras ella como luz: la atrapas donde cae, junto al enemigo. La tirada de ataque del arma; si acierta hace su dado. Deja un Nodo, y al caer junto al enemigo tu próximo ataque este turno es por la espalda.',
   },
+  aimWarpAny: { en: 'Pick a foe or a spot within 18 m', es: 'Elige un enemigo o un punto a 18 m' },
+  help_ryusei_swap: {
+    en: 'Action, 3 chakra, 18 m: swap places with any ninja in sight, ally or enemy, even through walls. An enemy can resist with a STR save.',
+    es: 'Acción, 3 chakra, 18 m: intercambia el lugar con cualquier ninja a la vista, aliado o enemigo, incluso a través de muros. Un enemigo puede resistirse con una salvación de FUE.',
+  },
+
   help_northstar_command: {
     en: 'Action, 4 chakra, 9 m: a Minion (a Captain too from level 5) that fails a WIS save fights for you for 1 round (from level 9: two targets, 2 rounds). Mirai are immune; bosses can’t be controlled.',
     es: 'Acción, 4 chakra, 9 m: un esbirro (también un capitán desde el nivel 5) que falla una salvación de SAB lucha para ti durante 1 ronda (desde el nivel 9: dos objetivos, 2 rondas). Los Mirai son inmunes; los jefes no se pueden controlar.',
@@ -319,7 +326,7 @@ const TABLE = strings({
   r_blocked: { en: 'Blocked.', es: 'Bloqueado.' },
   r_noNode: { en: 'Pick one of your Nodes.', es: 'Elige uno de tus Nodos.' },
   r_notOnNode: { en: 'Not standing on one of your Nodes.', es: 'No está sobre uno de tus Nodos.' },
-  r_noneOnNode: { en: 'Nobody stands on one of your Nodes.', es: 'Nadie está sobre uno de tus Nodos.' },
+  r_noneOnNode: { en: 'Nobody in reach to swap with.', es: 'No hay nadie a tu alcance para intercambiar.' },
   r_offMap: { en: 'It would stand off the map.', es: 'Se saldría del mapa.' },
   r_noUnit: { en: 'Nobody takes its reins: it fights on its own.', es: 'Nadie toma sus riendas: lucha por su cuenta.' },
   why_noNodes: { en: 'No Nodes yet: a kunai, or a blow that misses, leaves one.', es: 'Aún no hay Nodos: un kunai, o un golpe que falla, deja uno.' },

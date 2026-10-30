@@ -105,12 +105,32 @@ through Nodes.
   until 2026-10-21, id `ryusei_warp`; bonus action, 2 chakra, 18 m). The
   Ryusei throws its weapon, which flies to the Node as a shooting star, and
   follows it as light (the screen's choreography). Teleports to a Node in
-  sight, even with walls in between. If the Ryusei lands next to an enemy,
+  sight, even with walls in between. **The owner, 2026-10-28: no Node is
+  needed** (*"ponlo más fácil: que se ponga el objetivo enemigo al que se quiere
+  hacer el ataque o teletransportarse a donde se indique sin los nodos"*): it
+  also goes to a foe aimed at (landing beside it, D15's landing rules) or to
+  any spot aimed at, within 18 m and in sight. Nodes still work as before (a
+  spot with a Node is the Node); Spatial Swap needs none either (below). If the Ryusei lands next to an enemy,
   their next attack this turn counts as from behind: advantage, and it can't
   be blocked.
-- **Spatial Swap** (*Intercambio Espacial*, action, 3 chakra). Swaps places
-  with any unit, ally or enemy, standing on a Node. An enemy can resist with a
-  STR save.
+- **Spatial Swap** (*Intercambio Espacial*, action, 3 chakra, 18 m). Swaps
+  places with any ninja, ally or enemy, in reach and in sight (walls don't
+  hide them). **The owner, 2026-10-28: no Node needed** (*"quita ese
+  requisito, que cambie con libertad"*; it asked for one standing on a Node
+  before). An enemy can resist with a STR save.
+- **Weapon Throw** (*Lanzar arma*, id `ryusei_weapon_throw`; action, 2 chakra,
+  12 m; the owner, 2026-10-28: *"una nueva habilidad que sea lanzar arma y que
+  se teletransporte a su arma"*; the numbers are ours). The Ryusei throws the
+  weapon in its hand at a foe in sight and goes after it as light (the
+  Shooting-Star Thrust's comet and phase), catching it where it lands, beside
+  the foe (the thrust's landing rules, D15). The weapon's attack roll from where
+  it stood: a hit deals its die + the same modifier as its blows. Hit or miss,
+  the landing leaves a Node; landing beside the foe gives the thrust's edge (its
+  next attack this turn from behind). A Bukijutsu Master can deflect it like a
+  kunai. With nowhere to land beside the foe, the weapon comes back and the
+  Ryusei stays. Needs a weapon in hand (drawn for free). The AI does not use it
+  yet. Unlike the thrust, it needs no Node placed first: it is the Ryusei's
+  opening move.
 
 ### Northstar: the Sovereign's eyes (+2 CHA, +1 WIS)
 

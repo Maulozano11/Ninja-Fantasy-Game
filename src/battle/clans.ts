@@ -126,6 +126,8 @@ export function evade(s: BattleState, t: Unit, h: Hit, ev: BattleEvent[]): void 
 
 export const WARP = 'ryusei_warp';
 export const SWAP = 'ryusei_swap';
+/** Weapon Throw: the weapon thrown at a foe and the Ryusei after it (engine.ts weaponThrow). */
+export const WEAPON_THROW = 'ryusei_weapon_throw';
 
 /** A Ryusei keeps three Nodes at most: a fourth makes the oldest go. */
 export const MAX_NODES = 3;
@@ -186,6 +188,15 @@ export function warpLanding(s: BattleState, u: Unit, n: WeaponNode): Pt | null {
   return cellCenter(c);
 }
 
+/**
+ * Where a Shooting-Star Thrust aimed at `at` goes: the Ryusei's own Node there, if one is; otherwise
+ * the spot itself, as a Node of the moment (the owner, 2026-10-28: no Node needed; a foe clicked is
+ * its spot, and the landing keeps beside it). Never added to the board.
+ */
+export function warpAim(s: BattleState, u: Unit, at: Pt): WeaponNode {
+  return ownNodeAt(s, u, at) ?? { id: 'aim', owner: u.id, pos: { ...at } };
+}
+
 /** Why a Shooting-Star Thrust to this Node can't be made (none picked, too far, out of sight, nowhere to land), or null. */
 export function warpBlocker(s: BattleState, u: Unit, n: WeaponNode | undefined): string | null {
   if (!n) return 'noNode';
@@ -228,21 +239,21 @@ export function warpStrike(s: BattleState, u: Unit, to: Pt, ev: BattleEvent[]): 
 
 /**
  * Why a Spatial Swap with this unit can't be made, or null: it needs the fighting started, another
- * ninja (the hydra is too big) standing on one of the Ryusei's Nodes, and that Node within 18 m and
- * in sight (walls don't count, as for the warp).
+ * ninja (the hydra is too big) within 18 m and in sight (walls don't count, as for the warp). Since
+ * 2026-10-28 it needs no Node under them.
  */
 export function swapBlocker(s: BattleState, u: Unit, t: Unit | undefined): string | null {
   if (s.phase !== 'combat') return 'combatOnly';
   if (!t || t.id === u.id || t.down === 'dead' || t.down === 'fled' || t.down === 'ko') return 'needTarget';
   if (t.kind !== 'ninja') return 'tooBig';
-  const n = nodeUnder(s, u, t);
-  if (!n) return 'notOnNode';
-  if (dist(u.pos, n.pos) > JUTSU[SWAP].range + 0.1) return 'outOfRange';
-  return nodeInSight(s, u, n) ? null : 'noSight';
+  // Anyone in reach and in sight, Node or not (the owner, 2026-10-28: "quita ese requisito, que
+  // cambie con libertad"); walls still don't hide them from it, as for the thrust.
+  if (dist(u.pos, t.pos) > JUTSU[SWAP].range + 0.1) return 'outOfRange';
+  return lineOfSight(s, u.pos, t.pos, { structures: false }) ? null : 'noSight';
 }
 
 /**
- * Spatial Swap: the Ryusei and whoever stands on its Node trade places, with no opportunity
+ * Spatial Swap: the Ryusei and the ninja it picks trade places, with no opportunity
  * attacks. An enemy resists with a STR save; then nothing moves, but the chakra and the action are
  * spent all the same.
  */

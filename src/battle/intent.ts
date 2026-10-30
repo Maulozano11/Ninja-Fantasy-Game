@@ -161,7 +161,7 @@ export function warpStrikeAt(s: BattleState, u: Unit, t: Unit): Pt | null {
 const foesOf = (s: BattleState, u: Unit): Unit[] => Object.values(s.units).filter((o) => o.team !== u.team && standingUnit(o) && o.kind !== 'hydra_body');
 
 /**
- * What a Spatial Swap with `t` (on one of the Ryusei's Nodes, within reach of the swap) is worth;
+ * What a Spatial Swap with `t` (anyone within reach of the swap, Node or not, since 2026-10-28) is worth;
  * 0 when it doesn't clearly help. It helps a hurt friend that a foe can strike, when the Ryusei is
  * healthy and out of every foe's reach: the friend goes to safety and the Ryusei takes its place. It
  * helps against a foe that likely fails its STR save, pulled in among two or more of the Ryusei's
@@ -320,7 +320,7 @@ export function ninjaOptions(s: BattleState, u: Unit, next = false): Option[] {
     const cover = wallCover(s, u, f);
     if (cover) out.push({ intent: { kind: 'jutsu', what: WALL, target: f.id, at: cover.at }, value: cover.worth });
   }
-  // A Ryusei swaps places with whoever stands on one of its Nodes, when that clearly helps.
+  // A Ryusei swaps places with anyone in reach, when that clearly helps.
   if (u.jutsus.includes(SWAP)) {
     for (const o of Object.values(s.units)) {
       const v = o.id === u.id ? 0 : swapValue(s, u, o);

@@ -28,7 +28,7 @@ import { VALIANT_HAIR_BACK, VALIANT_HAIR_BASE, VALIANT_HAIR_FRONT, VALIANT_HAIR_
 import { AURELIA_HAIR_BACK, AURELIA_HAIR_BACK_HIS, AURELIA_HAIR_BASE, AURELIA_HAIR_FRONT, AURELIA_HAIR_FRONT_HIS, AURELIA_HAIR_LINE, AURELIA_HAIR_ORNAMENT, AURELIA_HAIR_SKIN, AURELIA_ORNAMENT_BASE, AURELIA_SKIN_BASE } from './aureliaHairArt';
 import { FOUNDER_HAIR_BACK, FOUNDER_HAIR_BASE, FOUNDER_HAIR_FRONT, FOUNDER_HAIR_LINE } from './founderHairArt';
 import { hopliteTint } from './hoplite';
-import { SOLEN_MANE_BACK, SOLEN_MANE_BAND, SOLEN_MANE_BASE, SOLEN_MANE_BRAID, SOLEN_MANE_BRAID_KIND, SOLEN_MANE_FRONT, SOLEN_MANE_KIND } from './solenManeArt';
+import { SOLEN_DIADEM_BRONZE, SOLEN_DIADEM_KIND, SOLEN_MANE_BACK, SOLEN_MANE_BAND, SOLEN_MANE_BASE, SOLEN_MANE_BRAID, SOLEN_MANE_BRAID_KIND, SOLEN_MANE_DIADEM, SOLEN_MANE_FRONT, SOLEN_MANE_KIND } from './solenManeArt';
 
 const hairColor = (def: string) => [{ key: 'hair', label: 'Hair', default: def, kind: 'hair' as const }];
 
@@ -1900,24 +1900,26 @@ export const HAIR_ITEMS: ItemDef[] = [
     id: 'hair_solen_mane',
     slot: 'hair',
     name: "Solen's Mane",
-    desc: 'Long wild black hair to the shoulders with a braid tied in bronze bands behind: the mane the owner painted for his bronze warrior, on Solen\'s head.',
+    desc: 'Long wild black hair to the shoulders held by a bronze diadem at the brow, with a braid tied in bronze bands behind: the mane the owner painted for his bronze warrior, on Solen\'s head.',
     colors: [
       { key: 'hair', label: 'Hair', default: SOLEN_MANE_BASE, kind: 'hair' },
-      { key: 'band', label: 'Bands', default: SOLEN_MANE_BAND, kind: 'metal' },
+      { key: 'band', label: 'Bronze', default: SOLEN_MANE_BAND, kind: 'metal' },
     ],
     bodies: ['male', 'bulky'],
     draw: (g, [c, band]) => {
       // The owner's bronze warrior is Solen (2026-10-29): his repainted mane (tools/refs/solen-mane-from-ref.py)
       // lifted onto Solen's skull, drawn as his Solen's own hair is: over the head every lock and line of his,
       // behind it the same hair with what the head hides filled in, and the skull trimmed to it; his braid
-      // behind the shoulders. His black line and near-blacks stay; his blue-blacks follow the hair colour, the
-      // braid's bronze bands the band colour.
+      // behind the shoulders; and his diadem over the hair at the brow, the clip that holds it (the owner,
+      // 2026-10-30: the mane and the diadem are one hair). His black line and near-blacks stay; his
+      // blue-blacks follow the hair colour, the braid's bands and the diadem the bronze colour.
       const hair = [SOLEN_MANE_BASE, c] as [string, string];
       const slots = { hair, navy: hair, grey: hair, purple: hair, warm: [SOLEN_MANE_BAND, band] as [string, string] };
       paintedHair(g, g.L('hairBack'), SOLEN_MANE_BRAID, hopliteTint(g, SOLEN_MANE_BRAID_KIND, slots));
       paintedHair(g, g.L('hairBack'), SOLEN_MANE_BACK, hopliteTint(g, SOLEN_MANE_KIND, slots));
       paintedHair(g, g.L('hairFront'), SOLEN_MANE_FRONT, hopliteTint(g, SOLEN_MANE_KIND, slots));
       trimSkull(g, SOLEN_MANE_BACK);
+      paintedHair(g, g.L('head.gear'), SOLEN_MANE_DIADEM, hopliteTint(g, SOLEN_DIADEM_KIND, { warm: [SOLEN_DIADEM_BRONZE, band] }));
     },
   },
   // Lyra's hair, after the owner's first heroine picture (lyraHair.ts).

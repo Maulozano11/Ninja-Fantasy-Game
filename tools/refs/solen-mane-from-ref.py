@@ -266,6 +266,12 @@ def main(out, study=None):
     t += [R.ts_piece('SOLEN_DIADEM', "His bronze diadem across the brow, lifted with the mane: stamped on the face anchor, over any hair.", drows, dorigin, dpal, (nx + 0.5, ny + 0.5), -90.0)]
     t += kind_ts('SOLEN_DIADEM', dpal, 'diadem')
     t += ["/** His middle bronze of the diadem: the colour slot's default. */", f"export const SOLEN_DIADEM_BRONZE = '{gold}';", '']
+    # the diadem as a part of the mane too (the owner, 2026-10-30: the mane and the diadem are one hair, "lo
+    # haremos un cabello"): the same pixels, pivot on the face anchor, drawn over the hair at the brow
+    t += ['const SOLEN_MANE_DIADEM_COLORS: Record<string, string> = {']
+    t += [f"  {key(k)}: '{v}'," for k, v in dpal.items()]
+    t += ['};', '']
+    t += part_ts('SOLEN_MANE_DIADEM', "His diadem as a part of the mane (the clip that holds the hair): the same pixels as SOLEN_DIADEM, drawn over the hair at the brow; pivot on the face anchor.", drows, (nx - dorigin[0], ny - dorigin[1]), 'SOLEN_MANE_DIADEM_COLORS')
     R.write(out, '\n'.join(t))
     if study:
         k = 8

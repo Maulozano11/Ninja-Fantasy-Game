@@ -357,7 +357,7 @@ const ES: Record<string, string> = {
   Iron: 'Hierro',
   Shoes: 'Zapatos',
   "Solen's Mane": 'Melena de Solen',
-  "Long wild black hair to the shoulders with a braid tied in bronze bands behind: the mane the owner painted for his bronze warrior, on Solen's head.": 'Pelo negro largo y salvaje hasta los hombros con una trenza atada con bandas de bronce detrás: la melena que el dueño pintó para su guerrero de bronce, sobre la cabeza de Solen.',
+  "Long wild black hair to the shoulders held by a bronze diadem at the brow, with a braid tied in bronze bands behind: the mane the owner painted for his bronze warrior, on Solen's head.": 'Pelo negro largo y salvaje hasta los hombros sujeto por una diadema de bronce en la frente, con una trenza atada con bandas de bronce detrás: la melena que el dueño pintó para su guerrero de bronce, sobre la cabeza de Solen.',
   "Solen's Diadem": 'Diadema de Solen',
   "A bronze diadem across the brow with a small emblem, worn over any hair: the diadem the owner painted for his bronze warrior, on Solen's head.": 'Una diadema de bronce sobre la frente con un pequeño emblema, sobre cualquier pelo: la diadema que el dueño pintó para su guerrero de bronce, sobre la cabeza de Solen.',
   "Bronze Warrior's Cuirass": 'Coraza del Guerrero de Bronce',

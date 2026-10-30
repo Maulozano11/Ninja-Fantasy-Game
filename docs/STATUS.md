@@ -254,6 +254,13 @@ Merge checks (`git merge-tree` on the origin tips, nothing changed):
   lower leg his laced shin's shape, so no calf shows beside the laces down to the foot (far leg; `feet.ts`,
   `ankle.ts` joinAnkle 4 px in four directions; the legate's and the general's idle lose the 2 px calf strip
   beside the far laces; `l10-tobillo-lejano.png`).
+  His next round (2026-10-30), done: the cuirass's sides at the stomach 2 px wider on each side, his plate
+  continued and his line at the new edge, its 1 px teeth straightened (`legate_ref.widened`;
+  `l11-cintura-ancha.png`); in the attack the sleeve stays on the upper arm once the arm turns (its hem stood
+  out above the arm and hung under the elbow: `general.ts` keepSleeveOnArm; `l12-codo.png`); the general's
+  face read in layers with his brow, nose and mouth as 1 px marks of his darker tones and his eyes kept, and
+  his pauldrons with his gold rims and studs in his brightest gold and his seams in his darkest (`general_ref`
+  FACE, PAULDRON; `g9-cara.png`, `g10-hombreras.png`).
   Names for both characters and their items are his to give.
 - `hero/bronze-warrior` (2026-10-29, D-T17): the bronze warrior is Solen. Both bronze presets wear Solen's head
   (`founder` face, standard eyes in his red, his skin); his repainted mane with the braid is `hair_solen_mane`
@@ -263,7 +270,10 @@ Merge checks (`git merge-tree` on the origin tips, nothing changed):
   `s1-solen-con-melena.png` (the mane on the four male heads) and `s2-diadema-accesorio.png` (the diadem over
   three hairs). His choice on the mane (2026-10-30, "option 1"), done: the front strand that crossed the near
   eye is moved 3 columns toward the temple, his same pixels (`solen-mane-from-ref.py` STRAND, STRAND_SHIFT);
-  `s3-mechon-movido.png`.
+  `s3-mechon-movido.png`. Then his "lo haremos un cabello" (2026-10-30), done: the mane and the diadem are one
+  hair, `hair_solen_mane` draws his diadem over the hair at the brow (the clip that holds it, his pixels,
+  following the hair's bronze slot); both bronze presets wear it and no longer carry `acc_solen_diadem`, which
+  stays for other hairs; `s4-melena-con-diadema.png`.
 
 - `jutsu/tide-s` (2026-10-22): the Dragon Tsunami is approved (look, rank S, names, numbers for now).
   Still open, small:

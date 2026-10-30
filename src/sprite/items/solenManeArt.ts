@@ -205,3 +205,28 @@ export const SOLEN_DIADEM_KIND: Record<string, 'warm'> = {
 
 /** His middle bronze of the diadem: the colour slot's default. */
 export const SOLEN_DIADEM_BRONZE = '#d79847';
+
+const SOLEN_MANE_DIADEM_COLORS: Record<string, string> = {
+  a: '#e0a73f',
+  b: '#8e542f',
+  c: '#f0dc74',
+  d: '#a37244',
+  e: '#754e32',
+  f: '#ecbd48',
+  h: '#b87f3e',
+  i: '#f2e796',
+  j: '#d79847',
+};
+
+/** His diadem as a part of the mane (the clip that holds the hair): the same pixels as SOLEN_DIADEM, drawn over the hair at the brow; pivot on the face anchor. */
+export const SOLEN_MANE_DIADEM: PaintedPart = {
+  pivot: [3, 6],
+  rows: [
+    '........abaccad',
+    '.e.....eefehibf',
+    'ee.....eaeabfje',
+    '...........fef.',
+    '............a..',
+  ],
+  colors: SOLEN_MANE_DIADEM_COLORS,
+};

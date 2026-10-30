@@ -194,6 +194,9 @@ def nz(seed, sc):
     r = ndimage.zoom(r, sc, order=3)[:VH, :VW]
     return (r - r.min()) / (r.max() - r.min())
 NZ = nz(9, 60)
+_hm = Image.fromarray(((HM > 0) * 255).astype(np.uint8)).resize((VW, VH), Image.NEAREST)
+HEADS_ON_FLOOR = ndimage.binary_dilation(np.array(_hm) > 0, iterations=12)
+HYB = HY * (1 - ndimage.gaussian_filter(HEADS_ON_FLOOR.astype(np.float32), 4))
 DCOL = np.array([118, 98, 82], np.float32)
 T = 30
 for i in range(T):
@@ -203,7 +206,8 @@ for i in range(T):
     a = (np.clip((t - 0.3) / 0.4, 0, 1) * HY)[..., None]
     sinkpx = int(40 * min(1, t * 2) ** 2)
     Ls = np.concatenate([L[:sinkpx] * 0 + L[:1], L[:VH - sinkpx]], axis=0) if sinkpx else L
-    Ls = L * (1 - HY[..., None]) + Ls * HY[..., None]
+    # only the body and necks sink: the heads already lie on the floor and must not move
+    Ls = L * (1 - HYB[..., None]) + Ls * HYB[..., None]
     frame = Ls * (1 - a) + DEAD * a
     frame = frame * (1 - 0.92 * cover) + DCOL * 0.92 * cover
     dust_step(4 if t > 0.5 else 0)

@@ -627,6 +627,7 @@ What this means:
 
 ## Log (newest first, one line each)
 
+- 2026-10-29 23:40 Steve 1: the hydra summon v7 (Barrabás's bolts, line and leap; smoke seam fixed) **approved by the owner**; v7 is the version to port to the shared tool.
 - 2026-10-29 23:25 Steve 1: answered Steve 2's cinematic-tool question (yes; Steve 2 builds the tool
   and player, Steve 1 ports the hydra); hydra summon pipeline recorded in `tools/cinematics/hydra-summon/` on `docs/colossal-hydra`.
 - 2026-10-29 23:15 Steve 2: PR #21, enemies of levels 9/12 and `--level=N` for the AI battles (both sides

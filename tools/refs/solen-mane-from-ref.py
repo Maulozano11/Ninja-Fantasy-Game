@@ -17,6 +17,11 @@ from it and continued where his face hid them), laid for Solen's head:
     its top are, mirrored (his line left out), his line closing it; so no skull shows past his hair;
   - over the skull above the hairline (HAIRLINE) every pixel of Solen's head is his hair: a notch of his
     mane there (open on his smaller head) is filled with his hair beside it, so no skin shows through it;
+  - the front strand that fell over the cheek crossed Solen's near eye (his head's eyes sat lower): it is
+    moved STRAND_SHIFT columns toward the temple (STRAND: its pixels, the same pixels of his, his line kept),
+    so it frames the cheek against the temple lock without crossing the eye or the brow; where a moved pixel
+    lands on the temple lock it merges with it, and the fringe's bottom it leaves bare takes his line (the
+    owner's choice, 2026-10-30, "option 1");
   - the back part is the mane with the forehead between the fringe's strands filled in (the head's pixels
     from the hairline to the brow that his front leaves open, each the colour above it), as his Solen's hair
     is built (solen-hair-from-ref.py): drawn behind the head, it is also the head's outline there (the game
@@ -64,6 +69,11 @@ def skull(x, y):
     nx, ny = ANCHOR
     dx, dy = x - nx, y - ny
     return dx in SKULL and SKULL[dx] <= dy < BROW
+
+# The front strand over the cheek: its pixels in columns and rows from the anchor (dx0, dy0, dx1, dy1,
+# inclusive), and how many columns it moves toward the temple (negative: toward the near side).
+STRAND = (0, -1, 3, 6)
+STRAND_SHIFT = -3
 
 ANCHOR = R.ANCHOR
 NEAR4 = ((1, 0), (-1, 0), (0, 1), (0, -1))
@@ -134,6 +144,33 @@ def crown(m, c, isl, black):
     return m, c, isl
 
 
+def moved(m, c, isl, black):
+    """The front strand moved toward the temple (module docstring): the same pixels of his at their new
+    columns; a moved pixel that lands on hair already there merges with it (the lock keeps its own pixel);
+    then, in the rows it touched, a pixel of his colours left with no hair beside it takes his line."""
+    nx, ny = ANCHOR
+    dx0, dy0, dx1, dy1 = STRAND
+    m, c, isl = m.copy(), c.copy(), isl.copy()
+    src = [(ny + dy, nx + dx) for dy in range(dy0, dy1 + 1) for dx in range(dx0, dx1 + 1) if m[ny + dy, nx + dx]]
+    moved_ = [(y, x, c[y, x].copy(), isl[y, x]) for y, x in src]
+    for y, x in src:
+        m[y, x] = False
+        isl[y, x] = False
+    for y, x, col, line in moved_:
+        q = (y, x + STRAND_SHIFT)
+        if m[q]:
+            continue
+        m[q] = True
+        c[q] = col
+        isl[q] = line
+    for y in range(ny + dy0 - 1, ny + dy1 + 2):
+        for x in range(nx + dx0 + STRAND_SHIFT - 1, nx + dx1 + 2):
+            if m[y, x] and not isl[y, x] and any(not m[y + dy, x + dx] for dy, dx in NEAR4):
+                c[y, x] = black
+                isl[y, x] = True
+    return m, c, isl
+
+
 def back_of(m, c, isl):
     """The back part: the mane with the forehead between the fringe's strands filled in (the skull's pixels from
     the hairline to the brow that the front leaves open)."""
@@ -187,6 +224,7 @@ def main(out, study=None):
     braid = lifted(rep['braid'])
     diadem = lifted(rep['diadem'])
     hm, hc, hl = crown(*hair, black)
+    hm, hc, hl = moved(hm, hc, hl, black)
     bm, bc = back_of(hm, hc, hl)
     nx, ny = ANCHOR
     # the front and the back share one palette (the back adds no colour of its own)

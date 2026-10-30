@@ -254,7 +254,9 @@ Merge checks (`git merge-tree` on the origin tips, nothing changed):
   (`tools/refs/solen-mane-from-ref.py`); the `hoplite` face and eye shapes and `hair_hoplite` /
   `acc_hoplite_diadem` are gone (they never left this branch: no saved character has them). Look at
   `s1-solen-con-melena.png` (the mane on the four male heads) and `s2-diadema-accesorio.png` (the diadem over
-  three hairs).
+  three hairs). His choice on the mane (2026-10-30, "option 1"), done: the front strand that crossed the near
+  eye is moved 3 columns toward the temple, his same pixels (`solen-mane-from-ref.py` STRAND, STRAND_SHIFT);
+  `s3-mechon-movido.png`.
 
 - `jutsu/tide-s` (2026-10-22): the Dragon Tsunami is approved (look, rank S, names, numbers for now).
   Still open, small:

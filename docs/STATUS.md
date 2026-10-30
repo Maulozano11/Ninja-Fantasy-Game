@@ -241,8 +241,13 @@ Merge checks (`git merge-tree` on the origin tips, nothing changed):
   for pixel). Redone: his plates are read in layers at our scale (`tools/refs/engraved_ref.py`: his line, his
   plate in his shades, his gold engraving, rims, seams and studs as marks laid by cell, his spirals, lion and
   eagle readable), for the legate's cuirass and pauldrons and the general's two cuirasses and pauldrons: look
-  at `l4-coraza-pixel-a-pixel.png`, `l5-poses.png`, `g7-partes-pixel-a-pixel.png`, `g8-quieto.png`. Names for
-  both characters and their items are his to give.
+  at `l4-coraza-pixel-a-pixel.png`, `l5-poses.png`, `g7-partes-pixel-a-pixel.png`, `g8-quieto.png`. His answer
+  on l4/l5 (2026-10-29, "me está gustando mucho") with two fixes, done: his pauldrons and sleeves grown with
+  his pixels to cover our whole shoulder on both male bodies (`legate_ref.COVER`, `grown`; `l6-hombreras-antes-despues.png`),
+  and the gladiator sandal's ankle kept inside the sandal in every pose (`items/ankle.ts` `SANDAL_LIMITS`,
+  `joinAnkle`: the foot turns with a lifted shin from 15 degrees, the crack between laces and a flat foot is
+  filled with his laces; shared by Solen's and the Roman's sandals, idle unchanged; `l7-tobillo-antes-despues.png`).
+  Names for both characters and their items are his to give.
 - `hero/bronze-warrior` (2026-10-29, D-T17): the bronze warrior is Solen. Both bronze presets wear Solen's head
   (`founder` face, standard eyes in his red, his skin); his repainted mane with the braid is `hair_solen_mane`
   and his diadem `acc_solen_diadem`, lifted 3 rows onto Solen's skull and continued up to it

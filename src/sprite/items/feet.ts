@@ -14,7 +14,7 @@ import { takesMaleSkin } from '../maleSkin';
 import { MALE_SKIN_BASE } from '../maleSkinArt';
 import { FEET_DAWN_BOOTS } from './aureliaBoots';
 import { across, crease, fpx, limb, limbR, stitch, stud, tube, wrapStripes } from './clothes';
-import { closeAnkle, footTurn, shinCarried } from './ankle';
+import { closeAnkle, footTurn, joinAnkle, SANDAL_LIMITS, shinCarried, shinTurn } from './ankle';
 import { founderLegLen, founderLegOut, founderLegsStill } from './founderOut';
 import { FOUNDER_SANDAL_FOOT_F, FOUNDER_SANDAL_FOOT_N, FOUNDER_SANDAL_KIND, FOUNDER_SANDAL_LEATHER, FOUNDER_SANDAL_SHIN_F, FOUNDER_SANDAL_SHIN_N, FOUNDER_SANDAL_SKIN } from './founderSandalsArt';
 import { ROMAN_KIT_KIND, ROMAN_KIT_KNEES, ROMAN_KIT_REACH, ROMAN_KIT_REST, SANDAL_FOOT_F, SANDAL_FOOT_N, SANDAL_LEATHER, SANDAL_SHIN_F, SANDAL_SHIN_N, SANDAL_SKIN } from './bracersSandalsArt';
@@ -532,11 +532,14 @@ function drawRomanSandals(g: DrawCtx, tint: (ch: string, hex: string) => string)
       legToLacedShin(g, s, shin, ankle, shinDeg);
     }
     stampPiece(g, L, shin, at, shinDeg, `shin${s}`, tint);
-    const turn = footTurn(g, s);
+    const turn = footTurn(g, s, false, SANDAL_LIMITS);
     stampPiece(g, L, foot, at, foot.angle + turn, `foot${s}`, tint);
-    if (turn) {
+    // (the ankle inside the sandal in every pose: the crack between the laces and a foot held flat closed
+    // with his laces continued, and his line round what is left open; nothing at rest)
+    if (shinTurn(g, s)) {
+      const joined = joinAnkle(g, s, at);
       const lineHex = [...Object.values(shin.colors), ...Object.values(foot.colors)].filter((hex) => ROMAN_KIT_KIND[hex] === 'line');
-      if (lineHex.length) closeAnkle(g, s, at, g.m(lineHex[0], 'flat'), new Set(lineHex.map((hex) => g.m(hex, 'flat'))));
+      if ((turn || joined) && lineHex.length) closeAnkle(g, s, at, g.m(lineHex[0], 'flat'), new Set(lineHex.map((hex) => g.m(hex, 'flat'))));
     }
   }
 }
@@ -776,12 +779,15 @@ export const FEET_ITEMS: ItemDef[] = [
         const at = add(ankle, founderLegOut(g, s).out);
         // Lifted well off the ground (a kick, the run's back leg), either sandal turns with its laced shin about
         // the ankle, as he drew them as one (footTurn: 0 standing, so at rest every pixel is his).
-        const turn = moving || roman ? footTurn(g, s) : 0;
+        const turn = moving ? footTurn(g, s, false, SANDAL_LIMITS) : 0;
         stampPiece(g, legDepth(s, 'feet'), shin, at, segAngle(knee, ankle), `shin${s}`, tint, line);
         stampPiece(g, legDepth(s, 'feet'), foot, at, foot.angle + turn, `foot${s}`, tint, line);
+        // (the ankle inside the sandal in every pose: the crack between the laces and a foot held flat closed
+        // with his laces continued; nothing at rest)
+        if (moving && shinTurn(g, s)) joinAnkle(g, s, at);
         if (moving || turn) {
           // His line round the ankle: the pieces' line colours (his line is never tinted).
-          const lineHex = [...Object.values(shin.colors), ...(roman ? Object.values(foot.colors) : [])].filter((hex) => pieces.kind[hex] === 'line');
+          const lineHex = Object.values(shin.colors).filter((hex) => pieces.kind[hex] === 'line');
           if (lineHex.length) closeAnkle(g, s, at, g.m(lineHex[0], 'flat'), new Set(lineHex.map((hex) => g.m(hex, 'flat'))));
         }
       }

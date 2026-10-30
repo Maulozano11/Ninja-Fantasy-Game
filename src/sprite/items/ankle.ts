@@ -50,9 +50,86 @@ const FOOT_LIFT = 3;
  * `onGround`: also while the foot is on the ground (a kneel, a crouched step on the toes), for a boot
  * carried round with a shin longer than ours (shinCarried), whose foot only meets the ground on its toes.
  */
-export function footTurn(g: DrawCtx, s: Side, onGround = false): number {
+export function footTurn(g: DrawCtx, s: Side, onGround = false, lim: FootLimits = { turn: FOOT_TURN, lift: FOOT_LIFT }): number {
   const d = shinTurn(g, s);
-  return Math.abs(d) > FOOT_TURN && (onGround || ankleLift(g, s) > FOOT_LIFT) ? d : 0;
+  return Math.abs(d) > lim.turn && (onGround || ankleLift(g, s) > lim.lift) ? d : 0;
+}
+
+/** From how far a shin's turn (degrees) and its ankle's lift (fine pixels) a foot turns with the shin. */
+export interface FootLimits {
+  turn: number;
+  lift: number;
+}
+
+/**
+ * His sandals' limits: the foot turns with its laced shin as soon as the shin leans past SANDAL_TURN with
+ * the foot off the ground (the owner, 2026-10-29, on the legate's poses: "el tobillo está mal, se sale de la
+ * bota": held flat under a shin turned 20 to 40 degrees, the sandal's foot had come apart from the laces).
+ */
+export const SANDAL_LIMITS: FootLimits = { turn: 15, lift: 2 };
+
+/** How far from the ankle (fine pixels) the crack between a shin and its foot is looked for. */
+const JOIN_R = 6;
+
+/**
+ * The crack between a shin and its foot closed with the shin continued: an empty pixel of the layer near the
+ * ankle with the shin on one side of it and the foot on the other (among its 8 neighbours, or within two
+ * pixels along its row or column) takes the material of the nearest shin pixel, as part of the foot, so the
+ * ankle stays inside the sandal where the shin leans away from a foot held flat on the ground (a crouch, a
+ * lunge, a step) or the two are rounded apart. Twice, for a crack two pixels wide. Nothing at rest: there
+ * he drew the two as one.
+ */
+export function joinAnkle(g: DrawCtx, s: Side, at: Vec, depth = legDepth(s, 'feet')): number {
+  const L = g.L(depth);
+  const shin = partIndex(`shin${s}`);
+  const foot = partIndex(`foot${s}`);
+  const ax = Math.floor(at.x * RES);
+  const ay = Math.floor(at.y * RES);
+  const is = (i: number, p: number) => L.mat[i] >= 0 && L.part[i] === p;
+  let filled = 0;
+  for (let pass = 0; pass < 2; pass++) {
+    const add: [number, number][] = [];
+    for (let y = ay - JOIN_R; y <= ay + JOIN_R; y++)
+      for (let x = ax - JOIN_R; x <= ax + JOIN_R; x++) {
+        if (x < 2 || y < 2 || x >= GRID - 2 || y >= GRID - 2) continue;
+        const i = y * GRID + x;
+        if (L.mat[i] >= 0) continue;
+        let nearShin = false;
+        let nearFoot = false;
+        for (let dy = -1; dy <= 1; dy++)
+          for (let dx = -1; dx <= 1; dx++) {
+            const j = i + dy * GRID + dx;
+            if (is(j, shin)) nearShin = true;
+            if (is(j, foot)) nearFoot = true;
+          }
+        const across = [[1, 0], [0, 1]].some(([dx, dy]) => {
+          const a = [i - dy * GRID - dx, i - 2 * dy * GRID - 2 * dx];
+          const b = [i + dy * GRID + dx, i + 2 * dy * GRID + 2 * dx];
+          return (a.some((j) => is(j, shin)) && b.some((j) => is(j, foot))) || (a.some((j) => is(j, foot)) && b.some((j) => is(j, shin)));
+        });
+        if (!((nearShin && nearFoot) || across)) continue;
+        // the nearest shin pixel's material (the one above first: his laces run on down)
+        let best = -1;
+        let bd = 1e9;
+        for (let dy = -3; dy <= 3; dy++)
+          for (let dx = -3; dx <= 3; dx++) {
+            const j = i + dy * GRID + dx;
+            const d = dx * dx + dy * dy + (dy < 0 ? 0 : 0.5);
+            if (is(j, shin) && d < bd) {
+              bd = d;
+              best = L.mat[j];
+            }
+          }
+        if (best >= 0) add.push([i, best]);
+      }
+    for (const [i, m] of add) {
+      L.mat[i] = m;
+      L.part[i] = foot;
+    }
+    filled += add.length;
+    if (!add.length) break;
+  }
+  return filled;
 }
 
 /**

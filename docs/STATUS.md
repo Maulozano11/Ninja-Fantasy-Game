@@ -301,7 +301,12 @@ Merge checks (`git merge-tree` on the origin tips, nothing changed):
   stays for other hairs; `s4-melena-con-diadema.png`. His circle on s4 (the black line across the forehead
   on every head): it was his fringe's black bottom rows, drawn resting on his own eyes' lids, lifted three
   rows onto Solen's forehead; the mane is lifted two rows now, so they rest on Solen's lids as in his picture
-  (`solen-mane-from-ref.py` LIFT; `s5-frente-sin-linea.png`).
+  (`solen-mane-from-ref.py` LIFT; `s5-frente-sin-linea.png`). His word on s5 ("una línea negra a la altura
+  de la ceja en todas las cabezas, es la que no me gusta", "asegúrate de no quitar las cejas"): the fringe's
+  black bottom rows are his line, which on his own head is the brows and lashes; over the face, between the
+  temple strand and the far lock, the fringe now ends above the brows, its pixels on the brow and eye rows
+  gone and its bottom line in his hair tones (`solen-mane-from-ref.py` brow, FACE_COLS, FRINGE_*), so each
+  face's own eyebrows show under it on the four heads (`s6-ceja.png`).
 
 - `jutsu/tide-s` (2026-10-22): the Dragon Tsunami is approved (look, rank S, names, numbers for now).
   Still open, small:

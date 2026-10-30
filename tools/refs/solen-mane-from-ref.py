@@ -77,6 +77,19 @@ def skull(x, y):
 # inclusive), and how many columns it moves toward the temple (negative: toward the near side).
 STRAND = (0, -1, 3, 6)
 STRAND_SHIFT = -3
+# The fringe over the brow (the owner, 2026-10-30, on s5: "una línea negra a la altura de la ceja en todas las
+# cabezas, es la que no me gusta", and "asegúrate de no quitar las cejas"): his fringe's bottom rows are his
+# black line, which on his own head are the brows and lashes; on Solen's head the brows are the face's own.
+# Over the face, between the near strand and the far temple lock (FACE_COLS: columns from the anchor), the
+# fringe ends above the brows: its pixels from row FRINGE_END (from the anchor; the brows' first row) down to
+# row FRINGE_LAST go, and above them, from row FRINGE_TONE down, his line pixels at the fringe's bottom (with
+# no hair tone of his under them in their column down to the brow) take his hair tone nearest above them in
+# the column (else beside them), so the fringe ends in his hair tones and the brows show under it. His diadem
+# lies over the fringe there as he set it.
+FACE_COLS = (-2, 10)
+FRINGE_END = -2
+FRINGE_LAST = 3
+FRINGE_TONE = -6
 
 ANCHOR = R.ANCHOR
 NEAR4 = ((1, 0), (-1, 0), (0, 1), (0, -1))
@@ -174,6 +187,30 @@ def moved(m, c, isl, black):
     return m, c, isl
 
 
+def brow(m, c, isl):
+    """The fringe ended above the brows, in his hair tones (module comment)."""
+    nx, ny = ANCHOR
+    m, c, isl = m.copy(), c.copy(), isl.copy()
+    x0, x1 = nx + FACE_COLS[0], nx + FACE_COLS[1]
+    for y in range(ny + FRINGE_END, ny + FRINGE_LAST + 1):
+        m[y, x0:x1 + 1] = False
+        isl[y, x0:x1 + 1] = False
+    tone = lambda y, x: m[y, x] and not isl[y, x]
+    bottom = [(y, x) for y in range(ny + FRINGE_TONE, ny + FRINGE_END) for x in range(x0, x1 + 1)
+              if m[y, x] and isl[y, x] and not any(tone(q, x) for q in range(y + 1, ny + FRINGE_END))]
+    for y, x in bottom:
+        above = [q for q in range(y - 1, ny + FRINGE_TONE - 7, -1) if q >= 0 and tone(q, x) and (q, x) not in bottom]
+        if above:
+            c[y, x] = c[above[0], x]
+        else:
+            beside = sorted((abs(p - x), p) for p in range(x - 6, x + 7) if 0 <= p < 256 and tone(y, p) and (y, p) not in bottom)
+            if not beside:
+                continue
+            c[y, x] = c[y, beside[0][1]]
+        isl[y, x] = False
+    return m, c, isl
+
+
 def back_of(m, c, isl):
     """The back part: the mane with the forehead between the fringe's strands filled in (the skull's pixels from
     the hairline to the brow that the front leaves open)."""
@@ -228,6 +265,7 @@ def main(out, study=None):
     diadem = lifted(rep['diadem'])
     hm, hc, hl = crown(*hair, black)
     hm, hc, hl = moved(hm, hc, hl, black)
+    hm, hc, hl = brow(hm, hc, hl)
     bm, bc = back_of(hm, hc, hl)
     nx, ny = ANCHOR
     # the front and the back share one palette (the back adds no colour of its own)

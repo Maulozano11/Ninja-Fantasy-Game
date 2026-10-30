@@ -476,7 +476,9 @@ also find the storeroom with the loot.
 **The villain: Barrabás** (the owner, 2026-10-29). A Kōton, and the Kōton are allied with the
 Northstar. Most Kōton wear heavy armour like Aiden's; the good ones wear respectable knight's
 armour, the corrupt ones a darker, more gothic version: that is his. Dark green hair. (Our own
-design; no franchise look.)
+design; no franchise look.) On the **bulky** body (the owner, 2026-10-29). His design and his
+sprite at our scale: `docs/reference/barrabas-design-owner-reference.png`,
+`docs/reference/barrabas-paintover-bulky-owner-reference.png`.
 
 **His welcome (draft, the owner's lines refined; his words to approve):**
 - The party walks in; Barrabás stands in the middle of the courtyard. *"¡Ja! Sabía que vendrían.

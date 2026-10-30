@@ -534,7 +534,11 @@ an anime counter move; the name and the look must be our own), and other random,
 are sold for gold back at home or the base (his ToME decision: random loot becomes gold, weapons
 are hand-made).
 **Loot from the dead hydra** (the owner, 2026-10-30): its heads lie cut off on the courtyard floor
-after the battle, and the party can loot them for a **basilisk tooth** (the front head's one long fang, which glows) (what it does, and whether
+after the battle, and the party can loot them for a **basilisk tooth** (the front head's one long fang, which glows). **To take it a character must walk up to it** (the owner, 2026-10-30): close
+enough, the choice **"Lootear"** or **"Seguir adelante"** appears; both can be done (loot, then go
+on). **Going on, the party leaps one by one over the wall to the right, where Barrabás went, with
+his same ninja leap** (crouch, dust puff, flip, afterimage trail), and the mission moves on into
+the castle. The fang's glow is soft. `docs/mockups/colossal-hydra-after-battle.png` (what it does, and whether
 it is a material for the forge or an item of its own, to propose).
 
 **Summons, from here on.** Boss summons get their own animation (this one: the villain's

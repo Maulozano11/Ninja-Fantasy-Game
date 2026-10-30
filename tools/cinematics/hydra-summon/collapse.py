@@ -90,25 +90,76 @@ def floor_head(r):
     low[:b2 + 25] = False
     burnt[low] = cut[low]
     return Image.fromarray(burnt, 'RGBA')
-FLOORED = [[BURNT[r][0], floor_head(r)] for r in range(5)]
-def battle(p_cut, i, k_in):
+# the four heads cut earlier lie on the floor where his dead picture has them (matted from it by
+# their difference with the battle backdrop), the last one (E, the front) falls there when cut
+K = VW / 1672
+HM = np.load(f'{S}/hydra/col19/heads1672.npy')
+DSRC = np.array(Image.open(f'{S}/hydra/col19/dead2_char.png').convert('RGB'))
+def head_sprite(bit):
+    m = ndimage.gaussian_filter(((HM & bit) > 0).astype(np.float32), 1.2)
+    ys, xs = np.nonzero(m > 0.02)
+    y0, y1, x0, x1 = ys.min(), ys.max() + 1, xs.min(), xs.max() + 1
+    im = Image.fromarray(np.dstack([DSRC[y0:y1, x0:x1], (m[y0:y1, x0:x1] * 255).astype(np.uint8)]), 'RGBA')
+    im = im.resize((int(im.width * K), int(im.height * K)), Image.LANCZOS)
+    return im, x0 * K, y0 * K
+FLOOR_HEADS = [head_sprite(b) for b in (1, 2, 4, 8)]
+EH, EX, EY = head_sprite(16)
+# the heads lie on the floor, so they go into the background before the necks are drawn over it
+_breathe = NC['breathe']
+def _breathe_with_heads(t):
+    img = _breathe(t)
+    for im, x, y in FLOOR_HEADS:
+        img.alpha_composite(im, (int(x), int(y)))
+    return img
+NC['breathe'] = _breathe_with_heads
+def with_heads(arr, extra=None):
+    img = Image.fromarray(np.clip(arr, 0, 255).astype(np.uint8)).convert('RGBA')
+    if extra:
+        extra(img)
+    return np.array(img.convert('RGB')).astype(np.float32)
+RAW = NB['PASS'][0][0][LAST][1]  # his raw stump, lined up like the burnt ones
+def battle(p_cut, i, k_in, stump_only=False, extra=None):
     rows_c, _, f = NC['PASS'][p_cut]
-    rows = [FLOORED[r] if r != LAST else rows_c[r] for r in range(5)]
-    sh = [SHB[r] if r != LAST else NC['MAXS'][r] * k_in for r in range(5)]
-    return np.array(NC['scene'](rows, 1, sh, i / 60).convert('RGB')).astype(np.float32)
+    rows = [BURNT[r] if r != LAST else ([BURNT[r][0], RAW] if stump_only else rows_c[r]) for r in range(5)]
+    sh = [SHB[r] if (r != LAST or stump_only) else NC['MAXS'][r] * k_in for r in range(5)]
+    return with_heads(np.array(NC['scene'](rows, 1, sh, i / 60).convert('RGB')).astype(np.float32), extra)
 i = 0
-for _ in range(20):
+for _ in range(24):
     emit(battle(0, i, 0.0)); i += 1
-for p, (_, _, f) in enumerate(NC['PASS']):
-    k_in = 0.0 if f < 2 else (0.5 if f == 2 else 1.0)
-    for _ in range(5 if p < 7 else 3):
-        emit(battle(p, i, k_in), shake=4 if f in (1, 2) else 0); i += 1
-LASTP = len(NC['PASS']) - 1
-for j in range(12):
-    emit(battle(LASTP, i, 1.0), shake=6 if j % 4 < 2 else 3); i += 1
-# 2. it falls: a thick wall of dust rises along its whole body and hides it; under the dust it
-# gives way to his dead picture (no warp: a warped painting shows its seams)
-L = battle(LASTP, i, 1.0)
+# the last cut: his cut frames while the head is still on (frames 0-2)
+CUTP = [p for p, (_, _, f) in enumerate(NC['PASS']) if f <= 2]
+for p in CUTP:
+    f = NC['PASS'][p][2]
+    for _ in range(5):
+        emit(battle(p, i, 0.0 if f < 2 else 0.5), shake=4 if f in (1, 2) else 0); i += 1
+# where the head is at the cut: the difference between the head-on frame and the stump alone
+on = battle(CUTP[-1], i, 0.5)
+off = battle(CUTP[-1], i, 0.5, stump_only=True)
+dm = np.abs(on - off).mean(-1) > 40
+ys, xs = np.nonzero(dm)
+HX0, HY0 = float(np.median(xs)), float(np.median(ys))
+HXF, HYF = EX + EH.width / 2, EY + EH.height / 2
+print('head falls from', (HX0, HY0), 'to', (HXF, HYF))
+# it falls with gravity, turning onto its side, and lands where his picture has it
+T = 16
+for j in range(T):
+    u = (j + 1) / T
+    x = HX0 + (HXF - HX0) * u
+    y = HY0 + (HYF - HY0) * u * u - 60 * np.sin(np.pi * u) * (1 - u)
+    rot = 35 * (1 - u) ** 1.5
+    def ex(img, x=x, y=y, rot=rot):
+        s2 = EH.rotate(rot, resample=Image.BICUBIC, expand=True)
+        img.alpha_composite(s2, (int(x - s2.width / 2), int(y - s2.height / 2)))
+    emit(battle(CUTP[-1], i, 0.5, stump_only=True, extra=ex)); i += 1
+def ex_landed(img):
+    img.alpha_composite(EH, (int(EX), int(EY)))
+# it lands: a thud, a puff of dust; the body shudders: it is dead
+for j in range(4):
+    DUST.append([HXF + rng.uniform(-120, 120), HYF + 40, rng.uniform(15, 30), 0.9, rng.uniform(-2, 2)])
+for j in range(14):
+    dust_step(0)
+    emit(battle(CUTP[-1], i, 0.5, stump_only=True, extra=ex_landed), shake=(8 if j < 3 else (5 if j % 4 < 2 else 2))); i += 1
+L = battle(CUTP[-1], i, 0.5, stump_only=True, extra=ex_landed)
 HY = ndimage.gaussian_filter(((np.abs(L - EMPTY).mean(-1) > 30) | (np.abs(DEAD - EMPTY).mean(-1) > 30)).astype(np.float32), 25)
 def nz(seed, sc):
     r = np.random.default_rng(seed).random((VH // sc + 2, VW // sc + 2)).astype(np.float32)

@@ -2157,7 +2157,9 @@ and no body along the back wall; only the body on the right).
     2026-10-30); they can be looted for a basilisk tooth (`MISSION_DESIGN.md`, the fortress loot).
     In the battle, with no cut to another shot. **It dies when its last head is cut** (the owner,
     2026-10-30), so at that moment four stumps are already burnt and sealed and only the last is
-    freshly cut: the last head falls, the body shudders, a wall of dust rises along it and hides
+    freshly cut. **Every cut-off head lies on the floor** (no head hangs in the air; the
+    four earlier ones lie where his dead picture has them, matted from it), and **it dies when the
+    last head hits the floor** (the owner, 2026-10-30): the head falls and lands, the body shudders, a wall of dust rises along it and hides
     the fall, and the dust settles on his dead-hydra picture v2 (an exact edit of the battle
     backdrop) with four of its stumps charred from his own pixels and the front one raw
     (`tools/cinematics/hydra-summon/char_stumps.py`, `collapse.py`;

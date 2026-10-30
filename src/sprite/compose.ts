@@ -495,7 +495,13 @@ function layFrame(rgba: Uint8ClampedArray, part: Uint8Array, hair: Uint8Array, l
 function standardOf(look: SpriteAppearance): string | null {
   if (wearsHisFigure(look)) return 'lyra';
   if (onAureliaHead(look)) return 'aurelia';
-  return look.slots.armor?.id === 'armor_bronze' && look.slots.skirt?.id === 'skirt_imperial' ? 'roman' : null;
+  const armor = look.slots.armor?.id;
+  // his Roman general and legate (the owner, 2026-10-30, on the general: "todas las demás pruebas: brazos,
+  // piernas, todo bien"): their chest sets, mended as his standard characters are (cracks, light edges, loose
+  // bits; never a pocket)
+  if (armor === 'armor_general_spiral' || armor === 'armor_general_muscle') return 'general';
+  if (armor === 'armor_legate') return 'legate';
+  return armor === 'armor_bronze' && look.slots.skirt?.id === 'skirt_imperial' ? 'roman' : null;
 }
 
 function thinDoubleOutlines(rgba: Uint8ClampedArray, top: Int16Array, isLine: Uint8Array): void {

@@ -498,7 +498,7 @@ COVER = {
 PAULDRON_TO = 7
 
 
-def grown(m, c, isl, side, rows=None, design=None, to=PAULDRON_TO, holes=False):
+def grown(m, c, isl, side, rows=None, design=None, to=PAULDRON_TO, holes=False, rim=False):
     """A piece grown to cover our shoulder (COVER): each covered pixel not in the piece takes his nearest
     pixel of it (his line left out, the same row first: his plates and folds run on sideways), his line
     closes the new edge, and his old line that the growth leaves inside takes his colour beside it. `rows`:
@@ -508,7 +508,9 @@ def grown(m, c, isl, side, rows=None, design=None, to=PAULDRON_TO, holes=False):
     from its own few pixels the far one was "muy tosco y simplón"). `holes`: a hole the growth leaves in a
     row, between his piece and the new pixels, is filled the same way (the general's sleeves and pauldrons;
     our skin there is hidden on the figure COVER was read from, so it is not in COVER). Not for the legate's
-    pieces, whose straps hang apart in their rows."""
+    pieces, whose straps hang apart in their rows. `rim`: his line all round the grown piece, also where his
+    rim met the sleeve or the cuirass without one (the general's pauldrons: a bent arm shows that edge, and a
+    light pixel on the figure's edge is a dead pixel)."""
     black = np.array(R.LINE)
     jx, jy = (int(np.floor(v)) for v in R.fine_joint('shoulder' + side))
     m, c, isl = m.copy(), c.copy(), isl.copy()
@@ -571,6 +573,11 @@ def grown(m, c, isl, side, rows=None, design=None, to=PAULDRON_TO, holes=False):
         if any(not m[y + dy, x + dx] for dy, dx in near4):
             c[y, x] = black
             isl[y, x] = True
+    if rim:
+        for y, x in zip(*np.nonzero(m & ~isl)):
+            if any(not m[y + dy, x + dx] for dy, dx in near4):
+                c[y, x] = black
+                isl[y, x] = True
     return m, c, isl
 
 
@@ -593,11 +600,11 @@ def piece(a, labs, fig, name):
         # (a plate's lone light pixel is his stud or his glint, read by engraved_ref: not a speck)
         m, c, isl = whole(*E.piece(a, labs[fig], name, M, PLATES[(fig, name)]), R.his_line(a), specks=False)
         if name == 'pauldron_n':
-            return grown(m, c, isl, 'N', to=PAULDRON_ROWS, holes=True)
+            return grown(m, c, isl, 'N', to=PAULDRON_ROWS, holes=True, rim=True)
         if name == 'pauldron_f':
             # (the far one grows with his near pauldron's design mirrored: his pixels, seen from behind)
             near = whole(*E.piece(a, labs[fig], 'pauldron_n', M, PLATES[(fig, 'pauldron_n')]), R.his_line(a), specks=False)
-            return grown(m, c, isl, 'F', design=near, to=PAULDRON_ROWS, holes=True)
+            return grown(m, c, isl, 'F', design=near, to=PAULDRON_ROWS, holes=True, rim=True)
         return m, c, isl
     m, c, isl = whole(*R.piece(a, labs[fig], name, M), R.his_line(a))
     if name.startswith('sleeve_'):

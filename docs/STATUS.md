@@ -294,6 +294,18 @@ Merge checks (`git merge-tree` on the origin tips, nothing changed):
   shoulder footprint and `grown` now live in `general_ref`, shared; the general's pauldrons to his near
   plate's last row, PAULDRON_ROWS, the far one from his near design mirrored, and the row holes the growth
   leaves filled); the navy sleeve stays under the plate as he drew it (`g13-hombros.png`).
+  His word on g13 ("ya casi está también", the bulky near shoulder's holes, and "asegúrate que en las demás
+  poses no tenga el mismo problema, sin confundir con fondos verdaderos"): the seam fill between the cuirass
+  and the near arm's pieces on the bulky body now runs for both characters (`general.ts` closeArmSeams, in
+  drawChest); his pauldrons carry his line all round (`general_ref.grown` rim: a bent arm showed their rim's
+  gold on the figure's edge); on a bent moving leg our shin stays whole within the knee's round (a pocket
+  opened at the bulky far knee between the thigh's round and the laces, `feet.ts` legToLacedShin; on a still
+  leg our thigh's round keeps to his laces as before, so no stray pixel at rest on bulky). The general and
+  the legate are now mended as his standard characters (`compose.ts` standardOf: cracks between parts that
+  meet, light edge pixels and loose bits closed in every frame but idle; never a pocket). Every pose and
+  frame of the general scanned for pockets on both chests and bodies (`findGlitches`): what our pieces
+  opened is closed, his separations (the hanging arm off the hip, a raised arm off the torso, the hand in
+  front of the body) are left, listed one by one on `g14-fornido-hombro.png`.
   Names for both characters and their items are his to give.
 - `hero/bronze-warrior` (2026-10-29, D-T17): the bronze warrior is Solen. Both bronze presets wear Solen's head
   (`founder` face, standard eyes in his red, his skin); his repainted mane with the braid is `hair_solen_mane`

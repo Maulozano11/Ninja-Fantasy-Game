@@ -1,7 +1,7 @@
 // Lets a full-screen battle send the player to another screen of the app: the web navigation is
 // hidden while a battle is up, and the battle's menu offers the way out.
 
-export type AppView = 'title' | 'creator' | 'campaign' | 'mission' | 'combat' | 'arena';
+export type AppView = 'title' | 'creator' | 'campaign' | 'mission' | 'combat' | 'arena' | 'cinematic';
 
 let go: ((v: AppView) => void) | null = null;
 

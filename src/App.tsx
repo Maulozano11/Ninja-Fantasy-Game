@@ -3,6 +3,7 @@ import { ShinobiCharacter, WeatherType } from './types/shinobi';
 import { LEGENDARY_PRESETS } from './data/shinobiData';
 import { CharacterCreator } from './components/CharacterCreator';
 import { BattleDemo } from './components/battle/BattleDemo';
+import { CinematicDemo } from './components/battle/CinematicDemo';
 import type { EncounterId } from './battle/encounters';
 import { CampaignMode } from './components/CampaignMode';
 import { ArenaSandbox } from './components/ArenaSandbox';
@@ -37,11 +38,11 @@ function encounterFor(type?: 'skirmish' | 'rogue_squad' | 'giant_beast' | 'titan
 
 export default function App() {
   useLang();
-  // The game opens on its title screen; a #creator, #missions or #combat link opens straight onto
-  // that screen (for testing).
+  // The game opens on its title screen; a #creator, #missions, #combat or #cinematic link opens
+  // straight onto that screen (for testing).
   const [activeView, setActiveView] = useState<AppView>(() => {
     const hash = typeof window !== 'undefined' ? window.location.hash : '';
-    return hash === '#creator' ? 'creator' : hash === '#missions' ? 'mission' : hash === '#combat' ? 'combat' : 'title';
+    return hash === '#creator' ? 'creator' : hash === '#missions' ? 'mission' : hash === '#combat' ? 'combat' : hash === '#cinematic' ? 'cinematic' : 'title';
   });
   // A battle fills the screen; its menu changes screen through this. Leaving a battle for the
   // screen it was opened from starts that screen afresh.
@@ -161,6 +162,7 @@ export default function App() {
           />
         )}
 
+        {activeView === 'cinematic' && <CinematicDemo character={character} />}
         {activeView === 'combat' && <BattleDemo key={`${activeEncounter?.title ?? 'practice'}:${visit}`} character={character} start={encounterFor(activeEncounter?.enemyType)} />}
 
         {activeView === 'arena' && (

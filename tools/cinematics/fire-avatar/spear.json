@@ -1,0 +1,273 @@
+{
+ "plugin": "fire-avatar/forge.py",
+ "size": [
+  960,
+  540
+ ],
+ "fps": 24,
+ "duration": 4.6,
+ "seed": 5,
+ "background": "docs/reference/fire-avatar-backdrop-owner-reference.png",
+ "effects": "tools/cinematics/fire-avatar/effects.json",
+ "timing": {
+  "forge_start": 0.7,
+  "forge_step": 0.22,
+  "forge_length": 0.7,
+  "push_in": 0.05
+ },
+ "forge_order": [
+  "coraza",
+  "hombro_i",
+  "hombro_d",
+  "brazo",
+  "brazo_d",
+  "escudo",
+  "lanza",
+  "casco"
+ ],
+ "ninja": {
+  "feet": [
+   480,
+   526
+  ],
+  "scale": 0.8
+ },
+ "name": "fire-avatar-spear",
+ "variant_shift": 1,
+ "keyframe": "docs/reference/fire-avatar-spear-owner-reference.png",
+ "plate": "docs/reference/fire-avatar-spear-plate-owner-reference.png",
+ "appear": "docs/reference/fire-avatar-appear-spear-owner-reference.png",
+ "eyes": [
+  [
+   528,
+   127
+  ],
+  [
+   550,
+   139
+  ]
+ ],
+ "pieces": [
+  {
+   "name": "lanza",
+   "kind": "line",
+   "points": [
+    [
+     112,
+     10
+    ],
+    [
+     952,
+     210
+    ]
+   ],
+   "width": 18
+  },
+  {
+   "name": "coraza",
+   "kind": "poly",
+   "points": [
+    [
+     400,
+     235
+    ],
+    [
+     548,
+     232
+    ],
+    [
+     562,
+     300
+    ],
+    [
+     500,
+     334
+    ],
+    [
+     410,
+     312
+    ]
+   ]
+  },
+  {
+   "name": "hombro_i",
+   "kind": "poly",
+   "points": [
+    [
+     284,
+     110
+    ],
+    [
+     422,
+     114
+    ],
+    [
+     428,
+     202
+    ],
+    [
+     360,
+     208
+    ],
+    [
+     288,
+     172
+    ]
+   ]
+  },
+  {
+   "name": "hombro_d",
+   "kind": "poly",
+   "points": [
+    [
+     500,
+     176
+    ],
+    [
+     626,
+     166
+    ],
+    [
+     642,
+     236
+    ],
+    [
+     560,
+     262
+    ],
+    [
+     500,
+     232
+    ]
+   ]
+  },
+  {
+   "name": "brazo",
+   "kind": "poly",
+   "points": [
+    [
+     172,
+     0
+    ],
+    [
+     286,
+     0
+    ],
+    [
+     292,
+     62
+    ],
+    [
+     256,
+     142
+    ],
+    [
+     180,
+     132
+    ],
+    [
+     168,
+     60
+    ]
+   ]
+  },
+  {
+   "name": "brazo_d",
+   "kind": "poly",
+   "points": [
+    [
+     560,
+     256
+    ],
+    [
+     650,
+     250
+    ],
+    [
+     662,
+     312
+    ],
+    [
+     602,
+     334
+    ],
+    [
+     566,
+     302
+    ]
+   ]
+  },
+  {
+   "name": "escudo",
+   "kind": "poly",
+   "points": [
+    [
+     610,
+     266
+    ],
+    [
+     702,
+     254
+    ],
+    [
+     802,
+     300
+    ],
+    [
+     862,
+     420
+    ],
+    [
+     862,
+     540
+    ],
+    [
+     760,
+     540
+    ],
+    [
+     680,
+     472
+    ],
+    [
+     614,
+     372
+    ]
+   ]
+  },
+  {
+   "name": "casco",
+   "kind": "poly",
+   "points": [
+    [
+     362,
+     8
+    ],
+    [
+     602,
+     0
+    ],
+    [
+     566,
+     182
+    ],
+    [
+     494,
+     180
+    ],
+    [
+     456,
+     142
+    ],
+    [
+     440,
+     92
+    ],
+    [
+     372,
+     72
+    ]
+   ]
+  }
+ ]
+}

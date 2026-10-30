@@ -9,8 +9,8 @@ export const HK_PALADIN_BELT_GOLD = '#f8c453';
 export const HK_PALADIN_BELT_GEM = '#263f7a';
 export const HK_ROGUE_SASH = '#4c1430';
 export const HK_ROGUE_SASH_BELT = '#2e272e';
-export const HK_DRAGON_BELT_LEATHER = '#543423';
-export const HK_DRAGON_BELT_METAL = '#8596a8';
+export const HK_DRAGON_BELT_LEATHER = '#602e31';
+export const HK_DRAGON_BELT_METAL = '#7b8e9c';
 
 /** What each of his colours is, as the script sorts them (tools/refs/heroine_knights_ref.py kind). */
 export const HK_BELT_KIND: Record<string, 'blue' | 'cyan' | 'gold' | 'ivory' | 'line' | 'plum' | 'red' | 'steel' | 'warm'> = {
@@ -125,7 +125,6 @@ export const HK_BELT_KIND: Record<string, 'blue' | 'cyan' | 'gold' | 'ivory' | '
   '#81878e': 'steel',
   '#825432': 'warm',
   '#854832': 'warm',
-  '#8596a8': 'steel',
   '#866954': 'warm',
   '#873b28': 'warm',
   '#873b37': 'red',
@@ -181,8 +180,6 @@ export const HK_BELT_KIND: Record<string, 'blue' | 'cyan' | 'gold' | 'ivory' | '
   '#f7de60': 'gold',
   '#f8c453': 'gold',
   '#f8d258': 'gold',
-  '#f9c65e': 'gold',
-  '#fbdc8b': 'ivory',
 };
 
 /** Where each piece lands in our female idle frame 0, unturned: the fine pixel of its first row's first cell. */
@@ -383,11 +380,11 @@ export const HK_DRAGON_BELT: PaintedPiece = {
     'aacjjaJQaRSTaaaaaaaAPUaiejahta',
     'arcwIjaaaVWXaU........a...a.a.',
     'arrjajcJaYZ0aU................',
-    '.aaaaxxlaWX1a2................',
-    'a34aaaxwa55aa2................',
-    '.6a6jajjjaaaa7................',
-    'aaaa8aaaa8jaa7................',
-    '....aWq9a!aaa#................',
+    '.rrraxxlaWX1a2................',
+    'rrraaaxwa33aa2................',
+    '.rajjajjjaaaa4................',
+    'aaaa5aaaa5jaa4................',
+    '....aWq6a7aaa8................',
     '.........aa.a.................',
   ],
   colors: {
@@ -444,14 +441,11 @@ export const HK_DRAGON_BELT: PaintedPiece = {
     '0': '#719ec2',
     '1': '#7b8e9c',
     '2': '#895c26',
-    '3': '#fbdc8b',
-    '4': '#f9c65e',
-    '5': '#57656d',
-    '6': '#8596a8',
-    '7': '#daa249',
-    '8': '#873b37',
-    '9': '#663735',
-    '!': '#c26447',
-    '#': '#e4a44a',
+    '3': '#57656d',
+    '4': '#daa249',
+    '5': '#873b37',
+    '6': '#663735',
+    '7': '#c26447',
+    '8': '#e4a44a',
   },
 };

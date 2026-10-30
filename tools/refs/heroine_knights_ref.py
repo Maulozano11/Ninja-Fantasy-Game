@@ -398,6 +398,11 @@ BLADE = {'paladin': (0.996, -50.56), 'rogue': (0.982, -49.49), 'dragon': (1.007,
 BLADE_ROWS = (78, 125)
 BLADE_HALF = 2.2
 BLADE_KINDS = ('cyan', 'steel', 'blue', 'white', 'ivory', 'line')
+# The rogue's pommel past her fist (his gold cap, ivory and steel, and its warm shade) is walled in by his line,
+# and her guard's gold tips are his warm orange, which the sword's flood never takes: both went to her skirt,
+# which carried them into every moving pose (the owner, 2026-10-30: weapon pixels left at her hip). Within
+# this polygon the sword is seeded on its own and its warm shade allowed.
+SWORD_LOOSE = {'rogue': [[(22, 70), (33, 70), (33, 78), (22, 78)]]}
 
 
 def sword_mask(fig):
@@ -416,11 +421,16 @@ def sword_mask(fig):
     seeds = blade_mask(fig, H, W, 2.0) & np.isin(K, ('cyan', 'white', 'ivory'))
     # (the pommel past the fist: his steel and gold in its polygon)
     seeds |= inside(SWORD[0], H, W) & np.isin(K, ('steel', 'gold', 'ivory', 'white'))
+    loose = np.zeros((H, W), bool)
+    for pts in SWORD_LOOSE.get(fig, []):
+        loose |= inside(pts, H, W)
+    env |= loose & figure_mask(fig)
+    seeds |= loose & np.isin(K, ('steel', 'gold', 'ivory', 'white', 'warm'))
     out = np.zeros((H, W), bool)
     st = list(zip(*np.nonzero(seeds)))
     while st:
         y, x = st.pop()
-        if out[y, x] or not env[y, x] or line[y, x] or K[y, x] not in SWORD_KINDS + ('green',):
+        if out[y, x] or not env[y, x] or line[y, x] or (K[y, x] not in SWORD_KINDS + ('green',) and not loose[y, x]):
             continue
         out[y, x] = True
         st += [(y + 1, x), (y - 1, x), (y, x + 1), (y, x - 1)]
@@ -1161,22 +1171,26 @@ def straight_blade(rgb, lab):
             rgb[y, x] = c
 
 
-# How near (pixels) his blade a pixel of its light on the parts it crosses is scrubbed (scrub_glints), and
-# those parts: the legs, the feet, the skirt and the cape (the belt and the hands keep their own highlights
-# beside the guard).
+# The sword's remnants on the parts it lies over at rest (scrub_glints): the parts, and how far from the sword
+# (pixels) a pixel of the blade's light beside the straightened band is taken for the blade's.
 GLINT_NEAR = 2
-GLINT_PARTS = ('thighN', 'thighF', 'shinN', 'shinF', 'footN', 'footF', 'skirt', 'cape')
+GLINT_PARTS = ('thighN', 'thighF', 'shinN', 'shinF', 'footN', 'footF', 'skirt', 'cape', 'belt')
 GLINT_KINDS = ('cyan', 'white')
 # (and only light ones: the dragon tabard's dark teal is its own)
 GLINT_LUMA = 110
 
 
 def scrub_glints(fig, rgb, lab):
-    """Pixels of a blade's light (cyan, white) left on a leg, a boot, the skirt or the cape within GLINT_NEAR of
-    the figure's own blade or the shared one: the straightened blade no longer passes there, so a boot or a
-    hem carried a pale speck of the old blade into every moving pose (the rogue's far boot). Each takes the
-    nearest pixel of its own part that is not his line and not blade light: the part continued. In place."""
+    """What her own sword left on the parts under it: where the rogue's or the dragon's own sword lay (its
+    blade, grip, guard and pommel) and the shared sword does not, composed() labels the pixels with the part
+    under them (lay() `under`) but keeps the sword's colours, so the skirt carried the old guard's gold into
+    every moving pose (the owner, 2026-10-30: weapon pixels left on the rogue); and a light pixel of the blade
+    (GLINT_KINDS, luma over GLINT_LUMA) within GLINT_NEAR of the blade beside the straightened band (the
+    rogue's far boot). Each takes the nearest pixel of its own part outside the sword's footprint that is not
+    his line: the part continued. In place. The paladin's own sword is the shared one (straight_blade() closes
+    its old curve), so only the light rule touches her."""
     raw_lab = raw_frame(fig)[1]
+    footprint = (raw_lab == 'blade') & (lab != 'blade') & np.isin(lab, GLINT_PARTS) if fig != SHARED_FROM else np.zeros((GRID, GRID), bool)
     light = lambda c: kind(c) in GLINT_KINDS and luma(c) > GLINT_LUMA
     near = (raw_lab == 'blade') | (lab == 'blade')
     for _ in range(GLINT_NEAR):
@@ -1185,18 +1199,17 @@ def scrub_glints(fig, rgb, lab):
             for dx in (-1, 0, 1):
                 grown |= np.roll(np.roll(near, dy, 0), dx, 1)
         near = grown
-    parts = np.isin(lab, GLINT_PARTS)
-    for y, x in zip(*np.nonzero(near & parts)):
-        if not light(rgb[y, x]):
-            continue
+    todo = footprint | (near & np.isin(lab, GLINT_PARTS) & np.array([[light(rgb[y, x]) for x in range(GRID)] for y in range(GRID)]))
+    src = rgb.copy()
+    for y, x in zip(*np.nonzero(todo)):
         best = None
-        for r in range(1, 6):
+        for r in range(1, 8):
             for dy in range(-r, r + 1):
                 for dx in range(-r, r + 1):
                     if max(abs(dy), abs(dx)) != r:
                         continue
                     q = (y + dy, x + dx)
-                    if not (0 <= q[0] < GRID and 0 <= q[1] < GRID) or lab[q] != lab[y, x] or is_line(rgb[q]) or light(rgb[q]):
+                    if not (0 <= q[0] < GRID and 0 <= q[1] < GRID) or lab[q] != lab[y, x] or todo[q] or is_line(src[q]) or light(src[q]):
                         continue
                     best = q
                     break
@@ -1205,7 +1218,7 @@ def scrub_glints(fig, rgb, lab):
             if best:
                 break
         if best:
-            rgb[y, x] = rgb[best]
+            rgb[y, x] = src[best]
 
 
 _GAME = {}
@@ -1687,7 +1700,16 @@ def complete(lab, name, mask, col, axis, fig=SHARED_FROM, done=None, lower=None)
         return mask, col
     c = col.copy()
     bad = FILL_NOT_OF.get(fig, {}).get(name, FILL_NOT.get(name, ('blue', 'cyan')))
-    sources = lambda m: m & ~is_line(col) & ~np.array([[m[y, x] and kind(col[y, x]) in bad for x in range(GRID)] for y in range(GRID)])
+    # (a pixel beside the sword is the sword's edge or its light, never what a part is continued with: under
+    # the guard the rogue's skirt was filled with the gold beside it)
+    beside = lab == 'blade'
+    for _ in range(GLINT_NEAR):
+        grown = beside.copy()
+        for dy in (-1, 0, 1):
+            for dx in (-1, 0, 1):
+                grown |= np.roll(np.roll(beside, dy, 0), dx, 1)
+        beside = grown
+    sources = lambda m: m & ~is_line(col) & ~beside & ~np.array([[m[y, x] and kind(col[y, x]) in bad for x in range(GRID)] for y in range(GRID)])
     solid = sources(mask)
     if not solid.any() and name in FILL_FROM:
         solid = sources(lab == FILL_FROM[name])

@@ -5,8 +5,12 @@
 Run from the repo root (paths in specs are repo-relative). Writes, under <staging dir>:
   <name>/0000.png ...   the frames, WITHOUT the party (the game's player draws the real units)
   <name>/manifest.json  fps, size, frame count, where each unit stands, the camera of every frame
-  <name>.mp4, <name>.gif  a preview (with --preview-unit, the given sprite is drawn as the caster,
-                          under the same camera, the way the player will draw it)
+  <name>.mp4             the game's video (no party), under the 15 MB publish limit
+  <name>.gif             a small preview
+  --preview-unit <png>   also <name>_preview.mp4/.gif with that sprite drawn as the caster under
+                         the same camera, the way the game's player draws it
+  --assets <dir>         copy the game video and manifest there (src/assets/cinematics/<name>.mp4,
+                         <name>.json)
 A spec names its plug-in (the subject's own timeline, e.g. fire-avatar/forge.py); the shared pieces
 are in tools/cinematics/cine/. Same spec and pictures, same bytes.
 """
@@ -14,6 +18,7 @@ import argparse
 import importlib.util
 import json
 import os
+import shutil
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -29,6 +34,7 @@ def main():
     ap.add_argument('spec')
     ap.add_argument('--out', required=True)
     ap.add_argument('--preview-unit', help='a sprite PNG drawn as the caster in the preview video only')
+    ap.add_argument('--assets', help='also copy the game video and its manifest here (src/assets/cinematics)')
     a = ap.parse_args()
     spec = json.load(open(a.spec))
     p = importlib.util.spec_from_file_location('plugin', os.path.join(HERE, spec['plugin']))
@@ -40,6 +46,10 @@ def main():
         im = Image.open(a.preview_unit).convert('RGBA')
         preview = {'caster': im.crop(im.getbbox())}
     man = core.write(a.out, spec['name'], frames, cams, spec['fps'], units, preview)
+    if a.assets:
+        os.makedirs(a.assets, exist_ok=True)
+        shutil.copyfile(f"{a.out}/{spec['name']}.mp4", f"{a.assets}/{spec['name']}.mp4")
+        shutil.copyfile(f"{a.out}/{spec['name']}/manifest.json", f"{a.assets}/{spec['name']}.json")
     print(f"{spec['name']}: {man['frames']} frames at {man['fps']} fps -> {a.out}")
 
 

@@ -211,14 +211,18 @@ def write(out_dir, name, frames, cams, fps, units, preview=None, video_size=(128
         os.makedirs(f'{out_dir}/{name}_preview', exist_ok=True)
         for i, fr in enumerate(shown):
             fr.convert('RGB').save(f'{out_dir}/{name}_preview/{i:04d}.png')
-    src = f'{out_dir}/{name}_preview' if preview else f'{out_dir}/{name}'
-    subprocess.run(['ffmpeg', '-loglevel', 'error', '-y', '-framerate', str(fps), '-i', f'{src}/%04d.png',
-                    '-vf', f'scale={video_size[0]}:{video_size[1]}:flags=neighbor', '-c:v', 'libx264', '-preset', 'veryfast',
-                    '-pix_fmt', 'yuv420p', '-crf', '22', f'{out_dir}/{name}.mp4'], check=True)
+    def encode(src, dst):
+        subprocess.run(['ffmpeg', '-loglevel', 'error', '-y', '-framerate', str(fps), '-i', f'{src}/%04d.png',
+                        '-vf', f'scale={video_size[0]}:{video_size[1]}:flags=neighbor', '-c:v', 'libx264', '-preset', 'veryfast',
+                        '-pix_fmt', 'yuv420p', '-crf', '22', '-movflags', '+faststart', '-bitexact', '-map_metadata', '-1', dst], check=True)
+    # the game's video: no party in it (the player draws the units)
+    encode(f'{out_dir}/{name}', f'{out_dir}/{name}.mp4')
+    if preview:
+        encode(f'{out_dir}/{name}_preview', f'{out_dir}/{name}_preview.mp4')
     g = [s.convert('RGB').resize(gif_size, Image.BOX) for s in shown[::2]]
     pal = g[len(g) // 2].quantize(colors=255, method=Image.Quantize.MEDIANCUT)
     q = [x.quantize(palette=pal, dither=Image.Dither.NONE) for x in g]
-    q[0].save(f'{out_dir}/{name}.gif', save_all=True, append_images=q[1:], duration=int(2000 / fps), loop=0, optimize=True)
+    q[0].save(f'{out_dir}/{name}_preview.gif' if preview else f'{out_dir}/{name}.gif', save_all=True, append_images=q[1:], duration=int(2000 / fps), loop=0, optimize=True)
     mb = os.path.getsize(f'{out_dir}/{name}.mp4') / 1e6
     if mb > 15:
         raise SystemExit(f'{name}.mp4 is {mb:.1f} MB: over the 15 MB publish limit; lower video_size or crf')

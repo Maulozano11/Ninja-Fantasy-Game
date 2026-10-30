@@ -454,6 +454,102 @@ ones. Online it can later show the % of players who chose the same.
 - **The scene timer** and the online 60 s vote are separate; in local play the
   fuse stops on the cover screen and each player gets the full fuse.
 
+## The hydra's fortress (the owner, 2026-10-29; not built)
+
+**The mission's goal:** recover valuable information from the enemy's base (probably Kōton's; not
+decided), by stealth or head-on. Arriving, the party finds **the gates open and no guards**, for
+some strange reason, and chooses how to get in.
+
+**The choice screen.** A background painted by his generator (the fortress from outside), with
+two choice buttons in the colour of our gems: *By the front gate* and *Through the drain*. While a
+choice is selected, part of the scene changes (the path it takes lights up), and a confirm asks
+before committing.
+
+**By the front gate (the hydra).** Into the courtyard of the colossal hydra (`GAMEPLAY_DESIGN.md`,
+"The colossal hydra"), empty at first. The story's villain waits there with a monologue: proud of
+them for coming in by the big gate, he expected no less; now let's see how they deal with *this*,
+a beast nobody can control, only the Northstar king could. He **summons the hydra with an
+alchemical sigil on the floor** and the boss summon animation plays; the battle starts. After the
+hydra, the party fights its way in through several enemies to the commander's office, and may
+also find the storeroom with the loot.
+
+**The villain: Barrabás** (the owner, 2026-10-29). A Kōton, and the Kōton are allied with the
+Northstar. Most Kōton wear heavy armour like Aiden's; the good ones wear respectable knight's
+armour, the corrupt ones a darker, more gothic version: that is his. Dark green hair. (Our own
+design; no franchise look.) On the **bulky** body (the owner, 2026-10-29). His design and his
+sprite at our scale: `docs/reference/barrabas-design-owner-reference.png`,
+`docs/reference/barrabas-paintover-bulky-owner-reference.png`.
+**His halberd, as his generator drew it** (the owner, 2026-10-29: size 1 of
+`docs/mockups/barrabas-halberd-sizes.png`, 154 px, two thirds taller than him): big on purpose,
+**long reach** like the Kōton iron path's scythe (`CLANS_DESIGN.md`, Crimson Steel, Reactive
+Armory: the scythe drags enemies out of cover). **Reach 4.5 m** (a sword reaches 1.5 m) and **a
+hook that pulls** an enemy out of cover, like the scythe's (approved by the owner, 2026-10-29).
+**Barrabás does not fight in the hydra battle** (the owner): he stands in the middle of the
+sigil while it lights; when it is about to blaze, **bolts crackle across the circle and up round
+him** as he says *"Diviértanse. Yo estaré adentro contando mi dinero... ¡jajaja!"* (his line), the
+circle fires, and **he leaves with a ninja leap**: a crouch, a puff of dust, a flip up and over the
+wall to the right, an afterimage trail (the owner, 2026-10-29: *"salgan rayos y se active y luego
+barrabás se va de escena con un tipo salto ninja como lo tenemos para saltar a un árbol pero sin el
+árbol"*). Then the column, the smoke and the hydra. Mock: `docs/mockups/hydra-summon-barrabas-leap.png`.
+**The summon cinematic with Barrabás (v7) is approved** (the owner, 2026-10-29, 23:39); its
+scripts are in `tools/cinematics/hydra-summon/`. **He is met again in the commander's office** at
+the end of the mission, and fights there with his halberd and hook (approved 2026-10-29). The scythe's look is to be our own design (his example was an
+anime character's scythe: only the idea of the reach is taken).
+
+**His welcome (draft, the owner's lines refined; his words to approve):**
+- The party walks in; Barrabás stands in the middle of the courtyard. *"¡Ja! Sabía que vendrían.
+  Solo alguien tan orgulloso como tú entraría por la puerta grande... Insolente."*
+- **The gates slam shut** behind the party.
+- **A choice.** The colour of the gem says the kind of answer, from here on: **red = pride**
+  (most proud answers), **blue = the clever, wise one** (almost always).
+  - Red: laugh it off, *he is one and we are N* (N = the party's size: up to 5 playable
+    characters per player, more with reinforcements, allies, summons or clones). His reply:
+    *"¿Solo? ¿Y quién te dijo que estoy solo?"* (the owner asked for natural words).
+  - Blue, the Mirai answer: see that something is wrong; the party gets priority in the
+    battle's initiative.
+  - Provoke him about the Northstar (his pick 3b): *a Kōton playing the Northstar's dog*. He
+    loses his temper and sends the hydra first at whoever said it: that ninja draws its attacks.
+  - Attack mid-sentence (his pick 4a): a kunai before he finishes. The summon is broken: the
+    hydra comes out with 3 of its 5 heads the first round; Barrabás gets away swearing revenge
+    (he will remember it).
+- Then, whatever was answered: *a beast nobody can control, only the Northstar king could*; the
+  alchemical sigil, the summon, the battle.
+
+**Through the drain (stealth, XCOM 2 style).**
+- **A narrow map.** In the tunnels **rank S jutsu and summons can't be used** (nothing large:
+  summoned beasts, mechas, the giant spirit-armour form when active counts as a mecha; they don't
+  fit). Only small abilities or lines, and those can hit the party in the tight space.
+- **The fork.** After several tunnels the map splits: **left is a dead end**, reached after
+  spending resources, time and small fights, and the party has to turn back; **right** leads to a
+  grate into the castle's **storeroom**, where the loot is.
+- **Loot or not.** If they loot, a patrol passes, finds them and the battle starts. If they don't,
+  they get **1 turn to set up an ambush** on the patrol.
+- **The alarm.** Once found, one guard attacks and another runs to sound the alarm; there is time
+  to reach him and kill him before he does. If he sounds it, more enemies arrive over the next turns.
+- **The objective.** Reach the commander's office, take the documents (a **bonus action**), and
+  go back out through the grate to escape.
+
+**The loot.** A unique sword that can **send magic attacks back** at the caster (his example is
+an anime counter move; the name and the look must be our own), and other random, cool items that
+are sold for gold back at home or the base (his ToME decision: random loot becomes gold, weapons
+are hand-made).
+**Loot from the dead hydra** (the owner, 2026-10-30): its heads lie cut off on the courtyard floor
+after the battle, and the party can loot them for a **basilisk tooth** (the front head's one long fang, which glows). **To take it a character must walk up to it** (the owner, 2026-10-30): close
+enough, the choice **"Lootear"** or **"Seguir adelante"** appears; both can be done (loot, then go
+on). **Going on, the party leaps one by one over the wall to the right, where Barrabás went, with
+the tree jump's leap** (the owner, 2026-10-30: *"como en el salto al árbol"*; the Vanish Jump's
+look on `stealth/tree-hide`, `vanishArt.ts`: a crouch, the take-off puff, the body in lagging
+bands with pale after-images and speed lines, fading out over the battlements; his leap effects since 2026-10-30, the take-off burst and the trail, and no cloud where they vanish: that cloud is the dodge's), and the mission
+moves on into the castle. `docs/mockups/colossal-hydra-party-leap.png`. The fang's glow is soft. `docs/mockups/colossal-hydra-after-battle.png` (what it does, and whether
+it is a material for the forge or an item of its own, to propose).
+
+**Summons, from here on.** Boss summons get their own animation (this one: the villain's
+alchemical sigil); ordinary summons get a simpler one inside the battle (the mechas too).
+**Mecha size:** a mecha is as big as the river battle's hydra (the medium hydra we have now).
+
+Open: the welcome's final lines and its other two answers, the drain's and the castle's maps, the
+sword's numbers and name.
+
 ## Story notes (for the story session)
 
 - 6 or more endings (owner's choice), unlocked by marks and clan reputation.

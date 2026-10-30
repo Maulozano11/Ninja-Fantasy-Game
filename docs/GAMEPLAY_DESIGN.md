@@ -53,6 +53,10 @@ elements.
 - **Kawarimi** (Body Replacement) is a reaction: when a hit lands, pay its
   chakra and your reaction, the blow strikes a log and you reappear a few meters
   away.
+  On screen (the owner, 2026-10-30): the "vanish" row of his ninja-leap effects sheet
+  (`docs/reference/ninja-leap-fx-owner-reference.png`, row 3: the flash, the round cloud with
+  leaves, its wisps) is the swap's cloud where the ninja stood, a log in its place takes the blow,
+  and the same cloud, smaller and quicker, where it comes out (`docs/mockups/kawarimi-dodge-cloud.png`).
 - **Dice**: every roll shows as a quick d20 over the acting character, with a
   button to speed it up. The big dice window is kept for criticals and
   important checks. Checks and attacks show their % before rolling.
@@ -151,6 +155,28 @@ elements.
 - Falling deals damage; enemies can be shoved off ledges.
 - Climbing: ramps, stairs and vines, plus ninja jumps and wall runs paid with
   movement or chakra.
+
+## The jump attack (the owner, 2026-10-28; not built)
+
+Made for the colossal hydra's heads in the air, but for anyone: a ninja leaps, strikes in the air
+and lands back with the squad (the owner: *"saltar y atacar me parece mejor, así como en el salto de
+esconderte en el árbol y aparecer en el aire atacando y regresar a tu cuadrilla"*). Storyboard:
+`docs/mockups/jump-attack-storyboard.png`. Climbing onto something high to strike (a pillar, the
+wall walk) was offered too; he said no to it as a mechanic of its own.
+
+- **Cost:** the action and 1 chakra, plus the jutsu cooldown (numbers from Baldur's Gate 3, to
+  propose).
+- **Reach:** a target up to 6 m away and up to 4.5 m high (three levels).
+- **The strike:** a melee weapon attack with +2, as from higher ground. Leaping from hiding
+  (behind a pillar, crates, or up a tree on other maps) gives advantage and the surprise damage,
+  as any attack from hiding.
+- **The return:** the ninja lands where it leapt from, or up to 3 m from there, with no
+  opportunity attacks.
+- **The risk, only when the strike misses** (his words: *"no lo pongas tan riesgoso, ponle un
+  porcentaje de 20% que falles"*, then *"lo quiero distinto, solo cuando falla"*): if the strike
+  misses, a 20 % roll that the landing goes wrong: the ninja doesn't return, falls under the target,
+  takes 1d6 from the fall and lies prone in its reach. A hit always lands back. Both numbers show
+  before leaping, like every other %. (First proposed: no return on every miss; too risky.)
 
 ## Cover
 
@@ -2067,3 +2093,84 @@ for now; its S-rank slot offers its element's (and nothing for Light or Void).
   change leaves it. Its projectile sheet (`vfx_chakra/multi`) stays in the
   repo: it is one sheet of the generated chakra set (every element's set has a
   `multi`), no other jutsu flies it today, and deleting art is his call.
+
+### The colossal hydra, guardian of the fortress (the owner, 2026-10-28; not built)
+
+His: *"una hydra colosal que esté adentro de una fortaleza, va a ser el guardia de la fortaleza...
+cada cabeza estaría separada para que incluso si le pegas con una bola de fuego solo le des a una
+cabeza... mide 2.5x del personaje... cada cabeza está saliendo del cuerpo con su cuello largo en
+horizontal volteando a la izquierda, ataca haciendo mordidas y lanza ácido, misma dinámica que este
+pequeño; el pequeño sería como la versión introductoria"*. Approved basic version:
+`docs/mockups/colossal-hydra-concept.png` (after his two cuts: nothing of the body comes forward,
+and no body along the back wall; only the body on the right).
+
+- **Five heads** (the owner, 2026-10-28, with his third backdrop: *"lo pondremos ahora con 5
+  cabezas para que no abarque todo el mapa"*; first seven). His design:
+  `docs/reference/colossal-hydra-backdrop-v3-owner-reference.png`, the fortress courtyard with the
+  body on the right and five long necks painted in, cut horizontally at five heights, and his head
+  poses `docs/reference/colossal-hydra-head-poses-owner-reference.png`. The body and the painted
+  necks are never a target.
+- Each head is **2.4 m** long, facing left toward the gate (the owner, 2026-10-28: *"a 2.4 m"*).
+  At 2.4 m his heads' necks match the necks painted in his third backdrop
+  (`docs/mockups/colossal-hydra-five-heads-2.4m.png`); at 3.3 m they came out about 40 % thicker
+  (`-3.3m.png`). Before: 4.4 m (his first "2.5x del personaje"), then 3.3 m (*"las cabezas las
+  bajamos a 3.3"*).
+- Each head is a unit in its own lane, as far from the others as the backdrop allows: with five
+  heads in his third backdrop the nearest two are about 7 m apart, so a Fireball (1.5 m) only
+  ever catches one. (The game's biggest area, 4.5 m enhanced, could catch two heads less than 9 m
+  apart; that was true at 8 m too.) The necks take no damage.
+- The small hydra's rules (`battle/hydra.ts`): each head has its own HP, bites and spits (acid
+  instead of venom), is cut at 0 HP and grows back unless the stump is burnt, electrified or
+  blown up; the hydra dies when every head is down at once. Ours until he says otherwise: a bite
+  reaches about 6 m in front of the head (the neck stretches), the acid about 12 m.
+- The art: card 11 of `tools/refs/template/TARJETA_DE_PROMPT.md`, the casino's style and quality
+  (his words). A neck is horizontal on screen at its painted neck's height, so each head's lane
+  (depth) and height over the floor trade off. In his third backdrop the floor starts halfway down
+  (about 14 m of depth) and the top two necks run along the wall, so those heads are in the air
+  (about 4 m and 2.3 m or more over the floor): reaching them in melee needs a jump or height. The
+  long neck: the head frame, then a straight stretch of his long neck (his zip's fixed part) scaled
+  to the same thickness and repeated with soft overlaps, into the painted neck. His backdrop has
+  depth, so the back necks are painted thinner (about 55, 61, 59, 65 and 68 px from back to
+  front, measured 190 px past each ring): each game neck narrows along its stretch to its painted
+  neck's thickness. The long neck is one steady strip per head, the same in every animation (straight
+  stretches from the end of that head's row in his rest sheet, levelled flat and overlapped softly);
+  an animation frame gives only the head and a short piece of neck, anchored by the neck's cut and
+  faded into the strip, and a lunge just shows more of the strip. (Before, each frame brought its
+  own neck and the long necks bent and shimmered from frame to frame: the owner, *"¿por qué se ven
+  tan raros los cuellos?"*.) The narrowing came from the owner (2026-10-28: the top three were thicker
+  than the body's necks). The strip overlaps the painted neck up to there, sits on its middle and fades out over about 34 px, tinted toward his
+  darker scales (`docs/mockups/colossal-hydra-neck-joins.png`).
+- **The summon's end (the owner, 2026-10-29):** while the smoke clears, the five heads start
+  pulled back against the body inside the cloud (no long necks sticking out of it), and only when
+  the hydra appears do they shoot out, their necks stretching to their places.
+- **Nothing stands still** (the owner, 2026-10-28: *"ponle animación a todo el cuerpo de la hidra
+  para que no se vea estático"*). The painted body breathes: a smooth warp inside its outline lifts
+  it up to about 9 px and sways it about 4 px over a 2 s cycle, growing with the height over its
+  base, while the floor and the part under the game necks stay still. Each long neck carries a slow
+  wave from the body to the head (up to 6 px, nothing at the join so it still meets the painted
+  neck), each head a little out of step with the others, and the head rides the wave. His first two
+  backdrops and the bite strip v2 (seven heads) stay as references.
+- **Its stumps, its acid, its end** (the owner's sheets, 2026-10-29, prompt card 11):
+  - **The burnt stump:** fire on a cut stump chars and seals it (raw, catching, burning, charred
+    and smoking, sealed); a sealed stump never grows back. `docs/mockups/colossal-hydra-burn-stumps.png`.
+  - **The acid spit:** a head throws its head back and opens its mouth, the ball of acid flies in an
+    arc to the target, splashes, and leaves a puddle that boils under it, then dries to a burnt
+    stain. `docs/mockups/colossal-hydra-acid-effects.png`.
+  - **Its death:** the body collapses where it stands, the five necks fall to the floor ending in
+    cut stumps, and the five **heads lie cut off, apart from the necks**, eyes shut (the owner,
+    2026-10-30); they can be looted for a basilisk tooth (`MISSION_DESIGN.md`, the fortress loot).
+    In the battle, with no cut to another shot. **It dies when its last head is cut** (the owner,
+    2026-10-30), so at that moment four stumps are already burnt and sealed and only the last is
+    freshly cut. **Every cut-off head lies on the floor** (no head hangs in the air; the
+    four earlier ones lie where his dead picture has them, matted from it), and **it dies when the
+    last head hits the floor** (the owner, 2026-10-30): the head falls and lands, the body shudders, a wall of dust rises along it and hides
+    the fall, and the dust settles on his dead-hydra picture v2 (an exact edit of the battle
+    backdrop) with four of its stumps charred from his own pixels and the front one raw
+    The party stays where each one ended the battle (no reset to a line-up), and the loot shows
+    itself: **one fang of the front head, longer than the others, glows and sparkles** (the owner,
+    2026-10-30); that is the basilisk tooth to take.
+    (`tools/cinematics/hydra-summon/char_stumps.py`, `loot_tooth.py`, `collapse.py`;
+    `docs/mockups/colossal-hydra-death-collapse.png`). His first picture (`colossal-hydra-dead-v1`, a different
+    framing with burnt stumps, shown as a letterboxed final shot) he did not like (2026-10-30); a
+    second one is asked as an exact edit of the five-head backdrop (prompt card 11 E, second round).
+

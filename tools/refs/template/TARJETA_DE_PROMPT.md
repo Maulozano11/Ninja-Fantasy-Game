@@ -805,6 +805,24 @@ humo sale despedido hacia la izquierda en jirones largos. NO dibujes cuellos, ca
 cuerpo: dentro de los túneles solo hay aire y humo. Los ojos verdes ya no están. Piedras y brasas sueltas.
 ```
 
+**Segunda vuelta del 4c** (`docs/reference/summon-courtyard-step4c-v2-owner-reference.png`): túneles vacíos,
+bien; pero no coinciden con las cabezas (pintó de más y a otras alturas). Se corrige adjuntando DOS
+imágenes: primero el 4c v2, después la guía `tools/refs/template/hydra-4c-tunnel-guide.png` (las cinco
+franjas verdes = donde pasan nuestras cabezas):
+```
+Edita la PRIMERA imagen adjunta. La SEGUNDA imagen es una GUÍA: es la misma escena con cinco franjas
+VERDES numeradas que marcan exactamente dónde deben ir los túneles. Deja la primera imagen idéntica
+píxel por píxel en todo lo demás (el muro, el portón, las antorchas, las losas, el encuadre, la forma y
+el color de la nube), cambiando SOLO los túneles:
+- Debe haber EXACTAMENTE CINCO túneles, uno dentro de cada franja verde, con su misma altura, su mismo
+  grosor y su mismo largo; su boca abierta en el extremo izquierdo de la franja.
+- Borra todos los demás túneles y huecos (los que no caen en una franja, también los de la derecha):
+  rellénalos con humo igual al de alrededor.
+- Cada túnel es un hueco de aire oscuro con las paredes de humo arremolinadas en espiral, y de su boca
+  izquierda sale humo despedido hacia la izquierda en jirones largos, como ahora.
+- NO dibujes las franjas verdes, ni números, ni nada verde. NO dibujes cuellos, cabezas ni escamas.
+```
+
 Con estos el juego hace: columna (3) → la columna se rompe (3b) → la nube (4) → la nube con la silueta
 (4b, ya sobre el fondo de la hidra, así el cambio de fondo pasa dentro del humo) → el humo se deshace
 mientras las cinco cabezas salen de la nube y estiran el cuello hasta su lugar. Si 4b sale alineado, opcional un 4c igual pero con el humo a la mitad.

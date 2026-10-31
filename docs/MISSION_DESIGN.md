@@ -514,7 +514,16 @@ anime character's scythe: only the idea of the reach is taken).
     (he will remember it).
 - Then, whatever was answered: *a beast nobody can control, only the Northstar king could*; the
   alchemical sigil, the summon, the battle.
-- **How the choice looks** (mock, 2026-10-30, waiting for the owner): his line stays in the box,
+- **How the choice looks, second try: like Baldur's Gate 3** (the owner, 2026-10-31: he did not
+  like the gem-button layout and asked for it "como está hecho en Baldur's Gate"; mock waiting
+  for his look, `docs/mockups/barrabas-welcome-bg3-style.png`): the camera on the one who talks
+  (his portrait big in the out-of-focus courtyard, the speaker over the shoulder, cinema bands),
+  his line as a subtitle; the answers as one numbered list in a dark panel, his line repeated
+  small on top, each answer with its tag in its colour ([ORGULLO], [MIRAI] [LA LISTA], a check
+  with its % like [INTIMIDACIÓN] 62 %, an action in italics), the hovered one lit, numbers to
+  pick; after answering, companions approve or disapprove in the corner and Focus shows at the
+  bottom.
+- First try (not liked): his line stays in the box,
   the scene dims, and the four answers stand in the middle on his gem buttons, each with its
   personality's name over it (red pride, blue the smart one with what unlocked it, gold
   loyalty, amethyst the mission first: his red gem recoloured until he paints one); the

@@ -514,6 +514,16 @@ anime character's scythe: only the idea of the reach is taken).
     (he will remember it).
 - Then, whatever was answered: *a beast nobody can control, only the Northstar king could*; the
   alchemical sigil, the summon, the battle.
+- **The dialogue interface: his panel** (the owner, 2026-10-31, `docs/reference/dialogue-panel-owner-reference.png`:
+  *"me gustó más esta interfaz y las dinámicas que pusiste, es lo que buscaba"*). Its rules:
+  - **The panel in the middle, the characters' sprites at the sides** (the party on the left, the
+    one they talk to on the right), in the scene, not big portraits.
+  - **Checks show like this, by skill** ([INTIMIDACIÓN] with its % in the medallion), and the %
+    is **honest and low against a mission boss**: only very high Charisma makes it likely (his
+    example: 62 % would need it; the mock shows 18 %).
+  - **If an answer moves Karma, it says so** (a Karma mark with ▲ or ▼ on the answer), and after
+    answering the change shows at the top with why, with the companions' approval.
+  - `docs/mockups/barrabas-welcome-dialogue-v2.png`, `docs/mockups/barrabas-welcome-reaction-v2.png`.
 - **How the choice looks, second try: like Baldur's Gate 3** (the owner, 2026-10-31: he did not
   like the gem-button layout and asked for it "como está hecho en Baldur's Gate"; mock waiting
   for his look, `docs/mockups/barrabas-welcome-bg3-style.png`): the camera on the one who talks
